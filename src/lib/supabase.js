@@ -6,7 +6,13 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase URL eller Anon Key saknas. Kontrollera dina miljövariabler.')
+  console.error('Supabase URL eller Anon Key saknas. Kontrollera dina miljövariabler.')
+  console.error('VITE_SUPABASE_URL:', supabaseUrl ? 'OK' : 'SAKNAS')
+  console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'OK' : 'SAKNAS')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Skapa client även om nycklar saknas (för att undvika crash)
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key'
+)
