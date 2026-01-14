@@ -17,6 +17,17 @@ function App() {
   const loadProjects = async () => {
     try {
       setLoading(true)
+      
+      // Om Supabase inte är konfigurerad, använd localStorage
+      if (!supabase) {
+        const savedProjects = localStorage.getItem('renovationProjects')
+        if (savedProjects) {
+          setProjects(JSON.parse(savedProjects))
+        }
+        setLoading(false)
+        return
+      }
+      
       // Ladda projekt
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
@@ -60,6 +71,21 @@ function App() {
 
   const createProject = async (name, description) => {
     try {
+      // Om Supabase inte är konfigurerad, använd localStorage direkt
+      if (!supabase) {
+        const newProject = {
+          id: Date.now().toString(),
+          name,
+          description,
+          tasks: [],
+          created_at: new Date().toISOString()
+        }
+        const updatedProjects = [newProject, ...projects]
+        setProjects(updatedProjects)
+        localStorage.setItem('renovationProjects', JSON.stringify(updatedProjects))
+        return
+      }
+      
       const { data, error } = await supabase
         .from('projects')
         .insert([
@@ -95,6 +121,17 @@ function App() {
 
   const deleteProject = async (projectId) => {
     try {
+      // Om Supabase inte är konfigurerad, använd localStorage direkt
+      if (!supabase) {
+        const updatedProjects = projects.filter(p => p.id !== projectId)
+        setProjects(updatedProjects)
+        if (selectedProject?.id === projectId) {
+          setSelectedProject(null)
+        }
+        localStorage.setItem('renovationProjects', JSON.stringify(updatedProjects))
+        return
+      }
+      
       // Ta bort alla uppgifter först
       const { error: tasksError } = await supabase
         .from('tasks')
@@ -128,6 +165,32 @@ function App() {
 
   const addTask = async (projectId, taskName, taskDescription) => {
     try {
+      // Om Supabase inte är konfigurerad, använd localStorage direkt
+      if (!supabase) {
+        const newTask = {
+          id: Date.now().toString(),
+          project_id: projectId,
+          name: taskName,
+          description: taskDescription,
+          completed: false,
+          created_at: new Date().toISOString()
+        }
+        const updatedProjects = projects.map(project => 
+          project.id === projectId
+            ? { ...project, tasks: [...project.tasks, newTask] }
+            : project
+        )
+        setProjects(updatedProjects)
+        if (selectedProject?.id === projectId) {
+          setSelectedProject({
+            ...selectedProject,
+            tasks: [...selectedProject.tasks, newTask]
+          })
+        }
+        localStorage.setItem('renovationProjects', JSON.stringify(updatedProjects))
+        return
+      }
+      
       const { data, error } = await supabase
         .from('tasks')
         .insert([
@@ -183,6 +246,35 @@ function App() {
       const task = project?.tasks.find(t => t.id === taskId)
       if (!task) return
 
+      // Om Supabase inte är konfigurerad, använd localStorage direkt
+      if (!supabase) {
+        const updatedProjects = projects.map(project =>
+          project.id === projectId
+            ? {
+                ...project,
+                tasks: project.tasks.map(task =>
+                  task.id === taskId
+                    ? { ...task, completed: !task.completed }
+                    : task
+                )
+              }
+            : project
+        )
+        setProjects(updatedProjects)
+        if (selectedProject?.id === projectId) {
+          setSelectedProject({
+            ...selectedProject,
+            tasks: selectedProject.tasks.map(task =>
+              task.id === taskId
+                ? { ...task, completed: !task.completed }
+                : task
+            )
+          })
+        }
+        localStorage.setItem('renovationProjects', JSON.stringify(updatedProjects))
+        return
+      }
+
       const { error } = await supabase
         .from('tasks')
         .update({ completed: !task.completed })
@@ -237,6 +329,27 @@ function App() {
 
   const deleteTask = async (projectId, taskId) => {
     try {
+      // Om Supabase inte är konfigurerad, använd localStorage direkt
+      if (!supabase) {
+        const updatedProjects = projects.map(project =>
+          project.id === projectId
+            ? {
+                ...project,
+                tasks: project.tasks.filter(task => task.id !== taskId)
+              }
+            : project
+        )
+        setProjects(updatedProjects)
+        if (selectedProject?.id === projectId) {
+          setSelectedProject({
+            ...selectedProject,
+            tasks: selectedProject.tasks.filter(task => task.id !== taskId)
+          })
+        }
+        localStorage.setItem('renovationProjects', JSON.stringify(updatedProjects))
+        return
+      }
+      
       const { error } = await supabase
         .from('tasks')
         .delete()
