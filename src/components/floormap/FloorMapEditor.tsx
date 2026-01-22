@@ -1,0 +1,278 @@
+import { useState, useEffect, useCallback, useRef } from "react";
+import { SimpleToolbar } from "./SimpleToolbar";
+import { UnifiedKonvaCanvas } from "./UnifiedKonvaCanvas";
+import { RoomsList } from "./RoomsList";
+import { RoomDetailDialog } from "./RoomDetailDialog";
+import { SpacePlannerTopBar } from "./SpacePlannerTopBar";
+import { useFloorMapStore } from "./store";
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
+import { loadPlansFromDB, createPlanInDB } from "./utils/plans";
+import { Button } from "@/components/ui/button";
+import { Home, X } from "lucide-react";
+
+interface FloorMapEditorProps {
+  projectId: string;
+  projectName?: string;
+}
+
+export const FloorMapEditor = ({ projectId, projectName }: FloorMapEditorProps) => {
+  const { t } = useTranslation();
+  const {
+    plans,
+    currentPlanId,
+    shapes,
+    setCurrentProjectId,
+    setPlans,
+    setCurrentPlanId,
+  } = useFloorMapStore();
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [canUndoState, setCanUndoState] = useState(false);
+  const [canRedoState, setCanRedoState] = useState(false);
+  const [showRoomsList, setShowRoomsList] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState<any>(null);
+  const [roomDialogOpen, setRoomDialogOpen] = useState(false);
+
+  // Update undo/redo state from canvas
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCanUndoState((window as any).__canvasCanUndo || false);
+      setCanRedoState((window as any).__canvasCanRedo || false);
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Keyboard shortcuts - MINIMAL (most handled in UnifiedKonvaCanvas)
+  useEffect(() => {
+    // Detect OS for proper modifier key
+    const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle shortcuts that are specific to FloorMapEditor
+      // All canvas shortcuts (Ctrl+Z/Y/C/V/D/A, Delete, etc.) are in UnifiedKonvaCanvas
+      
+      // Use Cmd on Mac, Ctrl on Windows - simplified
+      const modKey = isMac ? e.metaKey : e.ctrlKey;
+      
+      // Save - keep here as it's a top-level action
+      // NOTE: Do NOT handle Z/Y here - those are canvas undo/redo
+      if (modKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        saveShapes();
+      }
+      
+      // Explicitly do NOT handle Z, Y (undo/redo) - let canvas handle those
+      // Do NOT call e.preventDefault() or e.stopPropagation() for other keys
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Initialize project context
+  useEffect(() => {
+    setCurrentProjectId(projectId);
+  }, [projectId, setCurrentProjectId]);
+
+  // Load plans on mount
+  useEffect(() => {
+    loadInitialData();
+  }, [projectId]);
+
+  const loadInitialData = async () => {
+    // Load all plans for this project
+    const loadedPlans = await loadPlansFromDB(projectId);
+    if (loadedPlans.length === 0) {
+      // Create a default plan if none exist
+      const defaultPlan = await createPlanInDB(projectId, t("Floor Plan 1"));
+      if (defaultPlan) {
+        setPlans([defaultPlan]);
+        setCurrentPlanId(defaultPlan.id);
+      }
+    } else {
+      setPlans(loadedPlans);
+      const defaultPlan = loadedPlans.find((p) => p.isDefault) || loadedPlans[0];
+      setCurrentPlanId(defaultPlan.id);
+    }
+  };
+
+  // Note: Auto-save is now handled by the canvas component itself
+
+  const saveShapes = async () => {
+    if (isSaving) return;
+
+    setIsSaving(true);
+    // Use canvas save function instead of plan save
+    if ((window as any).__canvasSave) {
+      const success = await (window as any).__canvasSave();
+      if (success) {
+        setHasUnsavedChanges(false);
+        // toast.success is already shown in canvas save function
+      }
+    } else {
+      toast.error('Canvas save function not available');
+    }
+    setIsSaving(false);
+  };
+
+  const handleManualSave = () => {
+    saveShapes();
+  };
+
+  const handleDelete = () => {
+    // Delete is handled in the canvas with Delete key
+    toast.info(t("Press Delete or Backspace to remove the selected object"));
+  };
+
+  const handleUndo = () => {
+    // Call canvas undo directly
+    if ((window as any).__canvasUndo) {
+      (window as any).__canvasUndo();
+      toast.success(t("Undone"));
+    }
+  };
+
+  const handleRedo = () => {
+    // Call canvas redo directly
+    if ((window as any).__canvasRedo) {
+      (window as any).__canvasRedo();
+      toast.success(t("Redone"));
+    }
+  };
+
+  const handleRoomClick = (room: any) => {
+    setSelectedRoom(room);
+    setRoomDialogOpen(true);
+  };
+
+  const handleRoomUpdated = () => {
+    // Refresh rooms list
+    setSelectedRoom(null);
+    // Increment trigger to notify canvas of room updates
+    setRoomUpdateTrigger(prev => prev + 1);
+  };
+
+  const [roomUpdateTrigger, setRoomUpdateTrigger] = useState(0);
+
+  return (
+    <div className="flex flex-col h-full bg-gray-50">
+      {/* Top Bar with Plan Selector */}
+      <SpacePlannerTopBar projectId={projectId} projectName={projectName} />
+      
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .canvas-scroll-area, .canvas-scrollable-container {
+            scroll-behavior: smooth;
+            touch-action: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
+          }
+          .canvas-scroll-area::-webkit-scrollbar,
+          .canvas-scrollable-container::-webkit-scrollbar {
+            width: 14px;
+            height: 14px;
+          }
+          .canvas-scroll-area::-webkit-scrollbar-track,
+          .canvas-scrollable-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+          }
+          .canvas-scroll-area::-webkit-scrollbar-thumb,
+          .canvas-scrollable-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 0px;
+            border: 2px solid rgba(0, 0, 0, 0.05);
+            transition: background 0.2s ease;
+          }
+          .canvas-scroll-area::-webkit-scrollbar-thumb:hover,
+          .canvas-scrollable-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.4);
+          }
+          .canvas-scroll-area::-webkit-scrollbar-thumb:active,
+          .canvas-scrollable-container::-webkit-scrollbar-thumb:active {
+            background: rgba(0, 0, 0, 0.5);
+          }
+          .canvas-scroll-area::-webkit-scrollbar-corner,
+          .canvas-scrollable-container::-webkit-scrollbar-corner {
+            background: rgba(0, 0, 0, 0.05);
+          }
+        `
+      }} />
+      <div className="flex flex-1 relative pt-14"> {/* Padding for fixed TopBar */}
+        {/* Left Toolbar */}
+        <SimpleToolbar
+          projectId={projectId}
+          onSave={handleManualSave}
+          onDelete={handleDelete}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          canUndo={canUndoState}
+          canRedo={canRedoState}
+        />
+
+        {/* Main Canvas Area - UNIFIED KONVA CANVAS ONLY */}
+        <main className="flex-1 ml-16 overflow-auto canvas-scroll-area relative">
+          <UnifiedKonvaCanvas 
+            onRoomCreated={() => setRoomUpdateTrigger(prev => prev + 1)}
+          />
+        </main>
+
+        {/* Rooms List Panel */}
+        {showRoomsList && (
+          <div className="absolute top-0 right-0 w-96 h-full bg-white border-l border-border shadow-xl z-40 flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <Home className="h-5 w-5 text-primary" />
+                <h2 className="font-semibold text-lg">Rum</h2>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowRoomsList(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <RoomsList
+                projectId={projectId}
+                onRoomClick={handleRoomClick}
+                key={roomUpdateTrigger} // Force re-mount when rooms are updated
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Toggle Rooms Button */}
+        {!showRoomsList && (
+          <Button
+            className="absolute top-4 right-4 z-30"
+            onClick={() => setShowRoomsList(true)}
+          >
+            <Home className="h-4 w-4 mr-2" />
+            Rum
+          </Button>
+        )}
+      </div>
+
+      {/* Room Detail Dialog */}
+      <RoomDetailDialog
+        room={selectedRoom}
+        projectId={projectId}
+        open={roomDialogOpen}
+        onOpenChange={setRoomDialogOpen}
+        onRoomUpdated={handleRoomUpdated}
+      />
+
+      {/* Save indicator */}
+      {isSaving && (
+        <div className="fixed bottom-4 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg">
+          {t("Saving...")}
+        </div>
+      )}
+    </div>
+  );
+};
