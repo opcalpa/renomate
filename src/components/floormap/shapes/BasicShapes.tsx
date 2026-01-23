@@ -2,13 +2,14 @@
  * Basic Shape Components
  *
  * Simple shape renderers for Rectangle, Circle, Text, and Freehand.
+ * All shapes use unified drag handlers for multi-select support.
  */
 
 import React, { useRef, useEffect } from 'react';
-import { Rect, Circle, Line, Text as KonvaText } from 'react-konva';
+import { Rect, Circle, Line, Text as KonvaText, Group } from 'react-konva';
 import Konva from 'konva';
-import { useFloorMapStore } from '../store';
 import { ShapeComponentProps } from './types';
+import { createUnifiedDragHandlers } from '../canvas/utils';
 
 /**
  * RectangleShape - Renders rectangle, door, and opening shapes
@@ -31,23 +32,12 @@ export const RectangleShape = React.memo<ShapeComponentProps>(({ shape, isSelect
 
   const coords = shape.coordinates as { left: number; top: number; width: number; height: number };
 
-  const isDraggable = true; // Always draggable
-
   return (
-    <Rect
+    <Group
       id={`shape-${shape.id}`}
-      ref={shapeRef}
       name={shape.id}
       shapeId={shape.id}
-      x={coords.left}
-      y={coords.top}
-      width={coords.width}
-      height={coords.height}
-      fill={shape.color || 'transparent'}
-      stroke={isSelected ? '#3b82f6' : shape.strokeColor || '#000000'}
-      strokeWidth={2}
-      cornerRadius={2}
-      draggable={isDraggable}
+      draggable={true}
       onClick={(e) => {
         e.cancelBubble = true;
         onSelect(e);
@@ -56,44 +46,21 @@ export const RectangleShape = React.memo<ShapeComponentProps>(({ shape, isSelect
         e.cancelBubble = true;
         onSelect(e);
       }}
-      onDragStart={(e) => {
-        e.cancelBubble = true;
-      }}
-      onDragEnd={(e) => {
-        e.cancelBubble = true;
-        const node = e.target;
-
-        onTransform({
-          coordinates: {
-            left: node.x(),
-            top: node.y(),
-            width: coords.width,
-            height: coords.height,
-          }
-        });
-
-        node.position({ x: 0, y: 0 });
-      }}
-      onTransformEnd={(e) => {
-        const node = shapeRef.current;
-        if (!node) return;
-
-        const scaleX = node.scaleX();
-        const scaleY = node.scaleY();
-
-        node.scaleX(1);
-        node.scaleY(1);
-
-        onTransform({
-          coordinates: {
-            left: node.x(),
-            top: node.y(),
-            width: Math.max(5, node.width() * scaleX),
-            height: Math.max(5, node.height() * scaleY),
-          }
-        });
-      }}
-    />
+      {...createUnifiedDragHandlers(shape.id, shapeRefsMap)}
+    >
+      <Rect
+        ref={shapeRef}
+        x={coords.left}
+        y={coords.top}
+        width={coords.width}
+        height={coords.height}
+        fill={shape.color || 'transparent'}
+        stroke={isSelected ? '#3b82f6' : shape.strokeColor || '#000000'}
+        strokeWidth={2}
+        cornerRadius={2}
+        listening={false}
+      />
+    </Group>
   );
 }, (prevProps, nextProps) => {
   const coordsEqual = JSON.stringify(prevProps.shape.coordinates) === JSON.stringify(nextProps.shape.coordinates);
@@ -128,21 +95,12 @@ export const CircleShape = React.memo<ShapeComponentProps>(({ shape, isSelected,
 
   const coords = shape.coordinates as { cx: number; cy: number; radius: number };
 
-  const isDraggable = true; // Always draggable
-
   return (
-    <Circle
+    <Group
       id={`shape-${shape.id}`}
-      ref={shapeRef}
       name={shape.id}
       shapeId={shape.id}
-      x={coords.cx}
-      y={coords.cy}
-      radius={coords.radius}
-      fill={shape.color || 'transparent'}
-      stroke={isSelected ? '#3b82f6' : shape.strokeColor || '#000000'}
-      strokeWidth={2}
-      draggable={isDraggable}
+      draggable={true}
       onClick={(e) => {
         e.cancelBubble = true;
         onSelect(e);
@@ -151,24 +109,19 @@ export const CircleShape = React.memo<ShapeComponentProps>(({ shape, isSelected,
         e.cancelBubble = true;
         onSelect(e);
       }}
-      onDragStart={(e) => {
-        e.cancelBubble = true;
-      }}
-      onDragEnd={(e) => {
-        e.cancelBubble = true;
-        const node = e.target;
-
-        onTransform({
-          coordinates: {
-            cx: node.x(),
-            cy: node.y(),
-            radius: coords.radius,
-          }
-        });
-
-        node.position({ x: 0, y: 0 });
-      }}
-    />
+      {...createUnifiedDragHandlers(shape.id, shapeRefsMap)}
+    >
+      <Circle
+        ref={shapeRef}
+        x={coords.cx}
+        y={coords.cy}
+        radius={coords.radius}
+        fill={shape.color || 'transparent'}
+        stroke={isSelected ? '#3b82f6' : shape.strokeColor || '#000000'}
+        strokeWidth={2}
+        listening={false}
+      />
+    </Group>
   );
 }, (prevProps, nextProps) => {
   const coordsEqual = JSON.stringify(prevProps.shape.coordinates) === JSON.stringify(nextProps.shape.coordinates);
@@ -203,20 +156,12 @@ export const TextShape = React.memo<ShapeComponentProps>(({ shape, isSelected, o
 
   const coords = shape.coordinates as { x: number; y: number };
 
-  const isDraggable = true; // Always draggable
-
   return (
-    <KonvaText
+    <Group
       id={`shape-${shape.id}`}
-      ref={textRef}
       name={shape.id}
       shapeId={shape.id}
-      x={coords.x}
-      y={coords.y}
-      text={shape.text || 'Text'}
-      fontSize={shape.metadata?.lengthMM || 16}
-      fill={shape.color || '#000000'}
-      draggable={isDraggable}
+      draggable={true}
       onClick={(e) => {
         e.cancelBubble = true;
         onSelect(e);
@@ -225,24 +170,19 @@ export const TextShape = React.memo<ShapeComponentProps>(({ shape, isSelected, o
         e.cancelBubble = true;
         onSelect(e);
       }}
-      rotation={shape.rotation || 0}
-      onDragStart={(e) => {
-        e.cancelBubble = true;
-      }}
-      onDragEnd={(e) => {
-        e.cancelBubble = true;
-        const node = e.target;
-
-        onTransform({
-          coordinates: {
-            x: node.x(),
-            y: node.y(),
-          }
-        });
-
-        node.position({ x: 0, y: 0 });
-      }}
-    />
+      {...createUnifiedDragHandlers(shape.id, shapeRefsMap)}
+    >
+      <KonvaText
+        ref={textRef}
+        x={coords.x}
+        y={coords.y}
+        text={shape.text || 'Text'}
+        fontSize={shape.metadata?.lengthMM || 16}
+        fill={shape.color || '#000000'}
+        rotation={shape.rotation || 0}
+        listening={false}
+      />
+    </Group>
   );
 }, (prevProps, nextProps) => {
   const coordsEqual = JSON.stringify(prevProps.shape.coordinates) === JSON.stringify(nextProps.shape.coordinates);
@@ -281,24 +221,12 @@ export const FreehandShape = React.memo<ShapeComponentProps>(({ shape, isSelecte
   const points = coords.points || [];
   const flatPoints = points.flatMap((p: { x: number; y: number }) => [p.x, p.y]);
 
-  const isDraggable = true; // Always draggable
-
   return (
-    <Line
-      ref={shapeRef}
+    <Group
       id={`shape-${shape.id}`}
       name={shape.id}
       shapeId={shape.id}
-      points={flatPoints}
-      stroke={isSelected ? '#3b82f6' : shape.strokeColor || '#000000'}
-      strokeWidth={shape.strokeWidth || 2}
-      tension={0.5}
-      lineCap="round"
-      lineJoin="round"
-      draggable={isDraggable}
-      // PERFORMANCE: Disable perfect draw for faster rendering
-      perfectDrawEnabled={false}
-      hitStrokeWidth={10}
+      draggable={true}
       onClick={(e) => {
         e.cancelBubble = true;
         onSelect(e);
@@ -307,27 +235,21 @@ export const FreehandShape = React.memo<ShapeComponentProps>(({ shape, isSelecte
         e.cancelBubble = true;
         onSelect(e);
       }}
-      onDragStart={(e) => {
-        e.cancelBubble = true;
-      }}
-      onDragEnd={(e) => {
-        e.cancelBubble = true;
-        const node = e.target;
-        const deltaX = node.x();
-        const deltaY = node.y();
-
-        const newPoints = points.map((p: { x: number; y: number }) => ({
-          x: p.x + deltaX,
-          y: p.y + deltaY
-        }));
-
-        onTransform({
-          coordinates: { points: newPoints }
-        });
-
-        node.position({ x: 0, y: 0 });
-      }}
-    />
+      {...createUnifiedDragHandlers(shape.id, shapeRefsMap)}
+    >
+      <Line
+        ref={shapeRef}
+        points={flatPoints}
+        stroke={isSelected ? '#3b82f6' : shape.strokeColor || '#000000'}
+        strokeWidth={shape.strokeWidth || 2}
+        tension={0.5}
+        lineCap="round"
+        lineJoin="round"
+        perfectDrawEnabled={false}
+        hitStrokeWidth={10}
+        listening={false}
+      />
+    </Group>
   );
 }, (prevProps, nextProps) => {
   const coordsEqual = JSON.stringify(prevProps.shape.coordinates) === JSON.stringify(nextProps.shape.coordinates);

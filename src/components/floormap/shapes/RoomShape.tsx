@@ -97,40 +97,6 @@ export const RoomShape = React.memo<RoomShapeProps & {
         onSelect(e);
       }}
       {...createUnifiedDragHandlers(shape.id, shapeRefsMap)}
-      onDragEnd={(e) => {
-        // Call unified handler first
-        const unifiedHandlers = createUnifiedDragHandlers(shape.id, shapeRefsMap);
-        unifiedHandlers.onDragEnd(e);
-
-        // Then handle single-shape transform (if not multi-select)
-        const selectedIds = useFloorMapStore.getState().selectedShapeIds;
-        if (selectedIds.length === 1 || !selectedIds.includes(shape.id)) {
-          const node = e.target;
-          const snapEnabled = useFloorMapStore.getState().projectSettings.snapEnabled;
-          const gridInterval = useFloorMapStore.getState().projectSettings.gridInterval;
-          const scaleSettings = useFloorMapStore.getState().scaleSettings;
-          const snapSize = gridInterval * scaleSettings.pixelsPerMm;
-
-          let deltaX = node.x();
-          let deltaY = node.y();
-
-          if (snapEnabled && snapSize) {
-            deltaX = Math.round(deltaX / snapSize) * snapSize;
-            deltaY = Math.round(deltaY / snapSize) * snapSize;
-          }
-
-          const newPoints = originalPoints.map((p: { x: number; y: number }) => ({
-            x: p.x + deltaX,
-            y: p.y + deltaY
-          }));
-
-          onTransform({
-            coordinates: { points: newPoints }
-          });
-
-          node.position({ x: 0, y: 0 });
-        }
-      }}
     >
       {/* Room polygon - listening=false so Group receives all clicks (select + double-click) */}
       <Line
