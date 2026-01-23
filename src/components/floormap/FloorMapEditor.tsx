@@ -35,14 +35,15 @@ export const FloorMapEditor = ({ projectId, projectName }: FloorMapEditorProps) 
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
   const [roomDialogOpen, setRoomDialogOpen] = useState(false);
 
-  // Update undo/redo state from canvas
+  // Update undo/redo state from canvas via event (replaces polling)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCanUndoState((window as any).__canvasCanUndo || false);
-      setCanRedoState((window as any).__canvasCanRedo || false);
-    }, 100);
+    const handleUndoRedoChange = (e: CustomEvent<{ canUndo: boolean; canRedo: boolean }>) => {
+      setCanUndoState(e.detail.canUndo);
+      setCanRedoState(e.detail.canRedo);
+    };
 
-    return () => clearInterval(interval);
+    window.addEventListener('canvasUndoRedoStateChange', handleUndoRedoChange as EventListener);
+    return () => window.removeEventListener('canvasUndoRedoStateChange', handleUndoRedoChange as EventListener);
   }, []);
 
   // Keyboard shortcuts - MINIMAL (most handled in UnifiedKonvaCanvas)

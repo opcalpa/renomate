@@ -171,18 +171,22 @@ const ProjectDetail = () => {
     // Refresh data if needed
     loadData();
     // Uppdatera rooms data
-      loadRoomsData().then((data) => {
-        setRoomsData(data);
-        setRoomsLoading(false);
-      });
+    loadRoomsData().then((data) => {
+      setRoomsData(data);
+      setRoomsLoading(false);
+    }).catch(() => {
+      setRoomsLoading(false);
+    });
   };
 
   const handleRoomCreated = () => {
     // Uppdatera rooms data efter att ett nytt rum skapats
-      loadRoomsData().then((data) => {
-        setRoomsData(data);
-        setRoomsLoading(false);
-      });
+    loadRoomsData().then((data) => {
+      setRoomsData(data);
+      setRoomsLoading(false);
+    }).catch(() => {
+      setRoomsLoading(false);
+    });
   };
 
   const loadRoomsData = async () => {
@@ -255,10 +259,12 @@ const ProjectDetail = () => {
   // Callback för när ett rum har raderats från listan
   const handleRoomDeleted = () => {
     // Uppdatera rooms state genom att hämta från databasen
-      loadRoomsData().then((data) => {
-        setRoomsData(data);
-        setRoomsLoading(false);
-      });
+    loadRoomsData().then((data) => {
+      setRoomsData(data);
+      setRoomsLoading(false);
+    }).catch(() => {
+      setRoomsLoading(false);
+    });
   };
 
   // Handle menu item selection

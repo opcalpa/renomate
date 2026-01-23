@@ -5,7 +5,6 @@
  * Converts ObjectDefinition shapes to React-Konva components.
  */
 
-import React from 'react';
 import { Group, Line, Circle, Rect, Arc, Path, Ellipse } from 'react-konva';
 import { ObjectDefinition, ObjectShape } from './objectLibraryDefinitions';
 

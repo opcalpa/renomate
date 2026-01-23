@@ -196,9 +196,7 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      console.log("Fetched tasks in TasksTab:", data);
-      console.log("Task statuses:", data?.map(t => ({ id: t.id, title: t.title, status: t.status })));
-      
+
       // Map database fields to our interface (assigned_to_contractor_id is deprecated, use assigned_to_stakeholder_id)
       const mappedTasks = (data || []).map((task: any) => ({
         ...task,
@@ -505,9 +503,6 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
     return true;
   });
 
-  console.log("Active filters:", { filterStatus, filterAssignee, filterRoom });
-  console.log("Filtering:", { total: tasks.length, filtered: filteredTasks.length });
-
   // Sort tasks for table view
   const sortedTasks = [...filteredTasks].sort((a, b) => {
     let aValue: any = a[sortColumn as keyof Task];
@@ -564,14 +559,6 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
   // Find tasks with unknown statuses
   const knownStatuses = [...statusOrder];
   const unknownStatusTasks = filteredTasks.filter(t => !knownStatuses.includes(t.status as any));
-  
-  if (unknownStatusTasks.length > 0) {
-    console.warn("Tasks with unknown statuses:", unknownStatusTasks.map(t => ({ 
-      id: t.id, 
-      title: t.title, 
-      status: t.status 
-    })));
-  }
 
   // Add unknown status tasks to a catch-all column
   const allStatusesWithUnknown = [...statusOrder];
@@ -588,15 +575,6 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
 
   // Extract unknown statuses (statuses not in columnOrder)
   const unknownStatuses = allStatusesWithUnknown.filter(status => !columnOrder.includes(status));
-
-  console.log("Grouped tasks summary:", {
-    totalTasks: tasks.length,
-    filteredTasks: filteredTasks.length,
-    statusColumns: Object.keys(groupedTasks).map(status => ({
-      status,
-      count: groupedTasks[status].length
-    }))
-  });
 
   const getAssignedMemberName = (task: Task) => {
     if (!task.assigned_to_stakeholder_id) return null;

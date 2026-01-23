@@ -150,11 +150,9 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
 
   const fetchTaskDetails = async () => {
     if (!taskId) {
-      console.log("No taskId provided");
       return;
     }
-    
-    console.log("Fetching task details for taskId:", taskId);
+
     setLoading(true);
     try {
       // Fetch task basic data first

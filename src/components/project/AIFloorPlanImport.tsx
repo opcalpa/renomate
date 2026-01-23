@@ -265,8 +265,6 @@ export const AIFloorPlanImport = ({
       const planNumber = existingAIPlans.length + 1;
       const planName = `AI Import ${planNumber} (${timestamp})`;
 
-      console.log('📋 Creating new plan in database:', planName);
-      
       // Create plan in database
       const newPlan = await createPlanInDB(projectId, planName);
       
@@ -277,8 +275,6 @@ export const AIFloorPlanImport = ({
       // Add plan to store
       addPlan(newPlan);
       setCurrentPlanId(newPlan.id);
-
-      console.log('✅ Created new plan:', planName, newPlan.id);
 
       // Call AI service
       const shapes = await convertImageToBlueprint(
@@ -292,16 +288,10 @@ export const AIFloorPlanImport = ({
         addShape(shape);
       });
 
-      console.log('💾 Saving AI-imported shapes to database...');
-      
-      // CRITICAL: Save shapes to database immediately
-      // Without this, shapes only exist in Zustand store and disappear on reload/plan switch
+      // Save shapes to database immediately
       const saveSuccess = await saveShapesForPlan(newPlan.id, shapes);
-      
-      if (saveSuccess) {
-        console.log('✅ AI shapes saved to database successfully');
-      } else {
-        console.warn('⚠️ Failed to save AI shapes to database - they may not persist');
+
+      if (!saveSuccess) {
         toast({
           title: "Varning",
           description: "Shapes kanske inte sparades korrekt. Försök 'Spara' manuellt.",
@@ -341,9 +331,7 @@ export const AIFloorPlanImport = ({
         
         // Assume canvas is roughly 800x600, zoom to fit with 20% padding
         const targetZoom = Math.min(1.5, (600 / maxDimension) * 0.8);
-        
-        console.log(`📐 Centering canvas: center=(${centerX}, ${centerY}), zoom=${targetZoom}`);
-        
+
         // Set view to center on the shapes
         // Store this for when canvas loads
         (window as any).__aiImportCenterView = {

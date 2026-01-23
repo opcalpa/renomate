@@ -2044,10 +2044,16 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     };
   }, [handleManualSave, undo, redo, canUndo, canRedo]);
   
-  // Update undo/redo state in window (for toolbar state)
+  // Update undo/redo state in window and dispatch event (for toolbar state)
   useEffect(() => {
-    (window as any).__canvasCanUndo = canUndo();
-    (window as any).__canvasCanRedo = canRedo();
+    const canUndoVal = canUndo();
+    const canRedoVal = canRedo();
+    (window as any).__canvasCanUndo = canUndoVal;
+    (window as any).__canvasCanRedo = canRedoVal;
+    // Dispatch event for FloorMapEditor to listen to (replaces polling)
+    window.dispatchEvent(new CustomEvent('canvasUndoRedoStateChange', {
+      detail: { canUndo: canUndoVal, canRedo: canRedoVal }
+    }));
   }, [canUndo, canRedo, shapes]);
   
   // Initialize viewport on mount - simple initial state
@@ -3201,6 +3207,8 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         } else {
           toast.error('Kunde inte öppna template-editor');
         }
+      }).catch(() => {
+        toast.error('Kunde inte öppna template-editor');
       });
       return;
     }

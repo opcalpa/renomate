@@ -14,7 +14,6 @@
  * Scale: 1px = 10mm (1:100 scale by default in our system)
  */
 
-import React from 'react';
 import { Group, Line, Circle, Rect, Arc, Path, Ellipse } from 'react-konva';
 
 // ============================================================================

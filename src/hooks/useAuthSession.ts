@@ -33,6 +33,8 @@ export const useAuthSession = (): AuthSession => {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       setLoading(false);
+    }).catch(() => {
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();

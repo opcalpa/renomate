@@ -4,7 +4,6 @@
  * Shows a small canvas preview of what the template looks like
  */
 
-import React from 'react';
 import { Stage, Layer, Line, Rect, Circle } from 'react-konva';
 import { Template } from './templateDefinitions';
 import { FloorMapShape } from './types';

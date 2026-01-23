@@ -85,7 +85,6 @@ export const saveShapesToDB = async (
 
     // Retry logic
     if (retryCount < MAX_RETRIES) {
-      console.log(`Retrying save (${retryCount + 1}/${MAX_RETRIES})...`);
       await new Promise((resolve) => setTimeout(resolve, 1000 * (retryCount + 1)));
       return saveShapesToDB(projectId, shapes, retryCount + 1);
     }

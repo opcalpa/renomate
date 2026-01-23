@@ -50,15 +50,11 @@ async function callVisionAPI(
   base64Image: string,
   ratio: number
 ): Promise<AIConversionResult> {
-  console.log('📸 Vision AI called with ratio:', ratio, 'mm/pixel');
-  
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
   
   if (!apiKey) {
     throw new Error('OpenAI API key saknas! Lägg till VITE_OPENAI_API_KEY i .env filen.');
   }
-
-  console.log('🤖 Calling GPT-4o Vision API...');
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -124,10 +120,7 @@ JSON ONLY:`,
     }
 
     const data = await response.json();
-    console.log('✅ GPT-4o response received');
-    
     const content = data.choices[0].message.content;
-    console.log('📝 Raw AI response:', content);
 
     // Try multiple strategies to extract clean JSON
     let jsonContent = content.trim();
@@ -171,16 +164,9 @@ JSON ONLY:`,
       }
     }
 
-    console.log('🔧 Final cleaned JSON content:', jsonContent);
-
     const result = JSON.parse(jsonContent);
-    console.log('✅ Parsed AI result:', result);
-    
     return result;
   } catch (error: any) {
-    console.error('❌ Vision API error:', error);
-    console.error('❌ Raw content that failed:', content);
-
     // Provide helpful error messages
     if (error.message?.includes('API key')) {
       throw new Error('Ogiltig API-nyckel. Kontrollera att VITE_OPENAI_API_KEY är korrekt i .env');
@@ -189,11 +175,6 @@ JSON ONLY:`,
       throw new Error('API-kvot överskriden. Kontrollera din OpenAI billing.');
     }
     if (error instanceof SyntaxError) {
-      console.error('❌ JSON Parse Error Details:', {
-        originalContent: content,
-        cleanedContent: jsonContent,
-        error: error.message
-      });
       throw new Error('AI returnerade ogiltigt JSON-format. Detta kan bero på en komplex ritning. Försök med en enklare, tydligare golvplan.');
     }
 
@@ -285,23 +266,9 @@ export async function convertImageToBlueprint(
   pixelToMmRatio: number,
   planId: string
 ): Promise<FloorMapShape[]> {
-  console.log('🚀 Starting AI conversion...');
-  console.log('📏 Ratio:', pixelToMmRatio, 'mm/pixel');
-
-  // Step 1: Convert image to Base64
-  console.log('📸 Converting image to Base64...');
   const base64Image = await imageToBase64(imageFile);
-
-  // Step 2: Call Vision AI
-  console.log('🤖 Calling Vision AI...');
   const aiResult = await callVisionAPI(base64Image, pixelToMmRatio);
-  console.log('✅ AI Result:', aiResult);
-
-  // Step 3: Convert to FloorMapShape objects
-  console.log('🔄 Converting to canvas shapes...');
   const shapes = convertToFloorMapShapes(aiResult, pixelToMmRatio, planId);
-  console.log('✅ Generated shapes:', shapes.length);
-
   return shapes;
 }
 
