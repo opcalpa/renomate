@@ -50,7 +50,7 @@ export interface ProjectSettings {
 const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   scale: '1:100',
   unit: 'mm',
-  gridInterval: 500, // 50cm default
+  gridInterval: 100, // 10cm default - smooth for furniture, walls snap well
   gridVisible: true,
   snapEnabled: true,
   showDimensions: true,

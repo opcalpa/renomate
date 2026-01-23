@@ -217,49 +217,31 @@ const getActiveGridLevels = (zoomLevel: number, pixelsPerMm: number) => {
   return levels;
 };
 
-// Simplified snap size - matches the 5-level zoom system
-// Maximum precision: 10cm (100mm) - perfect for architectural work
-const getSnapSize = (zoomLevel: number, pixelsPerMm: number, forWalls: boolean = false): number => {
-  const GRID_LEVELS = getGridLevels(pixelsPerMm);
+// Snap size using USER SETTINGS - respects projectSettings.gridInterval
+// Only overrides if zoom is too low for the user's chosen grid (prevents frustrating micro-movements)
+const getSnapSize = (zoomLevel: number, pixelsPerMm: number, forWalls: boolean = false, userGridInterval?: number): number => {
   const pixelsPerCm = pixelsPerMm * 10;
 
-  // FOR WALLS: Use the finest visible grid line based on zoom
-  // Maximum precision: 10cm (100mm) at max zoom
-  if (forWalls) {
-    if (zoomLevel < 0.5) {
-      return GRID_LEVELS.METER_5.size; // 5m snap (overview)
-    }
-    else if (zoomLevel < 1.0) {
-      return GRID_LEVELS.METER_1.size; // 1m snap (floor plan)
-    }
-    else if (zoomLevel < 2.0) {
-      return GRID_LEVELS.CM_50.size; // 50cm snap (standard)
-    }
-    else if (zoomLevel < 3.5) {
-      return GRID_LEVELS.CM_25.size; // 25cm snap (detailed)
-    }
-    else {
-      return GRID_LEVELS.CM_10.size; // 10cm snap (max precision)
-    }
+  // Get minimum practical snap size based on zoom level
+  // (prevents snapping in 1cm increments when zoomed out to see entire floor)
+  let minSnapMm: number;
+  if (zoomLevel < 0.5) {
+    minSnapMm = 1000; // At extreme zoom out, don't snap finer than 1m
+  } else if (zoomLevel < 1.0) {
+    minSnapMm = 500;  // At overview, don't snap finer than 50cm
+  } else if (zoomLevel < 2.0) {
+    minSnapMm = 250;  // At normal view, don't snap finer than 25cm
+  } else {
+    minSnapMm = 50;   // At detail view, allow snap as fine as 5cm
   }
 
-  // FOR OTHER TOOLS: Dynamic scaling for optimal workflow
-  // Same logic - maximum 10cm precision
-  if (zoomLevel < 0.5) {
-    return pixelsPerCm * 100; // 1m snap (overview)
-  }
-  else if (zoomLevel < 1.0) {
-    return pixelsPerCm * 50;  // 50cm snap (floor plan)
-  }
-  else if (zoomLevel < 2.0) {
-    return pixelsPerCm * 25;  // 25cm snap (standard)
-  }
-  else if (zoomLevel < 3.5) {
-    return pixelsPerCm * 10;  // 10cm snap (detailed)
-  }
-  else {
-    return pixelsPerCm * 10;  // 10cm snap (max precision - same as above)
-  }
+  // Use user's setting, but enforce minimum based on zoom
+  const effectiveSnapMm = userGridInterval
+    ? Math.max(userGridInterval, minSnapMm)
+    : minSnapMm;
+
+  // Convert mm to pixels
+  return effectiveSnapMm * pixelsPerMm;
 };
 
 // Get practical scale representation for architectural work
@@ -2654,8 +2636,8 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       let splitX = coords.x1 + dx * t;
       let splitY = coords.y1 + dy * t;
       
-      // SNAP SPLIT POINT TO GRID (use wall precision)
-      const currentSnapSize = getSnapSize(viewState.zoom, scaleSettings.pixelsPerMm, true);
+      // SNAP SPLIT POINT TO GRID (use user's grid interval setting)
+      const currentSnapSize = getSnapSize(viewState.zoom, scaleSettings.pixelsPerMm, true, projectSettings.gridInterval);
       // Use projectSettings for snap control
       if (projectSettings.snapEnabled) {
         const snappedPoint = snapToGrid({ x: splitX, y: splitY }, currentSnapSize, true);
@@ -3658,11 +3640,9 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       return;
     }
     
-    // Snap to grid if enabled (dynamic snap size based on zoom)
-    // Use wall precision (finest visible grid) if wall tool is active
+    // Snap to grid if enabled - uses user's grid interval setting
     const forWalls = activeTool === 'wall';
-    const currentSnapSize = getSnapSize(viewState.zoom, scaleSettings.pixelsPerMm, forWalls);
-    // Use projectSettings for snap control
+    const currentSnapSize = getSnapSize(viewState.zoom, scaleSettings.pixelsPerMm, forWalls, projectSettings.gridInterval);
     pos = snapToGrid(pos, currentSnapSize, projectSettings.snapEnabled);
     
     // Pan mode (spacebar or middle mouse)
@@ -3751,11 +3731,9 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       y: (pointer.y - viewState.panY) / viewState.zoom,
     };
 
-    // Snap to grid if enabled (dynamic snap size based on zoom)
-    // Use wall precision (finest visible grid) if wall tool is active
+    // Snap to grid if enabled - uses user's grid interval setting
     const forWalls = activeTool === 'wall';
-    const currentSnapSize = getSnapSize(viewState.zoom, scaleSettings.pixelsPerMm, forWalls);
-    // Use projectSettings for snap control
+    const currentSnapSize = getSnapSize(viewState.zoom, scaleSettings.pixelsPerMm, forWalls, projectSettings.gridInterval);
     const snappedPos = snapToGrid(pos, currentSnapSize, projectSettings.snapEnabled);
 
     // Update cursor (FIXED - was breaking during panning)
