@@ -1871,6 +1871,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   // Drag selection state (box select)
   const [isBoxSelecting, setIsBoxSelecting] = useState(false);
   const [selectionBox, setSelectionBox] = useState<{ start: { x: number; y: number }; end: { x: number; y: number } } | null>(null);
+  const [isExtendingSelection, setIsExtendingSelection] = useState(false); // Shift+drag to add to selection
   
   // PERFORMANCE OPTIMIZATION: Throttled state updater for selection box
   // Limits updates to ~30fps instead of 60-120fps, reducing re-renders by 50-70%
@@ -1990,7 +1991,64 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     () => shapes.filter(shape => shape.planId === currentPlanId),
     [shapes, currentPlanId]
   );
-  
+
+  // Calculate bounding box for multi-selection visual indicator
+  const multiSelectionBounds = useMemo(() => {
+    if (selectedShapeIds.length < 2) return null;
+
+    const selectedShapes = currentShapes.filter(s => selectedShapeIds.includes(s.id));
+    if (selectedShapes.length < 2) return null;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    selectedShapes.forEach(shape => {
+      const coords = shape.coordinates as any;
+
+      if (shape.type === 'wall' || shape.type === 'line') {
+        minX = Math.min(minX, coords.x1, coords.x2);
+        maxX = Math.max(maxX, coords.x1, coords.x2);
+        minY = Math.min(minY, coords.y1, coords.y2);
+        maxY = Math.max(maxY, coords.y1, coords.y2);
+      } else if (shape.type === 'rectangle' || shape.type === 'door' || shape.type === 'opening') {
+        minX = Math.min(minX, coords.left);
+        maxX = Math.max(maxX, coords.left + (coords.width || 0));
+        minY = Math.min(minY, coords.top);
+        maxY = Math.max(maxY, coords.top + (coords.height || 0));
+      } else if (shape.type === 'circle') {
+        minX = Math.min(minX, coords.cx - coords.radius);
+        maxX = Math.max(maxX, coords.cx + coords.radius);
+        minY = Math.min(minY, coords.cy - coords.radius);
+        maxY = Math.max(maxY, coords.cy + coords.radius);
+      } else if (shape.type === 'room' || shape.type === 'polygon' || shape.type === 'freehand') {
+        if (coords.points) {
+          coords.points.forEach((p: { x: number; y: number }) => {
+            minX = Math.min(minX, p.x);
+            maxX = Math.max(maxX, p.x);
+            minY = Math.min(minY, p.y);
+            maxY = Math.max(maxY, p.y);
+          });
+        }
+      } else if (shape.type === 'symbol' || shape.type === 'text') {
+        minX = Math.min(minX, coords.x);
+        maxX = Math.max(maxX, coords.x + (coords.width || 100));
+        minY = Math.min(minY, coords.y);
+        maxY = Math.max(maxY, coords.y + (coords.height || 100));
+      }
+    });
+
+    if (minX === Infinity) return null;
+
+    // Add padding (100mm = 10cm)
+    const padding = 100;
+    return {
+      x: minX - padding,
+      y: minY - padding,
+      width: maxX - minX + padding * 2,
+      height: maxY - minY + padding * 2,
+      count: selectedShapes.length,
+    };
+  }, [currentShapes, selectedShapeIds]);
+
   // Handle text dialog submit (must be after store extraction)
   const handleTextSubmit = useCallback(() => {
     if (textInputValue.trim() && pendingTextPosition && currentPlanId) {
@@ -3619,9 +3677,10 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     // Check if clicked on empty canvas (not on any shape)
     const clickedOnEmpty = e.target === stage || e.target.getType() === 'Stage';
     
-    if (clickedOnEmpty && activeTool === 'select' && !e.evt.shiftKey && !e.evt.ctrlKey && !e.evt.metaKey) {
-      // Start box selection
+    if (clickedOnEmpty && activeTool === 'select' && !e.evt.ctrlKey && !e.evt.metaKey) {
+      // Start box selection (Shift = add to existing selection)
       setIsBoxSelecting(true);
+      setIsExtendingSelection(e.evt.shiftKey);
       setSelectionBox({ start: pos, end: pos });
       return;
     }
@@ -3671,6 +3730,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     setPanStart,
     setIsBoxSelecting,
     setSelectionBox,
+    setIsExtendingSelection,
     setSelectedShapeIds,
     addShape,
     setPendingLibrarySymbol,
@@ -3862,13 +3922,23 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           })
           .map(shape => shape.id);
         
-        setSelectedShapeIds(selectedIds);
-        
-        if (selectedIds.length > 0) {
-          toast.success(`${selectedIds.length} objekt markerade`);
+        // If Shift was held, add to existing selection instead of replacing
+        if (isExtendingSelection) {
+          const existingIds = selectedShapeIds;
+          const combinedIds = [...new Set([...existingIds, ...selectedIds])];
+          setSelectedShapeIds(combinedIds);
+          if (selectedIds.length > 0) {
+            toast.success(`${selectedIds.length} objekt tillagda (totalt ${combinedIds.length})`);
+          }
+        } else {
+          setSelectedShapeIds(selectedIds);
+          if (selectedIds.length > 0) {
+            toast.success(`${selectedIds.length} objekt markerade`);
+          }
         }
       }
       setSelectionBox(null);
+      setIsExtendingSelection(false);
       return;
     }
     
@@ -3926,7 +3996,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       setCurrentDrawingPoints([]);
       return;
     }
-  }, [isPanning, isBoxSelecting, selectionBox, isDrawing, currentDrawingPoints, currentPlanId, activeTool, currentShapes, viewState, gridSettings.snap, scaleSettings.pixelsPerMm, addShape, setIsDrawing, setCurrentDrawingPoints, setSelectedShapeIds, setSelectedShapeId, setIsPanning, setPanStart, setIsBoxSelecting, setSelectionBox, updateShape, projectSettings]);
+  }, [isPanning, isBoxSelecting, selectionBox, isDrawing, isExtendingSelection, selectedShapeIds, currentDrawingPoints, currentPlanId, activeTool, currentShapes, viewState, gridSettings.snap, scaleSettings.pixelsPerMm, addShape, setIsDrawing, setCurrentDrawingPoints, setSelectedShapeIds, setSelectedShapeId, setIsPanning, setPanStart, setIsBoxSelecting, setSelectionBox, updateShape, projectSettings]);
   
   // Handle stage click - ONLY for empty space, NOT for shapes
   const handleStageClick = useCallback((e: KonvaEventObject<MouseEvent>) => {
@@ -4104,7 +4174,45 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
               listening={false}
             />
           )}
-          
+
+          {/* Multi-selection bounding box - visual indicator for group selection */}
+          {multiSelectionBounds && !isBoxSelecting && (
+            <Group listening={false}>
+              <Rect
+                x={multiSelectionBounds.x}
+                y={multiSelectionBounds.y}
+                width={multiSelectionBounds.width}
+                height={multiSelectionBounds.height}
+                stroke="#3b82f6"
+                strokeWidth={2 / viewState.zoom}
+                dash={[8 / viewState.zoom, 4 / viewState.zoom]}
+                fill="rgba(59, 130, 246, 0.03)"
+                cornerRadius={4 / viewState.zoom}
+              />
+              {/* Selection count badge */}
+              <Group
+                x={multiSelectionBounds.x + multiSelectionBounds.width - 30 / viewState.zoom}
+                y={multiSelectionBounds.y - 12 / viewState.zoom}
+              >
+                <Rect
+                  width={30 / viewState.zoom}
+                  height={20 / viewState.zoom}
+                  fill="#3b82f6"
+                  cornerRadius={4 / viewState.zoom}
+                />
+                <KonvaText
+                  text={String(multiSelectionBounds.count)}
+                  fontSize={12 / viewState.zoom}
+                  fill="white"
+                  width={30 / viewState.zoom}
+                  height={20 / viewState.zoom}
+                  align="center"
+                  verticalAlign="middle"
+                />
+              </Group>
+            </Group>
+          )}
+
           {/* All shapes */}
           {currentShapes.map((shape) => {
             const isSelected = selectedShapeIds.includes(shape.id);
