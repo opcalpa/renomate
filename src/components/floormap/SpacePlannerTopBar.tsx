@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus, Layers, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useFloorMapStore } from "./store";
 import { useState, useEffect } from "react";
@@ -39,9 +39,10 @@ import { createPlanInDB, deletePlanFromDB } from "./utils/plans";
 interface SpacePlannerTopBarProps {
   projectId: string;
   projectName?: string;
+  onBack?: () => void;
 }
 
-export const SpacePlannerTopBar = ({ projectId, projectName }: SpacePlannerTopBarProps) => {
+export const SpacePlannerTopBar = ({ projectId, projectName, onBack }: SpacePlannerTopBarProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -152,23 +153,36 @@ export const SpacePlannerTopBar = ({ projectId, projectName }: SpacePlannerTopBa
   const currentPlanShapes = shapes.filter(s => s.planId === currentPlanId);
 
   return (
-    <header className="h-14 border-b border-border bg-card/95 backdrop-blur-md fixed top-0 left-0 right-0 z-50 flex items-center px-4 gap-4 shadow-sm">
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        onClick={() => navigate(`/projects/${projectId}`)}
-        className="gap-2"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        {t("Back to Project")}
-      </Button>
+    <header className="h-14 border-b border-border bg-card/95 backdrop-blur-md fixed top-0 left-0 right-0 z-[60] flex items-center px-4 gap-4 shadow-sm">
+      {onBack ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          className="gap-2 shrink-0"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="hidden sm:inline">{t("Back")}</span>
+        </Button>
+      ) : (
+        <Link
+          to={`/projects/${projectId}`}
+          className="inline-flex items-center justify-center gap-2 shrink-0 h-9 px-3 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="hidden sm:inline">{t("Back")}</span>
+        </Link>
+      )}
       
-      <div className="h-6 w-px bg-border" />
-      
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span>{t("Projects")}</span>
-        <span>/</span>
-        <span className="text-foreground font-medium">{projectName || t("Space Planner")}</span>
+      <div className="h-6 w-px bg-border hidden sm:block" />
+
+      <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+        <span
+          className="truncate max-w-[120px] sm:max-w-[200px] text-foreground font-medium"
+          title={projectName}
+        >
+          {projectName || t("Project")}
+        </span>
       </div>
 
       {/* Plan Selector */}

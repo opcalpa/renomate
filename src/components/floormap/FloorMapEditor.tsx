@@ -14,9 +14,10 @@ import { Home, X } from "lucide-react";
 interface FloorMapEditorProps {
   projectId: string;
   projectName?: string;
+  onBack?: () => void;
 }
 
-export const FloorMapEditor = ({ projectId, projectName }: FloorMapEditorProps) => {
+export const FloorMapEditor = ({ projectId, projectName, onBack }: FloorMapEditorProps) => {
   const { t } = useTranslation();
   const {
     plans,
@@ -159,9 +160,9 @@ export const FloorMapEditor = ({ projectId, projectName }: FloorMapEditorProps) 
   const [roomUpdateTrigger, setRoomUpdateTrigger] = useState(0);
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full">
       {/* Top Bar with Plan Selector */}
-      <SpacePlannerTopBar projectId={projectId} projectName={projectName} />
+      <SpacePlannerTopBar projectId={projectId} projectName={projectName} onBack={onBack} />
       
       <style dangerouslySetInnerHTML={{
         __html: `
@@ -215,7 +216,7 @@ export const FloorMapEditor = ({ projectId, projectName }: FloorMapEditorProps) 
         />
 
         {/* Main Canvas Area - UNIFIED KONVA CANVAS ONLY */}
-        <main className="flex-1 ml-16 overflow-auto canvas-scroll-area relative">
+        <main className="flex-1 overflow-auto canvas-scroll-area relative">
           <UnifiedKonvaCanvas 
             onRoomCreated={() => setRoomUpdateTrigger(prev => prev + 1)}
           />

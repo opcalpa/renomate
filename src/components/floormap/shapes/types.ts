@@ -53,4 +53,13 @@ export interface WallShapeProps extends ShapeWithViewProps {
 /**
  * Props for room shape
  */
-export interface RoomShapeProps extends ShapeWithViewProps {}
+export interface RoomShapeProps extends ShapeComponentProps {
+  onDoubleClick?: () => void;
+}
+
+/**
+ * Props for text shape with edit support
+ */
+export interface TextShapeProps extends ShapeComponentProps {
+  onEdit?: (shape: FloorMapShape) => void;
+}

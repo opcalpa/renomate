@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Ruler, FileText, Edit2 } from 'lucide-react';
+import { X, Ruler, FileText, Edit2, Palette, RotateCw, Layers, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown } from 'lucide-react';
 import { FloorMapShape } from './types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -7,7 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
 import { CommentsSection } from '@/components/comments/CommentsSection';
+import { useFloorMapStore } from './store';
 import { toast } from 'sonner';
 
 interface PropertyPanelProps {
@@ -32,14 +34,30 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   const [editLengthM, setEditLengthM] = useState('0');
   const [editThicknessMm, setEditThicknessMm] = useState('150');
   const [editHeightMm, setEditHeightMm] = useState('2400');
-  
+
+  // Visual properties state
+  const [opacity, setOpacity] = useState((shape.opacity ?? 1) * 100);
+  const [rotation, setRotation] = useState(shape.rotation || 0);
+  const [fillColor, setFillColor] = useState(shape.color || '#3b82f6');
+  const [strokeColor, setStrokeColor] = useState(shape.strokeColor || '#1e40af');
+
+  // Layer actions from store
+  const bringForward = useFloorMapStore((state) => state.bringForward);
+  const sendBackward = useFloorMapStore((state) => state.sendBackward);
+  const bringToFront = useFloorMapStore((state) => state.bringToFront);
+  const sendToBack = useFloorMapStore((state) => state.sendToBack);
+
   const getPixelsPerMeter = (pxPerMm: number) => pxPerMm * 1000;
   
   // Initialize edit values when shape changes
   useEffect(() => {
     setEditName(shape.name || '');
     setNotes(shape.notes || '');
-    
+    setOpacity((shape.opacity ?? 1) * 100);
+    setRotation(shape.rotation || 0);
+    setFillColor(shape.color || '#3b82f6');
+    setStrokeColor(shape.strokeColor || '#1e40af');
+
     // Calculate initial values for walls/lines
     if (shape.type === 'wall' || shape.type === 'line') {
       const coords = shape.coordinates as any;
@@ -462,6 +480,173 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                 {shape.id.substring(0, 8)}...
               </span>
             </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Visual Properties */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Palette className="h-4 w-4 text-gray-600" />
+            <Label className="text-sm font-medium text-gray-700">Utseende</Label>
+          </div>
+
+          <div className="space-y-4 bg-gray-50 rounded-lg p-3">
+            {/* Opacity Slider */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <Label className="text-xs text-gray-600">Opacitet</Label>
+                <span className="text-xs text-gray-500">{Math.round(opacity)}%</span>
+              </div>
+              <Slider
+                value={[opacity]}
+                onValueChange={(value) => {
+                  setOpacity(value[0]);
+                  onUpdateShape(shape.id, { opacity: value[0] / 100 });
+                }}
+                min={0}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+            </div>
+
+            {/* Rotation Input */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <Label className="text-xs text-gray-600 flex items-center gap-1">
+                  <RotateCw className="h-3 w-3" />
+                  Rotation
+                </Label>
+                <span className="text-xs text-gray-500">{rotation}°</span>
+              </div>
+              <Input
+                type="number"
+                value={rotation}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value) || 0;
+                  setRotation(value);
+                  onUpdateShape(shape.id, { rotation: value });
+                }}
+                min={-360}
+                max={360}
+                step={1}
+                className="h-8 text-sm"
+              />
+            </div>
+
+            {/* Color Pickers */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-gray-600 mb-1 block">Fyllning</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={fillColor.startsWith('#') ? fillColor : '#3b82f6'}
+                    onChange={(e) => {
+                      setFillColor(e.target.value);
+                      onUpdateShape(shape.id, { color: e.target.value });
+                    }}
+                    className="w-8 h-8 rounded border border-gray-200 cursor-pointer"
+                  />
+                  <Input
+                    value={fillColor}
+                    onChange={(e) => {
+                      setFillColor(e.target.value);
+                      onUpdateShape(shape.id, { color: e.target.value });
+                    }}
+                    className="h-8 text-xs font-mono flex-1"
+                    placeholder="#3b82f6"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-600 mb-1 block">Kontur</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={strokeColor.startsWith('#') ? strokeColor : '#1e40af'}
+                    onChange={(e) => {
+                      setStrokeColor(e.target.value);
+                      onUpdateShape(shape.id, { strokeColor: e.target.value });
+                    }}
+                    className="w-8 h-8 rounded border border-gray-200 cursor-pointer"
+                  />
+                  <Input
+                    value={strokeColor}
+                    onChange={(e) => {
+                      setStrokeColor(e.target.value);
+                      onUpdateShape(shape.id, { strokeColor: e.target.value });
+                    }}
+                    className="h-8 text-xs font-mono flex-1"
+                    placeholder="#1e40af"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Layer Controls */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Layers className="h-4 w-4 text-gray-600" />
+            <Label className="text-sm font-medium text-gray-700">Lager-ordning</Label>
+            <span className="text-xs text-gray-400 ml-auto">z: {shape.zIndex ?? 0}</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                bringToFront(shape.id);
+                toast.success('Flyttat längst fram');
+              }}
+              className="h-9 text-xs gap-1"
+            >
+              <ChevronsUp className="h-3 w-3" />
+              Längst fram
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                sendToBack(shape.id);
+                toast.success('Flyttat längst bak');
+              }}
+              className="h-9 text-xs gap-1"
+            >
+              <ChevronsDown className="h-3 w-3" />
+              Längst bak
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                bringForward(shape.id);
+                toast.success('Flyttat framåt');
+              }}
+              className="h-9 text-xs gap-1"
+            >
+              <ArrowUp className="h-3 w-3" />
+              Framåt
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                sendBackward(shape.id);
+                toast.success('Flyttat bakåt');
+              }}
+              className="h-9 text-xs gap-1"
+            >
+              <ArrowDown className="h-3 w-3" />
+              Bakåt
+            </Button>
           </div>
         </div>
 

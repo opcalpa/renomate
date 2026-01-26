@@ -440,7 +440,14 @@ const ProjectDetail = () => {
 
         <TabsContent value="spaceplanner" className="m-0 h-screen">
           {(!activeSubTab || activeSubTab === 'floorplan') && (
-            <SpacePlannerTab projectId={project.id} projectName={project.name} />
+            <SpacePlannerTab
+              projectId={project.id}
+              projectName={project.name}
+              onBack={() => {
+                setActiveTab('overview');
+                setActiveSubTab(null);
+              }}
+            />
           )}
           {activeSubTab === 'rooms' && (
             <div className="container mx-auto px-4 py-8">

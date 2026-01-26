@@ -167,7 +167,7 @@ export const WallShape = React.memo<WallShapeProps>(({
         e.cancelBubble = true;
         onSelect(e);
       } : undefined}
-      {...createUnifiedDragHandlers(shape.id, shapeRefsMap)}
+      {...createUnifiedDragHandlers(shape.id)}
     >
       <Line
         ref={shapeRef}
@@ -179,7 +179,7 @@ export const WallShape = React.memo<WallShapeProps>(({
         listening={canSelect}
         // PERFORMANCE: Faster rendering during pan/zoom
         perfectDrawEnabled={false}
-        hitStrokeWidth={12}
+        hitStrokeWidth={Math.max(thickness, 20 / zoom)}
       />
 
       {/* Start point handle - only show when selected */}

@@ -24,6 +24,7 @@ export const RoomShape = React.memo<RoomShapeProps & {
   shape,
   isSelected,
   onSelect,
+  onDoubleClick,
   onTransform,
   shapeRefsMap,
   snapEnabled,
@@ -92,13 +93,19 @@ export const RoomShape = React.memo<RoomShapeProps & {
         e.cancelBubble = true;
         onSelect(e);
       }}
+      onDblClick={(e) => {
+        e.cancelBubble = true;
+        if (onDoubleClick) {
+          onDoubleClick();
+        }
+      }}
       onTap={(e) => {
         e.cancelBubble = true;
         onSelect(e);
       }}
-      {...createUnifiedDragHandlers(shape.id, shapeRefsMap)}
+      {...createUnifiedDragHandlers(shape.id)}
     >
-      {/* Room polygon - listening=false so Group receives all clicks (select + double-click) */}
+      {/* Room polygon - filled area is clickable */}
       <Line
         points={flatPoints}
         closed
@@ -107,7 +114,7 @@ export const RoomShape = React.memo<RoomShapeProps & {
         strokeWidth={isSelected ? 3 : 2}
         shapeId={shape.id}
         perfectDrawEnabled={false}
-        listening={false}
+        listening={true}
       />
 
       {/* Room name - listening=false so Group receives clicks; name is display-only */}

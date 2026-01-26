@@ -1,0 +1,173 @@
+import { z } from "zod";
+
+// Base room interface matching Supabase schema
+export interface Room {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  color?: string | null;
+  material?: string | null;
+  wall_color?: string | null;
+  ceiling_color?: string | null;
+  trim_color?: string | null;
+  status?: string | null;
+  ceiling_height_mm?: number | null;
+  priority?: string | null;
+  links?: string | null;
+  notes?: string | null;
+  floor_spec?: FloorSpec | null;
+  ceiling_spec?: CeilingSpec | null;
+  wall_spec?: WallSpec | null;
+  joinery_spec?: JoinerySpec | null;
+  electrical_spec?: ElectricalSpec | null;
+  heating_spec?: HeatingSpec | null;
+  dimensions: {
+    area_sqm?: number;
+    width_mm?: number;
+    height_mm?: number;
+    perimeter_mm?: number;
+  } | null;
+  floor_plan_position: {
+    points?: { x: number; y: number }[];
+  } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// JSONB spec types
+export interface FloorSpec {
+  material?: string;
+  specification?: string;
+  treatments?: string[];
+  skirting_type?: string;
+  skirting_color?: string;
+}
+
+export interface CeilingSpec {
+  material?: string;
+  color?: string;
+  molding_type?: string;
+}
+
+export interface WallSpec {
+  treatments?: string[];
+  main_color?: string;
+  has_accent_wall?: boolean;
+  accent_wall_color?: string;
+}
+
+export interface JoinerySpec {
+  door_type?: string;
+  trim_type?: string;
+}
+
+export interface ElectricalSpec {
+  series?: string;
+  outlet_types?: string[];
+  lighting_types?: string[];
+}
+
+export interface HeatingSpec {
+  type?: string;
+}
+
+// Zod schemas for validation
+export const floorSpecSchema = z.object({
+  material: z.string().optional(),
+  specification: z.string().optional(),
+  treatments: z.array(z.string()).optional(),
+  skirting_type: z.string().optional(),
+  skirting_color: z.string().optional(),
+});
+
+export const ceilingSpecSchema = z.object({
+  material: z.string().optional(),
+  color: z.string().optional(),
+  molding_type: z.string().optional(),
+});
+
+export const wallSpecSchema = z.object({
+  treatments: z.array(z.string()).optional(),
+  main_color: z.string().optional(),
+  has_accent_wall: z.boolean().optional(),
+  accent_wall_color: z.string().optional(),
+});
+
+export const joinerySpecSchema = z.object({
+  door_type: z.string().optional(),
+  trim_type: z.string().optional(),
+});
+
+export const electricalSpecSchema = z.object({
+  series: z.string().optional(),
+  outlet_types: z.array(z.string()).optional(),
+  lighting_types: z.array(z.string()).optional(),
+});
+
+export const heatingSpecSchema = z.object({
+  type: z.string().optional(),
+});
+
+export const roomFormSchema = z.object({
+  name: z.string().min(1, "Rumsnamn krävs"),
+  description: z.string().optional(),
+  color: z.string(),
+  status: z.string(),
+  ceiling_height_mm: z.number().min(1000).max(10000),
+  priority: z.string(),
+  links: z.string().optional(),
+  notes: z.string().optional(),
+  floor_spec: floorSpecSchema,
+  ceiling_spec: ceilingSpecSchema,
+  wall_spec: wallSpecSchema,
+  joinery_spec: joinerySpecSchema,
+  electrical_spec: electricalSpecSchema,
+  heating_spec: heatingSpecSchema,
+});
+
+export type RoomFormData = z.infer<typeof roomFormSchema>;
+
+// Props for RoomDetailDialog
+export interface RoomDetailDialogProps {
+  room: Room | null;
+  projectId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onRoomUpdated?: () => void;
+}
+
+// Props for section components
+export interface SectionProps {
+  formData: RoomFormData;
+  updateFormData: (updates: Partial<RoomFormData>) => void;
+  updateSpec: <K extends keyof RoomFormData>(
+    specKey: K,
+    updates: Partial<RoomFormData[K]>
+  ) => void;
+}
+
+// Props for identity section (needs area for read-only display)
+export interface IdentitySectionProps extends SectionProps {
+  areaSqm?: number;
+}
+
+// Props for smart data section (needs area for calculations)
+export interface SmartDataSectionProps extends SectionProps {
+  areaSqm?: number;
+  perimeterMm?: number;
+}
+
+// Photo type
+export interface Photo {
+  id: string;
+  url: string;
+  caption: string | null;
+  created_at: string;
+  linked_to_id: string;
+  linked_to_type: string;
+  uploaded_by_user_id: string;
+  source?: string | null;
+  source_url?: string | null;
+  pinterest_pin_id?: string | null;
+}

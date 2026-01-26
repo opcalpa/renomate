@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
-import { Stage, Layer, Line, Rect, Circle, Text as KonvaText, Group, Transformer } from 'react-konva';
+import { Stage, Layer, Line, Rect, Circle, Text as KonvaText, Group, Transformer, Path } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
 import { useFloorMapStore } from './store';
@@ -11,12 +11,11 @@ import { PropertyPanel } from './PropertyPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { saveShapesForPlan, loadShapesForPlan } from './utils/plans';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Minimap } from './Minimap';
 import { getSymbolComponent, ArchSymbolType, SYMBOL_METADATA } from './SymbolLibrary';
-import { CanvasSettingsPopover } from './CanvasSettingsPopover';
 import { getObjectById } from './ObjectRenderer';
 import { ObjectShape, ObjectDefinition } from './objectLibraryDefinitions';
 import { getTemplateById, placeTemplateShapes, calculateBounds, DEFAULT_TEMPLATES } from './templateDefinitions';
@@ -35,6 +34,10 @@ import {
   FreehandShape,
   LibrarySymbolShape,
   ObjectLibraryShape,
+  BezierShape,
+  WindowLineShape,
+  DoorLineShape,
+  SlidingDoorLineShape,
 } from './shapes';
 
 // Canvas dimensions are now dynamic - read from projectSettings
@@ -93,8 +96,13 @@ const findConnectedWalls = (startWallId: string, allShapes: FloorMapShape[], zoo
     } else if (shape.type === 'symbol' || shape.type === 'object') {
       // Symbol/object position
       points.push({ x: coords.x || 0, y: coords.y || 0 });
+    } else if (shape.type === 'bezier') {
+      // Bezier start, control, end points
+      points.push({ x: coords.start.x, y: coords.start.y });
+      points.push({ x: coords.control.x, y: coords.control.y });
+      points.push({ x: coords.end.x, y: coords.end.y });
     }
-    
+
     return points;
   };
   
@@ -290,32 +298,61 @@ const snapDelta = (delta: { x: number; y: number }, snapSize: number, enabled: b
   };
 };
 
-// Helper function to check if two walls are connected
+// Helper function to check if two walls are connected (share an endpoint)
 const areWallsConnected = (wall1: FloorMapShape, wall2: FloorMapShape): boolean => {
   if ((wall1.type !== 'wall' && wall1.type !== 'line') || (wall2.type !== 'wall' && wall2.type !== 'line')) {
     return false;
   }
-  
+
   const coords1 = wall1.coordinates as any;
   const coords2 = wall2.coordinates as any;
-  
-  const tolerance = 5; // 5 pixels tolerance
-  
-  // Check if any endpoint of wall1 matches any endpoint of wall2
+
+  // Get endpoints directly (no rounding - use raw coordinates)
   const w1Start = { x: coords1.x1, y: coords1.y1 };
   const w1End = { x: coords1.x2, y: coords1.y2 };
   const w2Start = { x: coords2.x1, y: coords2.y1 };
   const w2End = { x: coords2.x2, y: coords2.y2 };
-  
-  const distance = (p1: { x: number; y: number }, p2: { x: number; y: number }) => 
+
+  const distance = (p1: { x: number; y: number }, p2: { x: number; y: number }) =>
     Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
-  
-  return (
-    distance(w1Start, w2Start) < tolerance ||
-    distance(w1Start, w2End) < tolerance ||
-    distance(w1End, w2Start) < tolerance ||
-    distance(w1End, w2End) < tolerance
-  );
+
+  const d1 = distance(w1Start, w2Start);
+  const d2 = distance(w1Start, w2End);
+  const d3 = distance(w1End, w2Start);
+  const d4 = distance(w1End, w2End);
+
+  const minDist = Math.min(d1, d2, d3, d4);
+
+  // Large tolerance: 50 canvas units (~50cm at 1:100 scale)
+  // This should catch walls that visually appear connected
+  const tolerance = 50;
+
+  return minDist < tolerance;
+};
+
+// Helper function to find all walls connected to a given wall (flood-fill/BFS)
+const getConnectedWalls = (startWallId: string, allShapes: FloorMapShape[]): string[] => {
+  const walls = allShapes.filter(s => s.type === 'wall' || s.type === 'line');
+  const startWall = walls.find(w => w.id === startWallId);
+
+  if (!startWall) return [startWallId];
+
+  const connectedIds = new Set<string>([startWallId]);
+  const queue = [startWall];
+
+  while (queue.length > 0) {
+    const currentWall = queue.shift()!;
+
+    // Find all walls connected to current wall
+    for (const wall of walls) {
+      if (!connectedIds.has(wall.id) && areWallsConnected(currentWall, wall)) {
+        connectedIds.add(wall.id);
+        queue.push(wall);
+      }
+    }
+  }
+
+  return Array.from(connectedIds);
 };
 
 
@@ -369,20 +406,22 @@ const Grid: React.FC<GridProps> = ({ viewState, scaleSettings, projectSettings }
   const extendedBottom = worldBottom + padding;
   
   // Draw gridlines across ENTIRE visible area + padding
+  // IMPORTANT: Use integer-based loop to avoid floating-point accumulation errors
   activeGrids.forEach((gridLevel, levelIndex) => {
     const gridSize = gridLevel.size;
-    
-    // Calculate grid line positions aligned to grid
-    const startX = Math.floor(extendedLeft / gridSize) * gridSize;
-    const endX = Math.ceil(extendedRight / gridSize) * gridSize;
-    const startY = Math.floor(extendedTop / gridSize) * gridSize;
-    const endY = Math.ceil(extendedBottom / gridSize) * gridSize;
-    
-    // Vertical lines - extend infinitely across viewport
-    for (let x = startX; x <= endX; x += gridSize) {
+
+    // Calculate grid line indices (integers) to avoid floating-point errors
+    const startXIndex = Math.floor(extendedLeft / gridSize);
+    const endXIndex = Math.ceil(extendedRight / gridSize);
+    const startYIndex = Math.floor(extendedTop / gridSize);
+    const endYIndex = Math.ceil(extendedBottom / gridSize);
+
+    // Vertical lines - use integer index and multiply to get position
+    for (let i = startXIndex; i <= endXIndex; i++) {
+      const x = i * gridSize;
       lines.push(
         <Line
-          key={`${levelIndex}-v-${x}`}
+          key={`${levelIndex}-v-${i}`}
           points={[x, extendedTop, x, extendedBottom]}
           stroke={gridLevel.color}
           strokeWidth={Math.max(0.3, gridLevel.lineWidth / zoom)}
@@ -392,12 +431,13 @@ const Grid: React.FC<GridProps> = ({ viewState, scaleSettings, projectSettings }
         />
       );
     }
-    
-    // Horizontal lines - extend infinitely across viewport
-    for (let y = startY; y <= endY; y += gridSize) {
+
+    // Horizontal lines - use integer index and multiply to get position
+    for (let j = startYIndex; j <= endYIndex; j++) {
+      const y = j * gridSize;
       lines.push(
         <Line
-          key={`${levelIndex}-h-${y}`}
+          key={`${levelIndex}-h-${j}`}
           points={[extendedLeft, y, extendedRight, y]}
           stroke={gridLevel.color}
           strokeWidth={Math.max(0.3, gridLevel.lineWidth / zoom)}
@@ -409,36 +449,33 @@ const Grid: React.FC<GridProps> = ({ viewState, scaleSettings, projectSettings }
     }
   });
   
-  // Canvas working area (centered at 0,0) - for background
+  // Canvas working area starting at (0,0) - no margins
   const canvasWidthPx = canvasWidthMeters * 1000 * pixelsPerMm;
   const canvasHeightPx = canvasHeightMeters * 1000 * pixelsPerMm;
-  const canvasOffsetX = -canvasWidthPx / 2;
-  const canvasOffsetY = -canvasHeightPx / 2;
-  
+
   return (
     <>
       {/* White background for canvas working area */}
       <Rect
-        x={canvasOffsetX}
-        y={canvasOffsetY}
+        x={0}
+        y={0}
         width={canvasWidthPx}
         height={canvasHeightPx}
         fill="#ffffff"
         listening={false}
       />
-      
+
       {/* Gridlines - extend infinitely across visible viewport */}
       {lines}
-      
-      {/* Canvas boundary - blue dashed border */}
+
+      {/* Canvas boundary - subtle border */}
       <Rect
-        x={canvasOffsetX}
-        y={canvasOffsetY}
+        x={0}
+        y={0}
         width={canvasWidthPx}
         height={canvasHeightPx}
-        stroke="#3b82f6"
-        strokeWidth={2 / zoom}
-        dash={[10 / zoom, 5 / zoom]}
+        stroke="#e5e7eb"
+        strokeWidth={1 / zoom}
         listening={false}
       />
     </>
@@ -526,7 +563,13 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   // Text input dialog state
   const [isTextDialogOpen, setIsTextDialogOpen] = useState(false);
   const [textInputValue, setTextInputValue] = useState('');
-  const [pendingTextPosition, setPendingTextPosition] = useState<{ x: number; y: number } | null>(null);
+  const [pendingTextPosition, setPendingTextPosition] = useState<{ x: number; y: number; width?: number; height?: number } | null>(null);
+  const [textIsBold, setTextIsBold] = useState(false);
+  const [textIsItalic, setTextIsItalic] = useState(false);
+  const [textFontSize, setTextFontSize] = useState(16);
+  const [textRotation, setTextRotation] = useState<0 | 90 | 180 | 270>(0);
+  const [textHasBackground, setTextHasBackground] = useState(false);
+  const [editingTextShapeId, setEditingTextShapeId] = useState<string | null>(null); // Track which text is being edited
   
   // Cleanup throttled function on unmount
   useEffect(() => {
@@ -668,24 +711,73 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     };
   }, [currentShapes, selectedShapeIds]);
 
-  // Handle text dialog submit (must be after store extraction)
+  // Handle text dialog submit (create or edit)
   const handleTextSubmit = useCallback(() => {
-    if (textInputValue.trim() && pendingTextPosition && currentPlanId) {
-      const newShape: FloorMapShape = {
-        id: uuidv4(),
-        planId: currentPlanId,
-        type: 'text',
-        coordinates: { x: pendingTextPosition.x, y: pendingTextPosition.y },
-        text: textInputValue,
-        metadata: { lengthMM: 16 }, // Font size
-      };
-      addShape(newShape);
-      toast.success('Text tillagd');
+    if (textInputValue.trim()) {
+      if (editingTextShapeId) {
+        // Edit existing text shape
+        updateShape(editingTextShapeId, {
+          text: textInputValue,
+          textStyle: {
+            isBold: textIsBold,
+            isItalic: textIsItalic,
+          },
+          fontSize: textFontSize,
+          textRotation: textRotation,
+          hasBackground: textHasBackground,
+        });
+        toast.success('Text uppdaterad');
+      } else if (pendingTextPosition && currentPlanId) {
+        // Create new text shape
+        const newShape: FloorMapShape = {
+          id: uuidv4(),
+          planId: currentPlanId,
+          type: 'text',
+          coordinates: {
+            x: pendingTextPosition.x,
+            y: pendingTextPosition.y,
+            width: pendingTextPosition.width,
+            height: pendingTextPosition.height,
+          },
+          text: textInputValue,
+          textStyle: {
+            isBold: textIsBold,
+            isItalic: textIsItalic,
+          },
+          fontSize: textFontSize,
+          textRotation: textRotation,
+          hasBackground: textHasBackground,
+        };
+        addShape(newShape);
+        toast.success('Text tillagd');
+      }
     }
+    // Reset all text dialog states
     setIsTextDialogOpen(false);
     setTextInputValue('');
     setPendingTextPosition(null);
-  }, [textInputValue, pendingTextPosition, currentPlanId, addShape]);
+    setTextIsBold(false);
+    setTextIsItalic(false);
+    setTextFontSize(16);
+    setTextRotation(0);
+    setTextHasBackground(false);
+    setEditingTextShapeId(null);
+  }, [textInputValue, pendingTextPosition, currentPlanId, addShape, updateShape, editingTextShapeId, textIsBold, textIsItalic, textFontSize, textRotation, textHasBackground]);
+
+  // Handle double-click to edit existing text
+  const handleTextEdit = useCallback((shape: FloorMapShape) => {
+    if (shape.type !== 'text') return;
+
+    // Populate dialog with existing values
+    setTextInputValue(shape.text || '');
+    setTextIsBold(shape.textStyle?.isBold || false);
+    setTextIsItalic(shape.textStyle?.isItalic || false);
+    setTextFontSize(shape.fontSize || 16);
+    setTextRotation((shape.textRotation || 0) as 0 | 90 | 180 | 270);
+    setTextHasBackground(shape.hasBackground || false);
+    setEditingTextShapeId(shape.id);
+    setIsTextDialogOpen(true);
+  }, []);
   
   // Manual save function (exposed to toolbar)
   const handleManualSave = useCallback(async () => {
@@ -1037,9 +1129,9 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       if (modKey && e.key.toLowerCase() === 'a' && !isTyping) {
         e.preventDefault();
         const allIds = currentShapesRef.current.map(s => s.id);
+        // setSelectedShapeIds already sets selectedShapeId to first item
         setSelectedShapeIdsRef.current(allIds);
         if (allIds.length > 0) {
-          setSelectedShapeIdRef.current(allIds[0]);
           toast.success(`${allIds.length} objekt markerade`);
         }
       }
@@ -1110,17 +1202,23 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
                 x: coords.x + PASTE_OFFSET,
                 y: coords.y + PASTE_OFFSET,
               };
+            } else if (shape.type === 'bezier') {
+              const coords = shape.coordinates as any;
+              newShape.coordinates = {
+                start: { x: coords.start.x + PASTE_OFFSET, y: coords.start.y + PASTE_OFFSET },
+                control: { x: coords.control.x + PASTE_OFFSET, y: coords.control.y + PASTE_OFFSET },
+                end: { x: coords.end.x + PASTE_OFFSET, y: coords.end.y + PASTE_OFFSET },
+              };
             }
-            
+
             return newShape;
           });
-          
+
           // Add all new shapes
           newShapes.forEach(shape => addShapeRef.current(shape));
           
           // Select the pasted shapes
           setSelectedShapeIdsRef.current(newShapes.map(s => s.id));
-          setSelectedShapeIdRef.current(newShapes[0].id);
           toast.success(`${newShapes.length} objekt inklistrade`);
         }
       }
@@ -1180,17 +1278,23 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
                   x: coords.x + DUPLICATE_OFFSET,
                   y: coords.y + DUPLICATE_OFFSET,
                 };
+              } else if (shape.type === 'bezier') {
+                const coords = shape.coordinates as any;
+                newShape.coordinates = {
+                  start: { x: coords.start.x + DUPLICATE_OFFSET, y: coords.start.y + DUPLICATE_OFFSET },
+                  control: { x: coords.control.x + DUPLICATE_OFFSET, y: coords.control.y + DUPLICATE_OFFSET },
+                  end: { x: coords.end.x + DUPLICATE_OFFSET, y: coords.end.y + DUPLICATE_OFFSET },
+                };
               }
-              
+
               return newShape;
             });
-            
+
             // Add all duplicated shapes
             newShapes.forEach(shape => addShapeRef.current(shape));
             
             // Select the duplicated shapes
             setSelectedShapeIdsRef.current(newShapes.map(s => s.id));
-            setSelectedShapeIdRef.current(newShapes[0].id);
             toast.success(`${newShapes.length} objekt duplicerade`);
           }
         }
@@ -1202,6 +1306,90 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         // Save shortcut triggered
         if ((window as any).__canvasSave) {
           (window as any).__canvasSave();
+        }
+      }
+
+      // ===== TOOL SHORTCUTS (single keys without modifiers) =====
+      if (!modKey && !e.shiftKey && !isTyping) {
+        const key = e.key.toLowerCase();
+
+        // V - Select tool
+        if (key === 'v') {
+          e.preventDefault();
+          setActiveToolRef.current('select');
+        }
+        // P - Freehand/Pen tool
+        else if (key === 'p') {
+          e.preventDefault();
+          setActiveToolRef.current('freehand');
+        }
+        // C - Circle tool
+        else if (key === 'c') {
+          e.preventDefault();
+          setActiveToolRef.current('circle');
+        }
+        // R - Rectangle tool
+        else if (key === 'r') {
+          e.preventDefault();
+          setActiveToolRef.current('rectangle');
+        }
+        // B - Bezier curve tool
+        else if (key === 'b') {
+          e.preventDefault();
+          setActiveToolRef.current('bezier');
+        }
+        // W - Wall tool
+        else if (key === 'w') {
+          e.preventDefault();
+          setActiveToolRef.current('wall');
+        }
+        // T - Text tool
+        else if (key === 't') {
+          e.preventDefault();
+          setActiveToolRef.current('text');
+        }
+        // E - Eraser tool
+        else if (key === 'e') {
+          e.preventDefault();
+          setActiveToolRef.current('eraser');
+        }
+        // ] - Bring Forward
+        else if (key === ']') {
+          e.preventDefault();
+          const store = useFloorMapStore.getState();
+          if (store.selectedShapeIds.length > 0) {
+            store.selectedShapeIds.forEach(id => store.bringForward(id));
+            toast.success('Flyttat framåt');
+          }
+        }
+        // [ - Send Backward
+        else if (key === '[') {
+          e.preventDefault();
+          const store = useFloorMapStore.getState();
+          if (store.selectedShapeIds.length > 0) {
+            store.selectedShapeIds.forEach(id => store.sendBackward(id));
+            toast.success('Flyttat bakåt');
+          }
+        }
+      }
+
+      // Cmd/Ctrl + ] - Bring to Front
+      if (modKey && e.key === ']' && !isTyping) {
+        e.preventDefault();
+        const store = useFloorMapStore.getState();
+        if (store.selectedShapeIds.length > 0) {
+          store.selectedShapeIds.forEach(id => store.bringToFront(id));
+          toast.success('Flyttat längst fram');
+        }
+      }
+
+      // Cmd/Ctrl + [ - Send to Back
+      if (modKey && e.key === '[' && !isTyping) {
+        e.preventDefault();
+        const store = useFloorMapStore.getState();
+        if (store.selectedShapeIds.length > 0) {
+          store.selectedShapeIds.forEach(id => store.sendToBack(id));
+          toast.success('Flyttat längst bak');
         }
       }
     };
@@ -1423,45 +1611,32 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     }
     
     const now = Date.now();
-    const isDoubleClick = now - lastClickTime < 300 && lastClickedShapeId === shapeId;
-    
+    const timeSinceLastClick = now - lastClickTime;
+    // Increased timeout from 300ms to 500ms for more reliable double-click detection
+    const isDoubleClick = timeSinceLastClick < 500 && lastClickedShapeId === shapeId;
+
     if (isDoubleClick) {
       // DOUBLE-CLICK → Different behavior based on Shift key
       // Double-click detected
       
       const shape = currentShapes.find(s => s.id === shapeId);
       if (shape) {
-        // Check if Shift is held (we'll need to pass event to check this properly)
-        // For now, regular double-click = open properties
-        // TODO: Shift+Double-Click = select connected group
-        
-        // Double-click - opening unified object info panel
         setSelectedShapeId(shapeId);
-        setSelectedShapeIds([shapeId]); // Only this shape
-        // Double-click - opening properties
-        setSelectedShapeId(shapeId);
-        setSelectedShapeIds([shapeId]); // Only this shape
-        
-        // For rooms, open RoomDetailDialog (full DB integration)
-        if (shapeType === 'room') {
-          if (shape.roomId) {
-            setSelectedRoomForDetail(shape.roomId);
-            setIsRoomDetailOpen(true);
-            // Opening RoomDetailDialog
-          } else {
-            // Room not saved yet
-            const roomId = await saveRoomToDB(shape);
-            if (roomId) {
-              setSelectedRoomForDetail(roomId);
-              setIsRoomDetailOpen(true);
-            }
-          }
+        setSelectedShapeIds([shapeId]);
+
+        // Room shapes → RoomDetailDialog, others → PropertyPanel
+        if (shapeType === 'room' && shape.roomId) {
+          // Close PropertyPanel for rooms - use RoomDetailDialog instead
+          setShowPropertyPanel(false);
+          setPropertyPanelShape(null);
+          setSelectedRoomForDetail(shape.roomId);
+          setIsRoomDetailOpen(true);
+          toast.success('Rum markerat - Öppnar rumsdetaljer');
         } else {
-          // For all other objects (walls, doors, text, etc.) → PropertyPanel
           setPropertyPanelShape(shape);
           setShowPropertyPanel(true);
           const shapeWord = shapeType === 'wall' ? 'vägg' : 'objekt';
-          toast.success(`Enskilt ${shapeWord} markerat - Öppnar egenskapspanel`);
+          toast.success(`${shapeWord.charAt(0).toUpperCase() + shapeWord.slice(1)} markerat - Öppnar egenskapspanel`);
         }
       }
       
@@ -1476,30 +1651,39 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
 
       if (isMultiSelect) {
         // MODIFIER + CLICK: Toggle selection (add/remove from current selection)
+        // For walls: include all connected walls in the toggle operation
+        const idsToToggle = (shapeType === 'wall' || shapeType === 'line')
+          ? getConnectedWalls(shapeId, currentShapes)
+          : [shapeId];
+
         if (currentlySelected.includes(shapeId)) {
-          // Remove from selection
-          const newIds = currentlySelected.filter(id => id !== shapeId);
+          // Remove from selection (remove all connected walls if it's a wall)
+          const newIds = currentlySelected.filter(id => !idsToToggle.includes(id));
           setSelectedShapeIds(newIds);
-          if (newIds.length > 0) {
-            setSelectedShapeId(newIds[0]);
-          } else {
-            setSelectedShapeId(null);
-          }
-          toast.success(`Objekt borttaget från markering`);
+          toast.success(`${idsToToggle.length > 1 ? idsToToggle.length + ' anslutna väggar borttagna' : 'Objekt borttaget'} från markering`);
         } else {
-          // Add to selection
-          const newIds = [...currentlySelected, shapeId];
+          // Add to selection (add all connected walls if it's a wall)
+          const newIds = [...new Set([...currentlySelected, ...idsToToggle])];
           setSelectedShapeIds(newIds);
-          setSelectedShapeId(shapeId);
           toast.success(`${newIds.length} objekt markerade`);
         }
       } else {
-        // REGULAR CLICK: Replace selection with single shape
-        setSelectedShapeId(shapeId);
-        setSelectedShapeIds([shapeId]);
-
-        const shapeWord = shapeType === 'wall' ? 'vägg' : shapeType === 'room' ? 'rum' : 'objekt';
-        toast.success(`Enskilt ${shapeWord} markerat`);
+        // REGULAR CLICK: Replace selection
+        // For walls: auto-select all connected walls (sharing endpoints)
+        if (shapeType === 'wall' || shapeType === 'line') {
+          const connectedWallIds = getConnectedWalls(shapeId, currentShapes);
+          setSelectedShapeIds(connectedWallIds);
+          if (connectedWallIds.length > 1) {
+            toast.success(`${connectedWallIds.length} anslutna väggar markerade`);
+          } else {
+            toast.success(`Enskild vägg markerad`);
+          }
+        } else {
+          // Non-wall shapes: select just the one clicked
+          setSelectedShapeIds([shapeId]);
+          const shapeWord = shapeType === 'room' ? 'rum' : 'objekt';
+          toast.success(`Enskilt ${shapeWord} markerat`);
+        }
       }
 
       setSelectedWallUnit(null);
@@ -2278,9 +2462,12 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     }
     
     // Snap to grid if enabled - uses user's grid interval setting
-    const forWalls = activeTool === 'wall';
+    // Freehand tool is NEVER snapped - always free drawing
+    // Line-based tools (wall, window, door, sliding door) use wall snapping
+    const forWalls = activeTool === 'wall' || activeTool === 'window_line' || activeTool === 'door_line' || activeTool === 'sliding_door_line';
+    const shouldSnap = activeTool !== 'freehand' && projectSettings.snapEnabled;
     const currentSnapSize = getSnapSize(viewState.zoom, scaleSettings.pixelsPerMm, forWalls, projectSettings.gridInterval);
-    pos = snapToGrid(pos, currentSnapSize, projectSettings.snapEnabled);
+    pos = snapToGrid(pos, currentSnapSize, shouldSnap);
     
     // Pan mode (spacebar or middle mouse)
     if (e.evt.button === 1 || isSpacePressed) {
@@ -2316,11 +2503,46 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       addDrawingPoint(pos);
       return;
     }
-    
+
+    // LINE-BASED OPENING TOOLS - Click to start, click again to end (like walls)
+    if ((activeTool === 'window_line' || activeTool === 'door_line' || activeTool === 'sliding_door_line') && !isDrawing) {
+      setIsDrawing(true);
+      addDrawingPoint(pos);
+      return;
+    }
+
     // FREEHAND TOOL - Click to add freehand points
     if (activeTool === 'freehand' && !isDrawing) {
       setIsDrawing(true);
       addDrawingPoint(pos);
+      return;
+    }
+
+    // CIRCLE TOOL - Drag to create circle (like room tool)
+    if (activeTool === 'circle' && !isDrawing && !isBoxSelecting) {
+      setIsBoxSelecting(true);
+      setSelectionBox({ start: pos, end: pos });
+      return;
+    }
+
+    // RECTANGLE TOOL - Drag to create rectangle (like room tool)
+    if (activeTool === 'rectangle' && !isDrawing && !isBoxSelecting) {
+      setIsBoxSelecting(true);
+      setSelectionBox({ start: pos, end: pos });
+      return;
+    }
+
+    // BEZIER TOOL - Drag to create curve (like circle/rectangle)
+    if (activeTool === 'bezier' && !isDrawing && !isBoxSelecting) {
+      setIsBoxSelecting(true);
+      setSelectionBox({ start: pos, end: pos });
+      return;
+    }
+
+    // TEXT TOOL - Click to open text dialog, then drag to create text box
+    if (activeTool === 'text' && !isDrawing && !isBoxSelecting) {
+      setIsBoxSelecting(true);
+      setSelectionBox({ start: pos, end: pos });
       return;
     }
   }, [
@@ -2369,9 +2591,12 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     };
 
     // Snap to grid if enabled - uses user's grid interval setting
-    const forWalls = activeTool === 'wall';
+    // Freehand tool is NEVER snapped - always free drawing
+    // Line-based tools (wall, window, door, sliding door) use wall snapping
+    const forWalls = activeTool === 'wall' || activeTool === 'window_line' || activeTool === 'door_line' || activeTool === 'sliding_door_line';
+    const shouldSnap = activeTool !== 'freehand' && projectSettings.snapEnabled;
     const currentSnapSize = getSnapSize(viewState.zoom, scaleSettings.pixelsPerMm, forWalls, projectSettings.gridInterval);
-    const snappedPos = snapToGrid(pos, currentSnapSize, projectSettings.snapEnabled);
+    const snappedPos = snapToGrid(pos, currentSnapSize, shouldSnap);
 
     // Update cursor (FIXED - was breaking during panning)
     if (isPanning && panStart) {
@@ -2380,23 +2605,25 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         panX: pointer.x - panStart.x,
         panY: pointer.y - panStart.y,
       };
-      
+
       // Constrain pan to canvas bounds
       const constrained = constrainPan(unconstrained.panX, unconstrained.panY, viewState.zoom);
-      
+
       setViewState(constrained);
       return;
     }
-    
+
     // Box selection (marquee)
     if (isBoxSelecting && selectionBox) {
       throttledSetSelectionBox({ start: selectionBox.start, end: snappedPos });
       return;
     }
-    
-    // Drawing mode - add points (for wall and freehand, NOT room)
-    if (isDrawing && (activeTool === 'wall' || activeTool === 'freehand')) {
-      addDrawingPoint(snappedPos);
+
+    // Drawing mode - add points (for wall, freehand, and line-based openings)
+    if (isDrawing && (activeTool === 'wall' || activeTool === 'freehand' || activeTool === 'window_line' || activeTool === 'door_line' || activeTool === 'sliding_door_line')) {
+      // Freehand uses raw pos (no snap), walls and line tools use snapped pos
+      const drawPos = activeTool === 'freehand' ? pos : snappedPos;
+      addDrawingPoint(drawPos);
       return;
     }
   }, [isPanning, panStart, isBoxSelecting, selectionBox, isDrawing, currentDrawingPoints, viewState, activeTool, gridSettings.snap, scaleSettings.pixelsPerMm, setViewState, addDrawingPoint, setCurrentDrawingPoints, throttledSetSelectionBox, projectSettings.snapEnabled, constrainPan]);
@@ -2463,7 +2690,155 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         setSelectionBox(null);
         return;
       }
-      
+
+      // CIRCLE TOOL - Create circle from drag box
+      if (activeTool === 'circle' && selectionBox && currentPlanId) {
+        const centerX = (selectionBox.start.x + selectionBox.end.x) / 2;
+        const centerY = (selectionBox.start.y + selectionBox.end.y) / 2;
+        const width = Math.abs(selectionBox.end.x - selectionBox.start.x);
+        const height = Math.abs(selectionBox.end.y - selectionBox.start.y);
+        const radius = Math.max(width, height) / 2;
+
+        // Minimum radius (50mm)
+        const minRadius = 50 * scaleSettings.pixelsPerMm;
+
+        if (radius >= minRadius) {
+          const newCircle: FloorMapShape = {
+            id: uuidv4(),
+            planId: currentPlanId,
+            type: 'circle',
+            coordinates: {
+              cx: centerX,
+              cy: centerY,
+              radius,
+            },
+            color: 'rgba(147, 197, 253, 0.3)',
+            strokeColor: '#3b82f6',
+            strokeWidth: 2,
+          };
+          addShape(newCircle);
+          toast.success('Cirkel skapad');
+        } else {
+          toast.error('Cirkeln är för liten - dra en större yta');
+        }
+
+        setSelectionBox(null);
+        return;
+      }
+
+      // RECTANGLE TOOL - Create rectangle from drag box
+      if (activeTool === 'rectangle' && selectionBox && currentPlanId) {
+        const minX = Math.min(selectionBox.start.x, selectionBox.end.x);
+        const maxX = Math.max(selectionBox.start.x, selectionBox.end.x);
+        const minY = Math.min(selectionBox.start.y, selectionBox.end.y);
+        const maxY = Math.max(selectionBox.start.y, selectionBox.end.y);
+
+        const width = maxX - minX;
+        const height = maxY - minY;
+        const minSize = 50 * scaleSettings.pixelsPerMm; // 50mm minimum
+
+        if (width >= minSize && height >= minSize) {
+          const newRect: FloorMapShape = {
+            id: uuidv4(),
+            planId: currentPlanId,
+            type: 'rectangle',
+            coordinates: {
+              left: minX,
+              top: minY,
+              width,
+              height,
+            },
+            color: 'rgba(167, 243, 208, 0.3)',
+            strokeColor: '#10b981',
+            strokeWidth: 2,
+          };
+          addShape(newRect);
+          toast.success('Rektangel skapad');
+        } else {
+          toast.error('Rektangeln är för liten - dra en större yta');
+        }
+
+        setSelectionBox(null);
+        return;
+      }
+
+      // BEZIER TOOL - Create curve from drag box (control point auto-calculated)
+      if (activeTool === 'bezier' && selectionBox && currentPlanId) {
+        const start = selectionBox.start;
+        const end = selectionBox.end;
+
+        // Calculate distance
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const minDistance = 50 * scaleSettings.pixelsPerMm; // 50mm minimum
+
+        if (distance >= minDistance) {
+          // Calculate control point: perpendicular offset from midpoint
+          // This creates a nice arc shape
+          const midX = (start.x + end.x) / 2;
+          const midY = (start.y + end.y) / 2;
+
+          // Perpendicular vector (rotate 90 degrees)
+          const perpX = -dy;
+          const perpY = dx;
+
+          // Normalize and scale (30% of distance for nice curve)
+          const perpLength = Math.sqrt(perpX * perpX + perpY * perpY);
+          const curveAmount = distance * 0.3;
+          const controlX = midX + (perpX / perpLength) * curveAmount;
+          const controlY = midY + (perpY / perpLength) * curveAmount;
+
+          const newBezier: FloorMapShape = {
+            id: uuidv4(),
+            planId: currentPlanId,
+            type: 'bezier',
+            coordinates: {
+              start: { x: start.x, y: start.y },
+              control: { x: controlX, y: controlY },
+              end: { x: end.x, y: end.y },
+            },
+            strokeColor: '#8b5cf6',
+            strokeWidth: 2,
+          };
+          addShape(newBezier);
+          toast.success('Kurva skapad - dra kontrollpunkten för att justera');
+        } else {
+          toast.error('Kurvan är för kort - dra längre');
+        }
+
+        setSelectionBox(null);
+        return;
+      }
+
+      // TEXT TOOL - Open text dialog with position for text box
+      if (activeTool === 'text' && selectionBox && currentPlanId) {
+        const minX = Math.min(selectionBox.start.x, selectionBox.end.x);
+        const maxX = Math.max(selectionBox.start.x, selectionBox.end.x);
+        const minY = Math.min(selectionBox.start.y, selectionBox.end.y);
+        const maxY = Math.max(selectionBox.start.y, selectionBox.end.y);
+
+        const width = maxX - minX;
+        const height = maxY - minY;
+        const minSize = 50; // 50 pixels minimum for text box
+
+        // If dragged a box, use that size; otherwise default box size (in pixels)
+        // Default: 200x50 pixels which is a reasonable text box size
+        const boxWidth = width >= minSize ? width : 200;
+        const boxHeight = height >= minSize ? height : 50;
+
+        // Set pending position and open dialog
+        setPendingTextPosition({
+          x: minX,
+          y: minY,
+          width: boxWidth,
+          height: boxHeight,
+        });
+        setIsTextDialogOpen(true);
+        setSelectionBox(null);
+        return;
+      }
+
       // SELECT TOOL - Select all shapes that INTERSECT with the box (not just fully contained)
       if (activeTool === 'select' && selectionBox) {
         const boxMinX = Math.min(selectionBox.start.x, selectionBox.end.x);
@@ -2527,12 +2902,21 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             
             // FREEHAND / POLYGON - check if any point is in box
             if ((shape.type === 'freehand' || shape.type === 'polygon') && coords.points) {
-              return coords.points.some((p: { x: number; y: number }) => 
+              return coords.points.some((p: { x: number; y: number }) =>
                 p.x >= boxMinX && p.x <= boxMaxX &&
                 p.y >= boxMinY && p.y <= boxMaxY
               );
             }
-            
+
+            // BEZIER - check if any of the 3 points is in box
+            if (shape.type === 'bezier') {
+              const points = [coords.start, coords.control, coords.end];
+              return points.some((p: { x: number; y: number }) =>
+                p.x >= boxMinX && p.x <= boxMaxX &&
+                p.y >= boxMinY && p.y <= boxMaxY
+              );
+            }
+
             return false;
           })
           .map(shape => shape.id);
@@ -2601,8 +2985,93 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           strokeColor: '#000000',
           strokeWidth: 2,
         };
+      } else if (activeTool === 'window_line') {
+        // Calculate length and apply default if too small (single click)
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const defaultWindowWidth = 1000; // 1000mm standard window
+        const minLength = 50; // Minimum to consider as "dragged"
+
+        let finalEnd = end;
+        if (length < minLength) {
+          // Single click - use default horizontal window
+          finalEnd = { x: start.x + defaultWindowWidth, y: start.y };
+        }
+
+        newShape = {
+          id: uuidv4(),
+          planId: currentPlanId,
+          type: 'window_line',
+          coordinates: {
+            x1: start.x,
+            y1: start.y,
+            x2: finalEnd.x,
+            y2: finalEnd.y,
+          },
+          strokeColor: '#3b82f6', // Blue for windows
+          thicknessMM: 100, // Window frame thickness
+        };
+        toast.success('Fönster skapat');
+      } else if (activeTool === 'door_line') {
+        // Calculate length and apply default if too small (single click)
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const defaultDoorWidth = 900; // 900mm standard door
+        const minLength = 50;
+
+        let finalEnd = end;
+        if (length < minLength) {
+          // Single click - use default horizontal door
+          finalEnd = { x: start.x + defaultDoorWidth, y: start.y };
+        }
+
+        newShape = {
+          id: uuidv4(),
+          planId: currentPlanId,
+          type: 'door_line',
+          coordinates: {
+            x1: start.x,
+            y1: start.y,
+            x2: finalEnd.x,
+            y2: finalEnd.y,
+          },
+          strokeColor: '#8b5cf6', // Purple for doors
+          thicknessMM: 50, // Door frame thickness
+          openingDirection: 'right', // Default to right opening
+        };
+        toast.success('Dörr skapad (dubbelklicka för att byta öppningsriktning)');
+      } else if (activeTool === 'sliding_door_line') {
+        // Calculate length and apply default if too small (single click)
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const defaultSlidingDoorWidth = 1800; // 1800mm standard sliding door
+        const minLength = 50;
+
+        let finalEnd = end;
+        if (length < minLength) {
+          // Single click - use default horizontal sliding door
+          finalEnd = { x: start.x + defaultSlidingDoorWidth, y: start.y };
+        }
+
+        newShape = {
+          id: uuidv4(),
+          planId: currentPlanId,
+          type: 'sliding_door_line',
+          coordinates: {
+            x1: start.x,
+            y1: start.y,
+            x2: finalEnd.x,
+            y2: finalEnd.y,
+          },
+          strokeColor: '#10b981', // Green for sliding doors
+          thicknessMM: 50, // Frame thickness
+        };
+        toast.success('Skjutdörr skapad');
       }
-      
+
       if (newShape) {
         addShape(newShape);
       }
@@ -2651,40 +3120,140 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         touchAction: 'none', // Prevent browser zoom/pan on touch
       }}
     >
-      {/* Canvas Settings Popover */}
-      <CanvasSettingsPopover />
-      
       {/* Text Input Dialog */}
-      <Dialog open={isTextDialogOpen} onOpenChange={setIsTextDialogOpen}>
-        <DialogContent>
+      <Dialog open={isTextDialogOpen} onOpenChange={(open) => {
+        setIsTextDialogOpen(open);
+        if (!open) {
+          // Reset all states when dialog closes
+          setTextInputValue('');
+          setPendingTextPosition(null);
+          setTextIsBold(false);
+          setTextIsItalic(false);
+          setTextFontSize(16);
+          setTextRotation(0);
+          setTextHasBackground(false);
+          setEditingTextShapeId(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Text</DialogTitle>
+            <DialogTitle>{editingTextShapeId ? 'Redigera text' : 'Lägg till text'}</DialogTitle>
+            <DialogDescription>
+              {editingTextShapeId
+                ? 'Ändra textinnehåll och stil.'
+                : 'Skriv text och välj stil för att placera på ritningen.'}
+            </DialogDescription>
           </DialogHeader>
-          <Input
-            value={textInputValue}
-            onChange={(e) => setTextInputValue(e.target.value)}
-            placeholder="Enter text..."
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && textInputValue.trim() && pendingTextPosition) {
-                const textShape: FloorMapShape = {
-                  id: uuidv4(),
-                  planId: currentPlanId!,
-                  type: 'text',
-                  coordinates: {
-                    x: pendingTextPosition.x,
-                    y: pendingTextPosition.y,
-                  },
-                  text: textInputValue,
-                  strokeColor: '#000000',
-                };
-                addShape(textShape);
-                setIsTextDialogOpen(false);
-                setPendingTextPosition(null);
-                setTextInputValue('');
-              }
-            }}
-          />
+          <div className="space-y-4">
+            {/* Text content */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Text</label>
+              <Input
+                value={textInputValue}
+                onChange={(e) => setTextInputValue(e.target.value)}
+                placeholder="Skriv din text här..."
+                autoFocus
+              />
+            </div>
+
+            {/* Font size */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Storlek</label>
+              <div className="flex gap-2">
+                {[
+                  { label: 'S', value: 12 },
+                  { label: 'M', value: 16 },
+                  { label: 'L', value: 24 },
+                  { label: 'XL', value: 36 },
+                ].map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => setTextFontSize(preset.value)}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      textFontSize === preset.value
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted hover:bg-muted/80'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Style options */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Stil</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTextIsBold(!textIsBold)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-bold transition-colors ${
+                    textIsBold
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted hover:bg-muted/80'
+                  }`}
+                >
+                  B
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTextIsItalic(!textIsItalic)}
+                  className={`px-3 py-1.5 rounded-md text-sm italic transition-colors ${
+                    textIsItalic
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted hover:bg-muted/80'
+                  }`}
+                >
+                  I
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTextHasBackground(!textHasBackground)}
+                  className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                    textHasBackground
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted hover:bg-muted/80'
+                  }`}
+                  title="Bakgrund"
+                >
+                  ▢
+                </button>
+              </div>
+            </div>
+
+            {/* Rotation */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Rotation</label>
+              <div className="flex gap-2">
+                {([0, 90, 180, 270] as const).map((angle) => (
+                  <button
+                    key={angle}
+                    type="button"
+                    onClick={() => setTextRotation(angle)}
+                    className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                      textRotation === angle
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted hover:bg-muted/80'
+                    }`}
+                  >
+                    {angle}°
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Submit button */}
+            <button
+              type="button"
+              onClick={handleTextSubmit}
+              disabled={!textInputValue.trim()}
+              className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {editingTextShapeId ? 'Spara' : 'Lägg till'}
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
       
@@ -2692,12 +3261,17 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       <NameRoomDialog
         open={isNameRoomDialogOpen}
         onOpenChange={setIsNameRoomDialogOpen}
-        onConfirm={(name) => {
+        onConfirm={async (name) => {
           if (selectedShapeForNaming) {
             const shape = currentShapes.find(s => s.id === selectedShapeForNaming);
             if (shape && shape.type === 'room') {
+              // Update local shape with name first
               updateShape(selectedShapeForNaming, { name });
-              toast.success(`Rum döpt till "${name}"`);
+              // Save room to database and get roomId
+              const roomId = await saveRoomToDB({ ...shape, name });
+              if (roomId) {
+                toast.success(`Rum "${name}" sparat!`);
+              }
             }
           }
           setIsNameRoomDialogOpen(false);
@@ -2714,12 +3288,17 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       <RoomDetailDialog
         open={isRoomDetailOpen}
         onOpenChange={setIsRoomDetailOpen}
-        roomId={selectedRoomForDetail}
+        room={roomData}
         projectId={currentProjectId}
+        onRoomUpdated={() => {
+          setRoomData(null);
+          setSelectedRoomForDetail(null);
+        }}
       />
 
       {/* Property Panel */}
-      {showPropertyPanel && propertyPanelShape && currentProjectId && (
+      {/* PropertyPanel - for all shapes EXCEPT rooms (rooms use RoomDetailDialog) */}
+      {showPropertyPanel && propertyPanelShape && currentProjectId && propertyPanelShape.type !== 'room' && (
         <>
           <PropertyPanel
             shape={propertyPanelShape}
@@ -2776,19 +3355,97 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           )}
           
           {/* Box selection/room preview - blue dashed rectangle */}
-          {isBoxSelecting && selectionBox && (
+          {isBoxSelecting && selectionBox && activeTool !== 'bezier' && activeTool !== 'circle' && (
             <Rect
               x={Math.min(selectionBox.start.x, selectionBox.end.x)}
               y={Math.min(selectionBox.start.y, selectionBox.end.y)}
               width={Math.abs(selectionBox.end.x - selectionBox.start.x)}
               height={Math.abs(selectionBox.end.y - selectionBox.start.y)}
-              stroke={activeTool === 'room' ? '#10b981' : '#3b82f6'}
-              fill={activeTool === 'room' ? 'rgba(16, 185, 129, 0.1)' : undefined}
-              strokeWidth={activeTool === 'room' ? 2 / viewState.zoom : 1 / viewState.zoom}
+              stroke={activeTool === 'room' || activeTool === 'rectangle' ? '#10b981' : '#3b82f6'}
+              fill={activeTool === 'room' ? 'rgba(16, 185, 129, 0.1)' : activeTool === 'rectangle' ? 'rgba(16, 185, 129, 0.1)' : undefined}
+              strokeWidth={2 / viewState.zoom}
               dash={[4 / viewState.zoom, 2 / viewState.zoom]}
               listening={false}
             />
           )}
+
+          {/* Circle preview */}
+          {isBoxSelecting && selectionBox && activeTool === 'circle' && (
+            <Circle
+              x={(selectionBox.start.x + selectionBox.end.x) / 2}
+              y={(selectionBox.start.y + selectionBox.end.y) / 2}
+              radius={Math.max(
+                Math.abs(selectionBox.end.x - selectionBox.start.x),
+                Math.abs(selectionBox.end.y - selectionBox.start.y)
+              ) / 2}
+              stroke="#3b82f6"
+              fill="rgba(147, 197, 253, 0.2)"
+              strokeWidth={2 / viewState.zoom}
+              dash={[4 / viewState.zoom, 2 / viewState.zoom]}
+              listening={false}
+            />
+          )}
+
+          {/* Bezier curve preview */}
+          {isBoxSelecting && selectionBox && activeTool === 'bezier' && (() => {
+            const start = selectionBox.start;
+            const end = selectionBox.end;
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < 10) return null;
+
+            // Calculate control point preview
+            const midX = (start.x + end.x) / 2;
+            const midY = (start.y + end.y) / 2;
+            const perpX = -dy;
+            const perpY = dx;
+            const perpLength = Math.sqrt(perpX * perpX + perpY * perpY);
+            const curveAmount = distance * 0.3;
+            const controlX = midX + (perpX / perpLength) * curveAmount;
+            const controlY = midY + (perpY / perpLength) * curveAmount;
+
+            const pathData = `M ${start.x} ${start.y} Q ${controlX} ${controlY} ${end.x} ${end.y}`;
+
+            return (
+              <Group listening={false}>
+                <Path
+                  data={pathData}
+                  stroke="#8b5cf6"
+                  strokeWidth={2 / viewState.zoom}
+                  dash={[4 / viewState.zoom, 2 / viewState.zoom]}
+                  fill="transparent"
+                />
+                {/* Show control point indicator */}
+                <Circle
+                  x={controlX}
+                  y={controlY}
+                  radius={4 / viewState.zoom}
+                  fill="#8b5cf6"
+                  opacity={0.5}
+                />
+                {/* Start point */}
+                <Circle
+                  x={start.x}
+                  y={start.y}
+                  radius={3 / viewState.zoom}
+                  fill="white"
+                  stroke="#8b5cf6"
+                  strokeWidth={1 / viewState.zoom}
+                />
+                {/* End point */}
+                <Circle
+                  x={end.x}
+                  y={end.y}
+                  radius={3 / viewState.zoom}
+                  fill="white"
+                  stroke="#8b5cf6"
+                  strokeWidth={1 / viewState.zoom}
+                />
+              </Group>
+            );
+          })()}
 
           {/* Multi-selection bounding box - visual indicator for group selection */}
           {multiSelectionBounds && !isBoxSelecting && (
@@ -2828,8 +3485,8 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             </Group>
           )}
 
-          {/* All shapes */}
-          {currentShapes.map((shape) => {
+          {/* All shapes - sorted by zIndex for proper layering */}
+          {[...currentShapes].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0)).map((shape) => {
             const isSelected = selectedShapeIds.includes(shape.id);
             const handleSelect = (evt?: KonvaEventObject<MouseEvent>) => handleShapeClick(shape.id, shape.type, evt);
             const handleTransform = (updates: Partial<FloorMapShape>) => handleShapeTransform(shape.id, updates);
@@ -2849,12 +3506,20 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             }
             
             if (shape.type === 'room') {
+              const handleRoomDoubleClick = () => {
+                // Open PropertyPanel on double-click (same as walls)
+                setPropertyPanelShape(shape);
+                setShowPropertyPanel(true);
+                toast.success('Rum markerat - Öppnar egenskapspanel');
+              };
+
               return (
-                <RoomShape 
-                  key={shape.id} 
-                  shape={shape} 
-                  isSelected={isSelected} 
-                  onSelect={handleSelect} 
+                <RoomShape
+                  key={shape.id}
+                  shape={shape}
+                  isSelected={isSelected}
+                  onSelect={handleSelect}
+                  onDoubleClick={handleRoomDoubleClick}
                   onTransform={handleTransform}
                   shapeRefsMap={shapeRefs.current}
                   snapEnabled={projectSettings.snapEnabled}
@@ -2873,9 +3538,26 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             }
             
             if (shape.type === 'text') {
-              return (<TextShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} />);
+              return (<TextShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} onEdit={handleTextEdit} />);
             }
-            
+
+            if (shape.type === 'bezier') {
+              return (<BezierShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} />);
+            }
+
+            // Line-based opening shapes (window, door, sliding door)
+            if (shape.type === 'window_line') {
+              return (<WindowLineShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} />);
+            }
+
+            if (shape.type === 'door_line') {
+              return (<DoorLineShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} />);
+            }
+
+            if (shape.type === 'sliding_door_line') {
+              return (<SlidingDoorLineShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} />);
+            }
+
             return null;
           })}
           

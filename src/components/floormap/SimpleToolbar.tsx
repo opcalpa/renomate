@@ -26,13 +26,16 @@ import {
   Settings,
   Sparkles,
   Copy,
-  Bookmark
+  Bookmark,
+  Spline,
+  PenTool
 } from "lucide-react";
 import { toast } from "sonner";
 import { CanvasSettingsPopover } from "./CanvasSettingsPopover";
 import { AIFloorPlanImport } from "@/components/project/AIFloorPlanImport";
 import { TemplateGallery } from "./TemplateGallery";
 import { SaveTemplateDialog } from "./SaveTemplateDialog";
+import { ToolbarSubmenu, LayerControls } from "./toolbar";
 
 
 // Professional architectural icons following industry standard
@@ -46,6 +49,37 @@ const OuterWallIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <line x1="4" y1="11" x2="20" y2="11" strokeWidth="2.5" />
     <line x1="4" y1="13" x2="20" y2="13" strokeWidth="2.5" />
+  </svg>
+);
+
+const WindowLineIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Two parallel thin lines representing window */}
+    <line x1="4" y1="10" x2="20" y2="10" strokeWidth="1" />
+    <line x1="4" y1="14" x2="20" y2="14" strokeWidth="1" />
+    {/* Cross mark in center */}
+    <line x1="12" y1="10" x2="12" y2="14" strokeWidth="1" />
+  </svg>
+);
+
+const DoorLineIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Door line */}
+    <line x1="4" y1="12" x2="14" y2="12" strokeWidth="2" />
+    {/* Arc showing swing direction */}
+    <path d="M 14 12 Q 14 6 20 6" fill="none" strokeWidth="1" />
+    {/* Small line for door panel */}
+    <line x1="14" y1="12" x2="20" y2="6" strokeWidth="1" strokeDasharray="2,1" />
+  </svg>
+);
+
+const SlidingDoorLineIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Two overlapping door panels */}
+    <line x1="4" y1="11" x2="14" y2="11" strokeWidth="2" />
+    <line x1="10" y1="13" x2="20" y2="13" strokeWidth="2" />
+    {/* Arrow indicating slide direction */}
+    <path d="M 16 10 L 19 12 L 16 14" fill="none" strokeWidth="1" />
   </svg>
 );
 
@@ -176,6 +210,7 @@ export const SimpleToolbar = ({
   const [aiImportOpen, setAiImportOpen] = useState(false);
   const [templateGalleryOpen, setTemplateGalleryOpen] = useState(false);
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
+  const [drawSubmenuOpen, setDrawSubmenuOpen] = useState(false);
   
   // Detect if Mac for keyboard shortcuts display
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -218,19 +253,15 @@ export const SimpleToolbar = ({
       id: 'select' as const,
       icon: MousePointer2,
       label: 'Markera',
-      tooltip: 'Välj och flytta objekt',
-    },
-    {
-      id: 'freehand' as const,
-      icon: Pencil,
-      label: 'Penna',
-      tooltip: 'Rita frihandslinje',
+      tooltip: 'Välj och flytta objekt (V)',
+      shortcut: 'V',
     },
     {
       id: 'wall' as const,
       icon: Minus,
       label: 'Vägg',
-      tooltip: 'Rita vägg',
+      tooltip: 'Rita vägg (W)',
+      shortcut: 'W',
     },
     {
       id: 'room' as const,
@@ -239,16 +270,18 @@ export const SimpleToolbar = ({
       tooltip: 'Markera rum genom att dra rektangel',
     },
     {
-      id: 'eraser' as const,
-      icon: Eraser,
-      label: 'Sudd',
-      tooltip: 'Radera objekt (E)',
-    },
-    {
       id: 'text' as const,
       icon: Type,
       label: 'Text',
       tooltip: 'Placera fri text (T)',
+      shortcut: 'T',
+    },
+    {
+      id: 'eraser' as const,
+      icon: Eraser,
+      label: 'Sudd',
+      tooltip: 'Radera objekt (E)',
+      shortcut: 'E',
     },
     {
       id: 'scissors' as const,
@@ -264,8 +297,44 @@ export const SimpleToolbar = ({
     },
   ];
 
+  // Draw tools submenu items
+  const drawTools = [
+    {
+      id: 'freehand' as const,
+      icon: Pencil,
+      label: 'Frihand',
+      description: 'Rita fria linjer',
+      shortcut: 'P',
+    },
+    {
+      id: 'circle' as const,
+      icon: Circle,
+      label: 'Cirkel',
+      description: 'Rita cirkel',
+      shortcut: 'C',
+    },
+    {
+      id: 'rectangle' as const,
+      icon: Square,
+      label: 'Rektangel',
+      description: 'Rita rektangel',
+      shortcut: 'R',
+    },
+    {
+      id: 'bezier' as const,
+      icon: Spline,
+      label: 'Kurva',
+      description: 'Dra för att skapa kurva',
+      shortcut: 'B',
+    },
+  ];
+
+  // Check if a draw tool is active
+  const isDrawToolActive = ['freehand', 'circle', 'rectangle', 'bezier'].includes(activeTool);
+  const activeDrawTool = drawTools.find(t => t.id === activeTool);
+
   return (
-    <div className="fixed left-0 top-0 h-full w-16 bg-background border-r border-border flex flex-col items-center py-4 gap-2 z-50 overflow-y-auto overflow-x-hidden">
+    <div className="fixed left-4 top-20 w-14 bg-white/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-lg shadow-black/5 flex flex-col items-center py-3 gap-1 z-50 overflow-y-auto overflow-x-hidden">
       {/* ===== GROUP A: CREATE TOOLS (Drawing) ===== */}
       <div className="w-full px-1 mb-1">
         <div className="text-[9px] text-muted-foreground text-center mb-2 font-medium uppercase tracking-wide">
@@ -280,7 +349,7 @@ export const SimpleToolbar = ({
             variant="ghost"
             size="icon"
             onClick={() => setAiImportOpen(true)}
-            className="w-12 h-12 bg-gradient-to-br from-purple-500/10 to-blue-500/10 hover:from-purple-500/20 hover:to-blue-500/20 border border-purple-500/20"
+            className="w-10 h-10 bg-gradient-to-br from-purple-500/10 to-blue-500/10 hover:from-purple-500/20 hover:to-blue-500/20 border border-purple-500/20"
           >
             <Sparkles className="h-5 w-5 text-purple-600" />
           </Button>
@@ -297,7 +366,45 @@ export const SimpleToolbar = ({
       
       {/* Drawing tools */}
       <div className="flex flex-col gap-1">
-        {tools.map((tool) => {
+        {/* Select Tool */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={activeTool === 'select' ? "default" : "ghost"}
+              size="icon"
+              onClick={() => setActiveTool('select')}
+              className={cn(
+                "w-10 h-10",
+                activeTool === 'select' && "bg-primary text-primary-foreground rounded-lg"
+              )}
+            >
+              <MousePointer2 className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Välj och flytta objekt (V)</p>
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Draw Tools Submenu */}
+        <ToolbarSubmenu
+          icon={activeDrawTool?.icon || PenTool}
+          label="Ritverktyg"
+          tooltip="Ritverktyg"
+          isActive={isDrawToolActive}
+          activeItemId={activeTool}
+          items={drawTools.map(tool => ({
+            id: tool.id,
+            icon: tool.icon,
+            label: tool.label,
+            description: tool.description,
+            shortcut: tool.shortcut,
+            onClick: () => setActiveTool(tool.id),
+            isActive: activeTool === tool.id,
+          }))}
+        />
+
+        {tools.filter(t => t.id !== 'select').map((tool) => {
           const Icon = tool.icon;
           const isActive = activeTool === tool.id;
 
@@ -312,7 +419,7 @@ export const SimpleToolbar = ({
                       size="icon"
                       onClick={() => setActiveTool(tool.id)}
                       className={cn(
-                        "w-12 h-12 relative",
+                        "w-10 h-10 relative",
                         isActive && "bg-primary text-primary-foreground"
                       )}
                     >
@@ -407,6 +514,60 @@ export const SimpleToolbar = ({
                           <span className="text-xs text-muted-foreground">Tjock vägg 300mm</span>
                         </div>
                       </Button>
+
+                      <Separator className="my-1" />
+
+                      <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                        Öppningar (linjebaserade)
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start gap-3 h-10"
+                        onClick={() => {
+                          setActiveTool('window_line');
+                          setWallSubmenuOpen(false);
+                        }}
+                      >
+                        <WindowLineIcon className="h-4 w-4" />
+                        <div className="flex flex-col items-start">
+                          <span className="text-sm">Fönster</span>
+                          <span className="text-xs text-muted-foreground">Rita fönsterlinje</span>
+                        </div>
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start gap-3 h-10"
+                        onClick={() => {
+                          setActiveTool('door_line');
+                          setWallSubmenuOpen(false);
+                        }}
+                      >
+                        <DoorLineIcon className="h-4 w-4" />
+                        <div className="flex flex-col items-start">
+                          <span className="text-sm">Dörr</span>
+                          <span className="text-xs text-muted-foreground">Rita dörr med öppning</span>
+                        </div>
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start gap-3 h-10"
+                        onClick={() => {
+                          setActiveTool('sliding_door_line');
+                          setWallSubmenuOpen(false);
+                        }}
+                      >
+                        <SlidingDoorLineIcon className="h-4 w-4" />
+                        <div className="flex flex-col items-start">
+                          <span className="text-sm">Skjutdörr</span>
+                          <span className="text-xs text-muted-foreground">Rita skjutdörr</span>
+                        </div>
+                      </Button>
                     </div>
                   </PopoverContent>
                 </Popover>
@@ -425,7 +586,7 @@ export const SimpleToolbar = ({
                   size="icon"
                   onClick={() => setActiveTool(tool.id)}
                   className={cn(
-                    "w-12 h-12",
+                    "w-10 h-10",
                     isActive && "bg-primary text-primary-foreground"
                   )}
                 >
@@ -448,7 +609,7 @@ export const SimpleToolbar = ({
               variant="ghost"
               size="icon"
               onClick={() => setTemplateGalleryOpen(true)}
-              className="w-12 h-12"
+              className="w-10 h-10"
             >
               <Copy className="h-5 w-5" />
             </Button>
@@ -469,7 +630,7 @@ export const SimpleToolbar = ({
                 variant="ghost"
                 size="icon"
                 onClick={() => setSaveTemplateOpen(true)}
-                className="w-12 h-12 bg-blue-50 hover:bg-blue-100 border-2 border-blue-300"
+                className="w-10 h-10 bg-blue-50 hover:bg-blue-100 border-2 border-blue-300"
               >
                 <Bookmark className="h-5 w-5 text-blue-600" />
               </Button>
@@ -502,7 +663,7 @@ export const SimpleToolbar = ({
               variant="ghost"
               size="icon"
               onClick={handleZoomIn}
-              className="w-12 h-12"
+              className="w-10 h-10"
             >
               <ZoomIn className="h-5 w-5" />
             </Button>
@@ -518,7 +679,7 @@ export const SimpleToolbar = ({
               variant="ghost"
               size="icon"
               onClick={handleZoomOut}
-              className="w-12 h-12"
+              className="w-10 h-10"
             >
               <ZoomOut className="h-5 w-5" />
             </Button>
@@ -542,7 +703,7 @@ export const SimpleToolbar = ({
               size="icon"
               onClick={onUndo}
               disabled={!canUndo}
-              className="w-12 h-12"
+              className="w-10 h-10"
             >
               <Undo className="h-5 w-5" />
             </Button>
@@ -559,7 +720,7 @@ export const SimpleToolbar = ({
               size="icon"
               onClick={onRedo}
               disabled={!canRedo}
-              className="w-12 h-12"
+              className="w-10 h-10"
             >
               <Redo className="h-5 w-5" />
             </Button>
@@ -575,7 +736,7 @@ export const SimpleToolbar = ({
             variant="ghost"
             size="icon"
             onClick={onDelete}
-            className="w-12 h-12"
+            className="w-10 h-10"
           >
             <Trash2 className="h-5 w-5" />
           </Button>
@@ -584,6 +745,11 @@ export const SimpleToolbar = ({
           <p>Ta bort markerat (Delete)</p>
         </TooltipContent>
       </Tooltip>
+
+      <Separator className="my-2 w-8" />
+
+      {/* Layer Controls */}
+      <LayerControls className="w-10 h-10" />
 
       <div className="flex-1" />
 
@@ -609,7 +775,7 @@ export const SimpleToolbar = ({
               variant="ghost"
               size="icon"
               onClick={onSave}
-              className="w-12 h-12"
+              className="w-10 h-10"
             >
               <Save className="h-5 w-5" />
             </Button>

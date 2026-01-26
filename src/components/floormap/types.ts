@@ -85,16 +85,28 @@ export type SymbolType =
   | 'tv'
   | 'closet';
 
+export interface BezierCoordinates {
+  start: { x: number; y: number };
+  control: { x: number; y: number };
+  end: { x: number; y: number };
+}
+
 export interface FloorMapShape {
   id: string; // Unique persistent ID
-  type: 'line' | 'rectangle' | 'wall' | 'circle' | 'polygon' | 'symbol' | 'measurement' | 'text' | 'triangle' | 'door' | 'opening' | 'room' | 'freehand';
-  coordinates: LineCoordinates | RectangleCoordinates | CircleCoordinates | PolygonCoordinates | SymbolCoordinates | TextCoordinates;
+  type: 'line' | 'rectangle' | 'wall' | 'circle' | 'polygon' | 'symbol' | 'measurement' | 'text' | 'triangle' | 'door' | 'opening' | 'room' | 'freehand' | 'bezier' | 'window_line' | 'door_line' | 'sliding_door_line';
+  // Door/window specific properties
+  openingDirection?: 'left' | 'right'; // For door_line - which way the door opens
+  coordinates: LineCoordinates | RectangleCoordinates | CircleCoordinates | PolygonCoordinates | SymbolCoordinates | TextCoordinates | BezierCoordinates;
   heightMM?: number; // Wall height for elevation/3D view (for walls/lines)
   thicknessMM?: number; // Wall thickness (for walls/lines)
   roomId?: string; // Database reference if this is a saved room
   planId?: string; // Reference to the floor plan this shape belongs to
   symbolType?: SymbolType; // For symbol shapes
   text?: string; // For text shapes
+  textStyle?: TextStyle; // Bold/italic for text shapes
+  fontSize?: number; // Font size for text shapes
+  textRotation?: TextRotation; // Fixed rotation angles for text (0, 90, 180, 270)
+  hasBackground?: boolean; // Background rectangle for text
   rotation?: number; // Rotation angle in degrees
   notes?: string; // Construction notes and instructions for this object
   attachedToWall?: string; // ID of wall this door/opening is attached to
@@ -105,6 +117,9 @@ export interface FloorMapShape {
   strokeColor?: string; // Stroke/border color
   strokeWidth?: number; // Stroke width in pixels
   opacity?: number; // 0-1
+
+  // Layering
+  zIndex?: number; // Z-index for layering (higher = on top)
   
   // Selection state
   selected?: boolean;
@@ -174,10 +189,28 @@ export interface SymbolCoordinates {
 export interface TextCoordinates {
   x: number;
   y: number;
+  width?: number;  // Box width for resizable text
+  height?: number; // Box height for resizable text
 }
 
+export interface TextStyle {
+  isBold?: boolean;
+  isItalic?: boolean;
+}
+
+export type TextRotation = 0 | 90 | 180 | 270;
+
+export type FontSizePreset = 'small' | 'medium' | 'large' | 'xlarge';
+
+export const FONT_SIZE_PRESETS: Record<FontSizePreset, number> = {
+  small: 12,
+  medium: 16,
+  large: 24,
+  xlarge: 36,
+};
+
 export type ViewMode = 'floor' | 'elevation' | '3d';
-export type Tool = 'select' | 'freehand' | 'wall' | 'room' | 'eraser' | 'rectangle' | 'circle' | 'triangle' | 'polygon' | 'symbol' | 'object' | 'measure' | 'text' | 'pan' | 'door' | 'opening' | 'scissors' | 'glue';
+export type Tool = 'select' | 'freehand' | 'wall' | 'room' | 'eraser' | 'rectangle' | 'circle' | 'triangle' | 'polygon' | 'symbol' | 'object' | 'measure' | 'text' | 'pan' | 'door' | 'opening' | 'scissors' | 'glue' | 'bezier' | 'window_line' | 'door_line' | 'sliding_door_line';
 export type Unit = 'mm' | 'cm' | 'm' | 'inch';
 
 export interface GridSettings {

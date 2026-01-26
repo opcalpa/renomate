@@ -55,8 +55,8 @@ const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   snapEnabled: true,
   showDimensions: true,
   showAreaLabels: true,
-  canvasWidthMeters: 30, // 30m × 30m working area (optimal for apartments/houses)
-  canvasHeightMeters: 30,
+  canvasWidthMeters: 50, // 50m × 50m working area
+  canvasHeightMeters: 50,
   canvasMarginMeters: 0, // No margin - grid covers entire canvas
 };
 
@@ -159,6 +159,12 @@ interface FloorMapStore {
   setCanvasSize: (widthMeters: number, heightMeters: number) => void;
   setCanvasMargin: (marginMeters: number) => void;
   
+  // Actions - Layering
+  bringForward: (shapeId: string) => void;
+  sendBackward: (shapeId: string) => void;
+  bringToFront: (shapeId: string) => void;
+  sendToBack: (shapeId: string) => void;
+
   // Getters
   getSelectedShape: () => FloorMapShape | null;
   getCurrentPlan: () => FloorMapPlan | null;
@@ -532,4 +538,114 @@ export const useFloorMapStore = create<FloorMapStore>((set, get) => ({
       canvasMarginMeters: marginMeters,
     },
   })),
+
+  // ============================================================================
+  // LAYERING ACTIONS (Z-Index Management)
+  // ============================================================================
+
+  bringForward: (shapeId) => set((state) => {
+    const shapeIndex = state.shapes.findIndex(s => s.id === shapeId);
+    if (shapeIndex === -1) return state;
+
+    const shape = state.shapes[shapeIndex];
+    const currentZIndex = shape.zIndex ?? 0;
+
+    // Find the next highest zIndex among all shapes
+    const higherShapes = state.shapes.filter(s => (s.zIndex ?? 0) > currentZIndex);
+    if (higherShapes.length === 0) return state; // Already at front
+
+    // Find the minimum zIndex that's higher than current
+    const nextZIndex = Math.min(...higherShapes.map(s => s.zIndex ?? 0));
+
+    // Swap z-indices
+    const newShapes = state.shapes.map(s => {
+      if (s.id === shapeId) return { ...s, zIndex: nextZIndex };
+      if ((s.zIndex ?? 0) === nextZIndex) return { ...s, zIndex: currentZIndex };
+      return s;
+    });
+
+    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(newShapes)));
+
+    return {
+      shapes: newShapes,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    };
+  }),
+
+  sendBackward: (shapeId) => set((state) => {
+    const shapeIndex = state.shapes.findIndex(s => s.id === shapeId);
+    if (shapeIndex === -1) return state;
+
+    const shape = state.shapes[shapeIndex];
+    const currentZIndex = shape.zIndex ?? 0;
+
+    // Find the next lowest zIndex among all shapes
+    const lowerShapes = state.shapes.filter(s => (s.zIndex ?? 0) < currentZIndex);
+    if (lowerShapes.length === 0) return state; // Already at back
+
+    // Find the maximum zIndex that's lower than current
+    const prevZIndex = Math.max(...lowerShapes.map(s => s.zIndex ?? 0));
+
+    // Swap z-indices
+    const newShapes = state.shapes.map(s => {
+      if (s.id === shapeId) return { ...s, zIndex: prevZIndex };
+      if ((s.zIndex ?? 0) === prevZIndex) return { ...s, zIndex: currentZIndex };
+      return s;
+    });
+
+    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(newShapes)));
+
+    return {
+      shapes: newShapes,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    };
+  }),
+
+  bringToFront: (shapeId) => set((state) => {
+    const shapeIndex = state.shapes.findIndex(s => s.id === shapeId);
+    if (shapeIndex === -1) return state;
+
+    // Find the highest zIndex
+    const maxZIndex = Math.max(...state.shapes.map(s => s.zIndex ?? 0), 0);
+
+    const newShapes = state.shapes.map(s => {
+      if (s.id === shapeId) return { ...s, zIndex: maxZIndex + 1 };
+      return s;
+    });
+
+    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(newShapes)));
+
+    return {
+      shapes: newShapes,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    };
+  }),
+
+  sendToBack: (shapeId) => set((state) => {
+    const shapeIndex = state.shapes.findIndex(s => s.id === shapeId);
+    if (shapeIndex === -1) return state;
+
+    // Find the lowest zIndex
+    const minZIndex = Math.min(...state.shapes.map(s => s.zIndex ?? 0), 0);
+
+    const newShapes = state.shapes.map(s => {
+      if (s.id === shapeId) return { ...s, zIndex: minZIndex - 1 };
+      return s;
+    });
+
+    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(newShapes)));
+
+    return {
+      shapes: newShapes,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    };
+  }),
 }));

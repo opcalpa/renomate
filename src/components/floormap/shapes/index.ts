@@ -10,9 +10,13 @@ export * from './types';
 // Complex shapes with custom handles
 export { WallShape } from './WallShape';
 export { RoomShape } from './RoomShape';
+export { BezierShape } from './BezierShape';
 
 // Basic shapes
 export { RectangleShape, CircleShape, TextShape, FreehandShape } from './BasicShapes';
 
 // Library shapes
 export { LibrarySymbolShape, ObjectLibraryShape } from './LibraryShapes';
+
+// Line-based opening shapes (window, door, sliding door)
+export { WindowLineShape, DoorLineShape, SlidingDoorLineShape } from './OpeningShapes';
