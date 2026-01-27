@@ -1,13 +1,21 @@
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !RESEND_API_KEY) {
-  throw new Error("Miljövariabler saknas i Supabase-inställningarna!");
-}
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
+// 1. Hämta variablerna först
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+// 2. Kontrollera dem sen
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !RESEND_API_KEY) {
+  console.error("Saknade variabler:", { 
+    url: !!SUPABASE_URL, 
+    role: !!SUPABASE_SERVICE_ROLE_KEY, 
+    resend: !!RESEND_API_KEY 
+  });
+  // Vi kastar inte Error här ute för då dör hela servern, 
+  // vi loggar det så vi ser det i Supabase-loggarna.
+}
 
 interface InvitationData {
   invitationId: string;
@@ -150,7 +158,7 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Renomate <onboarding@resend.dev>", // Change this after verifying your domain
+        from: "Renomate <hello@letsrenomate.com>", // Change this after verifying your domain
         to: [invitation.email],
         subject: `You're invited to ${invitation.project.name} - Renomate`,
         html: emailHtml,
