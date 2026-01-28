@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { Home } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -8,8 +7,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center mb-4">
-              <Home className="h-6 w-6 text-primary mr-2" />
-              <span className="text-xl font-semibold">Renovate</span>
+              <img src="/logo.png" alt="Renomate" className="h-8 w-auto" />
             </div>
             <p className="text-sm text-muted-foreground max-w-md">
               A mobile-first platform that helps homeowners manage renovation projects,
@@ -52,7 +50,7 @@ const Footer = () => {
 
         <div className="border-t mt-8 pt-8 text-center">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Renovate. All rights reserved.
+            © {new Date().getFullYear()} Renomate. All rights reserved.
           </p>
         </div>
       </div>

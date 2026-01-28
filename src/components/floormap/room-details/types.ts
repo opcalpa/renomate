@@ -16,6 +16,7 @@ export interface Room {
   priority?: string | null;
   links?: string | null;
   notes?: string | null;
+  pinterest_board_url?: string | null;
   floor_spec?: FloorSpec | null;
   ceiling_spec?: CeilingSpec | null;
   wall_spec?: WallSpec | null;
@@ -135,6 +136,8 @@ export interface RoomDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRoomUpdated?: () => void;
+  /** Set to true when intentionally creating a new room (not loading existing room data) */
+  isCreateMode?: boolean;
 }
 
 // Props for section components

@@ -472,587 +472,706 @@ const mm = (value: number) => value / TEMPLATE_SCALE_FACTOR;
 
 /**
  * Default architectural templates
- * These are pre-defined templates available to all users
- * ALL COORDINATES ARE IN MILLIMETERS (mm)
+ * Professional standard symbols according to Swedish building standards (SS-EN ISO 7518)
+ * Simple, clear representations suitable for 1:50 and 1:100 scale drawings
+ * ALL COORDINATES ARE IN CANVAS UNITS (use mm() helper for real measurements)
  * Centered around origin (0,0) for easy placement
  */
 export const DEFAULT_TEMPLATES: Omit<Template, 'id' | 'user_id' | 'created_at'>[] = [
   // ============================================================================
-  // BATHROOM TEMPLATES
+  // SANITET / BATHROOM (Standard symbols)
   // ============================================================================
 
-  // WC / TOALETT - 400mm × 600mm
+  // WC - Standard symbol: oval bowl + rectangular tank
   {
-    name: 'WC / Toalett',
-    description: 'WC-stol med cistern och skål',
+    name: 'WC',
+    description: 'Toalettstol (380×700mm)',
     category: 'bathroom',
-    tags: ['wc', 'toalett', 'badrum', 'sanitet'],
+    tags: ['wc', 'toalett', 'sanitet'],
     shapes: [
-      // Cistern (rektangel) - 200mm × 150mm, centrerad
+      // Tank
       {
-        id: 'wc-cistern',
+        id: 'wc-tank',
         type: 'rectangle',
-        coordinates: { left: mm(-100), top: mm(-75), width: mm(200), height: mm(150) },
-        strokeColor: '#333333',
+        coordinates: { left: mm(-190), top: mm(-350), width: mm(380), height: mm(180) },
+        strokeColor: '#1f2937',
         strokeWidth: 2,
         color: 'transparent',
-        name: 'Cistern',
       } as FloorMapShape,
-      // Skål (cirkel) - 150mm radie, placerad framför cistern
+      // Bowl (oval shape approximated with rectangle + semicircle feel)
       {
         id: 'wc-bowl',
-        type: 'circle',
-        coordinates: { cx: 0, cy: mm(75), radius: mm(150) },
-        strokeColor: '#333333',
+        type: 'rectangle',
+        coordinates: { left: mm(-175), top: mm(-170), width: mm(350), height: mm(520) },
+        strokeColor: '#1f2937',
         strokeWidth: 2,
         color: 'transparent',
-        name: 'Skål',
       } as FloorMapShape,
     ],
-    bounds: { width: mm(300), height: mm(300), minX: mm(-150), minY: mm(-75), maxX: mm(150), maxY: mm(225) },
+    bounds: { width: mm(380), height: mm(700), minX: mm(-190), minY: mm(-350), maxX: mm(190), maxY: mm(350) },
   },
 
-  // HANDFAT - 600mm × 450mm
+  // Handfat - Standard symbol
   {
     name: 'Handfat',
-    description: 'Handfat med blandare och underskåp',
+    description: 'Tvättställ (500×400mm)',
     category: 'bathroom',
-    tags: ['handfat', 'laval', 'badrum', 'sanitet'],
+    tags: ['handfat', 'tvättställ', 'sanitet'],
     shapes: [
-      // Underskåp (rektangel) - 600mm bred × 200mm hög
       {
-        id: 'sink-cabinet',
+        id: 'sink-body',
         type: 'rectangle',
-        coordinates: { left: mm(-300), top: mm(50), width: mm(600), height: mm(200) },
-        strokeColor: '#333333',
+        coordinates: { left: mm(-250), top: mm(-200), width: mm(500), height: mm(400) },
+        strokeColor: '#1f2937',
         strokeWidth: 2,
         color: 'transparent',
-        name: 'Underskåp',
-      } as FloorMapShape,
-      // Handfatsskål (cirkel) - 150mm radie
-      {
-        id: 'sink-bowl',
-        type: 'circle',
-        coordinates: { cx: 0, cy: mm(-50), radius: mm(150) },
-        strokeColor: '#333333',
-        strokeWidth: 2,
-        color: 'transparent',
-        name: 'Handfatsskål',
-      } as FloorMapShape,
-      // Blandare (liten cirkel) - 20mm radie
-      {
-        id: 'sink-faucet',
-        type: 'circle',
-        coordinates: { cx: 0, cy: mm(-150), radius: mm(20) },
-        strokeColor: '#666666',
-        strokeWidth: 1,
-        color: 'transparent',
-        name: 'Blandare',
       } as FloorMapShape,
     ],
-    bounds: { width: mm(600), height: mm(400), minX: mm(-300), minY: mm(-170), maxX: mm(300), maxY: mm(250) },
+    bounds: { width: mm(500), height: mm(400), minX: mm(-250), minY: mm(-200), maxX: mm(250), maxY: mm(200) },
   },
 
-  // DUSCHHÖRNA - 900mm × 900mm
+  // Dusch - Standard symbol med golvbrunn
   {
-    name: 'Duschhörna',
-    description: 'Kvadratisk duschhörna med glasdörrar',
+    name: 'Dusch 900×900',
+    description: 'Duschutrymme med brunn',
     category: 'bathroom',
-    tags: ['dusch', 'hörna', 'badrum', 'glas'],
+    tags: ['dusch', 'sanitet'],
     shapes: [
-      // Duschväggar (fyrkant) - 900mm × 900mm
+      // Duschyta
       {
-        id: 'shower-wall-top',
-        type: 'wall',
-        coordinates: { x1: mm(-450), y1: mm(-450), x2: mm(450), y2: mm(-450) },
-        strokeColor: '#333333',
-        strokeWidth: 3,
-        color: 'transparent',
-        name: 'Övre duschvägg',
-      } as FloorMapShape,
-      {
-        id: 'shower-wall-right',
-        type: 'wall',
-        coordinates: { x1: mm(450), y1: mm(-450), x2: mm(450), y2: mm(450) },
-        strokeColor: '#333333',
-        strokeWidth: 3,
-        color: 'transparent',
-        name: 'Höger duschvägg',
-      } as FloorMapShape,
-      {
-        id: 'shower-wall-bottom',
-        type: 'wall',
-        coordinates: { x1: mm(450), y1: mm(450), x2: mm(-450), y2: mm(450) },
-        strokeColor: '#333333',
-        strokeWidth: 3,
-        color: 'transparent',
-        name: 'Nedre duschvägg',
-      } as FloorMapShape,
-      // Glasdörr (streckad linje) - 800mm öppning
-      {
-        id: 'shower-glass-door',
-        type: 'wall',
-        coordinates: { x1: mm(-400), y1: mm(-450), x2: mm(-400), y2: mm(450) },
-        strokeColor: '#999999',
+        id: 'shower-area',
+        type: 'rectangle',
+        coordinates: { left: mm(-450), top: mm(-450), width: mm(900), height: mm(900) },
+        strokeColor: '#1f2937',
         strokeWidth: 2,
         color: 'transparent',
-        name: 'Glasdörr',
+      } as FloorMapShape,
+      // Golvbrunn (diagonal)
+      {
+        id: 'shower-drain',
+        type: 'wall',
+        coordinates: { x1: mm(-150), y1: mm(-150), x2: mm(150), y2: mm(150) },
+        strokeColor: '#6b7280',
+        strokeWidth: 1,
+      } as FloorMapShape,
+      {
+        id: 'shower-drain-2',
+        type: 'wall',
+        coordinates: { x1: mm(-150), y1: mm(150), x2: mm(150), y2: mm(-150) },
+        strokeColor: '#6b7280',
+        strokeWidth: 1,
       } as FloorMapShape,
     ],
     bounds: { width: mm(900), height: mm(900), minX: mm(-450), minY: mm(-450), maxX: mm(450), maxY: mm(450) },
   },
 
-  // BADKAR - 1700mm × 750mm
+  // Badkar - Standard symbol
   {
     name: 'Badkar',
-    description: 'Standard badkar med avrinning',
+    description: 'Standard badkar (1700×700mm)',
     category: 'bathroom',
-    tags: ['badkar', 'badrum', 'avrinning'],
+    tags: ['badkar', 'sanitet'],
     shapes: [
-      // Badkarkropp (rektangel) - 1700mm × 750mm
       {
-        id: 'bathtub-body',
+        id: 'bath-body',
         type: 'rectangle',
-        coordinates: { left: mm(-850), top: mm(-375), width: mm(1700), height: mm(750) },
-        strokeColor: '#333333',
-        strokeWidth: 3,
-        color: 'transparent',
-        name: 'Badkarkropp',
-      } as FloorMapShape,
-      // Avrinningsområde (mindre rektangel) - 200mm × 100mm
-      {
-        id: 'bathtub-drain',
-        type: 'rectangle',
-        coordinates: { left: mm(-100), top: mm(-50), width: mm(200), height: mm(100) },
-        strokeColor: '#666666',
-        strokeWidth: 1,
-        color: 'transparent',
-        name: 'Avrinningsområde',
-      } as FloorMapShape,
-    ],
-    bounds: { width: mm(1700), height: mm(750), minX: mm(-850), minY: mm(-375), maxX: mm(850), maxY: mm(375) },
-  },
-
-  // ============================================================================
-  // KITCHEN TEMPLATES
-  // ============================================================================
-
-  // SPIS - 600mm × 650mm
-  {
-    name: 'Spis',
-    description: 'Kökspis med 4 plattor och ugn',
-    category: 'kitchen',
-    tags: ['spis', 'kök', 'ugn', 'plattor'],
-    shapes: [
-      // Spiskropp (rektangel) - 600mm × 650mm
-      {
-        id: 'stove-body',
-        type: 'rectangle',
-        coordinates: { left: mm(-300), top: mm(-325), width: mm(600), height: mm(650) },
-        strokeColor: '#333333',
-        strokeWidth: 3,
-        color: 'transparent',
-        name: 'Spiskropp',
-      } as FloorMapShape,
-      // Plattor (4 cirklar) - 100mm radie vardera
-      {
-        id: 'burner-1',
-        type: 'circle',
-        coordinates: { cx: mm(-150), cy: mm(-150), radius: mm(100) },
-        strokeColor: '#666666',
-        strokeWidth: 1,
-        color: 'transparent',
-        name: 'Platta 1',
-      } as FloorMapShape,
-      {
-        id: 'burner-2',
-        type: 'circle',
-        coordinates: { cx: mm(150), cy: mm(-150), radius: mm(100) },
-        strokeColor: '#666666',
-        strokeWidth: 1,
-        color: 'transparent',
-        name: 'Platta 2',
-      } as FloorMapShape,
-      {
-        id: 'burner-3',
-        type: 'circle',
-        coordinates: { cx: mm(-150), cy: mm(50), radius: mm(100) },
-        strokeColor: '#666666',
-        strokeWidth: 1,
-        color: 'transparent',
-        name: 'Platta 3',
-      } as FloorMapShape,
-      {
-        id: 'burner-4',
-        type: 'circle',
-        coordinates: { cx: mm(150), cy: mm(50), radius: mm(100) },
-        strokeColor: '#666666',
-        strokeWidth: 1,
-        color: 'transparent',
-        name: 'Platta 4',
-      } as FloorMapShape,
-      // Ugnslucka (rektangel) - 500mm × 300mm
-      {
-        id: 'oven-door',
-        type: 'rectangle',
-        coordinates: { left: mm(-250), top: mm(100), width: mm(500), height: mm(300) },
-        strokeColor: '#666666',
+        coordinates: { left: mm(-850), top: mm(-350), width: mm(1700), height: mm(700) },
+        strokeColor: '#1f2937',
         strokeWidth: 2,
         color: 'transparent',
-        name: 'Ugnslucka',
       } as FloorMapShape,
     ],
-    bounds: { width: mm(600), height: mm(650), minX: mm(-300), minY: mm(-325), maxX: mm(300), maxY: mm(325) },
+    bounds: { width: mm(1700), height: mm(700), minX: mm(-850), minY: mm(-350), maxX: mm(850), maxY: mm(350) },
   },
 
-  // DISKHO - 600mm × 600mm
+  // Tvättmaskin
   {
-    name: 'Diskho',
-    description: 'Köksdiskho med vask och blandare',
-    category: 'kitchen',
-    tags: ['diskho', 'vask', 'kök', 'blandare'],
+    name: 'Tvättmaskin',
+    description: 'Tvättmaskin (600×600mm)',
+    category: 'bathroom',
+    tags: ['tvättmaskin', 'vitvaror'],
     shapes: [
-      // Diskhoskåp (rektangel) - 600mm × 600mm
       {
-        id: 'sink-cabinet-body',
+        id: 'washer-body',
         type: 'rectangle',
         coordinates: { left: mm(-300), top: mm(-300), width: mm(600), height: mm(600) },
-        strokeColor: '#333333',
-        strokeWidth: 3,
-        color: 'transparent',
-        name: 'Diskhoskåp',
-      } as FloorMapShape,
-      // Vask (cirkel) - 200mm radie
-      {
-        id: 'kitchen-sink',
-        type: 'circle',
-        coordinates: { cx: 0, cy: mm(-100), radius: mm(200) },
-        strokeColor: '#333333',
+        strokeColor: '#1f2937',
         strokeWidth: 2,
         color: 'transparent',
-        name: 'Vask',
       } as FloorMapShape,
-      // Blandare (liten cirkel) - 15mm radie
+      // Lucka/trumma
       {
-        id: 'kitchen-faucet',
+        id: 'washer-drum',
         type: 'circle',
-        coordinates: { cx: 0, cy: mm(-250), radius: mm(15) },
-        strokeColor: '#666666',
+        coordinates: { cx: 0, cy: 0, radius: mm(180) },
+        strokeColor: '#6b7280',
         strokeWidth: 1,
         color: 'transparent',
-        name: 'Blandare',
       } as FloorMapShape,
     ],
     bounds: { width: mm(600), height: mm(600), minX: mm(-300), minY: mm(-300), maxX: mm(300), maxY: mm(300) },
   },
 
-  // KYLSKÅP - 600mm × 1800mm
+  // ============================================================================
+  // KÖK / KITCHEN
+  // ============================================================================
+
+  // Spis/Häll - Symbol med X
+  {
+    name: 'Spis 600',
+    description: 'Spis/häll (600×600mm)',
+    category: 'kitchen',
+    tags: ['spis', 'häll', 'kök'],
+    shapes: [
+      {
+        id: 'stove-body',
+        type: 'rectangle',
+        coordinates: { left: mm(-300), top: mm(-300), width: mm(600), height: mm(600) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
+        color: 'transparent',
+      } as FloorMapShape,
+      // X-markering
+      {
+        id: 'stove-x1',
+        type: 'wall',
+        coordinates: { x1: mm(-200), y1: mm(-200), x2: mm(200), y2: mm(200) },
+        strokeColor: '#6b7280',
+        strokeWidth: 1,
+      } as FloorMapShape,
+      {
+        id: 'stove-x2',
+        type: 'wall',
+        coordinates: { x1: mm(-200), y1: mm(200), x2: mm(200), y2: mm(-200) },
+        strokeColor: '#6b7280',
+        strokeWidth: 1,
+      } as FloorMapShape,
+    ],
+    bounds: { width: mm(600), height: mm(600), minX: mm(-300), minY: mm(-300), maxX: mm(300), maxY: mm(300) },
+  },
+
+  // Diskho
+  {
+    name: 'Diskho',
+    description: 'Diskho enkel (600×500mm)',
+    category: 'kitchen',
+    tags: ['diskho', 'vask', 'kök'],
+    shapes: [
+      {
+        id: 'sink-cabinet',
+        type: 'rectangle',
+        coordinates: { left: mm(-300), top: mm(-250), width: mm(600), height: mm(500) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
+        color: 'transparent',
+      } as FloorMapShape,
+      // Hoöppning
+      {
+        id: 'sink-bowl',
+        type: 'rectangle',
+        coordinates: { left: mm(-200), top: mm(-150), width: mm(400), height: mm(300) },
+        strokeColor: '#6b7280',
+        strokeWidth: 1,
+        color: 'transparent',
+      } as FloorMapShape,
+    ],
+    bounds: { width: mm(600), height: mm(500), minX: mm(-300), minY: mm(-250), maxX: mm(300), maxY: mm(250) },
+  },
+
+  // Kyl/Frys
   {
     name: 'Kyl/Frys',
-    description: 'Kombinerat kylskåp och frys',
+    description: 'Kombinerad kyl/frys (600×600mm)',
     category: 'kitchen',
-    tags: ['kylskåp', 'frys', 'kök', 'kyl'],
+    tags: ['kyl', 'frys', 'kök', 'vitvaror'],
     shapes: [
-      // Kylskåpskropp (rektangel) - 600mm × 1800mm
       {
         id: 'fridge-body',
         type: 'rectangle',
-        coordinates: { left: mm(-300), top: mm(-900), width: mm(600), height: mm(1800) },
-        strokeColor: '#333333',
-        strokeWidth: 3,
-        color: 'transparent',
-        name: 'Kylskåpskropp',
-      } as FloorMapShape,
-      // Dörren (rektangel) - 550mm × 1700mm
-      {
-        id: 'fridge-door',
-        type: 'rectangle',
-        coordinates: { left: mm(-275), top: mm(-875), width: mm(550), height: mm(1700) },
-        strokeColor: '#666666',
+        coordinates: { left: mm(-300), top: mm(-300), width: mm(600), height: mm(600) },
+        strokeColor: '#1f2937',
         strokeWidth: 2,
         color: 'transparent',
-        name: 'Kylskåpsdörr',
       } as FloorMapShape,
-      // Frysdel (liten rektangel upptill) - 500mm × 300mm
+      // Diagonal (standard kyl-symbol)
       {
-        id: 'freezer-section',
-        type: 'rectangle',
-        coordinates: { left: mm(-250), top: mm(-850), width: mm(500), height: mm(300) },
-        strokeColor: '#999999',
+        id: 'fridge-diag',
+        type: 'wall',
+        coordinates: { x1: mm(-300), y1: mm(-300), x2: mm(300), y2: mm(300) },
+        strokeColor: '#6b7280',
         strokeWidth: 1,
-        color: 'transparent',
-        name: 'Frysdel',
       } as FloorMapShape,
     ],
-    bounds: { width: mm(600), height: mm(1800), minX: mm(-300), minY: mm(-900), maxX: mm(300), maxY: mm(900) },
+    bounds: { width: mm(600), height: mm(600), minX: mm(-300), minY: mm(-300), maxX: mm(300), maxY: mm(300) },
   },
 
-  // ============================================================================
-  // BEDROOM TEMPLATES
-  // ============================================================================
-
-  // SÄNG 180cm - 1800mm × 2000mm
+  // Diskmaskin
   {
-    name: 'Säng 180cm',
-    description: 'Dubbelbädd 180cm bred med huvudända',
-    category: 'bedroom',
-    tags: ['säng', 'dubbelbädd', '180cm', 'sovrum'],
+    name: 'Diskmaskin',
+    description: 'Diskmaskin (600×600mm)',
+    category: 'kitchen',
+    tags: ['diskmaskin', 'kök', 'vitvaror'],
     shapes: [
-      // Sängram (rektangel) - 1800mm × 2000mm
       {
-        id: 'bed-frame',
+        id: 'dishwasher-body',
         type: 'rectangle',
-        coordinates: { left: mm(-900), top: mm(-1000), width: mm(1800), height: mm(2000) },
-        strokeColor: '#333333',
-        strokeWidth: 3,
+        coordinates: { left: mm(-300), top: mm(-300), width: mm(600), height: mm(600) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
         color: 'transparent',
-        name: 'Sängram',
       } as FloorMapShape,
-      // Madrass (mindre rektangel) - 1750mm × 1950mm
+      // Horisontell linje (lucka)
       {
-        id: 'bed-mattress',
-        type: 'rectangle',
-        coordinates: { left: mm(-875), top: mm(-975), width: mm(1750), height: mm(1950) },
-        strokeColor: '#666666',
+        id: 'dishwasher-door',
+        type: 'wall',
+        coordinates: { x1: mm(-250), y1: mm(0), x2: mm(250), y2: mm(0) },
+        strokeColor: '#6b7280',
         strokeWidth: 1,
-        color: 'transparent',
-        name: 'Madrass',
-      } as FloorMapShape,
-      // Huvudända (tjock linje) - 1800mm bred
-      {
-        id: 'bed-headboard',
-        type: 'wall',
-        coordinates: { x1: mm(-900), y1: mm(-1000), x2: mm(900), y2: mm(-1000) },
-        strokeColor: '#333333',
-        strokeWidth: 6,
-        color: 'transparent',
-        name: 'Huvudända',
       } as FloorMapShape,
     ],
-    bounds: { width: mm(1800), height: mm(2000), minX: mm(-900), minY: mm(-1000), maxX: mm(900), maxY: mm(1000) },
+    bounds: { width: mm(600), height: mm(600), minX: mm(-300), minY: mm(-300), maxX: mm(300), maxY: mm(300) },
   },
 
   // ============================================================================
-  // LIVING ROOM TEMPLATES
+  // DÖRRAR / DOORS
   // ============================================================================
 
-  // SOFFA 3-SITS - 2400mm × 900mm
+  // Enkeldörr 9M (900mm)
   {
-    name: 'Soffa 3-sits',
-    description: '3-sits soffa för vardagsrum',
-    category: 'livingroom',
-    tags: ['soffa', '3-sits', 'vardagsrum', 'möbel'],
+    name: 'Dörr 9M',
+    description: 'Enkeldörr 900mm med slagbåge',
+    category: 'doors_windows',
+    tags: ['dörr', 'enkeldörr', '9M', '900mm'],
     shapes: [
-      // Soffkropp (rektangel) - 2400mm × 900mm
+      // Dörrblad
       {
-        id: 'sofa-body',
-        type: 'rectangle',
-        coordinates: { left: mm(-1200), top: mm(-450), width: mm(2400), height: mm(900) },
-        strokeColor: '#333333',
+        id: 'door-leaf',
+        type: 'wall',
+        coordinates: { x1: 0, y1: 0, x2: mm(900), y2: 0 },
+        strokeColor: '#1f2937',
         strokeWidth: 3,
-        color: 'transparent',
-        name: 'Soffkropp',
       } as FloorMapShape,
-      // Ryggstöd (linje upptill) - 2400mm bred
+      // Slagbåge (kvartsirkel)
       {
-        id: 'sofa-back',
-        type: 'wall',
-        coordinates: { x1: mm(-1200), y1: mm(-450), x2: mm(1200), y2: mm(-450) },
-        strokeColor: '#333333',
-        strokeWidth: 4,
-        color: 'transparent',
-        name: 'Ryggstöd',
-      } as FloorMapShape,
-      // Armstöd (vertikala linjer) - 100mm breda
-      {
-        id: 'sofa-arm-left',
-        type: 'wall',
-        coordinates: { x1: mm(-1200), y1: mm(-450), x2: mm(-1200), y2: mm(450) },
-        strokeColor: '#333333',
-        strokeWidth: 4,
-        color: 'transparent',
-        name: 'Vänster armstöd',
-      } as FloorMapShape,
-      {
-        id: 'sofa-arm-right',
-        type: 'wall',
-        coordinates: { x1: mm(1200), y1: mm(-450), x2: mm(1200), y2: mm(450) },
-        strokeColor: '#333333',
-        strokeWidth: 4,
-        color: 'transparent',
-        name: 'Höger armstöd',
-      } as FloorMapShape,
-    ],
-    bounds: { width: mm(2400), height: mm(900), minX: mm(-1200), minY: mm(-450), maxX: mm(1200), maxY: mm(450) },
-  },
-
-  // ============================================================================
-  // ARCHITECTURE TEMPLATES
-  // ============================================================================
-
-  // INNERDÖRR 90° SLAG - 900mm × 900mm
-  {
-    name: 'Innerdörr 90° slag',
-    description: 'Innerdörr med 90-graders öppning',
-    category: 'architecture',
-    tags: ['dörr', 'innerdörr', '90-graders', 'slag'],
-    shapes: [
-      // Dörrblad (vertikal linje) - 900mm hög
-      {
-        id: 'interior-door-blade',
-        type: 'wall',
-        coordinates: { x1: 0, y1: 0, x2: 0, y2: mm(900) },
-        strokeColor: '#333333',
-        strokeWidth: 4,
-        color: 'transparent',
-        name: 'Dörrblad',
-      } as FloorMapShape,
-      // Svängbåge (90° arc) - 900mm radie
-      {
-        id: 'interior-door-arc',
+        id: 'door-swing',
         type: 'freehand',
         coordinates: {
-          points: Array.from({ length: 20 }, (_, i) => {
-            const angle = (i / 19) * (Math.PI / 2); // 90 grader
-            const radius = mm(900);
-            return {
-              x: Math.cos(angle) * radius,
-              y: Math.sin(angle) * radius,
-            };
+          points: Array.from({ length: 25 }, (_, i) => {
+            const angle = (i / 24) * (Math.PI / 2);
+            return { x: Math.cos(angle) * mm(900), y: Math.sin(angle) * mm(900) };
           }),
         },
-        strokeColor: '#666666',
+        strokeColor: '#9ca3af',
         strokeWidth: 1,
-        color: 'transparent',
-        name: 'Svängbåge',
       } as FloorMapShape,
     ],
     bounds: { width: mm(900), height: mm(900), minX: 0, minY: 0, maxX: mm(900), maxY: mm(900) },
   },
 
-  // FÖNSTER - 1200mm × 150mm
+  // Enkeldörr 8M (800mm)
   {
-    name: 'Fönster',
-    description: 'Standard fönster med karm och glas',
-    category: 'architecture',
-    tags: ['fönster', '1200mm', 'glas'],
+    name: 'Dörr 8M',
+    description: 'Enkeldörr 800mm med slagbåge',
+    category: 'doors_windows',
+    tags: ['dörr', 'enkeldörr', '8M', '800mm'],
     shapes: [
-      // Fönsterkarm (topp) - 1200mm bred
       {
-        id: 'window-frame-top',
+        id: 'door-leaf',
+        type: 'wall',
+        coordinates: { x1: 0, y1: 0, x2: mm(800), y2: 0 },
+        strokeColor: '#1f2937',
+        strokeWidth: 3,
+      } as FloorMapShape,
+      {
+        id: 'door-swing',
+        type: 'freehand',
+        coordinates: {
+          points: Array.from({ length: 25 }, (_, i) => {
+            const angle = (i / 24) * (Math.PI / 2);
+            return { x: Math.cos(angle) * mm(800), y: Math.sin(angle) * mm(800) };
+          }),
+        },
+        strokeColor: '#9ca3af',
+        strokeWidth: 1,
+      } as FloorMapShape,
+    ],
+    bounds: { width: mm(800), height: mm(800), minX: 0, minY: 0, maxX: mm(800), maxY: mm(800) },
+  },
+
+  // Skjutdörr
+  {
+    name: 'Skjutdörr',
+    description: 'Skjutdörr 900mm',
+    category: 'doors_windows',
+    tags: ['dörr', 'skjutdörr'],
+    shapes: [
+      // Skena
+      {
+        id: 'slide-track',
+        type: 'wall',
+        coordinates: { x1: 0, y1: 0, x2: mm(1800), y2: 0 },
+        strokeColor: '#9ca3af',
+        strokeWidth: 1,
+      } as FloorMapShape,
+      // Dörrblad (stängt)
+      {
+        id: 'door-closed',
+        type: 'wall',
+        coordinates: { x1: mm(900), y1: mm(-30), x2: mm(1800), y2: mm(-30) },
+        strokeColor: '#1f2937',
+        strokeWidth: 3,
+      } as FloorMapShape,
+      // Pil
+      {
+        id: 'arrow',
+        type: 'wall',
+        coordinates: { x1: mm(900), y1: mm(30), x2: mm(450), y2: mm(30) },
+        strokeColor: '#6b7280',
+        strokeWidth: 1,
+      } as FloorMapShape,
+    ],
+    bounds: { width: mm(1800), height: mm(100), minX: 0, minY: mm(-50), maxX: mm(1800), maxY: mm(50) },
+  },
+
+  // ============================================================================
+  // FÖNSTER / WINDOWS
+  // ============================================================================
+
+  // Fönster 12M
+  {
+    name: 'Fönster 12M',
+    description: 'Fönster 1200mm',
+    category: 'doors_windows',
+    tags: ['fönster', '12M', '1200mm'],
+    shapes: [
+      // Ytterram
+      {
+        id: 'frame-top',
         type: 'wall',
         coordinates: { x1: mm(-600), y1: mm(-75), x2: mm(600), y2: mm(-75) },
-        strokeColor: '#333333',
-        strokeWidth: 3,
-        color: 'transparent',
-        name: 'Övre karm',
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
       } as FloorMapShape,
-      // Fönsterkarm (botten) - 1200mm bred
       {
-        id: 'window-frame-bottom',
+        id: 'frame-bottom',
         type: 'wall',
         coordinates: { x1: mm(-600), y1: mm(75), x2: mm(600), y2: mm(75) },
-        strokeColor: '#333333',
-        strokeWidth: 3,
-        color: 'transparent',
-        name: 'Nedre karm',
-      } as FloorMapShape,
-      // Mittpost (vertikal) - delar fönstret i två
-      {
-        id: 'window-muntin',
-        type: 'wall',
-        coordinates: { x1: 0, y1: mm(-75), x2: 0, y2: mm(75) },
-        strokeColor: '#666666',
+        strokeColor: '#1f2937',
         strokeWidth: 2,
-        color: 'transparent',
-        name: 'Mittpost',
+      } as FloorMapShape,
+      // Glaslinje (mitten)
+      {
+        id: 'glass',
+        type: 'wall',
+        coordinates: { x1: mm(-600), y1: 0, x2: mm(600), y2: 0 },
+        strokeColor: '#6b7280',
+        strokeWidth: 1,
       } as FloorMapShape,
     ],
     bounds: { width: mm(1200), height: mm(150), minX: mm(-600), minY: mm(-75), maxX: mm(600), maxY: mm(75) },
   },
 
-  // ============================================================================
-  // ELECTRICAL TEMPLATES
-  // ============================================================================
-
-  // ELUTTAG - 70mm × 120mm
+  // Fönster 10M
   {
-    name: 'Eluttag',
-    description: 'Vägguttag för elektricitet',
-    category: 'electrical',
-    tags: ['eluttag', 'uttag', 'elektricitet', 'vägg'],
+    name: 'Fönster 10M',
+    description: 'Fönster 1000mm',
+    category: 'doors_windows',
+    tags: ['fönster', '10M', '1000mm'],
     shapes: [
-      // Uttagslåda (rektangel) - 70mm × 120mm
       {
-        id: 'outlet-box',
-        type: 'rectangle',
-        coordinates: { left: mm(-35), top: mm(-60), width: mm(70), height: mm(120) },
-        strokeColor: '#333333',
+        id: 'frame-top',
+        type: 'wall',
+        coordinates: { x1: mm(-500), y1: mm(-75), x2: mm(500), y2: mm(-75) },
+        strokeColor: '#1f2937',
         strokeWidth: 2,
-        color: 'transparent',
-        name: 'Uttagslåda',
-      } as FloorMapShape,
-      // Uttagsöppningar (två små rektanglar)
-      {
-        id: 'outlet-hole-1',
-        type: 'rectangle',
-        coordinates: { left: mm(-15), top: mm(-40), width: mm(30), height: mm(15) },
-        strokeColor: '#666666',
-        strokeWidth: 1,
-        color: 'transparent',
-        name: 'Uttagsöppning 1',
       } as FloorMapShape,
       {
-        id: 'outlet-hole-2',
-        type: 'rectangle',
-        coordinates: { left: mm(-15), top: mm(5), width: mm(30), height: mm(15) },
-        strokeColor: '#666666',
+        id: 'frame-bottom',
+        type: 'wall',
+        coordinates: { x1: mm(-500), y1: mm(75), x2: mm(500), y2: mm(75) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
+      } as FloorMapShape,
+      {
+        id: 'glass',
+        type: 'wall',
+        coordinates: { x1: mm(-500), y1: 0, x2: mm(500), y2: 0 },
+        strokeColor: '#6b7280',
         strokeWidth: 1,
-        color: 'transparent',
-        name: 'Uttagsöppning 2',
       } as FloorMapShape,
     ],
-    bounds: { width: mm(70), height: mm(120), minX: mm(-35), minY: mm(-60), maxX: mm(35), maxY: mm(60) },
+    bounds: { width: mm(1000), height: mm(150), minX: mm(-500), minY: mm(-75), maxX: mm(500), maxY: mm(75) },
   },
 
-  // STRÖMBRYTARE - 70mm × 120mm
+  // ============================================================================
+  // MÖBLER / FURNITURE
+  // ============================================================================
+
+  // Säng 180
   {
-    name: 'Strömbrytare',
-    description: 'Väggmonterad strömbrytare',
-    category: 'electrical',
-    tags: ['strömbrytare', 'brytare', 'elektricitet', 'vägg'],
+    name: 'Säng 180',
+    description: 'Dubbelsäng 1800×2000mm',
+    category: 'furniture',
+    tags: ['säng', 'sovrum', '180'],
     shapes: [
-      // Brytarkropp (rektangel) - 70mm × 120mm
       {
-        id: 'switch-box',
+        id: 'bed-frame',
         type: 'rectangle',
-        coordinates: { left: mm(-35), top: mm(-60), width: mm(70), height: mm(120) },
-        strokeColor: '#333333',
+        coordinates: { left: mm(-900), top: mm(-1000), width: mm(1800), height: mm(2000) },
+        strokeColor: '#1f2937',
         strokeWidth: 2,
         color: 'transparent',
-        name: 'Brytarkropp',
       } as FloorMapShape,
-      // Brytarplatta (mindre rektangel) - 60mm × 110mm
+      // Huvudgavel
       {
-        id: 'switch-plate',
-        type: 'rectangle',
-        coordinates: { left: mm(-30), top: mm(-55), width: mm(60), height: mm(110) },
-        strokeColor: '#666666',
-        strokeWidth: 1,
-        color: 'transparent',
-        name: 'Brytarplatta',
-      } as FloorMapShape,
-      // Brytare (liten rektangel) - 20mm × 40mm
-      {
-        id: 'switch-toggle',
-        type: 'rectangle',
-        coordinates: { left: mm(-10), top: mm(-20), width: mm(20), height: mm(40) },
-        strokeColor: '#999999',
-        strokeWidth: 1,
-        color: 'transparent',
-        name: 'Brytare',
+        id: 'headboard',
+        type: 'wall',
+        coordinates: { x1: mm(-900), y1: mm(-1000), x2: mm(900), y2: mm(-1000) },
+        strokeColor: '#1f2937',
+        strokeWidth: 4,
       } as FloorMapShape,
     ],
-    bounds: { width: mm(70), height: mm(120), minX: mm(-35), minY: mm(-60), maxX: mm(35), maxY: mm(60) },
+    bounds: { width: mm(1800), height: mm(2000), minX: mm(-900), minY: mm(-1000), maxX: mm(900), maxY: mm(1000) },
+  },
+
+  // Säng 140
+  {
+    name: 'Säng 140',
+    description: 'Enkelsäng 1400×2000mm',
+    category: 'furniture',
+    tags: ['säng', 'sovrum', '140'],
+    shapes: [
+      {
+        id: 'bed-frame',
+        type: 'rectangle',
+        coordinates: { left: mm(-700), top: mm(-1000), width: mm(1400), height: mm(2000) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
+        color: 'transparent',
+      } as FloorMapShape,
+      {
+        id: 'headboard',
+        type: 'wall',
+        coordinates: { x1: mm(-700), y1: mm(-1000), x2: mm(700), y2: mm(-1000) },
+        strokeColor: '#1f2937',
+        strokeWidth: 4,
+      } as FloorMapShape,
+    ],
+    bounds: { width: mm(1400), height: mm(2000), minX: mm(-700), minY: mm(-1000), maxX: mm(700), maxY: mm(1000) },
+  },
+
+  // Säng 90
+  {
+    name: 'Säng 90',
+    description: 'Enkelsäng 900×2000mm',
+    category: 'furniture',
+    tags: ['säng', 'sovrum', '90'],
+    shapes: [
+      {
+        id: 'bed-frame',
+        type: 'rectangle',
+        coordinates: { left: mm(-450), top: mm(-1000), width: mm(900), height: mm(2000) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
+        color: 'transparent',
+      } as FloorMapShape,
+      {
+        id: 'headboard',
+        type: 'wall',
+        coordinates: { x1: mm(-450), y1: mm(-1000), x2: mm(450), y2: mm(-1000) },
+        strokeColor: '#1f2937',
+        strokeWidth: 4,
+      } as FloorMapShape,
+    ],
+    bounds: { width: mm(900), height: mm(2000), minX: mm(-450), minY: mm(-1000), maxX: mm(450), maxY: mm(1000) },
+  },
+
+  // Soffa 3-sits
+  {
+    name: 'Soffa 3-sits',
+    description: 'Soffa 2200×900mm',
+    category: 'furniture',
+    tags: ['soffa', 'vardagsrum'],
+    shapes: [
+      // Sittdel
+      {
+        id: 'sofa-seat',
+        type: 'rectangle',
+        coordinates: { left: mm(-1100), top: mm(-300), width: mm(2200), height: mm(600) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
+        color: 'transparent',
+      } as FloorMapShape,
+      // Ryggstöd
+      {
+        id: 'sofa-back',
+        type: 'rectangle',
+        coordinates: { left: mm(-1100), top: mm(-450), width: mm(2200), height: mm(150) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
+        color: 'transparent',
+      } as FloorMapShape,
+    ],
+    bounds: { width: mm(2200), height: mm(900), minX: mm(-1100), minY: mm(-450), maxX: mm(1100), maxY: mm(450) },
+  },
+
+  // Soffa 2-sits
+  {
+    name: 'Soffa 2-sits',
+    description: 'Soffa 1600×900mm',
+    category: 'furniture',
+    tags: ['soffa', 'vardagsrum'],
+    shapes: [
+      {
+        id: 'sofa-seat',
+        type: 'rectangle',
+        coordinates: { left: mm(-800), top: mm(-300), width: mm(1600), height: mm(600) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
+        color: 'transparent',
+      } as FloorMapShape,
+      {
+        id: 'sofa-back',
+        type: 'rectangle',
+        coordinates: { left: mm(-800), top: mm(-450), width: mm(1600), height: mm(150) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
+        color: 'transparent',
+      } as FloorMapShape,
+    ],
+    bounds: { width: mm(1600), height: mm(900), minX: mm(-800), minY: mm(-450), maxX: mm(800), maxY: mm(450) },
+  },
+
+  // Matbord 6 pers
+  {
+    name: 'Matbord 6 pers',
+    description: 'Matbord 1600×900mm',
+    category: 'furniture',
+    tags: ['bord', 'matbord', 'matplats'],
+    shapes: [
+      {
+        id: 'table',
+        type: 'rectangle',
+        coordinates: { left: mm(-800), top: mm(-450), width: mm(1600), height: mm(900) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
+        color: 'transparent',
+      } as FloorMapShape,
+    ],
+    bounds: { width: mm(1600), height: mm(900), minX: mm(-800), minY: mm(-450), maxX: mm(800), maxY: mm(450) },
+  },
+
+  // Skrivbord
+  {
+    name: 'Skrivbord',
+    description: 'Skrivbord 1200×600mm',
+    category: 'furniture',
+    tags: ['skrivbord', 'arbetsplats', 'kontor'],
+    shapes: [
+      {
+        id: 'desk',
+        type: 'rectangle',
+        coordinates: { left: mm(-600), top: mm(-300), width: mm(1200), height: mm(600) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
+        color: 'transparent',
+      } as FloorMapShape,
+    ],
+    bounds: { width: mm(1200), height: mm(600), minX: mm(-600), minY: mm(-300), maxX: mm(600), maxY: mm(300) },
+  },
+
+  // Stol
+  {
+    name: 'Stol',
+    description: 'Stol 450×450mm',
+    category: 'furniture',
+    tags: ['stol', 'möbel'],
+    shapes: [
+      // Sits
+      {
+        id: 'seat',
+        type: 'rectangle',
+        coordinates: { left: mm(-225), top: mm(-100), width: mm(450), height: mm(400) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
+        color: 'transparent',
+      } as FloorMapShape,
+      // Ryggstöd
+      {
+        id: 'back',
+        type: 'wall',
+        coordinates: { x1: mm(-225), y1: mm(-125), x2: mm(225), y2: mm(-125) },
+        strokeColor: '#1f2937',
+        strokeWidth: 3,
+      } as FloorMapShape,
+    ],
+    bounds: { width: mm(450), height: mm(500), minX: mm(-225), minY: mm(-250), maxX: mm(225), maxY: mm(250) },
+  },
+
+  // Garderob 60cm djup
+  {
+    name: 'Garderob',
+    description: 'Garderob 1000×600mm',
+    category: 'furniture',
+    tags: ['garderob', 'förvaring', 'sovrum'],
+    shapes: [
+      {
+        id: 'wardrobe',
+        type: 'rectangle',
+        coordinates: { left: mm(-500), top: mm(-300), width: mm(1000), height: mm(600) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
+        color: 'transparent',
+      } as FloorMapShape,
+      // Mittlinje (dörrar)
+      {
+        id: 'doors',
+        type: 'wall',
+        coordinates: { x1: 0, y1: mm(-300), x2: 0, y2: mm(300) },
+        strokeColor: '#6b7280',
+        strokeWidth: 1,
+      } as FloorMapShape,
+    ],
+    bounds: { width: mm(1000), height: mm(600), minX: mm(-500), minY: mm(-300), maxX: mm(500), maxY: mm(300) },
+  },
+
+  // ============================================================================
+  // TRAPPOR / STAIRS
+  // ============================================================================
+
+  // Rak trappa
+  {
+    name: 'Trappa rak',
+    description: 'Rak trappa 900×2600mm (13 steg)',
+    category: 'stairs',
+    tags: ['trappa', 'rak'],
+    shapes: [
+      // Trappkontur
+      {
+        id: 'stair-outline',
+        type: 'rectangle',
+        coordinates: { left: mm(-450), top: mm(-1300), width: mm(900), height: mm(2600) },
+        strokeColor: '#1f2937',
+        strokeWidth: 2,
+        color: 'transparent',
+      } as FloorMapShape,
+      // Steglinjer (13 steg à 200mm)
+      ...Array.from({ length: 12 }, (_, i) => ({
+        id: `step-${i}`,
+        type: 'wall' as const,
+        coordinates: { x1: mm(-450), y1: mm(-1100 + i * 200), x2: mm(450), y2: mm(-1100 + i * 200) },
+        strokeColor: '#6b7280',
+        strokeWidth: 1,
+      })),
+      // Pil (upp)
+      {
+        id: 'arrow-line',
+        type: 'wall',
+        coordinates: { x1: 0, y1: mm(1000), x2: 0, y2: mm(-800) },
+        strokeColor: '#1f2937',
+        strokeWidth: 1,
+      } as FloorMapShape,
+    ],
+    bounds: { width: mm(900), height: mm(2600), minX: mm(-450), minY: mm(-1300), maxX: mm(450), maxY: mm(1300) },
   },
 ];

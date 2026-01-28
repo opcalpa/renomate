@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { Home, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -127,8 +127,7 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center mb-8">
-          <Home className="h-10 w-10 text-primary mr-3" />
-          <h1 className="text-3xl font-semibold text-foreground">Renomate</h1>
+          <img src="/logo.png" alt="Renomate" className="h-12 w-auto" />
         </div>
 
         <Card className="border-border">

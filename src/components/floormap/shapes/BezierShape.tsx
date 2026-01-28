@@ -9,6 +9,7 @@ import Konva from 'konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 import { ShapeWithViewProps } from './types';
 import { BezierCoordinates } from '../types';
+import { createUnifiedDragHandlers } from '../canvas/utils';
 
 export const BezierShape: React.FC<ShapeWithViewProps> = ({
   shape,
@@ -25,6 +26,9 @@ export const BezierShape: React.FC<ShapeWithViewProps> = ({
   const transformerRef = useRef<Konva.Transformer>(null);
   const coords = shape.coordinates as BezierCoordinates;
   const { zoom } = viewState;
+
+  // Get unified drag handlers for multi-select support
+  const dragHandlers = createUnifiedDragHandlers(shape.id);
 
   // Store ref for external access
   useEffect(() => {
@@ -191,7 +195,9 @@ export const BezierShape: React.FC<ShapeWithViewProps> = ({
           e.cancelBubble = true;
           onSelect(e);
         }}
-        onDragEnd={handleGroupDragEnd}
+        onDragStart={dragHandlers.onDragStart}
+        onDragMove={dragHandlers.onDragMove}
+        onDragEnd={dragHandlers.onDragEnd}
         onTransformEnd={handleTransformEnd}
       >
         {/* Main bezier curve path */}

@@ -20,12 +20,15 @@ import { convertImageToBlueprint } from "@/services/aiVisionService";
 import { useFloorMapStore } from "@/components/floormap/store";
 import { useNavigate } from "react-router-dom";
 import { createPlanInDB, saveShapesForPlan } from "@/components/floormap/utils/plans";
+import { supabase } from "@/lib/supabaseClient";
 
 interface AIFloorPlanImportProps {
   projectId: string;
   onImportComplete: () => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  initialImageUrl?: string;
+  initialFileName?: string;
 }
 
 interface CalibrationLine {
@@ -33,18 +36,20 @@ interface CalibrationLine {
   end: { x: number; y: number };
 }
 
-export const AIFloorPlanImport = ({ 
-  projectId, 
+export const AIFloorPlanImport = ({
+  projectId,
   onImportComplete,
   open: externalOpen,
-  onOpenChange: externalOnOpenChange 
+  onOpenChange: externalOnOpenChange,
+  initialImageUrl,
+  initialFileName
 }: AIFloorPlanImportProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
-  
+
   // Use external control if provided, otherwise use internal state
   const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
   const setIsOpen = externalOnOpenChange || setInternalOpen;
-  const [step, setStep] = useState<'upload' | 'calibrate' | 'processing' | 'complete'>('upload');
+  const [step, setStep] = useState<'upload' | 'calibrate' | 'processing' | 'complete'>(initialImageUrl ? 'calibrate' : 'upload');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState<string>('');
   const [calibrationLine, setCalibrationLine] = useState<CalibrationLine | null>(null);
@@ -62,7 +67,30 @@ export const AIFloorPlanImport = ({
   const navigate = useNavigate();
   
   // Zustand store
-  const { currentPlanId, addShape, addPlan, setCurrentPlanId, plans, setViewState } = useFloorMapStore();
+  const { currentPlanId, addPlan, setCurrentPlanId, plans, setViewState } = useFloorMapStore();
+
+  // Initialize with external image URL if provided
+  useEffect(() => {
+    if (initialImageUrl && isOpen) {
+      setImageUrl(initialImageUrl);
+      setStep('calibrate');
+    }
+  }, [initialImageUrl, isOpen]);
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setStep(initialImageUrl ? 'calibrate' : 'upload');
+      if (!initialImageUrl) {
+        setImageUrl('');
+        setSelectedFile(null);
+      }
+      setCalibrationLine(null);
+      setPixelToMmRatio(null);
+      setImageZoom(1);
+      setImageOffset({ x: 0, y: 0 });
+    }
+  }, [isOpen, initialImageUrl]);
 
   // Load image onto canvas
   useEffect(() => {
@@ -247,7 +275,7 @@ export const AIFloorPlanImport = ({
   };
 
   const handleProcessWithAI = async () => {
-    if (!pixelToMmRatio || !selectedFile) {
+    if (!pixelToMmRatio || (!selectedFile && !imageUrl)) {
       toast({
         title: "Kalibrering krävs",
         description: "Slutför kalibreringen först",
@@ -259,6 +287,19 @@ export const AIFloorPlanImport = ({
     setStep('processing');
 
     try {
+      // If we have imageUrl but no selectedFile, fetch and create a File
+      let fileToProcess = selectedFile;
+      if (!fileToProcess && imageUrl) {
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const fileName = initialFileName || 'floor-plan.png';
+        fileToProcess = new File([blob], fileName, { type: blob.type });
+      }
+
+      if (!fileToProcess) {
+        throw new Error('Ingen bild att processa');
+      }
+
       // Create a new plan for AI-imported floor plan
       const timestamp = new Date().toISOString().split('T')[0];
       const existingAIPlans = plans.filter(p => p.name.startsWith('AI Import'));
@@ -267,28 +308,24 @@ export const AIFloorPlanImport = ({
 
       // Create plan in database
       const newPlan = await createPlanInDB(projectId, planName);
-      
+
       if (!newPlan) {
         throw new Error('Kunde inte skapa nytt plan i databasen');
       }
 
-      // Add plan to store
+      // Add plan to store (but don't switch to it yet)
       addPlan(newPlan);
-      setCurrentPlanId(newPlan.id);
 
       // Call AI service
       const shapes = await convertImageToBlueprint(
-        selectedFile,
+        fileToProcess,
         pixelToMmRatio,
         newPlan.id
       );
 
-      // Add all shapes to store
-      shapes.forEach(shape => {
-        addShape(shape);
-      });
-
-      // Save shapes to database immediately
+      // Save shapes to database FIRST (before switching plan)
+      // This ensures that when setCurrentPlanId triggers the useEffect
+      // in UnifiedKonvaCanvas that loads shapes from DB, the shapes are already there.
       const saveSuccess = await saveShapesForPlan(newPlan.id, shapes);
 
       if (!saveSuccess) {
@@ -298,6 +335,46 @@ export const AIFloorPlanImport = ({
           variant: "destructive",
         });
       }
+
+      // Create rooms in the DB for all room shapes so they have roomId
+      const roomShapes = shapes.filter(s => s.type === 'room' && s.name);
+      for (const roomShape of roomShapes) {
+        const points = (roomShape.coordinates as { points: { x: number; y: number }[] })?.points || [];
+        // Calculate area using shoelace formula
+        let area = 0;
+        for (let i = 0; i < points.length; i++) {
+          const j = (i + 1) % points.length;
+          area += points[i].x * points[j].y;
+          area -= points[j].x * points[i].y;
+        }
+        area = Math.abs(area) / 2;
+        // Convert mm² to m² (coordinates are in mm)
+        const areaSqM = area / 1_000_000;
+
+        const { data: roomData, error: roomError } = await supabase
+          .from('rooms')
+          .insert({
+            project_id: projectId,
+            name: roomShape.name,
+            dimensions: { area_sqm: parseFloat(areaSqM.toFixed(2)) },
+            floor_plan_position: { points },
+          })
+          .select('id')
+          .single();
+
+        if (!roomError && roomData) {
+          // Update the shape with the DB room ID so it's linked
+          roomShape.roomId = roomData.id;
+        }
+      }
+
+      // Re-save shapes with updated roomIds
+      if (roomShapes.length > 0) {
+        await saveShapesForPlan(newPlan.id, shapes);
+      }
+
+      // NOW switch to the new plan - this triggers loadShapesForPlan in UnifiedKonvaCanvas
+      setCurrentPlanId(newPlan.id);
 
       // Calculate bounds of all shapes to center canvas
       const allCoords: { x: number; y: number }[] = [];
@@ -390,16 +467,21 @@ export const AIFloorPlanImport = ({
     }, 600);
   };
 
+  // Only show trigger button if not externally controlled
+  const showTriggerButton = externalOpen === undefined;
+
   return (
     <>
-      <Button
-        onClick={() => setIsOpen(true)}
-        variant="outline"
-        className="gap-2"
-      >
-        <Sparkles className="h-4 w-4" />
-        AI Import
-      </Button>
+      {showTriggerButton && (
+        <Button
+          onClick={() => setIsOpen(true)}
+          variant="outline"
+          className="gap-2"
+        >
+          <Sparkles className="h-4 w-4" />
+          AI Import
+        </Button>
+      )}
 
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] flex flex-col">

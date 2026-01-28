@@ -24,6 +24,7 @@ interface ComboboxFretextProps {
   searchPlaceholder?: string;
   emptyText?: string;
   className?: string;
+  id?: string;
 }
 
 export function ComboboxFretext({
@@ -34,6 +35,7 @@ export function ComboboxFretext({
   searchPlaceholder = "Sök eller skriv nytt...",
   emptyText = "Inga förslag. Tryck Enter för att använda.",
   className,
+  id,
 }: ComboboxFretextProps) {
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -62,6 +64,7 @@ export function ComboboxFretext({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id={id}
           variant="outline"
           role="combobox"
           aria-expanded={open}

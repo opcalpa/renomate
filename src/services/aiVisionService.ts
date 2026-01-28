@@ -3,6 +3,7 @@
  * Uses Supabase Edge Functions to securely process images
  */
 
+import { v4 as uuidv4 } from "uuid";
 import { FloorMapShape } from "@/components/floormap/types";
 import { supabase } from "@/lib/supabaseClient"; // Se till att denna fil skapats i src/lib/
 
@@ -19,6 +20,12 @@ export interface AIConversionResult {
     y: number;
     width: number;
     height: number;
+    rotation?: number;
+  }>;
+  fixtures: Array<{
+    x: number;
+    y: number;
+    symbolType: string;
     rotation?: number;
   }>;
   rooms: Array<{
@@ -80,7 +87,7 @@ function convertToFloorMapShapes(
   // Walls
   aiResult.walls?.forEach((wall) => {
     shapes.push({
-      id: `ai-wall-${Date.now()}-${Math.random()}`,
+      id: uuidv4(),
       planId,
       type: 'wall',
       coordinates: { x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 },
@@ -90,20 +97,59 @@ function convertToFloorMapShapes(
     });
   });
 
-  // Doors
+  // Doors — create as library symbol shapes
   aiResult.doors?.forEach((door) => {
+    const rotation = door.rotation || 0;
+    const symbolType = rotation === 90 || rotation === 270 ? 'door_swing_right' : 'door_swing_left';
     shapes.push({
-      id: `ai-door-${Date.now()}-${Math.random()}`,
+      id: uuidv4(),
       planId,
-      type: 'door',
+      type: 'freehand',
       coordinates: {
-        left: door.x - door.width / 2,
-        top: door.y - door.height / 2,
-        width: door.width,
-        height: door.height,
+        points: [
+          { x: door.x, y: door.y },
+          { x: door.x + 1, y: door.y + 1 },
+        ],
       },
-      rotation: door.rotation || 0,
-      color: '#8B4513',
+      strokeColor: '#000000',
+      color: 'transparent',
+      strokeWidth: 2,
+      name: symbolType === 'door_swing_left' ? 'Door (Left Swing)' : 'Door (Right Swing)',
+      metadata: {
+        isLibrarySymbol: true,
+        symbolType,
+        placementX: door.x,
+        placementY: door.y,
+        scale: 1,
+        rotation: rotation,
+      },
+    });
+  });
+
+  // Fixtures — architectural objects mapped to library symbols
+  aiResult.fixtures?.forEach((fixture) => {
+    shapes.push({
+      id: uuidv4(),
+      planId,
+      type: 'freehand',
+      coordinates: {
+        points: [
+          { x: fixture.x, y: fixture.y },
+          { x: fixture.x + 1, y: fixture.y + 1 },
+        ],
+      },
+      strokeColor: '#000000',
+      color: 'transparent',
+      strokeWidth: 2,
+      name: fixture.symbolType,
+      metadata: {
+        isLibrarySymbol: true,
+        symbolType: fixture.symbolType,
+        placementX: fixture.x,
+        placementY: fixture.y,
+        scale: 1,
+        rotation: fixture.rotation || 0,
+      },
     });
   });
 
@@ -115,7 +161,7 @@ function convertToFloorMapShapes(
     };
 
     shapes.push({
-      id: `ai-room-${Date.now()}-${Math.random()}`,
+      id: uuidv4(),
       planId,
       type: 'room',
       coordinates: { points: room.points },

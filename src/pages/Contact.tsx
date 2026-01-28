@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Home, ArrowLeft, Mail, MessageSquare } from "lucide-react";
+import { ArrowLeft, Mail, MessageSquare } from "lucide-react";
 import Footer from "@/components/Footer";
 
 const Contact = () => {
@@ -19,8 +19,7 @@ const Contact = () => {
       <header className="container mx-auto px-4 pt-8 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <Home className="h-8 w-8 text-primary mr-3" />
-            <span className="text-2xl font-semibold">Renovate</span>
+            <img src="/logo.png" alt="Renomate" className="h-10 w-auto" />
           </div>
           <Button variant="ghost" onClick={() => navigate("/")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -43,7 +42,7 @@ const Contact = () => {
               <Mail className="h-8 w-8 text-primary mb-4" />
               <h3 className="font-semibold mb-2">Email Us</h3>
               <p className="text-sm text-muted-foreground">
-                support@renovate.app
+                support@renomate.app
               </p>
             </div>
             <div className="bg-card p-6 rounded-lg border">

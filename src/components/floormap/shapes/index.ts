@@ -20,3 +20,6 @@ export { LibrarySymbolShape, ObjectLibraryShape } from './LibraryShapes';
 
 // Line-based opening shapes (window, door, sliding door)
 export { WindowLineShape, DoorLineShape, SlidingDoorLineShape } from './OpeningShapes';
+
+// Background image shape
+export { ImageShape } from './ImageShape';

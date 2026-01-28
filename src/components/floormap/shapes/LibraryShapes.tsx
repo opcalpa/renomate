@@ -11,6 +11,7 @@ import { useFloorMapStore } from '../store';
 import { ShapeComponentProps } from './types';
 import { getSymbolComponent, ArchSymbolType } from '../SymbolLibrary';
 import { getObjectById } from '../ObjectRenderer';
+import { createUnifiedDragHandlers } from '../canvas/utils';
 
 /**
  * LibrarySymbolShape - Renders professional architectural symbols from SymbolLibrary
@@ -18,6 +19,9 @@ import { getObjectById } from '../ObjectRenderer';
  */
 export const LibrarySymbolShape = React.memo<ShapeComponentProps>(({ shape, isSelected, onSelect, onTransform, shapeRefsMap }) => {
   const symbolRef = useRef<Konva.Group>(null);
+
+  // Get unified drag handlers for multi-select support
+  const dragHandlers = createUnifiedDragHandlers(shape.id);
 
   // Store ref in shapeRefsMap for unified multi-select drag
   useEffect(() => {
@@ -68,21 +72,9 @@ export const LibrarySymbolShape = React.memo<ShapeComponentProps>(({ shape, isSe
         e.cancelBubble = true;
         onSelect(e);
       }}
-      onDragEnd={(e) => {
-        e.cancelBubble = true;
-        const node = e.target;
-
-        // Update placement position
-        onTransform({
-          metadata: {
-            ...shape.metadata,
-            placementX: node.x(),
-            placementY: node.y(),
-          }
-        });
-
-        node.position({ x: node.x(), y: node.y() });
-      }}
+      onDragStart={dragHandlers.onDragStart}
+      onDragMove={dragHandlers.onDragMove}
+      onDragEnd={dragHandlers.onDragEnd}
       onTransformEnd={(e) => {
         e.cancelBubble = true;
         const node = e.target;
@@ -146,6 +138,9 @@ export const LibrarySymbolShape = React.memo<ShapeComponentProps>(({ shape, isSe
 export const ObjectLibraryShape = React.memo<ShapeComponentProps>(({ shape, isSelected, onSelect, onTransform, shapeRefsMap }) => {
   const objectRef = useRef<Konva.Group>(null);
 
+  // Get unified drag handlers for multi-select support
+  const dragHandlers = createUnifiedDragHandlers(shape.id);
+
   // Store ref in shapeRefsMap for unified multi-select drag
   useEffect(() => {
     if (objectRef.current && shapeRefsMap) {
@@ -198,21 +193,9 @@ export const ObjectLibraryShape = React.memo<ShapeComponentProps>(({ shape, isSe
         e.cancelBubble = true;
         onSelect(e);
       }}
-      onDragEnd={(e) => {
-        e.cancelBubble = true;
-        const node = e.target;
-
-        // Update placement position
-        onTransform({
-          metadata: {
-            ...shape.metadata,
-            placementX: node.x(),
-            placementY: node.y(),
-          }
-        });
-
-        node.position({ x: node.x(), y: node.y() });
-      }}
+      onDragStart={dragHandlers.onDragStart}
+      onDragMove={dragHandlers.onDragMove}
+      onDragEnd={dragHandlers.onDragEnd}
       onTransformEnd={(e) => {
         e.cancelBubble = true;
         const node = e.target;

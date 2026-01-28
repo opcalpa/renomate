@@ -48,10 +48,15 @@ import {
   ZoomOut,
   RotateCw,
   X,
+  Layers,
+  Sparkles,
+  Wand2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { AIFloorPlanImport } from "./AIFloorPlanImport";
+import { AIDocumentImportModal } from "./AIDocumentImportModal";
+import { isDocumentFile } from "@/services/aiDocumentService";
 
 interface ProjectFile {
   id: string;
@@ -76,9 +81,10 @@ interface ProjectFilesTabProps {
   projectId: string;
   projectName: string;
   onNavigateToFloorPlan?: () => void;
+  onUseAsBackground?: (imageUrl: string, fileName: string) => void;
 }
 
-const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan }: ProjectFilesTabProps) => {
+const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseAsBackground }: ProjectFilesTabProps) => {
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentFolder, setCurrentFolder] = useState<string>('');
@@ -92,8 +98,21 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan }: Proj
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [imageZoom, setImageZoom] = useState(100);
   const [imageRotation, setImageRotation] = useState(0);
+  const [documentImportFile, setDocumentImportFile] = useState<ProjectFile | null>(null);
+  const [showDocumentUploadSuggestion, setShowDocumentUploadSuggestion] = useState<ProjectFile | null>(null);
+  const [floorPlanImportFile, setFloorPlanImportFile] = useState<ProjectFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Helper to check if file is a document (PDF, DOC, DOCX, TXT)
+  const checkIsDocumentFile = (file: ProjectFile) => {
+    return isDocumentFile(file.name, file.type);
+  };
+
+  // Helper to check if file is an image
+  const checkIsImageFile = (file: ProjectFile) => {
+    return file.type.startsWith('image/');
+  };
 
   useEffect(() => {
     fetchFiles();
@@ -224,17 +243,32 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan }: Proj
     if (!selectedFiles || selectedFiles.length === 0) return;
 
     setUploading(true);
+    let lastUploadedDocumentFile: ProjectFile | null = null;
 
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
-        const filePath = `projects/${projectId}${currentFolder}/${Date.now()}-${file.name}`;
+        const timestamp = Date.now();
+        const filePath = `projects/${projectId}${currentFolder}/${timestamp}-${file.name}`;
 
         const { error: uploadError } = await supabase.storage
           .from('project-files')
           .upload(filePath, file);
 
         if (uploadError) throw uploadError;
+
+        // Track document files for AI suggestion
+        if (isDocumentFile(file.name, file.type)) {
+          lastUploadedDocumentFile = {
+            id: `${timestamp}-${file.name}`,
+            name: file.name,
+            path: filePath,
+            size: file.size,
+            type: file.type,
+            uploaded_at: new Date().toISOString(),
+            uploaded_by: '',
+          };
+        }
       }
 
       toast({
@@ -243,15 +277,20 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan }: Proj
       });
 
       await fetchFiles();
-      
+
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-    } catch (error: any) {
+
+      // Show AI extraction suggestion for document files
+      if (lastUploadedDocumentFile) {
+        setShowDocumentUploadSuggestion(lastUploadedDocumentFile);
+      }
+    } catch (error: unknown) {
       console.error('Error uploading files:', error);
       toast({
         title: "Uppladdningsfel",
-        description: error.message || "Kunde inte ladda upp filer",
+        description: error instanceof Error ? error.message : "Kunde inte ladda upp filer",
         variant: "destructive",
       });
     } finally {
@@ -597,8 +636,8 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan }: Proj
                             size="sm"
                             onClick={() => handlePreview(file)}
                             title={
-                              file.type.includes('pdf') 
-                                ? "Öppna i ny flik" 
+                              file.type.includes('pdf')
+                                ? "Öppna i ny flik"
                                 : file.type.startsWith('image/')
                                 ? "Förhandsgranska"
                                 : "Visa/Ladda ner"
@@ -606,6 +645,43 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan }: Proj
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          {checkIsDocumentFile(file) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDocumentImportFile(file)}
+                              title="Extrahera rum & uppgifter med AI"
+                              className="text-primary hover:text-primary"
+                            >
+                              <Sparkles className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {checkIsImageFile(file) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setFloorPlanImportFile(file)}
+                              title="Konvertera till ritning med AI"
+                              className="text-primary hover:text-primary"
+                            >
+                              <Wand2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {file.type.startsWith('image/') && onUseAsBackground && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const { data: { publicUrl } } = supabase.storage
+                                  .from('project-files')
+                                  .getPublicUrl(file.path);
+                                onUseAsBackground(publicUrl, file.name);
+                              }}
+                              title="Använd som bakgrundsbild"
+                            >
+                              <Layers className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -767,7 +843,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan }: Proj
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   {/* Zoom controls */}
                   <div className="flex items-center gap-1 border rounded-md p-1">
@@ -865,6 +941,84 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan }: Proj
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* AI Document Import Modal */}
+      <AIDocumentImportModal
+        projectId={projectId}
+        file={documentImportFile}
+        open={!!documentImportFile}
+        onOpenChange={(open) => {
+          if (!open) setDocumentImportFile(null);
+        }}
+        onImportComplete={() => {
+          toast({
+            title: "Import klar!",
+            description: "Rum och uppgifter har importerats",
+          });
+          fetchFiles();
+        }}
+      />
+
+      {/* Document Upload AI Suggestion Dialog */}
+      <AlertDialog
+        open={!!showDocumentUploadSuggestion}
+        onOpenChange={() => setShowDocumentUploadSuggestion(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Extrahera med AI?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Dokumentet "{showDocumentUploadSuggestion?.name}" har laddats upp.
+              Vill du använda AI för att automatiskt extrahera rum och uppgifter från dokumentet?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Nej tack</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (showDocumentUploadSuggestion) {
+                  setDocumentImportFile(showDocumentUploadSuggestion);
+                }
+                setShowDocumentUploadSuggestion(null);
+              }}
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Extrahera med AI
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AI Floor Plan Import from file list */}
+      {floorPlanImportFile && (
+        <AIFloorPlanImport
+          projectId={projectId}
+          open={!!floorPlanImportFile}
+          onOpenChange={(open) => {
+            if (!open) setFloorPlanImportFile(null);
+          }}
+          initialImageUrl={(() => {
+            const { data: { publicUrl } } = supabase.storage
+              .from('project-files')
+              .getPublicUrl(floorPlanImportFile.path);
+            return publicUrl;
+          })()}
+          initialFileName={floorPlanImportFile.name}
+          onImportComplete={() => {
+            toast({
+              title: "AI Import Klar!",
+              description: "Ritningen har konverterats.",
+            });
+            setFloorPlanImportFile(null);
+            if (onNavigateToFloorPlan) {
+              setTimeout(() => onNavigateToFloorPlan(), 500);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

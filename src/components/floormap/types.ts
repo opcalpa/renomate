@@ -91,9 +91,17 @@ export interface BezierCoordinates {
   end: { x: number; y: number };
 }
 
+// Image coordinates for background images
+export interface ImageCoordinates {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface FloorMapShape {
   id: string; // Unique persistent ID
-  type: 'line' | 'rectangle' | 'wall' | 'circle' | 'polygon' | 'symbol' | 'measurement' | 'text' | 'triangle' | 'door' | 'opening' | 'room' | 'freehand' | 'bezier' | 'window_line' | 'door_line' | 'sliding_door_line';
+  type: 'line' | 'rectangle' | 'wall' | 'circle' | 'polygon' | 'symbol' | 'measurement' | 'text' | 'triangle' | 'door' | 'opening' | 'room' | 'freehand' | 'bezier' | 'window_line' | 'door_line' | 'sliding_door_line' | 'image';
   // Door/window specific properties
   openingDirection?: 'left' | 'right'; // For door_line - which way the door opens
   coordinates: LineCoordinates | RectangleCoordinates | CircleCoordinates | PolygonCoordinates | SymbolCoordinates | TextCoordinates | BezierCoordinates;
@@ -111,6 +119,7 @@ export interface FloorMapShape {
   notes?: string; // Construction notes and instructions for this object
   attachedToWall?: string; // ID of wall this door/opening is attached to
   positionOnWall?: number; // Position along wall (0-1)
+  parentWallId?: string; // ID of wall this elevation shape belongs to (for elevation view objects)
   
   // Visual properties
   color?: string; // Fill color
@@ -120,20 +129,43 @@ export interface FloorMapShape {
 
   // Layering
   zIndex?: number; // Z-index for layering (higher = on top)
-  
+
+  // View mode - which canvas view this shape belongs to
+  shapeViewMode?: 'floor' | 'elevation' | 'both'; // Default: 'floor' for backward compatibility
+
   // Selection state
   selected?: boolean;
   
   // Room-specific properties
   name?: string; // Room name displayed on canvas
   area?: number; // Area in square meters (for rooms)
-  
+
+  // Image-specific properties (for background images)
+  imageUrl?: string; // Public URL from Supabase storage
+  imageOpacity?: number; // 0-1, default 0.5
+  locked?: boolean; // Prevent accidental movement
+
+  // Material properties (for walls, elevation shapes, etc.)
+  material?: string; // Material type (e.g., 'gips', 'betong', 'tra')
+  materialSpec?: string; // Material specification/details
+  treatment?: string; // Surface treatment (e.g., 'malat', 'tapetserat')
+  treatmentColor?: string; // Color/finish for treatment (e.g., NCS code)
+  manufacturer?: string; // Product manufacturer
+  productCode?: string; // Product code/article number
+
   metadata?: {
     lengthMM?: number;
     widthMM?: number;
     areaMM?: number;
     radiusMM?: number;
     perimeterMM?: number;
+    // Elevation symbol metadata
+    symbolType?: string; // Type from ElevationSymbolLibrary
+    category?: string; // Symbol category
+    typicalHeightFromFloor?: number; // Typical installation height in mm
+    materialNotes?: string; // Material/finish notes
+    // Allow additional properties
+    [key: string]: unknown;
   };
 }
 

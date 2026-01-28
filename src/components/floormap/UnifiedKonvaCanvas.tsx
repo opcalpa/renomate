@@ -38,7 +38,10 @@ import {
   WindowLineShape,
   DoorLineShape,
   SlidingDoorLineShape,
+  ImageShape,
 } from './shapes';
+import { ToolContextMenu } from './ToolContextMenu';
+import { Tool } from './types';
 
 // Canvas dimensions are now dynamic - read from projectSettings
 // Default: 50m × 50m grid + 10m margin = 70m total (configurable in Canvas Settings)
@@ -47,6 +50,16 @@ import {
 const getDefaultWallThickness = () => {
   const { wallThicknessMM } = getAdminDefaults();
   return wallThicknessMM / 10; // Convert mm to pixels at scale
+};
+
+// Helper to format dimension in mm/cm/m
+const formatDim = (value: number): string => {
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(2)}m`;
+  } else if (value >= 10) {
+    return `${(value / 10).toFixed(1)}cm`;
+  }
+  return `${Math.round(value)}mm`;
 };
 
 // Helper function to find connected shapes (auto-grouping)
@@ -101,6 +114,12 @@ const findConnectedWalls = (startWallId: string, allShapes: FloorMapShape[], zoo
       points.push({ x: coords.start.x, y: coords.start.y });
       points.push({ x: coords.control.x, y: coords.control.y });
       points.push({ x: coords.end.x, y: coords.end.y });
+    } else if (shape.type === 'image') {
+      // Image corners
+      points.push({ x: coords.x, y: coords.y });
+      points.push({ x: coords.x + (coords.width || 0), y: coords.y });
+      points.push({ x: coords.x, y: coords.y + (coords.height || 0) });
+      points.push({ x: coords.x + (coords.width || 0), y: coords.y + (coords.height || 0) });
     }
 
     return points;
@@ -570,7 +589,26 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const [textRotation, setTextRotation] = useState<0 | 90 | 180 | 270>(0);
   const [textHasBackground, setTextHasBackground] = useState(false);
   const [editingTextShapeId, setEditingTextShapeId] = useState<string | null>(null); // Track which text is being edited
-  
+
+  // Context menu state (right-click)
+  const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const [recentTools, setRecentTools] = useState<Tool[]>(['wall', 'room', 'select']);
+
+  // Measurement tool state
+  const [isMeasuring, setIsMeasuring] = useState(false);
+  const [measureStart, setMeasureStart] = useState<{ x: number; y: number } | null>(null);
+  const [measureEnd, setMeasureEnd] = useState<{ x: number; y: number } | null>(null);
+
+  // Handle context menu (right-click)
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenuPos({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenuPos(null);
+  }, []);
+
   // Cleanup throttled function on unmount
   useEffect(() => {
     return () => {
@@ -582,13 +620,21 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   useEffect(() => {
     if (selectedRoomForDetail && isRoomDetailOpen) {
       const fetchRoomData = async () => {
-        const { data, error} = await supabase
+        const { data, error } = await supabase
           .from('rooms')
           .select('*')
           .eq('id', selectedRoomForDetail)
           .single();
 
-        if (data && !error) {
+        if (error) {
+          console.error('Failed to fetch room data:', error);
+          toast.error('Kunde inte ladda rumsdata');
+          setIsRoomDetailOpen(false);
+          setSelectedRoomForDetail(null);
+          return;
+        }
+
+        if (data) {
           setRoomData(data);
         }
       };
@@ -637,7 +683,25 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const setPendingObjectId = useFloorMapStore((state) => state.setPendingObjectId);
   const setPendingTemplateId = useFloorMapStore((state) => state.setPendingTemplateId);
   const setActiveTool = useFloorMapStore((state) => state.setActiveTool);
-  
+
+  // Clear measurement when tool changes
+  useEffect(() => {
+    if (activeTool !== 'measure') {
+      setMeasureStart(null);
+      setMeasureEnd(null);
+    }
+  }, [activeTool]);
+
+  // Track tool changes to update recent tools (for context menu)
+  useEffect(() => {
+    if (activeTool && activeTool !== 'select') {
+      setRecentTools(prev => {
+        const filtered = prev.filter(t => t !== activeTool);
+        return [activeTool, ...filtered].slice(0, 5);
+      });
+    }
+  }, [activeTool]);
+
   // Calculate canvas dimensions from settings (in pixels)
   // SIMPLIFIED: Canvas = Working area (no margin)
   const CANVAS_WIDTH = useMemo(() => {
@@ -648,9 +712,12 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     return projectSettings.canvasHeightMeters * 1000 * scaleSettings.pixelsPerMm;
   }, [projectSettings.canvasHeightMeters, scaleSettings.pixelsPerMm]);
   
-  // Filter shapes for current plan
+  // Filter shapes for current plan (excluding elevation-only shapes)
   const currentShapes = useMemo(
-    () => shapes.filter(shape => shape.planId === currentPlanId),
+    () => shapes.filter(shape =>
+      shape.planId === currentPlanId &&
+      shape.shapeViewMode !== 'elevation' // Exclude elevation-only shapes from floor plan view
+    ),
     [shapes, currentPlanId]
   );
 
@@ -695,6 +762,11 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         maxX = Math.max(maxX, coords.x + (coords.width || 100));
         minY = Math.min(minY, coords.y);
         maxY = Math.max(maxY, coords.y + (coords.height || 100));
+      } else if (shape.type === 'image') {
+        minX = Math.min(minX, coords.x);
+        maxX = Math.max(maxX, coords.x + (coords.width || 0));
+        minY = Math.min(minY, coords.y);
+        maxY = Math.max(maxY, coords.y + (coords.height || 0));
       }
     });
 
@@ -1209,6 +1281,13 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
                 control: { x: coords.control.x + PASTE_OFFSET, y: coords.control.y + PASTE_OFFSET },
                 end: { x: coords.end.x + PASTE_OFFSET, y: coords.end.y + PASTE_OFFSET },
               };
+            } else if (shape.type === 'image') {
+              const coords = shape.coordinates as any;
+              newShape.coordinates = {
+                ...coords,
+                x: coords.x + PASTE_OFFSET,
+                y: coords.y + PASTE_OFFSET,
+              };
             }
 
             return newShape;
@@ -1284,6 +1363,13 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
                   start: { x: coords.start.x + DUPLICATE_OFFSET, y: coords.start.y + DUPLICATE_OFFSET },
                   control: { x: coords.control.x + DUPLICATE_OFFSET, y: coords.control.y + DUPLICATE_OFFSET },
                   end: { x: coords.end.x + DUPLICATE_OFFSET, y: coords.end.y + DUPLICATE_OFFSET },
+                };
+              } else if (shape.type === 'image') {
+                const coords = shape.coordinates as any;
+                newShape.coordinates = {
+                  ...coords,
+                  x: coords.x + DUPLICATE_OFFSET,
+                  y: coords.y + DUPLICATE_OFFSET,
                 };
               }
 
@@ -1888,7 +1974,15 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       x: (pointer.x - viewState.panX) / viewState.zoom,
       y: (pointer.y - viewState.panY) / viewState.zoom,
     };
-    
+
+    // Handle measure tool
+    if (activeTool === 'measure') {
+      setIsMeasuring(true);
+      setMeasureStart(pos);
+      setMeasureEnd(pos);
+      return;
+    }
+
     // Check for template creation from toolbar
     const templateType = (window as any).__createTemplate;
     if (templateType && currentPlanId) {
@@ -1915,6 +2009,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             },
             strokeColor: '#2d3748',
             thicknessMM: adminDefaults.wallThicknessMM,
+            heightMM: adminDefaults.wallHeightMM,
           },
           // Right wall
           {
@@ -1929,6 +2024,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             },
             strokeColor: '#2d3748',
             thicknessMM: adminDefaults.wallThicknessMM,
+            heightMM: adminDefaults.wallHeightMM,
           },
           // Bottom wall
           {
@@ -1943,6 +2039,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             },
             strokeColor: '#2d3748',
             thicknessMM: adminDefaults.wallThicknessMM,
+            heightMM: adminDefaults.wallHeightMM,
           },
           // Left wall
           {
@@ -1957,9 +2054,10 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             },
             strokeColor: '#2d3748',
             thicknessMM: adminDefaults.wallThicknessMM,
+            heightMM: adminDefaults.wallHeightMM,
           },
         ];
-        
+
         walls.forEach(wall => addShape(wall));
         toast.success('Fyrkant 2x2m skapad (4 väggar)');
       } else if (templateType === 'circle2m') {
@@ -1984,6 +2082,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             coordinates: { x1, y1, x2, y2 },
             strokeColor: '#2d3748',
             thicknessMM: adminDefaults.wallThicknessMM,
+            heightMM: adminDefaults.wallHeightMM,
           });
         }
         
@@ -2013,6 +2112,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             },
             strokeColor: '#2d3748',
             thicknessMM: adminDefaults.wallThicknessMM,
+            heightMM: adminDefaults.wallHeightMM,
           },
           // Bottom-left to bottom-right
           {
@@ -2027,6 +2127,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             },
             strokeColor: '#2d3748',
             thicknessMM: adminDefaults.wallThicknessMM,
+            heightMM: adminDefaults.wallHeightMM,
           },
           // Bottom-right to top
           {
@@ -2041,6 +2142,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             },
             strokeColor: '#2d3748',
             thicknessMM: adminDefaults.wallThicknessMM,
+            heightMM: adminDefaults.wallHeightMM,
           },
         ];
         
@@ -2590,6 +2692,12 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       y: (pointer.y - viewState.panY) / viewState.zoom,
     };
 
+    // Handle measure tool movement
+    if (isMeasuring) {
+      setMeasureEnd(pos);
+      return;
+    }
+
     // Snap to grid if enabled - uses user's grid interval setting
     // Freehand tool is NEVER snapped - always free drawing
     // Line-based tools (wall, window, door, sliding door) use wall snapping
@@ -2630,6 +2738,13 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   
   // Handle mouse up
   const handleMouseUp = useCallback((e: KonvaEventObject<MouseEvent>) => {
+    // Finish measuring - keep measurement visible until tool changes
+    if (isMeasuring) {
+      setIsMeasuring(false);
+      // Don't clear measureStart/measureEnd - measurement stays visible
+      return;
+    }
+
     // Stop panning
     if (isPanning) {
       setIsPanning(false);
@@ -2917,6 +3032,16 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
               );
             }
 
+            // IMAGE - check if image rect intersects with box
+            if (shape.type === 'image' && coords.x !== undefined) {
+              const imgMinX = coords.x;
+              const imgMaxX = coords.x + (coords.width || 0);
+              const imgMinY = coords.y;
+              const imgMaxY = coords.y + (coords.height || 0);
+              return imgMinX <= boxMaxX && imgMaxX >= boxMinX &&
+                     imgMinY <= boxMaxY && imgMaxY >= boxMinY;
+            }
+
             return false;
           })
           .map(shape => shape.id);
@@ -2952,13 +3077,14 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         // Check for custom wall thickness from toolbar (e.g., outer wall)
         const customThickness = (window as any).__wallThickness;
         const wallThickness = customThickness || projectSettings.wallThicknessMM || 200;
-        
+        const wallDefaults = getAdminDefaults();
+
         // Clear custom thickness after use
         if (customThickness) {
           delete (window as any).__wallThickness;
           delete (window as any).__wallType;
         }
-        
+
         // Create wall
         newShape = {
           id: uuidv4(),
@@ -2972,6 +3098,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           },
           strokeColor: '#2d3748',
           thicknessMM: wallThickness,
+          heightMM: wallDefaults.wallHeightMM,
         };
       } else if (activeTool === 'freehand') {
         // Create freehand
@@ -3112,13 +3239,14 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
 
   // Main render
   return (
-    <div 
-      style={{ 
-        width: '100%', 
-        height: '100%', 
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
         position: 'relative',
         touchAction: 'none', // Prevent browser zoom/pan on touch
       }}
+      onContextMenu={handleContextMenu}
     >
       {/* Text Input Dialog */}
       <Dialog open={isTextDialogOpen} onOpenChange={(open) => {
@@ -3284,17 +3412,18 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       />
       
       {/* Room Detail Dialog */}
-      {/* TEMP: Restore old panels for testing */}
-      <RoomDetailDialog
-        open={isRoomDetailOpen}
-        onOpenChange={setIsRoomDetailOpen}
-        room={roomData}
-        projectId={currentProjectId}
-        onRoomUpdated={() => {
-          setRoomData(null);
-          setSelectedRoomForDetail(null);
-        }}
-      />
+      {currentProjectId && (
+        <RoomDetailDialog
+          open={isRoomDetailOpen}
+          onOpenChange={setIsRoomDetailOpen}
+          room={roomData}
+          projectId={currentProjectId}
+          onRoomUpdated={() => {
+            setRoomData(null);
+            setSelectedRoomForDetail(null);
+          }}
+        />
+      )}
 
       {/* Property Panel */}
       {/* PropertyPanel - for all shapes EXCEPT rooms (rooms use RoomDetailDialog) */}
@@ -3447,6 +3576,93 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             );
           })()}
 
+          {/* Measurement line - for ruler/measure tool */}
+          {measureStart && measureEnd && (() => {
+            const x1 = measureStart.x * viewState.zoom + viewState.panX;
+            const y1 = measureStart.y * viewState.zoom + viewState.panY;
+            const x2 = measureEnd.x * viewState.zoom + viewState.panX;
+            const y2 = measureEnd.y * viewState.zoom + viewState.panY;
+
+            const dx = measureEnd.x - measureStart.x;
+            const dy = measureEnd.y - measureStart.y;
+            // Convert pixel distance to mm using pixelsPerMm
+            const distancePixels = Math.sqrt(dx * dx + dy * dy);
+            const distanceMm = distancePixels / scaleSettings.pixelsPerMm;
+            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + y2) / 2;
+
+            // Only show if there's a meaningful distance
+            if (distancePixels < 5) return null;
+
+            return (
+              <Group listening={false}>
+                {/* Main measurement line */}
+                <Line
+                  points={[x1, y1, x2, y2]}
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  dash={[8, 4]}
+                />
+                {/* Start point */}
+                <Circle x={x1} y={y1} radius={4} fill="#ef4444" />
+                {/* End point */}
+                <Circle x={x2} y={y2} radius={4} fill="#ef4444" />
+                {/* X markers at endpoints */}
+                <Line
+                  points={[x1 - 6, y1 - 6, x1 + 6, y1 + 6]}
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                />
+                <Line
+                  points={[x1 - 6, y1 + 6, x1 + 6, y1 - 6]}
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                />
+                <Line
+                  points={[x2 - 6, y2 - 6, x2 + 6, y2 + 6]}
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                />
+                <Line
+                  points={[x2 - 6, y2 + 6, x2 + 6, y2 - 6]}
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                />
+                {/* Distance label with background */}
+                <Rect
+                  x={midX - 45}
+                  y={midY - 28}
+                  width={90}
+                  height={24}
+                  fill="white"
+                  stroke="#ef4444"
+                  strokeWidth={1}
+                  cornerRadius={4}
+                />
+                <KonvaText
+                  x={midX - 45}
+                  y={midY - 24}
+                  width={90}
+                  text={formatDim(distanceMm)}
+                  fontSize={14}
+                  fill="#ef4444"
+                  align="center"
+                  fontStyle="bold"
+                />
+                {/* Angle indicator */}
+                <KonvaText
+                  x={midX - 25}
+                  y={midY + 4}
+                  text={`${angle.toFixed(1)}°`}
+                  fontSize={10}
+                  fill="#9ca3af"
+                />
+              </Group>
+            );
+          })()}
+
           {/* Multi-selection bounding box - visual indicator for group selection */}
           {multiSelectionBounds && !isBoxSelecting && (
             <Group listening={false}>
@@ -3507,10 +3723,17 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             
             if (shape.type === 'room') {
               const handleRoomDoubleClick = () => {
-                // Open PropertyPanel on double-click (same as walls)
-                setPropertyPanelShape(shape);
-                setShowPropertyPanel(true);
-                toast.success('Rum markerat - Öppnar egenskapspanel');
+                // Open RoomDetailDialog for rooms with roomId
+                if (shape.roomId) {
+                  setShowPropertyPanel(false);
+                  setPropertyPanelShape(null);
+                  setSelectedRoomForDetail(shape.roomId);
+                  setIsRoomDetailOpen(true);
+                  toast.success('Rum markerat - Öppnar rumsdetaljer');
+                } else {
+                  // Room not saved to database yet
+                  toast.info('Rummet måste namnges och sparas först. Dubbelklicka igen efter att det har sparats.');
+                }
               };
 
               return (
@@ -3522,9 +3745,10 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
                   onDoubleClick={handleRoomDoubleClick}
                   onTransform={handleTransform}
                   shapeRefsMap={shapeRefs.current}
-                  snapEnabled={projectSettings.snapEnabled}
+                  viewState={viewState}
+                  scaleSettings={scaleSettings}
+                  projectSettings={projectSettings}
                   snapSize={100 * scaleSettings.pixelsPerMm}
-                  zoom={viewState.zoom}
                 />
               );
             }
@@ -3556,6 +3780,11 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
 
             if (shape.type === 'sliding_door_line') {
               return (<SlidingDoorLineShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} />);
+            }
+
+            // Background image shapes
+            if (shape.type === 'image') {
+              return (<ImageShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} />);
             }
 
             return null;
@@ -3593,6 +3822,32 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         gridHeight={CANVAS_HEIGHT}
         marginOffset={0}
       />
+
+      {/* Context Menu (right-click) */}
+      {contextMenuPos && (
+        <ToolContextMenu
+          x={contextMenuPos.x}
+          y={contextMenuPos.y}
+          recentTools={recentTools}
+          onSelectTool={(tool) => {
+            setActiveTool(tool);
+            closeContextMenu();
+          }}
+          onClose={closeContextMenu}
+          onOpenAIImport={() => {
+            window.dispatchEvent(new CustomEvent('openAIImport'));
+          }}
+          onOpenImageImport={() => {
+            window.dispatchEvent(new CustomEvent('openImageImport'));
+          }}
+          onOpenPinterestImport={() => {
+            window.dispatchEvent(new CustomEvent('openPinterestImport'));
+          }}
+          onOpenTemplates={() => {
+            window.dispatchEvent(new CustomEvent('openTemplateGallery'));
+          }}
+        />
+      )}
     </div>
   );
 };

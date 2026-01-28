@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Home, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Footer from "@/components/Footer";
 
 const About = () => {
@@ -11,8 +11,7 @@ const About = () => {
       <header className="container mx-auto px-4 pt-8 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <Home className="h-8 w-8 text-primary mr-3" />
-            <span className="text-2xl font-semibold">Renovate</span>
+            <img src="/logo.png" alt="Renomate" className="h-10 w-auto" />
           </div>
           <Button variant="ghost" onClick={() => navigate("/")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -23,11 +22,11 @@ const About = () => {
 
       <main className="flex-1 container mx-auto px-4 py-12">
         <div className="max-w-3xl mx-auto">
-          <h1 className="text-4xl font-bold mb-6">About Renovate</h1>
-          
+          <h1 className="text-4xl font-bold mb-6">About Renomate</h1>
+
           <div className="prose prose-lg max-w-none space-y-6 text-muted-foreground">
             <p>
-              Renovate is a comprehensive project management platform designed specifically for
+              Renomate is a comprehensive project management platform designed specifically for
               homeowners and contractors managing renovation projects.
             </p>
 
@@ -48,10 +47,10 @@ const About = () => {
               <li>Real-time updates and progress tracking</li>
             </ul>
 
-            <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">Why Choose Renovate</h2>
+            <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">Why Choose Renomate</h2>
             <p>
               Whether you're renovating a single room or managing a complete home makeover,
-              Renovate provides the structure and flexibility you need to stay organized,
+              Renomate provides the structure and flexibility you need to stay organized,
               on budget, and on schedule.
             </p>
           </div>

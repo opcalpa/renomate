@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { SimpleToolbar } from "./SimpleToolbar";
 import { UnifiedKonvaCanvas } from "./UnifiedKonvaCanvas";
+import { ElevationCanvas } from "./ElevationCanvas";
 import { RoomsList } from "./RoomsList";
 import { RoomDetailDialog } from "./RoomDetailDialog";
 import { SpacePlannerTopBar } from "./SpacePlannerTopBar";
@@ -9,7 +10,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { loadPlansFromDB, createPlanInDB } from "./utils/plans";
 import { Button } from "@/components/ui/button";
-import { Home, X } from "lucide-react";
+import { Home, X, Box } from "lucide-react";
 
 interface FloorMapEditorProps {
   projectId: string;
@@ -23,6 +24,7 @@ export const FloorMapEditor = ({ projectId, projectName, onBack }: FloorMapEdito
     plans,
     currentPlanId,
     shapes,
+    viewMode,
     setCurrentProjectId,
     setPlans,
     setCurrentPlanId,
@@ -204,26 +206,46 @@ export const FloorMapEditor = ({ projectId, projectName, onBack }: FloorMapEdito
         `
       }} />
       <div className="flex flex-1 relative pt-14"> {/* Padding for fixed TopBar */}
-        {/* Left Toolbar */}
-        <SimpleToolbar
-          projectId={projectId}
-          onSave={handleManualSave}
-          onDelete={handleDelete}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          canUndo={canUndoState}
-          canRedo={canRedoState}
-        />
-
-        {/* Main Canvas Area - UNIFIED KONVA CANVAS ONLY */}
-        <main className="flex-1 overflow-auto canvas-scroll-area relative">
-          <UnifiedKonvaCanvas 
-            onRoomCreated={() => setRoomUpdateTrigger(prev => prev + 1)}
+        {/* Left Toolbar - Only show in floor plan mode */}
+        {viewMode === 'floor' && (
+          <SimpleToolbar
+            projectId={projectId}
+            onSave={handleManualSave}
+            onDelete={handleDelete}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            canUndo={canUndoState}
+            canRedo={canRedoState}
           />
-        </main>
+        )}
 
-        {/* Rooms List Panel */}
-        {showRoomsList && (
+        {/* Main Canvas Area - Switch based on viewMode */}
+        {viewMode === 'floor' && (
+          <main className="flex-1 overflow-auto canvas-scroll-area relative">
+            <UnifiedKonvaCanvas
+              onRoomCreated={() => setRoomUpdateTrigger(prev => prev + 1)}
+            />
+          </main>
+        )}
+
+        {viewMode === 'elevation' && (
+          <main className="flex-1 overflow-hidden relative">
+            <ElevationCanvas projectId={projectId} />
+          </main>
+        )}
+
+        {viewMode === '3d' && (
+          <main className="flex-1 flex items-center justify-center bg-gray-50">
+            <div className="text-center text-muted-foreground">
+              <Box className="w-16 h-16 mx-auto mb-4 opacity-50" />
+              <p className="text-xl font-medium">3D-vy kommer snart</p>
+              <p className="text-sm mt-2">Vi arbetar på att lägga till 3D-visualisering</p>
+            </div>
+          </main>
+        )}
+
+        {/* Rooms List Panel - Only show in floor plan mode */}
+        {viewMode === 'floor' && showRoomsList && (
           <div className="absolute top-0 right-0 w-96 h-full bg-white border-l border-border shadow-xl z-40 flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
               <div className="flex items-center gap-2">
@@ -248,8 +270,8 @@ export const FloorMapEditor = ({ projectId, projectName, onBack }: FloorMapEdito
           </div>
         )}
 
-        {/* Toggle Rooms Button */}
-        {!showRoomsList && (
+        {/* Toggle Rooms Button - Only show in floor plan mode */}
+        {viewMode === 'floor' && !showRoomsList && (
           <Button
             className="absolute top-4 right-4 z-30"
             onClick={() => setShowRoomsList(true)}

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Ruler, FileText, Edit2, Palette, RotateCw, Layers, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Ruler, FileText, Edit2, Palette, RotateCw, Layers, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Image as ImageIcon } from 'lucide-react';
 import { FloorMapShape } from './types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,8 @@ import { Slider } from '@/components/ui/slider';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { useFloorMapStore } from './store';
 import { toast } from 'sonner';
+import { WallSmartDataSection } from './WallSmartDataSection';
+import { ShapePhotoSection } from './ShapePhotoSection';
 
 interface PropertyPanelProps {
   shape: FloorMapShape;
@@ -46,6 +48,30 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   const sendBackward = useFloorMapStore((state) => state.sendBackward);
   const bringToFront = useFloorMapStore((state) => state.bringToFront);
   const sendToBack = useFloorMapStore((state) => state.sendToBack);
+
+  // Get all shapes for elevation data calculation
+  const allShapes = useFloorMapStore((state) => state.shapes);
+
+  // Check if this is a wall shape
+  const isWall = shape.type === 'wall' || shape.type === 'line';
+
+  // Get elevation shapes linked to this wall
+  const elevationShapes = useMemo(() => {
+    if (!isWall) return [];
+    return allShapes.filter(s => s.parentWallId === shape.id && s.shapeViewMode === 'elevation');
+  }, [allShapes, shape.id, isWall]);
+
+  // Calculate wall dimensions for smart data
+  const wallDimensions = useMemo(() => {
+    if (!isWall) return { lengthMM: 0, heightMM: 0 };
+    const coords = shape.coordinates as { x1: number; y1: number; x2: number; y2: number };
+    const dx = coords.x2 - coords.x1;
+    const dy = coords.y2 - coords.y1;
+    const lengthPixels = Math.sqrt(dx * dx + dy * dy);
+    const lengthMM = lengthPixels / pixelsPerMm;
+    const heightMM = shape.heightMM || 2400;
+    return { lengthMM, heightMM };
+  }, [shape.coordinates, shape.heightMM, isWall, pixelsPerMm]);
 
   const getPixelsPerMeter = (pxPerMm: number) => pxPerMm * 1000;
   
@@ -483,6 +509,19 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
           </div>
         </div>
 
+        {/* Wall Smart Data Section - only for walls */}
+        {isWall && (
+          <>
+            <Separator />
+            <WallSmartDataSection
+              wall={shape}
+              elevationShapes={elevationShapes}
+              wallLengthMM={wallDimensions.lengthMM}
+              wallHeightMM={wallDimensions.heightMM}
+            />
+          </>
+        )}
+
         <Separator />
 
         {/* Visual Properties */}
@@ -682,6 +721,17 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
 
         <Separator />
 
+        {/* Photos Section */}
+        <div>
+          <ShapePhotoSection
+            shapeId={shape.id}
+            projectId={projectId}
+            compact={true}
+          />
+        </div>
+
+        <Separator />
+
         {/* Comments Section */}
         <div>
           <Label className="text-sm font-medium text-gray-700 mb-3 block">
@@ -692,7 +742,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
             projectId={projectId}
           />
         </div>
-        
+
         {/* Footer hint */}
         <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
           <p className="text-xs text-blue-700">

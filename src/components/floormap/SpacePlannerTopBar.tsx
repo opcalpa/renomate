@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Layers, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Layers, Trash2, MoreVertical, Home, User, Settings, LogOut, Globe, LayoutDashboard, CheckSquare, ShoppingCart, Users } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useFloorMapStore } from "./store";
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +12,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
@@ -43,9 +49,20 @@ interface SpacePlannerTopBarProps {
 }
 
 export const SpacePlannerTopBar = ({ projectId, projectName, onBack }: SpacePlannerTopBarProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [currentLanguage, setCurrentLanguage] = useState(i18n.language || 'sv');
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
+
+  const handleLanguageChange = (lang: string) => {
+    i18n.changeLanguage(lang);
+    setCurrentLanguage(lang);
+  };
   const { 
     viewMode, 
     setViewMode, 
@@ -154,6 +171,69 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack }: SpacePlan
 
   return (
     <header className="h-14 border-b border-border bg-card/95 backdrop-blur-md fixed top-0 left-0 right-0 z-[60] flex items-center px-4 gap-4 shadow-sm">
+      {/* Main Menu (3 dots) */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
+            <MoreVertical className="h-5 w-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-56">
+          {/* Project Navigation */}
+          <DropdownMenuLabel>{projectName || t('Project')}</DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => navigate(`/projects/${projectId}`)} className="cursor-pointer">
+            <LayoutDashboard className="mr-2 h-4 w-4" />
+            <span>{t('projectDetail.overview')}</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate(`/projects/${projectId}?tab=tasks`)} className="cursor-pointer">
+            <CheckSquare className="mr-2 h-4 w-4" />
+            <span>{t('projectDetail.tasks')}</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate(`/projects/${projectId}?tab=purchases`)} className="cursor-pointer">
+            <ShoppingCart className="mr-2 h-4 w-4" />
+            <span>Purchases</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate(`/projects/${projectId}?tab=team`)} className="cursor-pointer">
+            <Users className="mr-2 h-4 w-4" />
+            <span>Team</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+
+          {/* App Navigation */}
+          <DropdownMenuLabel>Renomate</DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => navigate("/projects")} className="cursor-pointer">
+            <Home className="mr-2 h-4 w-4" />
+            <span>{t('nav.projects')}</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer">
+            <User className="mr-2 h-4 w-4" />
+            <span>{t('nav.profile')}</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate("/admin")} className="cursor-pointer">
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Admin</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Globe className="mr-2 h-4 w-4" />
+              <span>{t('common.language')}</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuRadioGroup value={currentLanguage} onValueChange={handleLanguageChange}>
+                <DropdownMenuRadioItem value="sv">Svenska</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive">
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>{t('common.signOut')}</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       {onBack ? (
         <Button
           variant="ghost"

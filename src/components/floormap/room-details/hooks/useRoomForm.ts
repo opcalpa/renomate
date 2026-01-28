@@ -19,17 +19,19 @@ const getDarkerColor = (rgbaColor: string): string => {
 
 interface UseRoomFormOptions {
   room: Room | null;
+  projectId: string;
   onRoomUpdated?: () => void;
   onClose?: () => void;
 }
 
-export function useRoomForm({ room, onRoomUpdated, onClose }: UseRoomFormOptions) {
+export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoomFormOptions) {
+  const isNewRoom = !room;
   const [formData, setFormData] = useState<RoomFormData>(DEFAULT_FORM_VALUES);
   const [saving, setSaving] = useState(false);
 
   const { updateShape, shapes } = useFloorMapStore();
 
-  // Initialize form data from room
+  // Initialize form data from room or defaults for new room
   useEffect(() => {
     if (room) {
       setFormData({
@@ -48,6 +50,9 @@ export function useRoomForm({ room, onRoomUpdated, onClose }: UseRoomFormOptions
         electrical_spec: room.electrical_spec || {},
         heating_spec: room.heating_spec || {},
       });
+    } else {
+      // Reset to defaults for new room
+      setFormData(DEFAULT_FORM_VALUES);
     }
   }, [room]);
 
@@ -67,66 +72,95 @@ export function useRoomForm({ room, onRoomUpdated, onClose }: UseRoomFormOptions
     []
   );
 
-  // Save handler
+  // Save handler - handles both create and update
   const handleSave = useCallback(async () => {
-    if (!room || !formData.name.trim()) {
+    if (!formData.name.trim()) {
       toast.error("Rumsnamn krävs");
       return;
     }
 
     setSaving(true);
     try {
-      // Update rooms table
-      const { error: roomError } = await supabase
-        .from("rooms")
-        .update({
-          name: formData.name.trim(),
-          description: formData.description?.trim() || null,
-          color: formData.color,
-          status: formData.status,
-          ceiling_height_mm: formData.ceiling_height_mm,
-          priority: formData.priority,
-          links: formData.links?.trim() || null,
-          notes: formData.notes?.trim() || null,
-          floor_spec: formData.floor_spec,
-          ceiling_spec: formData.ceiling_spec,
-          wall_spec: formData.wall_spec,
-          joinery_spec: formData.joinery_spec,
-          electrical_spec: formData.electrical_spec,
-          heating_spec: formData.heating_spec,
-        })
-        .eq("id", room.id);
+      if (isNewRoom) {
+        // Create new room
+        const { error: createError } = await supabase
+          .from("rooms")
+          .insert({
+            project_id: projectId,
+            name: formData.name.trim(),
+            description: formData.description?.trim() || null,
+            color: formData.color,
+            status: formData.status,
+            ceiling_height_mm: formData.ceiling_height_mm,
+            priority: formData.priority,
+            links: formData.links?.trim() || null,
+            notes: formData.notes?.trim() || null,
+            floor_spec: formData.floor_spec,
+            ceiling_spec: formData.ceiling_spec,
+            wall_spec: formData.wall_spec,
+            joinery_spec: formData.joinery_spec,
+            electrical_spec: formData.electrical_spec,
+            heating_spec: formData.heating_spec,
+          });
 
-      if (roomError) throw roomError;
+        if (createError) throw createError;
 
-      // Update floor_map_shapes table (the shape on canvas)
-      await supabase
-        .from("floor_map_shapes")
-        .update({
-          color: formData.color,
-          stroke_color: getDarkerColor(formData.color),
-        })
-        .eq("room_id", room.id);
+        toast.success("Rum skapat!");
+        onRoomUpdated?.();
+        onClose?.();
+      } else {
+        // Update existing room
+        const { error: roomError } = await supabase
+          .from("rooms")
+          .update({
+            name: formData.name.trim(),
+            description: formData.description?.trim() || null,
+            color: formData.color,
+            status: formData.status,
+            ceiling_height_mm: formData.ceiling_height_mm,
+            priority: formData.priority,
+            links: formData.links?.trim() || null,
+            notes: formData.notes?.trim() || null,
+            floor_spec: formData.floor_spec,
+            ceiling_spec: formData.ceiling_spec,
+            wall_spec: formData.wall_spec,
+            joinery_spec: formData.joinery_spec,
+            electrical_spec: formData.electrical_spec,
+            heating_spec: formData.heating_spec,
+          })
+          .eq("id", room!.id);
 
-      // Update canvas state immediately
-      const roomShape = shapes.find((s) => s.roomId === room.id && s.type === "room");
-      if (roomShape) {
-        updateShape(roomShape.id, {
-          color: formData.color,
-          strokeColor: getDarkerColor(formData.color),
-          name: formData.name.trim(),
-        });
+        if (roomError) throw roomError;
+
+        // Update floor_map_shapes table (the shape on canvas)
+        await supabase
+          .from("floor_map_shapes")
+          .update({
+            color: formData.color,
+            stroke_color: getDarkerColor(formData.color),
+          })
+          .eq("room_id", room!.id);
+
+        // Update canvas state immediately
+        const roomShape = shapes.find((s) => s.roomId === room!.id && s.type === "room");
+        if (roomShape) {
+          updateShape(roomShape.id, {
+            color: formData.color,
+            strokeColor: getDarkerColor(formData.color),
+            name: formData.name.trim(),
+          });
+        }
+
+        toast.success("Rum uppdaterat!");
+        onRoomUpdated?.();
       }
-
-      toast.success("Rum uppdaterat!");
-      onRoomUpdated?.();
     } catch (error) {
-      console.error("Error updating room:", error);
-      toast.error("Kunde inte uppdatera rum");
+      console.error("Error saving room:", error);
+      toast.error(isNewRoom ? "Kunde inte skapa rum" : "Kunde inte uppdatera rum");
     } finally {
       setSaving(false);
     }
-  }, [room, formData, shapes, updateShape, onRoomUpdated]);
+  }, [room, isNewRoom, projectId, formData, shapes, updateShape, onRoomUpdated, onClose]);
 
   // Delete handler
   const handleDelete = useCallback(async () => {
@@ -162,6 +196,7 @@ export function useRoomForm({ room, onRoomUpdated, onClose }: UseRoomFormOptions
     updateFormData,
     updateSpec,
     saving,
+    isNewRoom,
     handleSave,
     handleDelete,
   };

@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Home, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Footer from "@/components/Footer";
 
 const Privacy = () => {
@@ -11,8 +11,7 @@ const Privacy = () => {
       <header className="container mx-auto px-4 pt-8 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <Home className="h-8 w-8 text-primary mr-3" />
-            <span className="text-2xl font-semibold">Renovate</span>
+            <img src="/logo.png" alt="Renomate" className="h-10 w-auto" />
           </div>
           <Button variant="ghost" onClick={() => navigate("/")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -84,7 +83,7 @@ const Privacy = () => {
             <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">9. Contact Us</h2>
             <p>
               If you have any questions about this Privacy Policy, please contact us at
-              privacy@renovate.app.
+              privacy@renomate.app.
             </p>
           </div>
         </div>

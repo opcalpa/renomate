@@ -102,6 +102,34 @@ export const WALL_TREATMENT_OPTIONS = [
   { value: "tegel", label: "Tegel" },
 ];
 
+// Wall material options (for walls and elevation objects)
+export const WALL_MATERIAL_OPTIONS = [
+  { value: "gips", label: "Gips" },
+  { value: "betong", label: "Betong" },
+  { value: "tegelsten", label: "Tegelsten" },
+  { value: "lattvaggsblock", label: "Lättväggblock" },
+  { value: "tra_regelverk", label: "Trä regelverk" },
+  { value: "stalreglar", label: "Stålreglar" },
+  { value: "mdf", label: "MDF" },
+  { value: "osb", label: "OSB" },
+  { value: "plywood", label: "Plywood" },
+  { value: "glasvagg", label: "Glasvägg" },
+];
+
+// Elevation object material options
+export const ELEVATION_OBJECT_MATERIAL_OPTIONS = [
+  { value: "tra", label: "Trä" },
+  { value: "metall", label: "Metall" },
+  { value: "glas", label: "Glas" },
+  { value: "sten", label: "Sten" },
+  { value: "keramik", label: "Keramik" },
+  { value: "plast", label: "Plast" },
+  { value: "tyg", label: "Tyg" },
+  { value: "lader", label: "Läder" },
+  { value: "gips", label: "Gips" },
+  { value: "betong", label: "Betong" },
+];
+
 // Door type options
 export const DOOR_TYPE_OPTIONS = [
   { value: "spegeldorr", label: "Spegeldörr" },

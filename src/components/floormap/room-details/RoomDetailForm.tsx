@@ -25,7 +25,7 @@ import { PhotoSection } from "./PhotoSection";
 import type { RoomFormData, Room } from "./types";
 
 interface RoomDetailFormProps {
-  room: Room;
+  room: Room | null;
   projectId: string;
   formData: RoomFormData;
   updateFormData: (updates: Partial<RoomFormData>) => void;
@@ -42,8 +42,9 @@ export function RoomDetailForm({
   updateFormData,
   updateSpec,
 }: RoomDetailFormProps) {
-  const areaSqm = room.dimensions?.area_sqm;
-  const perimeterMm = room.dimensions?.perimeter_mm;
+  const isNewRoom = !room;
+  const areaSqm = room?.dimensions?.area_sqm;
+  const perimeterMm = room?.dimensions?.perimeter_mm;
 
   return (
     <div className="space-y-4">
@@ -140,34 +141,39 @@ export function RoomDetailForm({
           </AccordionContent>
         </AccordionItem>
 
-        {/* Photos Section */}
-        <AccordionItem value="photos">
-          <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-2">
-              <ImageIcon className="h-4 w-4 text-pink-600" />
-              <span>Bilder</span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <PhotoSection roomId={room.id} />
-          </AccordionContent>
-        </AccordionItem>
+        {/* Photos Section - only for existing rooms */}
+        {!isNewRoom && (
+          <AccordionItem value="photos">
+            <AccordionTrigger className="hover:no-underline">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-4 w-4 text-pink-600" />
+                <span>Bilder</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <PhotoSection roomId={room!.id} />
+            </AccordionContent>
+          </AccordionItem>
+        )}
       </Accordion>
 
-      <Separator />
-
-      {/* Comments Section (outside accordion) */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <MessageSquare className="h-4 w-4 text-gray-600" />
-          <Label className="text-sm font-medium">Kommentarer & Diskussion</Label>
-        </div>
-        <CommentsSection
-          entityId={room.id}
-          entityType="room"
-          projectId={projectId}
-        />
-      </div>
+      {/* Comments Section - only for existing rooms */}
+      {!isNewRoom && (
+        <>
+          <Separator />
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <MessageSquare className="h-4 w-4 text-gray-600" />
+              <Label className="text-sm font-medium">Kommentarer & Diskussion</Label>
+            </div>
+            <CommentsSection
+              entityId={room!.id}
+              entityType="room"
+              projectId={projectId}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

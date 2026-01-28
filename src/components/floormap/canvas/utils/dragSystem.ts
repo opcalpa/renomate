@@ -22,6 +22,18 @@ function applyDelta(
 ): Partial<FloorMapShape> {
   const coords = shape.coordinates as Record<string, unknown>;
 
+  // Handle library symbols (freehand with metadata.isLibrarySymbol)
+  // These use metadata.placementX/Y instead of coordinates
+  if (shape.metadata?.isLibrarySymbol) {
+    return {
+      metadata: {
+        ...shape.metadata,
+        placementX: (shape.metadata.placementX || 0) + deltaX,
+        placementY: (shape.metadata.placementY || 0) + deltaY,
+      }
+    };
+  }
+
   switch (shape.type) {
     case 'wall':
     case 'line':
@@ -82,6 +94,27 @@ function applyDelta(
           ...coords,
           x: ((coords.x as number) || 0) + deltaX,
           y: ((coords.y as number) || 0) + deltaY,
+        }
+      };
+
+    case 'image':
+      return {
+        coordinates: {
+          ...coords,
+          x: (coords.x as number) + deltaX,
+          y: (coords.y as number) + deltaY,
+        }
+      };
+
+    case 'bezier':
+      const start = coords.start as { x: number; y: number };
+      const control = coords.control as { x: number; y: number };
+      const end = coords.end as { x: number; y: number };
+      return {
+        coordinates: {
+          start: { x: start.x + deltaX, y: start.y + deltaY },
+          control: { x: control.x + deltaX, y: control.y + deltaY },
+          end: { x: end.x + deltaX, y: end.y + deltaY },
         }
       };
 
@@ -158,7 +191,8 @@ export function createDragHandlers(shapeId: string) {
         const shape = shapes.find(s => s.id === id);
         if (shape) {
           const shapeUpdates = applyDelta(shape, deltaX, deltaY);
-          if (shapeUpdates.coordinates) {
+          // Check if we have any updates (coordinates or metadata)
+          if (shapeUpdates.coordinates || shapeUpdates.metadata) {
             updates.push({ id, updates: shapeUpdates });
           }
         }

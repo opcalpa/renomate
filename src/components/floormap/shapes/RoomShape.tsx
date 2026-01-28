@@ -1,7 +1,7 @@
 /**
  * RoomShape Component
  *
- * Renders room polygon shapes with editable vertices and name labels.
+ * Renders room polygon shapes with editable vertices, name labels, and edge measurements.
  */
 
 import React, { useRef, useState, useEffect } from 'react';
@@ -13,24 +13,25 @@ import { createUnifiedDragHandlers } from '../canvas/utils';
 import { toast } from 'sonner';
 
 /**
- * RoomShape - Renders a room polygon with vertex handles
+ * RoomShape - Renders a room polygon with vertex handles and edge measurements
  * PERFORMANCE: Memoized to prevent unnecessary re-renders
  */
-export const RoomShape = React.memo<RoomShapeProps & {
-  snapEnabled: boolean;
-  snapSize: number;
-  zoom: number;
-}>(({
+export const RoomShape = React.memo<RoomShapeProps>(({
   shape,
   isSelected,
   onSelect,
   onDoubleClick,
   onTransform,
   shapeRefsMap,
-  snapEnabled,
-  snapSize,
-  zoom
+  viewState,
+  scaleSettings,
+  projectSettings,
+  snapSize
 }) => {
+  const { zoom } = viewState;
+  const { pixelsPerMm } = scaleSettings;
+  const { snapEnabled, showDimensions, unit: displayUnit } = projectSettings;
+
   const groupRef = useRef<Konva.Group>(null);
 
   // Store ref in shapeRefsMap for unified multi-select drag
@@ -82,6 +83,36 @@ export const RoomShape = React.memo<RoomShapeProps & {
 
   const isDraggable = true; // Always draggable
 
+  // Format measurement according to display unit preference
+  const formatMeasurement = (lengthInMM: number, unit: 'mm' | 'cm' | 'm'): string => {
+    switch (unit) {
+      case 'mm':
+        return `${Math.round(lengthInMM)}mm`;
+      case 'cm':
+        return `${(lengthInMM / 10).toFixed(1)}cm`;
+      case 'm':
+        return `${(lengthInMM / 1000).toFixed(2)}m`;
+      default:
+        return `${Math.round(lengthInMM)}mm`;
+    }
+  };
+
+  // Calculate edge measurements
+  const getEdgeMeasurement = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const lengthPixels = Math.sqrt(dx * dx + dy * dy);
+    const lengthMM = lengthPixels / pixelsPerMm;
+    return {
+      length: lengthMM,
+      midX: (p1.x + p2.x) / 2,
+      midY: (p1.y + p2.y) / 2,
+      angle: Math.atan2(dy, dx) * 180 / Math.PI,
+      dx,
+      dy
+    };
+  };
+
   return (
     <Group
       id={`shape-${shape.id}`}
@@ -116,6 +147,48 @@ export const RoomShape = React.memo<RoomShapeProps & {
         perfectDrawEnabled={false}
         listening={true}
       />
+
+      {/* Edge measurements - show when showDimensions is enabled */}
+      {showDimensions && points.map((point: { x: number; y: number }, index: number) => {
+        const nextIndex = (index + 1) % points.length;
+        const nextPoint = points[nextIndex];
+        const edge = getEdgeMeasurement(point, nextPoint);
+
+        // Normalize angle so text is always readable (never upside down)
+        let angle = edge.angle;
+        if (angle > 90 || angle < -90) {
+          angle += 180;
+        }
+
+        // Calculate offset perpendicular to edge (outside the room)
+        const offsetDistance = 15 / zoom;
+        const normalAngle = edge.angle + 90;
+        const normalX = Math.cos(normalAngle * Math.PI / 180) * offsetDistance;
+        const normalY = Math.sin(normalAngle * Math.PI / 180) * offsetDistance;
+
+        const measurement = formatMeasurement(edge.length, displayUnit);
+
+        return (
+          <Group
+            key={`measure-${index}`}
+            x={edge.midX + normalX}
+            y={edge.midY + normalY}
+            rotation={angle}
+            listening={false}
+          >
+            <KonvaText
+              x={-30}
+              y={-6}
+              width={60}
+              text={measurement}
+              fontSize={Math.max(9, 10 / zoom)}
+              fill="#374151"
+              align="center"
+              listening={false}
+            />
+          </Group>
+        );
+      })}
 
       {/* Room name - listening=false so Group receives clicks; name is display-only */}
       {shape.name && (
@@ -278,8 +351,10 @@ export const RoomShape = React.memo<RoomShapeProps & {
   return (
     prevProps.shape.id === nextProps.shape.id &&
     prevProps.isSelected === nextProps.isSelected &&
-    prevProps.zoom === nextProps.zoom &&
-    prevProps.snapEnabled === nextProps.snapEnabled &&
+    prevProps.viewState.zoom === nextProps.viewState.zoom &&
+    prevProps.projectSettings.snapEnabled === nextProps.projectSettings.snapEnabled &&
+    prevProps.projectSettings.showDimensions === nextProps.projectSettings.showDimensions &&
+    prevProps.projectSettings.unit === nextProps.projectSettings.unit &&
     prevProps.snapSize === nextProps.snapSize &&
     coordsEqual &&
     prevProps.shape.color === nextProps.shape.color &&

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Home, CheckCircle2, Users, Calendar, ArrowRight } from "lucide-react";
+import { CheckCircle2, Users, Calendar, ArrowRight } from "lucide-react";
 import Footer from "@/components/Footer";
 
 const Index = () => {
@@ -25,8 +25,7 @@ const Index = () => {
       <header className="container mx-auto px-4 pt-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <Home className="h-8 w-8 text-primary mr-3" />
-            <span className="text-2xl font-semibold">Renovate</span>
+            <img src="/logo.png" alt="Renomate" className="h-12 w-auto" />
           </div>
           <Button variant="outline" onClick={() => navigate("/auth")}>
             Sign In

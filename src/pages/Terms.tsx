@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Home, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Footer from "@/components/Footer";
 
 const Terms = () => {
@@ -11,8 +11,7 @@ const Terms = () => {
       <header className="container mx-auto px-4 pt-8 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <Home className="h-8 w-8 text-primary mr-3" />
-            <span className="text-2xl font-semibold">Renovate</span>
+            <img src="/logo.png" alt="Renomate" className="h-10 w-auto" />
           </div>
           <Button variant="ghost" onClick={() => navigate("/")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -29,13 +28,13 @@ const Terms = () => {
           <div className="prose prose-lg max-w-none space-y-6 text-muted-foreground">
             <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">1. Acceptance of Terms</h2>
             <p>
-              By accessing and using Renovate, you accept and agree to be bound by the terms
+              By accessing and using Renomate, you accept and agree to be bound by the terms
               and provision of this agreement.
             </p>
 
             <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">2. Use License</h2>
             <p>
-              Permission is granted to temporarily use Renovate for personal, non-commercial
+              Permission is granted to temporarily use Renomate for personal, non-commercial
               renovation project management purposes. This is the grant of a license, not a
               transfer of title.
             </p>
@@ -49,13 +48,13 @@ const Terms = () => {
 
             <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">4. Privacy</h2>
             <p>
-              Your use of Renovate is also governed by our Privacy Policy. Please review our
+              Your use of Renomate is also governed by our Privacy Policy. Please review our
               Privacy Policy to understand our practices.
             </p>
 
             <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">5. Modifications</h2>
             <p>
-              Renovate reserves the right to modify or replace these Terms at any time. It is
+              Renomate reserves the right to modify or replace these Terms at any time. It is
               your responsibility to check these Terms periodically for changes.
             </p>
 
@@ -68,7 +67,7 @@ const Terms = () => {
 
             <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">7. Limitation of Liability</h2>
             <p>
-              In no event shall Renovate, nor its directors, employees, partners, agents,
+              In no event shall Renomate, nor its directors, employees, partners, agents,
               suppliers, or affiliates, be liable for any indirect, incidental, special,
               consequential or punitive damages.
             </p>
@@ -76,7 +75,7 @@ const Terms = () => {
             <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">8. Contact</h2>
             <p>
               If you have any questions about these Terms, please contact us at
-              support@renovate.app.
+              support@renomate.app.
             </p>
           </div>
         </div>

@@ -52,6 +52,7 @@ export function IdentitySection({
           <Label htmlFor="room-name">Rumsnamn *</Label>
         </div>
         <ComboboxFretext
+          id="room-name"
           suggestions={ROOM_NAME_SUGGESTIONS}
           value={formData.name}
           onChange={(value) => updateFormData({ name: value })}

@@ -28,6 +28,9 @@ import {
 import { HoverTabMenu } from "@/components/ui/HoverTabMenu";
 import { RoomsList } from "@/components/floormap/RoomsList";
 import { RoomDetailDialog } from "@/components/floormap/RoomDetailDialog";
+import { useFloorMapStore } from "@/components/floormap/store";
+import { FloorMapShape } from "@/components/floormap/types";
+import { v4 as uuidv4 } from "uuid";
 
 interface Project {
   id: string;
@@ -52,8 +55,8 @@ const ProjectDetail = () => {
     spaceplanner: [
       { label: "Floor Plan", value: "floorplan", description: "Design and plan your floor layout" },
       { label: "Rooms", value: "rooms", description: "Manage and configure rooms" },
-      { label: "Filer", value: "files", description: "Upload and manage project files" },
     ],
+    files: [],
     tasks: [
       { label: "Task List", value: "tasklist", description: "View and manage all tasks" },
       { label: "Timeline", value: "timeline", description: "Project timeline and scheduling" },
@@ -289,6 +292,42 @@ const ProjectDetail = () => {
     }
   };
 
+  // Handle using an image as canvas background
+  const handleUseAsBackground = (imageUrl: string, fileName: string) => {
+    // Get currentPlanId from store
+    const { addShape, currentPlanId } = useFloorMapStore.getState();
+
+    // Create an image shape with low zIndex to place behind other shapes
+    const imageShape: FloorMapShape = {
+      id: uuidv4(),
+      type: 'image',
+      planId: currentPlanId || undefined,
+      coordinates: {
+        x: 500, // Start position on canvas (in pixels/mm)
+        y: 500,
+        width: 0, // Will be auto-sized based on image dimensions
+        height: 0,
+      },
+      imageUrl,
+      imageOpacity: 0.5,
+      locked: false,
+      zIndex: -100, // Negative zIndex to ensure it's behind other shapes
+      name: fileName,
+    };
+
+    // Add the shape to the store
+    addShape(imageShape);
+
+    // Navigate to Floor Plan tab
+    setActiveTab('spaceplanner');
+    setActiveSubTab('floorplan');
+
+    toast({
+      title: "Bild tillagd",
+      description: `"${fileName}" har lagts till som bakgrundsbild på canvas`,
+    });
+  };
+
   // Show loading while auth or data is loading
   if (authLoading || loading) {
     return (
@@ -385,6 +424,22 @@ const ProjectDetail = () => {
                 <HoverTabMenu
                   trigger={
                     <div className={cn(
+                      "px-3 py-2 text-sm font-medium cursor-pointer transition-colors flex items-center gap-1.5",
+                      activeTab === "files" && "border-b-2 border-primary text-primary"
+                    )}>
+                      <FolderOpen className="h-4 w-4" />
+                      Filer
+                    </div>
+                  }
+                  items={menuConfigs.files}
+                  onSelect={(value) => handleMenuSelect('files', value)}
+                  onMainClick={() => handleMenuSelect('files', 'files')}
+                  activeValue={activeTab === "files" ? "files" : undefined}
+                />
+
+                <HoverTabMenu
+                  trigger={
+                    <div className={cn(
                       "px-3 py-2 text-sm font-medium cursor-pointer transition-colors",
                       activeTab === "tasks" && "border-b-2 border-primary text-primary"
                     )}>
@@ -469,15 +524,18 @@ const ProjectDetail = () => {
               )}
             </div>
           )}
-          {activeSubTab === 'files' && (
-            <ProjectFilesTab 
-              projectId={project.id} 
-              projectName={project.name}
-              onNavigateToFloorPlan={() => {
-                setActiveSubTab('floorplan');
-              }}
-            />
-          )}
+        </TabsContent>
+
+        <TabsContent value="files" className="m-0 pb-8">
+          <ProjectFilesTab
+            projectId={project.id}
+            projectName={project.name}
+            onNavigateToFloorPlan={() => {
+              setActiveTab('spaceplanner');
+              setActiveSubTab('floorplan');
+            }}
+            onUseAsBackground={handleUseAsBackground}
+          />
         </TabsContent>
 
         <TabsContent value="tasks" className="m-0 pb-8">
@@ -522,7 +580,8 @@ const ProjectDetail = () => {
         projectId={project.id}
         open={showCreateRoomDialog}
         onOpenChange={setShowCreateRoomDialog}
-        onRoomUpdated={handleRoomUpdated}
+        onRoomUpdated={handleRoomCreated}
+        isCreateMode={true}
       />
     </div>
   );

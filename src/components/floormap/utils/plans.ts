@@ -215,6 +215,24 @@ export const loadShapesForPlan = async (planId: string): Promise<FloorMapShape[]
         roomId: dbShape.room_id,
         symbolType: dbShape.shape_data?.symbolType,
         metadata: dbShape.shape_data?.metadata,
+        // Image-specific properties
+        imageUrl: dbShape.shape_data?.imageUrl,
+        imageOpacity: dbShape.shape_data?.imageOpacity,
+        locked: dbShape.shape_data?.locked,
+        zIndex: dbShape.shape_data?.zIndex,
+        // View mode property
+        shapeViewMode: dbShape.shape_data?.shapeViewMode,
+        // Parent wall reference for elevation shapes
+        parentWallId: dbShape.shape_data?.parentWallId,
+        // Notes
+        notes: dbShape.shape_data?.notes,
+        // Material properties
+        material: dbShape.shape_data?.material,
+        materialSpec: dbShape.shape_data?.materialSpec,
+        treatment: dbShape.shape_data?.treatment,
+        treatmentColor: dbShape.shape_data?.treatmentColor,
+        manufacturer: dbShape.shape_data?.manufacturer,
+        productCode: dbShape.shape_data?.productCode,
       }));
 
       // Mapped shapes successfully
@@ -301,8 +319,25 @@ export const saveShapesForPlan = async (
           thicknessMM: shape.thicknessMM,
           heightMM: shape.heightMM,
           name: shape.name,
+          notes: shape.notes,
           symbolType: shape.symbolType,
           metadata: shape.metadata,
+          // Image-specific properties
+          imageUrl: shape.imageUrl,
+          imageOpacity: shape.imageOpacity,
+          locked: shape.locked,
+          zIndex: shape.zIndex,
+          // View mode property
+          shapeViewMode: shape.shapeViewMode,
+          // Parent wall reference for elevation shapes
+          parentWallId: shape.parentWallId,
+          // Material properties
+          material: shape.material,
+          materialSpec: shape.materialSpec,
+          treatment: shape.treatment,
+          treatmentColor: shape.treatmentColor,
+          manufacturer: shape.manufacturer,
+          productCode: shape.productCode,
         },
         room_id: shape.roomId || null,
       }));

@@ -52,13 +52,12 @@ export const CanvasSettingsPopover = () => {
     <Popover>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          title="Canvas Settings"
+          variant="ghost"
+          size="icon"
+          className="w-10 h-10"
+          title="Inställningar"
         >
-          <Settings className="h-4 w-4" />
-          <span className="hidden md:inline">Canvas</span>
+          <Settings className="h-5 w-5" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-96 max-h-[85vh] overflow-y-auto" align="start">

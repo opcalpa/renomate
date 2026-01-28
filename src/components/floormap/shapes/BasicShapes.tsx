@@ -21,6 +21,9 @@ export const RectangleShape = React.memo<ShapeComponentProps>(({ shape, isSelect
   const shapeRef = useRef<Konva.Rect>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
 
+  // Get unified drag handlers for multi-select support
+  const dragHandlers = createUnifiedDragHandlers(shape.id);
+
   // Store ref in shapeRefsMap for unified multi-select drag
   useEffect(() => {
     if (shapeRef.current && shapeRefsMap) {
@@ -93,15 +96,9 @@ export const RectangleShape = React.memo<ShapeComponentProps>(({ shape, isSelect
           e.cancelBubble = true;
           onSelect(e);
         }}
-        onDragEnd={(e) => {
-          onTransform({
-            coordinates: {
-              ...coords,
-              left: e.target.x(),
-              top: e.target.y(),
-            },
-          });
-        }}
+        onDragStart={dragHandlers.onDragStart}
+        onDragMove={dragHandlers.onDragMove}
+        onDragEnd={dragHandlers.onDragEnd}
         onTransformEnd={handleTransformEnd}
         listening={true}
       />
@@ -148,6 +145,9 @@ export const RectangleShape = React.memo<ShapeComponentProps>(({ shape, isSelect
 export const CircleShape = React.memo<ShapeComponentProps>(({ shape, isSelected, onSelect, onTransform, shapeRefsMap }) => {
   const shapeRef = useRef<Konva.Circle>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
+
+  // Get unified drag handlers for multi-select support
+  const dragHandlers = createUnifiedDragHandlers(shape.id);
 
   // Store ref in shapeRefsMap for unified multi-select drag
   useEffect(() => {
@@ -219,15 +219,9 @@ export const CircleShape = React.memo<ShapeComponentProps>(({ shape, isSelected,
           e.cancelBubble = true;
           onSelect(e);
         }}
-        onDragEnd={(e) => {
-          onTransform({
-            coordinates: {
-              ...coords,
-              cx: e.target.x(),
-              cy: e.target.y(),
-            },
-          });
-        }}
+        onDragStart={dragHandlers.onDragStart}
+        onDragMove={dragHandlers.onDragMove}
+        onDragEnd={dragHandlers.onDragEnd}
         onTransformEnd={handleTransformEnd}
         listening={true}
       />
@@ -275,6 +269,9 @@ export const CircleShape = React.memo<ShapeComponentProps>(({ shape, isSelected,
 export const TextShape = React.memo<ShapeComponentProps & { onEdit?: (shape: any) => void }>(({ shape, isSelected, onSelect, onTransform, shapeRefsMap, onEdit }) => {
   const groupRef = useRef<Konva.Group>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
+
+  // Get unified drag handlers for multi-select support
+  const dragHandlers = createUnifiedDragHandlers(shape.id);
 
   // Store ref in shapeRefsMap for unified multi-select drag
   useEffect(() => {
@@ -379,15 +376,9 @@ export const TextShape = React.memo<ShapeComponentProps & { onEdit?: (shape: any
         }}
         onDblClick={handleDoubleClick}
         onDblTap={handleDoubleClick}
-        onDragEnd={(e) => {
-          onTransform({
-            coordinates: {
-              ...coords,
-              x: e.target.x(),
-              y: e.target.y(),
-            },
-          });
-        }}
+        onDragStart={dragHandlers.onDragStart}
+        onDragMove={dragHandlers.onDragMove}
+        onDragEnd={dragHandlers.onDragEnd}
         onTransformEnd={handleTransformEnd}
       >
         {/* Hit area - always present for click detection */}
@@ -467,6 +458,9 @@ export const FreehandShape = React.memo<ShapeComponentProps>(({ shape, isSelecte
   const shapeRef = useRef<Konva.Line>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
   const zoom = useFloorMapStore((state) => state.viewState.zoom);
+
+  // Get unified drag handlers for multi-select support
+  const dragHandlers = createUnifiedDragHandlers(shape.id);
 
   // Store ref in shapeRefsMap for unified multi-select drag
   useEffect(() => {
@@ -577,21 +571,9 @@ export const FreehandShape = React.memo<ShapeComponentProps>(({ shape, isSelecte
           e.cancelBubble = true;
           onSelect(e);
         }}
-        onDragEnd={(e) => {
-          const dx = e.target.x();
-          const dy = e.target.y();
-          e.target.x(0);
-          e.target.y(0);
-
-          const newPoints = points.map(p => ({
-            x: p.x + dx,
-            y: p.y + dy,
-          }));
-
-          onTransform({
-            coordinates: { points: newPoints },
-          });
-        }}
+        onDragStart={dragHandlers.onDragStart}
+        onDragMove={dragHandlers.onDragMove}
+        onDragEnd={dragHandlers.onDragEnd}
         onTransformEnd={handleTransformEnd}
         listening={true}
       />

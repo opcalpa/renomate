@@ -53,8 +53,9 @@ export interface WallShapeProps extends ShapeWithViewProps {
 /**
  * Props for room shape
  */
-export interface RoomShapeProps extends ShapeComponentProps {
+export interface RoomShapeProps extends ShapeWithViewProps {
   onDoubleClick?: () => void;
+  snapSize: number;
 }
 
 /**

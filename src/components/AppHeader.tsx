@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Home, LogOut, User, Settings } from "lucide-react";
+import { LogOut, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/components/LanguageSelector";
@@ -35,12 +35,15 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut }: AppHead
   return (
     <header className="border-b border-border bg-card sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <div 
-          className="flex items-center cursor-pointer" 
+        <div
+          className="flex items-center cursor-pointer"
           onClick={() => navigate("/projects")}
         >
-          <Home className="h-6 w-6 text-primary mr-2" />
-          <h1 className="text-xl font-semibold">Renomate</h1>
+          <img
+            src="/logo.png"
+            alt="Renomate"
+            className="h-10 w-auto"
+          />
         </div>
         
         <div className="flex items-center gap-2">
