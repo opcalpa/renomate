@@ -498,7 +498,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
           onClick={handleOpenOngoingCosts}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Löpande Kostnader</CardTitle>
+            <CardTitle className="text-sm font-medium">Tillägg (utanför budget)</CardTitle>
             <Package className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
@@ -707,7 +707,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
               onClick={handleOpenOngoingCosts}
             >
               <div className="space-y-1 flex items-center gap-2">
-                <p className="text-sm font-medium text-blue-600">Löpande Kostnader</p>
+                <p className="text-sm font-medium text-blue-600">Tillägg (utanför budget)</p>
                 {ongoingCostsCount > 0 && (
                   <Badge variant="secondary" className="text-blue-600">
                     {ongoingCostsCount}
@@ -859,7 +859,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
       <Dialog open={ongoingCostsDialogOpen} onOpenChange={setOngoingCostsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Löpande Kostnader (Exklusive Budget)</DialogTitle>
+            <DialogTitle>Tillägg (utanför budget) (Exklusive Budget)</DialogTitle>
             <DialogDescription>
               Operational costs not included in project budget
             </DialogDescription>
@@ -894,7 +894,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
           <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg mb-4 border border-blue-200 dark:border-blue-800">
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-sm text-muted-foreground">Total Löpande Kostnader</p>
+                <p className="text-sm text-muted-foreground">Total Tillägg (utanför budget)</p>
                 <p className="text-2xl font-bold text-blue-600">
                   ${filteredOngoingCosts.reduce((sum, c) => sum + (c.amount || 0), 0).toLocaleString()}
                 </p>

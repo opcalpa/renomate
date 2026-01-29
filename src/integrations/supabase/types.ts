@@ -159,6 +159,8 @@ export type Database = {
           created_by_user_id: string
           id: string
           name: string
+          ordered_amount: number | null
+          paid_amount: number | null
           project_id: string | null
           quantity: number | null
           room_id: string | null
@@ -175,6 +177,8 @@ export type Database = {
           created_by_user_id: string
           id?: string
           name: string
+          ordered_amount?: number | null
+          paid_amount?: number | null
           project_id?: string | null
           quantity?: number | null
           room_id?: string | null
@@ -191,6 +195,8 @@ export type Database = {
           created_by_user_id?: string
           id?: string
           name?: string
+          ordered_amount?: number | null
+          paid_amount?: number | null
           project_id?: string | null
           quantity?: number | null
           room_id?: string | null
@@ -649,6 +655,7 @@ export type Database = {
           finish_date: string | null
           floor_plan_position: Json | null
           id: string
+          ordered_amount: number | null
           paid_amount: number | null
           payment_status: string | null
           priority: string | null
@@ -671,6 +678,7 @@ export type Database = {
           finish_date?: string | null
           floor_plan_position?: Json | null
           id?: string
+          ordered_amount?: number | null
           paid_amount?: number | null
           payment_status?: string | null
           priority?: string | null
@@ -693,6 +701,7 @@ export type Database = {
           finish_date?: string | null
           floor_plan_position?: Json | null
           id?: string
+          ordered_amount?: number | null
           paid_amount?: number | null
           payment_status?: string | null
           priority?: string | null

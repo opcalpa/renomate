@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Upload, Image as ImageIcon, XCircle, Link as LinkIcon, Plus, Maximize2 } from "lucide-react";
+import { Loader2, Upload, Image as ImageIcon, XCircle, Link as LinkIcon, Plus, Maximize2, Camera } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -357,8 +357,28 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
         </div>
       </div>
 
-      {/* Upload Button */}
-      <div>
+      {/* Upload + Camera Buttons */}
+      <div className="flex gap-2">
+        <input
+          type="file"
+          id="photo-camera"
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileUpload}
+          className="hidden"
+          disabled={uploading}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1 gap-2"
+          disabled={uploading}
+          onClick={() => document.getElementById("photo-camera")?.click()}
+        >
+          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+          Ta foto
+        </Button>
+
         <input
           type="file"
           id="photo-upload"
@@ -368,38 +388,16 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
           className="hidden"
           disabled={uploading}
         />
-        <label
-          htmlFor="photo-upload"
-          className={`
-            flex items-center justify-center gap-2 w-full h-24
-            border-2 border-dashed rounded-lg
-            transition-all cursor-pointer
-            ${
-              uploading
-                ? "border-gray-300 bg-gray-50 cursor-not-allowed"
-                : "border-gray-300 hover:border-blue-400 hover:bg-blue-50"
-            }
-          `}
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1 gap-2"
+          disabled={uploading}
+          onClick={() => document.getElementById("photo-upload")?.click()}
         >
-          {uploading ? (
-            <>
-              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-              <span className="text-sm text-gray-500">Laddar upp...</span>
-            </>
-          ) : (
-            <>
-              <Upload className="h-5 w-5 text-gray-400" />
-              <div className="text-center">
-                <div className="text-sm font-medium text-gray-700">
-                  Klicka för att ladda upp bilder
-                </div>
-                <div className="text-xs text-gray-500">
-                  PNG, JPG, GIF upp till 10MB
-                </div>
-              </div>
-            </>
-          )}
-        </label>
+          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          Ladda upp
+        </Button>
       </div>
 
       {/* Pinterest Buttons */}

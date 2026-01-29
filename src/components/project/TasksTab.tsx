@@ -15,10 +15,26 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, DollarSign, Tag, LayoutGrid, Table as TableIcon, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Loader2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, DollarSign, Tag, LayoutGrid, Table as TableIcon, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Loader2, Filter, CheckSquare, Trash2, X } from "lucide-react";
 import { DEFAULT_COST_CENTERS, getCostCenterIcon, getCostCenterLabel } from "@/lib/costCenters";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import MaterialsList from "./MaterialsList";
+import { EntityPhotoGallery } from "@/components/shared/EntityPhotoGallery";
+import { CommentsSection } from "@/components/comments/CommentsSection";
+import { Separator } from "@/components/ui/separator";
+
+interface ChecklistItem {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
+interface Checklist {
+  id: string;
+  title: string;
+  items: ChecklistItem[];
+}
 
 interface Task {
   id: string;
@@ -33,10 +49,12 @@ interface Task {
   assigned_to_stakeholder_id: string | null;
   room_id: string | null;
   budget: number | null;
+  ordered_amount: number | null;
   payment_status: string | null;
   paid_amount: number | null;
   cost_center: string | null;
-  cost_centers?: string[] | null; // Multiple cost centers support
+  cost_centers?: string[] | null;
+  checklists?: Checklist[];
 }
 
 interface Stakeholder {
@@ -91,10 +109,11 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const { toast } = useToast();
   
-  // Filters
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterAssignee, setFilterAssignee] = useState<string>("all");
-  const [filterRoom, setFilterRoom] = useState<string>("all");
+  // Filters (multi-select: empty set = show all)
+  const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set());
+  const [filterAssignees, setFilterAssignees] = useState<Set<string>>(new Set());
+  const [filterRooms, setFilterRooms] = useState<Set<string>>(new Set());
+  const [filterCostCenters, setFilterCostCenters] = useState<Set<string>>(new Set());
   
   // View mode
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
@@ -163,11 +182,10 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
         .select("can_create_purchase_requests")
         .eq("project_id", projectId)
         .eq("shared_with_user_id", profile.id)
-        .single();
+        .maybeSingle();
 
       setCanCreateRequests(shareData?.can_create_purchase_requests || false);
     } catch (error) {
-      // User might be the owner, so default to false
       setCanCreateRequests(false);
     }
   };
@@ -360,10 +378,12 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
           progress: editingTask.progress,
           assigned_to_stakeholder_id: editingTask.assigned_to_stakeholder_id || null,
           budget: editingTask.budget || null,
+          ordered_amount: editingTask.ordered_amount || null,
           payment_status: editingTask.payment_status || null,
           paid_amount: editingTask.paid_amount || null,
           cost_center: editingTask.cost_center || null,
           cost_centers: editingTask.cost_centers || null,
+          checklists: editingTask.checklists || [],
         })
         .eq("id", editingTask.id);
 
@@ -491,14 +511,19 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
 
   // Filter tasks based on selected filters
   const filteredTasks = tasks.filter(task => {
-    if (filterStatus !== "all" && task.status !== filterStatus) return false;
-    if (filterAssignee !== "all") {
-      if (filterAssignee === "unassigned" && task.assigned_to_stakeholder_id !== null) return false;
-      if (filterAssignee !== "unassigned" && task.assigned_to_stakeholder_id !== filterAssignee) return false;
+    if (filterStatuses.size > 0 && !filterStatuses.has(task.status)) return false;
+    if (filterAssignees.size > 0) {
+      const val = task.assigned_to_stakeholder_id || "unassigned";
+      if (!filterAssignees.has(val)) return false;
     }
-    if (filterRoom !== "all") {
-      if (filterRoom === "unassigned" && task.room_id !== null) return false;
-      if (filterRoom !== "unassigned" && task.room_id !== filterRoom) return false;
+    if (filterRooms.size > 0) {
+      const val = task.room_id || "unassigned";
+      if (!filterRooms.has(val)) return false;
+    }
+    if (filterCostCenters.size > 0) {
+      const ccs = task.cost_centers || (task.cost_center ? [task.cost_center] : []);
+      if (ccs.length === 0 && !filterCostCenters.has("none")) return false;
+      if (ccs.length > 0 && !ccs.some(cc => filterCostCenters.has(cc))) return false;
     }
     return true;
   });
@@ -583,21 +608,45 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
   };
 
   // Calculate counts for filter options
-  const getStatusCount = (status: string) => {
-    if (status === "all") return tasks.length;
-    return tasks.filter(t => t.status === status).length;
-  };
+  const getStatusCount = (status: string) => tasks.filter(t => t.status === status).length;
 
   const getAssigneeCount = (assigneeId: string) => {
-    if (assigneeId === "all") return tasks.length;
     if (assigneeId === "unassigned") return tasks.filter(t => !t.assigned_to_stakeholder_id).length;
     return tasks.filter(t => t.assigned_to_stakeholder_id === assigneeId).length;
   };
 
   const getRoomCount = (roomId: string) => {
-    if (roomId === "all") return tasks.length;
     if (roomId === "unassigned") return tasks.filter(t => !t.room_id).length;
     return tasks.filter(t => t.room_id === roomId).length;
+  };
+
+  const getCostCenterCount = (ccId: string) => {
+    if (ccId === "none") return tasks.filter(t => {
+      const ccs = t.cost_centers || (t.cost_center ? [t.cost_center] : []);
+      return ccs.length === 0;
+    }).length;
+    return tasks.filter(t => {
+      const ccs = t.cost_centers || (t.cost_center ? [t.cost_center] : []);
+      return ccs.includes(ccId);
+    }).length;
+  };
+
+  // Build cost center filter options from defaults + custom values in tasks
+  const allCostCenterIds = new Set<string>();
+  tasks.forEach(t => {
+    const ccs = t.cost_centers || (t.cost_center ? [t.cost_center] : []);
+    ccs.forEach(cc => allCostCenterIds.add(cc));
+  });
+  const defaultCcIds = DEFAULT_COST_CENTERS.map(cc => cc.id);
+  const customCcIds = [...allCostCenterIds].filter(id => !defaultCcIds.includes(id));
+
+  const toggleFilterValue = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, value: string) => {
+    setter(prev => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
   };
 
   // Column name editing handlers
@@ -692,6 +741,19 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
     }
   };
 
+  const getChecklistCounts = (task: Task) => {
+    const checklists = task.checklists || [];
+    let total = 0;
+    let completed = 0;
+    for (const cl of checklists) {
+      for (const item of cl.items) {
+        total++;
+        if (item.completed) completed++;
+      }
+    }
+    return { total, completed };
+  };
+
   const TaskCard = ({ task }: { task: Task }) => {
     // Support both single and multiple cost centers
     const costCenters = task.cost_centers || (task.cost_center ? [task.cost_center] : []);
@@ -746,6 +808,17 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
               ) : null;
             })}
             
+            {/* Checklist indicator */}
+            {(() => {
+              const { total, completed } = getChecklistCounts(task);
+              return total > 0 ? (
+                <div className="flex items-center gap-0.5 text-muted-foreground" title={`${completed}/${total} checklist items`}>
+                  <CheckSquare className="h-3 w-3" />
+                  <span className="text-xs">{completed}/{total}</span>
+                </div>
+              ) : null;
+            })()}
+
             {/* Edit icon - visible on hover */}
             <Pencil className="h-3 w-3 ml-auto text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
@@ -782,65 +855,170 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
           <div className="w-px h-6 bg-border" />
 
           {/* Status Filter */}
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses ({getStatusCount("all")})</SelectItem>
-              <SelectItem value="discovery">Discovery ({getStatusCount("discovery")})</SelectItem>
-              <SelectItem value="to_do">To Do ({getStatusCount("to_do")})</SelectItem>
-              <SelectItem value="in_progress">In Progress ({getStatusCount("in_progress")})</SelectItem>
-              <SelectItem value="on_hold">On Hold ({getStatusCount("on_hold")})</SelectItem>
-              <SelectItem value="doing">Doing ({getStatusCount("doing")})</SelectItem>
-              <SelectItem value="blocked">Blocked ({getStatusCount("blocked")})</SelectItem>
-              <SelectItem value="completed">Completed ({getStatusCount("completed")})</SelectItem>
-              <SelectItem value="done">Done ({getStatusCount("done")})</SelectItem>
-              <SelectItem value="scrapped">Scrapped ({getStatusCount("scrapped")})</SelectItem>
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9">
+                <Filter className="h-3 w-3 mr-2" />
+                Status
+                {filterStatuses.size > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{filterStatuses.size}</Badge>
+                )}
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-2" align="start">
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {statusOrder.map(status => {
+                  const count = getStatusCount(status);
+                  const label = statusLabels[status as keyof typeof statusLabels] || status;
+                  return (
+                    <label key={status} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                      <Checkbox
+                        checked={filterStatuses.has(status)}
+                        onCheckedChange={() => toggleFilterValue(setFilterStatuses, status)}
+                      />
+                      <span className="flex-1">{label}</span>
+                      <span className="text-xs text-muted-foreground">{count}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Assignee Filter */}
-          <Select value={filterAssignee} onValueChange={setFilterAssignee}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Assignees" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Assignees ({getAssigneeCount("all")})</SelectItem>
-              <SelectItem value="unassigned">Unassigned ({getAssigneeCount("unassigned")})</SelectItem>
-              {teamMembers.map((member) => (
-                <SelectItem key={member.id} value={member.id}>
-                  {member.name} ({getAssigneeCount(member.id)})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9">
+                <Filter className="h-3 w-3 mr-2" />
+                Assignee
+                {filterAssignees.size > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{filterAssignees.size}</Badge>
+                )}
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-2" align="start">
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                  <Checkbox
+                    checked={filterAssignees.has("unassigned")}
+                    onCheckedChange={() => toggleFilterValue(setFilterAssignees, "unassigned")}
+                  />
+                  <span className="flex-1">Unassigned</span>
+                  <span className="text-xs text-muted-foreground">{getAssigneeCount("unassigned")}</span>
+                </label>
+                {teamMembers.map(member => (
+                  <label key={member.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                    <Checkbox
+                      checked={filterAssignees.has(member.id)}
+                      onCheckedChange={() => toggleFilterValue(setFilterAssignees, member.id)}
+                    />
+                    <span className="flex-1">{member.name}</span>
+                    <span className="text-xs text-muted-foreground">{getAssigneeCount(member.id)}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Room Filter */}
-          <Select value={filterRoom} onValueChange={setFilterRoom}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Rooms" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Rooms ({getRoomCount("all")})</SelectItem>
-              <SelectItem value="unassigned">No Room Assigned ({getRoomCount("unassigned")})</SelectItem>
-              {rooms.map((room) => (
-                <SelectItem key={room.id} value={room.id}>
-                  {room.name} ({getRoomCount(room.id)})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9">
+                <Filter className="h-3 w-3 mr-2" />
+                Room
+                {filterRooms.size > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{filterRooms.size}</Badge>
+                )}
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-2" align="start">
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                  <Checkbox
+                    checked={filterRooms.has("unassigned")}
+                    onCheckedChange={() => toggleFilterValue(setFilterRooms, "unassigned")}
+                  />
+                  <span className="flex-1">No Room</span>
+                  <span className="text-xs text-muted-foreground">{getRoomCount("unassigned")}</span>
+                </label>
+                {rooms.map(room => (
+                  <label key={room.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                    <Checkbox
+                      checked={filterRooms.has(room.id)}
+                      onCheckedChange={() => toggleFilterValue(setFilterRooms, room.id)}
+                    />
+                    <span className="flex-1">{room.name}</span>
+                    <span className="text-xs text-muted-foreground">{getRoomCount(room.id)}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Cost Center Filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9">
+                <Filter className="h-3 w-3 mr-2" />
+                Cost Center
+                {filterCostCenters.size > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{filterCostCenters.size}</Badge>
+                )}
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-2" align="start">
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                  <Checkbox
+                    checked={filterCostCenters.has("none")}
+                    onCheckedChange={() => toggleFilterValue(setFilterCostCenters, "none")}
+                  />
+                  <span className="flex-1">None</span>
+                  <span className="text-xs text-muted-foreground">{getCostCenterCount("none")}</span>
+                </label>
+                {DEFAULT_COST_CENTERS.map(cc => {
+                  const Icon = cc.icon;
+                  return (
+                    <label key={cc.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                      <Checkbox
+                        checked={filterCostCenters.has(cc.id)}
+                        onCheckedChange={() => toggleFilterValue(setFilterCostCenters, cc.id)}
+                      />
+                      <Icon className="h-3 w-3 flex-shrink-0" />
+                      <span className="flex-1">{cc.label}</span>
+                      <span className="text-xs text-muted-foreground">{getCostCenterCount(cc.id)}</span>
+                    </label>
+                  );
+                })}
+                {customCcIds.map(ccId => (
+                  <label key={ccId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                    <Checkbox
+                      checked={filterCostCenters.has(ccId)}
+                      onCheckedChange={() => toggleFilterValue(setFilterCostCenters, ccId)}
+                    />
+                    <Tag className="h-3 w-3 flex-shrink-0" />
+                    <span className="flex-1">{getCostCenterLabel(ccId)}</span>
+                    <span className="text-xs text-muted-foreground">{getCostCenterCount(ccId)}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Clear filters button (only show when filters are active) */}
-          {(filterStatus !== "all" || filterAssignee !== "all" || filterRoom !== "all") && (
+          {(filterStatuses.size > 0 || filterAssignees.size > 0 || filterRooms.size > 0 || filterCostCenters.size > 0) && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
-                setFilterStatus("all");
-                setFilterAssignee("all");
-                setFilterRoom("all");
+                setFilterStatuses(new Set());
+                setFilterAssignees(new Set());
+                setFilterRooms(new Set());
+                setFilterCostCenters(new Set());
               }}
             >
               Clear filters
@@ -1225,16 +1403,40 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-task-budget">Budget</Label>
-                  <Input
-                    id="edit-task-budget"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={editingTask.budget?.toString() || ""}
-                    onChange={(e) => setEditingTask({ ...editingTask, budget: e.target.value ? parseFloat(e.target.value) : null })}
-                  />
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-task-budget">Budget</Label>
+                    <Input
+                      id="edit-task-budget"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={editingTask.budget?.toString() || ""}
+                      onChange={(e) => setEditingTask({ ...editingTask, budget: e.target.value ? parseFloat(e.target.value) : null })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-task-ordered">Ordered</Label>
+                    <Input
+                      id="edit-task-ordered"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={editingTask.ordered_amount?.toString() || ""}
+                      onChange={(e) => setEditingTask({ ...editingTask, ordered_amount: e.target.value ? parseFloat(e.target.value) : null })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-task-paid">Paid</Label>
+                    <Input
+                      id="edit-task-paid"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={editingTask.paid_amount?.toString() || ""}
+                      onChange={(e) => setEditingTask({ ...editingTask, paid_amount: e.target.value ? parseFloat(e.target.value) : null })}
+                    />
+                  </div>
                 </div>
                 {editingTask.budget && (
                   <>
@@ -1261,19 +1463,6 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
                         </SelectContent>
                       </Select>
                     </div>
-                    {editingTask.payment_status === "partially_paid" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-task-paid-amount">Paid Amount</Label>
-                        <Input
-                          id="edit-task-paid-amount"
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={editingTask.paid_amount?.toString() || ""}
-                          onChange={(e) => setEditingTask({ ...editingTask, paid_amount: e.target.value ? parseFloat(e.target.value) : null })}
-                        />
-                      </div>
-                    )}
                   </>
                 )}
                 <div className="space-y-2">
@@ -1407,6 +1596,142 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
                     </div>
                   )}
                 </div>
+                {/* Checklists */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Checklists</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const newChecklist: Checklist = {
+                          id: crypto.randomUUID(),
+                          title: "Checklist",
+                          items: [],
+                        };
+                        setEditingTask({
+                          ...editingTask,
+                          checklists: [...(editingTask.checklists || []), newChecklist],
+                        });
+                      }}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Checklist
+                    </Button>
+                  </div>
+                  {(editingTask.checklists || []).map((checklist, clIdx) => {
+                    const completedCount = checklist.items.filter(i => i.completed).length;
+                    const totalCount = checklist.items.length;
+                    const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+                    const updateChecklist = (updates: Partial<Checklist>) => {
+                      const updated = [...(editingTask.checklists || [])];
+                      updated[clIdx] = { ...updated[clIdx], ...updates };
+                      setEditingTask({ ...editingTask, checklists: updated });
+                    };
+
+                    const deleteChecklist = () => {
+                      const updated = (editingTask.checklists || []).filter((_, i) => i !== clIdx);
+                      setEditingTask({ ...editingTask, checklists: updated });
+                    };
+
+                    return (
+                      <div key={checklist.id} className="border rounded-lg">
+                        <Collapsible defaultOpen>
+                          <div className="flex items-center gap-2 px-3 py-2">
+                            <CollapsibleTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                <ChevronDown className="h-3 w-3" />
+                              </Button>
+                            </CollapsibleTrigger>
+                            <Input
+                              value={checklist.title}
+                              onChange={(e) => updateChecklist({ title: e.target.value })}
+                              className="h-7 text-sm font-medium border-none shadow-none px-1 focus-visible:ring-1"
+                            />
+                            {totalCount > 0 && (
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                {completedCount}/{totalCount}
+                              </span>
+                            )}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                              onClick={deleteChecklist}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          {totalCount > 0 && (
+                            <div className="px-3 pb-1">
+                              <Progress value={progressPct} className="h-1.5" />
+                            </div>
+                          )}
+                          <CollapsibleContent>
+                            <div className="px-3 pb-3 space-y-1">
+                              {checklist.items.map((item, itemIdx) => (
+                                <div key={item.id} className="flex items-center gap-2 group">
+                                  <Checkbox
+                                    checked={item.completed}
+                                    onCheckedChange={(checked) => {
+                                      const newItems = [...checklist.items];
+                                      newItems[itemIdx] = { ...newItems[itemIdx], completed: !!checked };
+                                      updateChecklist({ items: newItems });
+                                    }}
+                                  />
+                                  <Input
+                                    value={item.title}
+                                    onChange={(e) => {
+                                      const newItems = [...checklist.items];
+                                      newItems[itemIdx] = { ...newItems[itemIdx], title: e.target.value };
+                                      updateChecklist({ items: newItems });
+                                    }}
+                                    className={`h-7 text-sm border-none shadow-none px-1 focus-visible:ring-1 ${item.completed ? "line-through text-muted-foreground" : ""}`}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                                    onClick={() => {
+                                      const newItems = checklist.items.filter((_, i) => i !== itemIdx);
+                                      updateChecklist({ items: newItems });
+                                    }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <Input
+                                placeholder="Add an item..."
+                                className="h-7 text-sm mt-1"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    const val = (e.target as HTMLInputElement).value.trim();
+                                    if (val) {
+                                      const newItem: ChecklistItem = {
+                                        id: crypto.randomUUID(),
+                                        title: val,
+                                        completed: false,
+                                      };
+                                      updateChecklist({ items: [...checklist.items, newItem] });
+                                      (e.target as HTMLInputElement).value = "";
+                                    }
+                                  }
+                                }}
+                              />
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </div>
+                    );
+                  })}
+                </div>
+
                 <div className="space-y-2">
                   <Label>Dependencies</Label>
                   <div className="space-y-2">
@@ -1444,6 +1769,14 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
                   </div>
                 </div>
                 
+                {/* Photos */}
+                <Separator className="my-4" />
+                <EntityPhotoGallery entityId={editingTask.id} entityType="task" />
+
+                {/* Comments */}
+                <Separator className="my-4" />
+                <CommentsSection taskId={editingTask.id} projectId={projectId} />
+
                 {/* Save Button at Bottom of Input Fields */}
                 <div className="pt-6 pb-4">
                   <Button type="submit" className="w-full" disabled={creating}>
@@ -1483,9 +1816,10 @@ const TasksTab = ({ projectId }: TasksTabProps) => {
             <Button
               variant="outline"
               onClick={() => {
-                setFilterStatus("all");
-                setFilterAssignee("all");
-                setFilterRoom("all");
+                setFilterStatuses(new Set());
+                setFilterAssignees(new Set());
+                setFilterRooms(new Set());
+                setFilterCostCenters(new Set());
               }}
             >
               Clear Filters

@@ -16,6 +16,7 @@ import OverviewTab from "@/components/project/OverviewTab";
 import ProjectTimeline from "@/components/project/ProjectTimeline";
 import TeamManagement from "@/components/project/TeamManagement";
 import PurchaseRequestsTab from "@/components/project/PurchaseRequestsTab";
+import BudgetTab from "@/components/project/BudgetTab";
 import ProjectFilesTab from "@/components/project/ProjectFilesTab";
 import {
   DropdownMenu,
@@ -62,6 +63,7 @@ const ProjectDetail = () => {
       { label: "Timeline", value: "timeline", description: "Project timeline and scheduling" },
     ],
     purchases: [],
+    budget: [],
     team: [],
   };
   const [profile, setProfile] = useState<any>(null);
@@ -140,7 +142,7 @@ const ProjectDetail = () => {
             .select("role")
             .eq("project_id", projectId)
             .eq("shared_with_user_id", profileData.id)
-            .single();
+            .maybeSingle();
 
           setCanManage(shareData?.role === "admin" || shareData?.role === "editor");
         } else {
@@ -471,6 +473,21 @@ const ProjectDetail = () => {
                   trigger={
                     <div className={cn(
                       "px-3 py-2 text-sm font-medium cursor-pointer transition-colors",
+                      activeTab === "budget" && "border-b-2 border-primary text-primary"
+                    )}>
+                      Budget
+                    </div>
+                  }
+                  items={menuConfigs.budget}
+                  onSelect={(value) => handleMenuSelect('budget', value)}
+                  onMainClick={() => handleMenuSelect('budget', 'budget')}
+                  activeValue={activeTab === "budget" ? "budget" : undefined}
+                />
+
+                <HoverTabMenu
+                  trigger={
+                    <div className={cn(
+                      "px-3 py-2 text-sm font-medium cursor-pointer transition-colors",
                       activeTab === "team" && "border-b-2 border-primary text-primary"
                     )}>
                       Team
@@ -555,6 +572,12 @@ const ProjectDetail = () => {
         <TabsContent value="purchases" className="m-0 pb-8">
           <div className="container mx-auto px-4 py-8">
             <PurchaseRequestsTab projectId={project.id} />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="budget" className="m-0 pb-8">
+          <div className="container mx-auto px-4 py-8">
+            <BudgetTab projectId={project.id} />
           </div>
         </TabsContent>
 

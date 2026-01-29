@@ -117,8 +117,10 @@ const InvitationResponse = () => {
         throw new Error("Profile not found");
       }
 
-      // Verify email matches
-      if (profile.email !== invitation.email) {
+      // Verify email matches (normalize Gmail +alias addresses)
+      const normalizeEmail = (email: string) =>
+        email.toLowerCase().replace(/(\+[^@]*)@/, "@");
+      if (normalizeEmail(profile.email) !== normalizeEmail(invitation.email)) {
         throw new Error(`This invitation was sent to ${invitation.email}. Please log in with that email.`);
       }
 

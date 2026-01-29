@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +18,12 @@ const Auth = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [showResetForm, setShowResetForm] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const redirect = searchParams.get("redirect");
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +50,7 @@ const Auth = () => {
 
       // Auto sign in after signup
       if (data.user) {
-        navigate("/projects");
+        navigate(redirect || "/projects");
       }
     } catch (error: any) {
       toast({
@@ -85,7 +89,7 @@ const Auth = () => {
 
       // Wait a brief moment for the auth state to propagate
       setTimeout(() => {
-        navigate("/projects");
+        navigate(redirect || "/projects");
       }, 100);
     } catch (error: any) {
       toast({
@@ -123,12 +127,54 @@ const Auth = () => {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?reset=true`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Reset link sent",
+        description: "Check your email for a password reset link.",
+      });
+      setShowResetForm(false);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to send reset email";
+      toast({
+        title: "Error",
+        description: msg,
+        variant: "destructive",
+      });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center mb-8">
           <img src="/logo.png" alt="Renomate" className="h-12 w-auto" />
         </div>
+
+        {redirect && (
+          <div className="mb-4 bg-primary/10 text-primary border border-primary/20 rounded-lg p-3 text-sm text-center">
+            Sign in or create an account to accept your invitation.
+          </div>
+        )}
 
         <Card className="border-border">
           <CardHeader>
@@ -165,16 +211,48 @@ const Auth = () => {
                       required
                     />
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="remember-me"
-                      checked={rememberMe}
-                      onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                    />
-                    <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer">
-                      Remember me for 30 days
-                    </Label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="remember-me"
+                        checked={rememberMe}
+                        onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                      />
+                      <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer">
+                        Remember me for 30 days
+                      </Label>
+                    </div>
+                    <button
+                      type="button"
+                      className="text-sm text-primary hover:underline"
+                      onClick={() => setShowResetForm(true)}
+                    >
+                      Forgot password?
+                    </button>
                   </div>
+                  {showResetForm && (
+                    <div className="bg-muted/50 p-4 rounded-lg space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        Enter your email above and click below to receive a reset link.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        disabled={resetLoading || !email}
+                        onClick={handleResetPassword}
+                      >
+                        {resetLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          "Send Reset Link"
+                        )}
+                      </Button>
+                    </div>
+                  )}
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Signing in..." : "Sign In"}
                   </Button>

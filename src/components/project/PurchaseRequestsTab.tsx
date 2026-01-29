@@ -24,6 +24,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { CommentsSection } from "@/components/comments/CommentsSection";
+import { EntityPhotoGallery } from "@/components/shared/EntityPhotoGallery";
 import {
   Select,
   SelectContent,
@@ -48,6 +49,8 @@ interface Material {
   unit: string;
   price_per_unit: number | null;
   price_total: number | null;
+  ordered_amount: number | null;
+  paid_amount: number | null;
   vendor_name: string | null;
   vendor_link: string | null;
   status: string;
@@ -176,7 +179,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
         .select("purchases_access, purchases_scope")
         .eq("project_id", projectId)
         .eq("shared_with_user_id", profile.id)
-        .single();
+        .maybeSingle();
 
       if (share) {
         setUserPurchasesAccess(share.purchases_access || 'none');
@@ -333,7 +336,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
         task_id: (newMaterial.task_id && newMaterial.task_id !== "none") ? newMaterial.task_id : null,
         assigned_to_user_id: (newMaterial.assigned_to_user_id && newMaterial.assigned_to_user_id !== "none") ? newMaterial.assigned_to_user_id : null,
         created_by_user_id: profile.id,
-        status: "pending",
+        status: "submitted",
       });
 
       if (error) throw error;
@@ -383,10 +386,12 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
           quantity: editingMaterial.quantity,
           unit: editingMaterial.unit,
           price_per_unit: editingMaterial.price_per_unit,
-          status: editingMaterial.status || "pending",
+          status: editingMaterial.status || "submitted",
           vendor_name: editingMaterial.vendor_name,
           vendor_link: editingMaterial.vendor_link,
           exclude_from_budget: editingMaterial.exclude_from_budget,
+          ordered_amount: editingMaterial.ordered_amount || null,
+          paid_amount: editingMaterial.paid_amount || null,
           room_id: editingMaterial.room_id === "none" ? null : editingMaterial.room_id,
           task_id: editingMaterial.task_id === "none" ? null : editingMaterial.task_id,
           assigned_to_user_id: editingMaterial.assigned_to_user_id === "none" ? null : editingMaterial.assigned_to_user_id,
@@ -747,7 +752,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                           setEditingMaterial({
                             ...material,
                             description: material.description || null,
-                            status: material.status || "pending",
+                            status: material.status || "submitted",
                             room_id: material.room_id || "none",
                             task_id: material.task_id || "none",
                             assigned_to_user_id: material.assigned_to_user_id || "none"
@@ -800,18 +805,19 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Select
-                          value={material.status || "pending"}
+                          value={material.status || "submitted"}
                           onValueChange={(value) => handleStatusChange(material.id, value)}
                         >
                           <SelectTrigger className="w-[110px]">
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="ordered">Ordered</SelectItem>
-                            <SelectItem value="delivered">Delivered</SelectItem>
-                            <SelectItem value="installed">Installed</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                            <SelectItem value="submitted">Submitted</SelectItem>
+                            <SelectItem value="declined">Declined</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="billed">Billed</SelectItem>
+                            <SelectItem value="paid">Paid</SelectItem>
+                            <SelectItem value="paused">Paused</SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -825,7 +831,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                               setEditingMaterial({
                                 ...material,
                                 description: material.description || null,
-                                status: material.status || "pending",
+                                status: material.status || "submitted",
                                 room_id: material.room_id || "none",
                                 task_id: material.task_id || "none",
                                 assigned_to_user_id: material.assigned_to_user_id || "none"
@@ -915,6 +921,30 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                   </p>
                 )}
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-ordered-amount">Ordered Amount</Label>
+                  <Input
+                    id="edit-ordered-amount"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={editingMaterial.ordered_amount?.toString() || ""}
+                    onChange={(e) => setEditingMaterial({ ...editingMaterial, ordered_amount: e.target.value ? parseFloat(e.target.value) : null })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-paid-amount">Paid Amount</Label>
+                  <Input
+                    id="edit-paid-amount"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={editingMaterial.paid_amount?.toString() || ""}
+                    onChange={(e) => setEditingMaterial({ ...editingMaterial, paid_amount: e.target.value ? parseFloat(e.target.value) : null })}
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-vendor-name">Vendor Name</Label>
                 <Input
@@ -936,18 +966,19 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
               <div className="space-y-2">
                 <Label htmlFor="edit-status">Status</Label>
                 <Select 
-                  value={editingMaterial.status || "pending"} 
+                  value={editingMaterial.status || "submitted"} 
                   onValueChange={(value) => setEditingMaterial({ ...editingMaterial, status: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="ordered">Ordered</SelectItem>
-                    <SelectItem value="delivered">Delivered</SelectItem>
-                    <SelectItem value="installed">Installed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="submitted">Submitted</SelectItem>
+                    <SelectItem value="declined">Declined</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="billed">Billed</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1024,6 +1055,10 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                   Löpande kostnad (Exklusive budget)
                 </Label>
               </div>
+
+              {/* Photos */}
+              <Separator className="my-4" />
+              <EntityPhotoGallery entityId={editingMaterial.id} entityType="material" />
 
               {/* Comments Section */}
               <Separator className="my-4" />

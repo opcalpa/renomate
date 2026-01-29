@@ -34,6 +34,8 @@ interface TeamMember {
   purchases_scope?: string;
   overview_access?: string;
   teams_access?: string;
+  budget_access?: string;
+  files_access?: string;
 }
 
 interface FeatureAccess {
@@ -44,7 +46,9 @@ interface FeatureAccess {
   purchases: 'none' | 'view' | 'create' | 'edit';
   purchasesScope: 'all' | 'assigned';
   overview: 'none' | 'view' | 'edit';
-  teams: 'none' | 'view';
+  teams: 'none' | 'view' | 'invite';
+  budget: 'none' | 'view';
+  files: 'none' | 'view' | 'upload' | 'edit';
 }
 
 interface Invitation {
@@ -64,6 +68,8 @@ interface Invitation {
   purchases_scope?: string;
   overview_access?: string;
   teams_access?: string;
+  budget_access?: string;
+  files_access?: string;
 }
 
 interface TeamManagementProps {
@@ -138,6 +144,8 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
     purchasesScope: 'assigned',
     overview: 'view',
     teams: 'none',
+    budget: 'none',
+    files: 'none',
   });
 
   const { toast } = useToast();
@@ -168,6 +176,8 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
           purchases_scope,
           overview_access,
           teams_access,
+          budget_access,
+          files_access,
           profiles:shared_with_user_id (
             name,
             email
@@ -191,6 +201,8 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
         purchases_scope: share.purchases_scope,
         overview_access: share.overview_access,
         teams_access: share.teams_access,
+        budget_access: share.budget_access,
+        files_access: share.files_access,
         role_type: share.role_type,
         contractor_category: share.contractor_category,
         phone: share.phone,
@@ -220,7 +232,9 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
             purchases_access,
             purchases_scope,
             overview_access,
-            teams_access
+            teams_access,
+            budget_access,
+            files_access
           `)
           .eq("project_id", projectId)
           .eq("status", "pending")
@@ -280,6 +294,8 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
         purchases_scope: featureAccess.purchasesScope,
         overview_access: featureAccess.overview,
         teams_access: featureAccess.teams,
+        budget_access: featureAccess.budget,
+        files_access: featureAccess.files,
       };
 
       const { data: invitationData, error } = await supabase
@@ -391,6 +407,8 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       purchasesScope: (member.purchases_scope as any) || 'assigned',
       overview: (member.overview_access as any) || 'none',
       teams: (member.teams_access as any) || 'none',
+      budget: (member.budget_access as any) || 'none',
+      files: (member.files_access as any) || 'none',
     });
     setAccessLevel(member.role);
     setEditMemberRoleType(member.role_type || 'none');
@@ -418,6 +436,8 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
           purchases_scope: featureAccess.purchasesScope,
           overview_access: featureAccess.overview,
           teams_access: featureAccess.teams,
+          budget_access: featureAccess.budget,
+          files_access: featureAccess.files,
           role_type: editMemberRoleType === 'none' ? null : editMemberRoleType,
           contractor_category: editMemberRoleType === 'contractor' && editMemberContractorCategory ? editMemberContractorCategory : null,
           phone: editMemberPhone || null,
@@ -491,6 +511,8 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       purchasesScope: (invitation.purchases_scope as any) || 'assigned',
       overview: (invitation.overview_access as any) || 'view',
       teams: (invitation.teams_access as any) || 'none',
+      budget: (invitation.budget_access as any) || 'none',
+      files: (invitation.files_access as any) || 'none',
     });
     setAccessLevel(invitation.role);
     setEditInvitationDialogOpen(true);
@@ -513,6 +535,8 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
           purchases_scope: featureAccess.purchasesScope,
           overview_access: featureAccess.overview,
           teams_access: featureAccess.teams,
+          budget_access: featureAccess.budget,
+          files_access: featureAccess.files,
         } as any)
         .eq("id", editingInvitation.id);
 
@@ -890,6 +914,66 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                           <Eye className="h-3 w-3" /> View
                         </Label>
                       </div>
+                      <div className="flex items-center space-x-1">
+                        <RadioGroupItem value="invite" id="teams-invite" />
+                        <Label htmlFor="teams-invite" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                          <UserPlus className="h-3 w-3" /> Invite
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {/* Budget */}
+                  <div className="flex items-center justify-between space-x-4">
+                    <Label className="flex-1">Budget</Label>
+                    <RadioGroup
+                      value={featureAccess.budget}
+                      onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, budget: value })}
+                      className="flex gap-2"
+                    >
+                      <div className="flex items-center space-x-1">
+                        <RadioGroupItem value="none" id="budget-none" />
+                        <Label htmlFor="budget-none" className="text-xs cursor-pointer font-normal">None</Label>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <RadioGroupItem value="view" id="budget-view" />
+                        <Label htmlFor="budget-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                          <Eye className="h-3 w-3" /> View
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {/* Files */}
+                  <div className="flex items-center justify-between space-x-4">
+                    <Label className="flex-1">Files</Label>
+                    <RadioGroup
+                      value={featureAccess.files}
+                      onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, files: value })}
+                      className="flex gap-2"
+                    >
+                      <div className="flex items-center space-x-1">
+                        <RadioGroupItem value="none" id="files-none" />
+                        <Label htmlFor="files-none" className="text-xs cursor-pointer font-normal">None</Label>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <RadioGroupItem value="view" id="files-view" />
+                        <Label htmlFor="files-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                          <Eye className="h-3 w-3" /> View
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <RadioGroupItem value="upload" id="files-upload" />
+                        <Label htmlFor="files-upload" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                          <Plus className="h-3 w-3" /> Upload
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <RadioGroupItem value="edit" id="files-edit" />
+                        <Label htmlFor="files-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                          <Edit3 className="h-3 w-3" /> Edit
+                        </Label>
+                      </div>
                     </RadioGroup>
                   </div>
                 </div>
@@ -980,6 +1064,16 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                       {member.overview_access && member.overview_access !== 'none' && (
                         <Badge variant="secondary" className="text-xs">
                           Overview: {member.overview_access}
+                        </Badge>
+                      )}
+                      {member.budget_access && member.budget_access !== 'none' && (
+                        <Badge variant="secondary" className="text-xs">
+                          Budget: {member.budget_access}
+                        </Badge>
+                      )}
+                      {member.files_access && member.files_access !== 'none' && (
+                        <Badge variant="secondary" className="text-xs">
+                          Files: {member.files_access}
                         </Badge>
                       )}
                     </div>
@@ -1324,6 +1418,66 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                       <Eye className="h-3 w-3" /> View
                     </Label>
                   </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="invite" id="edit-teams-invite" />
+                    <Label htmlFor="edit-teams-invite" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                      <UserPlus className="h-3 w-3" /> Invite
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Budget */}
+              <div className="flex items-center justify-between space-x-4">
+                <Label className="flex-1">Budget</Label>
+                <RadioGroup
+                  value={featureAccess.budget}
+                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, budget: value })}
+                  className="flex gap-2"
+                >
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="none" id="edit-budget-none" />
+                    <Label htmlFor="edit-budget-none" className="text-xs cursor-pointer font-normal">None</Label>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="view" id="edit-budget-view" />
+                    <Label htmlFor="edit-budget-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                      <Eye className="h-3 w-3" /> View
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Files */}
+              <div className="flex items-center justify-between space-x-4">
+                <Label className="flex-1">Files</Label>
+                <RadioGroup
+                  value={featureAccess.files}
+                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, files: value })}
+                  className="flex gap-2"
+                >
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="none" id="edit-files-none" />
+                    <Label htmlFor="edit-files-none" className="text-xs cursor-pointer font-normal">None</Label>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="view" id="edit-files-view" />
+                    <Label htmlFor="edit-files-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                      <Eye className="h-3 w-3" /> View
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="upload" id="edit-files-upload" />
+                    <Label htmlFor="edit-files-upload" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                      <Plus className="h-3 w-3" /> Upload
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="edit" id="edit-files-edit" />
+                    <Label htmlFor="edit-files-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                      <Edit3 className="h-3 w-3" /> Edit
+                    </Label>
+                  </div>
                 </RadioGroup>
               </div>
             </div>
@@ -1660,6 +1814,66 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                     <RadioGroupItem value="view" id="edit-inv-teams-view" />
                     <Label htmlFor="edit-inv-teams-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
                       <Eye className="h-3 w-3" /> View
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="invite" id="edit-inv-teams-invite" />
+                    <Label htmlFor="edit-inv-teams-invite" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                      <UserPlus className="h-3 w-3" /> Invite
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Budget */}
+              <div className="flex items-center justify-between space-x-4">
+                <Label className="flex-1">Budget</Label>
+                <RadioGroup
+                  value={featureAccess.budget}
+                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, budget: value })}
+                  className="flex gap-2"
+                >
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="none" id="edit-inv-budget-none" />
+                    <Label htmlFor="edit-inv-budget-none" className="text-xs cursor-pointer font-normal">None</Label>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="view" id="edit-inv-budget-view" />
+                    <Label htmlFor="edit-inv-budget-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                      <Eye className="h-3 w-3" /> View
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Files */}
+              <div className="flex items-center justify-between space-x-4">
+                <Label className="flex-1">Files</Label>
+                <RadioGroup
+                  value={featureAccess.files}
+                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, files: value })}
+                  className="flex gap-2"
+                >
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="none" id="edit-inv-files-none" />
+                    <Label htmlFor="edit-inv-files-none" className="text-xs cursor-pointer font-normal">None</Label>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="view" id="edit-inv-files-view" />
+                    <Label htmlFor="edit-inv-files-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                      <Eye className="h-3 w-3" /> View
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="upload" id="edit-inv-files-upload" />
+                    <Label htmlFor="edit-inv-files-upload" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                      <Plus className="h-3 w-3" /> Upload
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="edit" id="edit-inv-files-edit" />
+                    <Label htmlFor="edit-inv-files-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
+                      <Edit3 className="h-3 w-3" /> Edit
                     </Label>
                   </div>
                 </RadioGroup>

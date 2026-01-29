@@ -647,6 +647,25 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
               onChange={handleImageSelect}
               className="hidden"
             />
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleImageSelect}
+              className="hidden"
+              ref={(el) => { if (el) el.dataset.camera = "true"; }}
+              id="camera-capture-input"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => document.getElementById("camera-capture-input")?.click()}
+              className="h-7 px-2 text-xs"
+            >
+              <Camera className="h-3 w-3 mr-1" />
+              Ta foto
+            </Button>
             <Button
               type="button"
               variant="ghost"
