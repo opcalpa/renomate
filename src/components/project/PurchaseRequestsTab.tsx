@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { 
+import {
   Package,
   Loader2,
   Plus,
@@ -40,6 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTranslation } from "react-i18next";
 
 interface Material {
   id: string;
@@ -76,9 +77,12 @@ interface Material {
 
 interface PurchaseRequestsTabProps {
   projectId: string;
+  openEntityId?: string | null;
+  onEntityOpened?: () => void;
 }
 
-const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
+const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened }: PurchaseRequestsTabProps) => {
+  const { t } = useTranslation();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -92,7 +96,9 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
   const [isProjectOwner, setIsProjectOwner] = useState<boolean>(false);
   const [userPurchasesAccess, setUserPurchasesAccess] = useState<string>('none');
   const [userPurchasesScope, setUserPurchasesScope] = useState<string>('assigned');
-  
+
+  const [quickMode, setQuickMode] = useState(true);
+
   const [newMaterial, setNewMaterial] = useState({
     name: "",
     description: "",
@@ -114,7 +120,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
     fetchRooms();
     fetchTasks();
     fetchTeamMembers();
-    
+
     const channel = supabase
       .channel('purchase_orders_changes')
       .on(
@@ -141,6 +147,27 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
       fetchMaterials();
     }
   }, [currentProfileId, projectId, isProjectOwner]);
+
+  // Auto-open a specific material from notification deep link or feed navigation
+  useEffect(() => {
+    if (!openEntityId || materials.length === 0) return;
+    const material = materials.find((m) => m.id === openEntityId);
+    if (material) {
+      setEditingMaterial(material);
+      setEditDialogOpen(true);
+      onEntityOpened?.();
+    }
+    // Don't clear openEntityId if not found — materials may still be loading with different scope
+  }, [openEntityId, materials]);
+
+  // Safety timeout: clear openEntityId after 5s if material was never found
+  useEffect(() => {
+    if (!openEntityId) return;
+    const timer = setTimeout(() => {
+      onEntityOpened?.();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [openEntityId]);
 
   const fetchUserPermissions = async () => {
     try {
@@ -170,7 +197,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
         setUserPurchasesScope('all');
         return;
       }
-      
+
       setIsProjectOwner(false);
 
       // Check project_shares for permissions
@@ -185,7 +212,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
         setUserPurchasesAccess(share.purchases_access || 'none');
         setUserPurchasesScope(share.purchases_scope || 'assigned');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching user permissions:", error);
     }
   };
@@ -200,7 +227,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
 
       if (error) throw error;
       setRooms(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching rooms:", error);
     }
   };
@@ -215,7 +242,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
 
       if (error) throw error;
       setTasks(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching tasks:", error);
     }
   };
@@ -242,34 +269,35 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
         .eq("project_id", projectId);
 
       const members: { id: string; name: string }[] = [];
-      
+
       if (projectData?.profiles) {
-        const profile: any = projectData.profiles;
-        members.push({ id: profile.id, name: profile.name || "Owner" });
+        const profile: unknown = projectData.profiles;
+        members.push({ id: (profile as { id: string; name: string }).id, name: (profile as { id: string; name: string }).name || "Owner" });
       }
 
       if (sharesData) {
         const existingIds = new Set(members.map(m => m.id));
-        sharesData.forEach((share: any) => {
-          if (share.profiles && !existingIds.has(share.profiles.id)) {
-            existingIds.add(share.profiles.id);
+        sharesData.forEach((share: unknown) => {
+          const s = share as { profiles?: { id: string; name: string } };
+          if (s.profiles && !existingIds.has(s.profiles.id)) {
+            existingIds.add(s.profiles.id);
             members.push({
-              id: share.profiles.id,
-              name: share.profiles.name || "Team Member"
+              id: s.profiles.id,
+              name: s.profiles.name || "Team Member"
             });
           }
         });
       }
 
       setTeamMembers(members);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching team members:", error);
     }
   };
 
   const fetchMaterials = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("materials")
         .select(`
           *,
@@ -278,17 +306,22 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
           task:tasks(title),
           room:rooms(name)
         `)
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false });
+        .eq("project_id", projectId);
+
+      // Filter at DB level when scope is 'assigned' and user is not owner
+      if (!isProjectOwner && userPurchasesScope === 'assigned' && currentProfileId) {
+        query = query.or(`created_by_user_id.eq.${currentProfileId},assigned_to_user_id.eq.${currentProfileId}`);
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      // RLS handles visibility filtering server-side
       setMaterials(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: t('common.error'),
+        description: (error as Error).message,
         variant: "destructive",
       });
     } finally {
@@ -331,8 +364,8 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
       if (error) throw error;
 
       toast({
-        title: "Success",
-        description: "Purchase order added successfully",
+        title: t('common.success'),
+        description: t('purchases.orderAddedSuccess'),
       });
 
       setDialogOpen(false);
@@ -350,10 +383,10 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
         assigned_to_user_id: "none",
       });
       fetchMaterials();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to add purchase order",
+        title: t('common.error'),
+        description: (error as Error).message || t('purchases.addOrderFailed'),
         variant: "destructive",
       });
     } finally {
@@ -390,46 +423,22 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
       if (error) throw error;
 
       toast({
-        title: "Success",
-        description: "Purchase order updated successfully",
+        title: t('common.success'),
+        description: t('purchases.orderUpdatedSuccess'),
       });
 
       setEditDialogOpen(false);
       setEditingMaterial(null);
       fetchMaterials();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to update purchase order",
+        title: t('common.error'),
+        description: (error as Error).message || t('purchases.updateOrderFailed'),
         variant: "destructive",
       });
     } finally {
       setCreating(false);
     }
-  };
-
-  const canViewMaterial = (material: Material): boolean => {
-    // Project owner sees everything
-    if (isProjectOwner) return true;
-
-    if (!currentProfileId) return false;
-
-    // Can view if assigned to them (even with no purchases_access)
-    if (material.assigned_to_user_id === currentProfileId) return true;
-
-    // Can view if has purchases_access
-    if (userPurchasesAccess === 'none') return false;
-
-    // If scope is 'all', can view everything
-    if (userPurchasesScope === 'all') return true;
-
-    // If scope is 'assigned', can view only created_by or assigned_to them
-    if (userPurchasesScope === 'assigned') {
-      return material.created_by_user_id === currentProfileId || 
-             material.assigned_to_user_id === currentProfileId;
-    }
-
-    return false;
   };
 
   const canEditMaterial = (material: Material): boolean => {
@@ -442,21 +451,21 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
     if (userPurchasesAccess === 'edit') {
       if (userPurchasesScope === 'all') return true;
       // Assigned/created scope - check if user created it OR is assigned to it
-      return material.created_by_user_id === currentProfileId || 
+      return material.created_by_user_id === currentProfileId ||
              material.assigned_to_user_id === currentProfileId;
     }
-    
+
     // Create access - can edit own created orders OR assigned orders
     if (userPurchasesAccess === 'create') {
-      return material.created_by_user_id === currentProfileId || 
+      return material.created_by_user_id === currentProfileId ||
              material.assigned_to_user_id === currentProfileId;
     }
-    
+
     // View access - can edit if assigned to them (even with view access)
     if (userPurchasesAccess === 'view') {
       return material.assigned_to_user_id === currentProfileId;
     }
-    
+
     return false;
   };
 
@@ -470,15 +479,15 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
       if (error) throw error;
 
       toast({
-        title: "Status Updated",
-        description: `Purchase order status changed to ${newStatus}.`,
+        title: t('purchases.statusUpdated'),
+        description: t('purchases.statusChangedTo', { status: newStatus }),
       });
 
       fetchMaterials();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: t('common.error'),
+        description: (error as Error).message,
         variant: "destructive",
       });
     }
@@ -502,30 +511,107 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
-                Purchase Orders ({materials.length})
+                {t('purchases.title')} ({materials.length})
               </CardTitle>
               <CardDescription>
-                Manage all purchase orders for this project
+                {t('purchases.description')}
               </CardDescription>
             </div>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Purchase Order
+                  {t('purchases.addOrder')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
                 <DialogHeader className="flex-shrink-0">
-                  <DialogTitle>Add Purchase Order</DialogTitle>
+                  <div className="flex items-center justify-between">
+                    <DialogTitle>
+                      {quickMode ? t('purchases.quickOrder') : t('purchases.newOrder')}
+                    </DialogTitle>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-muted-foreground"
+                      onClick={() => setQuickMode(!quickMode)}
+                    >
+                      {quickMode ? t('purchases.showAllFields') : t('purchases.quickMode')}
+                    </Button>
+                  </div>
                   <DialogDescription>
-                    Create a new purchase order for materials needed for this project
+                    {t('purchases.addOrderDescription')}
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleAddMaterial} className="flex flex-col flex-1 overflow-hidden">
+                  {quickMode ? (
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label>{t('purchases.materialName')} *</Label>
+                        <Input
+                          placeholder={t('purchases.quickNamePlaceholder')}
+                          value={newMaterial.name}
+                          onChange={(e) => setNewMaterial({ ...newMaterial, name: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label>{t('common.quantity')} *</Label>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={newMaterial.quantity}
+                            onChange={(e) => setNewMaterial({ ...newMaterial, quantity: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{t('common.unit')} *</Label>
+                          <Select
+                            value={newMaterial.unit}
+                            onValueChange={(v) => setNewMaterial({ ...newMaterial, unit: v })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('purchases.selectUnit')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="st">{t('purchases.units.pieces')}</SelectItem>
+                              <SelectItem value="m²">{t('purchases.units.sqm')}</SelectItem>
+                              <SelectItem value="m">{t('purchases.units.meters')}</SelectItem>
+                              <SelectItem value="kg">{t('purchases.units.kg')}</SelectItem>
+                              <SelectItem value="liter">{t('purchases.units.liters')}</SelectItem>
+                              <SelectItem value="förp">{t('purchases.units.packages')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>{t('purchases.room')}</Label>
+                        <Select
+                          value={newMaterial.room_id || "none"}
+                          onValueChange={(v) => setNewMaterial({ ...newMaterial, room_id: v === "none" ? "" : v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('purchases.selectRoom')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">{t('purchases.noRoom')}</SelectItem>
+                            {rooms.map((r) => (
+                              <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button type="submit" className="w-full" disabled={creating}>
+                        {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : t('purchases.sendOrder')}
+                      </Button>
+                    </div>
+                  ) : (
                   <div className="space-y-4 overflow-y-auto flex-1 pr-2">
                   <div className="space-y-2">
-                    <Label htmlFor="material-name">Material Name*</Label>
+                    <Label htmlFor="material-name">{t('purchases.materialName')}*</Label>
                     <Input
                       id="material-name"
                       placeholder="e.g., Paint, Wood, Tiles"
@@ -536,7 +622,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description (Optional)</Label>
+                    <Label htmlFor="description">{t('common.description')} ({t('common.optional')})</Label>
                     <Textarea
                       id="description"
                       placeholder="Additional details..."
@@ -548,7 +634,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="quantity">Quantity*</Label>
+                      <Label htmlFor="quantity">{t('common.quantity')}*</Label>
                       <Input
                         id="quantity"
                         type="number"
@@ -560,7 +646,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="unit">Unit*</Label>
+                      <Label htmlFor="unit">{t('common.unit')}*</Label>
                       <Input
                         id="unit"
                         placeholder="e.g., gallons, sqft"
@@ -572,7 +658,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="price_per_unit">Price per Unit (Optional)</Label>
+                    <Label htmlFor="price_per_unit">{t('purchases.pricePerUnit')} ({t('common.optional')})</Label>
                     <Input
                       id="price_per_unit"
                       type="number"
@@ -583,13 +669,13 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                     />
                     {newMaterial.quantity && newMaterial.price_per_unit && (
                       <p className="text-sm text-muted-foreground">
-                        Price Total: ${(parseFloat(newMaterial.quantity) * parseFloat(newMaterial.price_per_unit)).toFixed(2)}
+                        {t('purchases.priceTotal')}: ${(parseFloat(newMaterial.quantity) * parseFloat(newMaterial.price_per_unit)).toFixed(2)}
                       </p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="vendor-name">Vendor Name (Optional)</Label>
+                    <Label htmlFor="vendor-name">{t('purchases.vendorName')} ({t('common.optional')})</Label>
                     <Input
                       id="vendor-name"
                       placeholder="Home Depot, Lowe's, etc."
@@ -599,7 +685,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="vendor-link">Vendor Link (Optional)</Label>
+                    <Label htmlFor="vendor-link">{t('purchases.vendorLink')} ({t('common.optional')})</Label>
                     <Input
                       id="vendor-link"
                       type="url"
@@ -610,16 +696,16 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="room">Room (Optional)</Label>
-                    <Select 
-                      value={newMaterial.room_id || "none"} 
+                    <Label htmlFor="room">{t('purchases.room')} ({t('common.optional')})</Label>
+                    <Select
+                      value={newMaterial.room_id || "none"}
                       onValueChange={(value) => setNewMaterial({ ...newMaterial, room_id: value === "none" ? "" : value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a room" />
+                        <SelectValue placeholder={t('purchases.selectRoom')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">No room</SelectItem>
+                        <SelectItem value="none">{t('purchases.noRoom')}</SelectItem>
                         {rooms.map((room) => (
                           <SelectItem key={room.id} value={room.id}>
                             {room.name}
@@ -630,16 +716,16 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="task">Link to Task (Optional)</Label>
-                    <Select 
-                      value={newMaterial.task_id || "none"} 
+                    <Label htmlFor="task">{t('purchases.linkToTask')} ({t('common.optional')})</Label>
+                    <Select
+                      value={newMaterial.task_id || "none"}
                       onValueChange={(value) => setNewMaterial({ ...newMaterial, task_id: value === "none" ? "" : value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a task" />
+                        <SelectValue placeholder={t('purchases.selectTask')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">No task</SelectItem>
+                        <SelectItem value="none">{t('purchases.noTask')}</SelectItem>
                         {tasks.map((task) => (
                           <SelectItem key={task.id} value={task.id}>
                             {task.title}
@@ -650,16 +736,16 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="assigned-to">Assign To (Optional)</Label>
-                    <Select 
-                      value={newMaterial.assigned_to_user_id || "none"} 
+                    <Label htmlFor="assigned-to">{t('purchases.assignTo')} ({t('common.optional')})</Label>
+                    <Select
+                      value={newMaterial.assigned_to_user_id || "none"}
                       onValueChange={(value) => setNewMaterial({ ...newMaterial, assigned_to_user_id: value === "none" ? "" : value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a team member" />
+                        <SelectValue placeholder={t('purchases.selectTeamMember')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">Unassigned</SelectItem>
+                        <SelectItem value="none">{t('common.unassigned')}</SelectItem>
                         {teamMembers.map((member) => (
                           <SelectItem key={member.id} value={member.id}>
                             {member.name}
@@ -678,24 +764,27 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                       className="h-4 w-4 rounded border-gray-300"
                     />
                     <Label htmlFor="exclude-from-budget" className="text-sm font-normal cursor-pointer">
-                      Löpande kostnad (Exklusive budget)
+                      {t('purchases.excludeFromBudget')}
                     </Label>
                   </div>
                   </div>
+                  )}
 
-                  {/* Fixed Save Button */}
+                  {/* Fixed Save Button - only show for advanced mode */}
+                  {!quickMode && (
                   <div className="flex-shrink-0 pt-4 border-t mt-4 bg-background sticky bottom-0">
                     <Button type="submit" className="w-full" disabled={creating}>
                       {creating ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Creating...
+                          {t('purchases.creating')}
                         </>
                       ) : (
-                        "Create Purchase Order"
+                        t('purchases.createOrder')
                       )}
                     </Button>
                   </div>
+                  )}
                 </form>
               </DialogContent>
             </Dialog>
@@ -706,50 +795,66 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
           {materials.length === 0 ? (
             <div className="text-center py-12">
               <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No Purchase Orders</h3>
+              <h3 className="text-lg font-medium mb-2">{t('purchases.noPurchaseOrders')}</h3>
               <p className="text-muted-foreground mb-4">
-                Add materials and purchase orders for your project
+                {t('purchases.noPurchaseOrdersDescription')}
               </p>
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Material Name</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Price/Unit</TableHead>
-                    <TableHead>Price Total</TableHead>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Room</TableHead>
-                    <TableHead>Task</TableHead>
-                    <TableHead>Assigned To</TableHead>
-                    <TableHead>Added By</TableHead>
-                    <TableHead>Added Date</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>{t('common.status')}</TableHead>
+                    <TableHead>{t('purchases.materialName')}</TableHead>
+                    <TableHead>{t('common.quantity')}</TableHead>
+                    <TableHead>{t('purchases.pricePerUnit')}</TableHead>
+                    <TableHead>{t('purchases.priceTotal')}</TableHead>
+                    <TableHead>{t('purchases.vendor')}</TableHead>
+                    <TableHead>{t('purchases.room')}</TableHead>
+                    <TableHead>{t('purchases.task')}</TableHead>
+                    <TableHead>{t('purchases.assignedTo')}</TableHead>
+                    <TableHead>{t('purchases.addedBy')}</TableHead>
+                    <TableHead>{t('purchases.addedDate')}</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {materials.map((material) => (
-                    <TableRow 
+                    <TableRow
                       key={material.id}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => {
-                        if (canViewMaterial(material)) {
-                          // Ensure all fields are properly set
-                          setEditingMaterial({
-                            ...material,
-                            description: material.description || null,
-                            status: material.status || "submitted",
-                            room_id: material.room_id || "none",
-                            task_id: material.task_id || "none",
-                            assigned_to_user_id: material.assigned_to_user_id || "none"
-                          });
-                          setEditDialogOpen(true);
-                        }
+                        setEditingMaterial({
+                          ...material,
+                          description: material.description || null,
+                          status: material.status || "submitted",
+                          room_id: material.room_id || "none",
+                          task_id: material.task_id || "none",
+                          assigned_to_user_id: material.assigned_to_user_id || "none"
+                        });
+                        setEditDialogOpen(true);
                       }}
                     >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Select
+                          value={material.status || "submitted"}
+                          onValueChange={(value) => handleStatusChange(material.id, value)}
+                          disabled={userPurchasesAccess !== 'edit' && !isProjectOwner}
+                        >
+                          <SelectTrigger className="w-[110px]">
+                            <SelectValue placeholder={t('common.selectStatus')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="submitted">{t('materialStatuses.submitted')}</SelectItem>
+                            <SelectItem value="declined">{t('materialStatuses.declined')}</SelectItem>
+                            <SelectItem value="approved">{t('materialStatuses.approved')}</SelectItem>
+                            <SelectItem value="billed">{t('materialStatuses.billed')}</SelectItem>
+                            <SelectItem value="paid">{t('materialStatuses.paid')}</SelectItem>
+                            <SelectItem value="paused">{t('materialStatuses.paused')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
                       <TableCell className="font-medium">{material.name}</TableCell>
                       <TableCell>
                         {material.quantity} {material.unit}
@@ -793,25 +898,6 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                         {new Date(material.created_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Select
-                          value={material.status || "submitted"}
-                          onValueChange={(value) => handleStatusChange(material.id, value)}
-                          disabled={userPurchasesAccess !== 'edit' && !isProjectOwner}
-                        >
-                          <SelectTrigger className="w-[110px]">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="submitted">Submitted</SelectItem>
-                            <SelectItem value="declined">Declined</SelectItem>
-                            <SelectItem value="approved">Approved</SelectItem>
-                            <SelectItem value="billed">Billed</SelectItem>
-                            <SelectItem value="paid">Paid</SelectItem>
-                            <SelectItem value="paused">Paused</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
                         {canEditMaterial(material) && (
                           <Button
                             variant="ghost"
@@ -828,7 +914,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                               });
                               setEditDialogOpen(true);
                             }}
-                            title="Edit purchase order"
+                            title={t('purchases.editOrder')}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -847,16 +933,36 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle>Edit Purchase Order</DialogTitle>
+            <DialogTitle>{t('purchases.editOrder')}</DialogTitle>
             <DialogDescription>
-              Update purchase order details and view comments
+              {t('purchases.editOrderDescription')}
             </DialogDescription>
           </DialogHeader>
           {editingMaterial && (
             <form onSubmit={handleEditMaterial} className="flex flex-col flex-1 overflow-hidden">
               <div className="space-y-4 overflow-y-auto flex-1 pr-2">
               <div className="space-y-2">
-                <Label htmlFor="edit-material-name">Material Name*</Label>
+                <Label htmlFor="edit-status">{t('common.status')}</Label>
+                <Select
+                  value={editingMaterial.status || "submitted"}
+                  onValueChange={(value) => setEditingMaterial({ ...editingMaterial, status: value })}
+                  disabled={userPurchasesAccess !== 'edit' && !isProjectOwner}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('common.selectStatus')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="submitted">{t('materialStatuses.submitted')}</SelectItem>
+                    <SelectItem value="declined">{t('materialStatuses.declined')}</SelectItem>
+                    <SelectItem value="approved">{t('materialStatuses.approved')}</SelectItem>
+                    <SelectItem value="billed">{t('materialStatuses.billed')}</SelectItem>
+                    <SelectItem value="paid">{t('materialStatuses.paid')}</SelectItem>
+                    <SelectItem value="paused">{t('materialStatuses.paused')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-material-name">{t('purchases.materialName')}*</Label>
                 <Input
                   id="edit-material-name"
                   value={editingMaterial.name}
@@ -865,7 +971,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-description">Description</Label>
+                <Label htmlFor="edit-description">{t('common.description')}</Label>
                 <Textarea
                   id="edit-description"
                   value={editingMaterial.description || ""}
@@ -876,7 +982,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-quantity">Quantity*</Label>
+                  <Label htmlFor="edit-quantity">{t('common.quantity')}*</Label>
                   <Input
                     id="edit-quantity"
                     type="number"
@@ -887,7 +993,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-unit">Unit*</Label>
+                  <Label htmlFor="edit-unit">{t('common.unit')}*</Label>
                   <Input
                     id="edit-unit"
                     value={editingMaterial.unit}
@@ -897,7 +1003,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-price-per-unit">Price per Unit</Label>
+                <Label htmlFor="edit-price-per-unit">{t('purchases.pricePerUnit')}</Label>
                 <Input
                   id="edit-price-per-unit"
                   type="number"
@@ -907,13 +1013,13 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                 />
                 {editingMaterial.quantity && editingMaterial.price_per_unit && (
                   <p className="text-sm text-muted-foreground">
-                    Price Total: ${(editingMaterial.quantity * editingMaterial.price_per_unit).toFixed(2)}
+                    {t('purchases.priceTotal')}: ${(editingMaterial.quantity * editingMaterial.price_per_unit).toFixed(2)}
                   </p>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-ordered-amount">Ordered Amount</Label>
+                  <Label htmlFor="edit-ordered-amount">{t('purchases.orderedAmount')}</Label>
                   <Input
                     id="edit-ordered-amount"
                     type="number"
@@ -924,7 +1030,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-paid-amount">Paid Amount</Label>
+                  <Label htmlFor="edit-paid-amount">{t('purchases.paidAmount')}</Label>
                   <Input
                     id="edit-paid-amount"
                     type="number"
@@ -936,7 +1042,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-vendor-name">Vendor Name</Label>
+                <Label htmlFor="edit-vendor-name">{t('purchases.vendorName')}</Label>
                 <Input
                   id="edit-vendor-name"
                   value={editingMaterial.vendor_name || ""}
@@ -944,7 +1050,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-vendor-link">Vendor Link</Label>
+                <Label htmlFor="edit-vendor-link">{t('purchases.vendorLink')}</Label>
                 <Input
                   id="edit-vendor-link"
                   type="url"
@@ -954,37 +1060,16 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-status">Status</Label>
+                <Label htmlFor="edit-room">{t('purchases.room')} ({t('common.optional')})</Label>
                 <Select
-                  value={editingMaterial.status || "submitted"}
-                  onValueChange={(value) => setEditingMaterial({ ...editingMaterial, status: value })}
-                  disabled={userPurchasesAccess !== 'edit' && !isProjectOwner}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="submitted">Submitted</SelectItem>
-                    <SelectItem value="declined">Declined</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="billed">Billed</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="paused">Paused</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-room">Room (Optional)</Label>
-                <Select 
-                  value={editingMaterial.room_id || "none"} 
+                  value={editingMaterial.room_id || "none"}
                   onValueChange={(value) => setEditingMaterial({ ...editingMaterial, room_id: value === "none" ? null : value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a room" />
+                    <SelectValue placeholder={t('purchases.selectRoom')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No room</SelectItem>
+                    <SelectItem value="none">{t('purchases.noRoom')}</SelectItem>
                     {rooms.map((room) => (
                       <SelectItem key={room.id} value={room.id}>
                         {room.name}
@@ -995,16 +1080,16 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-task">Link to Task (Optional)</Label>
-                <Select 
-                  value={editingMaterial.task_id || "none"} 
+                <Label htmlFor="edit-task">{t('purchases.linkToTask')} ({t('common.optional')})</Label>
+                <Select
+                  value={editingMaterial.task_id || "none"}
                   onValueChange={(value) => setEditingMaterial({ ...editingMaterial, task_id: value === "none" ? null : value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a task" />
+                    <SelectValue placeholder={t('purchases.selectTask')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No task</SelectItem>
+                    <SelectItem value="none">{t('purchases.noTask')}</SelectItem>
                     {tasks.map((task) => (
                       <SelectItem key={task.id} value={task.id}>
                         {task.title}
@@ -1015,16 +1100,16 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-assigned-to">Assign To (Optional)</Label>
-                <Select 
-                  value={editingMaterial.assigned_to_user_id || "none"} 
+                <Label htmlFor="edit-assigned-to">{t('purchases.assignTo')} ({t('common.optional')})</Label>
+                <Select
+                  value={editingMaterial.assigned_to_user_id || "none"}
                   onValueChange={(value) => setEditingMaterial({ ...editingMaterial, assigned_to_user_id: value === "none" ? null : value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a team member" />
+                    <SelectValue placeholder={t('purchases.selectTeamMember')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Unassigned</SelectItem>
+                    <SelectItem value="none">{t('common.unassigned')}</SelectItem>
                     {teamMembers.map((member) => (
                       <SelectItem key={member.id} value={member.id}>
                         {member.name}
@@ -1043,7 +1128,7 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                   className="h-4 w-4 rounded border-gray-300"
                 />
                 <Label htmlFor="edit-exclude-from-budget" className="text-sm font-normal cursor-pointer">
-                  Löpande kostnad (Exklusive budget)
+                  {t('purchases.excludeFromBudget')}
                 </Label>
               </div>
 
@@ -1062,10 +1147,10 @@ const PurchaseRequestsTab = ({ projectId }: PurchaseRequestsTabProps) => {
                   {creating ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Updating...
+                      {t('purchases.updating')}
                     </>
                   ) : (
-                    "Update Purchase Order"
+                    t('purchases.updateOrder')
                   )}
                 </Button>
               </div>

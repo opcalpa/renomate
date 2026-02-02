@@ -10,7 +10,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import BudgetDashboard from "./BudgetDashboard";
 import ProjectTimeline from "./ProjectTimeline";
+import ProjectFeedTab from "./ProjectFeedTab";
+import type { FeedComment } from "./feed/types";
 import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 interface Project {
   id: string;
   name: string;
@@ -24,12 +27,15 @@ interface OverviewTabProps {
   project: Project;
   onProjectUpdate?: () => void;
   projectFinishDate: string | null;
+  onNavigateToEntity?: (comment: FeedComment) => void;
 }
 const OverviewTab = ({
   project,
   onProjectUpdate,
-  projectFinishDate
+  projectFinishDate,
+  onNavigateToEntity
 }: OverviewTabProps) => {
+  const { t } = useTranslation();
   const [editingStartDate, setEditingStartDate] = useState(false);
   const [startDate, setStartDate] = useState(project.start_date || "");
   const [editingGoalDate, setEditingGoalDate] = useState(false);
@@ -58,14 +64,14 @@ const OverviewTab = ({
       } = await supabase.from("tasks").select("status").eq("project_id", project.id);
       if (error) throw error;
       const total = tasks?.length || 0;
-      const completed = tasks?.filter(t => t.status === "done" || t.status === "completed").length || 0;
+      const completed = tasks?.filter(t => t.status === "completed").length || 0;
       const percentage = total > 0 ? Math.round(completed / total * 100) : 0;
       setTaskStats({
         total,
         completed,
         percentage
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching task stats:", error);
     }
   };
@@ -88,7 +94,7 @@ const OverviewTab = ({
         return sum + (mat.price_total || 0);
       }, 0) || 0;
       setCalculatedSpent(taskBudgetTotal + materialCostTotal);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error calculating spent amount:", error);
     }
   };
@@ -102,15 +108,15 @@ const OverviewTab = ({
       }).eq("id", project.id);
       if (error) throw error;
       toast({
-        title: "Start date updated",
-        description: "Project start date has been updated."
+        title: t('overview.startDateUpdated'),
+        description: t('overview.startDateUpdatedDescription')
       });
       setEditingStartDate(false);
       onProjectUpdate?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: t('common.error'),
+        description: (error as Error).message,
         variant: "destructive"
       });
     } finally {
@@ -127,15 +133,15 @@ const OverviewTab = ({
       }).eq("id", project.id);
       if (error) throw error;
       toast({
-        title: "Goal date updated",
-        description: "Project finish goal date has been updated."
+        title: t('overview.goalDateUpdated'),
+        description: t('overview.goalDateUpdatedDescription')
       });
       setEditingGoalDate(false);
       onProjectUpdate?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: t('common.error'),
+        description: (error as Error).message,
         variant: "destructive"
       });
     } finally {
@@ -153,15 +159,15 @@ const OverviewTab = ({
       }).eq("id", project.id);
       if (error) throw error;
       toast({
-        title: "Budget updated",
-        description: "Project budget has been updated."
+        title: t('overview.budgetUpdated'),
+        description: t('overview.budgetUpdatedDescription')
       });
       setEditingBudget(false);
       onProjectUpdate?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: t('common.error'),
+        description: (error as Error).message,
         variant: "destructive"
       });
     } finally {
@@ -173,7 +179,7 @@ const OverviewTab = ({
   return <div className="space-y-6">
       {/* Project Timeline */}
       <div className="mb-8">
-        <ProjectTimeline projectId={project.id} projectStartDate={project.start_date} projectFinishDate={projectFinishDate} />
+        <ProjectTimeline projectId={project.id} projectName={project.name} projectStartDate={project.start_date} projectFinishDate={projectFinishDate} />
       </div>
 
       {/* Project Overview */}
@@ -181,35 +187,35 @@ const OverviewTab = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Project Overview
+            {t('overview.projectOverview')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Status and Completion */}
             <div>
-              <h4 className="text-sm font-medium mb-3">Status & Progress</h4>
+              <h4 className="text-sm font-medium mb-3">{t('overview.statusProgress')}</h4>
               <div className="space-y-3">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Current Status</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t('overview.currentStatus')}</p>
                   <Badge variant={project.status === "completed" ? "default" : "secondary"} className="text-sm">
-                    <span className="capitalize">{project.status.replace("_", " ")}</span>
+                    <span className="capitalize">{t(`projectStatuses.${project.status}`, project.status.replace("_", " "))}</span>
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Task Completion</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t('overview.taskCompletion')}</p>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
                     <span className="text-xl font-bold">{taskStats.percentage}%</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{taskStats.completed} of {taskStats.total} tasks completed</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t('overview.tasksCompleted', { completed: taskStats.completed, total: taskStats.total })}</p>
                 </div>
               </div>
             </div>
 
             {/* Start Date */}
             <div>
-              <h4 className="text-sm font-medium mb-3">Project Start</h4>
+              <h4 className="text-sm font-medium mb-3">{t('overview.projectStart')}</h4>
               {editingStartDate ? <div className="space-y-3">
                   <DatePicker
                     date={startDate ? new Date(startDate) : undefined}
@@ -218,17 +224,17 @@ const OverviewTab = ({
                   />
                   <div className="flex gap-2">
                     <Button size="sm" onClick={handleSaveStartDate} disabled={saving}>
-                      {saving ? "Saving..." : "Save"}
+                      {saving ? t('common.saving') : t('common.save')}
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => {
                   setEditingStartDate(false);
                   setStartDate(project.start_date || "");
                 }}>
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 </div> : <div>
-                  <p className="text-xs text-muted-foreground mb-1">Start Date</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t('common.startDate')}</p>
                   {project.start_date ? <div className="flex items-center justify-between">
                       <p className="text-base font-medium">
                         {format(new Date(project.start_date), "MMM d, yyyy")}
@@ -237,14 +243,14 @@ const OverviewTab = ({
                         <Calendar className="h-4 w-4" />
                       </Button>
                     </div> : <Button size="sm" variant="outline" onClick={() => setEditingStartDate(true)}>
-                      Set Start Date
+                      {t('overview.setStartDate')}
                     </Button>}
                 </div>}
             </div>
 
             {/* Goal Date */}
             <div>
-              <h4 className="text-sm font-medium mb-3">Target Completion</h4>
+              <h4 className="text-sm font-medium mb-3">{t('overview.targetCompletion')}</h4>
               {editingGoalDate ? <div className="space-y-3">
                   <DatePicker
                     date={goalDate ? new Date(goalDate) : undefined}
@@ -253,17 +259,17 @@ const OverviewTab = ({
                   />
                   <div className="flex gap-2">
                     <Button size="sm" onClick={handleSaveGoalDate} disabled={saving}>
-                      {saving ? "Saving..." : "Save"}
+                      {saving ? t('common.saving') : t('common.save')}
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => {
                   setEditingGoalDate(false);
                   setGoalDate(project.finish_goal_date || "");
                 }}>
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 </div> : <div>
-                  <p className="text-xs text-muted-foreground mb-1">Goal Date</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t('overview.targetCompletion')}</p>
                   {project.finish_goal_date ? <div className="flex items-center justify-between">
                       <p className="text-base font-medium">
                         {format(new Date(project.finish_goal_date), "MMM d, yyyy")}
@@ -272,29 +278,29 @@ const OverviewTab = ({
                         <Calendar className="h-4 w-4" />
                       </Button>
                     </div> : <Button size="sm" variant="outline" onClick={() => setEditingGoalDate(true)}>
-                      Set Goal Date
+                      {t('overview.setGoalDate')}
                     </Button>}
                 </div>}
             </div>
 
             {/* Project Budget */}
             <div>
-              <h4 className="text-sm font-medium mb-3">Project Budget</h4>
+              <h4 className="text-sm font-medium mb-3">{t('overview.projectBudget')}</h4>
               {editingBudget ? <div className="space-y-3">
-                  <Input id="budget" type="number" step="0.01" placeholder="Enter total budget" value={budgetValue} onChange={e => setBudgetValue(e.target.value)} />
+                  <Input id="budget" type="number" step="0.01" placeholder={t('overview.enterTotalBudget')} value={budgetValue} onChange={e => setBudgetValue(e.target.value)} />
                   <div className="flex gap-2">
                     <Button size="sm" onClick={handleSaveBudget} disabled={saving}>
-                      {saving ? "Saving..." : "Save"}
+                      {saving ? t('common.saving') : t('common.save')}
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => {
                   setEditingBudget(false);
                   setBudgetValue(project.total_budget?.toString() || "");
                 }}>
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 </div> : <div>
-                  <p className="text-xs text-muted-foreground mb-1">Total Budget</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t('overview.totalBudget')}</p>
                   {project.total_budget ? <div className="flex items-center justify-between">
                       <p className="text-base font-medium">
                         ${project.total_budget.toLocaleString()}
@@ -303,7 +309,7 @@ const OverviewTab = ({
                         <AlertCircle className="h-4 w-4" />
                       </Button>
                     </div> : <Button size="sm" variant="outline" onClick={() => setEditingBudget(true)}>
-                      Set Budget
+                      {t('overview.setBudget')}
                     </Button>}
                 </div>}
             </div>
@@ -311,55 +317,16 @@ const OverviewTab = ({
         </CardContent>
       </Card>
 
-      {/* Budget Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Budget Overview</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Total Budget</p>
-              <p className="text-2xl font-bold">${totalBudget.toLocaleString()}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Spent</p>
-              <p className="text-2xl font-bold">${calculatedSpent.toLocaleString()}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Remaining</p>
-              <p className={`text-2xl font-bold ${remainingBudget < 0 ? 'text-destructive' : 'text-success'}`}>
-                ${remainingBudget.toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Budget Dashboard */}
       <div>
-        <h3 className="text-lg font-semibold mb-4">Budget Overview</h3>
+        <h3 className="text-lg font-semibold mb-4">{t('overview.budgetOverview')}</h3>
         <BudgetDashboard projectId={project.id} totalBudget={project.total_budget} spentAmount={calculatedSpent} />
       </div>
 
-      <Card className="border-dashed">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <AlertCircle className="h-5 w-5 mr-2 text-muted-foreground" />
-            Floor Plan
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">
-              Floor plan visualization coming soon
-            </p>
-            <p className="text-sm text-muted-foreground">
-              This feature will allow you to create and visualize your renovation space
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Project Feed - hidden on mobile, accessible via bottom nav */}
+      <div className="hidden md:block">
+        <ProjectFeedTab projectId={project.id} onNavigateToEntity={onNavigateToEntity} />
+      </div>
     </div>;
 };
 export default OverviewTab;

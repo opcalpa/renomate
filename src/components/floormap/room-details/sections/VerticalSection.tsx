@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Square, DoorOpen } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ export function VerticalSection({
   formData,
   updateSpec,
 }: SectionProps) {
+  const { t } = useTranslation();
   const wallSpec = formData.wall_spec as WallSpec;
   const joinerySpec = formData.joinery_spec as JoinerySpec;
 
@@ -30,33 +32,33 @@ export function VerticalSection({
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
           <Square className="h-4 w-4" />
-          <span>Väggar</span>
+          <span>{t('rooms.walls')}</span>
         </div>
 
         <div className="grid gap-4 pl-6">
           {/* Wall treatments (multi-select) */}
           <div className="space-y-2">
-            <Label id="wall-treatments-label">Ytbehandling</Label>
+            <Label id="wall-treatments-label">{t('rooms.surfaceTreatment')}</Label>
             <MultiSelect
               options={WALL_TREATMENT_OPTIONS}
               selected={wallSpec?.treatments || []}
               onChange={(values) =>
                 updateSpec("wall_spec", { ...wallSpec, treatments: values })
               }
-              placeholder="Välj ytbehandling(ar)"
+              placeholder={t('rooms.selectTreatment')}
             />
           </div>
 
           {/* Main wall color */}
           <div className="space-y-2">
-            <Label htmlFor="wall-main-color">Huvudkulör</Label>
+            <Label htmlFor="wall-main-color">{t('rooms.mainColor')}</Label>
             <Input
               id="wall-main-color"
               value={wallSpec?.main_color || ""}
               onChange={(e) =>
                 updateSpec("wall_spec", { ...wallSpec, main_color: e.target.value })
               }
-              placeholder="t.ex. NCS S 1005-Y20R"
+              placeholder={t('rooms.colorPlaceholder')}
             />
           </div>
 
@@ -75,13 +77,13 @@ export function VerticalSection({
                 }
               />
               <Label htmlFor="has-accent-wall" className="cursor-pointer">
-                Fondvägg
+                {t('rooms.accentWall')}
               </Label>
             </div>
 
             {wallSpec?.has_accent_wall && (
               <div className="space-y-2 pl-6">
-                <Label htmlFor="accent-wall-color">Fondväggens kulör</Label>
+                <Label htmlFor="accent-wall-color">{t('rooms.accentWallColor')}</Label>
                 <Input
                   id="accent-wall-color"
                   value={wallSpec?.accent_wall_color || ""}
@@ -91,7 +93,7 @@ export function VerticalSection({
                       accent_wall_color: e.target.value,
                     })
                   }
-                  placeholder="t.ex. NCS S 3020-R"
+                  placeholder={t('rooms.colorPlaceholder')}
                 />
               </div>
             )}
@@ -106,13 +108,13 @@ export function VerticalSection({
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
           <DoorOpen className="h-4 w-4" />
-          <span>Snickerier</span>
+          <span>{t('rooms.joinery')}</span>
         </div>
 
         <div className="grid gap-4 pl-6">
           {/* Door type */}
           <div className="space-y-2">
-            <Label htmlFor="door-type">Dörrtyp</Label>
+            <Label htmlFor="door-type">{t('rooms.doorType')}</Label>
             <Select
               value={joinerySpec?.door_type || ""}
               onValueChange={(value) =>
@@ -120,12 +122,12 @@ export function VerticalSection({
               }
             >
               <SelectTrigger id="door-type">
-                <SelectValue placeholder="Välj dörrtyp" />
+                <SelectValue placeholder={t('rooms.selectDoorType')} />
               </SelectTrigger>
               <SelectContent>
                 {DOOR_TYPE_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                    {t(option.labelKey)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -134,7 +136,7 @@ export function VerticalSection({
 
           {/* Trim type */}
           <div className="space-y-2">
-            <Label htmlFor="trim-type">Foder/Listverk</Label>
+            <Label htmlFor="trim-type">{t('rooms.trimMolding')}</Label>
             <Select
               value={joinerySpec?.trim_type || ""}
               onValueChange={(value) =>
@@ -142,12 +144,12 @@ export function VerticalSection({
               }
             >
               <SelectTrigger id="trim-type">
-                <SelectValue placeholder="Välj listverkstyp" />
+                <SelectValue placeholder={t('rooms.selectTrimType')} />
               </SelectTrigger>
               <SelectContent>
                 {TRIM_TYPE_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                    {t(option.labelKey)}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MenuItem {
@@ -28,17 +29,21 @@ export const HoverTabMenu: React.FC<HoverTabMenuProps> = ({
   const timeoutRef = useRef<NodeJS.Timeout>();
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const hasSubmenu = items.length > 0;
+
   const handleMouseEnter = () => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
-    setIsOpen(true);
+    if (hasSubmenu) {
+      setIsOpen(true);
+    }
   };
 
   const handleMouseLeave = () => {
     timeoutRef.current = setTimeout(() => {
       setIsOpen(false);
-    }, 150); // Small delay to prevent flickering
+    }, 150);
   };
 
   const handleItemClick = (value: string) => {
@@ -53,21 +58,33 @@ export const HoverTabMenu: React.FC<HoverTabMenuProps> = ({
       onMouseLeave={handleMouseLeave}
       ref={menuRef}
     >
-      {/* Trigger/Button */}
+      {/* Trigger with optional chevron */}
       <div
         className={cn(
-          "cursor-pointer transition-colors duration-200",
+          "cursor-pointer transition-colors duration-200 flex items-center gap-1",
           activeValue && "font-semibold"
         )}
-        onClick={onMainClick}
+        onClick={(e) => {
+          onMainClick?.();
+          // Toggle dropdown on touch devices (no hover)
+          if (hasSubmenu && 'ontouchstart' in window) {
+            setIsOpen((prev) => !prev);
+          }
+        }}
       >
         {trigger}
+        {hasSubmenu && (
+          <ChevronDown className={cn(
+            "h-3 w-3 text-muted-foreground transition-transform duration-200",
+            isOpen && "rotate-180"
+          )} />
+        )}
       </div>
 
       {/* Dropdown Menu */}
-      {isOpen && (
+      {isOpen && hasSubmenu && (
         <div
-          className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-[200px] py-1"
+          className="absolute top-full left-0 mt-1 bg-popover border border-border rounded-md shadow-lg z-[100] min-w-[200px] py-1"
           onMouseEnter={() => {
             if (timeoutRef.current) {
               clearTimeout(timeoutRef.current);
@@ -80,13 +97,13 @@ export const HoverTabMenu: React.FC<HoverTabMenuProps> = ({
               key={item.value}
               onClick={() => handleItemClick(item.value)}
               className={cn(
-                "w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors duration-150",
-                activeValue === item.value && "bg-blue-50 text-blue-700 font-medium"
+                "w-full text-left px-4 py-2 hover:bg-accent transition-colors duration-150",
+                activeValue === item.value && "bg-accent text-accent-foreground font-medium"
               )}
             >
-              <div className="font-medium">{item.label}</div>
+              <div className="font-medium text-sm">{item.label}</div>
               {item.description && (
-                <div className="text-sm text-gray-500 mt-0.5">{item.description}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{item.description}</div>
               )}
             </button>
           ))}

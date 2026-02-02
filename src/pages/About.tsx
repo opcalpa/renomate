@@ -11,7 +11,7 @@ const About = () => {
       <header className="container mx-auto px-4 pt-8 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <img src="/logo.png" alt="Renomate" className="h-10 w-auto" />
+            <img src="/logo.png" alt="Renomate" className="h-12 w-auto" />
           </div>
           <Button variant="ghost" onClick={() => navigate("/")}>
             <ArrowLeft className="h-4 w-4 mr-2" />

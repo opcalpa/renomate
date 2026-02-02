@@ -167,7 +167,7 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center mb-8">
-          <img src="/logo.png" alt="Renomate" className="h-12 w-auto" />
+          <img src="/logo.png" alt="Renomate" className="h-14 w-auto" />
         </div>
 
         {redirect && (

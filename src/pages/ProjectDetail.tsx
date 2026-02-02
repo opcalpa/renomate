@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useProfileLanguage } from "@/hooks/useProfileLanguage";
@@ -18,7 +18,11 @@ import ProjectTimeline from "@/components/project/ProjectTimeline";
 import TeamManagement from "@/components/project/TeamManagement";
 import PurchaseRequestsTab from "@/components/project/PurchaseRequestsTab";
 import BudgetTab from "@/components/project/BudgetTab";
+import ProjectFeedTab from "@/components/project/ProjectFeedTab";
 import ProjectFilesTab from "@/components/project/ProjectFilesTab";
+import type { FeedComment } from "@/components/project/feed/types";
+import { getContextType } from "@/components/project/feed/utils";
+import { MobileBottomNav } from "@/components/project/MobileBottomNav";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,7 +65,10 @@ const ProjectDetail = () => {
 
   // Menu configurations for hover dropdowns
   const menuConfigs = {
-    overview: [],
+    overview: [
+      { label: "Overview", value: "overview", description: "Project summary and status" },
+      { label: "Feed", value: "feed", description: "Comments and activity feed" },
+    ],
     spaceplanner: [
       { label: "Floor Plan", value: "floorplan", description: "Design and plan your floor layout" },
       { label: "Rooms", value: "rooms", description: "Manage and configure rooms" },
@@ -104,7 +111,29 @@ const ProjectDetail = () => {
     return false;
   };
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => {
+    const tabParam = searchParams.get("tab");
+    const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "team", "feed"];
+    return tabParam && validTabs.includes(tabParam) ? tabParam : "overview";
+  });
+  const [openEntityId, setOpenEntityId] = useState<string | null>(() => searchParams.get("entityId"));
+
+  // Sync ?tab= and ?entityId= search params (handles navigation from notifications, etc.)
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    const entityParam = searchParams.get("entityId");
+    const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "team", "feed"];
+    if (tabParam && validTabs.includes(tabParam) && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+      setOpenEntityId(entityParam);
+      setSearchParams({}, { replace: true });
+    } else if (entityParam) {
+      setOpenEntityId(entityParam);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, activeTab, setSearchParams]);
+
   const [activeSubTab, setActiveSubTab] = useState<string | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
   const [showRoomDialog, setShowRoomDialog] = useState(false);
@@ -128,7 +157,7 @@ const ProjectDetail = () => {
   // Hide main header when in Floor Plan edit mode
   // SpacePlannerTopBar will be the only visible header (industry standard UX)
   useEffect(() => {
-    if (activeTab === "spaceplanner" && activeSubTab === "floorplan") {
+    if (activeTab === "spaceplanner" && (!activeSubTab || activeSubTab === "floorplan")) {
       setIsHeaderVisible(false);
     } else {
       setIsHeaderVisible(true);
@@ -285,12 +314,18 @@ const ProjectDetail = () => {
 
   // Handle menu item selection
   const handleMenuSelect = (menuId: string, itemValue: string) => {
-    if (isTabBlocked(menuId)) return;
+    if (menuId !== "overview" && isTabBlocked(menuId)) return;
     if (isSubTabBlocked(menuId, itemValue)) return;
     setActiveTab(menuId);
 
     // Handle sub-tabs for menus with sub-items
-    if (menuId === 'spaceplanner') {
+    if (menuId === 'overview') {
+      if (menuConfigs.overview.find(item => item.value === itemValue)) {
+        setActiveSubTab(itemValue === 'overview' ? null : itemValue);
+      } else {
+        setActiveSubTab(null);
+      }
+    } else if (menuId === 'spaceplanner') {
       if (menuConfigs.spaceplanner.find(item => item.value === itemValue)) {
         setActiveSubTab(itemValue);
       } else {
@@ -343,6 +378,41 @@ const ProjectDetail = () => {
     });
   };
 
+  const handleFeedNavigate = async (comment: FeedComment) => {
+    const type = getContextType(comment);
+    switch (type) {
+      case "task":
+        setActiveTab("tasks");
+        setActiveSubTab("tasklist");
+        if (comment.task_id) setOpenEntityId(comment.task_id);
+        break;
+      case "material":
+        setActiveTab("purchases");
+        setActiveSubTab(null);
+        if (comment.material_id) setOpenEntityId(comment.material_id);
+        break;
+      case "room":
+        setActiveTab("spaceplanner");
+        setActiveSubTab("rooms");
+        if (comment.entity_id) {
+          const { data: room } = await supabase
+            .from("rooms")
+            .select("*")
+            .eq("id", comment.entity_id)
+            .single();
+          if (room) {
+            setSelectedRoom(room);
+            setShowRoomDialog(true);
+          }
+        }
+        break;
+      case "drawing_object":
+        setActiveTab("spaceplanner");
+        setActiveSubTab("floorplan");
+        break;
+    }
+  };
+
   // Show loading while auth or data is loading
   if (authLoading || loading || permissions.loading) {
     return (
@@ -362,178 +432,181 @@ const ProjectDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col overflow-y-auto">
-      {/* Main AppHeader - Hidden in Floor Plan edit mode */}
+    <div className={cn("min-h-screen bg-background flex flex-col overflow-y-auto md:pb-0", isHeaderVisible ? "pb-20" : "pb-0")}>
+      {/* Unified Header - Hidden in Floor Plan edit mode */}
       {isHeaderVisible && (
         <AppHeader
           userName={profile?.name}
           userEmail={profile?.email || user?.email}
           avatarUrl={profile?.avatar_url}
           onSignOut={handleSignOut}
-        />
+        >
+          {/* Mobile project name */}
+          <span className="text-sm font-medium truncate md:hidden">
+            {project?.name}
+          </span>
+          {/* Desktop navigation */}
+          <div className="hidden md:flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2 shrink-0">
+                  <FolderOpen className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-64 bg-popover z-[100]">
+                <DropdownMenuLabel>Projects</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/projects")} className="cursor-pointer">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  All Projects
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {projects.map((proj) => (
+                  <DropdownMenuItem
+                    key={proj.id}
+                    onClick={() => navigate(`/projects/${proj.id}`)}
+                    className={`cursor-pointer ${proj.id === projectId ? "bg-accent" : ""}`}
+                  >
+                    <span className="truncate">{proj.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="flex items-center space-x-6">
+              <HoverTabMenu
+                trigger={
+                  <div className={cn(
+                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
+                    activeTab === "overview" ? "border border-primary text-primary" : "border border-transparent"
+                  )}>
+                    {t("projectDetail.overview")}
+                  </div>
+                }
+                items={menuConfigs.overview}
+                onSelect={(value) => handleMenuSelect('overview', value)}
+                onMainClick={() => handleMenuSelect('overview', 'overview')}
+                activeValue={activeTab === "overview" ? activeSubTab || "overview" : undefined}
+              />
+
+              <HoverTabMenu
+                trigger={
+                  <div className={cn(
+                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
+                    activeTab === "spaceplanner" ? "border border-primary text-primary" : "border border-transparent",
+                    isTabBlocked("spaceplanner") && "opacity-40 pointer-events-none cursor-default"
+                  )}>
+                    Space Planner
+                  </div>
+                }
+                items={menuConfigs.spaceplanner}
+                onSelect={(value) => handleMenuSelect('spaceplanner', value)}
+                onMainClick={() => handleMenuSelect('spaceplanner', 'floorplan')}
+                activeValue={activeTab === "spaceplanner" ? activeSubTab || "floorplan" : undefined}
+              />
+
+              <HoverTabMenu
+                trigger={
+                  <div className={cn(
+                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border flex items-center gap-1.5",
+                    activeTab === "files" ? "border border-primary text-primary" : "border border-transparent",
+                    isTabBlocked("files") && "opacity-40 pointer-events-none cursor-default"
+                  )}>
+                    <FolderOpen className="h-4 w-4" />
+                    Filer
+                  </div>
+                }
+                items={menuConfigs.files}
+                onSelect={(value) => handleMenuSelect('files', value)}
+                onMainClick={() => handleMenuSelect('files', 'files')}
+                activeValue={activeTab === "files" ? "files" : undefined}
+              />
+
+              <HoverTabMenu
+                trigger={
+                  <div className={cn(
+                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
+                    activeTab === "tasks" ? "border border-primary text-primary" : "border border-transparent",
+                    isTabBlocked("tasks") && "opacity-40 pointer-events-none cursor-default"
+                  )}>
+                    {t("projectDetail.tasks")}
+                  </div>
+                }
+                items={menuConfigs.tasks.filter(item => !isSubTabBlocked('tasks', item.value))}
+                onSelect={(value) => handleMenuSelect('tasks', value)}
+                onMainClick={() => {
+                  if (!isSubTabBlocked('tasks', 'tasklist')) handleMenuSelect('tasks', 'tasklist');
+                  else if (!isSubTabBlocked('tasks', 'timeline')) handleMenuSelect('tasks', 'timeline');
+                }}
+                activeValue={activeTab === "tasks" ? activeSubTab || "tasklist" : undefined}
+              />
+
+              <HoverTabMenu
+                trigger={
+                  <div className={cn(
+                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
+                    activeTab === "purchases" ? "border border-primary text-primary" : "border border-transparent",
+                    isTabBlocked("purchases") && "opacity-40 pointer-events-none cursor-default"
+                  )}>
+                    Purchases
+                  </div>
+                }
+                items={menuConfigs.purchases}
+                onSelect={(value) => handleMenuSelect('purchases', value)}
+                onMainClick={() => handleMenuSelect('purchases', 'purchases')}
+                activeValue={activeTab === "purchases" ? activeSubTab || "purchases" : undefined}
+              />
+
+              <HoverTabMenu
+                trigger={
+                  <div className={cn(
+                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
+                    activeTab === "budget" ? "border border-primary text-primary" : "border border-transparent",
+                    isTabBlocked("budget") && "opacity-40 pointer-events-none cursor-default"
+                  )}>
+                    Budget
+                  </div>
+                }
+                items={menuConfigs.budget}
+                onSelect={(value) => handleMenuSelect('budget', value)}
+                onMainClick={() => handleMenuSelect('budget', 'budget')}
+                activeValue={activeTab === "budget" ? "budget" : undefined}
+              />
+
+              <HoverTabMenu
+                trigger={
+                  <div className={cn(
+                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
+                    activeTab === "team" ? "border border-primary text-primary" : "border border-transparent",
+                    isTabBlocked("team") && "opacity-40 pointer-events-none cursor-default"
+                  )}>
+                    Team
+                  </div>
+                }
+                items={menuConfigs.team}
+                onSelect={(value) => handleMenuSelect('team', value)}
+                onMainClick={() => handleMenuSelect('team', 'team')}
+                activeValue={activeTab === "team" ? activeSubTab || "team" : undefined}
+              />
+            </div>
+          </div>
+        </AppHeader>
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col">
-        {/* Tab Navigation - Hidden in Floor Plan edit mode */}
-        {isHeaderVisible && (
-        <div className="border-b border-border bg-card/50 sticky top-0 z-40 backdrop-blur-sm">
-          <div className="container mx-auto px-4 py-3">
-            <div className="flex items-center gap-4">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <FolderOpen className="h-4 w-4" />
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-64 bg-popover z-[100]">
-                  <DropdownMenuLabel>Projects</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate("/projects")} className="cursor-pointer">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    All Projects
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {projects.map((proj) => (
-                    <DropdownMenuItem
-                      key={proj.id}
-                      onClick={() => navigate(`/projects/${proj.id}`)}
-                      className={`cursor-pointer ${proj.id === projectId ? "bg-accent" : ""}`}
-                    >
-                      <span className="truncate">{proj.name}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <div className="flex flex-1 items-center space-x-8">
-                <HoverTabMenu
-                  trigger={
-                    <div className={cn(
-                      "px-3 py-2 text-sm font-medium cursor-pointer transition-colors",
-                      activeTab === "overview" && "border-b-2 border-primary text-primary",
-                      isTabBlocked("overview") && "opacity-40 pointer-events-none cursor-default"
-                    )}>
-                      {t("projectDetail.overview")}
-                    </div>
-                  }
-                  items={menuConfigs.overview}
-                  onSelect={(value) => handleMenuSelect('overview', value)}
-                  onMainClick={() => handleMenuSelect('overview', 'overview')}
-                  activeValue={activeTab === "overview" ? activeSubTab || "overview" : undefined}
-                />
-
-                <HoverTabMenu
-                  trigger={
-                    <div className={cn(
-                      "px-3 py-2 text-sm font-medium cursor-pointer transition-colors",
-                      activeTab === "spaceplanner" && "border-b-2 border-primary text-primary",
-                      isTabBlocked("spaceplanner") && "opacity-40 pointer-events-none cursor-default"
-                    )}>
-                      Space Planner
-                    </div>
-                  }
-                  items={menuConfigs.spaceplanner}
-                  onSelect={(value) => handleMenuSelect('spaceplanner', value)}
-                  onMainClick={() => handleMenuSelect('spaceplanner', 'floorplan')}
-                  activeValue={activeTab === "spaceplanner" ? activeSubTab || "floorplan" : undefined}
-                />
-
-                <HoverTabMenu
-                  trigger={
-                    <div className={cn(
-                      "px-3 py-2 text-sm font-medium cursor-pointer transition-colors flex items-center gap-1.5",
-                      activeTab === "files" && "border-b-2 border-primary text-primary",
-                      isTabBlocked("files") && "opacity-40 pointer-events-none cursor-default"
-                    )}>
-                      <FolderOpen className="h-4 w-4" />
-                      Filer
-                    </div>
-                  }
-                  items={menuConfigs.files}
-                  onSelect={(value) => handleMenuSelect('files', value)}
-                  onMainClick={() => handleMenuSelect('files', 'files')}
-                  activeValue={activeTab === "files" ? "files" : undefined}
-                />
-
-                <HoverTabMenu
-                  trigger={
-                    <div className={cn(
-                      "px-3 py-2 text-sm font-medium cursor-pointer transition-colors",
-                      activeTab === "tasks" && "border-b-2 border-primary text-primary",
-                      isTabBlocked("tasks") && "opacity-40 pointer-events-none cursor-default"
-                    )}>
-                      {t("projectDetail.tasks")}
-                    </div>
-                  }
-                  items={menuConfigs.tasks.filter(item => !isSubTabBlocked('tasks', item.value))}
-                  onSelect={(value) => handleMenuSelect('tasks', value)}
-                  onMainClick={() => {
-                    // Navigate to first accessible sub-tab
-                    if (!isSubTabBlocked('tasks', 'tasklist')) handleMenuSelect('tasks', 'tasklist');
-                    else if (!isSubTabBlocked('tasks', 'timeline')) handleMenuSelect('tasks', 'timeline');
-                  }}
-                  activeValue={activeTab === "tasks" ? activeSubTab || "tasklist" : undefined}
-                />
-
-                <HoverTabMenu
-                  trigger={
-                    <div className={cn(
-                      "px-3 py-2 text-sm font-medium cursor-pointer transition-colors",
-                      activeTab === "purchases" && "border-b-2 border-primary text-primary",
-                      isTabBlocked("purchases") && "opacity-40 pointer-events-none cursor-default"
-                    )}>
-                      Purchases
-                    </div>
-                  }
-                  items={menuConfigs.purchases}
-                  onSelect={(value) => handleMenuSelect('purchases', value)}
-                  onMainClick={() => handleMenuSelect('purchases', 'purchases')}
-                  activeValue={activeTab === "purchases" ? activeSubTab || "purchases" : undefined}
-                />
-
-                <HoverTabMenu
-                  trigger={
-                    <div className={cn(
-                      "px-3 py-2 text-sm font-medium cursor-pointer transition-colors",
-                      activeTab === "budget" && "border-b-2 border-primary text-primary",
-                      isTabBlocked("budget") && "opacity-40 pointer-events-none cursor-default"
-                    )}>
-                      Budget
-                    </div>
-                  }
-                  items={menuConfigs.budget}
-                  onSelect={(value) => handleMenuSelect('budget', value)}
-                  onMainClick={() => handleMenuSelect('budget', 'budget')}
-                  activeValue={activeTab === "budget" ? "budget" : undefined}
-                />
-
-                <HoverTabMenu
-                  trigger={
-                    <div className={cn(
-                      "px-3 py-2 text-sm font-medium cursor-pointer transition-colors",
-                      activeTab === "team" && "border-b-2 border-primary text-primary",
-                      isTabBlocked("team") && "opacity-40 pointer-events-none cursor-default"
-                    )}>
-                      Team
-                    </div>
-                  }
-                  items={menuConfigs.team}
-                  onSelect={(value) => handleMenuSelect('team', value)}
-                  onMainClick={() => handleMenuSelect('team', 'team')}
-                  activeValue={activeTab === "team" ? activeSubTab || "team" : undefined}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-        )}
 
         <TabsContent value="overview" className="m-0 pb-8">
           {isTabBlocked("overview") ? (
-            <NoAccessPlaceholder />
+            <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
+              <ProjectFeedTab projectId={project.id} onNavigateToEntity={handleFeedNavigate} restrictToUserId={profile?.id} />
+            </div>
+          ) : activeSubTab === 'feed' ? (
+            <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
+              <ProjectFeedTab projectId={project.id} onNavigateToEntity={handleFeedNavigate} />
+            </div>
           ) : (
-            <div className="container mx-auto px-4 py-8">
-              <OverviewTab project={project} onProjectUpdate={loadData} projectFinishDate={project.finish_goal_date} />
+            <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
+              <OverviewTab project={project} onProjectUpdate={loadData} projectFinishDate={project.finish_goal_date} onNavigateToEntity={handleFeedNavigate} />
             </div>
           )}
         </TabsContent>
@@ -555,7 +628,7 @@ const ProjectDetail = () => {
                 />
               )}
               {activeSubTab === 'rooms' && (
-                <div className="container mx-auto px-4 py-8">
+                <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
                   <h2 className="text-2xl font-bold mb-4">Room Management</h2>
                   <p className="text-muted-foreground mb-6">Manage and configure rooms for your project.</p>
                   {roomsLoading ? (
@@ -598,12 +671,12 @@ const ProjectDetail = () => {
           {isTabBlocked("tasks") ? (
             <NoAccessPlaceholder />
           ) : (
-            <div className="container mx-auto px-4 py-8">
+            <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
               {(!activeSubTab || activeSubTab === 'tasklist') && (
                 permissions.tasks === 'none' ? (
                   <NoAccessPlaceholder />
                 ) : (
-                  <TasksTab projectId={project.id} tasksScope={permissions.tasksScope as 'all' | 'assigned'} />
+                  <TasksTab projectId={project.id} tasksScope={permissions.tasksScope as 'all' | 'assigned'} openEntityId={activeTab === "tasks" ? openEntityId : null} onEntityOpened={() => setOpenEntityId(null)} />
                 )
               )}
               {activeSubTab === 'timeline' && (
@@ -611,8 +684,7 @@ const ProjectDetail = () => {
                   <NoAccessPlaceholder />
                 ) : (
                   <div>
-                    <h2 className="text-2xl font-bold mb-4">Project Timeline</h2>
-                    <ProjectTimeline projectId={project.id} />
+                    <ProjectTimeline projectId={project.id} projectName={project.name} />
                   </div>
                 )
               )}
@@ -624,8 +696,8 @@ const ProjectDetail = () => {
           {isTabBlocked("purchases") ? (
             <NoAccessPlaceholder />
           ) : (
-            <div className="container mx-auto px-4 py-8">
-              <PurchaseRequestsTab projectId={project.id} />
+            <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
+              <PurchaseRequestsTab projectId={project.id} openEntityId={activeTab === "purchases" ? openEntityId : null} onEntityOpened={() => setOpenEntityId(null)} />
             </div>
           )}
         </TabsContent>
@@ -634,7 +706,7 @@ const ProjectDetail = () => {
           {isTabBlocked("budget") ? (
             <NoAccessPlaceholder />
           ) : (
-            <div className="container mx-auto px-4 py-8">
+            <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
               <BudgetTab projectId={project.id} />
             </div>
           )}
@@ -644,7 +716,7 @@ const ProjectDetail = () => {
           {isTabBlocked("team") ? (
             <NoAccessPlaceholder />
           ) : (
-            <div className="container mx-auto px-4 py-8">
+            <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
               <TeamManagement projectId={project.id} isOwner={permissions.isOwner} />
             </div>
           )}
@@ -669,6 +741,17 @@ const ProjectDetail = () => {
         onRoomUpdated={handleRoomCreated}
         isCreateMode={true}
       />
+
+      {isHeaderVisible && (
+        <MobileBottomNav
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            setActiveSubTab(null);
+          }}
+          isTabBlocked={isTabBlocked}
+        />
+      )}
     </div>
   );
 };

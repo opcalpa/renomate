@@ -7,6 +7,19 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle, XCircle, Home } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+interface PermissionsSnapshot {
+  timeline_access?: string;
+  tasks_access?: string;
+  tasks_scope?: string;
+  space_planner_access?: string;
+  purchases_access?: string;
+  purchases_scope?: string;
+  overview_access?: string;
+  teams_access?: string;
+  budget_access?: string;
+  files_access?: string;
+}
+
 interface InvitationDetails {
   id: string;
   email: string;
@@ -23,6 +36,10 @@ interface InvitationDetails {
   purchases_access?: string;
   purchases_scope?: string;
   overview_access?: string;
+  teams_access?: string;
+  budget_access?: string;
+  files_access?: string;
+  permissions_snapshot?: PermissionsSnapshot | null;
 }
 
 const InvitationResponse = () => {
@@ -64,6 +81,10 @@ const InvitationResponse = () => {
           purchases_access,
           purchases_scope,
           overview_access,
+          teams_access,
+          budget_access,
+          files_access,
+          permissions_snapshot,
           project:projects(id, name)
         `)
         .eq("token", token)
@@ -146,7 +167,9 @@ const InvitationResponse = () => {
       const roleType = isContractor ? 'contractor' : 'other';
       const contractorCategory = isContractor ? contractorRole : null;
 
-      // Create project share with role_type and contractor_category
+      // Use permissions_snapshot if available, fallback to individual columns
+      const perms = invitation.permissions_snapshot || {};
+
       const { error: shareError } = await supabase
         .from("project_shares")
         .insert({
@@ -155,13 +178,16 @@ const InvitationResponse = () => {
           role: invitation.role,
           role_type: roleType,
           contractor_category: contractorCategory,
-          timeline_access: invitation.timeline_access || 'view',
-          tasks_access: invitation.tasks_access || 'view',
-          tasks_scope: invitation.tasks_scope || 'assigned',
-          space_planner_access: invitation.space_planner_access || 'view',
-          purchases_access: invitation.purchases_access || 'view',
-          purchases_scope: invitation.purchases_scope || 'assigned',
-          overview_access: invitation.overview_access || 'view',
+          timeline_access: perms.timeline_access || invitation.timeline_access || 'view',
+          tasks_access: perms.tasks_access || invitation.tasks_access || 'view',
+          tasks_scope: perms.tasks_scope || invitation.tasks_scope || 'assigned',
+          space_planner_access: perms.space_planner_access || invitation.space_planner_access || 'view',
+          purchases_access: perms.purchases_access || invitation.purchases_access || 'view',
+          purchases_scope: perms.purchases_scope || invitation.purchases_scope || 'assigned',
+          overview_access: perms.overview_access || invitation.overview_access || 'view',
+          teams_access: perms.teams_access || invitation.teams_access || 'none',
+          budget_access: perms.budget_access || invitation.budget_access || 'none',
+          files_access: perms.files_access || invitation.files_access || 'none',
         });
 
       if (shareError) throw shareError;

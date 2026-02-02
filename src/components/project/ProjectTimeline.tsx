@@ -13,7 +13,7 @@ import { sv } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,6 +45,7 @@ interface TeamMember {
 }
 interface ProjectTimelineProps {
   projectId: string;
+  projectName?: string;
   projectStartDate?: string | null;
   projectFinishDate?: string | null;
   onTaskClick?: (taskId: string) => void;
@@ -52,11 +53,13 @@ interface ProjectTimelineProps {
 type ViewMode = 'daily' | 'weekly' | 'monthly' | 'fullProject';
 const ProjectTimeline = ({
   projectId,
+  projectName,
   projectStartDate,
   projectFinishDate,
   onTaskClick
 }: ProjectTimelineProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [unscheduledCount, setUnscheduledCount] = useState(0);
   const [dependencies, setDependencies] = useState<TaskDependency[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [selectedAssignee, setSelectedAssignee] = useState<string>("all");
@@ -88,6 +91,16 @@ const ProjectTimeline = ({
       });
       if (error) throw error;
       setTasks(data || []);
+
+      // Count unscheduled tasks
+      const { count, error: countError } = await supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", projectId)
+        .or("start_date.is.null,finish_date.is.null");
+      if (!countError) {
+        setUnscheduledCount(count || 0);
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -112,19 +125,33 @@ const ProjectTimeline = ({
   };
   const fetchTeamMembers = async () => {
     try {
-      // Fetch stakeholders from the project
-      const { data, error } = await supabase
-        .from("stakeholders")
-        .select("id, name, role, contractor_category")
-        .eq("project_id", projectId)
-        .order("name");
+      // Fetch project owner
+      const { data: projectData } = await supabase
+        .from("projects")
+        .select("owner_id, profiles!projects_owner_id_fkey(id, name)")
+        .eq("id", projectId)
+        .single();
 
-      if (error) throw error;
+      const members: TeamMember[] = [];
+      if (projectData?.profiles) {
+        members.push({ id: (projectData.profiles as any).id, name: (projectData.profiles as any).name });
+      }
 
-      const members: TeamMember[] = (data || []).map((stakeholder: any) => ({
-        id: stakeholder.id,
-        name: stakeholder.name,
-      }));
+      // Fetch accepted shares
+      const { data: shares } = await supabase
+        .from("project_shares")
+        .select("shared_with_user_id, profiles!project_shares_shared_with_user_id_fkey(id, name)")
+        .eq("project_id", projectId);
+
+      if (shares) {
+        const existingIds = new Set(members.map(m => m.id));
+        shares.forEach((share: any) => {
+          if (share.profiles && !existingIds.has(share.profiles.id)) {
+            existingIds.add(share.profiles.id);
+            members.push({ id: share.profiles.id, name: share.profiles.name });
+          }
+        });
+      }
 
       setTeamMembers(members);
     } catch (error: any) {
@@ -243,8 +270,8 @@ const ProjectTimeline = ({
         return "bg-emerald-500/90";
       case "in_progress":
         return "bg-blue-500/90";
-      case "blocked":
-        return "bg-red-500/90";
+      case "waiting":
+        return "bg-yellow-500/90";
       default:
         return "bg-slate-400/90";
     }
@@ -256,8 +283,8 @@ const ProjectTimeline = ({
         return "bg-emerald-100 text-emerald-700 border-emerald-200";
       case "in_progress":
         return "bg-blue-100 text-blue-700 border-blue-200";
-      case "blocked":
-        return "bg-red-100 text-red-700 border-red-200";
+      case "waiting":
+        return "bg-yellow-100 text-yellow-700 border-yellow-200";
       default:
         return "bg-slate-100 text-slate-700 border-slate-200";
     }
@@ -266,13 +293,13 @@ const ProjectTimeline = ({
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "completed":
-        return "Done";
+        return t('statuses.completed');
       case "in_progress":
-        return "In progress";
-      case "blocked":
-        return "Blocked";
+        return t('statuses.inProgress');
+      case "waiting":
+        return t('statuses.waiting');
       default:
-        return "To do";
+        return t('statuses.toDo');
     }
   };
   const getPriorityBorderColor = (priority: string) => {
@@ -347,7 +374,7 @@ const ProjectTimeline = ({
       }).eq("id", draggingTask.id);
       if (error) throw error;
       toast({
-        title: "Task rescheduled",
+        title: t('timeline.taskRescheduled', 'Task rescheduled'),
         description: `${draggingTask.title} moved to ${format(newStartDate, "MMM d, yyyy")}`
       });
       fetchTasks();
@@ -394,7 +421,7 @@ const ProjectTimeline = ({
       }).eq("id", resizingTask.id);
       if (error) throw error;
       toast({
-        title: "Task duration updated",
+        title: t('timeline.taskDurationUpdated', 'Task duration updated'),
         description: `${resizingTask.title} ${resizeSide === 'left' ? 'start' : 'end'} date changed`
       });
       fetchTasks();
@@ -436,8 +463,8 @@ const ProjectTimeline = ({
       if (error) throw error;
 
       toast({
-        title: "Task updated",
-        description: "Task has been updated successfully",
+        title: t('timeline.taskUpdated', 'Task updated'),
+        description: t('timeline.taskUpdatedDescription', 'Task has been updated successfully'),
       });
 
       setEditDialogOpen(false);
@@ -516,37 +543,37 @@ const ProjectTimeline = ({
       <CardHeader>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <CardTitle>{t('projectDetail.timeline')}</CardTitle>
+            <CardTitle>{projectName || t('projectDetail.timeline')}</CardTitle>
             <CardDescription>
               {format(minDate, "MMM d, yyyy")} - {format(maxDate, "MMM d, yyyy")}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Filter by assignee" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Assignees</SelectItem>
-                <SelectItem value="unassigned">Unassigned</SelectItem>
+                <SelectItem value="all">{t('budget.allAssignees')}</SelectItem>
+                <SelectItem value="unassigned">{t('common.unassigned')}</SelectItem>
                 {teamMembers.map(member => <SelectItem key={member.id} value={member.id}>
                     {member.name}
                   </SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={viewMode} onValueChange={value => setViewMode(value as ViewMode)}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-                <SelectItem value="fullProject">Full project</SelectItem>
+                <SelectItem value="daily">{t('timeline.daily', 'Daily')}</SelectItem>
+                <SelectItem value="weekly">{t('timeline.weekly', 'Weekly')}</SelectItem>
+                <SelectItem value="monthly">{t('timeline.monthly', 'Monthly')}</SelectItem>
+                <SelectItem value="fullProject">{t('timeline.fullProject', 'Full project')}</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" onClick={handleToday}>
-              Today
+              {t('timeline.today', 'Today')}
             </Button>
             {viewMode !== 'fullProject' && (
               <>
@@ -574,8 +601,8 @@ const ProjectTimeline = ({
             <span className="text-muted-foreground font-medium">{t('projectDetail.toDo')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-lg bg-red-500/90 shadow-sm border border-red-600/20" />
-            <span className="text-muted-foreground font-medium">Blocked</span>
+            <div className="w-4 h-4 rounded-lg bg-yellow-500/90 shadow-sm border border-yellow-600/20" />
+            <span className="text-muted-foreground font-medium">{t('statuses.onHold')}</span>
           </div>
           <div className="flex items-center gap-2 ml-auto">
             {projectStartDate && (
@@ -586,12 +613,22 @@ const ProjectTimeline = ({
             )}
           </div>
         </div>
+        {unscheduledCount > 0 && (
+          <div className="mt-3">
+            <Badge variant="secondary" className="text-xs">
+              <Calendar className="h-3 w-3 mr-1" />
+              {unscheduledCount === 1
+                ? t('timeline.unscheduledTasksSingular', '1 unscheduled task')
+                : t('timeline.unscheduledTasks', '{{count}} unscheduled tasks', { count: unscheduledCount })}
+            </Badge>
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
           {visibleTasks.length === 0 ? <div className="text-center py-8 text-muted-foreground">
-              No tasks scheduled in this time period
-            </div> : <div className="relative">
+              {t('timeline.noTasksInPeriod', 'No tasks scheduled in this time period')}
+            </div> : <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0"><div className="relative min-w-[600px]">
               {/* Vertical grid lines that span entire timeline - connected to dates */}
               <div className="absolute inset-0 pointer-events-none" style={{ top: 0 }}>
                 {Array.from({ length: totalDays + 1 }, (_, i) => {
@@ -828,21 +865,21 @@ const ProjectTimeline = ({
                             )}
                             <div className="grid grid-cols-2 gap-2 text-sm">
                               <div>
-                                <span className="font-medium">Status:</span> {task.status}
+                                <span className="font-medium">{t('common.status')}:</span> {task.status}
                               </div>
                               <div>
-                                <span className="font-medium">Priority:</span> {task.priority}
+                                <span className="font-medium">{t('tasks.priority')}:</span> {task.priority}
                               </div>
                               <div>
-                                <span className="font-medium">Progress:</span> {task.progress}%
+                                <span className="font-medium">{t('common.progress')}:</span> {task.progress}%
                               </div>
                               {task.budget && (
                                 <div>
-                                  <span className="font-medium">Budget:</span> {task.budget}
+                                  <span className="font-medium">{t('common.budget')}:</span> {task.budget}
                                 </div>
                               )}
                               <div className="col-span-2">
-                                <span className="font-medium">Duration:</span> {format(parseISO(task.start_date!), "MMM d")} - {format(parseISO(task.finish_date!), "MMM d, yyyy")}
+                                <span className="font-medium">{t('timeline.duration', 'Duration')}:</span> {format(parseISO(task.start_date!), "MMM d")} - {format(parseISO(task.finish_date!), "MMM d, yyyy")}
                               </div>
                             </div>
                           </div>
@@ -851,19 +888,20 @@ const ProjectTimeline = ({
                     </div>;
             })}
               </div>
-            </div>}
+            </div></div>}
         </div>
       </CardContent>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
+            <DialogTitle>{t('tasks.editTask', 'Edit Task')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('tasks.editTask', 'Edit Task')}</DialogDescription>
           </DialogHeader>
           {editingTask && (
             <form onSubmit={handleEditTask} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-task-title">Task Title</Label>
+                <Label htmlFor="edit-task-title">{t('tasks.taskTitle')}</Label>
                 <Input
                   id="edit-task-title"
                   value={editingTask.title}
@@ -872,7 +910,7 @@ const ProjectTimeline = ({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-task-description">Description</Label>
+                <Label htmlFor="edit-task-description">{t('common.description')}</Label>
                 <Textarea
                   id="edit-task-description"
                   value={editingTask.description || ""}
@@ -891,14 +929,14 @@ const ProjectTimeline = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="low">{t('tasks.priorityLow')}</SelectItem>
+                      <SelectItem value="medium">{t('tasks.priorityMedium')}</SelectItem>
+                      <SelectItem value="high">{t('tasks.priorityHigh')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-task-assignee">Assign To</Label>
+                  <Label htmlFor="edit-task-assignee">{t('common.assignedTo')}</Label>
                   <Select
                     value={editingTask.assigned_to_stakeholder_id || "unassigned"}
                     onValueChange={(value) => 
@@ -909,10 +947,10 @@ const ProjectTimeline = ({
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Unassigned" />
+                      <SelectValue placeholder={t('common.unassigned')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      <SelectItem value="unassigned">{t('common.unassigned')}</SelectItem>
                       {teamMembers.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
                           {member.name}
@@ -923,7 +961,7 @@ const ProjectTimeline = ({
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-task-progress">Progress: {editingTask.progress}%</Label>
+                <Label htmlFor="edit-task-progress">{t('common.progress')}: {editingTask.progress}%</Label>
                 <Slider
                   id="edit-task-progress"
                   min={0}
@@ -936,7 +974,7 @@ const ProjectTimeline = ({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-task-start-date">Start Date</Label>
+                  <Label htmlFor="edit-task-start-date">{t('common.startDate')}</Label>
                   <DatePicker
                     date={editingTask.start_date ? new Date(editingTask.start_date) : undefined}
                     onDateChange={(date) => setEditingTask({ ...editingTask, start_date: date ? date.toISOString().split('T')[0] : null })}
@@ -944,7 +982,7 @@ const ProjectTimeline = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-task-finish-date">Finish Date</Label>
+                  <Label htmlFor="edit-task-finish-date">{t('common.finishDate')}</Label>
                   <DatePicker
                     date={editingTask.finish_date ? new Date(editingTask.finish_date) : undefined}
                     onDateChange={(date) => setEditingTask({ ...editingTask, finish_date: date ? date.toISOString().split('T')[0] : null })}
@@ -953,7 +991,7 @@ const ProjectTimeline = ({
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-task-budget">Budget</Label>
+                <Label htmlFor="edit-task-budget">{t('common.budget')}</Label>
                 <Input
                   id="edit-task-budget"
                   type="number"
@@ -964,7 +1002,7 @@ const ProjectTimeline = ({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-task-cost-center">Cost Center</Label>
+                <Label htmlFor="edit-task-cost-center">{t('budget.costCenter')}</Label>
                 <Select
                   value={editingTask.cost_center || ""}
                   onValueChange={(value) => setEditingTask({ ...editingTask, cost_center: value || null })}
@@ -990,10 +1028,10 @@ const ProjectTimeline = ({
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button type="submit">
-                  Save Changes
+                  {t('taskPanel.saveChanges')}
                 </Button>
               </div>
             </form>

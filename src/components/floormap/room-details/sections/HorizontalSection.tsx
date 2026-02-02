@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Layers } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ export function HorizontalSection({
   formData,
   updateSpec,
 }: SectionProps) {
+  const { t } = useTranslation();
   const floorSpec = formData.floor_spec as FloorSpec;
   const ceilingSpec = formData.ceiling_spec as CeilingSpec;
 
@@ -31,13 +33,13 @@ export function HorizontalSection({
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
           <Layers className="h-4 w-4" />
-          <span>Golv</span>
+          <span>{t('rooms.floorLabel')}</span>
         </div>
 
         <div className="grid gap-4 pl-6">
           {/* Floor material */}
           <div className="space-y-2">
-            <Label htmlFor="floor-material">Material</Label>
+            <Label htmlFor="floor-material">{t('rooms.material')}</Label>
             <Select
               value={floorSpec?.material || ""}
               onValueChange={(value) =>
@@ -45,12 +47,12 @@ export function HorizontalSection({
               }
             >
               <SelectTrigger id="floor-material">
-                <SelectValue placeholder="Välj golvmaterial" />
+                <SelectValue placeholder={t('rooms.selectFloorMaterial')} />
               </SelectTrigger>
               <SelectContent>
                 {FLOOR_MATERIAL_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                    {t(option.labelKey)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -59,34 +61,34 @@ export function HorizontalSection({
 
           {/* Floor specification (free text) */}
           <div className="space-y-2">
-            <Label htmlFor="floor-spec">Specifikation</Label>
+            <Label htmlFor="floor-spec">{t('rooms.specification')}</Label>
             <Input
               id="floor-spec"
               value={floorSpec?.specification || ""}
               onChange={(e) =>
                 updateSpec("floor_spec", { ...floorSpec, specification: e.target.value })
               }
-              placeholder="t.ex. Ek 3-stav, 14mm"
+              placeholder={t('rooms.specPlaceholder')}
             />
           </div>
 
           {/* Floor treatments (multi-select) */}
           <div className="space-y-2">
-            <Label id="floor-treatments-label">Behandling</Label>
+            <Label id="floor-treatments-label">{t('rooms.treatment')}</Label>
             <MultiSelect
               options={FLOOR_TREATMENT_OPTIONS}
               selected={floorSpec?.treatments || []}
               onChange={(values) =>
                 updateSpec("floor_spec", { ...floorSpec, treatments: values })
               }
-              placeholder="Välj behandling(ar)"
+              placeholder={t('rooms.selectTreatments')}
             />
           </div>
 
           {/* Skirting */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="skirting-type">Golvlist</Label>
+              <Label htmlFor="skirting-type">{t('rooms.skirtingType')}</Label>
               <Select
                 value={floorSpec?.skirting_type || ""}
                 onValueChange={(value) =>
@@ -94,26 +96,26 @@ export function HorizontalSection({
                 }
               >
                 <SelectTrigger id="skirting-type">
-                  <SelectValue placeholder="Välj listtyp" />
+                  <SelectValue placeholder={t('rooms.selectSkirtingType')} />
                 </SelectTrigger>
                 <SelectContent>
                   {SKIRTING_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                      {t(option.labelKey)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="skirting-color">Kulör (golvlist)</Label>
+              <Label htmlFor="skirting-color">{t('rooms.skirtingColor')}</Label>
               <Input
                 id="skirting-color"
                 value={floorSpec?.skirting_color || ""}
                 onChange={(e) =>
                   updateSpec("floor_spec", { ...floorSpec, skirting_color: e.target.value })
                 }
-                placeholder="t.ex. NCS S 0502-Y"
+                placeholder={t('rooms.colorPlaceholder')}
               />
             </div>
           </div>
@@ -127,13 +129,13 @@ export function HorizontalSection({
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
           <Layers className="h-4 w-4 rotate-180" />
-          <span>Tak</span>
+          <span>{t('rooms.ceiling')}</span>
         </div>
 
         <div className="grid gap-4 pl-6">
           {/* Ceiling material */}
           <div className="space-y-2">
-            <Label htmlFor="ceiling-material">Material</Label>
+            <Label htmlFor="ceiling-material">{t('rooms.material')}</Label>
             <Select
               value={ceilingSpec?.material || ""}
               onValueChange={(value) =>
@@ -141,12 +143,12 @@ export function HorizontalSection({
               }
             >
               <SelectTrigger id="ceiling-material">
-                <SelectValue placeholder="Välj takmaterial" />
+                <SelectValue placeholder={t('rooms.selectCeilingMaterial')} />
               </SelectTrigger>
               <SelectContent>
                 {CEILING_MATERIAL_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                    {t(option.labelKey)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -155,20 +157,20 @@ export function HorizontalSection({
 
           {/* Ceiling color */}
           <div className="space-y-2">
-            <Label htmlFor="ceiling-color">Kulör</Label>
+            <Label htmlFor="ceiling-color">{t('rooms.ceilingColor')}</Label>
             <Input
               id="ceiling-color"
               value={ceilingSpec?.color || ""}
               onChange={(e) =>
                 updateSpec("ceiling_spec", { ...ceilingSpec, color: e.target.value })
               }
-              placeholder="t.ex. NCS S 0500-N"
+              placeholder={t('rooms.ceilingColorPlaceholder')}
             />
           </div>
 
           {/* Ceiling molding */}
           <div className="space-y-2">
-            <Label htmlFor="ceiling-molding">Taklist</Label>
+            <Label htmlFor="ceiling-molding">{t('rooms.ceilingMolding')}</Label>
             <Select
               value={ceilingSpec?.molding_type || ""}
               onValueChange={(value) =>
@@ -176,12 +178,12 @@ export function HorizontalSection({
               }
             >
               <SelectTrigger id="ceiling-molding">
-                <SelectValue placeholder="Välj taklist" />
+                <SelectValue placeholder={t('rooms.selectCeilingMolding')} />
               </SelectTrigger>
               <SelectContent>
                 {CEILING_MOLDING_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                    {t(option.labelKey)}
                   </SelectItem>
                 ))}
               </SelectContent>

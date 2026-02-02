@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -51,11 +52,13 @@ import {
   Layers,
   Sparkles,
   Wand2,
+  Link,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { AIFloorPlanImport } from "./AIFloorPlanImport";
 import { AIDocumentImportModal } from "./AIDocumentImportModal";
+import { LinkFileToTaskDialog } from "./LinkFileToTaskDialog";
 import { isDocumentFile } from "@/services/aiDocumentService";
 
 interface ProjectFile {
@@ -101,8 +104,10 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
   const [documentImportFile, setDocumentImportFile] = useState<ProjectFile | null>(null);
   const [showDocumentUploadSuggestion, setShowDocumentUploadSuggestion] = useState<ProjectFile | null>(null);
   const [floorPlanImportFile, setFloorPlanImportFile] = useState<ProjectFile | null>(null);
+  const [linkFile, setLinkFile] = useState<ProjectFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   // Helper to check if file is a document (PDF, DOC, DOCX, TXT)
   const checkIsDocumentFile = (file: ProjectFile) => {
@@ -199,8 +204,8 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
     } catch (error: any) {
       console.error('Error fetching files:', error);
       toast({
-        title: "Fel",
-        description: "Kunde inte ladda filer",
+        title: t('files.error'),
+        description: t('files.errorLoadingFiles'),
         variant: "destructive",
       });
     } finally {
@@ -221,7 +226,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
       if (error) throw error;
 
       toast({
-        title: "Mapp skapad",
+        title: t('files.folderCreated'),
         description: newFolderName,
       });
 
@@ -231,8 +236,8 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
     } catch (error: any) {
       console.error('Error creating folder:', error);
       toast({
-        title: "Fel",
-        description: "Kunde inte skapa mapp",
+        title: t('files.error'),
+        description: t('files.errorCreatingFolder'),
         variant: "destructive",
       });
     }
@@ -272,8 +277,8 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
       }
 
       toast({
-        title: "Filer uppladdade",
-        description: `${selectedFiles.length} fil(er) uppladdade framgångsrikt`,
+        title: t('files.filesUploaded'),
+        description: t('files.filesUploadedDescription', { count: selectedFiles.length }),
       });
 
       await fetchFiles();
@@ -289,8 +294,8 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
     } catch (error: unknown) {
       console.error('Error uploading files:', error);
       toast({
-        title: "Uppladdningsfel",
-        description: error instanceof Error ? error.message : "Kunde inte ladda upp filer",
+        title: t('files.uploadError'),
+        description: error instanceof Error ? error.message : t('files.errorUploadingFiles'),
         variant: "destructive",
       });
     } finally {
@@ -328,8 +333,8 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
     } catch (error: any) {
       console.error('Error previewing file:', error);
       toast({
-        title: "Fel",
-        description: "Kunde inte förhandsgranska filen",
+        title: t('files.error'),
+        description: t('files.errorPreviewingFile'),
         variant: "destructive",
       });
     }
@@ -354,14 +359,14 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
       document.body.removeChild(a);
 
       toast({
-        title: "Nedladdning startad",
+        title: t('files.downloadStarted'),
         description: file.name,
       });
     } catch (error: any) {
       console.error('Error downloading file:', error);
       toast({
-        title: "Nedladdningsfel",
-        description: "Kunde inte ladda ner filen",
+        title: t('files.downloadError'),
+        description: t('files.errorDownloadingFile'),
         variant: "destructive",
       });
     }
@@ -385,7 +390,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
       if (error) throw error;
 
       toast({
-        title: "Fil raderad",
+        title: t('files.fileDeleted'),
         description: fileToDelete.name,
       });
 
@@ -394,8 +399,8 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
     } catch (error: any) {
       console.error('Error deleting file:', error);
       toast({
-        title: "Raderingsfel",
-        description: "Kunde inte radera filen",
+        title: t('files.deleteError'),
+        description: t('files.errorDeletingFile'),
         variant: "destructive",
       });
     }
@@ -413,7 +418,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
             e.stopPropagation();
             handlePreview(file);
           }}
-          title="Klicka för att förhandsgranska"
+          title={t('files.clickToPreview')}
         />
       );
     } else if (file.type.startsWith('image/')) {
@@ -463,7 +468,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
           <div className="flex items-center gap-3">
             <FolderOpen className="h-8 w-8 text-primary" />
             <div>
-              <h1 className="text-3xl font-bold">Projektfiler</h1>
+              <h1 className="text-3xl font-bold">{t('files.title')}</h1>
               <p className="text-muted-foreground">{projectName}</p>
             </div>
           </div>
@@ -481,8 +486,8 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
               projectId={projectId}
               onImportComplete={() => {
                 toast({
-                  title: "AI Import Klar!",
-                  description: "Ritningen har konverterats. Navigerar till Floor Plan...",
+                  title: t('files.importDone'),
+                  description: t('files.importDoneDescription'),
                 });
                 // Navigate to Floor Plan tab after short delay
                 setTimeout(() => {
@@ -497,7 +502,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
               onClick={() => setShowNewFolderDialog(true)}
             >
               <FolderPlus className="h-4 w-4 mr-2" />
-              Ny mapp
+              {t('files.newFolder')}
             </Button>
             <Button
               onClick={() => fileInputRef.current?.click()}
@@ -506,12 +511,12 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
               {uploading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Laddar upp...
+                  {t('files.uploading')}
                 </>
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" />
-                  Ladda upp filer
+                  {t('files.uploadFiles')}
                 </>
               )}
             </Button>
@@ -528,7 +533,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
               className="h-8"
             >
               <FolderOpen className="h-4 w-4 mr-1" />
-              Hem
+              {t('files.home')}
             </Button>
             {getBreadcrumbs().map((folder, index) => (
               <div key={index} className="flex items-center gap-2">
@@ -549,9 +554,9 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
         {/* Files Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Uppladdade filer</CardTitle>
+            <CardTitle>{t('files.uploadedFiles')}</CardTitle>
             <CardDescription>
-              Ritningar, foton och andra projektrelaterade filer
+              {t('files.filesDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -562,34 +567,35 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
             ) : folders.length === 0 && files.length === 0 ? (
               <div className="text-center py-12">
                 <FolderOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">Inga filer eller mappar</p>
+                <p className="text-muted-foreground mb-4">{t('files.noFilesOrFolders')}</p>
                 <div className="flex gap-2 justify-center">
                   <Button
                     variant="outline"
                     onClick={() => setShowNewFolderDialog(true)}
                   >
                     <FolderPlus className="h-4 w-4 mr-2" />
-                    Skapa mapp
+                    {t('files.createFolder')}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    Ladda upp fil
+                    {t('files.uploadFile')}
                   </Button>
                 </div>
               </div>
             ) : (
+              <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-16"></TableHead>
-                    <TableHead>Namn</TableHead>
-                    <TableHead>Typ</TableHead>
-                    <TableHead>Storlek</TableHead>
-                    <TableHead>Uppladdad</TableHead>
-                    <TableHead className="text-right">Åtgärder</TableHead>
+                    <TableHead>{t('common.name')}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t('budget.type')}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t('files.size')}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t('files.uploaded')}</TableHead>
+                    <TableHead className="text-right">{t('files.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -604,11 +610,11 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                         <Folder className="h-5 w-5 text-yellow-500" />
                       </TableCell>
                       <TableCell className="font-medium">{folder.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">Mapp</Badge>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant="secondary">{t('files.folder')}</Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">-</TableCell>
-                      <TableCell className="text-muted-foreground">-</TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground">-</TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground">-</TableCell>
                       <TableCell></TableCell>
                     </TableRow>
                   ))}
@@ -618,15 +624,15 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                     <TableRow key={file.id}>
                       <TableCell>{getFileIcon(file)}</TableCell>
                       <TableCell className="font-medium">{file.name}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <Badge variant="outline">
                           {file.type.split('/')[1] || 'unknown'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="hidden md:table-cell text-muted-foreground">
                         {formatFileSize(file.size)}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="hidden md:table-cell text-muted-foreground">
                         {formatDate(file.uploaded_at)}
                       </TableCell>
                       <TableCell className="text-right">
@@ -637,10 +643,10 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                             onClick={() => handlePreview(file)}
                             title={
                               file.type.includes('pdf')
-                                ? "Öppna i ny flik"
+                                ? t('files.openInNewTab')
                                 : file.type.startsWith('image/')
-                                ? "Förhandsgranska"
-                                : "Visa/Ladda ner"
+                                ? t('files.preview')
+                                : t('files.viewDownload')
                             }
                           >
                             <Eye className="h-4 w-4" />
@@ -650,7 +656,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                               variant="ghost"
                               size="sm"
                               onClick={() => setDocumentImportFile(file)}
-                              title="Extrahera rum & uppgifter med AI"
+                              title={t('files.extractWithAI')}
                               className="text-primary hover:text-primary"
                             >
                               <Sparkles className="h-4 w-4" />
@@ -661,7 +667,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                               variant="ghost"
                               size="sm"
                               onClick={() => setFloorPlanImportFile(file)}
-                              title="Konvertera till ritning med AI"
+                              title={t('files.convertWithAI')}
                               className="text-primary hover:text-primary"
                             >
                               <Wand2 className="h-4 w-4" />
@@ -677,7 +683,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                                   .getPublicUrl(file.path);
                                 onUseAsBackground(publicUrl, file.name);
                               }}
-                              title="Använd som bakgrundsbild"
+                              title={t('files.useAsBackground')}
                             >
                               <Layers className="h-4 w-4" />
                             </Button>
@@ -685,8 +691,16 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => setLinkFile(file)}
+                            title={t('files.linkToTask')}
+                          >
+                            <Link className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => setSelectedFileForComments(file)}
-                            title="Kommentarer"
+                            title={t('common.comments')}
                           >
                             <MessageSquare className="h-4 w-4" />
                           </Button>
@@ -694,7 +708,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDownload(file)}
-                            title="Ladda ner"
+                            title={t('common.download')}
                           >
                             <Download className="h-4 w-4" />
                           </Button>
@@ -702,7 +716,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                             variant="ghost"
                             size="sm"
                             onClick={() => setFileToDelete(file)}
-                            title="Radera"
+                            title={t('common.delete')}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -712,6 +726,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                   ))}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -719,25 +734,25 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
         {/* Info Card */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Filformat som stöds</CardTitle>
+            <CardTitle className="text-sm">{t('files.supportedFormats')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
               <div>
-                <p className="font-medium text-foreground mb-1">Bilder</p>
+                <p className="font-medium text-foreground mb-1">{t('files.images')}</p>
                 <p>JPEG, PNG, GIF, WebP</p>
               </div>
               <div>
-                <p className="font-medium text-foreground mb-1">Dokument</p>
+                <p className="font-medium text-foreground mb-1">{t('files.documents')}</p>
                 <p>PDF</p>
               </div>
               <div>
-                <p className="font-medium text-foreground mb-1">Max storlek</p>
-                <p>10 MB per fil</p>
+                <p className="font-medium text-foreground mb-1">{t('files.maxSize')}</p>
+                <p>{t('files.maxSizeValue')}</p>
               </div>
               <div>
-                <p className="font-medium text-foreground mb-1">Lagring</p>
-                <p>Obegränsat antal filer</p>
+                <p className="font-medium text-foreground mb-1">{t('files.storage')}</p>
+                <p>{t('files.storageValue')}</p>
               </div>
             </div>
           </CardContent>
@@ -748,16 +763,15 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
       <AlertDialog open={!!fileToDelete} onOpenChange={() => setFileToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Radera fil?</AlertDialogTitle>
+            <AlertDialogTitle>{t('files.deleteFile')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Är du säker på att du vill radera <strong>{fileToDelete?.name}</strong>?
-              Denna åtgärd kan inte ångras.
+              {t('files.deleteFileConfirmation', { name: fileToDelete?.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Radera
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -767,14 +781,14 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
       <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Skapa ny mapp</DialogTitle>
+            <DialogTitle>{t('files.createNewFolder')}</DialogTitle>
             <DialogDescription>
-              Ange ett namn för den nya mappen
+              {t('files.newFolderDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="folder-name">Mappnamn</Label>
+              <Label htmlFor="folder-name">{t('files.folderName')}</Label>
               <Input
                 id="folder-name"
                 value={newFolderName}
@@ -790,11 +804,11 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowNewFolderDialog(false)}>
-              Avbryt
+              {t('common.cancel')}
             </Button>
             <Button onClick={createFolder} disabled={!newFolderName.trim()}>
               <FolderPlus className="h-4 w-4 mr-2" />
-              Skapa
+              {t('common.create')}
             </Button>
           </div>
         </DialogContent>
@@ -805,14 +819,14 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
         open={!!selectedFileForComments} 
         onOpenChange={() => setSelectedFileForComments(null)}
       >
-        <DialogContent className="max-w-3xl max-h-[80vh] z-[100]">
+        <DialogContent className="w-full md:max-w-3xl max-h-[90vh] overflow-y-auto z-[100]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              Kommentarer - {selectedFileForComments?.name}
+              {t('files.commentsOn', { name: selectedFileForComments?.name })}
             </DialogTitle>
             <DialogDescription>
-              Diskutera och kommentera denna fil medan du granskar den
+              {t('files.commentsDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="overflow-y-auto max-h-[60vh]">
@@ -873,7 +887,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                     variant="ghost"
                     size="sm"
                     onClick={() => setImageRotation((imageRotation + 90) % 360)}
-                    title="Rotera"
+                    title={t('files.rotate')}
                   >
                     <RotateCw className="h-4 w-4" />
                   </Button>
@@ -885,7 +899,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                     variant="ghost"
                     size="sm"
                     onClick={() => previewFile && setSelectedFileForComments(previewFile)}
-                    title="Kommentarer"
+                    title={t('common.comments')}
                   >
                     <MessageSquare className="h-4 w-4" />
                   </Button>
@@ -895,7 +909,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                     variant="ghost"
                     size="sm"
                     onClick={() => previewFile && handleDownload(previewFile)}
-                    title="Ladda ner"
+                    title={t('common.download')}
                   >
                     <Download className="h-4 w-4" />
                   </Button>
@@ -905,7 +919,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                     variant="ghost"
                     size="sm"
                     onClick={closePreview}
-                    title="Stäng"
+                    title={t('common.close')}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -933,9 +947,9 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
             {/* Footer with info */}
             <div className="absolute bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t p-2">
               <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-                <span>Scrolla för att panorera</span>
+                <span>{t('files.scrollToPan')}</span>
                 <span>•</span>
-                <span>Använd zoom-knappar eller mushjul</span>
+                <span>{t('files.useZoomControls')}</span>
               </div>
             </div>
           </div>
@@ -952,8 +966,8 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
         }}
         onImportComplete={() => {
           toast({
-            title: "Import klar!",
-            description: "Rum och uppgifter har importerats",
+            title: t('files.importDocDone'),
+            description: t('files.importDocDescription'),
           });
           fetchFiles();
         }}
@@ -968,15 +982,14 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              Extrahera med AI?
+              {t('files.extractWithAIQuestion')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Dokumentet "{showDocumentUploadSuggestion?.name}" har laddats upp.
-              Vill du använda AI för att automatiskt extrahera rum och uppgifter från dokumentet?
+              {t('files.extractWithAIDescription', { name: showDocumentUploadSuggestion?.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Nej tack</AlertDialogCancel>
+            <AlertDialogCancel>{t('files.noThanks')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (showDocumentUploadSuggestion) {
@@ -986,13 +999,22 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
               }}
             >
               <Sparkles className="h-4 w-4 mr-2" />
-              Extrahera med AI
+              {t('files.extractWithAI')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* AI Floor Plan Import from file list */}
+      {/* Link File to Task Dialog */}
+      <LinkFileToTaskDialog
+        projectId={projectId}
+        file={linkFile ? { name: linkFile.name, path: linkFile.path, size: linkFile.size, type: linkFile.type } : null}
+        open={!!linkFile}
+        onOpenChange={(open) => { if (!open) setLinkFile(null); }}
+        onLinked={() => setLinkFile(null)}
+      />
+
       {floorPlanImportFile && (
         <AIFloorPlanImport
           projectId={projectId}
@@ -1009,8 +1031,8 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
           initialFileName={floorPlanImportFile.name}
           onImportComplete={() => {
             toast({
-              title: "AI Import Klar!",
-              description: "Ritningen har konverterats.",
+              title: t('files.importDone'),
+              description: t('files.importDoneShort'),
             });
             setFloorPlanImportFile(null);
             if (onNavigateToFloorPlan) {

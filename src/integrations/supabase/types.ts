@@ -314,19 +314,158 @@ export type Database = {
           },
         ]
       }
+      quote_items: {
+        Row: {
+          id: string
+          quote_id: string
+          description: string
+          quantity: number
+          unit: string | null
+          unit_price: number
+          total_price: number
+          is_rot_eligible: boolean | null
+          rot_deduction: number | null
+          sort_order: number | null
+          room_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          quote_id: string
+          description: string
+          quantity?: number
+          unit?: string | null
+          unit_price?: number
+          total_price?: never
+          is_rot_eligible?: boolean | null
+          rot_deduction?: number | null
+          sort_order?: number | null
+          room_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          quote_id?: string
+          description?: string
+          quantity?: number
+          unit?: string | null
+          unit_price?: number
+          total_price?: never
+          is_rot_eligible?: boolean | null
+          rot_deduction?: number | null
+          sort_order?: number | null
+          room_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotes: {
+        Row: {
+          id: string
+          project_id: string
+          creator_id: string
+          client_id: string | null
+          title: string
+          description: string | null
+          status: string
+          total_amount: number | null
+          total_rot_deduction: number | null
+          total_after_rot: number | null
+          valid_until: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          creator_id: string
+          client_id?: string | null
+          title?: string
+          description?: string | null
+          status?: string
+          total_amount?: number | null
+          total_rot_deduction?: number | null
+          total_after_rot?: number | null
+          valid_until?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          creator_id?: string
+          client_id?: string | null
+          title?: string
+          description?: string | null
+          status?: string
+          total_amount?: number | null
+          total_rot_deduction?: number | null
+          total_after_rot?: number | null
+          valid_until?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          average_rating: number | null
           company_address: string | null
           company_city: string | null
           company_country: string | null
+          company_description: string | null
           company_name: string | null
           company_postal_code: string | null
+          company_website: string | null
           contractor_category: string | null
           created_at: string
           email: string | null
           id: string
+          is_professional: boolean
           language_preference: string | null
+          latitude: number | null
+          longitude: number | null
           name: string
           phone: string | null
           role: string | null
@@ -335,16 +474,22 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          average_rating?: number | null
           company_address?: string | null
           company_city?: string | null
           company_country?: string | null
+          company_description?: string | null
           company_name?: string | null
           company_postal_code?: string | null
+          company_website?: string | null
           contractor_category?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          is_professional?: boolean
           language_preference?: string | null
+          latitude?: number | null
+          longitude?: number | null
           name: string
           phone?: string | null
           role?: string | null
@@ -353,16 +498,22 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          average_rating?: number | null
           company_address?: string | null
           company_city?: string | null
           company_country?: string | null
+          company_description?: string | null
           company_name?: string | null
           company_postal_code?: string | null
+          company_website?: string | null
           contractor_category?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          is_professional?: boolean
           language_preference?: string | null
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           phone?: string | null
           role?: string | null
@@ -384,6 +535,7 @@ export type Database = {
           invited_by_user_id: string
           invited_email: string
           invited_phone: string | null
+          permissions_snapshot: Record<string, unknown> | null
           project_id: string
           status: string
           updated_at: string
@@ -400,6 +552,7 @@ export type Database = {
           invited_by_user_id: string
           invited_email: string
           invited_phone?: string | null
+          permissions_snapshot?: Record<string, unknown> | null
           project_id: string
           status?: string
           updated_at?: string
@@ -416,6 +569,7 @@ export type Database = {
           invited_by_user_id?: string
           invited_email?: string
           invited_phone?: string | null
+          permissions_snapshot?: Record<string, unknown> | null
           project_id?: string
           status?: string
           updated_at?: string
@@ -488,6 +642,8 @@ export type Database = {
       }
       projects: {
         Row: {
+          address: string | null
+          city: string | null
           created_at: string
           description: string | null
           finish_goal_date: string | null
@@ -495,6 +651,8 @@ export type Database = {
           id: string
           name: string
           owner_id: string
+          postal_code: string | null
+          project_type: string | null
           spent_amount: number | null
           start_date: string | null
           status: string | null
@@ -502,6 +660,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string | null
+          city?: string | null
           created_at?: string
           description?: string | null
           finish_goal_date?: string | null
@@ -509,6 +669,8 @@ export type Database = {
           id?: string
           name: string
           owner_id: string
+          postal_code?: string | null
+          project_type?: string | null
           spent_amount?: number | null
           start_date?: string | null
           status?: string | null
@@ -516,6 +678,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string | null
+          city?: string | null
           created_at?: string
           description?: string | null
           finish_goal_date?: string | null
@@ -523,6 +687,8 @@ export type Database = {
           id?: string
           name?: string
           owner_id?: string
+          postal_code?: string | null
+          project_type?: string | null
           spent_amount?: number | null
           start_date?: string | null
           status?: string | null

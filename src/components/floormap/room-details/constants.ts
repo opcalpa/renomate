@@ -1,203 +1,203 @@
-// Room name suggestions for ComboboxFretext
-export const ROOM_NAME_SUGGESTIONS = [
-  "Vardagsrum",
-  "Kök",
-  "Sovrum",
-  "Sovrum 1",
-  "Sovrum 2",
-  "Sovrum 3",
-  "Badrum",
-  "Toalett",
-  "Hall",
-  "Entré",
-  "Arbetsrum",
-  "Kontor",
-  "Tvättstuga",
-  "Klädkammare",
-  "Förråd",
-  "Balkong",
-  "Altan",
-  "Garage",
-  "Källare",
-  "Vind",
-  "Gästrum",
-  "Lekrum",
-  "Matsal",
-  "Allrum",
+// Room name suggestions for ComboboxFretext — keyed for i18n
+export const ROOM_NAME_SUGGESTION_KEYS = [
+  "roomNames.livingRoom",
+  "roomNames.kitchen",
+  "roomNames.bedroom",
+  "roomNames.bedroom1",
+  "roomNames.bedroom2",
+  "roomNames.bedroom3",
+  "roomNames.bathroom",
+  "roomNames.toilet",
+  "roomNames.hallway",
+  "roomNames.entrance",
+  "roomNames.study",
+  "roomNames.office",
+  "roomNames.laundryRoom",
+  "roomNames.walkInCloset",
+  "roomNames.storage",
+  "roomNames.balcony",
+  "roomNames.patio",
+  "roomNames.garage",
+  "roomNames.basement",
+  "roomNames.attic",
+  "roomNames.guestRoom",
+  "roomNames.playroom",
+  "roomNames.diningRoom",
+  "roomNames.familyRoom",
 ];
 
-// Room status options
+// Room status options (values are i18n keys under roomStatuses.*)
 export const ROOM_STATUS_OPTIONS = [
-  { value: "befintligt", label: "Befintligt" },
-  { value: "ska_renoveras", label: "Ska renoveras" },
-  { value: "nyproduktion", label: "Nyproduktion" },
+  { value: "existing", labelKey: "roomStatuses.existing" },
+  { value: "to_be_renovated", labelKey: "roomStatuses.toBeRenovated" },
+  { value: "new_construction", labelKey: "roomStatuses.newConstruction" },
 ];
 
-// Priority options
+// Priority options (values are i18n keys under tasks.priority*)
 export const PRIORITY_OPTIONS = [
-  { value: "low", label: "Låg" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "Hög" },
+  { value: "low", labelKey: "tasks.priorityLow" },
+  { value: "medium", labelKey: "tasks.priorityMedium" },
+  { value: "high", labelKey: "tasks.priorityHigh" },
 ];
 
 // Floor material options
 export const FLOOR_MATERIAL_OPTIONS = [
-  { value: "parkett", label: "Parkett" },
-  { value: "klinker", label: "Klinker" },
-  { value: "linoleum", label: "Linoleum" },
-  { value: "betong", label: "Betong" },
-  { value: "laminat", label: "Laminat" },
-  { value: "vinyl", label: "Vinyl" },
-  { value: "matta", label: "Matta" },
-  { value: "sten", label: "Sten" },
+  { value: "parkett", labelKey: "materials.parquet" },
+  { value: "klinker", labelKey: "materials.tiles" },
+  { value: "linoleum", labelKey: "materials.linoleum" },
+  { value: "betong", labelKey: "materials.concrete" },
+  { value: "laminat", labelKey: "materials.laminate" },
+  { value: "vinyl", labelKey: "materials.vinyl" },
+  { value: "matta", labelKey: "materials.carpet" },
+  { value: "sten", labelKey: "materials.stone" },
 ];
 
 // Floor treatment options (multi-select)
 export const FLOOR_TREATMENT_OPTIONS = [
-  { value: "vaxad", label: "Vaxad" },
-  { value: "oljad", label: "Oljad" },
-  { value: "mattlackad", label: "Mattlackad" },
-  { value: "naturell", label: "Naturell" },
-  { value: "hoglans", label: "Högblank" },
-  { value: "slipad", label: "Slipad" },
+  { value: "vaxad", labelKey: "treatments.waxed" },
+  { value: "oljad", labelKey: "treatments.oiled" },
+  { value: "mattlackad", labelKey: "treatments.matteLacquered" },
+  { value: "naturell", labelKey: "treatments.natural" },
+  { value: "hoglans", labelKey: "treatments.highGloss" },
+  { value: "slipad", labelKey: "treatments.sanded" },
 ];
 
 // Skirting (golvlist) options
 export const SKIRTING_OPTIONS = [
-  { value: "tra_10cm", label: "Trä 10 cm" },
-  { value: "tra_7cm", label: "Trä 7 cm" },
-  { value: "tra_5cm", label: "Trä 5 cm" },
-  { value: "mdf_10cm", label: "MDF 10 cm" },
-  { value: "mdf_7cm", label: "MDF 7 cm" },
-  { value: "aluminium", label: "Aluminium" },
-  { value: "ingen", label: "Ingen" },
+  { value: "tra_10cm", labelKey: "skirting.wood10cm" },
+  { value: "tra_7cm", labelKey: "skirting.wood7cm" },
+  { value: "tra_5cm", labelKey: "skirting.wood5cm" },
+  { value: "mdf_10cm", labelKey: "skirting.mdf10cm" },
+  { value: "mdf_7cm", labelKey: "skirting.mdf7cm" },
+  { value: "aluminium", labelKey: "skirting.aluminium" },
+  { value: "ingen", labelKey: "materials.none" },
 ];
 
 // Ceiling material options
 export const CEILING_MATERIAL_OPTIONS = [
-  { value: "gips", label: "Gips" },
-  { value: "puts", label: "Puts" },
-  { value: "akustikplattor", label: "Akustikplattor" },
-  { value: "tra_panel", label: "Träpanel" },
-  { value: "spant", label: "Spänntak" },
+  { value: "gips", labelKey: "materials.drywall" },
+  { value: "puts", labelKey: "materials.plaster" },
+  { value: "akustikplattor", labelKey: "materials.acousticTiles" },
+  { value: "tra_panel", labelKey: "materials.woodPanel" },
+  { value: "spant", labelKey: "materials.stretchCeiling" },
 ];
 
 // Ceiling molding (taklist) options
 export const CEILING_MOLDING_OPTIONS = [
-  { value: "halkarl", label: "Hålkärl" },
-  { value: "svanhals", label: "Svanhals" },
-  { value: "klassisk", label: "Klassisk" },
-  { value: "modern", label: "Modern" },
-  { value: "ingen", label: "Ingen" },
+  { value: "halkarl", labelKey: "molding.coveCornice" },
+  { value: "svanhals", labelKey: "molding.swanNeck" },
+  { value: "klassisk", labelKey: "molding.classic" },
+  { value: "modern", labelKey: "molding.modern" },
+  { value: "ingen", labelKey: "materials.none" },
 ];
 
 // Wall treatment options (multi-select)
 export const WALL_TREATMENT_OPTIONS = [
-  { value: "malat", label: "Målat" },
-  { value: "tapetserat", label: "Tapetserat" },
-  { value: "kaklat", label: "Kaklat" },
-  { value: "panel", label: "Panel" },
-  { value: "puts", label: "Puts" },
-  { value: "betong", label: "Betong" },
-  { value: "tegel", label: "Tegel" },
+  { value: "malat", labelKey: "treatments.painted" },
+  { value: "tapetserat", labelKey: "treatments.wallpapered" },
+  { value: "kaklat", labelKey: "treatments.tiled" },
+  { value: "panel", labelKey: "treatments.panelled" },
+  { value: "puts", labelKey: "materials.plaster" },
+  { value: "betong", labelKey: "materials.concrete" },
+  { value: "tegel", labelKey: "materials.brick" },
 ];
 
 // Wall material options (for walls and elevation objects)
 export const WALL_MATERIAL_OPTIONS = [
-  { value: "gips", label: "Gips" },
-  { value: "betong", label: "Betong" },
-  { value: "tegelsten", label: "Tegelsten" },
-  { value: "lattvaggsblock", label: "Lättväggblock" },
-  { value: "tra_regelverk", label: "Trä regelverk" },
-  { value: "stalreglar", label: "Stålreglar" },
-  { value: "mdf", label: "MDF" },
-  { value: "osb", label: "OSB" },
-  { value: "plywood", label: "Plywood" },
-  { value: "glasvagg", label: "Glasvägg" },
+  { value: "gips", labelKey: "materials.drywall" },
+  { value: "betong", labelKey: "materials.concrete" },
+  { value: "tegelsten", labelKey: "materials.brick" },
+  { value: "lattvaggsblock", labelKey: "materials.lightweightBlock" },
+  { value: "tra_regelverk", labelKey: "materials.woodFraming" },
+  { value: "stalreglar", labelKey: "materials.steelStuds" },
+  { value: "mdf", labelKey: "materials.mdf" },
+  { value: "osb", labelKey: "materials.osb" },
+  { value: "plywood", labelKey: "materials.plywood" },
+  { value: "glasvagg", labelKey: "materials.glassWall" },
 ];
 
 // Elevation object material options
 export const ELEVATION_OBJECT_MATERIAL_OPTIONS = [
-  { value: "tra", label: "Trä" },
-  { value: "metall", label: "Metall" },
-  { value: "glas", label: "Glas" },
-  { value: "sten", label: "Sten" },
-  { value: "keramik", label: "Keramik" },
-  { value: "plast", label: "Plast" },
-  { value: "tyg", label: "Tyg" },
-  { value: "lader", label: "Läder" },
-  { value: "gips", label: "Gips" },
-  { value: "betong", label: "Betong" },
+  { value: "tra", labelKey: "materials.wood" },
+  { value: "metall", labelKey: "materials.metal" },
+  { value: "glas", labelKey: "materials.glass" },
+  { value: "sten", labelKey: "materials.stone" },
+  { value: "keramik", labelKey: "materials.ceramic" },
+  { value: "plast", labelKey: "materials.plastic" },
+  { value: "tyg", labelKey: "materials.fabric" },
+  { value: "lader", labelKey: "materials.leather" },
+  { value: "gips", labelKey: "materials.drywall" },
+  { value: "betong", labelKey: "materials.concrete" },
 ];
 
 // Door type options
 export const DOOR_TYPE_OPTIONS = [
-  { value: "spegeldorr", label: "Spegeldörr" },
-  { value: "slat", label: "Slät" },
-  { value: "glasad", label: "Glasad" },
-  { value: "panel", label: "Panel" },
-  { value: "skjutdorr", label: "Skjutdörr" },
-  { value: "pardorr", label: "Pardörr" },
+  { value: "spegeldorr", labelKey: "doors.panelDoor" },
+  { value: "slat", labelKey: "doors.flush" },
+  { value: "glasad", labelKey: "doors.glazed" },
+  { value: "panel", labelKey: "doors.panel" },
+  { value: "skjutdorr", labelKey: "doors.sliding" },
+  { value: "pardorr", labelKey: "doors.doubleDoor" },
 ];
 
 // Trim type options
 export const TRIM_TYPE_OPTIONS = [
-  { value: "klassisk", label: "Klassisk" },
-  { value: "modern", label: "Modern" },
-  { value: "minimalistisk", label: "Minimalistisk" },
-  { value: "antik", label: "Antik" },
-  { value: "ingen", label: "Ingen" },
+  { value: "klassisk", labelKey: "trim.classic" },
+  { value: "modern", labelKey: "trim.modern" },
+  { value: "minimalistisk", labelKey: "trim.minimalist" },
+  { value: "antik", labelKey: "trim.antique" },
+  { value: "ingen", labelKey: "materials.none" },
 ];
 
 // Electrical series options
 export const ELECTRICAL_SERIES_OPTIONS = [
-  { value: "schneider_renova", label: "Schneider Renova" },
-  { value: "elko_rs", label: "Elko RS" },
-  { value: "gira", label: "Gira" },
-  { value: "jung", label: "Jung" },
-  { value: "abb", label: "ABB" },
+  { value: "schneider_renova", labelKey: "electrical.schneiderRenova" },
+  { value: "elko_rs", labelKey: "electrical.elkoRS" },
+  { value: "gira", labelKey: "electrical.gira" },
+  { value: "jung", labelKey: "electrical.jung" },
+  { value: "abb", labelKey: "electrical.abb" },
 ];
 
 // Outlet/switch type options (multi-select)
 export const OUTLET_TYPE_OPTIONS = [
-  { value: "enkel_uttag", label: "Enkelt uttag" },
-  { value: "dubbel_uttag", label: "Dubbelt uttag" },
-  { value: "usb_uttag", label: "USB-uttag" },
-  { value: "enkel_brytare", label: "Enkel brytare" },
-  { value: "dubbel_brytare", label: "Dubbel brytare" },
-  { value: "dimmer", label: "Dimmer" },
-  { value: "rorelsedetktor", label: "Rörelsedetektor" },
+  { value: "enkel_uttag", labelKey: "outlets.singleOutlet" },
+  { value: "dubbel_uttag", labelKey: "outlets.doubleOutlet" },
+  { value: "usb_uttag", labelKey: "outlets.usbOutlet" },
+  { value: "enkel_brytare", labelKey: "outlets.singleSwitch" },
+  { value: "dubbel_brytare", labelKey: "outlets.doubleSwitch" },
+  { value: "dimmer", labelKey: "outlets.dimmer" },
+  { value: "rorelsedetktor", labelKey: "outlets.motionSensor" },
 ];
 
 // Lighting type options (multi-select)
 export const LIGHTING_TYPE_OPTIONS = [
-  { value: "taklampa", label: "Taklampa" },
-  { value: "spotlights", label: "Spotlights" },
-  { value: "vagglampa", label: "Vägglampa" },
-  { value: "led_list", label: "LED-list" },
-  { value: "golvlampa", label: "Golvlampa (uttag)" },
-  { value: "pendel", label: "Pendel" },
+  { value: "taklampa", labelKey: "lighting.ceilingLight" },
+  { value: "spotlights", labelKey: "lighting.spotlights" },
+  { value: "vagglampa", labelKey: "lighting.wallLight" },
+  { value: "led_list", labelKey: "lighting.ledStrip" },
+  { value: "golvlampa", labelKey: "lighting.floorLamp" },
+  { value: "pendel", labelKey: "lighting.pendant" },
 ];
 
 // Heating type options
 export const HEATING_TYPE_OPTIONS = [
-  { value: "radiator", label: "Radiator" },
-  { value: "golvarme", label: "Golvvärme" },
-  { value: "konvektor", label: "Konvektor" },
-  { value: "elvärme", label: "Elvärme" },
-  { value: "ingen", label: "Ingen" },
+  { value: "radiator", labelKey: "heating.radiator" },
+  { value: "golvarme", labelKey: "heating.underfloorHeating" },
+  { value: "konvektor", labelKey: "heating.convector" },
+  { value: "elvärme", labelKey: "heating.electricHeating" },
+  { value: "ingen", labelKey: "materials.none" },
 ];
 
 // Room color palette
 export const ROOM_COLOR_OPTIONS = [
-  { name: "Blå", color: "rgba(59, 130, 246, 0.2)", hex: "#3b82f6" },
-  { name: "Grön", color: "rgba(16, 185, 129, 0.2)", hex: "#10b981" },
-  { name: "Orange", color: "rgba(245, 158, 11, 0.2)", hex: "#f59e0b" },
-  { name: "Lila", color: "rgba(168, 85, 247, 0.2)", hex: "#a855f7" },
-  { name: "Rosa", color: "rgba(236, 72, 153, 0.2)", hex: "#ec4899" },
-  { name: "Cyan", color: "rgba(6, 182, 212, 0.2)", hex: "#06b6d4" },
-  { name: "Gul", color: "rgba(251, 191, 36, 0.2)", hex: "#fbbf24" },
-  { name: "Grå", color: "rgba(100, 116, 139, 0.2)", hex: "#64748b" },
+  { nameKey: "colors.blue", color: "rgba(59, 130, 246, 0.2)", hex: "#3b82f6" },
+  { nameKey: "colors.green", color: "rgba(16, 185, 129, 0.2)", hex: "#10b981" },
+  { nameKey: "colors.orange", color: "rgba(245, 158, 11, 0.2)", hex: "#f59e0b" },
+  { nameKey: "colors.purple", color: "rgba(168, 85, 247, 0.2)", hex: "#a855f7" },
+  { nameKey: "colors.pink", color: "rgba(236, 72, 153, 0.2)", hex: "#ec4899" },
+  { nameKey: "colors.cyan", color: "rgba(6, 182, 212, 0.2)", hex: "#06b6d4" },
+  { nameKey: "colors.yellow", color: "rgba(251, 191, 36, 0.2)", hex: "#fbbf24" },
+  { nameKey: "colors.grey", color: "rgba(100, 116, 139, 0.2)", hex: "#64748b" },
 ];
 
 // Default form values
@@ -205,7 +205,7 @@ export const DEFAULT_FORM_VALUES = {
   name: "",
   description: "",
   color: "rgba(59, 130, 246, 0.2)",
-  status: "befintligt",
+  status: "existing",
   ceiling_height_mm: 2400,
   priority: "medium",
   links: "",

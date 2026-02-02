@@ -1,26 +1,45 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
-import { Calendar, User, AlertCircle, Package, Save, Loader2, Trash2, Plus, ShoppingCart } from "lucide-react";
+import { Calendar, User, AlertCircle, Package, Save, Loader2, Trash2, Plus, ShoppingCart, ChevronDown, Tag, X } from "lucide-react";
 import { CommentsSection } from "@/components/comments/CommentsSection";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle 
+import { EntityPhotoGallery } from "@/components/shared/EntityPhotoGallery";
+import { TaskFilesList } from "./TaskFilesList";
+import { DEFAULT_COST_CENTERS } from "@/lib/costCenters";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
 } from "@/components/ui/dialog";
+
+interface ChecklistItem {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
+interface Checklist {
+  id: string;
+  title: string;
+  items: ChecklistItem[];
+}
 
 interface TaskSidePanelProps {
   taskId: string | null;
@@ -41,9 +60,13 @@ interface TaskDetail {
   progress: number;
   assigned_to_contractor_id: string | null;
   budget: number | null;
+  ordered_amount: number | null;
+  paid_amount: number | null;
+  payment_status: string | null;
   cost_center: string | null;
   cost_centers?: string[] | null;
   room_id: string | null;
+  checklists?: Checklist[];
   created_at: string;
   profiles?: {
     name: string;
@@ -55,7 +78,8 @@ interface Material {
   name: string;
   quantity: number;
   unit: string;
-  cost: number | null;
+  price_per_unit: number | null;
+  price_total: number | null;
   status: string;
 }
 
@@ -71,7 +95,17 @@ interface TeamMember {
   name: string;
 }
 
+const statusKey = (s: string) => {
+  const map: Record<string, string> = {
+    to_do: 'toDo', in_progress: 'inProgress', on_hold: 'onHold',
+    new_construction: 'newConstruction', to_be_renovated: 'toBeRenovated',
+    not_paid: 'notPaid', partially_paid: 'partiallyPaid',
+  };
+  return map[s] || s;
+};
+
 const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }: TaskSidePanelProps) => {
+  const { t } = useTranslation();
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [dependencies, setDependencies] = useState<Dependency[]>([]);
@@ -82,6 +116,8 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
   const [creatingPO, setCreatingPO] = useState(false);
   const { toast} = useToast();
 
+  const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
+
   // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -91,53 +127,70 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
   const [finishDate, setFinishDate] = useState<Date | undefined>();
   const [progress, setProgress] = useState(0);
   const [budget, setBudget] = useState("");
+  const [orderedAmount, setOrderedAmount] = useState("");
+  const [paidAmount, setPaidAmount] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState("not_paid");
   const [assignedTo, setAssignedTo] = useState<string>("");
+  const [roomId, setRoomId] = useState<string>("");
+  const [costCenters, setCostCenters] = useState<string[]>([]);
+  const [checklists, setChecklists] = useState<Checklist[]>([]);
 
   // Purchase Order form state
   const [poName, setPoName] = useState("");
-  const [poDescription, setPoDescription] = useState("");
   const [poQuantity, setPoQuantity] = useState("1");
   const [poUnit, setPoUnit] = useState("pcs");
-  const [poCost, setPoCost] = useState("");
+  const [poPricePerUnit, setPoPricePerUnit] = useState("");
 
   useEffect(() => {
     if (taskId && open) {
       fetchTaskDetails();
       fetchTeamMembers();
+      fetchRooms();
     }
   }, [taskId, open]);
+
+  const fetchRooms = async () => {
+    const { data } = await supabase
+      .from("rooms")
+      .select("id, name")
+      .eq("project_id", projectId)
+      .order("name");
+    setRooms(data || []);
+  };
 
   const fetchTeamMembers = async () => {
     try {
       // Fetch project owner
       const { data: projectData } = await supabase
         .from("projects")
-        .select("user_id, profiles!projects_user_id_fkey(id, name)")
+        .select("owner_id, profiles!projects_owner_id_fkey(id, name)")
         .eq("id", projectId)
         .single();
 
       // Fetch shared users
       const { data: sharesData } = await supabase
         .from("project_shares")
-        .select("user_id, profiles!project_shares_user_id_fkey(id, name)")
+        .select("shared_with_user_id, profiles!project_shares_shared_with_user_id_fkey(id, name)")
         .eq("project_id", projectId);
 
       const members: TeamMember[] = [];
-      
+
       if (projectData?.profiles) {
-        const profile = Array.isArray(projectData.profiles) 
-          ? projectData.profiles[0] 
+        const profile = Array.isArray(projectData.profiles)
+          ? projectData.profiles[0]
           : projectData.profiles;
-        members.push({ id: profile.id, name: profile.name || "Owner" });
+        if (profile) {
+          members.push({ id: profile.id, name: profile.name || "Owner" });
+        }
       }
 
       if (sharesData) {
-        sharesData.forEach((share: any) => {
-          const profile = Array.isArray(share.profiles) 
-            ? share.profiles[0] 
-            : share.profiles;
-          if (profile) {
-            members.push({ id: profile.id, name: profile.name || "Team Member" });
+        const existingIds = new Set(members.map(m => m.id));
+        sharesData.forEach((share: unknown) => {
+          const s = share as { profiles?: { id: string; name: string } | null };
+          if (s.profiles && !existingIds.has(s.profiles.id)) {
+            existingIds.add(s.profiles.id);
+            members.push({ id: s.profiles.id, name: s.profiles.name || "Team Member" });
           }
         });
       }
@@ -175,18 +228,18 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
           .select("name")
           .eq("id", taskData.assigned_to_contractor_id)
           .single();
-        
+
         profileData = profile;
       }
-      
+
       // Combine task data with profile
       const formattedTask = {
         ...taskData,
         profiles: profileData
       };
-      
+
       setTask(formattedTask);
-      
+
       // Populate form fields
       setTitle(formattedTask.title);
       setDescription(formattedTask.description || "");
@@ -196,12 +249,18 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
       setFinishDate(formattedTask.finish_date ? parseISO(formattedTask.finish_date) : undefined);
       setProgress(formattedTask.progress || 0);
       setBudget(formattedTask.budget?.toString() || "");
+      setOrderedAmount(formattedTask.ordered_amount?.toString() || "");
+      setPaidAmount(formattedTask.paid_amount?.toString() || "");
+      setPaymentStatus(formattedTask.payment_status || "not_paid");
       setAssignedTo(formattedTask.assigned_to_contractor_id || "");
+      setRoomId(formattedTask.room_id || "");
+      setCostCenters(formattedTask.cost_centers || (formattedTask.cost_center ? [formattedTask.cost_center] : []));
+      setChecklists(formattedTask.checklists || []);
 
       // Fetch materials
       const { data: materialsData } = await supabase
         .from("materials")
-        .select("id, name, quantity, unit, cost, status")
+        .select("id, name, quantity, unit, price_per_unit, price_total, status")
         .eq("task_id", taskId);
 
       setMaterials(materialsData || []);
@@ -225,7 +284,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
             .select("title")
             .eq("id", dep.depends_on_task_id)
             .single();
-          
+
           if (depTask) {
             formattedDeps.push({
               id: dep.id,
@@ -239,8 +298,8 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
     } catch (error: any) {
       console.error("Error fetching task details:", error);
       toast({
-        title: "Error",
-        description: error?.message || "Failed to load task details",
+        title: t('common.error'),
+        description: error?.message || t('taskPanel.failedToLoad'),
         variant: "destructive",
       });
     } finally {
@@ -251,8 +310,8 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
   const handleSave = async () => {
     if (!taskId || !title.trim()) {
       toast({
-        title: "Error",
-        description: "Task title is required",
+        title: t('common.error'),
+        description: t('taskPanel.taskTitleRequired'),
         variant: "destructive",
       });
       return;
@@ -269,7 +328,14 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
         finish_date: finishDate ? format(finishDate, "yyyy-MM-dd") : null,
         progress,
         budget: budget ? parseFloat(budget) : null,
+        ordered_amount: orderedAmount ? parseFloat(orderedAmount) : null,
+        paid_amount: paidAmount ? parseFloat(paidAmount) : null,
+        payment_status: paymentStatus || null,
         assigned_to_contractor_id: assignedTo || null,
+        room_id: roomId || null,
+        cost_centers: costCenters.length > 0 ? costCenters : null,
+        cost_center: costCenters[0] || null,
+        checklists: checklists,
       };
 
       const { error } = await supabase
@@ -280,16 +346,16 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
       if (error) throw error;
 
       toast({
-        title: "Success",
-        description: "Task updated successfully",
+        title: t('common.success'),
+        description: t('taskPanel.taskUpdated'),
       });
 
       onTaskUpdated?.();
     } catch (error) {
       console.error("Error updating task:", error);
       toast({
-        title: "Error",
-        description: "Failed to update task",
+        title: t('common.error'),
+        description: t('taskPanel.failedToUpdate'),
         variant: "destructive",
       });
     } finally {
@@ -300,8 +366,8 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
   const handleCreatePurchaseOrder = async () => {
     if (!poName.trim()) {
       toast({
-        title: "Error",
-        description: "Material name is required",
+        title: t('common.error'),
+        description: t('taskPanel.materialNameRequired'),
         variant: "destructive",
       });
       return;
@@ -323,12 +389,11 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
 
       const materialData = {
         name: poName.trim(),
-        description: poDescription.trim() || null,
         quantity: parseFloat(poQuantity) || 1,
         unit: poUnit,
-        cost: poCost ? parseFloat(poCost) : null,
-        status: "pending",
-        task_id: taskId, // Link to this task
+        price_per_unit: poPricePerUnit ? parseFloat(poPricePerUnit) : null,
+        status: "submitted",
+        task_id: taskId,
         project_id: projectId,
         created_by_user_id: profile.id,
       };
@@ -340,16 +405,15 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
       if (error) throw error;
 
       toast({
-        title: "Success",
-        description: "Purchase Order created and linked to task",
+        title: t('common.success'),
+        description: t('taskPanel.poCreatedAndLinked'),
       });
 
       // Reset form
       setPoName("");
-      setPoDescription("");
       setPoQuantity("1");
       setPoUnit("pcs");
-      setPoCost("");
+      setPoPricePerUnit("");
       setPoDialogOpen(false);
 
       // Refresh materials list
@@ -357,8 +421,8 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
     } catch (error: any) {
       console.error("Error creating purchase order:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to create purchase order",
+        title: t('common.error'),
+        description: error.message || t('taskPanel.failedToCreatePO'),
         variant: "destructive",
       });
     } finally {
@@ -372,8 +436,8 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
         return "bg-emerald-500/90 text-white";
       case "in_progress":
         return "bg-blue-500/90 text-white";
-      case "blocked":
-        return "bg-red-500/90 text-white";
+      case "waiting":
+        return "bg-yellow-500/90 text-white";
       default:
         return "bg-slate-400/90 text-white";
     }
@@ -394,7 +458,8 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Task Details</SheetTitle>
+          <SheetTitle>{t('taskPanel.title')}</SheetTitle>
+          <SheetDescription className="sr-only">{t('taskPanel.title')}</SheetDescription>
         </SheetHeader>
 
         {loading ? (
@@ -403,17 +468,17 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
           </div>
         ) : !task ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
-            No task selected
+            {t('taskPanel.noTaskSelected')}
           </div>
         ) : (
           <div className="space-y-6 mt-6">
             {/* Status and Priority Badges */}
             <div className="flex items-center gap-3">
               <Badge className={getStatusColor(status)}>
-                {status.replace("_", " ")}
+                {t(`statuses.${statusKey(status)}`)}
               </Badge>
               <Badge variant={getPriorityColor(priority)}>
-                {priority} priority
+                {t(`tasks.priority${priority.charAt(0).toUpperCase() + priority.slice(1)}`)}
               </Badge>
               <div className="ml-auto text-xs text-muted-foreground">
                 Created {format(parseISO(task.created_at), "MMM d, yyyy")}
@@ -424,24 +489,24 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
 
             {/* Task Title */}
             <div className="space-y-2">
-              <Label htmlFor="task-title">Task Title *</Label>
+              <Label htmlFor="task-title">{t('tasks.taskTitle')} *</Label>
               <Input
                 id="task-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter task title"
+                placeholder={t('taskPanel.enterTaskTitle')}
                 className="text-lg font-semibold"
               />
             </div>
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="task-description">Description</Label>
+              <Label htmlFor="task-description">{t('common.description')}</Label>
               <Textarea
                 id="task-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add a description..."
+                placeholder={t('taskPanel.addDescription')}
                 rows={4}
               />
             </div>
@@ -449,30 +514,32 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
             {/* Status and Priority */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Status</Label>
+                <Label>{t('common.status')}</Label>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="to_do">To Do</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="blocked">Blocked</SelectItem>
+                    <SelectItem value="planned">{t('statuses.planned', 'Planned')}</SelectItem>
+                    <SelectItem value="to_do">{t('statuses.toDo')}</SelectItem>
+                    <SelectItem value="in_progress">{t('statuses.inProgress')}</SelectItem>
+                    <SelectItem value="waiting">{t('statuses.waiting')}</SelectItem>
+                    <SelectItem value="completed">{t('statuses.completed')}</SelectItem>
+                    <SelectItem value="cancelled">{t('statuses.cancelled')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Priority</Label>
+                <Label>{t('common.priority')}</Label>
                 <Select value={priority} onValueChange={setPriority}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="low">{t('tasks.priorityLow')}</SelectItem>
+                    <SelectItem value="medium">{t('tasks.priorityMedium')}</SelectItem>
+                    <SelectItem value="high">{t('tasks.priorityHigh')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -481,20 +548,20 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
             {/* Dates */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Start Date</Label>
+                <Label>{t('common.startDate')}</Label>
                 <DatePicker
                   date={startDate}
                   setDate={setStartDate}
-                  placeholder="Select start date"
+                  placeholder={t('taskPanel.selectStartDate')}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Finish Date</Label>
+                <Label>{t('common.finishDate')}</Label>
                 <DatePicker
                   date={finishDate}
                   setDate={setFinishDate}
-                  placeholder="Select finish date"
+                  placeholder={t('taskPanel.selectFinishDate')}
                 />
               </div>
             </div>
@@ -502,7 +569,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
             {/* Progress */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Progress</Label>
+                <Label>{t('common.progress')}</Label>
                 <span className="text-sm font-medium">{progress}%</span>
               </div>
               <Slider
@@ -516,7 +583,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
 
             {/* Budget */}
             <div className="space-y-2">
-              <Label htmlFor="task-budget">Budget</Label>
+              <Label htmlFor="task-budget">{t('common.budget')}</Label>
               <Input
                 id="task-budget"
                 type="number"
@@ -530,13 +597,13 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
 
             {/* Assigned To */}
             <div className="space-y-2">
-              <Label>Assigned To</Label>
+              <Label>{t('common.assignedTo')}</Label>
               <Select value={assignedTo} onValueChange={setAssignedTo}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select team member" />
+                  <SelectValue placeholder={t('taskPanel.selectTeamMember')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  <SelectItem value="unassigned">{t('common.unassigned')}</SelectItem>
                   {teamMembers.map((member) => (
                     <SelectItem key={member.id} value={member.id}>
                       {member.name}
@@ -546,6 +613,235 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
               </Select>
             </div>
 
+            {/* Room */}
+            <div className="space-y-2">
+              <Label>{t('purchases.room')}</Label>
+              <Select value={roomId || "none"} onValueChange={(v) => setRoomId(v === "none" ? "" : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('purchases.selectRoom')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t('purchases.noRoom')}</SelectItem>
+                  {rooms.map((room) => (
+                    <SelectItem key={room.id} value={room.id}>
+                      {room.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Financial Fields */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>{t('purchases.orderedAmount')}</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={orderedAmount}
+                  onChange={(e) => setOrderedAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('purchases.paidAmount')}</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={paidAmount}
+                  onChange={(e) => setPaidAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('budget.paymentStatus')}</Label>
+                <Select
+                  value={paymentStatus}
+                  onValueChange={(value) => {
+                    if (value === "input_amount") {
+                      setPaymentStatus("partially_paid");
+                    } else {
+                      setPaymentStatus(value);
+                      if (value === "paid" && budget) {
+                        setPaidAmount(budget);
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="not_paid">{t('paymentStatuses.notPaid')}</SelectItem>
+                    <SelectItem value="paid">{t('materialStatuses.paid')}</SelectItem>
+                    <SelectItem value="billed">{t('materialStatuses.billed')}</SelectItem>
+                    <SelectItem value="input_amount">{t('paymentStatuses.partiallyPaid')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Cost Centers */}
+            <div className="space-y-2">
+              <Label>{t('budget.costCenter')}</Label>
+              <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                {DEFAULT_COST_CENTERS.map((cc) => {
+                  const Icon = cc.icon;
+                  const isSelected = costCenters.includes(cc.id);
+                  return (
+                    <div key={cc.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`sp-cc-${cc.id}`}
+                        checked={isSelected}
+                        onCheckedChange={(checked) => {
+                          const newCenters = checked
+                            ? [...costCenters, cc.id]
+                            : costCenters.filter(c => c !== cc.id);
+                          setCostCenters(newCenters);
+                        }}
+                      />
+                      <label
+                        htmlFor={`sp-cc-${cc.id}`}
+                        className="flex items-center gap-2 text-sm font-medium leading-none cursor-pointer"
+                      >
+                        <Icon className="h-4 w-4" />
+                        {cc.label}
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Checklists */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>{t('taskPanel.checklists', 'Checklists')}</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const newChecklist: Checklist = {
+                      id: crypto.randomUUID(),
+                      title: t('taskPanel.checklist', 'Checklist'),
+                      items: [],
+                    };
+                    setChecklists([...checklists, newChecklist]);
+                  }}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  {t('taskPanel.addChecklist', 'Add Checklist')}
+                </Button>
+              </div>
+              {checklists.map((checklist, clIdx) => {
+                const completedCount = checklist.items.filter(i => i.completed).length;
+                const totalCount = checklist.items.length;
+                const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+                const updateChecklist = (updates: Partial<Checklist>) => {
+                  const updated = [...checklists];
+                  updated[clIdx] = { ...updated[clIdx], ...updates };
+                  setChecklists(updated);
+                };
+
+                const deleteChecklist = () => {
+                  setChecklists(checklists.filter((_, i) => i !== clIdx));
+                };
+
+                return (
+                  <div key={checklist.id} className="border rounded-lg">
+                    <Collapsible defaultOpen>
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <Input
+                          value={checklist.title}
+                          onChange={(e) => updateChecklist({ title: e.target.value })}
+                          className="h-7 text-sm font-medium border-none shadow-none px-1 focus-visible:ring-1"
+                        />
+                        {totalCount > 0 && (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {completedCount}/{totalCount}
+                          </span>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={deleteChecklist}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      {totalCount > 0 && (
+                        <div className="px-3 pb-1">
+                          <Progress value={progressPct} className="h-1.5" />
+                        </div>
+                      )}
+                      <CollapsibleContent>
+                        <div className="px-3 pb-3 space-y-1">
+                          {checklist.items.map((item, itemIdx) => (
+                            <div key={item.id} className="flex items-center gap-2 group">
+                              <Checkbox
+                                checked={item.completed}
+                                onCheckedChange={(checked) => {
+                                  const newItems = [...checklist.items];
+                                  newItems[itemIdx] = { ...newItems[itemIdx], completed: !!checked };
+                                  updateChecklist({ items: newItems });
+                                }}
+                              />
+                              <Input
+                                value={item.title}
+                                onChange={(e) => {
+                                  const newItems = [...checklist.items];
+                                  newItems[itemIdx] = { ...newItems[itemIdx], title: e.target.value };
+                                  updateChecklist({ items: newItems });
+                                }}
+                                className={`h-7 text-sm border-none shadow-none px-1 focus-visible:ring-1 ${item.completed ? "line-through text-muted-foreground" : ""}`}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                                onClick={() => {
+                                  const newItems = checklist.items.filter((_, i) => i !== itemIdx);
+                                  updateChecklist({ items: newItems });
+                                }}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Input
+                            placeholder={t('taskPanel.addItem', 'Add item...')}
+                            className="h-7 text-sm mt-1"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const val = (e.target as HTMLInputElement).value.trim();
+                                if (val) {
+                                  const newItem: ChecklistItem = {
+                                    id: crypto.randomUUID(),
+                                    title: val,
+                                    completed: false,
+                                  };
+                                  updateChecklist({ items: [...checklist.items, newItem] });
+                                  (e.target as HTMLInputElement).value = "";
+                                }
+                              }
+                            }}
+                          />
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+                );
+              })}
+            </div>
+
             <Separator />
 
             {/* Dependencies */}
@@ -553,7 +849,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                  <Label className="mb-0">Dependencies</Label>
+                  <Label className="mb-0">{t('taskPanel.dependencies')}</Label>
                 </div>
                 <div className="space-y-1">
                   {dependencies.map((dep) => (
@@ -561,7 +857,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
                       key={dep.id}
                       className="text-sm bg-muted px-3 py-2 rounded-lg"
                     >
-                      Depends on: {dep.depends_on_task.title}
+                      {t('taskPanel.dependsOn')}: {dep.depends_on_task.title}
                     </div>
                   ))}
                 </div>
@@ -573,7 +869,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                  <Label className="mb-0">Purchase Orders ({materials.length})</Label>
+                  <Label className="mb-0">{t('taskPanel.purchaseOrders')} ({materials.length})</Label>
                 </div>
                 <Button
                   variant="outline"
@@ -581,7 +877,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
                   onClick={() => setPoDialogOpen(true)}
                 >
                   <Plus className="h-3 w-3 mr-1" />
-                  Create
+                  {t('common.create')}
                 </Button>
               </div>
               {materials.length > 0 && (
@@ -595,8 +891,8 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
                         <div className="font-medium text-sm">{material.name}</div>
                         <div className="text-xs text-muted-foreground">
                           {material.quantity} {material.unit}
-                          {material.price_per_unit && ` • $${material.price_per_unit.toFixed(2)}/unit`}
-                          {material.price_total && ` • Total: $${material.price_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                          {material.price_per_unit != null && ` • ${material.price_per_unit.toFixed(2)}/${t('common.unit').toLowerCase()}`}
+                          {material.price_total != null && ` • ${t('purchases.priceTotal')}: ${material.price_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         </div>
                       </div>
                       <Badge variant="outline" className="text-xs">
@@ -607,9 +903,25 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
                 </div>
               )}
               {materials.length === 0 && (
-                <p className="text-sm text-muted-foreground">No purchase orders for this task yet.</p>
+                <p className="text-sm text-muted-foreground">{t('taskPanel.noPurchaseOrdersForTask')}</p>
               )}
             </div>
+
+            {/* Photos */}
+            {taskId && (
+              <>
+                <Separator className="my-4" />
+                <EntityPhotoGallery entityId={taskId} entityType="task" />
+              </>
+            )}
+
+            {/* Linked Files */}
+            {taskId && (
+              <>
+                <Separator className="my-4" />
+                <TaskFilesList taskId={taskId} projectId={projectId} />
+              </>
+            )}
 
             {/* Comments Section */}
             {taskId && (
@@ -630,12 +942,12 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
                   {saving ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
+                      {t('common.saving')}
                     </>
                   ) : (
                     <>
                       <Save className="mr-2 h-4 w-4" />
-                      Save Changes
+                      {t('taskPanel.saveChanges')}
                     </>
                   )}
                 </Button>
@@ -643,7 +955,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
                   variant="outline"
                   onClick={() => onOpenChange(false)}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </div>
             </div>
@@ -653,16 +965,16 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
 
       {/* Create Purchase Order Dialog */}
       <Dialog open={poDialogOpen} onOpenChange={setPoDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create Purchase Order for Task</DialogTitle>
+            <DialogTitle>{t('taskPanel.createPOForTask')}</DialogTitle>
             <DialogDescription>
-              This purchase order will be linked to "{title}"
+              {t('taskPanel.poLinkedTo', { title })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="po-name">Material Name *</Label>
+              <Label htmlFor="po-name">{t('purchases.materialName')} *</Label>
               <Input
                 id="po-name"
                 value={poName}
@@ -670,19 +982,9 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
                 placeholder="e.g. Floor tiles"
               />
             </div>
-            <div>
-              <Label htmlFor="po-description">Description</Label>
-              <Textarea
-                id="po-description"
-                value={poDescription}
-                onChange={(e) => setPoDescription(e.target.value)}
-                placeholder="Additional details..."
-                rows={3}
-              />
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="po-quantity">Quantity</Label>
+                <Label htmlFor="po-quantity">{t('common.quantity')}</Label>
                 <Input
                   id="po-quantity"
                   type="number"
@@ -693,34 +995,39 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
                 />
               </div>
               <div>
-                <Label htmlFor="po-unit">Unit</Label>
+                <Label htmlFor="po-unit">{t('common.unit')}</Label>
                 <Select value={poUnit} onValueChange={setPoUnit}>
                   <SelectTrigger id="po-unit">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pcs">Pieces</SelectItem>
-                    <SelectItem value="sqm">Square Meters</SelectItem>
-                    <SelectItem value="m">Meters</SelectItem>
-                    <SelectItem value="kg">Kilograms</SelectItem>
-                    <SelectItem value="liters">Liters</SelectItem>
-                    <SelectItem value="hours">Hours</SelectItem>
-                    <SelectItem value="days">Days</SelectItem>
+                    <SelectItem value="pcs">{t('taskPanel.pieces')}</SelectItem>
+                    <SelectItem value="sqm">{t('taskPanel.squareMeters')}</SelectItem>
+                    <SelectItem value="m">{t('taskPanel.meters')}</SelectItem>
+                    <SelectItem value="kg">{t('taskPanel.kilograms')}</SelectItem>
+                    <SelectItem value="liters">{t('taskPanel.liters')}</SelectItem>
+                    <SelectItem value="hours">{t('taskPanel.hours')}</SelectItem>
+                    <SelectItem value="days">{t('taskPanel.days')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div>
-              <Label htmlFor="po-cost">Estimated Cost</Label>
+              <Label htmlFor="po-price-per-unit">{t('purchases.pricePerUnit')} ({t('common.optional')})</Label>
               <Input
-                id="po-cost"
+                id="po-price-per-unit"
                 type="number"
-                value={poCost}
-                onChange={(e) => setPoCost(e.target.value)}
+                value={poPricePerUnit}
+                onChange={(e) => setPoPricePerUnit(e.target.value)}
                 placeholder="0.00"
                 min="0"
                 step="0.01"
               />
+              {poQuantity && poPricePerUnit && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('purchases.priceTotal')}: {(parseFloat(poQuantity) * parseFloat(poPricePerUnit)).toFixed(2)}
+                </p>
+              )}
             </div>
             <div className="flex gap-3 pt-4">
               <Button
@@ -731,12 +1038,12 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
                 {creatingPO ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
+                    {t('purchases.creating')}
                   </>
                 ) : (
                   <>
                     <Plus className="mr-2 h-4 w-4" />
-                    Create Purchase Order
+                    {t('purchases.createOrder')}
                   </>
                 )}
               </Button>
@@ -745,7 +1052,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
                 onClick={() => setPoDialogOpen(false)}
                 disabled={creatingPO}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
             </div>
           </div>

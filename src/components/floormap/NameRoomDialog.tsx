@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ export const NameRoomDialog: React.FC<NameRoomDialogProps> = ({
   onCancel,
   defaultName = '',
 }) => {
+  const { t } = useTranslation();
   const [roomName, setRoomName] = useState(defaultName);
 
   const handleConfirm = () => {
@@ -54,22 +56,22 @@ export const NameRoomDialog: React.FC<NameRoomDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Namnge Rum</DialogTitle>
+          <DialogTitle>{t('nameRoomDialog.title')}</DialogTitle>
           <DialogDescription>
-            Ge rummet ett namn som visas på planritningen.
+            {t('nameRoomDialog.description')}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="room-name" className="text-right">
-              Namn
+              {t('common.name')}
             </Label>
             <Input
               id="room-name"
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="ex. Vardagsrum, Kök..."
+              placeholder={t('nameRoomDialog.placeholder')}
               className="col-span-3"
               autoFocus
             />
@@ -77,14 +79,14 @@ export const NameRoomDialog: React.FC<NameRoomDialogProps> = ({
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={handleCancel}>
-            Avbryt
+            {t('common.cancel')}
           </Button>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             onClick={handleConfirm}
             disabled={!roomName.trim()}
           >
-            Spara
+            {t('common.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -6,6 +7,8 @@ import { format, parseISO } from "date-fns";
 import { Calendar, User, AlertCircle, Package, Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { TaskFilesList } from "./TaskFilesList";
+import { Separator } from "@/components/ui/separator";
 
 interface TaskDetailDialogProps {
   taskId: string | null;
@@ -24,6 +27,7 @@ interface TaskDetail {
   finish_date: string | null;
   progress: number;
   assigned_to_contractor_id: string | null;
+  project_id: string;
   budget: number | null;
   created_at: string;
   profiles?: {
@@ -47,7 +51,17 @@ interface Dependency {
   };
 }
 
+const statusKey = (s: string) => {
+  const map: Record<string, string> = {
+    to_do: 'toDo', in_progress: 'inProgress', on_hold: 'onHold',
+    new_construction: 'newConstruction', to_be_renovated: 'toBeRenovated',
+    not_paid: 'notPaid', partially_paid: 'partiallyPaid',
+  };
+  return map[s] || s;
+};
+
 const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDialogProps) => {
+  const { t } = useTranslation();
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [dependencies, setDependencies] = useState<Dependency[]>([]);
@@ -61,7 +75,7 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
 
   const fetchTaskDetails = async () => {
     if (!taskId) return;
-    
+
     setLoading(true);
     try {
       // Fetch task with assigned user
@@ -75,15 +89,15 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
         .single();
 
       if (taskError) throw taskError;
-      
+
       // Handle profiles being an array and convert to single object
       const formattedTask = {
         ...taskData,
-        profiles: Array.isArray(taskData.profiles) && taskData.profiles.length > 0 
-          ? taskData.profiles[0] 
+        profiles: Array.isArray(taskData.profiles) && taskData.profiles.length > 0
+          ? taskData.profiles[0]
           : null
       };
-      
+
       setTask(formattedTask);
 
       // Fetch materials
@@ -117,8 +131,8 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
         return "bg-success text-success-foreground";
       case "in_progress":
         return "bg-warning text-warning-foreground";
-      case "blocked":
-        return "bg-destructive text-destructive-foreground";
+      case "waiting":
+        return "bg-warning/80 text-warning-foreground";
       default:
         return "bg-secondary text-secondary-foreground";
     }
@@ -141,7 +155,7 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="w-full md:max-w-2xl max-h-screen md:max-h-[85vh] overflow-y-auto p-4 md:p-6">
         <DialogHeader>
           <div className="flex items-start justify-between">
             <DialogTitle className="text-2xl pr-8">{task.title}</DialogTitle>
@@ -167,17 +181,17 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
             {/* Status and Priority */}
             <div className="flex items-center gap-3">
               <Badge className={getStatusColor(task.status)}>
-                {task.status.replace("_", " ")}
+                {t(`statuses.${statusKey(task.status)}`)}
               </Badge>
               <Badge variant={getPriorityColor(task.priority)}>
-                {task.priority} priority
+                {t(`tasks.priority${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}`)}
               </Badge>
             </div>
 
             {/* Description */}
             {task.description && (
               <div>
-                <h3 className="font-medium mb-2">Description</h3>
+                <h3 className="font-medium mb-2">{t('common.description')}</h3>
                 <p className="text-muted-foreground">{task.description}</p>
               </div>
             )}
@@ -186,7 +200,7 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
             {task.progress > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium">Progress</h3>
+                  <h3 className="font-medium">{t('common.progress')}</h3>
                   <span className="text-sm font-medium">{task.progress}%</span>
                 </div>
                 <Progress value={task.progress} className="h-3" />
@@ -198,13 +212,13 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
               <div className="flex items-start gap-2">
                 <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <h3 className="font-medium mb-1">Timeline</h3>
+                  <h3 className="font-medium mb-1">{t('taskDetail.timeline')}</h3>
                   <div className="text-sm text-muted-foreground space-y-1">
                     {task.start_date && (
-                      <div>Start: {format(parseISO(task.start_date), "MMM d, yyyy")}</div>
+                      <div>{t('taskDetail.start')}: {format(parseISO(task.start_date), "MMM d, yyyy")}</div>
                     )}
                     {task.finish_date && (
-                      <div>Finish: {format(parseISO(task.finish_date), "MMM d, yyyy")}</div>
+                      <div>{t('taskDetail.finish')}: {format(parseISO(task.finish_date), "MMM d, yyyy")}</div>
                     )}
                   </div>
                 </div>
@@ -216,7 +230,7 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
               <div className="flex items-start gap-2">
                 <Package className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <h3 className="font-medium mb-1">Task Budget</h3>
+                  <h3 className="font-medium mb-1">{t('taskDetail.taskBudget')}</h3>
                   <p className="text-sm text-muted-foreground">
                     ${task.budget.toLocaleString()}
                   </p>
@@ -229,7 +243,7 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
               <div className="flex items-start gap-2">
                 <User className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <h3 className="font-medium mb-1">Assigned To</h3>
+                  <h3 className="font-medium mb-1">{t('common.assignedTo')}</h3>
                   <p className="text-sm text-muted-foreground">{task.profiles.name}</p>
                 </div>
               </div>
@@ -240,14 +254,14 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div className="flex-1">
-                  <h3 className="font-medium mb-2">Dependencies</h3>
+                  <h3 className="font-medium mb-2">{t('taskPanel.dependencies')}</h3>
                   <div className="space-y-1">
                     {dependencies.map((dep) => (
                       <div
                         key={dep.id}
                         className="text-sm text-muted-foreground bg-muted px-3 py-2 rounded"
                       >
-                        Depends on: {dep.depends_on_task.title}
+                        {t('taskPanel.dependsOn')}: {dep.depends_on_task.title}
                       </div>
                     ))}
                   </div>
@@ -260,7 +274,7 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
               <div className="flex items-start gap-2">
                 <Package className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div className="flex-1">
-                  <h3 className="font-medium mb-2">Materials</h3>
+                  <h3 className="font-medium mb-2">{t('taskDetail.materials')}</h3>
                   <div className="space-y-2">
                     {materials.map((material) => (
                       <div
@@ -284,6 +298,10 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
                 </div>
               </div>
             )}
+
+            {/* Linked Files */}
+            <Separator />
+            <TaskFilesList taskId={task.id} projectId={task.project_id} readonly />
 
             {/* Created Date */}
             <div className="text-xs text-muted-foreground pt-4 border-t">

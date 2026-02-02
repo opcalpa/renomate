@@ -165,6 +165,14 @@ interface FloorMapStore {
   bringToFront: (shapeId: string) => void;
   sendToBack: (shapeId: string) => void;
 
+  // Actions - Wall Snap
+  applyWallSnap: (
+    openingId: string,
+    openingUpdates: Partial<FloorMapShape>,
+    wallIdToDelete: string,
+    newWallSegments: Array<Partial<FloorMapShape>>
+  ) => void;
+
   // Getters
   getSelectedShape: () => FloorMapShape | null;
   getCurrentPlan: () => FloorMapPlan | null;
@@ -458,6 +466,40 @@ export const useFloorMapStore = create<FloorMapStore>((set, get) => ({
     };
   }),
   
+  // Wall Snap Action
+  applyWallSnap: (openingId, openingUpdates, wallIdToDelete, newWallSegments) => set((state) => {
+    const originalWall = state.shapes.find(s => s.id === wallIdToDelete);
+    // Update opening, remove original wall, add new wall segments
+    let newShapes = state.shapes
+      .filter(s => s.id !== wallIdToDelete)
+      .map(s => s.id === openingId ? { ...s, ...openingUpdates } : s);
+
+    // Add new wall segments inheriting properties from original wall
+    for (const seg of newWallSegments) {
+      const newWall: FloorMapShape = {
+        id: crypto.randomUUID(),
+        type: 'wall',
+        coordinates: seg.coordinates!,
+        color: seg.color ?? originalWall?.color,
+        strokeColor: seg.strokeColor ?? originalWall?.strokeColor,
+        strokeWidth: seg.strokeWidth ?? originalWall?.strokeWidth,
+        heightMM: seg.heightMM ?? originalWall?.heightMM,
+        thicknessMM: seg.thicknessMM ?? originalWall?.thicknessMM,
+        zIndex: originalWall?.zIndex,
+        planId: originalWall?.planId,
+      };
+      newShapes.push(newWall);
+    }
+
+    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(newShapes)));
+    return {
+      shapes: newShapes,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    };
+  }),
+
   // Getters
   getSelectedShape: () => {
     const state = get();

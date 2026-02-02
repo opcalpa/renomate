@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,7 @@ import { Settings, Save, Ruler, DollarSign } from "lucide-react";
 const Admin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
 
@@ -77,13 +79,13 @@ const Admin = () => {
       localStorage.setItem("admin_currency", currency);
 
       toast({
-        title: "Standardvärden sparade",
-        description: "Dina inställningar har sparats framgångsrikt.",
+        title: t('admin.settingsSaved'),
+        description: t('admin.settingsSavedDescription'),
       });
     } catch (error) {
       toast({
-        title: "Fel",
-        description: "Kunde inte spara inställningar",
+        title: t('admin.saveError'),
+        description: t('admin.saveErrorDescription'),
         variant: "destructive",
       });
     }
@@ -99,7 +101,7 @@ const Admin = () => {
         </header>
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
-            <p className="text-muted-foreground">Laddar...</p>
+            <p className="text-muted-foreground">{t('common.loading')}</p>
           </div>
         </div>
       </div>
@@ -115,10 +117,10 @@ const Admin = () => {
             onClick={() => navigate("/projects")}
           >
             <Settings className="h-6 w-6 text-primary mr-2" />
-            <h1 className="text-xl font-semibold">Admin</h1>
+            <h1 className="text-xl font-semibold">{t('admin.title')}</h1>
           </div>
           <Button variant="outline" onClick={() => navigate("/projects")}>
-            Tillbaka till Projekt
+            {t('admin.backToProjects')}
           </Button>
         </div>
       </header>
@@ -126,8 +128,8 @@ const Admin = () => {
         <div className="flex items-center gap-3 mb-6">
           <Settings className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold">Admin</h1>
-            <p className="text-muted-foreground">Hantera systemets standardvärden</p>
+            <h1 className="text-3xl font-bold">{t('admin.title')}</h1>
+            <p className="text-muted-foreground">{t('admin.manageDefaults')}</p>
           </div>
         </div>
 
@@ -136,10 +138,10 @@ const Admin = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
-              Standardvärden
+              {t('admin.defaultValues')}
             </CardTitle>
             <CardDescription>
-              Konfigurera standardvärden för ritningar och ekonomi
+              {t('admin.configureDefaults')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -147,13 +149,13 @@ const Admin = () => {
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-lg font-semibold border-b pb-2">
                 <Ruler className="h-5 w-5 text-primary" />
-                <h3>Canvas & Ritning</h3>
+                <h3>{t('admin.canvasAndDrawing')}</h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="wall-thickness">
-                    Vägg Tjocklek (mm)
+                    {t('admin.wallThickness')}
                   </Label>
                   <Input
                     id="wall-thickness"
@@ -163,13 +165,13 @@ const Admin = () => {
                     placeholder="200"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Standard tjocklek för nytecknade väggar
+                    {t('admin.wallThicknessDescription')}
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="wall-height">
-                    Vägg Höjd (mm)
+                    {t('admin.wallHeight')}
                   </Label>
                   <Input
                     id="wall-height"
@@ -179,28 +181,28 @@ const Admin = () => {
                     placeholder="2400"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Standard höjd för nytecknade väggar
+                    {t('admin.wallHeightDescription')}
                   </p>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="canvas-scale">
-                  Canvas Standard Skala
+                  {t('admin.canvasDefaultScale')}
                 </Label>
                 <Select value={canvasScale} onValueChange={setCanvasScale}>
                   <SelectTrigger id="canvas-scale">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="architectural">Architectural 1:20</SelectItem>
-                    <SelectItem value="detailed">Detailed 1:50</SelectItem>
-                    <SelectItem value="standard">Standard 1:100</SelectItem>
-                    <SelectItem value="overview">Overview 1:500</SelectItem>
+                    <SelectItem value="architectural">{t('admin.scaleArchitectural')}</SelectItem>
+                    <SelectItem value="detailed">{t('admin.scaleDetailed')}</SelectItem>
+                    <SelectItem value="standard">{t('admin.scaleStandard')}</SelectItem>
+                    <SelectItem value="overview">{t('admin.scaleOverview')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Standard skala när en ny canvas öppnas
+                  {t('admin.scaleDescription')}
                 </p>
               </div>
             </div>
@@ -209,12 +211,12 @@ const Admin = () => {
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-lg font-semibold border-b pb-2">
                 <DollarSign className="h-5 w-5 text-primary" />
-                <h3>Ekonomi</h3>
+                <h3>{t('admin.economy')}</h3>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="currency">
-                  Standard Valuta
+                  {t('admin.defaultCurrency')}
                 </Label>
                 <Select value={currency} onValueChange={setCurrency}>
                   <SelectTrigger id="currency">
@@ -229,7 +231,7 @@ const Admin = () => {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Valuta för Tasks och Purchase Orders
+                  {t('admin.currencyDescription')}
                 </p>
               </div>
             </div>
@@ -238,7 +240,7 @@ const Admin = () => {
             <div className="pt-4 border-t">
               <Button onClick={handleSave} className="w-full md:w-auto">
                 <Save className="h-4 w-4 mr-2" />
-                Spara Standardvärden
+                {t('admin.saveDefaults')}
               </Button>
             </div>
           </CardContent>
@@ -247,20 +249,20 @@ const Admin = () => {
         {/* Current Values Display */}
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Aktuella Värden</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('admin.currentValues')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
-                <p className="text-muted-foreground">Vägg Tjocklek</p>
+                <p className="text-muted-foreground">{t('admin.wallThickness')}</p>
                 <p className="font-semibold">{wallThickness} mm</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Vägg Höjd</p>
+                <p className="text-muted-foreground">{t('admin.wallHeight')}</p>
                 <p className="font-semibold">{wallHeight} mm</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Canvas Skala</p>
+                <p className="text-muted-foreground">{t('admin.canvasScale')}</p>
                 <p className="font-semibold">
                   {canvasScale === "architectural" && "1:20"}
                   {canvasScale === "detailed" && "1:50"}
@@ -269,7 +271,7 @@ const Admin = () => {
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Valuta</p>
+                <p className="text-muted-foreground">{t('admin.currency')}</p>
                 <p className="font-semibold">{currency}</p>
               </div>
             </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 
@@ -11,41 +12,31 @@ interface Task {
 }
 
 const ALL_STATUSES = [
-  "discovery",
+  "ideas",
   "to_do",
   "in_progress",
   "on_hold",
-  "doing",
-  "blocked",
   "completed",
-  "done",
   "scrapped",
 ] as const;
 
-const DEFAULT_HIDDEN = new Set(["completed", "done", "scrapped"]);
+const DEFAULT_HIDDEN = new Set(["completed", "scrapped"]);
 
-const STATUS_LABELS: Record<string, string> = {
-  discovery: "Discovery",
-  to_do: "To Do",
-  in_progress: "Pågående",
-  on_hold: "Pausad",
-  doing: "Utförs",
-  blocked: "Blockerad",
-  completed: "Klar",
-  done: "Färdig",
-  scrapped: "Struken",
+const statusKey = (s: string) => {
+  const map: Record<string, string> = {
+    to_do: 'toDo',
+    in_progress: 'inProgress',
+    on_hold: 'onHold',
+  };
+  return map[s] || s;
 };
 
 const getStatusColor = (status: string) => {
   switch (status) {
     case "completed":
-    case "done":
       return "bg-emerald-100 text-emerald-700 border-emerald-200";
     case "in_progress":
-    case "doing":
       return "bg-blue-100 text-blue-700 border-blue-200";
-    case "blocked":
-      return "bg-red-100 text-red-700 border-red-200";
     case "on_hold":
       return "bg-yellow-100 text-yellow-700 border-yellow-200";
     case "scrapped":
@@ -61,6 +52,7 @@ interface RelatedTasksSectionProps {
 }
 
 export function RelatedTasksSection({ roomId, projectId }: RelatedTasksSectionProps) {
+  const { t } = useTranslation();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(
@@ -98,12 +90,12 @@ export function RelatedTasksSection({ roomId, projectId }: RelatedTasksSectionPr
   };
 
   const filtered = useMemo(
-    () => tasks.filter((t) => activeStatuses.has(t.status)),
+    () => tasks.filter((task) => activeStatuses.has(task.status)),
     [tasks, activeStatuses]
   );
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground py-2">Laddar uppgifter...</p>;
+    return <p className="text-sm text-muted-foreground py-2">{t('rooms.loadingTasks')}</p>;
   }
 
   return (
@@ -120,7 +112,7 @@ export function RelatedTasksSection({ roomId, projectId }: RelatedTasksSectionPr
                 : "bg-transparent text-muted-foreground border-dashed border-muted-foreground/40"
             }`}
           >
-            {STATUS_LABELS[s] ?? s}
+            {t(`statuses.${statusKey(s)}`)}
           </button>
         ))}
       </div>
@@ -128,17 +120,17 @@ export function RelatedTasksSection({ roomId, projectId }: RelatedTasksSectionPr
       {filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground py-2">
           {tasks.length === 0
-            ? "Inga uppgifter kopplade till detta rum"
-            : "Inga uppgifter matchar filtret"}
+            ? t('rooms.noTasksForRoom')
+            : t('rooms.noTasksMatchFilter')}
         </p>
       ) : (
         <ul className="space-y-1.5">
-          {filtered.map((t) => (
-            <li key={t.id} className="flex items-center gap-2 text-sm">
-              <Badge variant="outline" className={`text-[10px] shrink-0 ${getStatusColor(t.status)}`}>
-                {STATUS_LABELS[t.status] ?? t.status}
+          {filtered.map((task) => (
+            <li key={task.id} className="flex items-center gap-2 text-sm">
+              <Badge variant="outline" className={`text-[10px] shrink-0 ${getStatusColor(task.status)}`}>
+                {t(`statuses.${statusKey(task.status)}`)}
               </Badge>
-              <span className="truncate font-medium">{t.title}</span>
+              <span className="truncate font-medium">{task.title}</span>
             </li>
           ))}
         </ul>

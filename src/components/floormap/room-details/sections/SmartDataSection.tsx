@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Calculator, Link2, FileText, AlertTriangle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ export function SmartDataSection({
   areaSqm,
   perimeterMm,
 }: SmartDataSectionProps) {
+  const { t } = useTranslation();
   const floorSpec = formData.floor_spec as FloorSpec;
 
   // Calculate material estimates
@@ -25,9 +27,10 @@ export function SmartDataSection({
     if (!areaSqm) return null;
 
     const floorMaterial = floorSpec?.material;
-    const floorMaterialLabel = FLOOR_MATERIAL_OPTIONS.find(
+    const floorMaterialOption = FLOOR_MATERIAL_OPTIONS.find(
       (o) => o.value === floorMaterial
-    )?.label;
+    );
+    const floorMaterialLabel = floorMaterialOption ? t(floorMaterialOption.labelKey) : undefined;
 
     // Add 10% waste factor for flooring
     const floorAreaWithWaste = areaSqm * 1.1;
@@ -65,26 +68,26 @@ export function SmartDataSection({
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
             <Calculator className="h-4 w-4" />
-            <span>Materialåtgång (beräknat)</span>
+            <span>{t('rooms.materialConsumption')}</span>
           </div>
 
           <div className="bg-gray-50 rounded-lg p-4 space-y-2">
             {estimates.floorMaterialLabel && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">
-                  Golv ({estimates.floorMaterialLabel}):
+                  {t('rooms.floor')} ({estimates.floorMaterialLabel}):
                 </span>
                 <span className="font-medium">
-                  {estimates.floorAreaWithWaste.toFixed(1)} m² (inkl. 10% spill)
+                  {estimates.floorAreaWithWaste.toFixed(1)} m² ({t('rooms.inclWaste')})
                 </span>
               </div>
             )}
 
             {estimates.skirtingWithWaste > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Golvlist:</span>
+                <span className="text-gray-600">{t('rooms.skirting')}:</span>
                 <span className="font-medium">
-                  {estimates.skirtingWithWaste.toFixed(1)} m (inkl. spill)
+                  {estimates.skirtingWithWaste.toFixed(1)} m ({t('rooms.inclWasteShort')})
                 </span>
               </div>
             )}
@@ -92,10 +95,10 @@ export function SmartDataSection({
             {estimates.paintLiters > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">
-                  Väggfärg ({estimates.wallArea.toFixed(1)} m²):
+                  {t('rooms.wallPaint')} ({estimates.wallArea.toFixed(1)} m²):
                 </span>
                 <span className="font-medium">
-                  ~{estimates.paintLiters} L (2 strykningar)
+                  ~{estimates.paintLiters} L ({t('rooms.coats')})
                 </span>
               </div>
             )}
@@ -103,10 +106,10 @@ export function SmartDataSection({
             {areaSqm && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">
-                  Takfärg ({areaSqm.toFixed(1)} m²):
+                  {t('rooms.ceilingPaint')} ({areaSqm.toFixed(1)} m²):
                 </span>
                 <span className="font-medium">
-                  ~{estimates.ceilingPaintLiters} L (2 strykningar)
+                  ~{estimates.ceilingPaintLiters} L ({t('rooms.coats')})
                 </span>
               </div>
             )}
@@ -114,7 +117,7 @@ export function SmartDataSection({
             <div className="pt-2 border-t mt-2">
               <p className="text-xs text-gray-500 flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />
-                Uppskattningar baserade på standardvärden. Verifiera med leverantör.
+                {t('rooms.estimatesDisclaimer')}
               </p>
             </div>
           </div>
@@ -128,19 +131,19 @@ export function SmartDataSection({
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-gray-600" />
-          <Label htmlFor="room-priority">Prioritet</Label>
+          <Label htmlFor="room-priority">{t('rooms.priority')}</Label>
         </div>
         <Select
           value={formData.priority}
           onValueChange={(value) => updateFormData({ priority: value })}
         >
           <SelectTrigger id="room-priority">
-            <SelectValue placeholder="Välj prioritet" />
+            <SelectValue placeholder={t('rooms.selectPriority', 'Select priority')} />
           </SelectTrigger>
           <SelectContent>
             {PRIORITY_OPTIONS.map((option) => (
               <SelectItem key={option.value} value={option.value}>
-                {option.label}
+                {t(option.labelKey)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -151,7 +154,7 @@ export function SmartDataSection({
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Link2 className="h-4 w-4 text-gray-600" />
-          <Label htmlFor="links">Länkar</Label>
+          <Label htmlFor="links">{t('rooms.links')}</Label>
         </div>
         <Input
           id="links"
@@ -161,7 +164,7 @@ export function SmartDataSection({
           placeholder="https://..."
         />
         <p className="text-xs text-gray-500">
-          Länk till inspirationsbilder, produkter, etc.
+          {t('rooms.linksDescription')}
         </p>
       </div>
 
@@ -169,13 +172,13 @@ export function SmartDataSection({
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-gray-600" />
-          <Label htmlFor="notes">Anteckningar</Label>
+          <Label htmlFor="notes">{t('rooms.notesLabel')}</Label>
         </div>
         <Textarea
           id="notes"
           value={formData.notes || ""}
           onChange={(e) => updateFormData({ notes: e.target.value })}
-          placeholder="Övriga anteckningar om rummet..."
+          placeholder={t('rooms.notesPlaceholder')}
           rows={6}
           className="resize-none"
         />

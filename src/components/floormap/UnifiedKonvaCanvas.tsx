@@ -535,6 +535,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   // Touch/pinch zoom state
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
   const [lastTouchCenter, setLastTouchCenter] = useState<{ x: number; y: number } | null>(null);
+  const touchPanStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   
   // Double-click handling state (simplified like old canvas)
   const [lastClickTime, setLastClickTime] = useState(0);
@@ -1703,30 +1704,55 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     const isDoubleClick = timeSinceLastClick < 500 && lastClickedShapeId === shapeId;
 
     if (isDoubleClick) {
-      // DOUBLE-CLICK → Different behavior based on Shift key
-      // Double-click detected
-      
-      const shape = currentShapes.find(s => s.id === shapeId);
-      if (shape) {
-        setSelectedShapeId(shapeId);
-        setSelectedShapeIds([shapeId]);
+      // DOUBLE-CLICK → Different behavior based on shape type
 
-        // Room shapes → RoomDetailDialog, others → PropertyPanel
-        if (shapeType === 'room' && shape.roomId) {
-          // Close PropertyPanel for rooms - use RoomDetailDialog instead
-          setShowPropertyPanel(false);
-          setPropertyPanelShape(null);
-          setSelectedRoomForDetail(shape.roomId);
-          setIsRoomDetailOpen(true);
-          toast.success('Rum markerat - Öppnar rumsdetaljer');
-        } else {
+      const shape = currentShapes.find(s => s.id === shapeId);
+      if (!shape) {
+        setLastClickTime(0);
+        setLastClickedShapeId(null);
+        return;
+      }
+
+      // Wall-specific 3-step logic: group → individual → property panel
+      if (shapeType === 'wall' || shapeType === 'line') {
+        const currentlySelected = useFloorMapStore.getState().selectedShapeIds;
+
+        if (currentlySelected.length === 1 && currentlySelected[0] === shapeId) {
+          // Step 3: Already individually selected → open PropertyPanel
+          setSelectedShapeId(shapeId);
           setPropertyPanelShape(shape);
           setShowPropertyPanel(true);
-          const shapeWord = shapeType === 'wall' ? 'vägg' : 'objekt';
-          toast.success(`${shapeWord.charAt(0).toUpperCase() + shapeWord.slice(1)} markerat - Öppnar egenskapspanel`);
+          toast.success('Vägg markerad - Öppnar egenskapspanel');
+          setLastClickTime(0);
+          setLastClickedShapeId(null);
+        } else {
+          // Step 2: Drill-in from group → select only this wall
+          setSelectedShapeId(shapeId);
+          setSelectedShapeIds([shapeId]);
+          toast.success('Enskild vägg markerad');
+          // Keep lastClick tracking alive for next double-click
+          setLastClickTime(now);
+          setLastClickedShapeId(shapeId);
         }
+        return;
       }
-      
+
+      // Non-wall shapes: open detail panel directly
+      setSelectedShapeId(shapeId);
+      setSelectedShapeIds([shapeId]);
+
+      if (shapeType === 'room' && shape.roomId) {
+        setShowPropertyPanel(false);
+        setPropertyPanelShape(null);
+        setSelectedRoomForDetail(shape.roomId);
+        setIsRoomDetailOpen(true);
+        toast.success('Rum markerat - Öppnar rumsdetaljer');
+      } else {
+        setPropertyPanelShape(shape);
+        setShowPropertyPanel(true);
+        toast.success('Objekt markerat - Öppnar egenskapspanel');
+      }
+
       setLastClickTime(0);
       setLastClickedShapeId(null);
     } else {
@@ -1885,28 +1911,58 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     };
   };
   
-  // Handle touch start (for pinch zoom)
+  // Handle touch start (for pinch zoom and single-finger pan)
   const handleTouchStart = useCallback((e: KonvaEventObject<TouchEvent>) => {
     const touches = e.evt.touches;
-    
+
     // Two-finger touch = prepare for pinch zoom
     if (touches.length === 2) {
       e.evt.preventDefault(); // Prevent browser zoom
-      
+      touchPanStartRef.current = null; // Cancel single-finger pan
+
       const distance = getTouchDistance(touches[0], touches[1]);
       const center = getTouchCenter(touches[0], touches[1]);
-      
+
       setLastTouchDistance(distance);
       setLastTouchCenter(center);
     }
+
+    // Single-finger touch on empty canvas = pan
+    if (touches.length === 1) {
+      const target = e.target;
+      const isEmptyCanvas = target === target.getStage();
+      const { activeTool } = useFloorMapStore.getState();
+
+      if (isEmptyCanvas && activeTool === 'select') {
+        const { panX, panY } = useFloorMapStore.getState().viewState;
+        touchPanStartRef.current = {
+          x: touches[0].clientX,
+          y: touches[0].clientY,
+          panX,
+          panY,
+        };
+      }
+    }
   }, []);
   
-  // Handle touch move (pinch zoom)
+  // Handle touch move (pinch zoom and single-finger pan)
   const handleTouchMove = useCallback((e: KonvaEventObject<TouchEvent>) => {
     const touches = e.evt.touches;
     const stage = stageRef.current;
     if (!stage) return;
-    
+
+    // Single-finger pan
+    if (touches.length === 1 && touchPanStartRef.current) {
+      e.evt.preventDefault();
+      const dx = touches[0].clientX - touchPanStartRef.current.x;
+      const dy = touches[0].clientY - touchPanStartRef.current.y;
+      const newPanX = touchPanStartRef.current.panX + dx;
+      const newPanY = touchPanStartRef.current.panY + dy;
+      const constrained = constrainPan(newPanX, newPanY, viewState.zoom);
+      setViewState(constrained);
+      return;
+    }
+
     // Two-finger pinch zoom
     if (touches.length === 2 && lastTouchDistance && lastTouchCenter) {
       e.evt.preventDefault(); // Prevent browser zoom
@@ -1946,7 +2002,12 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   // Handle touch end (cleanup)
   const handleTouchEnd = useCallback((e: KonvaEventObject<TouchEvent>) => {
     const touches = e.evt.touches;
-    
+
+    // Reset single-finger pan
+    if (touches.length === 0) {
+      touchPanStartRef.current = null;
+    }
+
     // Reset pinch zoom state when fingers are lifted
     if (touches.length < 2) {
       setLastTouchDistance(null);

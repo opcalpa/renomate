@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 
@@ -21,15 +22,6 @@ const ALL_STATUSES = [
 ] as const;
 
 const DEFAULT_HIDDEN = new Set(["paid"]);
-
-const STATUS_LABELS: Record<string, string> = {
-  submitted: "Inskickad",
-  declined: "Nekad",
-  approved: "Godkänd",
-  billed: "Fakturerad",
-  paid: "Betald",
-  paused: "Pausad",
-};
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -56,6 +48,7 @@ interface RelatedPurchaseOrdersSectionProps {
 }
 
 export function RelatedPurchaseOrdersSection({ roomId, projectId }: RelatedPurchaseOrdersSectionProps) {
+  const { t } = useTranslation();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(
@@ -98,7 +91,7 @@ export function RelatedPurchaseOrdersSection({ roomId, projectId }: RelatedPurch
   );
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground py-2">Laddar inköpsordrar...</p>;
+    return <p className="text-sm text-muted-foreground py-2">{t('rooms.loadingPurchaseOrders')}</p>;
   }
 
   return (
@@ -115,7 +108,7 @@ export function RelatedPurchaseOrdersSection({ roomId, projectId }: RelatedPurch
                 : "bg-transparent text-muted-foreground border-dashed border-muted-foreground/40"
             }`}
           >
-            {STATUS_LABELS[s] ?? s}
+            {t(`materialStatuses.${s}`)}
           </button>
         ))}
       </div>
@@ -123,20 +116,20 @@ export function RelatedPurchaseOrdersSection({ roomId, projectId }: RelatedPurch
       {filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground py-2">
           {materials.length === 0
-            ? "Inga inköpsordrar kopplade till detta rum"
-            : "Inga inköpsordrar matchar filtret"}
+            ? t('rooms.noPOsForRoom')
+            : t('rooms.noPOsMatchFilter')}
         </p>
       ) : (
         <ul className="space-y-1.5">
           {filtered.map((m) => (
             <li key={m.id} className="flex items-center gap-2 text-sm">
               <Badge variant="outline" className={`text-[10px] shrink-0 ${getStatusColor(m.status)}`}>
-                {STATUS_LABELS[m.status] ?? m.status}
+                {t(`materialStatuses.${m.status}`)}
               </Badge>
               <span className="truncate font-medium">{m.name}</span>
               {m.quantity != null && (
                 <span className="text-muted-foreground text-xs shrink-0">
-                  {m.quantity} {m.unit ?? "st"}
+                  {m.quantity} {m.unit ?? t('rooms.pieces')}
                 </span>
               )}
               {m.vendor_name && (

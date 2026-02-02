@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useFloorMapStore } from "../../store";
@@ -25,6 +26,7 @@ interface UseRoomFormOptions {
 }
 
 export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoomFormOptions) {
+  const { t } = useTranslation();
   const isNewRoom = !room;
   const [formData, setFormData] = useState<RoomFormData>(DEFAULT_FORM_VALUES);
   const [saving, setSaving] = useState(false);
@@ -38,7 +40,7 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
         name: room.name || "",
         description: room.description || "",
         color: room.color || "rgba(59, 130, 246, 0.2)",
-        status: room.status || "befintligt",
+        status: room.status || "existing",
         ceiling_height_mm: room.ceiling_height_mm || 2400,
         priority: room.priority || "medium",
         links: room.links || "",
@@ -75,7 +77,7 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
   // Save handler - handles both create and update
   const handleSave = useCallback(async () => {
     if (!formData.name.trim()) {
-      toast.error("Rumsnamn krävs");
+      toast.error(t('roomForm.nameRequired', 'Room name is required'));
       return;
     }
 
@@ -105,7 +107,7 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
 
         if (createError) throw createError;
 
-        toast.success("Rum skapat!");
+        toast.success(t('roomForm.roomCreated', 'Room created!'));
         onRoomUpdated?.();
         onClose?.();
       } else {
@@ -151,25 +153,25 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
           });
         }
 
-        toast.success("Rum uppdaterat!");
+        toast.success(t('roomForm.roomUpdated', 'Room updated!'));
         onRoomUpdated?.();
       }
     } catch (error) {
       console.error("Error saving room:", error);
-      toast.error(isNewRoom ? "Kunde inte skapa rum" : "Kunde inte uppdatera rum");
+      toast.error(isNewRoom
+        ? t('roomForm.couldNotCreate', 'Could not create room')
+        : t('roomForm.couldNotUpdate', 'Could not update room'));
     } finally {
       setSaving(false);
     }
-  }, [room, isNewRoom, projectId, formData, shapes, updateShape, onRoomUpdated, onClose]);
+  }, [room, isNewRoom, projectId, formData, shapes, updateShape, onRoomUpdated, onClose, t]);
 
   // Delete handler
   const handleDelete = useCallback(async () => {
     if (!room) return;
 
     if (
-      !confirm(
-        "Är du säker på att du vill ta bort detta rum? Denna åtgärd kan inte ångras."
-      )
+      !confirm(t('roomForm.confirmDelete', 'Are you sure you want to delete this room? This action cannot be undone.'))
     ) {
       return;
     }
@@ -180,16 +182,16 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
 
       if (error) throw error;
 
-      toast.success("Rum borttaget!");
+      toast.success(t('roomForm.roomDeleted', 'Room deleted!'));
       onRoomUpdated?.();
       onClose?.();
     } catch (error) {
       console.error("Error deleting room:", error);
-      toast.error("Kunde inte ta bort rum");
+      toast.error(t('roomForm.couldNotDelete', 'Could not delete room'));
     } finally {
       setSaving(false);
     }
-  }, [room, onRoomUpdated, onClose]);
+  }, [room, onRoomUpdated, onClose, t]);
 
   return {
     formData,

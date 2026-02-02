@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -26,6 +27,7 @@ export const RoomContextMenu = ({
   onAssignRoom,
   onClose,
 }: RoomContextMenuProps) => {
+  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x, y });
 
@@ -78,7 +80,7 @@ export const RoomContextMenu = ({
       <Card className="w-56 shadow-lg border-border">
         <CardContent className="p-2">
           <div className="text-xs font-semibold text-muted-foreground px-2 py-1.5">
-            Assign to Room
+            {t('roomContextMenu.assignToRoom')}
           </div>
           <Separator className="my-1" />
           <div className="space-y-0.5">
@@ -88,8 +90,8 @@ export const RoomContextMenu = ({
               onClick={() => handleSelect(null)}
             >
               {!currentRoomId && <Check className="h-4 w-4 mr-2" />}
-              {!currentRoomId && <span className="flex-1 text-left">Unassigned</span>}
-              {currentRoomId && <span className="flex-1 text-left ml-6">Unassigned</span>}
+              {!currentRoomId && <span className="flex-1 text-left">{t('roomContextMenu.unassigned')}</span>}
+              {currentRoomId && <span className="flex-1 text-left ml-6">{t('roomContextMenu.unassigned')}</span>}
             </Button>
             {rooms.map((room) => (
               <Button

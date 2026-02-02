@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, GripVertical, ExternalLink, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Save, FolderOpen, Trash2, Plus } from "lucide-react";
+import { Loader2, Search, GripVertical, ExternalLink, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Save, FolderOpen, Trash2, Plus, Rows3 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -96,53 +97,11 @@ interface ColumnDef {
   extra?: boolean;
 }
 
-const ALL_COLUMNS: ColumnDef[] = [
-  { key: "name", label: "Name" },
-  { key: "type", label: "Type" },
-  { key: "budget", label: "Budget", align: "right" },
-  { key: "ordered", label: "Ordered", align: "right" },
-  { key: "paid", label: "Paid", align: "right" },
-  { key: "remaining", label: "Remaining", align: "right" },
-  { key: "room", label: "Room", extra: true },
-  { key: "assignee", label: "Assignee", extra: true },
-  { key: "costCenter", label: "Cost Center", extra: true },
-  { key: "startDate", label: "Start Date", extra: true },
-  { key: "finishDate", label: "Finish Date", extra: true },
-  { key: "status", label: "Status" },
-];
-
 const EXTRA_COLUMN_KEYS: ColumnKey[] = ["room", "assignee", "costCenter", "startDate", "finishDate"];
 
 interface BudgetTabProps {
   projectId: string;
 }
-
-const TASK_PAYMENT_STATUSES = [
-  { value: "not_paid", label: "Not Paid" },
-  { value: "billed", label: "Billed" },
-  { value: "partially_paid", label: "Partially Paid" },
-  { value: "paid", label: "Paid" },
-];
-
-const MATERIAL_STATUSES = [
-  { value: "submitted", label: "Submitted" },
-  { value: "declined", label: "Declined" },
-  { value: "approved", label: "Approved" },
-  { value: "billed", label: "Billed" },
-  { value: "paid", label: "Paid" },
-  { value: "paused", label: "Paused" },
-];
-
-const ALL_STATUSES = [
-  { value: "not_paid", label: "Not Paid" },
-  { value: "billed", label: "Billed" },
-  { value: "partially_paid", label: "Partially Paid" },
-  { value: "paid", label: "Paid" },
-  { value: "submitted", label: "Submitted" },
-  { value: "declined", label: "Declined" },
-  { value: "approved", label: "Approved" },
-  { value: "paused", label: "Paused" },
-];
 
 // --- Saved Views ---
 
@@ -153,6 +112,7 @@ interface SavedView {
   visibleExtras: ColumnKey[];
   sortKey: ColumnKey | null;
   sortDir: "asc" | "desc";
+  compactRows?: boolean;
 }
 
 const VIEWS_STORAGE_KEY = (projectId: string) => `budget-saved-views-${projectId}`;
@@ -174,6 +134,7 @@ function persistSavedViews(projectId: string, views: SavedView[]) {
 // --- Component ---
 
 const BudgetTab = ({ projectId }: BudgetTabProps) => {
+  const { t } = useTranslation();
   const [rows, setRows] = useState<BudgetRow[]>([]);
   const [extraTotal, setExtraTotal] = useState(0);
   const [projectBudget, setProjectBudget] = useState(0);
@@ -196,10 +157,69 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
   // Collapsible columns
   const [visibleExtras, setVisibleExtras] = useState<Set<ColumnKey>>(new Set());
 
+  // Translated column/status definitions
+  const ALL_COLUMNS: ColumnDef[] = useMemo(() => [
+    { key: "name", label: t('budget.name') },
+    { key: "type", label: t('budget.type') },
+    { key: "budget", label: t('common.budget'), align: "right" },
+    { key: "ordered", label: t('budget.ordered'), align: "right" },
+    { key: "paid", label: t('budget.paid'), align: "right" },
+    { key: "remaining", label: t('budget.remaining'), align: "right" },
+    { key: "room", label: t('budget.room'), extra: true },
+    { key: "assignee", label: t('budget.assignee'), extra: true },
+    { key: "costCenter", label: t('budget.costCenter'), extra: true },
+    { key: "startDate", label: t('common.startDate'), extra: true },
+    { key: "finishDate", label: t('common.finishDate'), extra: true },
+    { key: "status", label: t('common.status') },
+  ], [t]);
+
+  const TASK_PAYMENT_STATUSES = useMemo(() => [
+    { value: "not_paid", label: t('paymentStatuses.notPaid') },
+    { value: "billed", label: t('materialStatuses.billed') },
+    { value: "partially_paid", label: t('paymentStatuses.partiallyPaid') },
+    { value: "paid", label: t('materialStatuses.paid') },
+  ], [t]);
+
+  const MATERIAL_STATUSES = useMemo(() => [
+    { value: "submitted", label: t('materialStatuses.submitted') },
+    { value: "declined", label: t('materialStatuses.declined') },
+    { value: "approved", label: t('materialStatuses.approved') },
+    { value: "billed", label: t('materialStatuses.billed') },
+    { value: "paid", label: t('materialStatuses.paid') },
+    { value: "paused", label: t('materialStatuses.paused') },
+  ], [t]);
+
+  const ALL_STATUSES = useMemo(() => [
+    { value: "not_paid", label: t('paymentStatuses.notPaid') },
+    { value: "billed", label: t('materialStatuses.billed') },
+    { value: "partially_paid", label: t('paymentStatuses.partiallyPaid') },
+    { value: "paid", label: t('materialStatuses.paid') },
+    { value: "submitted", label: t('materialStatuses.submitted') },
+    { value: "declined", label: t('materialStatuses.declined') },
+    { value: "approved", label: t('materialStatuses.approved') },
+    { value: "paused", label: t('materialStatuses.paused') },
+  ], [t]);
+
   // Column order (drag reorder)
   const [columns, setColumns] = useState<ColumnDef[]>(ALL_COLUMNS);
   const dragCol = useRef<number | null>(null);
   const dragOverCol = useRef<number | null>(null);
+
+  // Keep columns in sync when ALL_COLUMNS changes (language switch)
+  useEffect(() => {
+    setColumns((prev) => {
+      const keyOrder = prev.map((c) => c.key);
+      const updated = keyOrder
+        .map((key) => ALL_COLUMNS.find((c) => c.key === key))
+        .filter((c): c is ColumnDef => c !== undefined);
+      for (const col of ALL_COLUMNS) {
+        if (!updated.some((c) => c.key === col.key)) {
+          updated.push(col);
+        }
+      }
+      return updated;
+    });
+  }, [ALL_COLUMNS]);
 
   // Sorting
   const [sortKey, setSortKey] = useState<ColumnKey | null>(null);
@@ -221,6 +241,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
   const [saveViewName, setSaveViewName] = useState("");
   const [saveViewOpen, setSaveViewOpen] = useState(false);
   const [loadViewOpen, setLoadViewOpen] = useState(false);
+  const [compactRows, setCompactRows] = useState(false);
 
   const handleSaveView = () => {
     const name = saveViewName.trim();
@@ -233,6 +254,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
       visibleExtras: Array.from(visibleExtras),
       sortKey,
       sortDir,
+      compactRows,
     };
 
     const updated = [...savedViews, newView];
@@ -240,7 +262,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
     persistSavedViews(projectId, updated);
     setSaveViewName("");
     setSaveViewOpen(false);
-    toast({ title: "View saved", description: `"${name}" has been saved` });
+    toast({ title: t('budget.viewSaved'), description: `"${name}" has been saved` });
   };
 
   const handleLoadView = (view: SavedView) => {
@@ -258,8 +280,9 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
     setVisibleExtras(new Set(view.visibleExtras));
     setSortKey(view.sortKey);
     setSortDir(view.sortDir);
+    setCompactRows(view.compactRows ?? false);
     setLoadViewOpen(false);
-    toast({ title: "View loaded", description: `"${view.name}" applied` });
+    toast({ title: t('budget.viewLoaded'), description: `"${view.name}" applied` });
   };
 
   const handleDeleteView = (viewId: string) => {
@@ -620,7 +643,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
   };
 
   const formatDate = (dateStr?: string) => {
-    if (!dateStr) return "—";
+    if (!dateStr) return "\u2014";
     return new Date(dateStr).toLocaleDateString("sv-SE");
   };
 
@@ -643,7 +666,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
       case "type":
         return (
           <Badge variant={row.type === "task" ? "default" : "secondary"}>
-            {row.type === "task" ? "Task" : "Material"}
+            {row.type === "task" ? t('budget.task') : t('budget.material')}
           </Badge>
         );
       case "budget":
@@ -689,11 +712,11 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
         );
       }
       case "room":
-        return <span className="text-sm">{row.room || "—"}</span>;
+        return <span className="text-sm">{row.room || "\u2014"}</span>;
       case "assignee":
-        return <span className="text-sm">{row.assignee || "—"}</span>;
+        return <span className="text-sm">{row.assignee || "\u2014"}</span>;
       case "costCenter":
-        return <span className="text-sm">{row.costCenter || "—"}</span>;
+        return <span className="text-sm">{row.costCenter || "\u2014"}</span>;
       case "startDate":
         return <span className="text-sm">{formatDate(row.startDate)}</span>;
       case "finishDate":
@@ -724,7 +747,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
   const renderFooterCell = (col: ColumnDef) => {
     switch (col.key) {
       case "name":
-        return <span className="font-bold">Totals</span>;
+        return <span className="font-bold">{t('budget.totals')}</span>;
       case "budget":
         return <span className="font-bold">${totals.budget.toLocaleString()}</span>;
       case "ordered":
@@ -756,36 +779,36 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Budget</h2>
+      <h2 className="text-2xl font-bold mb-4">{t('budget.title')}</h2>
       <p className="text-muted-foreground mb-6">
-        Unified view of task budgets and material costs. Drag column headers to reorder.
+        {t('budget.description')}
       </p>
 
       {/* Summary Boxes */}
       {(() => {
         const remaining = projectBudget - totals.ordered - totals.paid;
         return (
-          <div className="grid grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-4 mb-6">
             <div className="bg-muted/50 rounded-lg p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Budget</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('common.budget')}</p>
               <p className="text-xl font-bold">${projectBudget.toLocaleString()}</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Ordered</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('budget.ordered')}</p>
               <p className="text-xl font-bold">${totals.ordered.toLocaleString()}</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Paid</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('budget.paid')}</p>
               <p className="text-xl font-bold">${totals.paid.toLocaleString()}</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Remaining</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('budget.remaining')}</p>
               <p className={`text-xl font-bold ${remaining < 0 ? "text-destructive" : ""}`}>
                 ${remaining.toLocaleString()}
               </p>
             </div>
             <div className="bg-muted/50 rounded-lg p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Extra</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('budget.extra')}</p>
               <p className="text-xl font-bold">${extraTotal.toLocaleString()}</p>
             </div>
           </div>
@@ -793,41 +816,41 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
       })()}
 
       {/* Filters */}
-      <div className="flex flex-wrap items-end gap-4 mb-4">
+      <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-end md:gap-4 mb-4">
         <div className="flex-1 min-w-[200px] max-w-sm">
-          <Label htmlFor="budget-search" className="text-sm mb-1.5 block">Search</Label>
+          <Label htmlFor="budget-search" className="text-sm mb-1.5 block">{t('common.search')}</Label>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               id="budget-search"
-              placeholder="Filter by name..."
+              placeholder={t('budget.filterByName')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
             />
           </div>
         </div>
-        <div className="w-[150px]">
-          <Label className="text-sm mb-1.5 block">Type</Label>
+        <div className="w-full md:w-[150px]">
+          <Label className="text-sm mb-1.5 block">{t('budget.type')}</Label>
           <Select value={filterType} onValueChange={(v) => setFilterType(v as "all" | "task" | "material")}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="task">Tasks</SelectItem>
-              <SelectItem value="material">Materials</SelectItem>
+              <SelectItem value="all">{t('budget.allTypes')}</SelectItem>
+              <SelectItem value="task">{t('budget.tasks')}</SelectItem>
+              <SelectItem value="material">{t('budget.materials')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <div className="w-[180px]">
-          <Label className="text-sm mb-1.5 block">Status</Label>
+        <div className="w-full md:w-[180px]">
+          <Label className="text-sm mb-1.5 block">{t('common.status')}</Label>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="all">{t('budget.allStatuses')}</SelectItem>
               {ALL_STATUSES.map((s) => (
                 <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
               ))}
@@ -851,12 +874,12 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="gap-1">
               <Columns3 className="h-4 w-4" />
-              Columns
+              {t('budget.columns')}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-48" align="end">
             <div className="space-y-2">
-              <p className="text-sm font-medium mb-2">Extra Columns</p>
+              <p className="text-sm font-medium mb-2">{t('budget.extraColumns')}</p>
               {EXTRA_COLUMN_KEYS.map((key) => {
                 const col = ALL_COLUMNS.find((c) => c.key === key);
                 return (
@@ -873,22 +896,34 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
           </PopoverContent>
         </Popover>
 
+        {/* Compact rows toggle */}
+        <Button
+          variant={compactRows ? "default" : "outline"}
+          size="sm"
+          className="gap-1"
+          onClick={() => setCompactRows((prev) => !prev)}
+          title={t('budget.compactRows', 'Compact rows')}
+        >
+          <Rows3 className="h-4 w-4" />
+          {t('budget.compactRows', 'Compact')}
+        </Button>
+
         {/* Save View */}
         <Popover open={saveViewOpen} onOpenChange={setSaveViewOpen}>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="gap-1">
               <Save className="h-4 w-4" />
-              Save View
+              {t('budget.saveView')}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-64" align="end">
             <div className="space-y-3">
-              <p className="text-sm font-medium">Save Current View</p>
+              <p className="text-sm font-medium">{t('budget.saveCurrentView')}</p>
               <p className="text-xs text-muted-foreground">
-                Saves column order, visible columns, and sort settings.
+                {t('budget.saveViewDescription')}
               </p>
               <Input
-                placeholder="View name..."
+                placeholder={t('budget.viewName')}
                 value={saveViewName}
                 onChange={(e) => setSaveViewName(e.target.value)}
                 onKeyDown={(e) => {
@@ -902,7 +937,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
                 onClick={handleSaveView}
               >
                 <Plus className="h-3 w-3 mr-1" />
-                Save
+                {t('common.save')}
               </Button>
             </div>
           </PopoverContent>
@@ -919,7 +954,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
             </PopoverTrigger>
             <PopoverContent className="w-64" align="end">
               <div className="space-y-1">
-                <p className="text-sm font-medium mb-2">Saved Views</p>
+                <p className="text-sm font-medium mb-2">{t('budget.savedViews')}</p>
                 {savedViews.map((view) => (
                   <div
                     key={view.id}
@@ -937,7 +972,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
                         e.stopPropagation();
                         handleDeleteView(view.id);
                       }}
-                      title="Delete view"
+                      title={t('budget.deleteView')}
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -954,7 +989,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
             size="sm"
             onClick={clearAllFilters}
           >
-            Clear filters
+            {t('budget.clearFilters')}
           </Button>
         )}
       </div>
@@ -964,13 +999,13 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
         <div className="flex flex-wrap items-end gap-4 mb-4 p-4 bg-muted/30 rounded-lg border">
           {distinctRooms.length > 0 && (
             <div className="w-[160px]">
-              <Label className="text-sm mb-1.5 block">Room</Label>
+              <Label className="text-sm mb-1.5 block">{t('budget.room')}</Label>
               <Select value={filterRoom} onValueChange={setFilterRoom}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Rooms</SelectItem>
+                  <SelectItem value="all">{t('budget.allRooms')}</SelectItem>
                   {distinctRooms.map((r) => (
                     <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                   ))}
@@ -980,13 +1015,13 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
           )}
           {distinctAssignees.length > 0 && (
             <div className="w-[160px]">
-              <Label className="text-sm mb-1.5 block">Assignee</Label>
+              <Label className="text-sm mb-1.5 block">{t('budget.assignee')}</Label>
               <Select value={filterAssignee} onValueChange={setFilterAssignee}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Assignees</SelectItem>
+                  <SelectItem value="all">{t('budget.allAssignees')}</SelectItem>
                   {distinctAssignees.map((a) => (
                     <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                   ))}
@@ -996,13 +1031,13 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
           )}
           {distinctCostCenters.length > 0 && (
             <div className="w-[160px]">
-              <Label className="text-sm mb-1.5 block">Cost Center</Label>
+              <Label className="text-sm mb-1.5 block">{t('budget.costCenter')}</Label>
               <Select value={filterCostCenter} onValueChange={setFilterCostCenter}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="all">{t('budget.all')}</SelectItem>
                   {distinctCostCenters.map((cc) => (
                     <SelectItem key={cc} value={cc}>{cc}</SelectItem>
                   ))}
@@ -1011,7 +1046,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
             </div>
           )}
           <div className="w-[160px]">
-            <Label className="text-sm mb-1.5 block">Start Date (from)</Label>
+            <Label className="text-sm mb-1.5 block">{t('budget.startDateFrom')}</Label>
             <Input
               type="date"
               value={filterStartDate}
@@ -1019,7 +1054,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
             />
           </div>
           <div className="w-[160px]">
-            <Label className="text-sm mb-1.5 block">Finish Date (to)</Label>
+            <Label className="text-sm mb-1.5 block">{t('budget.finishDateTo')}</Label>
             <Input
               type="date"
               value={filterFinishDate}
@@ -1030,14 +1065,14 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
       )}
 
       {/* Table */}
-      <div className="border rounded-lg overflow-hidden">
+      <div className="border rounded-lg overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
         <Table>
           <TableHeader>
             <TableRow>
               {visibleColumns.map((col, idx) => (
                 <TableHead
                   key={col.key}
-                  className={`${col.align === "right" ? "text-right" : ""} select-none`}
+                  className={`${col.align === "right" ? "text-right" : ""} select-none${compactRows ? " py-1 text-xs h-8" : ""}`}
                   draggable
                   onDragStart={() => handleDragStart(idx)}
                   onDragOver={(e) => handleDragOver(e, idx)}
@@ -1065,20 +1100,20 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={visibleColumns.length} className="text-center py-8 text-muted-foreground">
-                  No budget items found
+                  {t('budget.noBudgetItems')}
                 </TableCell>
               </TableRow>
             ) : (
               filtered.map((row) => (
                 <TableRow
                   key={`${row.type}-${row.id}`}
-                  className="cursor-pointer hover:bg-muted/50"
+                  className={`cursor-pointer ${row.status === "paid" ? "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/50" : "hover:bg-muted/50"}${compactRows ? " h-8" : ""}`}
                   onClick={() => openDetail(row)}
                 >
                   {visibleColumns.map((col) => (
                     <TableCell
                       key={col.key}
-                      className={col.align === "right" ? "text-right" : ""}
+                      className={`${col.align === "right" ? "text-right" : ""}${compactRows ? " py-0.5 px-2 text-xs" : ""}`}
                     >
                       {renderCell(col, row)}
                     </TableCell>
@@ -1093,7 +1128,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
                 {visibleColumns.map((col) => (
                   <TableCell
                     key={col.key}
-                    className={col.align === "right" ? "text-right" : ""}
+                    className={`${col.align === "right" ? "text-right" : ""}${compactRows ? " py-0.5 px-2 text-xs" : ""}`}
                   >
                     {renderFooterCell(col)}
                   </TableCell>
@@ -1109,7 +1144,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0">
           <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-2">
             <DialogTitle>
-              {detailRow?.type === "task" ? "Task Details" : "Purchase Order Details"}
+              {detailRow?.type === "task" ? t('budget.taskDetails') : t('budget.purchaseOrderDetails')}
             </DialogTitle>
             <DialogDescription>
               {detailRow?.name}
@@ -1126,7 +1161,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
             ) : detailRow?.type === "material" && materialDetail ? (
               <MaterialDetailView material={materialDetail} />
             ) : (
-              <p className="text-muted-foreground py-8 text-center">No data available</p>
+              <p className="text-muted-foreground py-8 text-center">{t('budget.noData')}</p>
             )}
           </div>
         </DialogContent>
@@ -1148,79 +1183,99 @@ function DetailField({ label, value }: { label: string; value: React.ReactNode }
 }
 
 function TaskDetailView({ task }: { task: TaskDetail }) {
+  const { t } = useTranslation();
+
   const statusLabel = (s: string) => {
     const map: Record<string, string> = {
-      to_do: "To Do", in_progress: "In Progress", completed: "Completed",
-      not_paid: "Not Paid", billed: "Billed", partially_paid: "Partially Paid", paid: "Paid",
+      to_do: t('taskStatuses.toDo'),
+      in_progress: t('taskStatuses.inProgress'),
+      completed: t('taskStatuses.completed'),
+      not_paid: t('paymentStatuses.notPaid'),
+      billed: t('materialStatuses.billed'),
+      partially_paid: t('paymentStatuses.partiallyPaid'),
+      paid: t('materialStatuses.paid'),
     };
     return map[s] || s;
   };
 
   const priorityLabel = (p: string) => {
-    const map: Record<string, string> = { low: "Low", medium: "Medium", high: "High" };
+    const map: Record<string, string> = {
+      low: t('priorities.low'),
+      medium: t('priorities.medium'),
+      high: t('priorities.high'),
+    };
     return map[p] || p;
   };
 
   return (
     <div className="space-y-4">
-      <DetailField label="Title" value={task.title} />
-      <DetailField label="Description" value={task.description} />
+      <DetailField label={t('budget.detailTitle')} value={task.title} />
+      <DetailField label={t('budget.detailDescription')} value={task.description} />
 
       <Separator />
 
       <div className="grid grid-cols-2 gap-4">
-        <DetailField label="Status" value={<Badge variant="outline">{statusLabel(task.status)}</Badge>} />
-        <DetailField label="Priority" value={<Badge variant="outline">{priorityLabel(task.priority)}</Badge>} />
+        <DetailField label={t('common.status')} value={<Badge variant="outline">{statusLabel(task.status)}</Badge>} />
+        <DetailField label={t('budget.detailPriority')} value={<Badge variant="outline">{priorityLabel(task.priority)}</Badge>} />
       </div>
 
-      <DetailField label="Progress" value={`${task.progress}%`} />
+      <DetailField label={t('budget.detailProgress')} value={`${task.progress}%`} />
 
       <Separator />
 
       <div className="grid grid-cols-2 gap-4">
-        <DetailField label="Budget" value={task.budget != null ? `$${task.budget.toLocaleString()}` : undefined} />
-        <DetailField label="Paid Amount" value={task.paid_amount != null ? `$${task.paid_amount.toLocaleString()}` : undefined} />
+        <DetailField label={t('common.budget')} value={task.budget != null ? `$${task.budget.toLocaleString()}` : undefined} />
+        <DetailField label={t('budget.detailPaidAmount')} value={task.paid_amount != null ? `$${task.paid_amount.toLocaleString()}` : undefined} />
       </div>
-      <DetailField label="Payment Status" value={task.payment_status ? <Badge variant="outline">{statusLabel(task.payment_status)}</Badge> : undefined} />
-      <DetailField label="Cost Center" value={task.cost_center} />
+      <DetailField label={t('budget.detailPaymentStatus')} value={task.payment_status ? <Badge variant="outline">{statusLabel(task.payment_status)}</Badge> : undefined} />
+      <DetailField label={t('budget.costCenter')} value={task.cost_center} />
 
       <Separator />
 
       <div className="grid grid-cols-2 gap-4">
-        <DetailField label="Start Date" value={task.start_date ? new Date(task.start_date).toLocaleDateString("sv-SE") : undefined} />
-        <DetailField label="Finish Date" value={task.finish_date ? new Date(task.finish_date).toLocaleDateString("sv-SE") : undefined} />
+        <DetailField label={t('common.startDate')} value={task.start_date ? new Date(task.start_date).toLocaleDateString("sv-SE") : undefined} />
+        <DetailField label={t('common.finishDate')} value={task.finish_date ? new Date(task.finish_date).toLocaleDateString("sv-SE") : undefined} />
       </div>
-      <DetailField label="Due Date" value={task.due_date ? new Date(task.due_date).toLocaleDateString("sv-SE") : undefined} />
+      <DetailField label={t('budget.detailDueDate')} value={task.due_date ? new Date(task.due_date).toLocaleDateString("sv-SE") : undefined} />
     </div>
   );
 }
 
 function MaterialDetailView({ material }: { material: MaterialDetail }) {
+  const { t } = useTranslation();
+
   const statusLabel = (s: string) => {
-    const map: Record<string, string> = { submitted: "Submitted", declined: "Declined", approved: "Approved", billed: "Billed", paid: "Paid", paused: "Paused" };
+    const map: Record<string, string> = {
+      submitted: t('materialStatuses.submitted'),
+      declined: t('materialStatuses.declined'),
+      approved: t('materialStatuses.approved'),
+      billed: t('materialStatuses.billed'),
+      paid: t('materialStatuses.paid'),
+      paused: t('materialStatuses.paused'),
+    };
     return map[s] || s;
   };
 
   return (
     <div className="space-y-4">
-      <DetailField label="Name" value={material.name} />
-      <DetailField label="Description" value={material.description} />
+      <DetailField label={t('budget.detailName')} value={material.name} />
+      <DetailField label={t('budget.detailDescription')} value={material.description} />
 
       <Separator />
 
       <div className="grid grid-cols-2 gap-4">
-        <DetailField label="Quantity" value={`${material.quantity} ${material.unit}`} />
-        <DetailField label="Price per Unit" value={material.price_per_unit != null ? `$${material.price_per_unit.toLocaleString()}` : undefined} />
+        <DetailField label={t('budget.detailQuantity')} value={`${material.quantity} ${material.unit}`} />
+        <DetailField label={t('budget.detailPricePerUnit')} value={material.price_per_unit != null ? `$${material.price_per_unit.toLocaleString()}` : undefined} />
       </div>
-      <DetailField label="Price Total" value={material.price_total != null ? `$${material.price_total.toLocaleString()}` : undefined} />
+      <DetailField label={t('budget.detailPriceTotal')} value={material.price_total != null ? `$${material.price_total.toLocaleString()}` : undefined} />
 
       <Separator />
 
-      <DetailField label="Status" value={<Badge variant="outline">{statusLabel(material.status)}</Badge>} />
-      <DetailField label="Vendor" value={material.vendor_name} />
+      <DetailField label={t('common.status')} value={<Badge variant="outline">{statusLabel(material.status)}</Badge>} />
+      <DetailField label={t('budget.detailVendor')} value={material.vendor_name} />
       {material.vendor_link && (
         <DetailField
-          label="Vendor Link"
+          label={t('budget.detailVendorLink')}
           value={
             <a href={material.vendor_link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
               {material.vendor_link}
@@ -1232,8 +1287,8 @@ function MaterialDetailView({ material }: { material: MaterialDetail }) {
 
       <Separator />
 
-      <DetailField label="Exclude from Budget" value={material.exclude_from_budget ? "Yes" : "No"} />
-      <DetailField label="Created" value={new Date(material.created_at).toLocaleDateString("sv-SE")} />
+      <DetailField label={t('budget.detailExcludeFromBudget')} value={material.exclude_from_budget ? t('common.yes') : t('common.no')} />
+      <DetailField label={t('budget.detailCreated')} value={new Date(material.created_at).toLocaleDateString("sv-SE")} />
     </div>
   );
 }

@@ -100,6 +100,69 @@ const CONTRACTOR_CATEGORIES = [
 
 const ACCESS_LEVELS = ['viewer', 'editor', 'admin', 'material_requester'];
 
+const ROLE_TEMPLATES: Record<string, { label: string; access: FeatureAccess }> = {
+  contractor: {
+    label: 'Hantverkare',
+    access: {
+      timeline: 'view',
+      tasks: 'edit',
+      tasksScope: 'assigned',
+      spacePlanner: 'view',
+      purchases: 'create',
+      purchasesScope: 'assigned',
+      overview: 'view',
+      teams: 'none',
+      budget: 'none',
+      files: 'view',
+    },
+  },
+  project_manager: {
+    label: 'Projektledare',
+    access: {
+      timeline: 'edit',
+      tasks: 'edit',
+      tasksScope: 'all',
+      spacePlanner: 'edit',
+      purchases: 'edit',
+      purchasesScope: 'all',
+      overview: 'edit',
+      teams: 'invite',
+      budget: 'view',
+      files: 'edit',
+    },
+  },
+  client: {
+    label: 'Kund / Beställare',
+    access: {
+      timeline: 'view',
+      tasks: 'view',
+      tasksScope: 'all',
+      spacePlanner: 'view',
+      purchases: 'view',
+      purchasesScope: 'all',
+      overview: 'view',
+      teams: 'view',
+      budget: 'view',
+      files: 'view',
+    },
+  },
+  viewer: {
+    label: 'Betraktare',
+    access: {
+      timeline: 'view',
+      tasks: 'view',
+      tasksScope: 'all',
+      spacePlanner: 'view',
+      purchases: 'view',
+      purchasesScope: 'all',
+      overview: 'view',
+      teams: 'none',
+      budget: 'none',
+      files: 'none',
+    },
+  },
+};
+
 const invitationSchemaEmail = z.object({
   email: z.string().trim().email({ message: "Invalid email address" }).max(255),
   access_level: z.enum(['viewer', 'editor', 'admin', 'material_requester']),
@@ -134,22 +197,57 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
   const [editMemberCompany, setEditMemberCompany] = useState("");
   const [editMemberNotes, setEditMemberNotes] = useState("");
   
-  // Feature-based access control
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('contractor');
+
+  // Feature-based access control - default to contractor template
   const [featureAccess, setFeatureAccess] = useState<FeatureAccess>({
-    timeline: 'view',
-    tasks: 'view',
-    tasksScope: 'assigned',
-    spacePlanner: 'view',
-    purchases: 'view',
-    purchasesScope: 'assigned',
-    overview: 'view',
-    teams: 'none',
-    budget: 'none',
-    files: 'none',
+    ...ROLE_TEMPLATES.contractor.access,
   });
 
   const { toast } = useToast();
   const { t } = useTranslation();
+
+  const getRoleTemplateLabel = (key: string): string => {
+    return t(`roles.roleTemplates.${key}`, key);
+  };
+
+  const getContractorCategoryLabel = (value: string): string => {
+    return t(`roles.contractorRoles.${value}`, value);
+  };
+
+  const detectTemplate = (access: FeatureAccess): string => {
+    for (const [key, template] of Object.entries(ROLE_TEMPLATES)) {
+      const t = template.access;
+      if (
+        access.timeline === t.timeline &&
+        access.tasks === t.tasks &&
+        access.tasksScope === t.tasksScope &&
+        access.spacePlanner === t.spacePlanner &&
+        access.purchases === t.purchases &&
+        access.purchasesScope === t.purchasesScope &&
+        access.overview === t.overview &&
+        access.teams === t.teams &&
+        access.budget === t.budget &&
+        access.files === t.files
+      ) {
+        return key;
+      }
+    }
+    return 'custom';
+  };
+
+  const handleTemplateChange = (templateKey: string) => {
+    setSelectedTemplate(templateKey);
+    if (templateKey !== 'custom' && ROLE_TEMPLATES[templateKey]) {
+      setFeatureAccess({ ...ROLE_TEMPLATES[templateKey].access });
+    }
+  };
+
+  const handleFeatureAccessChange = (updates: Partial<FeatureAccess>) => {
+    const newAccess = { ...featureAccess, ...updates };
+    setFeatureAccess(newAccess);
+    setSelectedTemplate(detectTemplate(newAccess));
+  };
 
   useEffect(() => {
     fetchTeamData();
@@ -249,7 +347,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       }
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('roles.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -281,11 +379,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       if (!profile) throw new Error("Profile not found");
 
       // Create invitation - match actual database schema
-      const invitationPayload = {
-        project_id: projectId,
-        invited_by_user_id: profile.id,
-        email: validatedData.email, // Database uses 'email', not 'invited_email'
-        role: accessLevel, // Database uses 'role'
+      const permissionsSnapshot = {
         timeline_access: featureAccess.timeline,
         tasks_access: featureAccess.tasks,
         tasks_scope: featureAccess.tasksScope,
@@ -296,6 +390,14 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
         teams_access: featureAccess.teams,
         budget_access: featureAccess.budget,
         files_access: featureAccess.files,
+      };
+      const invitationPayload = {
+        project_id: projectId,
+        invited_by_user_id: profile.id,
+        email: validatedData.email,
+        role: selectedTemplate !== 'custom' ? selectedTemplate : accessLevel,
+        ...permissionsSnapshot,
+        permissions_snapshot: permissionsSnapshot,
       };
 
       const { data: invitationData, error } = await supabase
@@ -315,8 +417,8 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
         if (sendError) {
           console.error("Error sending invitation:", sendError);
           toast({
-            title: "Invitation created",
-            description: "Invitation created but email could not be sent. Please check logs.",
+            title: t('roles.invitationCreated'),
+            description: t('roles.invitationCreatedEmailFailed'),
             variant: "destructive",
           });
         } else {
@@ -328,8 +430,8 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       } catch (sendErr: any) {
         console.error("Send error:", sendErr);
         toast({
-          title: "Invitation created",
-          description: "Invitation saved but email failed to send.",
+          title: t('roles.invitationCreated'),
+          description: t('roles.invitationSavedEmailFailed'),
           variant: "destructive",
         });
       }
@@ -342,27 +444,19 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       setContractorCategory("");
       setAccessLevel("viewer");
       setInviteNotes("");
-      setFeatureAccess({
-        timeline: 'view',
-        tasks: 'view',
-        tasksScope: 'assigned',
-        spacePlanner: 'view',
-        purchases: 'view',
-        purchasesScope: 'assigned',
-        overview: 'view',
-        teams: 'none',
-      });
+      setSelectedTemplate('contractor');
+      setFeatureAccess({ ...ROLE_TEMPLATES.contractor.access });
       fetchTeamData();
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast({
-          title: "Validation Error",
+          title: t('roles.validationError'),
           description: error.errors[0].message,
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Error",
+          title: t('roles.error'),
           description: error.message,
           variant: "destructive",
         });
@@ -382,14 +476,14 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       if (error) throw error;
 
       toast({
-        title: "Invitation cancelled",
-        description: "The invitation has been cancelled.",
+        title: t('roles.invitationCancelled'),
+        description: t('roles.invitationCancelledDescription'),
       });
 
       fetchTeamData();
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('roles.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -398,7 +492,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
   const handleEditMember = (member: TeamMember) => {
     setEditingMember(member);
-    setFeatureAccess({
+    const access: FeatureAccess = {
       timeline: (member.timeline_access as any) || 'none',
       tasks: (member.tasks_access as any) || 'none',
       tasksScope: (member.tasks_scope as any) || 'assigned',
@@ -409,7 +503,9 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       teams: (member.teams_access as any) || 'none',
       budget: (member.budget_access as any) || 'none',
       files: (member.files_access as any) || 'none',
-    });
+    };
+    setFeatureAccess(access);
+    setSelectedTemplate(detectTemplate(access));
     setAccessLevel(member.role);
     setEditMemberRoleType(member.role_type || 'none');
     setEditMemberContractorCategory(member.contractor_category || '');
@@ -427,7 +523,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       const { error } = await supabase
         .from("project_shares")
         .update({
-          role: accessLevel,
+          role: selectedTemplate !== 'custom' ? selectedTemplate : accessLevel,
           timeline_access: featureAccess.timeline,
           tasks_access: featureAccess.tasks,
           tasks_scope: featureAccess.tasksScope,
@@ -449,8 +545,8 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       if (error) throw error;
 
       toast({
-        title: "Member updated",
-        description: "Team member has been updated.",
+        title: t('roles.memberUpdated'),
+        description: t('roles.memberUpdatedDescription'),
       });
 
       setEditMemberDialogOpen(false);
@@ -458,7 +554,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       fetchTeamData();
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('roles.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -470,7 +566,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
   const handleDeleteMember = async (memberId: string) => {
     if (!isOwner) return;
     
-    if (!confirm("Are you sure you want to remove this team member from the project?")) {
+    if (!confirm(t('roles.confirmRemoveMember'))) {
       return;
     }
 
@@ -484,14 +580,14 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       if (error) throw error;
 
       toast({
-        title: "Member removed",
-        description: "Team member has been removed from the project.",
+        title: t('roles.memberRemoved'),
+        description: t('roles.memberRemovedDescription'),
       });
 
       fetchTeamData();
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('roles.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -502,7 +598,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
   const handleEditInvitation = (invitation: Invitation) => {
     setEditingInvitation(invitation);
-    setFeatureAccess({
+    const access: FeatureAccess = {
       timeline: (invitation.timeline_access as any) || 'view',
       tasks: (invitation.tasks_access as any) || 'view',
       tasksScope: (invitation.tasks_scope as any) || 'assigned',
@@ -513,7 +609,9 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       teams: (invitation.teams_access as any) || 'none',
       budget: (invitation.budget_access as any) || 'none',
       files: (invitation.files_access as any) || 'none',
-    });
+    };
+    setFeatureAccess(access);
+    setSelectedTemplate(detectTemplate(access));
     setAccessLevel(invitation.role);
     setEditInvitationDialogOpen(true);
   };
@@ -523,28 +621,32 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
     
     setSaving(true);
     try {
+      const permissionsSnapshot = {
+        timeline_access: featureAccess.timeline,
+        tasks_access: featureAccess.tasks,
+        tasks_scope: featureAccess.tasksScope,
+        space_planner_access: featureAccess.spacePlanner,
+        purchases_access: featureAccess.purchases,
+        purchases_scope: featureAccess.purchasesScope,
+        overview_access: featureAccess.overview,
+        teams_access: featureAccess.teams,
+        budget_access: featureAccess.budget,
+        files_access: featureAccess.files,
+      };
       const { error } = await supabase
         .from("project_invitations")
         .update({
-          role: accessLevel,
-          timeline_access: featureAccess.timeline,
-          tasks_access: featureAccess.tasks,
-          tasks_scope: featureAccess.tasksScope,
-          space_planner_access: featureAccess.spacePlanner,
-          purchases_access: featureAccess.purchases,
-          purchases_scope: featureAccess.purchasesScope,
-          overview_access: featureAccess.overview,
-          teams_access: featureAccess.teams,
-          budget_access: featureAccess.budget,
-          files_access: featureAccess.files,
+          role: selectedTemplate !== 'custom' ? selectedTemplate : accessLevel,
+          ...permissionsSnapshot,
+          permissions_snapshot: permissionsSnapshot,
         } as any)
         .eq("id", editingInvitation.id);
 
       if (error) throw error;
 
       toast({
-        title: "Invitation updated",
-        description: "Invitation permissions have been updated.",
+        title: t('roles.invitationUpdated'),
+        description: t('roles.invitationUpdatedDescription'),
       });
 
       setEditInvitationDialogOpen(false);
@@ -552,7 +654,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       fetchTeamData();
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('roles.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -573,14 +675,14 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       }
 
       toast({
-        title: "Invitation resent",
-        description: "The invitation email has been sent again.",
+        title: t('roles.invitationResent'),
+        description: t('roles.invitationResentDescription'),
       });
     } catch (error: any) {
       console.error("Error resending invitation:", error);
       toast({
-        title: "Error",
-        description: "Failed to resend invitation. Please try again.",
+        title: t('roles.error'),
+        description: t('roles.resendFailed'),
         variant: "destructive",
       });
     } finally {
@@ -638,10 +740,10 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
               </DialogHeader>
               <form onSubmit={handleSendInvitation} className="space-y-4 overflow-y-auto flex-1 pr-2">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Name *</Label>
+                  <Label htmlFor="name">{t('roles.nameLabel')} *</Label>
                   <Input
                     id="name"
-                    placeholder="John Doe"
+                    placeholder={t('roles.namePlaceholder')}
                     value={inviteName}
                     onChange={(e) => setInviteName(e.target.value)}
                     required
@@ -661,40 +763,40 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                   </div>
 
                   <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
+                  <Label htmlFor="company">{t('roles.companyLabel')}</Label>
                     <Input
                     id="company"
-                    placeholder="ABC Construction"
+                    placeholder={t('roles.companyInvitePlaceholder')}
                     value={inviteCompany}
                     onChange={(e) => setInviteCompany(e.target.value)}
                     />
                   </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="stakeholder-role">Role Type *</Label>
+                  <Label htmlFor="stakeholder-role">{t('roles.roleTypeLabel')} *</Label>
                   <Select value={stakeholderRole} onValueChange={(value: any) => setStakeholderRole(value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="contractor">Contractor</SelectItem>
-                      <SelectItem value="client">Client</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="contractor">{t('roles.roleType_contractor')}</SelectItem>
+                      <SelectItem value="client">{t('roles.roleType_client')}</SelectItem>
+                      <SelectItem value="other">{t('roles.roleType_other')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {stakeholderRole === 'contractor' && (
                 <div className="space-y-2">
-                    <Label htmlFor="contractor-category">Contractor Category</Label>
+                    <Label htmlFor="contractor-category">{t('roles.contractorCategoryLabel')}</Label>
                     <Select value={contractorCategory} onValueChange={setContractorCategory}>
                     <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder={t('roles.selectCategory')} />
                     </SelectTrigger>
                     <SelectContent>
                         {CONTRACTOR_CATEGORIES.map((cat) => (
                           <SelectItem key={cat.value} value={cat.value}>
-                            {cat.label}
+                            {getContractorCategoryLabel(cat.value)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -704,37 +806,55 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
                 <Separator className="my-4" />
 
+                {/* Role Template Selector */}
+                <div className="space-y-2">
+                  <Label htmlFor="role-template">{t('roles.roleTemplateLabel')}</Label>
+                  <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
+                    <SelectTrigger id="role-template">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(ROLE_TEMPLATES).map(([key, tmpl]) => (
+                        <SelectItem key={key} value={key}>
+                          {getRoleTemplateLabel(key)}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="custom">{getRoleTemplateLabel('custom')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Feature-based Access Control */}
                 <div className="space-y-4">
                   <div>
-                    <h4 className="font-medium mb-2">Feature Access Permissions</h4>
+                    <h4 className="font-medium mb-2">{t('roles.featureAccessTitle')}</h4>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Choose which features this user can access and their permission level
+                      {t('roles.featureAccessDescription')}
                     </p>
                   </div>
 
                   {/* Timeline */}
                   <div className="flex items-center justify-between space-x-4">
-                    <Label className="flex-1">Timeline</Label>
+                    <Label className="flex-1">{t('roles.featureTimeline')}</Label>
                     <RadioGroup
                       value={featureAccess.timeline}
-                      onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, timeline: value })}
+                      onValueChange={(value: any) => handleFeatureAccessChange({ timeline: value })}
                       className="flex gap-2"
                     >
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="none" id="timeline-none" />
-                        <Label htmlFor="timeline-none" className="text-xs cursor-pointer font-normal">None</Label>
+                        <Label htmlFor="timeline-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="view" id="timeline-view" />
                         <Label htmlFor="timeline-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                          <Eye className="h-3 w-3" /> View
+                          <Eye className="h-3 w-3" /> {t('roles.accessView')}
                   </Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="edit" id="timeline-edit" />
                         <Label htmlFor="timeline-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                          <Edit3 className="h-3 w-3" /> Edit
+                          <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                         </Label>
                       </div>
                     </RadioGroup>
@@ -743,45 +863,45 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                   {/* Tasks */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between space-x-4">
-                      <Label className="flex-1">Tasks</Label>
+                      <Label className="flex-1">{t('roles.featureTasks')}</Label>
                       <RadioGroup
                         value={featureAccess.tasks}
-                        onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, tasks: value })}
+                        onValueChange={(value: any) => handleFeatureAccessChange({ tasks: value })}
                         className="flex gap-2"
                       >
                         <div className="flex items-center space-x-1">
                           <RadioGroupItem value="none" id="tasks-none" />
-                          <Label htmlFor="tasks-none" className="text-xs cursor-pointer font-normal">None</Label>
+                          <Label htmlFor="tasks-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                         </div>
                         <div className="flex items-center space-x-1">
                           <RadioGroupItem value="view" id="tasks-view" />
                           <Label htmlFor="tasks-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                            <Eye className="h-3 w-3" /> View
+                            <Eye className="h-3 w-3" /> {t('roles.accessView')}
                           </Label>
                         </div>
                         <div className="flex items-center space-x-1">
                           <RadioGroupItem value="edit" id="tasks-edit" />
                           <Label htmlFor="tasks-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                            <Edit3 className="h-3 w-3" /> Edit
+                            <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                           </Label>
                         </div>
                       </RadioGroup>
                     </div>
                     {featureAccess.tasks !== 'none' && (
                       <div className="ml-4 flex items-center gap-2 text-sm">
-                        <Label className="text-xs text-muted-foreground">Task Scope:</Label>
+                        <Label className="text-xs text-muted-foreground">{t('roles.taskScope')}:</Label>
                         <RadioGroup
                           value={featureAccess.tasksScope}
-                          onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, tasksScope: value })}
+                          onValueChange={(value: any) => handleFeatureAccessChange({ tasksScope: value })}
                           className="flex gap-3"
                         >
                           <div className="flex items-center space-x-1">
                             <RadioGroupItem value="all" id="tasks-scope-all" />
-                            <Label htmlFor="tasks-scope-all" className="text-xs cursor-pointer font-normal">All Tasks</Label>
+                            <Label htmlFor="tasks-scope-all" className="text-xs cursor-pointer font-normal">{t('roles.allTasks')}</Label>
                           </div>
                           <div className="flex items-center space-x-1">
                             <RadioGroupItem value="assigned" id="tasks-scope-assigned" />
-                            <Label htmlFor="tasks-scope-assigned" className="text-xs cursor-pointer font-normal">Assigned Only</Label>
+                            <Label htmlFor="tasks-scope-assigned" className="text-xs cursor-pointer font-normal">{t('roles.assignedOnly')}</Label>
                           </div>
                         </RadioGroup>
                       </div>
@@ -790,26 +910,26 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
                   {/* Space Planner */}
                   <div className="flex items-center justify-between space-x-4">
-                    <Label className="flex-1">Space Planner</Label>
+                    <Label className="flex-1">{t('roles.featureSpacePlanner')}</Label>
                     <RadioGroup
                       value={featureAccess.spacePlanner}
-                      onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, spacePlanner: value })}
+                      onValueChange={(value: any) => handleFeatureAccessChange({ spacePlanner: value })}
                       className="flex gap-2"
                     >
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="none" id="planner-none" />
-                        <Label htmlFor="planner-none" className="text-xs cursor-pointer font-normal">None</Label>
+                        <Label htmlFor="planner-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="view" id="planner-view" />
                         <Label htmlFor="planner-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                          <Eye className="h-3 w-3" /> View
+                          <Eye className="h-3 w-3" /> {t('roles.accessView')}
                         </Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="edit" id="planner-edit" />
                         <Label htmlFor="planner-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                          <Edit3 className="h-3 w-3" /> Edit
+                          <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                         </Label>
                       </div>
                     </RadioGroup>
@@ -818,51 +938,51 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                   {/* Purchase Orders */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between space-x-4">
-                      <Label className="flex-1">Purchase Orders</Label>
+                      <Label className="flex-1">{t('roles.featurePurchaseOrders')}</Label>
                       <RadioGroup
                         value={featureAccess.purchases}
-                        onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, purchases: value })}
+                        onValueChange={(value: any) => handleFeatureAccessChange({ purchases: value })}
                         className="flex gap-2"
                       >
                         <div className="flex items-center space-x-1">
                           <RadioGroupItem value="none" id="purchases-none" />
-                          <Label htmlFor="purchases-none" className="text-xs cursor-pointer font-normal">None</Label>
+                          <Label htmlFor="purchases-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                         </div>
                         <div className="flex items-center space-x-1">
                           <RadioGroupItem value="view" id="purchases-view" />
                           <Label htmlFor="purchases-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                            <Eye className="h-3 w-3" /> View
+                            <Eye className="h-3 w-3" /> {t('roles.accessView')}
                           </Label>
                         </div>
                         <div className="flex items-center space-x-1">
                           <RadioGroupItem value="create" id="purchases-create" />
                           <Label htmlFor="purchases-create" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                            <Plus className="h-3 w-3" /> Create
+                            <Plus className="h-3 w-3" /> {t('roles.accessCreate')}
                           </Label>
                         </div>
                         <div className="flex items-center space-x-1">
                           <RadioGroupItem value="edit" id="purchases-edit" />
                           <Label htmlFor="purchases-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                            <Edit3 className="h-3 w-3" /> Edit
+                            <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                           </Label>
                         </div>
                       </RadioGroup>
                     </div>
                     {featureAccess.purchases !== 'none' && (
                       <div className="ml-4 flex items-center gap-2 text-sm">
-                        <Label className="text-xs text-muted-foreground">Order Scope:</Label>
+                        <Label className="text-xs text-muted-foreground">{t('roles.orderScope')}:</Label>
                         <RadioGroup
                           value={featureAccess.purchasesScope}
-                          onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, purchasesScope: value })}
+                          onValueChange={(value: any) => handleFeatureAccessChange({ purchasesScope: value })}
                           className="flex gap-3"
                         >
                           <div className="flex items-center space-x-1">
                             <RadioGroupItem value="all" id="purchases-scope-all" />
-                            <Label htmlFor="purchases-scope-all" className="text-xs cursor-pointer font-normal">All Orders</Label>
+                            <Label htmlFor="purchases-scope-all" className="text-xs cursor-pointer font-normal">{t('roles.allOrders')}</Label>
                           </div>
                           <div className="flex items-center space-x-1">
                             <RadioGroupItem value="assigned" id="purchases-scope-assigned" />
-                            <Label htmlFor="purchases-scope-assigned" className="text-xs cursor-pointer font-normal">Assigned/Created Only</Label>
+                            <Label htmlFor="purchases-scope-assigned" className="text-xs cursor-pointer font-normal">{t('roles.assignedCreatedOnly')}</Label>
                           </div>
                         </RadioGroup>
                       </div>
@@ -871,26 +991,26 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
                   {/* Overview */}
                   <div className="flex items-center justify-between space-x-4">
-                    <Label className="flex-1">Overview</Label>
+                    <Label className="flex-1">{t('roles.featureOverview')}</Label>
                     <RadioGroup
                       value={featureAccess.overview}
-                      onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, overview: value })}
+                      onValueChange={(value: any) => handleFeatureAccessChange({ overview: value })}
                       className="flex gap-2"
                     >
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="none" id="overview-none" />
-                        <Label htmlFor="overview-none" className="text-xs cursor-pointer font-normal">None</Label>
+                        <Label htmlFor="overview-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="view" id="overview-view" />
                         <Label htmlFor="overview-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                          <Eye className="h-3 w-3" /> View
+                          <Eye className="h-3 w-3" /> {t('roles.accessView')}
                         </Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="edit" id="overview-edit" />
                         <Label htmlFor="overview-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                          <Edit3 className="h-3 w-3" /> Edit
+                          <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                         </Label>
                       </div>
                     </RadioGroup>
@@ -898,26 +1018,26 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
                   {/* Teams Management */}
                   <div className="flex items-center justify-between space-x-4">
-                    <Label className="flex-1">Team Management</Label>
+                    <Label className="flex-1">{t('roles.featureTeamManagement')}</Label>
                     <RadioGroup
                       value={featureAccess.teams}
-                      onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, teams: value })}
+                      onValueChange={(value: any) => handleFeatureAccessChange({ teams: value })}
                       className="flex gap-2"
                     >
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="none" id="teams-none" />
-                        <Label htmlFor="teams-none" className="text-xs cursor-pointer font-normal">None</Label>
+                        <Label htmlFor="teams-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="view" id="teams-view" />
                         <Label htmlFor="teams-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                          <Eye className="h-3 w-3" /> View
+                          <Eye className="h-3 w-3" /> {t('roles.accessView')}
                         </Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="invite" id="teams-invite" />
                         <Label htmlFor="teams-invite" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                          <UserPlus className="h-3 w-3" /> Invite
+                          <UserPlus className="h-3 w-3" /> {t('roles.accessInvite')}
                         </Label>
                       </div>
                     </RadioGroup>
@@ -925,20 +1045,20 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
                   {/* Budget */}
                   <div className="flex items-center justify-between space-x-4">
-                    <Label className="flex-1">Budget</Label>
+                    <Label className="flex-1">{t('roles.featureBudget')}</Label>
                     <RadioGroup
                       value={featureAccess.budget}
-                      onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, budget: value })}
+                      onValueChange={(value: any) => handleFeatureAccessChange({ budget: value })}
                       className="flex gap-2"
                     >
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="none" id="budget-none" />
-                        <Label htmlFor="budget-none" className="text-xs cursor-pointer font-normal">None</Label>
+                        <Label htmlFor="budget-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="view" id="budget-view" />
                         <Label htmlFor="budget-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                          <Eye className="h-3 w-3" /> View
+                          <Eye className="h-3 w-3" /> {t('roles.accessView')}
                         </Label>
                       </div>
                     </RadioGroup>
@@ -946,32 +1066,32 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
                   {/* Files */}
                   <div className="flex items-center justify-between space-x-4">
-                    <Label className="flex-1">Files</Label>
+                    <Label className="flex-1">{t('roles.featureFiles')}</Label>
                     <RadioGroup
                       value={featureAccess.files}
-                      onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, files: value })}
+                      onValueChange={(value: any) => handleFeatureAccessChange({ files: value })}
                       className="flex gap-2"
                     >
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="none" id="files-none" />
-                        <Label htmlFor="files-none" className="text-xs cursor-pointer font-normal">None</Label>
+                        <Label htmlFor="files-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="view" id="files-view" />
                         <Label htmlFor="files-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                          <Eye className="h-3 w-3" /> View
+                          <Eye className="h-3 w-3" /> {t('roles.accessView')}
                         </Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="upload" id="files-upload" />
                         <Label htmlFor="files-upload" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                          <Plus className="h-3 w-3" /> Upload
+                          <Plus className="h-3 w-3" /> {t('roles.accessUpload')}
                         </Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="edit" id="files-edit" />
                         <Label htmlFor="files-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                          <Edit3 className="h-3 w-3" /> Edit
+                          <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                         </Label>
                       </div>
                     </RadioGroup>
@@ -981,10 +1101,10 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                 <Separator className="my-4" />
 
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Notes</Label>
+                  <Label htmlFor="notes">{t('roles.notesLabel')}</Label>
                   <Textarea
                     id="notes"
-                    placeholder="Additional information..."
+                    placeholder={t('roles.notesPlaceholder')}
                     value={inviteNotes}
                     onChange={(e) => setInviteNotes(e.target.value)}
                     rows={2}
@@ -1004,112 +1124,123 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       {members.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Team Members</CardTitle>
+            <CardTitle>{t('roles.teamMembers')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {members.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center justify-between p-3 border border-border rounded-lg"
-                >
-                  <div className="flex-1">
-                    <p className="font-medium">{member.user_name}</p>
-                    <p className="text-sm text-muted-foreground">{member.user_email}</p>
-                    <div className="flex flex-wrap gap-2 mt-2 text-sm text-muted-foreground">
-                      {member.phone && (
-                        <span className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {member.phone}
-                        </span>
-                      )}
-                      {member.company && (
-                        <span className="flex items-center gap-1">
-                          <Building2 className="h-3 w-3" />
-                          {member.company}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {member.role_type && (
-                        <Badge variant={member.role_type === 'contractor' ? 'default' : member.role_type === 'client' ? 'secondary' : 'outline'}>
-                          {member.role_type}
-                        </Badge>
-                      )}
-                      {member.contractor_category && (
-                        <Badge variant="outline" className="text-xs">
-                          {CONTRACTOR_CATEGORIES.find(c => c.value === member.contractor_category)?.label || member.contractor_category}
-                        </Badge>
-                      )}
-                      {member.timeline_access && member.timeline_access !== 'none' && (
-                        <Badge variant="secondary" className="text-xs">
-                          Timeline: {member.timeline_access}
-                      </Badge>
-                    )}
-                      {member.tasks_access && member.tasks_access !== 'none' && (
-                        <Badge variant="secondary" className="text-xs">
-                          Tasks: {member.tasks_access} ({member.tasks_scope})
-                        </Badge>
-                      )}
-                      {member.space_planner_access && member.space_planner_access !== 'none' && (
-                        <Badge variant="secondary" className="text-xs">
-                          Planner: {member.space_planner_access}
-                        </Badge>
-                      )}
-                      {member.purchases_access && member.purchases_access !== 'none' && (
-                        <Badge variant="secondary" className="text-xs">
-                          Purchase Orders: {member.purchases_access} ({member.purchases_scope})
-                        </Badge>
-                      )}
-                      {member.overview_access && member.overview_access !== 'none' && (
-                        <Badge variant="secondary" className="text-xs">
-                          Overview: {member.overview_access}
-                        </Badge>
-                      )}
-                      {member.budget_access && member.budget_access !== 'none' && (
-                        <Badge variant="secondary" className="text-xs">
-                          Budget: {member.budget_access}
-                        </Badge>
-                      )}
-                      {member.files_access && member.files_access !== 'none' && (
-                        <Badge variant="secondary" className="text-xs">
-                          Files: {member.files_access}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="capitalize">
-                      {member.role}
-                    </Badge>
-                    {isOwner && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditMember(member)}
-                          title="Edit member"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteMember(member.id)}
-                          disabled={deleting === member.id}
-                          title="Remove member"
-                        >
-                          {deleting === member.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <X className="h-4 w-4 text-destructive" />
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-muted-foreground">
+                    <th className="pb-2 pr-4 font-medium">{t('common.name')}</th>
+                    <th className="pb-2 pr-4 font-medium">{t('roles.roleLabel_role')}</th>
+                    <th className="pb-2 pr-4 font-medium">{t('roles.roleTypeLabel', 'Role Type')}</th>
+                    <th className="pb-2 pr-4 font-medium">{t('roles.featureAccessTitle', 'Feature Access')}</th>
+                    {isOwner && <th className="pb-2 font-medium w-20" />}
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((member) => {
+                    const accessEntries = [
+                      { label: t('roles.featureTimeline'), value: member.timeline_access },
+                      { label: t('roles.featureTasks'), value: member.tasks_access, scope: member.tasks_scope },
+                      { label: t('roles.featureSpacePlanner'), value: member.space_planner_access },
+                      { label: t('roles.featurePurchaseOrders'), value: member.purchases_access, scope: member.purchases_scope },
+                      { label: t('roles.featureOverview'), value: member.overview_access },
+                      { label: t('roles.featureBudget'), value: member.budget_access },
+                      { label: t('roles.featureFiles'), value: member.files_access },
+                      { label: t('roles.featureTeams'), value: member.teams_access },
+                    ].filter((e) => e.value && e.value !== 'none');
+
+                    return (
+                      <tr key={member.id} className="border-b border-border/50 last:border-b-0">
+                        <td className="py-3 pr-4 align-top">
+                          <p className="font-medium">{member.user_name}</p>
+                          <p className="text-xs text-muted-foreground">{member.user_email}</p>
+                          {(member.company || member.phone) && (
+                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
+                              {member.company && (
+                                <span className="flex items-center gap-1">
+                                  <Building2 className="h-3 w-3" />
+                                  {member.company}
+                                </span>
+                              )}
+                              {member.phone && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="h-3 w-3" />
+                                  {member.phone}
+                                </span>
+                              )}
+                            </div>
                           )}
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
+                        </td>
+                        <td className="py-3 pr-4 align-top">
+                          <Badge variant="outline" className="capitalize">
+                            {member.role}
+                          </Badge>
+                        </td>
+                        <td className="py-3 pr-4 align-top">
+                          {member.role_type ? (
+                            <div className="flex flex-col gap-1">
+                              <Badge variant={member.role_type === 'contractor' ? 'default' : member.role_type === 'client' ? 'secondary' : 'outline'}>
+                                {member.role_type}
+                              </Badge>
+                              {member.contractor_category && (
+                                <span className="text-xs text-muted-foreground">
+                                  {getContractorCategoryLabel(member.contractor_category)}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 pr-4 align-top">
+                          {accessEntries.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {accessEntries.map((e) => (
+                                <Badge key={e.label} variant="secondary" className="text-[11px] font-normal">
+                                  {e.label}: {e.value}{e.scope ? ` (${e.scope})` : ''}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">{t('roles.accessNone')}</span>
+                          )}
+                        </td>
+                        {isOwner && (
+                          <td className="py-3 align-top">
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => handleEditMember(member)}
+                                title={t('roles.editMember')}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => handleDeleteMember(member.id)}
+                                disabled={deleting === member.id}
+                                title={t('roles.removeMember')}
+                              >
+                                {deleting === member.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <X className="h-3.5 w-3.5 text-destructive" />
+                                )}
+                              </Button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </CardContent>
         </Card>
@@ -1121,7 +1252,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       {isOwner && invitations.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Pending Invitations</CardTitle>
+            <CardTitle>{t('roles.pendingInvitations')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -1148,7 +1279,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                       size="sm"
                       onClick={() => handleResendInvitation(invitation.id)}
                       disabled={resending === invitation.id}
-                      title="Resend invitation email"
+                      title={t('roles.resendInvitationEmail')}
                     >
                       {resending === invitation.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -1160,7 +1291,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleEditInvitation(invitation)}
-                      title="Edit invitation permissions"
+                      title={t('roles.editInvitationPermissions')}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -1168,7 +1299,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleCancelInvitation(invitation.id)}
-                      title="Cancel invitation"
+                      title={t('roles.cancelInvitationTitle')}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -1184,14 +1315,14 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       <Dialog open={editMemberDialogOpen} onOpenChange={setEditMemberDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Edit Team Member Permissions</DialogTitle>
+            <DialogTitle>{t('roles.editMemberTitle')}</DialogTitle>
             <DialogDescription>
-              Update access permissions for {editingMember?.user_name}
+              {t('roles.editMemberDescription', { name: editingMember?.user_name })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 overflow-y-auto flex-1 pr-2">
             <div className="space-y-2">
-              <Label htmlFor="edit-role">Role</Label>
+              <Label htmlFor="edit-role">{t('roles.roleLabel_role')}</Label>
               <Select value={accessLevel} onValueChange={setAccessLevel}>
                 <SelectTrigger id="edit-role">
                   <SelectValue />
@@ -1208,37 +1339,55 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
             <Separator />
 
+            {/* Role Template Selector */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-role-template">{t('roles.roleTemplateLabel')}</Label>
+              <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
+                <SelectTrigger id="edit-role-template">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ROLE_TEMPLATES).map(([key, tmpl]) => (
+                    <SelectItem key={key} value={key}>
+                      {getRoleTemplateLabel(key)}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom">{getRoleTemplateLabel('custom')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Feature-based Access Control - Same as invite dialog */}
             <div className="space-y-4">
               <div>
-                <h4 className="font-medium mb-2">Feature Access Permissions</h4>
+                <h4 className="font-medium mb-2">{t('roles.featureAccessTitle')}</h4>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Choose which features this user can access and their permission level
+                  {t('roles.featureAccessDescription')}
                 </p>
               </div>
 
               {/* Timeline */}
               <div className="flex items-center justify-between space-x-4">
-                <Label className="flex-1">Timeline</Label>
+                <Label className="flex-1">{t('roles.featureTimeline')}</Label>
                 <RadioGroup
                   value={featureAccess.timeline}
-                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, timeline: value })}
+                  onValueChange={(value: any) => handleFeatureAccessChange({ timeline: value })}
                   className="flex gap-2"
                 >
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="none" id="edit-timeline-none" />
-                    <Label htmlFor="edit-timeline-none" className="text-xs cursor-pointer font-normal">None</Label>
+                    <Label htmlFor="edit-timeline-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="view" id="edit-timeline-view" />
                     <Label htmlFor="edit-timeline-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Eye className="h-3 w-3" /> View
+                      <Eye className="h-3 w-3" /> {t('roles.accessView')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="edit" id="edit-timeline-edit" />
                     <Label htmlFor="edit-timeline-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Edit3 className="h-3 w-3" /> Edit
+                      <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -1247,45 +1396,45 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
               {/* Tasks */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between space-x-4">
-                  <Label className="flex-1">Tasks</Label>
+                  <Label className="flex-1">{t('roles.featureTasks')}</Label>
                   <RadioGroup
                     value={featureAccess.tasks}
-                    onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, tasks: value })}
+                    onValueChange={(value: any) => handleFeatureAccessChange({ tasks: value })}
                     className="flex gap-2"
                   >
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem value="none" id="edit-tasks-none" />
-                      <Label htmlFor="edit-tasks-none" className="text-xs cursor-pointer font-normal">None</Label>
+                      <Label htmlFor="edit-tasks-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                     </div>
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem value="view" id="edit-tasks-view" />
                       <Label htmlFor="edit-tasks-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                        <Eye className="h-3 w-3" /> View
+                        <Eye className="h-3 w-3" /> {t('roles.accessView')}
                       </Label>
                     </div>
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem value="edit" id="edit-tasks-edit" />
                       <Label htmlFor="edit-tasks-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                        <Edit3 className="h-3 w-3" /> Edit
+                        <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                       </Label>
                     </div>
                   </RadioGroup>
                 </div>
                 {featureAccess.tasks !== 'none' && (
                   <div className="ml-4 flex items-center gap-2 text-sm">
-                    <Label className="text-xs text-muted-foreground">Task Scope:</Label>
+                    <Label className="text-xs text-muted-foreground">{t('roles.taskScope')}:</Label>
                     <RadioGroup
                       value={featureAccess.tasksScope}
-                      onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, tasksScope: value })}
+                      onValueChange={(value: any) => handleFeatureAccessChange({ tasksScope: value })}
                       className="flex gap-3"
                     >
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="all" id="edit-tasks-scope-all" />
-                        <Label htmlFor="edit-tasks-scope-all" className="text-xs cursor-pointer font-normal">All Tasks</Label>
+                        <Label htmlFor="edit-tasks-scope-all" className="text-xs cursor-pointer font-normal">{t('roles.allTasks')}</Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="assigned" id="edit-tasks-scope-assigned" />
-                        <Label htmlFor="edit-tasks-scope-assigned" className="text-xs cursor-pointer font-normal">Assigned Only</Label>
+                        <Label htmlFor="edit-tasks-scope-assigned" className="text-xs cursor-pointer font-normal">{t('roles.assignedOnly')}</Label>
                       </div>
                     </RadioGroup>
                   </div>
@@ -1294,26 +1443,26 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
               {/* Space Planner */}
               <div className="flex items-center justify-between space-x-4">
-                <Label className="flex-1">Space Planner</Label>
+                <Label className="flex-1">{t('roles.featureSpacePlanner')}</Label>
                 <RadioGroup
                   value={featureAccess.spacePlanner}
-                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, spacePlanner: value })}
+                  onValueChange={(value: any) => handleFeatureAccessChange({ spacePlanner: value })}
                   className="flex gap-2"
                 >
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="none" id="edit-planner-none" />
-                    <Label htmlFor="edit-planner-none" className="text-xs cursor-pointer font-normal">None</Label>
+                    <Label htmlFor="edit-planner-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="view" id="edit-planner-view" />
                     <Label htmlFor="edit-planner-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Eye className="h-3 w-3" /> View
+                      <Eye className="h-3 w-3" /> {t('roles.accessView')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="edit" id="edit-planner-edit" />
                     <Label htmlFor="edit-planner-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Edit3 className="h-3 w-3" /> Edit
+                      <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -1322,51 +1471,51 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
               {/* Purchase Orders */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between space-x-4">
-                  <Label className="flex-1">Purchase Orders</Label>
+                  <Label className="flex-1">{t('roles.featurePurchaseOrders')}</Label>
                   <RadioGroup
                     value={featureAccess.purchases}
-                    onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, purchases: value })}
+                    onValueChange={(value: any) => handleFeatureAccessChange({ purchases: value })}
                     className="flex gap-2"
                   >
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem value="none" id="edit-purchases-none" />
-                      <Label htmlFor="edit-purchases-none" className="text-xs cursor-pointer font-normal">None</Label>
+                      <Label htmlFor="edit-purchases-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                     </div>
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem value="view" id="edit-purchases-view" />
                       <Label htmlFor="edit-purchases-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                        <Eye className="h-3 w-3" /> View
+                        <Eye className="h-3 w-3" /> {t('roles.accessView')}
                       </Label>
                     </div>
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem value="create" id="edit-purchases-create" />
                       <Label htmlFor="edit-purchases-create" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                        <Plus className="h-3 w-3" /> Create
+                        <Plus className="h-3 w-3" /> {t('roles.accessCreate')}
                       </Label>
                     </div>
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem value="edit" id="edit-purchases-edit" />
                       <Label htmlFor="edit-purchases-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                        <Edit3 className="h-3 w-3" /> Edit
+                        <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                       </Label>
                     </div>
                   </RadioGroup>
                 </div>
                 {featureAccess.purchases !== 'none' && (
                   <div className="ml-4 flex items-center gap-2 text-sm">
-                    <Label className="text-xs text-muted-foreground">Order Scope:</Label>
+                    <Label className="text-xs text-muted-foreground">{t('roles.orderScope')}:</Label>
                     <RadioGroup
                       value={featureAccess.purchasesScope}
-                      onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, purchasesScope: value })}
+                      onValueChange={(value: any) => handleFeatureAccessChange({ purchasesScope: value })}
                       className="flex gap-3"
                     >
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="all" id="edit-purchases-scope-all" />
-                        <Label htmlFor="edit-purchases-scope-all" className="text-xs cursor-pointer font-normal">All Orders</Label>
+                        <Label htmlFor="edit-purchases-scope-all" className="text-xs cursor-pointer font-normal">{t('roles.allOrders')}</Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="assigned" id="edit-purchases-scope-assigned" />
-                        <Label htmlFor="edit-purchases-scope-assigned" className="text-xs cursor-pointer font-normal">Assigned/Created Only</Label>
+                        <Label htmlFor="edit-purchases-scope-assigned" className="text-xs cursor-pointer font-normal">{t('roles.assignedCreatedOnly')}</Label>
                       </div>
                     </RadioGroup>
                   </div>
@@ -1375,26 +1524,26 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
               {/* Overview */}
               <div className="flex items-center justify-between space-x-4">
-                <Label className="flex-1">Overview</Label>
+                <Label className="flex-1">{t('roles.featureOverview')}</Label>
                 <RadioGroup
                   value={featureAccess.overview}
-                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, overview: value })}
+                  onValueChange={(value: any) => handleFeatureAccessChange({ overview: value })}
                   className="flex gap-2"
                 >
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="none" id="edit-overview-none" />
-                    <Label htmlFor="edit-overview-none" className="text-xs cursor-pointer font-normal">None</Label>
+                    <Label htmlFor="edit-overview-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="view" id="edit-overview-view" />
                     <Label htmlFor="edit-overview-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Eye className="h-3 w-3" /> View
+                      <Eye className="h-3 w-3" /> {t('roles.accessView')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="edit" id="edit-overview-edit" />
                     <Label htmlFor="edit-overview-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Edit3 className="h-3 w-3" /> Edit
+                      <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -1402,26 +1551,26 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
               {/* Teams Management */}
               <div className="flex items-center justify-between space-x-4">
-                <Label className="flex-1">Team Management</Label>
+                <Label className="flex-1">{t('roles.featureTeamManagement')}</Label>
                 <RadioGroup
                   value={featureAccess.teams}
-                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, teams: value })}
+                  onValueChange={(value: any) => handleFeatureAccessChange({ teams: value })}
                   className="flex gap-2"
                 >
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="none" id="edit-teams-none" />
-                    <Label htmlFor="edit-teams-none" className="text-xs cursor-pointer font-normal">None</Label>
+                    <Label htmlFor="edit-teams-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="view" id="edit-teams-view" />
                     <Label htmlFor="edit-teams-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Eye className="h-3 w-3" /> View
+                      <Eye className="h-3 w-3" /> {t('roles.accessView')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="invite" id="edit-teams-invite" />
                     <Label htmlFor="edit-teams-invite" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <UserPlus className="h-3 w-3" /> Invite
+                      <UserPlus className="h-3 w-3" /> {t('roles.accessInvite')}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -1429,20 +1578,20 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
               {/* Budget */}
               <div className="flex items-center justify-between space-x-4">
-                <Label className="flex-1">Budget</Label>
+                <Label className="flex-1">{t('roles.featureBudget')}</Label>
                 <RadioGroup
                   value={featureAccess.budget}
-                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, budget: value })}
+                  onValueChange={(value: any) => handleFeatureAccessChange({ budget: value })}
                   className="flex gap-2"
                 >
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="none" id="edit-budget-none" />
-                    <Label htmlFor="edit-budget-none" className="text-xs cursor-pointer font-normal">None</Label>
+                    <Label htmlFor="edit-budget-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="view" id="edit-budget-view" />
                     <Label htmlFor="edit-budget-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Eye className="h-3 w-3" /> View
+                      <Eye className="h-3 w-3" /> {t('roles.accessView')}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -1450,49 +1599,48 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
               {/* Files */}
               <div className="flex items-center justify-between space-x-4">
-                <Label className="flex-1">Files</Label>
+                <Label className="flex-1">{t('roles.featureFiles')}</Label>
                 <RadioGroup
                   value={featureAccess.files}
-                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, files: value })}
+                  onValueChange={(value: any) => handleFeatureAccessChange({ files: value })}
                   className="flex gap-2"
                 >
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="none" id="edit-files-none" />
-                    <Label htmlFor="edit-files-none" className="text-xs cursor-pointer font-normal">None</Label>
+                    <Label htmlFor="edit-files-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="view" id="edit-files-view" />
                     <Label htmlFor="edit-files-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Eye className="h-3 w-3" /> View
+                      <Eye className="h-3 w-3" /> {t('roles.accessView')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="upload" id="edit-files-upload" />
                     <Label htmlFor="edit-files-upload" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Plus className="h-3 w-3" /> Upload
+                      <Plus className="h-3 w-3" /> {t('roles.accessUpload')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="edit" id="edit-files-edit" />
                     <Label htmlFor="edit-files-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Edit3 className="h-3 w-3" /> Edit
+                      <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                     </Label>
                   </div>
                 </RadioGroup>
               </div>
             </div>
-          </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Stakeholder Information */}
+            {/* Stakeholder Information */}
           <div className="space-y-4">
-            <h4 className="font-medium">Additional Information</h4>
-            
+            <h4 className="font-medium">{t('roles.additionalInfo')}</h4>
+
             <div className="space-y-2">
-              <Label htmlFor="edit-role-type">Role Type</Label>
-              <Select 
-                value={editMemberRoleType} 
+              <Label htmlFor="edit-role-type">{t('roles.roleTypeLabel')}</Label>
+              <Select
+                value={editMemberRoleType}
                 onValueChange={(value: any) => {
                   setEditMemberRoleType(value);
                   if (value !== 'contractor') {
@@ -1501,31 +1649,31 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                 }}
               >
                 <SelectTrigger id="edit-role-type">
-                  <SelectValue placeholder="Select role type" />
+                  <SelectValue placeholder={t('roles.selectRoleType')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="contractor">Contractor</SelectItem>
-                  <SelectItem value="client">Client</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="none">{t('roles.roleType_none')}</SelectItem>
+                  <SelectItem value="contractor">{t('roles.roleType_contractor')}</SelectItem>
+                  <SelectItem value="client">{t('roles.roleType_client')}</SelectItem>
+                  <SelectItem value="other">{t('roles.roleType_other')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {editMemberRoleType === 'contractor' && (
               <div className="space-y-2">
-                <Label htmlFor="edit-contractor-category">Contractor Category</Label>
-                <Select 
-                  value={editMemberContractorCategory} 
+                <Label htmlFor="edit-contractor-category">{t('roles.contractorCategoryLabel')}</Label>
+                <Select
+                  value={editMemberContractorCategory}
                   onValueChange={setEditMemberContractorCategory}
                 >
                   <SelectTrigger id="edit-contractor-category">
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue placeholder={t('roles.selectCategory')} />
                   </SelectTrigger>
                   <SelectContent>
                     {CONTRACTOR_CATEGORIES.map((category) => (
                       <SelectItem key={category.value} value={category.value}>
-                        {category.label}
+                        {getContractorCategoryLabel(category.value)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1534,45 +1682,46 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="edit-phone">Phone</Label>
+              <Label htmlFor="edit-phone">{t('roles.phoneLabel')}</Label>
               <Input
                 id="edit-phone"
                 type="tel"
-                placeholder="+46 70 123 45 67"
+                placeholder={t('roles.phonePlaceholder')}
                 value={editMemberPhone}
                 onChange={(e) => setEditMemberPhone(e.target.value)}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-company">Company</Label>
+              <Label htmlFor="edit-company">{t('roles.companyLabel')}</Label>
               <Input
                 id="edit-company"
-                placeholder="Company name"
+                placeholder={t('roles.companyPlaceholder')}
                 value={editMemberCompany}
                 onChange={(e) => setEditMemberCompany(e.target.value)}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-notes">Notes</Label>
+              <Label htmlFor="edit-notes">{t('roles.notesLabel')}</Label>
               <Textarea
                 id="edit-notes"
-                placeholder="Additional information..."
+                placeholder={t('roles.notesPlaceholder')}
                 value={editMemberNotes}
                 onChange={(e) => setEditMemberNotes(e.target.value)}
                 rows={3}
               />
             </div>
           </div>
+          </div>
 
-          <div className="flex gap-3 pt-4 border-t">
+          <div className="flex gap-3 pt-4 border-t shrink-0">
             <Button variant="outline" onClick={() => setEditMemberDialogOpen(false)} disabled={saving}>
-              Cancel
+              {t('roles.cancel')}
             </Button>
             <Button onClick={handleSaveMemberEdit} disabled={saving} className="flex-1">
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              Save Changes
+              {t('roles.saveChanges')}
             </Button>
           </div>
         </DialogContent>
@@ -1582,14 +1731,14 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       <Dialog open={editInvitationDialogOpen} onOpenChange={setEditInvitationDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Edit Invitation Permissions</DialogTitle>
+            <DialogTitle>{t('roles.editInvitationTitle')}</DialogTitle>
             <DialogDescription>
-              Update access permissions for invitation to {editingInvitation?.email}
+              {t('roles.editInvitationDescription', { email: editingInvitation?.email })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 overflow-y-auto flex-1 pr-2">
             <div className="space-y-2">
-              <Label htmlFor="edit-inv-role">Role</Label>
+              <Label htmlFor="edit-inv-role">{t('roles.roleLabel_role')}</Label>
               <Select value={accessLevel} onValueChange={setAccessLevel}>
                 <SelectTrigger id="edit-inv-role">
                   <SelectValue />
@@ -1606,37 +1755,55 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
             <Separator />
 
+            {/* Role Template Selector */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-inv-role-template">{t('roles.roleTemplateLabel')}</Label>
+              <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
+                <SelectTrigger id="edit-inv-role-template">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ROLE_TEMPLATES).map(([key, tmpl]) => (
+                    <SelectItem key={key} value={key}>
+                      {getRoleTemplateLabel(key)}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom">{getRoleTemplateLabel('custom')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Reuse same permission UI */}
             <div className="space-y-4">
               <div>
-                <h4 className="font-medium mb-2">Feature Access Permissions</h4>
+                <h4 className="font-medium mb-2">{t('roles.featureAccessTitle')}</h4>
                 <p className="text-sm text-muted-foreground mb-4">
-                  These permissions will apply when the invitation is accepted
+                  {t('roles.featureAccessInvitationDescription')}
                 </p>
               </div>
 
               {/* Same permission controls as member edit - Timeline, Tasks, etc. */}
               <div className="flex items-center justify-between space-x-4">
-                <Label className="flex-1">Timeline</Label>
+                <Label className="flex-1">{t('roles.featureTimeline')}</Label>
                 <RadioGroup
                   value={featureAccess.timeline}
-                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, timeline: value })}
+                  onValueChange={(value: any) => handleFeatureAccessChange({ timeline: value })}
                   className="flex gap-2"
                 >
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="none" id="edit-inv-timeline-none" />
-                    <Label htmlFor="edit-inv-timeline-none" className="text-xs cursor-pointer font-normal">None</Label>
+                    <Label htmlFor="edit-inv-timeline-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="view" id="edit-inv-timeline-view" />
                     <Label htmlFor="edit-inv-timeline-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Eye className="h-3 w-3" /> View
+                      <Eye className="h-3 w-3" /> {t('roles.accessView')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="edit" id="edit-inv-timeline-edit" />
                     <Label htmlFor="edit-inv-timeline-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Edit3 className="h-3 w-3" /> Edit
+                      <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -1645,45 +1812,45 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
               {/* Tasks */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between space-x-4">
-                  <Label className="flex-1">Tasks</Label>
+                  <Label className="flex-1">{t('roles.featureTasks')}</Label>
                   <RadioGroup
                     value={featureAccess.tasks}
-                    onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, tasks: value })}
+                    onValueChange={(value: any) => handleFeatureAccessChange({ tasks: value })}
                     className="flex gap-2"
                   >
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem value="none" id="edit-inv-tasks-none" />
-                      <Label htmlFor="edit-inv-tasks-none" className="text-xs cursor-pointer font-normal">None</Label>
+                      <Label htmlFor="edit-inv-tasks-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                     </div>
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem value="view" id="edit-inv-tasks-view" />
                       <Label htmlFor="edit-inv-tasks-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                        <Eye className="h-3 w-3" /> View
+                        <Eye className="h-3 w-3" /> {t('roles.accessView')}
                       </Label>
                     </div>
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem value="edit" id="edit-inv-tasks-edit" />
                       <Label htmlFor="edit-inv-tasks-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                        <Edit3 className="h-3 w-3" /> Edit
+                        <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                       </Label>
                     </div>
                   </RadioGroup>
                 </div>
                 {featureAccess.tasks !== 'none' && (
                   <div className="ml-4 flex items-center gap-2 text-sm">
-                    <Label className="text-xs text-muted-foreground">Task Scope:</Label>
+                    <Label className="text-xs text-muted-foreground">{t('roles.taskScope')}:</Label>
                     <RadioGroup
                       value={featureAccess.tasksScope}
-                      onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, tasksScope: value })}
+                      onValueChange={(value: any) => handleFeatureAccessChange({ tasksScope: value })}
                       className="flex gap-3"
                     >
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="all" id="edit-inv-tasks-scope-all" />
-                        <Label htmlFor="edit-inv-tasks-scope-all" className="text-xs cursor-pointer font-normal">All Tasks</Label>
+                        <Label htmlFor="edit-inv-tasks-scope-all" className="text-xs cursor-pointer font-normal">{t('roles.allTasks')}</Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="assigned" id="edit-inv-tasks-scope-assigned" />
-                        <Label htmlFor="edit-inv-tasks-scope-assigned" className="text-xs cursor-pointer font-normal">Assigned Only</Label>
+                        <Label htmlFor="edit-inv-tasks-scope-assigned" className="text-xs cursor-pointer font-normal">{t('roles.assignedOnly')}</Label>
                       </div>
                     </RadioGroup>
                   </div>
@@ -1692,26 +1859,26 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
               {/* Space Planner */}
               <div className="flex items-center justify-between space-x-4">
-                <Label className="flex-1">Space Planner</Label>
+                <Label className="flex-1">{t('roles.featureSpacePlanner')}</Label>
                 <RadioGroup
                   value={featureAccess.spacePlanner}
-                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, spacePlanner: value })}
+                  onValueChange={(value: any) => handleFeatureAccessChange({ spacePlanner: value })}
                   className="flex gap-2"
                 >
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="none" id="edit-inv-planner-none" />
-                    <Label htmlFor="edit-inv-planner-none" className="text-xs cursor-pointer font-normal">None</Label>
+                    <Label htmlFor="edit-inv-planner-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="view" id="edit-inv-planner-view" />
                     <Label htmlFor="edit-inv-planner-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Eye className="h-3 w-3" /> View
+                      <Eye className="h-3 w-3" /> {t('roles.accessView')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="edit" id="edit-inv-planner-edit" />
                     <Label htmlFor="edit-inv-planner-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Edit3 className="h-3 w-3" /> Edit
+                      <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -1720,51 +1887,51 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
               {/* Purchase Orders */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between space-x-4">
-                  <Label className="flex-1">Purchase Orders</Label>
+                  <Label className="flex-1">{t('roles.featurePurchaseOrders')}</Label>
                   <RadioGroup
                     value={featureAccess.purchases}
-                    onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, purchases: value })}
+                    onValueChange={(value: any) => handleFeatureAccessChange({ purchases: value })}
                     className="flex gap-2"
                   >
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem value="none" id="edit-inv-purchases-none" />
-                      <Label htmlFor="edit-inv-purchases-none" className="text-xs cursor-pointer font-normal">None</Label>
+                      <Label htmlFor="edit-inv-purchases-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                     </div>
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem value="view" id="edit-inv-purchases-view" />
                       <Label htmlFor="edit-inv-purchases-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                        <Eye className="h-3 w-3" /> View
+                        <Eye className="h-3 w-3" /> {t('roles.accessView')}
                       </Label>
                     </div>
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem value="create" id="edit-inv-purchases-create" />
                       <Label htmlFor="edit-inv-purchases-create" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                        <Plus className="h-3 w-3" /> Create
+                        <Plus className="h-3 w-3" /> {t('roles.accessCreate')}
                       </Label>
                     </div>
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem value="edit" id="edit-inv-purchases-edit" />
                       <Label htmlFor="edit-inv-purchases-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                        <Edit3 className="h-3 w-3" /> Edit
+                        <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                       </Label>
                     </div>
                   </RadioGroup>
                 </div>
                 {featureAccess.purchases !== 'none' && (
                   <div className="ml-4 flex items-center gap-2 text-sm">
-                    <Label className="text-xs text-muted-foreground">Order Scope:</Label>
+                    <Label className="text-xs text-muted-foreground">{t('roles.orderScope')}:</Label>
                     <RadioGroup
                       value={featureAccess.purchasesScope}
-                      onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, purchasesScope: value })}
+                      onValueChange={(value: any) => handleFeatureAccessChange({ purchasesScope: value })}
                       className="flex gap-3"
                     >
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="all" id="edit-inv-purchases-scope-all" />
-                        <Label htmlFor="edit-inv-purchases-scope-all" className="text-xs cursor-pointer font-normal">All Orders</Label>
+                        <Label htmlFor="edit-inv-purchases-scope-all" className="text-xs cursor-pointer font-normal">{t('roles.allOrders')}</Label>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RadioGroupItem value="assigned" id="edit-inv-purchases-scope-assigned" />
-                        <Label htmlFor="edit-inv-purchases-scope-assigned" className="text-xs cursor-pointer font-normal">Assigned/Created Only</Label>
+                        <Label htmlFor="edit-inv-purchases-scope-assigned" className="text-xs cursor-pointer font-normal">{t('roles.assignedCreatedOnly')}</Label>
                       </div>
                     </RadioGroup>
                   </div>
@@ -1773,26 +1940,26 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
               {/* Overview */}
               <div className="flex items-center justify-between space-x-4">
-                <Label className="flex-1">Overview</Label>
+                <Label className="flex-1">{t('roles.featureOverview')}</Label>
                 <RadioGroup
                   value={featureAccess.overview}
-                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, overview: value })}
+                  onValueChange={(value: any) => handleFeatureAccessChange({ overview: value })}
                   className="flex gap-2"
                 >
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="none" id="edit-inv-overview-none" />
-                    <Label htmlFor="edit-inv-overview-none" className="text-xs cursor-pointer font-normal">None</Label>
+                    <Label htmlFor="edit-inv-overview-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="view" id="edit-inv-overview-view" />
                     <Label htmlFor="edit-inv-overview-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Eye className="h-3 w-3" /> View
+                      <Eye className="h-3 w-3" /> {t('roles.accessView')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="edit" id="edit-inv-overview-edit" />
                     <Label htmlFor="edit-inv-overview-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Edit3 className="h-3 w-3" /> Edit
+                      <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -1800,26 +1967,26 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
               {/* Teams Management */}
               <div className="flex items-center justify-between space-x-4">
-                <Label className="flex-1">Team Management</Label>
+                <Label className="flex-1">{t('roles.featureTeamManagement')}</Label>
                 <RadioGroup
                   value={featureAccess.teams}
-                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, teams: value })}
+                  onValueChange={(value: any) => handleFeatureAccessChange({ teams: value })}
                   className="flex gap-2"
                 >
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="none" id="edit-inv-teams-none" />
-                    <Label htmlFor="edit-inv-teams-none" className="text-xs cursor-pointer font-normal">None</Label>
+                    <Label htmlFor="edit-inv-teams-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="view" id="edit-inv-teams-view" />
                     <Label htmlFor="edit-inv-teams-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Eye className="h-3 w-3" /> View
+                      <Eye className="h-3 w-3" /> {t('roles.accessView')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="invite" id="edit-inv-teams-invite" />
                     <Label htmlFor="edit-inv-teams-invite" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <UserPlus className="h-3 w-3" /> Invite
+                      <UserPlus className="h-3 w-3" /> {t('roles.accessInvite')}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -1827,20 +1994,20 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
               {/* Budget */}
               <div className="flex items-center justify-between space-x-4">
-                <Label className="flex-1">Budget</Label>
+                <Label className="flex-1">{t('roles.featureBudget')}</Label>
                 <RadioGroup
                   value={featureAccess.budget}
-                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, budget: value })}
+                  onValueChange={(value: any) => handleFeatureAccessChange({ budget: value })}
                   className="flex gap-2"
                 >
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="none" id="edit-inv-budget-none" />
-                    <Label htmlFor="edit-inv-budget-none" className="text-xs cursor-pointer font-normal">None</Label>
+                    <Label htmlFor="edit-inv-budget-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="view" id="edit-inv-budget-view" />
                     <Label htmlFor="edit-inv-budget-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Eye className="h-3 w-3" /> View
+                      <Eye className="h-3 w-3" /> {t('roles.accessView')}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -1848,32 +2015,32 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
               {/* Files */}
               <div className="flex items-center justify-between space-x-4">
-                <Label className="flex-1">Files</Label>
+                <Label className="flex-1">{t('roles.featureFiles')}</Label>
                 <RadioGroup
                   value={featureAccess.files}
-                  onValueChange={(value: any) => setFeatureAccess({ ...featureAccess, files: value })}
+                  onValueChange={(value: any) => handleFeatureAccessChange({ files: value })}
                   className="flex gap-2"
                 >
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="none" id="edit-inv-files-none" />
-                    <Label htmlFor="edit-inv-files-none" className="text-xs cursor-pointer font-normal">None</Label>
+                    <Label htmlFor="edit-inv-files-none" className="text-xs cursor-pointer font-normal">{t('roles.accessNone')}</Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="view" id="edit-inv-files-view" />
                     <Label htmlFor="edit-inv-files-view" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Eye className="h-3 w-3" /> View
+                      <Eye className="h-3 w-3" /> {t('roles.accessView')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="upload" id="edit-inv-files-upload" />
                     <Label htmlFor="edit-inv-files-upload" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Plus className="h-3 w-3" /> Upload
+                      <Plus className="h-3 w-3" /> {t('roles.accessUpload')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="edit" id="edit-inv-files-edit" />
                     <Label htmlFor="edit-inv-files-edit" className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      <Edit3 className="h-3 w-3" /> Edit
+                      <Edit3 className="h-3 w-3" /> {t('roles.accessEdit')}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -1882,11 +2049,11 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
           </div>
           <div className="flex gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setEditInvitationDialogOpen(false)} disabled={saving}>
-              Cancel
+              {t('roles.cancel')}
             </Button>
             <Button onClick={handleSaveInvitationEdit} disabled={saving} className="flex-1">
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              Save Changes
+              {t('roles.saveChanges')}
             </Button>
           </div>
         </DialogContent>

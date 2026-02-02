@@ -16,6 +16,11 @@ const LANGUAGES = [
   { code: 'de', name: 'German', flag: '🇩🇪' },
   { code: 'fr', name: 'French', flag: '🇫🇷' },
   { code: 'es', name: 'Spanish', flag: '🇪🇸' },
+  { code: 'pl', name: 'Polish', flag: '🇵🇱' },
+  { code: 'uk', name: 'Ukrainian', flag: '🇺🇦' },
+  { code: 'ro', name: 'Romanian', flag: '🇷🇴' },
+  { code: 'lt', name: 'Lithuanian', flag: '🇱🇹' },
+  { code: 'et', name: 'Estonian', flag: '🇪🇪' },
 ];
 
 export const LanguageSelector = () => {

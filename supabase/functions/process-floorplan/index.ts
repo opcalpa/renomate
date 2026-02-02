@@ -40,14 +40,19 @@ interface FloorPlanResult {
   rooms: Room[];
 }
 
-const SYSTEM_PROMPT = `You are an expert at analyzing architectural floor plans and extracting geometric data.
+function buildSystemPrompt(imageWidth?: number, imageHeight?: number): string {
+  const dimensionLine = imageWidth && imageHeight
+    ? `3. The image is exactly ${imageWidth}x${imageHeight} pixels. Return coordinates within this range.`
+    : `3. Estimate coordinates based on the image dimensions.`;
+
+  return `You are an expert at analyzing architectural floor plans and extracting geometric data.
 
 Your task is to analyze the floor plan image and extract ALL walls, doors, fixtures, and rooms with their PIXEL coordinates.
 
 IMPORTANT INSTRUCTIONS:
 1. The image coordinate system starts at (0,0) in the TOP-LEFT corner
 2. X increases to the RIGHT, Y increases DOWNWARD
-3. Estimate coordinates based on the image dimensions (typically 800-2000 pixels wide)
+${dimensionLine}
 4. Extract EVERY wall segment you can see - walls are typically thick black lines
 5. If there are multiple floor plans in the image, focus on the LEFT/FIRST one only
 
@@ -56,6 +61,10 @@ WALLS:
 - Break complex wall shapes into individual straight segments
 - Include both exterior walls (thick) and interior walls (thinner)
 - Estimate thickness in pixels (exterior ~15-20px, interior ~8-12px)
+- Walls that appear horizontal MUST have identical y1 and y2 values
+- Walls that appear vertical MUST have identical x1 and x2 values
+- Wall endpoints that visually meet MUST share the EXACT same coordinates (no gaps)
+- Exterior walls form a closed perimeter — ensure the first wall's start point equals the last wall's end point
 
 DOORS:
 - Doors appear as gaps in walls, often with arc symbols
@@ -98,8 +107,9 @@ EXAMPLE OUTPUT:
 }
 
 Now analyze the provided floor plan image. Return ONLY valid JSON, no explanations.`;
+}
 
-async function analyzeFloorPlan(base64Image: string, ratio: number): Promise<FloorPlanResult> {
+async function analyzeFloorPlan(base64Image: string, ratio: number, imageWidth?: number, imageHeight?: number): Promise<FloorPlanResult> {
   const apiKey = Deno.env.get('OPENAI_API_KEY');
 
   if (!apiKey) {
@@ -119,7 +129,7 @@ async function analyzeFloorPlan(base64Image: string, ratio: number): Promise<Flo
       messages: [
         {
           role: 'system',
-          content: SYSTEM_PROMPT,
+          content: buildSystemPrompt(imageWidth, imageHeight),
         },
         {
           role: 'user',
@@ -138,7 +148,7 @@ async function analyzeFloorPlan(base64Image: string, ratio: number): Promise<Flo
           ],
         },
       ],
-      max_tokens: 8192,
+      max_tokens: 16384,
       temperature: 0.1,
     }),
   });
@@ -244,7 +254,7 @@ serve(async (req) => {
   }
 
   try {
-    const { image, ratio } = await req.json();
+    const { image, ratio, imageWidth, imageHeight } = await req.json();
 
     if (!image) {
       throw new Error('image is required');
@@ -254,9 +264,9 @@ serve(async (req) => {
       throw new Error('Valid ratio is required');
     }
 
-    console.log('Processing floor plan, image length:', image.length, 'chars, ratio:', ratio);
+    console.log('Processing floor plan, image length:', image.length, 'chars, ratio:', ratio, 'dimensions:', imageWidth, 'x', imageHeight);
 
-    const result = await analyzeFloorPlan(image, ratio);
+    const result = await analyzeFloorPlan(image, ratio, imageWidth, imageHeight);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

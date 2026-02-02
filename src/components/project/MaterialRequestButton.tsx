@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +33,7 @@ const MaterialRequestButton = ({
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const handleSubmitRequest = async () => {
     setSubmitting(true);
@@ -59,8 +61,8 @@ const MaterialRequestButton = ({
       if (error) throw error;
 
       toast({
-        title: "Request Submitted",
-        description: "Your purchase request has been submitted for approval.",
+        title: t('purchases.requestSubmitted', 'Request Submitted'),
+        description: t('purchases.requestSubmittedDescription', 'Your purchase request has been submitted for approval.'),
       });
 
       setDialogOpen(false);
@@ -81,9 +83,9 @@ const MaterialRequestButton = ({
 
   if (existingRequestStatus) {
     const statusConfig = {
-      pending: { color: "secondary", text: "Request Pending" },
-      approved: { color: "default", text: "Approved" },
-      rejected: { color: "destructive", text: "Rejected" },
+      pending: { color: "secondary", text: t('purchases.requestPending', 'Request Pending') },
+      approved: { color: "default", text: t('materialStatuses.approved') },
+      rejected: { color: "destructive", text: t('materialStatuses.declined') },
     };
 
     const config = statusConfig[existingRequestStatus as keyof typeof statusConfig] || statusConfig.pending;
@@ -104,28 +106,28 @@ const MaterialRequestButton = ({
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
           <ShoppingCart className="h-4 w-4 mr-2" />
-          Request Purchase
+          {t('purchases.requestPurchase', 'Request Purchase')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Request Purchase Approval</DialogTitle>
+          <DialogTitle>{t('purchases.requestPurchaseApproval', 'Request Purchase Approval')}</DialogTitle>
           <DialogDescription>
-            Submit a purchase request for: <strong>{materialName}</strong>
+            {t('purchases.submitRequestFor', 'Submit a purchase request for:')} <strong>{materialName}</strong>
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="request-notes">Notes (Optional)</Label>
+            <Label htmlFor="request-notes">{t('common.notes')} ({t('common.optional')})</Label>
             <Textarea
               id="request-notes"
-              placeholder="Add any additional information about this purchase request..."
+              placeholder={t('purchases.addInfoPlaceholder', 'Add any additional information about this purchase request...')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
             />
             <p className="text-xs text-muted-foreground">
-              Explain why this material is needed or any specific requirements.
+              {t('purchases.explainWhy', 'Explain why this material is needed or any specific requirements.')}
             </p>
           </div>
           <div className="flex gap-2">
@@ -137,12 +139,12 @@ const MaterialRequestButton = ({
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Submitting...
+                  {t('purchases.submitting', 'Submitting...')}
                 </>
               ) : (
                 <>
                   <ShoppingCart className="h-4 w-4 mr-2" />
-                  Submit Request
+                  {t('purchases.submitRequest', 'Submit Request')}
                 </>
               )}
             </Button>
@@ -151,7 +153,7 @@ const MaterialRequestButton = ({
               variant="outline"
               className="flex-1"
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
           </div>
         </div>

@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Stage, Layer, Rect, Line, Text as KonvaText, Group, Circle, Transformer, Arrow } from 'react-konva';
 import Konva from 'konva';
 import { v4 as uuidv4 } from 'uuid';
@@ -132,6 +133,7 @@ const getOpeningWidth = (opening: FloorMapShape, pixelsPerMm: number): number =>
 };
 
 export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -471,7 +473,7 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
     if (newShape) {
       addShape(newShape);
       setSelectedShapeIds([newShape.id]);
-      toast.success('Form skapad i elevation-läge');
+      toast.success(t('elevation.shapeCreated'));
     }
 
     setIsDrawing(false);
@@ -563,7 +565,7 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
       deleteShapes([selectedShapeForDialog.id]);
       setSelectedShapeIds([]);
       setSelectedShapeForDialog(null);
-      toast.success('Form borttagen');
+      toast.success(t('elevation.shapeDeleted'));
     }
   }, [selectedShapeForDialog, deleteShapes, saveToHistory, setSelectedShapeIds]);
 
@@ -714,14 +716,14 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
   // Manual save handler
   const handleManualSave = useCallback(async () => {
     if (!currentPlanId) {
-      toast.error('Inget plan valt');
+      toast.error(t('elevation.noPlanSelected'));
       return;
     }
     const success = await saveShapesForPlan(currentPlanId, shapes);
     if (success) {
-      toast.success('Elevation sparad!');
+      toast.success(t('elevation.elevationSaved'));
     } else {
-      toast.error('Kunde inte spara');
+      toast.error(t('elevation.couldNotSave'));
     }
   }, [currentPlanId, shapes]);
 
@@ -729,7 +731,7 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
   const handleAddSymbol = useCallback((symbol: ElevationSymbolDefinition) => {
     const geom = wallGeometryRef.current;
     if (!geom) {
-      toast.error('Ingen vägg vald');
+      toast.error(t('elevation.noWallSelected'));
       return;
     }
 
@@ -796,9 +798,9 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
         />
         <div className="text-center text-muted-foreground">
           <Layers className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p className="text-lg font-medium">Inga väggar att visa</p>
-          <p className="text-sm">Rita väggar i Floor Plan-vyn först</p>
-          <p className="text-sm mt-2 text-amber-600">Du kan fortfarande rita former i elevation-läge</p>
+          <p className="text-lg font-medium">{t('elevation.noWalls')}</p>
+          <p className="text-sm">{t('elevation.drawWallsFirst')}</p>
+          <p className="text-sm mt-2 text-amber-600">{t('elevation.canStillDraw')}</p>
         </div>
       </div>
     );
@@ -1326,7 +1328,7 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
 
         <div className="flex items-center gap-2">
           <span className="text-sm text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
-            {elevationShapes.length} elevation-former
+            {elevationShapes.length} {t('elevation.elevationShapes')}
           </span>
           <Button
             variant="outline"
@@ -1353,7 +1355,7 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
       </div>
 
       {/* Canvas */}
-      <div ref={containerRef} className="flex-1 overflow-hidden">
+      <div ref={containerRef} className="flex-1 overflow-hidden" style={{ touchAction: 'none' }}>
         <Stage
           ref={stageRef}
           width={dimensions.width}
@@ -1397,7 +1399,7 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
               x={wallX - 20}
               y={wallY + renderedWallHeight + floorHeight / 2 - 6}
               width={renderedWallWidth + 40}
-              text="Golv"
+              text={t('elevation.floor')}
               fontSize={12}
               fill="#6b4423"
               align="center"
@@ -1444,7 +1446,7 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
               x={wallX - 20}
               y={wallY - ceilingHeight / 2 - 6}
               width={renderedWallWidth + 40}
-              text="Tak"
+              text={t('elevation.ceiling')}
               fontSize={12}
               fill="#64748b"
               align="center"
@@ -1483,7 +1485,7 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
                     x={openingX}
                     y={openingY + openingHeight / 2 - 8}
                     width={openingWidth}
-                    text={isDoor ? (opening.type === 'sliding_door_line' ? 'Skjutdörr' : 'Dörr') : 'Fönster'}
+                    text={isDoor ? (opening.type === 'sliding_door_line' ? t('elevation.slidingDoor') : t('elevation.doorLabel')) : t('elevation.windowLabel')}
                     fontSize={11}
                     fill={isDoor ? '#166534' : '#1e40af'}
                     align="center"
@@ -1575,13 +1577,13 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
           {activeTool === 'measure' && (
             <>
               <span>•</span>
-              <span className="text-red-500">Mätverktyg aktivt</span>
+              <span className="text-red-500">{t('elevation.measureToolActive')}</span>
             </>
           )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-green-600">Auto-sparar ändringar</span>
-          <span className="text-xs">Scrolla för att panorera, Ctrl+scroll för att zooma • Dubbelklicka på form för detaljer</span>
+          <span className="text-xs text-green-600">{t('elevation.autoSavesChanges')}</span>
+          <span className="text-xs">{t('elevation.scrollToPan')} &bull; {t('elevation.doubleClickForDetails')}</span>
         </div>
       </div>
 

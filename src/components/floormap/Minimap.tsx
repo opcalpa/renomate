@@ -4,6 +4,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Stage, Layer, Rect, Line } from "react-konva";
 import { Button } from "@/components/ui/button";
 import { Map, X } from "lucide-react";
@@ -35,6 +36,7 @@ export const Minimap: React.FC<MinimapProps> = ({
   gridHeight,
   marginOffset,
 }) => {
+  const { t } = useTranslation();
   // CHANGED: Start closed by default, only one size (no expand/collapse)
   const [isOpen, setIsOpen] = useState(false);
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
@@ -91,6 +93,7 @@ export const Minimap: React.FC<MinimapProps> = ({
       <div
         className={cn(
           "fixed bottom-6 right-6 z-50",
+          "hidden md:block",
           "bg-white border-2 border-gray-300 rounded-lg shadow-lg",
           "transition-all duration-300"
         )}
@@ -100,7 +103,7 @@ export const Minimap: React.FC<MinimapProps> = ({
           size="icon"
           onClick={() => setIsOpen(true)}
           className="w-12 h-12"
-          title="Visa översiktskarta"
+          title={t('minimap.showOverview')}
         >
           <Map className="h-5 w-5" />
         </Button>
@@ -113,9 +116,10 @@ export const Minimap: React.FC<MinimapProps> = ({
       ref={minimapRef}
       className={cn(
         "fixed bottom-6 right-6 z-50",
+        "hidden md:flex",
         "bg-white border-2 border-gray-300 rounded-lg shadow-2xl",
         "transition-all duration-300",
-        "flex flex-col"
+        "flex-col"
       )}
       style={{
         width: MINIMAP_WIDTH + 20,
@@ -124,13 +128,13 @@ export const Minimap: React.FC<MinimapProps> = ({
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b bg-gray-50">
-        <span className="text-xs font-semibold text-gray-700">Översiktskarta</span>
+        <span className="text-xs font-semibold text-gray-700">{t('minimap.overviewMap')}</span>
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setIsOpen(false)}
           className="w-6 h-6"
-          title="Stäng"
+          title={t('minimap.close')}
         >
           <X className="h-3 w-3" />
         </Button>

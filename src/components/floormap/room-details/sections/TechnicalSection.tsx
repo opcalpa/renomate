@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Zap, Thermometer } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import {
@@ -20,6 +21,7 @@ export function TechnicalSection({
   formData,
   updateSpec,
 }: SectionProps) {
+  const { t } = useTranslation();
   const electricalSpec = formData.electrical_spec as ElectricalSpec;
   const heatingSpec = formData.heating_spec as HeatingSpec;
 
@@ -29,13 +31,13 @@ export function TechnicalSection({
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
           <Zap className="h-4 w-4" />
-          <span>El & Belysning</span>
+          <span>{t('rooms.electricalAndLighting')}</span>
         </div>
 
         <div className="grid gap-4 pl-6">
           {/* Electrical series */}
           <div className="space-y-2">
-            <Label htmlFor="electrical-series">Serie</Label>
+            <Label htmlFor="electrical-series">{t('rooms.series')}</Label>
             <Select
               value={electricalSpec?.series || ""}
               onValueChange={(value) =>
@@ -43,12 +45,12 @@ export function TechnicalSection({
               }
             >
               <SelectTrigger id="electrical-series">
-                <SelectValue placeholder="Välj serie" />
+                <SelectValue placeholder={t('rooms.selectSeries')} />
               </SelectTrigger>
               <SelectContent>
                 {ELECTRICAL_SERIES_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                    {t(option.labelKey)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -57,27 +59,27 @@ export function TechnicalSection({
 
           {/* Outlet/switch types (multi-select) */}
           <div className="space-y-2">
-            <Label id="outlet-types-label">Uttag & Brytare</Label>
+            <Label id="outlet-types-label">{t('rooms.outletsAndSwitches')}</Label>
             <MultiSelect
               options={OUTLET_TYPE_OPTIONS}
               selected={electricalSpec?.outlet_types || []}
               onChange={(values) =>
                 updateSpec("electrical_spec", { ...electricalSpec, outlet_types: values })
               }
-              placeholder="Välj typer av uttag/brytare"
+              placeholder={t('rooms.selectOutletTypes')}
             />
           </div>
 
           {/* Lighting types (multi-select) */}
           <div className="space-y-2">
-            <Label id="lighting-types-label">Belysningstyp</Label>
+            <Label id="lighting-types-label">{t('rooms.lightingType')}</Label>
             <MultiSelect
               options={LIGHTING_TYPE_OPTIONS}
               selected={electricalSpec?.lighting_types || []}
               onChange={(values) =>
                 updateSpec("electrical_spec", { ...electricalSpec, lighting_types: values })
               }
-              placeholder="Välj belysningstyper"
+              placeholder={t('rooms.selectLightingTypes')}
             />
           </div>
         </div>
@@ -90,13 +92,13 @@ export function TechnicalSection({
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
           <Thermometer className="h-4 w-4" />
-          <span>Värme</span>
+          <span>{t('rooms.heating')}</span>
         </div>
 
         <div className="grid gap-4 pl-6">
           {/* Heating type */}
           <div className="space-y-2">
-            <Label htmlFor="heating-type">Typ</Label>
+            <Label htmlFor="heating-type">{t('rooms.heatingType')}</Label>
             <Select
               value={heatingSpec?.type || ""}
               onValueChange={(value) =>
@@ -104,12 +106,12 @@ export function TechnicalSection({
               }
             >
               <SelectTrigger id="heating-type">
-                <SelectValue placeholder="Välj värmetyp" />
+                <SelectValue placeholder={t('rooms.selectHeatingType')} />
               </SelectTrigger>
               <SelectContent>
                 {HEATING_TYPE_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                    {t(option.labelKey)}
                   </SelectItem>
                 ))}
               </SelectContent>

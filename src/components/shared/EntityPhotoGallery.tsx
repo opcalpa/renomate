@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Upload, Image as ImageIcon, XCircle, Maximize2, Camera } from "lucide-react";
@@ -61,6 +62,7 @@ const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 
 };
 
 export function EntityPhotoGallery({ entityId, entityType, storagePath }: EntityPhotoGalleryProps) {
+  const { t } = useTranslation();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -86,7 +88,7 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
       setPhotos((data as Photo[]) || []);
     } catch (error) {
       console.error("Error loading photos:", error);
-      toast.error("Kunde inte ladda bilder");
+      toast.error(t('entityPhotos.loadError'));
     } finally {
       setLoadingPhotos(false);
     }
@@ -104,7 +106,7 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Du måste vara inloggad för att ladda upp bilder");
+        toast.error(t('entityPhotos.loginRequired'));
         return;
       }
 
@@ -115,17 +117,17 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
         .single();
 
       if (!profile) {
-        toast.error("Profil hittades inte");
+        toast.error(t('entityPhotos.profileNotFound'));
         return;
       }
 
       for (const file of fileArray) {
         if (!file.type.startsWith("image/")) {
-          toast.error(`${file.name} är inte en bild`);
+          toast.error(t('entityPhotos.notAnImage', { name: file.name }));
           continue;
         }
         if (file.size > 10 * 1024 * 1024) {
-          toast.error(`${file.name} är för stor (max 10MB)`);
+          toast.error(t('entityPhotos.fileTooLarge', { name: file.name }));
           continue;
         }
 
@@ -139,7 +141,7 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
 
         if (uploadError) {
           console.error("Upload error:", uploadError);
-          toast.error(`Kunde inte ladda upp ${file.name}`);
+          toast.error(t('entityPhotos.uploadError', { name: file.name }));
           continue;
         }
 
@@ -155,16 +157,16 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
 
         if (dbError) {
           console.error("Database error:", dbError);
-          toast.error(`Kunde inte spara ${file.name}`);
+          toast.error(t('entityPhotos.saveError', { name: file.name }));
           continue;
         }
       }
 
-      toast.success("Bilder uppladdade!");
+      toast.success(t('entityPhotos.photosUploaded'));
       loadPhotos();
     } catch (error) {
       console.error("Error uploading files:", error);
-      toast.error("Kunde inte ladda upp bilder");
+      toast.error(t('entityPhotos.uploadFailed'));
     } finally {
       setUploading(false);
     }
@@ -178,7 +180,7 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
   };
 
   const handleDeletePhoto = async (photoId: string, photoUrl: string) => {
-    if (!confirm("Är du säker på att du vill ta bort denna bild?")) return;
+    if (!confirm(t('entityPhotos.confirmDelete'))) return;
 
     try {
       const urlParts = photoUrl.split(`/${bucket}/`);
@@ -194,11 +196,11 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
 
       if (dbError) throw dbError;
 
-      toast.success("Bild borttagen");
+      toast.success(t('entityPhotos.photoDeleted'));
       loadPhotos();
     } catch (error) {
       console.error("Error deleting photo:", error);
-      toast.error("Kunde inte ta bort bild");
+      toast.error(t('entityPhotos.deleteError'));
     }
   };
 
@@ -207,7 +209,7 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ImageIcon className="h-4 w-4 text-gray-600" />
-          <Label>Bilder</Label>
+          <Label>{t('entityPhotos.photos')}</Label>
         </div>
         <div className="text-xs text-gray-500">
           {photos.length} {photos.length === 1 ? "bild" : "bilder"}
@@ -232,7 +234,7 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
           onClick={() => cameraInputRef.current?.click()}
         >
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-          Ta foto
+          {t('entityPhotos.takePhoto')}
         </Button>
 
         <input
@@ -252,7 +254,7 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
           onClick={() => fileInputRef.current?.click()}
         >
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          Ladda upp
+          {t('entityPhotos.upload')}
         </Button>
       </div>
 
@@ -288,7 +290,7 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
                     handleDeletePhoto(photo.id, photo.url);
                   }}
                   className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 z-10"
-                  title="Ta bort bild"
+                  title={t('entityPhotos.removePhoto')}
                 >
                   <XCircle className="h-4 w-4" />
                 </button>
@@ -304,7 +306,7 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
       ) : (
         <div className="text-center py-6 text-gray-400 text-sm">
           <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p>Inga bilder uppladdade än</p>
+          <p>{t('entityPhotos.noPhotos')}</p>
         </div>
       )}
 

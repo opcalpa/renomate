@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Layers, Trash2, MoreVertical, Home, User, Settings, LogOut, Globe, LayoutDashboard, CheckSquare, ShoppingCart, Users } from "lucide-react";
+import { ArrowLeft, Plus, Layers, Trash2, MoreVertical, Home, User, Settings, LogOut, Globe, LayoutDashboard, CheckSquare, ShoppingCart, Users, Map, PanelTop, Box } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useFloorMapStore } from "./store";
@@ -85,8 +85,8 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
   const handleCreateNewPlan = async () => {
     if (!newPlanName.trim()) {
       toast({
-        title: "Namn krävs",
-        description: "Ange ett namn för det nya planet",
+        title: t('floormap.nameRequired', 'Name required'),
+        description: t('floormap.enterPlanName', 'Enter a name for the new plan'),
         variant: "destructive",
       });
       return;
@@ -97,7 +97,7 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
       const newPlan = await createPlanInDB(projectId, newPlanName.trim());
       
       if (!newPlan) {
-        throw new Error('Kunde inte skapa plan');
+        throw new Error(t('floormap.couldNotCreatePlan', 'Could not create plan'));
       }
 
       // Add to store
@@ -108,14 +108,14 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
       setNewPlanDescription("");
 
       toast({
-        title: "Nytt plan skapat!",
-        description: `"${newPlan.name}" har skapats och är nu aktivt`,
+        title: t('floormap.newPlanCreated', 'New plan created!'),
+        description: t('floormap.planCreatedDescription', { name: newPlan.name, defaultValue: `"${newPlan.name}" has been created and is now active` }),
       });
     } catch (error: any) {
       console.error('Error creating plan:', error);
       toast({
-        title: "Fel vid skapande",
-        description: error.message || "Kunde inte skapa nytt plan",
+        title: t('floormap.errorCreating', 'Error creating plan'),
+        description: error.message || t('floormap.couldNotCreatePlan', 'Could not create plan'),
         variant: "destructive",
       });
     }
@@ -125,8 +125,8 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
     // Prevent deleting if it's the last plan
     if (plans.length <= 1) {
       toast({
-        title: "Kan inte radera",
-        description: "Du måste ha minst ett plan. Skapa ett nytt innan du raderar detta.",
+        title: t('floormap.cannotDelete', 'Cannot delete'),
+        description: t('floormap.mustHaveOnePlan', 'You must have at least one plan. Create a new one before deleting this.'),
         variant: "destructive",
       });
       return;
@@ -137,7 +137,7 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
       const success = await deletePlanFromDB(planId);
       
       if (!success) {
-        throw new Error('Kunde inte radera plan från databasen');
+        throw new Error(t('floormap.couldNotDeletePlan', 'Could not delete plan from database'));
       }
 
       // If we're deleting the current plan, switch to another one
@@ -154,14 +154,14 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
 
       const deletedPlan = plans.find(p => p.id === planId);
       toast({
-        title: "Plan raderat",
-        description: `"${deletedPlan?.name}" har raderats`,
+        title: t('floormap.planDeleted', 'Plan deleted'),
+        description: t('floormap.planDeletedDescription', { name: deletedPlan?.name, defaultValue: `"${deletedPlan?.name}" has been deleted` }),
       });
     } catch (error: any) {
       console.error('Error deleting plan:', error);
       toast({
-        title: "Fel vid radering",
-        description: error.message || "Kunde inte radera planet",
+        title: t('floormap.errorDeleting', 'Error deleting plan'),
+        description: error.message || t('floormap.couldNotDeletePlan', 'Could not delete plan from database'),
         variant: "destructive",
       });
     }
@@ -171,7 +171,7 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
   const currentPlanShapes = shapes.filter(s => s.planId === currentPlanId);
 
   return (
-    <header className="h-14 border-b border-border bg-card/95 backdrop-blur-md fixed top-0 left-0 right-0 z-[60] flex items-center px-4 gap-4 shadow-sm">
+    <header className="h-14 border-b border-border bg-card/95 backdrop-blur-md fixed top-0 left-0 right-0 z-[60] flex items-center px-2 md:px-4 gap-2 md:gap-4 shadow-sm">
       {/* Main Menu (3 dots) */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -192,11 +192,11 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => navigate(`/projects/${projectId}?tab=purchases`)} className="cursor-pointer">
             <ShoppingCart className="mr-2 h-4 w-4" />
-            <span>Purchases</span>
+            <span>{t('purchases.title')}</span>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => navigate(`/projects/${projectId}?tab=team`)} className="cursor-pointer">
             <Users className="mr-2 h-4 w-4" />
-            <span>Team</span>
+            <span>{t('roles.title')}</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
 
@@ -257,7 +257,7 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
       
       <div className="h-6 w-px bg-border hidden sm:block" />
 
-      <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+      <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground min-w-0">
         <span
           className="truncate max-w-[120px] sm:max-w-[200px] text-foreground font-medium"
           title={projectName}
@@ -267,13 +267,13 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
       </div>
 
       {/* Plan Selector */}
-      <div className="ml-4">
+      <div className="ml-1 md:ml-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-1 md:gap-2">
               <Layers className="h-4 w-4" />
-              <span className="max-w-[200px] truncate">
-                {currentPlan?.name || "Välj plan"}
+              <span className="hidden md:inline max-w-[200px] truncate">
+                {currentPlan?.name || t('floormap.selectPlan', 'Select plan')}
               </span>
               {currentPlanShapes.length > 0 && (
                 <Badge variant="secondary" className="ml-1">
@@ -283,12 +283,12 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-[300px]">
-            <DropdownMenuLabel>Floor Plans</DropdownMenuLabel>
+            <DropdownMenuLabel>{t('floormap.floorPlans', 'Floor Plans')}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             
             {plans.length === 0 ? (
               <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                Inga plan skapade ännu
+                {t('floormap.noPlansCreated', 'No plans created yet')}
               </div>
             ) : (
               plans.map((plan) => {
@@ -307,7 +307,7 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
                         <span className="font-medium">{plan.name}</span>
                         {planShapes.length > 0 && (
                           <Badge variant="secondary" className="ml-2">
-                            {planShapes.length} objekt
+                            {planShapes.length} {t('floormap.objects', 'objects')}
                           </Badge>
                         )}
                       </div>
@@ -343,7 +343,7 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
                   className="text-primary"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Skapa nytt plan
+                  {t('floormap.createNewPlan', 'Create new plan')}
                 </DropdownMenuItem>
               </>
             )}
@@ -357,25 +357,28 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
             variant={viewMode === "floor" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setViewMode("floor")}
-            className="h-7 px-3 text-xs"
+            className="h-8 px-2 md:px-3 text-xs"
           >
-            {t("Floor Plan")}
+            <Map className="h-4 w-4 md:mr-1" />
+            <span className="hidden md:inline">{t("Floor Plan")}</span>
           </Button>
           <Button
             variant={viewMode === "elevation" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setViewMode("elevation")}
-            className="h-7 px-3 text-xs"
+            className="h-8 px-2 md:px-3 text-xs"
           >
-            {t("Elevation")}
+            <PanelTop className="h-4 w-4 md:mr-1" />
+            <span className="hidden md:inline">{t("floormap.elevationView")}</span>
           </Button>
           <Button
             variant={viewMode === "3d" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setViewMode("3d")}
-            className="h-7 px-3 text-xs"
+            className="h-8 px-2 md:px-3 text-xs"
           >
-            {t("3D View")}
+            <Box className="h-4 w-4 md:mr-1" />
+            <span className="hidden md:inline">{t("3D View")}</span>
           </Button>
         </div>
       </div>
@@ -384,18 +387,18 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
       <Dialog open={showNewPlanDialog} onOpenChange={setShowNewPlanDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Skapa nytt Floor Plan</DialogTitle>
+            <DialogTitle>{t('floormap.createNewPlan', 'Create new plan')}</DialogTitle>
             <DialogDescription>
-              Skapa ett nytt tomt plan eller importera från en ritning
+              {t('floormap.createNewPlanDescription', 'Create a new empty plan or import from a drawing')}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="plan-name">Plan namn *</Label>
+              <Label htmlFor="plan-name">{t('floormap.planName', 'Plan name')} *</Label>
               <Input
                 id="plan-name"
-                placeholder="t.ex. Våning 1, Källare, Alternativ A"
+                placeholder={t('floormap.planNamePlaceholder', 'e.g. Floor 1, Basement, Alternative A')}
                 value={newPlanName}
                 onChange={(e) => setNewPlanName(e.target.value)}
                 onKeyDown={(e) => {
@@ -407,10 +410,10 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="plan-description">Beskrivning (valfritt)</Label>
+              <Label htmlFor="plan-description">{t('common.description', 'Description')} ({t('common.optional', 'optional')})</Label>
               <Input
                 id="plan-description"
-                placeholder="t.ex. Huvudplan med alla rum"
+                placeholder={t('floormap.planDescriptionPlaceholder', 'e.g. Main plan with all rooms')}
                 value={newPlanDescription}
                 onChange={(e) => setNewPlanDescription(e.target.value)}
               />
@@ -426,11 +429,11 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
                 setNewPlanDescription("");
               }}
             >
-              Avbryt
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleCreateNewPlan}>
               <Plus className="h-4 w-4 mr-2" />
-              Skapa plan
+              {t('floormap.createNewPlan', 'Create new plan')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -440,22 +443,22 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
       <AlertDialog open={!!planToDelete} onOpenChange={(open) => !open && setPlanToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Radera Floor Plan?</AlertDialogTitle>
+            <AlertDialogTitle>{t('floormap.deleteFloorPlan', 'Delete Floor Plan?')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Är du säker på att du vill radera "{plans.find(p => p.id === planToDelete)?.name}"?
+              {t('floormap.deleteConfirmation', { name: plans.find(p => p.id === planToDelete)?.name, defaultValue: `Are you sure you want to delete "${plans.find(p => p.id === planToDelete)?.name}"?` })}
               <br />
               <br />
-              <strong>Detta går inte att ångra.</strong> Alla väggar, rum och objekt i detta plan kommer att raderas permanent.
+              <strong>{t('floormap.cannotBeUndone', 'This cannot be undone.')}</strong> {t('floormap.allObjectsDeleted', 'All walls, rooms, and objects in this plan will be permanently deleted.')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => planToDelete && handleDeletePlan(planToDelete)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Radera plan
+              {t('floormap.deletePlan', 'Delete plan')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Upload, Image as ImageIcon, XCircle, Maximize2 } from "lucide-react";
@@ -30,6 +31,7 @@ interface ShapePhotoSectionProps {
 }
 
 export function ShapePhotoSection({ shapeId, projectId, compact = false }: ShapePhotoSectionProps) {
+  const { t } = useTranslation();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -72,7 +74,7 @@ export function ShapePhotoSection({ shapeId, projectId, compact = false }: Shape
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Du måste vara inloggad för att ladda upp bilder");
+        toast.error(t('shapePhotos.loginRequired'));
         return;
       }
 
@@ -84,18 +86,18 @@ export function ShapePhotoSection({ shapeId, projectId, compact = false }: Shape
         .single();
 
       if (!profile) {
-        toast.error("Profil hittades inte");
+        toast.error(t('shapePhotos.profileNotFound'));
         return;
       }
 
       for (const file of Array.from(files)) {
         if (!file.type.startsWith("image/")) {
-          toast.error(`${file.name} är inte en bild`);
+          toast.error(t('shapePhotos.notAnImage', { name: file.name }));
           continue;
         }
 
         if (file.size > 10 * 1024 * 1024) {
-          toast.error(`${file.name} är för stor (max 10MB)`);
+          toast.error(t('shapePhotos.fileTooLarge', { name: file.name }));
           continue;
         }
 
@@ -109,7 +111,7 @@ export function ShapePhotoSection({ shapeId, projectId, compact = false }: Shape
 
         if (uploadError) {
           console.error("Upload error:", uploadError);
-          toast.error(`Kunde inte ladda upp ${file.name}`);
+          toast.error(t('shapePhotos.uploadError', { name: file.name }));
           continue;
         }
 
@@ -127,16 +129,16 @@ export function ShapePhotoSection({ shapeId, projectId, compact = false }: Shape
 
         if (dbError) {
           console.error("Database error:", dbError);
-          toast.error(`Kunde inte spara ${file.name}`);
+          toast.error(t('shapePhotos.saveError', { name: file.name }));
           continue;
         }
       }
 
-      toast.success("Bilder uppladdade!");
+      toast.success(t('shapePhotos.photosUploaded'));
       loadPhotos();
     } catch (error) {
       console.error("Error uploading files:", error);
-      toast.error("Kunde inte ladda upp bilder");
+      toast.error(t('shapePhotos.uploadFailed'));
     } finally {
       setUploading(false);
       event.target.value = "";
@@ -144,7 +146,7 @@ export function ShapePhotoSection({ shapeId, projectId, compact = false }: Shape
   };
 
   const handleDeletePhoto = async (photoId: string, photoUrl: string) => {
-    if (!confirm("Är du säker på att du vill ta bort denna bild?")) return;
+    if (!confirm(t('shapePhotos.confirmDelete'))) return;
 
     try {
       // Try to delete from storage
@@ -164,11 +166,11 @@ export function ShapePhotoSection({ shapeId, projectId, compact = false }: Shape
 
       if (dbError) throw dbError;
 
-      toast.success("Bild borttagen");
+      toast.success(t('shapePhotos.photoDeleted'));
       loadPhotos();
     } catch (error) {
       console.error("Error deleting photo:", error);
-      toast.error("Kunde inte ta bort bild");
+      toast.error(t('shapePhotos.deleteError'));
     }
   };
 
@@ -187,10 +189,10 @@ export function ShapePhotoSection({ shapeId, projectId, compact = false }: Shape
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ImageIcon className="h-4 w-4 text-gray-600" />
-          <Label className="text-sm font-medium">Bilder</Label>
+          <Label className="text-sm font-medium">{t('shapePhotos.photos')}</Label>
         </div>
         <div className="text-xs text-gray-500">
-          {photos.length} {photos.length === 1 ? "bild" : "bilder"}
+          {photos.length} {photos.length === 1 ? t('shapePhotos.photo') : t('shapePhotos.photosPlural')}
         </div>
       </div>
 
@@ -221,13 +223,13 @@ export function ShapePhotoSection({ shapeId, projectId, compact = false }: Shape
           {uploading ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-              <span className="text-xs text-gray-500">Laddar upp...</span>
+              <span className="text-xs text-gray-500">{t('shapePhotos.uploading')}</span>
             </>
           ) : (
             <>
               <Upload className="h-4 w-4 text-gray-400" />
               <span className="text-xs text-gray-600">
-                Klicka för att ladda upp bilder
+                {t('shapePhotos.clickToUpload')}
               </span>
             </>
           )}
@@ -250,7 +252,7 @@ export function ShapePhotoSection({ shapeId, projectId, compact = false }: Shape
               >
                 <img
                   src={photo.url}
-                  alt={photo.caption || "Objektbild"}
+                  alt={photo.caption || t('shapePhotos.shapeImage')}
                   className={`w-full ${imageHeight} object-cover rounded-lg border border-gray-200 transition-all group-hover:brightness-90`}
                 />
                 {/* Expand icon overlay */}
@@ -272,7 +274,7 @@ export function ShapePhotoSection({ shapeId, projectId, compact = false }: Shape
                     text-white rounded-full p-1
                     z-10
                   "
-                  title="Ta bort bild"
+                  title={t('shapePhotos.removePhoto')}
                 >
                   <XCircle className="h-3 w-3" />
                 </button>
@@ -283,7 +285,7 @@ export function ShapePhotoSection({ shapeId, projectId, compact = false }: Shape
       ) : (
         <div className="text-center py-3 text-gray-400 text-xs">
           <ImageIcon className="h-6 w-6 mx-auto mb-1 opacity-50" />
-          <p>Inga bilder än</p>
+          <p>{t('shapePhotos.noPhotos')}</p>
         </div>
       )}
 

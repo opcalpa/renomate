@@ -17,6 +17,13 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 import PinterestCallback from "./pages/PinterestCallback";
+import Tips from "./pages/Tips";
+import Feedback from "./pages/Feedback";
+import FindProfessionals from "./pages/FindProfessionals";
+import CreateQuote from "./pages/CreateQuote";
+import ViewQuote from "./pages/ViewQuote";
+import ClientRegistry from "./pages/ClientRegistry";
+import { HelpBot } from "./components/HelpBot";
 
 const queryClient = new QueryClient();
 
@@ -39,10 +46,17 @@ const App = () => (
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/pinterest/callback" element={<PinterestCallback />} />
+          <Route path="/tips" element={<Tips />} />
+          <Route path="/feedback" element={<Feedback />} />
+          <Route path="/find-pros" element={<FindProfessionals />} />
+          <Route path="/quotes/new" element={<CreateQuote />} />
+          <Route path="/quotes/:quoteId" element={<ViewQuote />} />
+          <Route path="/clients" element={<ClientRegistry />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+      <HelpBot />
     </TooltipProvider>
   </QueryClientProvider>
 );

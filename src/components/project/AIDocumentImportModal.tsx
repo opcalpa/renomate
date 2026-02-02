@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -100,6 +101,7 @@ export function AIDocumentImportModal({
   onImportComplete,
 }: AIDocumentImportModalProps) {
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   // States
   const [extracting, setExtracting] = useState(false);
@@ -156,14 +158,14 @@ export function AIDocumentImportModal({
       );
 
       toast({
-        title: 'Analys klar',
-        description: `Hittade ${result.rooms.length} rum och ${result.tasks.length} uppgifter`,
+        title: t('aiDocumentImport.analysisDone'),
+        description: t('aiDocumentImport.analysisResult', { rooms: result.rooms.length, tasks: result.tasks.length }),
       });
     } catch (error) {
       console.error('Extraction error:', error);
       toast({
-        title: 'Analysfel',
-        description: error instanceof Error ? error.message : 'Kunde inte analysera dokumentet',
+        title: t('aiDocumentImport.analysisError'),
+        description: error instanceof Error ? error.message : t('aiDocumentImport.couldNotAnalyze'),
         variant: 'destructive',
       });
       onOpenChange(false);
@@ -218,8 +220,8 @@ export function AIDocumentImportModal({
 
     if (selectedRooms.length === 0 && selectedTasks.length === 0) {
       toast({
-        title: 'Inget valt',
-        description: 'Välj minst ett rum eller en uppgift att importera',
+        title: t('aiDocumentImport.nothingSelected'),
+        description: t('aiDocumentImport.selectAtLeastOne'),
         variant: 'destructive',
       });
       return;
@@ -344,8 +346,8 @@ export function AIDocumentImportModal({
       }
 
       toast({
-        title: 'Import klar!',
-        description: `Importerade ${selectedRooms.length} rum och ${selectedTasks.length} uppgifter`,
+        title: t('aiDocumentImport.importDone'),
+        description: t('aiDocumentImport.importResult', { rooms: selectedRooms.length, tasks: selectedTasks.length }),
       });
 
       onOpenChange(false);
@@ -353,8 +355,8 @@ export function AIDocumentImportModal({
     } catch (error) {
       console.error('Import error:', error);
       toast({
-        title: 'Importfel',
-        description: error instanceof Error ? error.message : 'Kunde inte importera data',
+        title: t('aiDocumentImport.importError'),
+        description: error instanceof Error ? error.message : t('aiDocumentImport.couldNotImport'),
         variant: 'destructive',
       });
     } finally {
@@ -371,10 +373,10 @@ export function AIDocumentImportModal({
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Importera från "{file?.name}"
+            {t('aiDocumentImport.title', { name: file?.name })}
           </DialogTitle>
           <DialogDescription>
-            Granska och välj vilka rum och uppgifter som ska importeras
+            {t('aiDocumentImport.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -382,8 +384,8 @@ export function AIDocumentImportModal({
         {extracting && (
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-            <p className="text-lg font-medium">Analyserar dokument med AI...</p>
-            <p className="text-sm text-muted-foreground mt-2">Detta kan ta upp till 30 sekunder</p>
+            <p className="text-lg font-medium">{t('aiDocumentImport.analyzing')}</p>
+            <p className="text-sm text-muted-foreground mt-2">{t('aiDocumentImport.analyzingTime')}</p>
           </div>
         )}
 
@@ -403,21 +405,21 @@ export function AIDocumentImportModal({
             )}
 
             {/* Two-column layout */}
-            <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
               {/* Rooms Column */}
               <Card className="flex flex-col min-h-0 overflow-hidden">
                 <CardHeader className="pb-2 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Home className="h-4 w-4" />
-                      Rum ({rooms.length} hittade)
+                      {t('aiDocumentImport.roomsFound', { count: rooms.length })}
                     </CardTitle>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="sm" onClick={selectAllRooms}>
-                        Alla
+                        {t('aiDocumentImport.all')}
                       </Button>
                       <Button variant="ghost" size="sm" onClick={deselectAllRooms}>
-                        Ingen
+                        {t('aiDocumentImport.none')}
                       </Button>
                     </div>
                   </div>
@@ -427,7 +429,7 @@ export function AIDocumentImportModal({
                     <div className="space-y-2 pr-4">
                       {rooms.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-4">
-                          Inga rum hittades i dokumentet
+                          {t('aiDocumentImport.noRoomsFound')}
                         </p>
                       ) : (
                         rooms.map((room) => (
@@ -448,7 +450,7 @@ export function AIDocumentImportModal({
                                   <Input
                                     value={room.name}
                                     onChange={(e) => updateRoom(room.index, { name: e.target.value })}
-                                    placeholder="Rumsnamn"
+                                    placeholder={t('aiDocumentImport.roomNamePlaceholder')}
                                     className="h-8"
                                   />
                                   <Input
@@ -459,7 +461,7 @@ export function AIDocumentImportModal({
                                         estimatedAreaSqm: e.target.value ? parseFloat(e.target.value) : null,
                                       })
                                     }
-                                    placeholder="Area (m²)"
+                                    placeholder={t('aiDocumentImport.areaPlaceholder')}
                                     className="h-8"
                                   />
                                   <Button
@@ -467,7 +469,7 @@ export function AIDocumentImportModal({
                                     variant="outline"
                                     onClick={() => setEditingRoomIndex(null)}
                                   >
-                                    Klar
+                                    {t('aiDocumentImport.done')}
                                   </Button>
                                 </div>
                               ) : (
@@ -513,14 +515,14 @@ export function AIDocumentImportModal({
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base flex items-center gap-2">
                       <ClipboardList className="h-4 w-4" />
-                      Uppgifter ({tasks.length} hittade)
+                      {t('aiDocumentImport.tasksFound', { count: tasks.length })}
                     </CardTitle>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="sm" onClick={selectAllTasks}>
-                        Alla
+                        {t('aiDocumentImport.all')}
                       </Button>
                       <Button variant="ghost" size="sm" onClick={deselectAllTasks}>
-                        Ingen
+                        {t('aiDocumentImport.none')}
                       </Button>
                     </div>
                   </div>
@@ -530,7 +532,7 @@ export function AIDocumentImportModal({
                     <div className="space-y-2 pr-4">
                       {tasks.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-4">
-                          Inga uppgifter hittades i dokumentet
+                          {t('aiDocumentImport.noTasksFound')}
                         </p>
                       ) : (
                         tasks.map((task) => (
@@ -551,7 +553,7 @@ export function AIDocumentImportModal({
                                   <Input
                                     value={task.title}
                                     onChange={(e) => updateTask(task.index, { title: e.target.value })}
-                                    placeholder="Uppgiftstitel"
+                                    placeholder={t('aiDocumentImport.taskTitlePlaceholder')}
                                     className="h-8"
                                   />
                                   <Select
@@ -561,7 +563,7 @@ export function AIDocumentImportModal({
                                     }
                                   >
                                     <SelectTrigger className="h-8">
-                                      <SelectValue placeholder="Kategori" />
+                                      <SelectValue placeholder={t('aiDocumentImport.categoryPlaceholder')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                       {Object.entries(TASK_CATEGORY_LABELS).map(([value, label]) => (
@@ -576,7 +578,7 @@ export function AIDocumentImportModal({
                                     variant="outline"
                                     onClick={() => setEditingTaskIndex(null)}
                                   >
-                                    Klar
+                                    {t('aiDocumentImport.done')}
                                   </Button>
                                 </div>
                               ) : (
@@ -620,13 +622,13 @@ export function AIDocumentImportModal({
             {/* Legend */}
             <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
-                🟢 Hög konfidens (&gt;80%)
+                {t('aiDocumentImport.highConfidence')}
               </span>
               <span className="flex items-center gap-1">
-                🟡 Medium (50-80%)
+                {t('aiDocumentImport.mediumConfidence')}
               </span>
               <span className="flex items-center gap-1">
-                🔴 Låg (&lt;50%)
+                {t('aiDocumentImport.lowConfidence')}
               </span>
             </div>
           </div>
@@ -638,15 +640,15 @@ export function AIDocumentImportModal({
           <div className="text-sm text-muted-foreground">
             {selectedRoomCount > 0 || selectedTaskCount > 0 ? (
               <span>
-                Valt: {selectedRoomCount} rum, {selectedTaskCount} uppgifter
+                {t('aiDocumentImport.selected', { rooms: selectedRoomCount, tasks: selectedTaskCount })}
               </span>
             ) : (
-              <span>Välj rum och uppgifter att importera</span>
+              <span>{t('aiDocumentImport.selectPrompt')}</span>
             )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={importing}>
-              Avbryt
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={handleImport}
@@ -659,12 +661,12 @@ export function AIDocumentImportModal({
               {importing ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Importerar...
+                  {t('aiDocumentImport.importing')}
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Importera {selectedRoomCount} rum & {selectedTaskCount} uppgifter
+                  {t('aiDocumentImport.importButton', { rooms: selectedRoomCount, tasks: selectedTaskCount })}
                 </>
               )}
             </Button>

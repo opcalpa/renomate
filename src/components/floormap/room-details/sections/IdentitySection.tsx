@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Home, Ruler, Palette, Check } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/popover";
 import { ComboboxFretext } from "../fields/ComboboxFretext";
 import {
-  ROOM_NAME_SUGGESTIONS,
+  ROOM_NAME_SUGGESTION_KEYS,
   ROOM_STATUS_OPTIONS,
   ROOM_COLOR_OPTIONS,
 } from "../constants";
@@ -40,6 +41,7 @@ export function IdentitySection({
   updateFormData,
   areaSqm,
 }: IdentitySectionProps) {
+  const { t } = useTranslation();
   const [colorPopoverOpen, setColorPopoverOpen] = useState(false);
   const [tempColor, setTempColor] = useState(formData.color);
 
@@ -49,32 +51,32 @@ export function IdentitySection({
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Home className="h-4 w-4 text-gray-600" />
-          <Label htmlFor="room-name">Rumsnamn *</Label>
+          <Label htmlFor="room-name">{t('identitySection.roomName')}</Label>
         </div>
         <ComboboxFretext
           id="room-name"
-          suggestions={ROOM_NAME_SUGGESTIONS}
+          suggestionKeys={ROOM_NAME_SUGGESTION_KEYS}
           value={formData.name}
           onChange={(value) => updateFormData({ name: value })}
-          placeholder="Välj eller skriv rumsnamn..."
-          searchPlaceholder="Sök eller skriv..."
+          placeholder={t('identitySection.selectOrType')}
+          searchPlaceholder={t('identitySection.searchOrType')}
         />
       </div>
 
       {/* Status */}
       <div className="space-y-2">
-        <Label htmlFor="room-status">Status</Label>
+        <Label htmlFor="room-status">{t('rooms.status')}</Label>
         <Select
           value={formData.status}
           onValueChange={(value) => updateFormData({ status: value })}
         >
           <SelectTrigger id="room-status">
-            <SelectValue placeholder="Välj status" />
+            <SelectValue placeholder={t('identitySection.selectStatus')} />
           </SelectTrigger>
           <SelectContent>
             {ROOM_STATUS_OPTIONS.map((option) => (
               <SelectItem key={option.value} value={option.value}>
-                {option.label}
+                {t(option.labelKey)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -86,7 +88,7 @@ export function IdentitySection({
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Ruler className="h-4 w-4 text-gray-600" />
-            <Label>Area</Label>
+            <Label>{t('rooms.area')}</Label>
           </div>
           <div className="h-10 flex items-center px-3 bg-gray-50 border rounded-md">
             <span className="font-semibold text-blue-600">
@@ -98,7 +100,7 @@ export function IdentitySection({
 
       {/* Ceiling height */}
       <div className="space-y-2">
-        <Label htmlFor="ceiling-height">Takhöjd (mm)</Label>
+        <Label htmlFor="ceiling-height">{t('identitySection.ceilingHeight')}</Label>
         <Input
           id="ceiling-height"
           type="number"
@@ -116,7 +118,7 @@ export function IdentitySection({
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Palette className="h-4 w-4 text-gray-600" />
-          <Label>Rumsfärg på ritning</Label>
+          <Label>{t('identitySection.roomColorOnDrawing')}</Label>
         </div>
 
         <Popover
@@ -141,8 +143,8 @@ export function IdentitySection({
                 }}
               />
               <div className="flex-1 text-left">
-                <div className="text-sm font-medium">Vald färg</div>
-                <div className="text-xs text-gray-500">Klicka för att ändra</div>
+                <div className="text-sm font-medium">{t('identitySection.selectedColor')}</div>
+                <div className="text-xs text-gray-500">{t('identitySection.clickToChange')}</div>
               </div>
               <Palette className="h-5 w-5 text-gray-400" />
             </button>
@@ -150,7 +152,7 @@ export function IdentitySection({
 
           <PopoverContent className="w-80" align="start">
             <div className="space-y-3">
-              <div className="font-medium text-sm">Välj rumsfärg</div>
+              <div className="font-medium text-sm">{t('identitySection.chooseRoomColor')}</div>
 
               <div className="grid grid-cols-4 gap-2">
                 {ROOM_COLOR_OPTIONS.map((colorOption) => (
@@ -174,7 +176,7 @@ export function IdentitySection({
                       </div>
                     )}
                     <div className="absolute bottom-0 left-0 right-0 bg-white/90 text-xs py-0.5 text-center rounded-b-lg pointer-events-none">
-                      {colorOption.name}
+                      {t(colorOption.nameKey)}
                     </div>
                   </button>
                 ))}
@@ -191,7 +193,7 @@ export function IdentitySection({
                   }}
                   className="flex-1"
                 >
-                  Avbryt
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   type="button"
@@ -203,7 +205,7 @@ export function IdentitySection({
                   className="flex-1"
                 >
                   <Check className="h-4 w-4 mr-1" />
-                  Använd färg
+                  {t('identitySection.useColor')}
                 </Button>
               </div>
             </div>

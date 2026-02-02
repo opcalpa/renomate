@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ElevationSymbolGallery } from "./ElevationSymbolGallery";
 import { ElevationSymbolDefinition } from "./ElevationSymbolLibrary";
 
@@ -69,17 +70,18 @@ export const ElevationToolbar = ({
   onToggleSmartData,
   smartDataOpen,
 }: ElevationToolbarProps) => {
+  const { t } = useTranslation();
   const { activeTool, setActiveTool, selectedShapeIds } = useFloorMapStore();
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
 
   // Drawing tools for elevation mode
   const drawTools: ToolItem[] = [
-    { id: 'rectangle', icon: Square, label: 'Rektangel', shortcut: 'R', onClick: () => setActiveTool('rectangle') },
-    { id: 'circle', icon: Circle, label: 'Cirkel', shortcut: 'C', onClick: () => setActiveTool('circle') },
-    { id: 'wall', icon: Minus, label: 'Linje', shortcut: 'L', onClick: () => setActiveTool('wall') },
-    { id: 'freehand', icon: Pencil, label: 'Frihand', shortcut: 'P', onClick: () => setActiveTool('freehand') },
-    { id: 'text', icon: Type, label: 'Text', shortcut: 'T', onClick: () => setActiveTool('text') },
+    { id: 'rectangle', icon: Square, label: t('floormap.rectangle', 'Rectangle'), shortcut: 'R', onClick: () => setActiveTool('rectangle') },
+    { id: 'circle', icon: Circle, label: t('floormap.circle', 'Circle'), shortcut: 'C', onClick: () => setActiveTool('circle') },
+    { id: 'wall', icon: Minus, label: t('floormap.line', 'Line'), shortcut: 'L', onClick: () => setActiveTool('wall') },
+    { id: 'freehand', icon: Pencil, label: t('floormap.freehand', 'Freehand'), shortcut: 'P', onClick: () => setActiveTool('freehand') },
+    { id: 'text', icon: Type, label: t('floormap.text', 'Text'), shortcut: 'T', onClick: () => setActiveTool('text') },
   ];
 
   const isDrawActive = drawTools.some(t => t.id === activeTool);
@@ -98,7 +100,7 @@ export const ElevationToolbar = ({
             <MousePointer2 className="h-5 w-5" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent side="right">Välj (V)</TooltipContent>
+        <TooltipContent side="right">{t('floormap.selectTool', 'Select')} (V)</TooltipContent>
       </Tooltip>
 
       <Separator className="w-8 my-1" />
@@ -120,7 +122,7 @@ export const ElevationToolbar = ({
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>
-          <TooltipContent side="right">Rita former</TooltipContent>
+          <TooltipContent side="right">{t('floormap.drawShapes', 'Draw shapes')}</TooltipContent>
         </Tooltip>
 
         <PopoverContent
@@ -130,7 +132,7 @@ export const ElevationToolbar = ({
         >
           <div className="flex flex-col gap-1">
             <div className="px-2 py-1.5 text-sm font-semibold border-b border-border/50 mb-1 text-gray-700">
-              Rita former (Elevation)
+              {t('floormap.drawShapesElevation', 'Draw shapes (Elevation)')}
             </div>
             {drawTools.map((item) => {
               const ItemIcon = item.icon;
@@ -176,7 +178,7 @@ export const ElevationToolbar = ({
             <Eraser className="h-5 w-5" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent side="right">Suddgummi (E)</TooltipContent>
+        <TooltipContent side="right">{t('floormap.eraser', 'Eraser')} (E)</TooltipContent>
       </Tooltip>
 
       <Separator className="w-8 my-1" />
@@ -195,8 +197,8 @@ export const ElevationToolbar = ({
         </TooltipTrigger>
         <TooltipContent side="right">
           <div className="flex flex-col">
-            <span className="font-medium">Symbolbibliotek</span>
-            <span className="text-xs text-muted-foreground">Fönster, dörrar, el, kök mm.</span>
+            <span className="font-medium">{t('floormap.symbolLibrary', 'Symbol library')}</span>
+            <span className="text-xs text-muted-foreground">{t('floormap.symbolLibraryDesc', 'Windows, doors, electrical, kitchen etc.')}</span>
           </div>
         </TooltipContent>
       </Tooltip>
@@ -219,8 +221,8 @@ export const ElevationToolbar = ({
           </TooltipTrigger>
           <TooltipContent side="right">
             <div className="flex flex-col">
-              <span className="font-medium">Smarta uppgifter</span>
-              <span className="text-xs text-muted-foreground">Ytberäkningar, materialåtgång</span>
+              <span className="font-medium">{t('floormap.smartData', 'Smart data')}</span>
+              <span className="text-xs text-muted-foreground">{t('floormap.smartDataDesc', 'Area calculations, material usage')}</span>
             </div>
           </TooltipContent>
         </Tooltip>
@@ -241,7 +243,7 @@ export const ElevationToolbar = ({
             <Ruler className="h-5 w-5" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent side="right">Mät avstånd (M)</TooltipContent>
+        <TooltipContent side="right">{t('floormap.measureDistance', 'Measure distance')} (M)</TooltipContent>
       </Tooltip>
 
       <Separator className="w-8 my-1" />
@@ -254,7 +256,7 @@ export const ElevationToolbar = ({
               <ZoomIn className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="right">Zooma in</TooltipContent>
+          <TooltipContent side="right">{t('floormap.zoomIn')}</TooltipContent>
         </Tooltip>
         <span className="text-[10px] text-muted-foreground">{Math.round(zoom * 100)}%</span>
         <Tooltip>
@@ -263,7 +265,7 @@ export const ElevationToolbar = ({
               <ZoomOut className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="right">Zooma ut</TooltipContent>
+          <TooltipContent side="right">{t('floormap.zoomOut')}</TooltipContent>
         </Tooltip>
       </div>
 
@@ -277,7 +279,7 @@ export const ElevationToolbar = ({
               <Undo className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="right">Ångra</TooltipContent>
+          <TooltipContent side="right">{t('floormap.undo')}</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -285,7 +287,7 @@ export const ElevationToolbar = ({
               <Redo className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="right">Gör om</TooltipContent>
+          <TooltipContent side="right">{t('floormap.redo')}</TooltipContent>
         </Tooltip>
       </div>
 
@@ -302,14 +304,14 @@ export const ElevationToolbar = ({
               <Trash2 className="h-5 w-5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="right">Ta bort ({selectedShapeIds.length})</TooltipContent>
+          <TooltipContent side="right">{t('common.delete')} ({selectedShapeIds.length})</TooltipContent>
         </Tooltip>
       )}
 
       {/* Info badge */}
       <div className="mt-2 px-2">
         <div className="text-[9px] text-muted-foreground text-center bg-amber-50 border border-amber-200 rounded px-1.5 py-1">
-          Elevation-läge
+          {t('floormap.elevationMode', 'Elevation mode')}
         </div>
       </div>
 

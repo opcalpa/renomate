@@ -26,6 +26,7 @@ import { SmartDataSection } from "./sections/SmartDataSection";
 import { PhotoSection } from "./PhotoSection";
 import { RelatedTasksSection } from "./sections/RelatedTasksSection";
 import { RelatedPurchaseOrdersSection } from "./sections/RelatedPurchaseOrdersSection";
+import { useTranslation } from "react-i18next";
 import type { RoomFormData, Room } from "./types";
 
 interface RoomDetailFormProps {
@@ -46,6 +47,7 @@ export function RoomDetailForm({
   updateFormData,
   updateSpec,
 }: RoomDetailFormProps) {
+  const { t } = useTranslation();
   const isNewRoom = !room;
   const areaSqm = room?.dimensions?.area_sqm;
   const perimeterMm = room?.dimensions?.perimeter_mm;
@@ -62,7 +64,7 @@ export function RoomDetailForm({
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
               <Home className="h-4 w-4 text-blue-600" />
-              <span>Grundidentitet & Geometri</span>
+              <span>{t('rooms.identityAndGeometry', 'Identity & Geometry')}</span>
             </div>
           </AccordionTrigger>
           <AccordionContent>
@@ -80,7 +82,7 @@ export function RoomDetailForm({
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
               <Layers className="h-4 w-4 text-green-600" />
-              <span>Horisontella Ytor</span>
+              <span>{t('rooms.horizontalSurfaces', 'Horizontal Surfaces')}</span>
             </div>
           </AccordionTrigger>
           <AccordionContent>
@@ -97,7 +99,7 @@ export function RoomDetailForm({
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
               <Square className="h-4 w-4 text-orange-600" />
-              <span>Vertikala Ytor</span>
+              <span>{t('rooms.verticalSurfaces', 'Vertical Surfaces')}</span>
             </div>
           </AccordionTrigger>
           <AccordionContent>
@@ -114,7 +116,7 @@ export function RoomDetailForm({
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-yellow-600" />
-              <span>Teknik & Installationer</span>
+              <span>{t('rooms.technicalAndInstallations', 'Technical & Installations')}</span>
             </div>
           </AccordionTrigger>
           <AccordionContent>
@@ -131,7 +133,7 @@ export function RoomDetailForm({
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-purple-600" />
-              <span>Smart Data</span>
+              <span>{t('rooms.smartData')}</span>
             </div>
           </AccordionTrigger>
           <AccordionContent>
@@ -151,7 +153,7 @@ export function RoomDetailForm({
             <AccordionTrigger className="hover:no-underline">
               <div className="flex items-center gap-2">
                 <ClipboardList className="h-4 w-4 text-indigo-600" />
-                <span>Uppgifter</span>
+                <span>{t('projectDetail.tasks')}</span>
               </div>
             </AccordionTrigger>
             <AccordionContent>
@@ -166,7 +168,7 @@ export function RoomDetailForm({
             <AccordionTrigger className="hover:no-underline">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-4 w-4 text-teal-600" />
-                <span>Inköpsordrar</span>
+                <span>{t('purchases.title')}</span>
               </div>
             </AccordionTrigger>
             <AccordionContent>
@@ -181,7 +183,7 @@ export function RoomDetailForm({
             <AccordionTrigger className="hover:no-underline">
               <div className="flex items-center gap-2">
                 <ImageIcon className="h-4 w-4 text-pink-600" />
-                <span>Bilder</span>
+                <span>{t('rooms.photos', 'Photos')}</span>
               </div>
             </AccordionTrigger>
             <AccordionContent>
@@ -198,7 +200,7 @@ export function RoomDetailForm({
           <div>
             <div className="flex items-center gap-2 mb-3">
               <MessageSquare className="h-4 w-4 text-gray-600" />
-              <Label className="text-sm font-medium">Kommentarer & Diskussion</Label>
+              <Label className="text-sm font-medium">{t('rooms.commentsAndDiscussion', 'Comments & Discussion')}</Label>
             </div>
             <CommentsSection
               entityId={room!.id}

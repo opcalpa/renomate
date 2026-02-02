@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Home, Loader2, Save, X, Trash2, Plus } from "lucide-react";
 import { RoomDetailForm } from "./RoomDetailForm";
 import { useRoomForm } from "./hooks/useRoomForm";
+import { useTranslation } from "react-i18next";
 import type { RoomDetailDialogProps } from "./types";
 
 export function RoomDetailDialog({
@@ -20,6 +21,7 @@ export function RoomDetailDialog({
   onRoomUpdated,
   isCreateMode = false,
 }: RoomDetailDialogProps) {
+  const { t } = useTranslation();
   const {
     formData,
     updateFormData,
@@ -44,12 +46,12 @@ export function RoomDetailDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md">
           <VisuallyHidden>
-            <DialogTitle>Laddar rumsdata</DialogTitle>
-            <DialogDescription>Väntar på att rumsdata ska laddas</DialogDescription>
+            <DialogTitle>{t('rooms.loadingRoomData', 'Loading room data')}</DialogTitle>
+            <DialogDescription>{t('rooms.waitingForRoomData', 'Waiting for room data to load')}</DialogDescription>
           </VisuallyHidden>
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">Laddar rumsdata...</p>
+            <p className="text-muted-foreground">{t('rooms.loadingRoomData', 'Loading room data')}...</p>
           </div>
         </DialogContent>
       </Dialog>
@@ -66,12 +68,12 @@ export function RoomDetailDialog({
             ) : (
               <Home className="h-5 w-5 text-primary" />
             )}
-            <DialogTitle>{isNewRoom ? "Skapa nytt rum" : "Rumsdetaljer"}</DialogTitle>
+            <DialogTitle>{isNewRoom ? t('floormap.createRoom') : t('floormap.roomDetails', 'Room details')}</DialogTitle>
           </div>
           <DialogDescription>
             {isNewRoom
-              ? "Fyll i uppgifter för det nya rummet"
-              : "Redigera rumsinformation och lägg till kommentarer"}
+              ? t('rooms.fillInNewRoomDetails', 'Fill in details for the new room')
+              : t('rooms.editRoomInfoAndComments', 'Edit room information and add comments')}
           </DialogDescription>
         </DialogHeader>
 
@@ -86,7 +88,7 @@ export function RoomDetailDialog({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 pt-4 border-t flex-shrink-0">
+        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t flex-shrink-0">
           <Button
             onClick={handleSave}
             disabled={saving || !formData.name.trim()}
@@ -95,19 +97,19 @@ export function RoomDetailDialog({
             {saving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isNewRoom ? "Skapar..." : "Sparar..."}
+                {isNewRoom ? t('common.creating', 'Creating...') : t('common.saving', 'Saving...')}
               </>
             ) : (
               <>
                 {isNewRoom ? (
                   <>
                     <Plus className="mr-2 h-4 w-4" />
-                    Skapa rum
+                    {t('floormap.createRoom')}
                   </>
                 ) : (
                   <>
                     <Save className="mr-2 h-4 w-4" />
-                    Spara ändringar
+                    {t('taskPanel.saveChanges')}
                   </>
                 )}
               </>
@@ -116,12 +118,12 @@ export function RoomDetailDialog({
           {!isNewRoom && (
             <Button variant="destructive" onClick={handleDelete} disabled={saving}>
               <Trash2 className="mr-2 h-4 w-4" />
-              Ta bort rum
+              {t('floormap.deleteRoom', 'Delete room')}
             </Button>
           )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             <X className="mr-2 h-4 w-4" />
-            {isNewRoom ? "Avbryt" : "Stäng"}
+            {isNewRoom ? t('common.cancel') : t('common.close', 'Close')}
           </Button>
         </div>
       </DialogContent>

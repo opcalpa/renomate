@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,8 @@ import {
 } from "@/components/ui/popover";
 
 interface ComboboxFretextProps {
-  suggestions: string[];
+  suggestions?: string[];
+  suggestionKeys?: string[];
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -29,16 +31,27 @@ interface ComboboxFretextProps {
 
 export function ComboboxFretext({
   suggestions,
+  suggestionKeys,
   value,
   onChange,
-  placeholder = "Välj eller skriv...",
-  searchPlaceholder = "Sök eller skriv nytt...",
-  emptyText = "Inga förslag. Tryck Enter för att använda.",
+  placeholder,
+  searchPlaceholder,
+  emptyText,
   className,
   id,
 }: ComboboxFretextProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
+
+  const resolvedPlaceholder = placeholder || t('common.selectOrType', 'Select or type...');
+  const resolvedSearchPlaceholder = searchPlaceholder || t('common.searchOrType', 'Search or type...');
+  const resolvedEmptyText = emptyText || t('common.noSuggestionsEnterToUse', 'No suggestions. Press Enter to use.');
+
+  // Resolve suggestions: either plain strings or i18n keys
+  const resolvedSuggestions = suggestionKeys
+    ? suggestionKeys.map((key) => t(key))
+    : (suggestions || []);
 
   const handleSelect = (selectedValue: string) => {
     onChange(selectedValue);
@@ -56,7 +69,7 @@ export function ComboboxFretext({
   };
 
   // Filter suggestions based on input
-  const filteredSuggestions = suggestions.filter((suggestion) =>
+  const filteredSuggestions = resolvedSuggestions.filter((suggestion) =>
     suggestion.toLowerCase().includes(inputValue.toLowerCase())
   );
 
@@ -71,7 +84,7 @@ export function ComboboxFretext({
           className={cn("w-full justify-between", className)}
         >
           <span className={cn(!value && "text-muted-foreground")}>
-            {value || placeholder}
+            {value || resolvedPlaceholder}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -79,7 +92,7 @@ export function ComboboxFretext({
       <PopoverContent className="w-full p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder={searchPlaceholder}
+            placeholder={resolvedSearchPlaceholder}
             value={inputValue}
             onValueChange={setInputValue}
             onKeyDown={handleInputKeyDown}
@@ -88,7 +101,7 @@ export function ComboboxFretext({
             {filteredSuggestions.length === 0 && inputValue && (
               <CommandEmpty>
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground">{emptyText}</p>
+                  <p className="text-sm text-muted-foreground">{resolvedEmptyText}</p>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -99,7 +112,7 @@ export function ComboboxFretext({
                       setInputValue("");
                     }}
                   >
-                    Använd "{inputValue.trim()}"
+                    {t('common.use', 'Use')} "{inputValue.trim()}"
                   </Button>
                 </div>
               </CommandEmpty>

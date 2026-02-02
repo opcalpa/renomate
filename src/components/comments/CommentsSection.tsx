@@ -1,12 +1,14 @@
 import { useEffect, useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Trash2, MessageSquare, Camera, X } from "lucide-react";
+import { Loader2, Send, Trash2, MessageSquare, Camera, X, Languages, Lock } from "lucide-react";
+import { useCommentTranslation } from "@/hooks/useCommentTranslation";
 import { formatDistanceToNow } from "date-fns";
-import { sv } from "date-fns/locale";
+import { getDateLocale } from "@/lib/dateFnsLocale";
 
 interface Comment {
   id: string;
@@ -42,7 +44,8 @@ interface CommentsSectionProps {
   entityId?: string;
   entityType?: string;
   drawingObjectId?: string;
-  projectId: string;
+  projectId?: string;
+  chatMode?: boolean;
 }
 
 // Compress image function
@@ -92,7 +95,8 @@ const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 
   });
 };
 
-export const CommentsSection = ({ taskId, materialId, entityId, entityType, drawingObjectId, projectId }: CommentsSectionProps) => {
+export const CommentsSection = ({ taskId, materialId, entityId, entityType, drawingObjectId, projectId, chatMode = false }: CommentsSectionProps) => {
+  const { t, i18n } = useTranslation();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
@@ -104,6 +108,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { translationsEnabled, translating, toggleTranslations, getTranslatedContent, targetLang } = useCommentTranslation();
 
   // Handle image selection
   const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -224,6 +229,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
   };
 
   const fetchTeamMembers = async () => {
+    if (!projectId) return;
     try {
       const members: TeamMember[] = [];
       
@@ -265,8 +271,10 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
         .eq("project_id", projectId);
 
       if (sharesData) {
+        const existingIds = new Set(members.map(m => m.id));
         sharesData.forEach((share: any) => {
-          if (share.profiles) {
+          if (share.profiles && !existingIds.has(share.profiles.id)) {
+            existingIds.add(share.profiles.id);
             members.push({
               id: share.profiles.id,
               name: share.profiles.name,
@@ -317,8 +325,8 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
     } catch (error: any) {
       console.error("Error fetching comments:", error);
       toast({
-        title: "Error",
-        description: "Failed to load comments",
+        title: t('errors.generic'),
+        description: t('comments.loadError'),
         variant: "destructive",
       });
     } finally {
@@ -455,15 +463,15 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
       setSelectedImages([]);
       setImagePreviews([]);
       fetchComments();
-      
+
       toast({
-        title: "Comment posted",
-        description: "Your comment has been added",
+        title: chatMode ? t('messaging.messageSent') : t('comments.commentPosted'),
+        description: chatMode ? t('messaging.messageSentDescription') : t('comments.commentPostedDescription'),
       });
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to post comment",
+        title: t('errors.generic'),
+        description: error.message || t('comments.postError'),
         variant: "destructive",
       });
     } finally {
@@ -472,7 +480,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    if (!confirm("Are you sure you want to delete this comment?")) return;
+    if (!confirm(chatMode ? t('messaging.confirmDelete') : t('comments.confirmDeleteComment'))) return;
 
     try {
       const { error } = await supabase
@@ -483,15 +491,15 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
       if (error) throw error;
 
       toast({
-        title: "Comment deleted",
-        description: "The comment has been removed",
+        title: t('comments.commentDeleted'),
+        description: t('comments.commentDeletedDescription'),
       });
 
       fetchComments();
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to delete comment",
+        title: t('errors.generic'),
+        description: error.message || t('comments.deleteError'),
         variant: "destructive",
       });
     }
@@ -509,18 +517,183 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
     );
   }
 
+  if (chatMode) {
+    return (
+      <div className="space-y-3">
+        {/* Private notice */}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Lock className="h-3 w-3" />
+          <span>{t('messaging.privateNotice')}</span>
+        </div>
+
+        {/* Messages list — chat bubble style */}
+        <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+          {comments.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              {t('messaging.noMessages')}
+            </p>
+          ) : (
+            comments.map((comment) => {
+              const isOwn = comment.created_by_user_id === currentUserId;
+              return (
+                <div key={comment.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group`}>
+                  <div className={`max-w-[80%] space-y-1 ${isOwn ? 'items-end' : 'items-start'}`}>
+                    <div
+                      className={`rounded-2xl px-3.5 py-2 text-sm ${
+                        isOwn
+                          ? 'bg-primary text-primary-foreground rounded-br-md'
+                          : 'bg-muted rounded-bl-md'
+                      }`}
+                    >
+                      {!isOwn && (
+                        <p className="text-xs font-medium mb-0.5 opacity-70">{comment.creator?.name}</p>
+                      )}
+                      <p className="whitespace-pre-wrap break-words">
+                        {getTranslatedContent(comment.id, comment.content)}
+                      </p>
+                    </div>
+                    {/* Images */}
+                    {comment.images && comment.images.length > 0 && (
+                      <div className={`flex flex-wrap gap-1.5 ${isOwn ? 'justify-end' : ''}`}>
+                        {comment.images.map((image) => (
+                          <img
+                            key={image.id}
+                            src={image.url}
+                            alt={image.filename}
+                            className="max-w-28 max-h-28 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => window.open(image.url, '_blank')}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <div className={`flex items-center gap-2 ${isOwn ? 'justify-end' : ''}`}>
+                      <span className="text-[10px] text-muted-foreground">
+                        {formatDistanceToNow(new Date(comment.created_at), {
+                          addSuffix: true,
+                          locale: getDateLocale(i18n.language),
+                        })}
+                      </span>
+                      {isOwn && (
+                        <button
+                          type="button"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteComment(comment.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Image previews */}
+        {imagePreviews.length > 0 && (
+          <div className="flex flex-wrap gap-2 p-2 bg-muted rounded-md">
+            {imagePreviews.map((preview, index) => (
+              <div key={index} className="relative group">
+                <img
+                  src={preview}
+                  alt={`Preview ${index + 1}`}
+                  className="w-14 h-14 object-cover rounded-lg border"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeImage(index)}
+                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Message input */}
+        <div className="flex items-end gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 shrink-0"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Camera className="h-4 w-4" />
+          </Button>
+          <Textarea
+            ref={textareaRef}
+            placeholder={t('messaging.placeholder')}
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            className="flex-1 min-h-[40px] max-h-24 text-sm resize-none rounded-2xl"
+            rows={1}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                handlePostComment();
+              }
+            }}
+          />
+          <Button
+            onClick={handlePostComment}
+            disabled={posting || !newComment.trim()}
+            size="icon"
+            className="h-9 w-9 shrink-0 rounded-full"
+          >
+            {posting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm font-medium">
         <MessageSquare className="h-4 w-4" />
-        <span>Comments ({comments.length})</span>
+        <span>{t('comments.title')} ({comments.length})</span>
+        {comments.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs ml-auto"
+            disabled={translating}
+            onClick={() => toggleTranslations(comments)}
+          >
+            {translating ? (
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+            ) : (
+              <Languages className="h-3 w-3 mr-1" />
+            )}
+            {translating
+              ? t('comments.translating', 'Translating...')
+              : translationsEnabled
+                ? t('comments.showOriginal', 'Show original')
+                : t('comments.translateAll', { language: t(`languages.${targetLang}`, targetLang), defaultValue: `Translate all to ${targetLang}` })}
+          </Button>
+        )}
       </div>
 
       {/* Comments list */}
       <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
         {comments.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
-            No comments yet. Be the first to comment!
+            {t('comments.noComments')}
           </p>
         ) : (
           comments.map((comment) => (
@@ -534,14 +707,14 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">{comment.creator?.name}</span>
                   <span className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(comment.created_at), { 
+                    {formatDistanceToNow(new Date(comment.created_at), {
                       addSuffix: true,
-                      locale: sv 
+                      locale: getDateLocale(i18n.language)
                     })}
                   </span>
                 </div>
                 <p className="text-sm whitespace-pre-wrap break-words">
-                  {comment.content}
+                  {getTranslatedContent(comment.id, comment.content)}
                 </p>
 
                 {/* Comment images */}
@@ -567,7 +740,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
                     onClick={() => handleDeleteComment(comment.id)}
                   >
                     <Trash2 className="h-3 w-3 mr-1" />
-                    Delete
+                    {t('comments.deleteButton')}
                   </Button>
                 )}
               </div>
@@ -580,10 +753,10 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
       <div className="space-y-2 relative">
         <Textarea
           ref={textareaRef}
-          placeholder="Write a comment... (use @ to mention team members)"
+          placeholder={t('comments.placeholder')}
           value={newComment}
           onChange={handleTextChange}
-          className="min-h-20 resize-none"
+          className="w-full min-h-20 text-base resize-none"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
               e.preventDefault();
@@ -591,7 +764,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
             }
           }}
         />
-        
+
         {/* Mention suggestions */}
         {showMentions && filteredMembers.length > 0 && (
           <div className="absolute bottom-full mb-1 w-full bg-popover border rounded-md shadow-lg max-h-40 overflow-y-auto z-10">
@@ -664,7 +837,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
               className="h-7 px-2 text-xs"
             >
               <Camera className="h-3 w-3 mr-1" />
-              Ta foto
+              {t('comments.takePhoto')}
             </Button>
             <Button
               type="button"
@@ -674,10 +847,10 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
               className="h-7 px-2 text-xs"
             >
               <Camera className="h-3 w-3 mr-1" />
-              Lägg till bild
+              {t('comments.addImage')}
             </Button>
             <span className="text-xs text-muted-foreground">
-              Cmd+Enter för att posta
+              {t('comments.cmdEnterToPost')}
             </span>
           </div>
           <Button
@@ -690,7 +863,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
             ) : (
               <Send className="h-4 w-4 mr-2" />
             )}
-            Post Comment
+            {t('comments.postComment')}
           </Button>
         </div>
       </div>

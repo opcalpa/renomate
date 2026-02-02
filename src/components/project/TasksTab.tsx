@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,12 +17,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, DollarSign, Tag, LayoutGrid, Table as TableIcon, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Loader2, Filter, CheckSquare, Trash2, X } from "lucide-react";
+import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, DollarSign, Tag, LayoutGrid, Table as TableIcon, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Loader2, Filter, CheckSquare, Trash2, X, ShoppingCart } from "lucide-react";
 import { DEFAULT_COST_CENTERS, getCostCenterIcon, getCostCenterLabel } from "@/lib/costCenters";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import MaterialsList from "./MaterialsList";
 import { EntityPhotoGallery } from "@/components/shared/EntityPhotoGallery";
 import { CommentsSection } from "@/components/comments/CommentsSection";
+import { TaskFilesList } from "./TaskFilesList";
 import { Separator } from "@/components/ui/separator";
 
 interface ChecklistItem {
@@ -78,9 +80,12 @@ interface TaskDependency {
 interface TasksTabProps {
   projectId: string;
   tasksScope?: 'all' | 'assigned';
+  openEntityId?: string | null;
+  onEntityOpened?: () => void;
 }
 
-const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
+const TasksTab = ({ projectId, tasksScope = 'all', openEntityId, onEntityOpened }: TasksTabProps) => {
+  const { t } = useTranslation();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -95,6 +100,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
   const [newStakeholderRole, setNewStakeholderRole] = useState<'contractor' | 'client' | 'other'>('contractor');
   const [newStakeholderCategory, setNewStakeholderCategory] = useState("");
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskAssignee, setNewTaskAssignee] = useState("");
   const [newTaskDescription, setNewTaskDescription] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("medium");
   const [newTaskStartDate, setNewTaskStartDate] = useState("");
@@ -119,6 +125,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
   
   // View mode
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   
   // Table sorting
   const [sortColumn, setSortColumn] = useState<string>('created_at');
@@ -127,7 +134,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
   // Column order for Kanban view
   const [columnOrder, setColumnOrder] = useState<string[]>(() => {
     const saved = localStorage.getItem(`kanban-column-order-${projectId}`);
-    return saved ? JSON.parse(saved) : ['discovery', 'to_do', 'in_progress', 'on_hold', 'doing', 'blocked', 'completed', 'done', 'scrapped'];
+    return saved ? JSON.parse(saved) : ['planned', 'to_do', 'in_progress', 'waiting', 'completed', 'cancelled'];
   });
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   
@@ -142,10 +149,20 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
   // Drag and drop
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
 
+  // Purchase Orders for edit dialog
+  const [editTaskMaterials, setEditTaskMaterials] = useState<{ id: string; name: string; quantity: number; unit: string; price_per_unit: number | null; price_total: number | null; status: string }[]>([]);
+  const [poDialogOpen, setPoDialogOpen] = useState(false);
+  const [creatingPO, setCreatingPO] = useState(false);
+  const [poName, setPoName] = useState("");
+  const [poQuantity, setPoQuantity] = useState("1");
+  const [poUnit, setPoUnit] = useState("pcs");
+  const [poPricePerUnit, setPoPricePerUnit] = useState("");
+
   useEffect(() => {
     fetchTasks();
     checkPermissions();
     fetchTeamMembers();
+    fetchStakeholders();
     fetchTaskDependencies();
     fetchRooms();
   }, [projectId]);
@@ -156,6 +173,27 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
       fetchTasks();
     }
   }, [currentProfileId, tasksScope]);
+
+  // Fetch materials when editing a task
+  useEffect(() => {
+    if (editingTask) {
+      fetchEditTaskMaterials(editingTask.id);
+    }
+  }, [editingTask?.id]);
+
+  // Auto-open a specific task from notification deep link or feed navigation
+  useEffect(() => {
+    if (!openEntityId || loading) return;
+    const task = tasks.find((t) => t.id === openEntityId);
+    if (task) {
+      setEditingTask(task);
+      setEditDialogOpen(true);
+      onEntityOpened?.();
+    } else if (tasks.length > 0) {
+      // Entity not found in loaded tasks — clear to avoid stale state
+      onEntityOpened?.();
+    }
+  }, [openEntityId, loading, tasks]);
 
   const fetchRooms = async () => {
     try {
@@ -218,31 +256,30 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
 
   const fetchTasks = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("tasks")
         .select("*")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false });
+        .eq("project_id", projectId);
+
+      // Filter at DB level when scope is 'assigned'
+      if (tasksScope === 'assigned' && currentProfileId) {
+        query = query.eq("assigned_to_stakeholder_id", currentProfileId);
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
 
       // Map database fields to our interface (assigned_to_contractor_id is deprecated, use assigned_to_stakeholder_id)
-      let mappedTasks = (data || []).map((task: any) => ({
+      const mappedTasks = (data || []).map((task: any) => ({
         ...task,
         assigned_to_stakeholder_id: task.assigned_to_stakeholder_id || task.assigned_to_contractor_id || null,
       }));
 
-      // Filter to only assigned tasks if scope is 'assigned'
-      if (tasksScope === 'assigned' && currentProfileId) {
-        mappedTasks = mappedTasks.filter(
-          (task: any) => task.assigned_to_stakeholder_id === currentProfileId
-        );
-      }
-
       setTasks(mappedTasks as Task[]);
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -345,20 +382,22 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
           budget: newTaskBudget ? parseFloat(newTaskBudget) : null,
           cost_center: newTaskCostCenter || (newTaskCostCenters.length > 0 ? newTaskCostCenters[0] : null),
           cost_centers: newTaskCostCenters.length > 0 ? newTaskCostCenters : null,
+          assigned_to_stakeholder_id: newTaskAssignee && newTaskAssignee !== "unassigned" ? newTaskAssignee : null,
           created_by_user_id: profile.id,
         });
 
       if (error) throw error;
 
       toast({
-        title: "Task created!",
-        description: "The task has been added to your project.",
+        title: t('tasks.taskCreated'),
+        description: t('tasks.taskCreatedDescription'),
       });
 
       setDialogOpen(false);
       setNewTaskTitle("");
       setNewTaskDescription("");
       setNewTaskPriority("medium");
+      setNewTaskAssignee("");
       setNewTaskStartDate("");
       setNewTaskFinishDate("");
       setNewTaskRoomId("");
@@ -370,7 +409,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
       fetchTasks();
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -410,8 +449,8 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
       if (error) throw error;
 
       toast({
-        title: "Task updated!",
-        description: "The task has been updated successfully.",
+        title: t('tasks.taskUpdated'),
+        description: t('tasks.taskUpdatedDescription'),
       });
 
       setEditDialogOpen(false);
@@ -419,7 +458,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
       fetchTasks();
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -440,14 +479,14 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
       if (error) throw error;
 
       toast({
-        title: "Dependency added",
-        description: "Task dependency has been created.",
+        title: t('tasks.dependencyAdded'),
+        description: t('tasks.dependencyAddedDescription'),
       });
 
       fetchTaskDependencies();
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -464,17 +503,80 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
       if (error) throw error;
 
       toast({
-        title: "Dependency removed",
-        description: "Task dependency has been removed.",
+        title: t('tasks.dependencyRemoved'),
+        description: t('tasks.dependencyRemovedDescription'),
       });
 
       fetchTaskDependencies();
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
+    }
+  };
+
+  const fetchEditTaskMaterials = async (taskId: string) => {
+    const { data } = await supabase
+      .from("materials")
+      .select("id, name, quantity, unit, price_per_unit, price_total, status")
+      .eq("task_id", taskId);
+    setEditTaskMaterials(data || []);
+  };
+
+  const handleCreatePurchaseOrder = async () => {
+    if (!editingTask || !poName.trim()) return;
+    setCreatingPO(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!profile) throw new Error("Profile not found");
+
+      const { error } = await supabase
+        .from("materials")
+        .insert({
+          name: poName.trim(),
+          quantity: parseFloat(poQuantity) || 1,
+          unit: poUnit,
+          price_per_unit: poPricePerUnit ? parseFloat(poPricePerUnit) : null,
+          status: "submitted",
+          task_id: editingTask.id,
+          project_id: projectId,
+          created_by_user_id: profile.id,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: t('common.success', 'Success'),
+        description: t('taskPanel.poCreated', 'Purchase order created and linked to task'),
+      });
+
+      setPoName("");
+      setPoDescription("");
+      setPoQuantity("1");
+      setPoUnit("pcs");
+      setPoPricePerUnit("");
+      setPoDialogOpen(false);
+      fetchEditTaskMaterials(editingTask.id);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Error creating purchase order:", error);
+      toast({
+        title: t('common.error', 'Error'),
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingPO(false);
     }
   };
 
@@ -489,12 +591,12 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
 
       fetchTasks();
       toast({
-        title: "Status updated!",
-        description: `Task status changed to ${newStatus.replace('_', ' ')}.`,
+        title: t('tasks.statusUpdated'),
+        description: t('tasks.statusUpdatedDescription', { status: newStatus.replace('_', ' ') }),
       });
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -504,14 +606,10 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "completed":
-      case "done":
         return <CheckCircle2 className="h-4 w-4 text-success" />;
       case "in_progress":
-      case "doing":
         return <Clock className="h-4 w-4 text-warning" />;
-      case "blocked":
-        return <XCircle className="h-4 w-4 text-destructive" />;
-      case "on_hold":
+      case "waiting":
         return <Clock className="h-4 w-4 text-muted-foreground" />;
       default:
         return <Circle className="h-4 w-4 text-muted-foreground" />;
@@ -581,17 +679,14 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
   };
 
   // Group tasks by status (supporting both old and new status values)
-  const statusOrder = ['discovery', 'to_do', 'in_progress', 'on_hold', 'doing', 'blocked', 'completed', 'done', 'scrapped'] as const;
-  const statusLabels = {
-    discovery: 'Discovery',
-    to_do: 'To Do',
-    in_progress: 'In Progress',
-    on_hold: 'On Hold',
-    doing: 'Doing',
-    blocked: 'Blocked',
-    completed: 'Completed',
-    done: 'Done',
-    scrapped: 'Scrapped'
+  const statusOrder = ['planned', 'to_do', 'in_progress', 'waiting', 'completed', 'cancelled'] as const;
+  const statusLabels: Record<string, string> = {
+    planned: t('statuses.planned', 'Planned'),
+    to_do: t('statuses.toDo'),
+    in_progress: t('statuses.inProgress'),
+    waiting: t('statuses.waiting', 'Waiting'),
+    completed: t('statuses.completed'),
+    cancelled: t('statuses.cancelled', 'Cancelled'),
   };
   
   // Group tasks by status and find any unknown statuses
@@ -745,14 +840,14 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
       if (error) throw error;
 
       toast({
-        title: "Task updated",
-        description: `Task moved to ${statusLabels[newStatus as keyof typeof statusLabels]}`,
+        title: t('tasks.taskUpdated'),
+        description: t('tasks.taskMovedTo', { status: statusLabels[newStatus as keyof typeof statusLabels] }),
       });
 
       fetchTasks();
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -805,7 +900,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
       >
         <div className="space-y-2">
           {/* Task Title */}
-          <p className={`text-sm font-medium leading-tight ${task.status === "done" || task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
+          <p className={`text-sm font-medium leading-tight ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
             {task.title}
           </p>
           
@@ -853,9 +948,9 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
         {/* Header with title */}
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-medium">Tasks</h3>
+            <h3 className="text-lg font-medium">{t('tasks.tasks')}</h3>
             <p className="text-sm text-muted-foreground">
-              Showing {filteredTasks.length} of {tasks.length} tasks
+              {t('tasks.showingTasks', { filtered: filteredTasks.length, total: tasks.length })}
             </p>
           </div>
         </div>
@@ -872,14 +967,33 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
             </ToggleGroupItem>
           </ToggleGroup>
 
-          <div className="w-px h-6 bg-border" />
+          {/* Mobile filter toggle */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="md:hidden h-9"
+            onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+          >
+            <Filter className="h-3 w-3 mr-2" />
+            {t('tasks.filter', 'Filter')}
+            {(filterStatuses.size + filterAssignees.size + filterRooms.size + filterCostCenters.size) > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                {filterStatuses.size + filterAssignees.size + filterRooms.size + filterCostCenters.size}
+              </Badge>
+            )}
+            <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${mobileFiltersOpen ? 'rotate-180' : ''}`} />
+          </Button>
 
+          <div className="w-px h-6 bg-border hidden md:block" />
+
+          {/* Filter popovers - collapsible on mobile */}
+          <div className={`${mobileFiltersOpen ? 'flex' : 'hidden'} md:flex items-center gap-3 flex-wrap w-full md:w-auto`}>
           {/* Status Filter */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="h-9">
                 <Filter className="h-3 w-3 mr-2" />
-                Status
+                {t('tasks.status')}
                 {filterStatuses.size > 0 && (
                   <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{filterStatuses.size}</Badge>
                 )}
@@ -911,7 +1025,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="h-9">
                 <Filter className="h-3 w-3 mr-2" />
-                Assignee
+                {t('tasks.assignee')}
                 {filterAssignees.size > 0 && (
                   <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{filterAssignees.size}</Badge>
                 )}
@@ -925,7 +1039,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                     checked={filterAssignees.has("unassigned")}
                     onCheckedChange={() => toggleFilterValue(setFilterAssignees, "unassigned")}
                   />
-                  <span className="flex-1">Unassigned</span>
+                  <span className="flex-1">{t('common.unassigned')}</span>
                   <span className="text-xs text-muted-foreground">{getAssigneeCount("unassigned")}</span>
                 </label>
                 {teamMembers.map(member => (
@@ -947,7 +1061,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="h-9">
                 <Filter className="h-3 w-3 mr-2" />
-                Room
+                {t('tasks.room')}
                 {filterRooms.size > 0 && (
                   <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{filterRooms.size}</Badge>
                 )}
@@ -961,7 +1075,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                     checked={filterRooms.has("unassigned")}
                     onCheckedChange={() => toggleFilterValue(setFilterRooms, "unassigned")}
                   />
-                  <span className="flex-1">No Room</span>
+                  <span className="flex-1">{t('tasks.noRoom')}</span>
                   <span className="text-xs text-muted-foreground">{getRoomCount("unassigned")}</span>
                 </label>
                 {rooms.map(room => (
@@ -983,7 +1097,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="h-9">
                 <Filter className="h-3 w-3 mr-2" />
-                Cost Center
+                {t('tasks.costCenter')}
                 {filterCostCenters.size > 0 && (
                   <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{filterCostCenters.size}</Badge>
                 )}
@@ -997,7 +1111,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                     checked={filterCostCenters.has("none")}
                     onCheckedChange={() => toggleFilterValue(setFilterCostCenters, "none")}
                   />
-                  <span className="flex-1">None</span>
+                  <span className="flex-1">{t('common.none')}</span>
                   <span className="text-xs text-muted-foreground">{getCostCenterCount("none")}</span>
                 </label>
                 {DEFAULT_COST_CENTERS.map(cc => {
@@ -1041,9 +1155,10 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                 setFilterCostCenters(new Set());
               }}
             >
-              Clear filters
+              {t('tasks.clearFilters')}
             </Button>
           )}
+          </div>{/* end filter popovers wrapper */}
 
           {/* Spacer to push Add Task to the right */}
           <div className="flex-1" />
@@ -1053,54 +1168,70 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Task
+                {t('tasks.addTask')}
               </Button>
             </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
             <DialogHeader className="flex-shrink-0">
-              <DialogTitle>Add New Task</DialogTitle>
+              <DialogTitle>{t('tasks.addNewTask')}</DialogTitle>
               <DialogDescription>
-                Create a new task for your renovation project
+                {t('tasks.addNewTaskDescription')}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateTask} className="flex flex-col flex-1 overflow-hidden">
               <div className="space-y-4 overflow-y-auto flex-1 pr-2">
               <div className="space-y-2">
-                <Label htmlFor="task-title">Task Title</Label>
+                <Label htmlFor="task-title">{t('tasks.taskTitle')}</Label>
                 <Input
                   id="task-title"
-                  placeholder="Install new cabinets"
+                  placeholder={t('tasks.taskTitlePlaceholder')}
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="task-description">Description (Optional)</Label>
+                <Label htmlFor="task-description">{t('tasks.descriptionOptional')}</Label>
                 <Textarea
                   id="task-description"
-                  placeholder="Additional details about this task"
+                  placeholder={t('tasks.descriptionPlaceholder')}
                   value={newTaskDescription}
                   onChange={(e) => setNewTaskDescription(e.target.value)}
                   rows={3}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="task-priority">Priority</Label>
+                <Label htmlFor="task-priority">{t('tasks.priority')}</Label>
                 <Select value={newTaskPriority} onValueChange={setNewTaskPriority}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="low">{t('tasks.priorityLow')}</SelectItem>
+                    <SelectItem value="medium">{t('tasks.priorityMedium')}</SelectItem>
+                    <SelectItem value="high">{t('tasks.priorityHigh')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="task-assignee">{t('tasks.assignTo')}</Label>
+                <Select value={newTaskAssignee} onValueChange={setNewTaskAssignee}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('common.unassigned')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">{t('common.unassigned')}</SelectItem>
+                    {teamMembers.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.name} {member.role ? `(${member.role})` : ''}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="task-start-date">Start Date (Optional)</Label>
+                  <Label htmlFor="task-start-date">{t('tasks.startDateOptional')}</Label>
                   <DatePicker
                     date={newTaskStartDate ? new Date(newTaskStartDate) : undefined}
                     onDateChange={(date) => setNewTaskStartDate(date ? date.toISOString().split('T')[0] : '')}
@@ -1108,7 +1239,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="task-finish-date">Finish Date (Optional)</Label>
+                  <Label htmlFor="task-finish-date">{t('tasks.finishDateOptional')}</Label>
                   <DatePicker
                     date={newTaskFinishDate ? new Date(newTaskFinishDate) : undefined}
                     onDateChange={(date) => setNewTaskFinishDate(date ? date.toISOString().split('T')[0] : '')}
@@ -1117,10 +1248,10 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="task-room">Room (Optional)</Label>
+                <Label htmlFor="task-room">{t('tasks.roomOptional')}</Label>
                 <Select value={newTaskRoomId} onValueChange={setNewTaskRoomId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a room" />
+                    <SelectValue placeholder={t('tasks.selectRoom')} />
                   </SelectTrigger>
                   <SelectContent>
                     {rooms.map((room) => (
@@ -1132,7 +1263,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="task-budget">Budget (Optional)</Label>
+                <Label htmlFor="task-budget">{t('tasks.budgetOptional')}</Label>
                 <Input
                   id="task-budget"
                   type="number"
@@ -1143,7 +1274,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Cost Centers (Optional - Multiple)</Label>
+                <Label>{t('tasks.costCentersOptional')}</Label>
                 <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                   {DEFAULT_COST_CENTERS.map((cc) => {
                     const Icon = cc.icon;
@@ -1207,12 +1338,12 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                   className="w-full"
                 >
                   <Plus className="h-3 w-3 mr-2" />
-                  Add Custom Cost Center
+                  {t('tasks.addCustomCostCenter')}
                 </Button>
                 {showCustomCostCenter && (
                   <div className="flex gap-2 mt-2">
                     <Input
-                      placeholder="Enter custom cost center"
+                      placeholder={t('tasks.enterCustomCostCenter')}
                       value={customCostCenterValue}
                       onChange={(e) => setCustomCostCenterValue(e.target.value)}
                       onKeyDown={(e) => {
@@ -1242,7 +1373,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                         }
                       }}
                     >
-                      Add
+                      {t('common.add')}
                     </Button>
                     <Button
                       type="button"
@@ -1252,7 +1383,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                         setCustomCostCenterValue("");
                       }}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 )}
@@ -1265,10 +1396,10 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                   {creating ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Adding...
+                      {t('tasks.adding')}
                     </>
                   ) : (
-                    "Add Task"
+                    t('tasks.addTask')
                   )}
                 </Button>
               </div>
@@ -1279,16 +1410,16 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] h-[90vh] flex flex-col p-0">
             <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-2">
-              <DialogTitle>Edit Task</DialogTitle>
+              <DialogTitle>{t('tasks.editTask')}</DialogTitle>
               <DialogDescription>
-                Update task details
+                {t('tasks.editTaskDescription')}
               </DialogDescription>
             </DialogHeader>
             {editingTask && (
               <form onSubmit={handleEditTask} className="flex flex-col flex-1 min-h-0 px-6">
                 <div className="space-y-4 overflow-y-auto flex-1 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-task-title">Task Title</Label>
+                  <Label htmlFor="edit-task-title">{t('tasks.taskTitle')}</Label>
                   <Input
                     id="edit-task-title"
                     value={editingTask.title}
@@ -1297,7 +1428,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-task-description">Description</Label>
+                  <Label htmlFor="edit-task-description">{t('tasks.description')}</Label>
                   <Textarea
                     id="edit-task-description"
                     value={editingTask.description || ""}
@@ -1307,7 +1438,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-task-status">Status</Label>
+                    <Label htmlFor="edit-task-status">{t('tasks.status')}</Label>
                     <Select 
                       value={editingTask.status} 
                       onValueChange={(value) => setEditingTask({ ...editingTask, status: value })}
@@ -1316,20 +1447,17 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="discovery">Discovery</SelectItem>
-                        <SelectItem value="to_do">To Do</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="on_hold">On Hold</SelectItem>
-                        <SelectItem value="doing">Doing</SelectItem>
-                        <SelectItem value="blocked">Blocked</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="done">Done</SelectItem>
-                        <SelectItem value="scrapped">Scrapped</SelectItem>
+                        <SelectItem value="planned">{t('statuses.planned', 'Planned')}</SelectItem>
+                        <SelectItem value="to_do">{t('statuses.toDo')}</SelectItem>
+                        <SelectItem value="in_progress">{t('statuses.inProgress')}</SelectItem>
+                        <SelectItem value="waiting">{t('statuses.waiting')}</SelectItem>
+                        <SelectItem value="completed">{t('statuses.completed')}</SelectItem>
+                        <SelectItem value="cancelled">{t('statuses.cancelled')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-task-priority">Priority</Label>
+                    <Label htmlFor="edit-task-priority">{t('tasks.priority')}</Label>
                     <Select 
                       value={editingTask.priority} 
                       onValueChange={(value) => setEditingTask({ ...editingTask, priority: value })}
@@ -1338,14 +1466,14 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="low">{t('tasks.priorityLow')}</SelectItem>
+                        <SelectItem value="medium">{t('tasks.priorityMedium')}</SelectItem>
+                        <SelectItem value="high">{t('tasks.priorityHigh')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-task-assignee">Assign To</Label>
+                    <Label htmlFor="edit-task-assignee">{t('tasks.assignTo')}</Label>
                     <Select
                       value={editingTask.assigned_to_stakeholder_id || "unassigned"}
                       onValueChange={(value) => 
@@ -1356,10 +1484,10 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Unassigned" />
+                        <SelectValue placeholder={t('common.unassigned')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        <SelectItem value="unassigned">{t('common.unassigned')}</SelectItem>
                         {teamMembers.map((member) => (
                           <SelectItem key={member.id} value={member.id}>
                             {member.name} {member.role ? `(${member.role})` : ''}
@@ -1370,7 +1498,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-task-progress">Progress: {editingTask.progress}%</Label>
+                  <Label htmlFor="edit-task-progress">{t('tasks.progress')}: {editingTask.progress}%</Label>
                   <Slider
                     id="edit-task-progress"
                     min={0}
@@ -1383,7 +1511,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-task-start-date">Start Date</Label>
+                    <Label htmlFor="edit-task-start-date">{t('tasks.startDate')}</Label>
                     <DatePicker
                       date={editingTask.start_date ? new Date(editingTask.start_date) : undefined}
                       onDateChange={(date) => setEditingTask({ ...editingTask, start_date: date ? date.toISOString().split('T')[0] : null })}
@@ -1391,7 +1519,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-task-finish-date">Finish Date</Label>
+                    <Label htmlFor="edit-task-finish-date">{t('tasks.finishDate')}</Label>
                     <DatePicker
                       date={editingTask.finish_date ? new Date(editingTask.finish_date) : undefined}
                       onDateChange={(date) => setEditingTask({ ...editingTask, finish_date: date ? date.toISOString().split('T')[0] : null })}
@@ -1400,7 +1528,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-task-room">Room</Label>
+                  <Label htmlFor="edit-task-room">{t('tasks.room')}</Label>
                   <Select
                     value={editingTask.room_id || "none"}
                     onValueChange={(value) => 
@@ -1411,10 +1539,10 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="No room" />
+                      <SelectValue placeholder={t('tasks.noRoom')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No room</SelectItem>
+                      <SelectItem value="none">{t('tasks.noRoom')}</SelectItem>
                       {rooms.map((room) => (
                         <SelectItem key={room.id} value={room.id}>
                           {room.name}
@@ -1425,7 +1553,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-task-budget">Budget</Label>
+                    <Label htmlFor="edit-task-budget">{t('tasks.budget')}</Label>
                     <Input
                       id="edit-task-budget"
                       type="number"
@@ -1436,7 +1564,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-task-ordered">Ordered</Label>
+                    <Label htmlFor="edit-task-ordered">{t('tasks.ordered')}</Label>
                     <Input
                       id="edit-task-ordered"
                       type="number"
@@ -1447,7 +1575,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-task-paid">Paid</Label>
+                    <Label htmlFor="edit-task-paid">{t('tasks.paid')}</Label>
                     <Input
                       id="edit-task-paid"
                       type="number"
@@ -1461,7 +1589,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                 {editingTask.budget && (
                   <>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-task-payment-status">Payment Status</Label>
+                      <Label htmlFor="edit-task-payment-status">{t('tasks.paymentStatus')}</Label>
                       <Select
                         value={editingTask.payment_status || "not_paid"}
                         onValueChange={(value) => {
@@ -1476,17 +1604,17 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="not_paid">Not Paid</SelectItem>
-                          <SelectItem value="paid">Paid</SelectItem>
-                          <SelectItem value="billed">Billed</SelectItem>
-                          <SelectItem value="input_amount">Partially Paid</SelectItem>
+                          <SelectItem value="not_paid">{t('tasks.notPaid')}</SelectItem>
+                          <SelectItem value="paid">{t('tasks.paid')}</SelectItem>
+                          <SelectItem value="billed">{t('tasks.billed')}</SelectItem>
+                          <SelectItem value="input_amount">{t('tasks.partiallyPaid')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </>
                 )}
                 <div className="space-y-2">
-                  <Label>Cost Centers (Multiple)</Label>
+                  <Label>{t('tasks.costCentersMultiple')}</Label>
                   <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                     {DEFAULT_COST_CENTERS.map((cc) => {
                       const Icon = cc.icon;
@@ -1558,12 +1686,12 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                     className="w-full"
                   >
                     <Plus className="h-3 w-3 mr-2" />
-                    Add Custom Cost Center
+                    {t('tasks.addCustomCostCenter')}
                   </Button>
                   {showCustomCostCenter && (
                     <div className="flex gap-2 mt-2">
                       <Input
-                        placeholder="Enter custom cost center"
+                        placeholder={t('tasks.enterCustomCostCenter')}
                         value={customCostCenterValue}
                         onChange={(e) => setCustomCostCenterValue(e.target.value)}
                         onKeyDown={(e) => {
@@ -1619,7 +1747,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                 {/* Checklists */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label>Checklists</Label>
+                    <Label>{t('tasks.checklists')}</Label>
                     <Button
                       type="button"
                       variant="outline"
@@ -1627,7 +1755,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                       onClick={() => {
                         const newChecklist: Checklist = {
                           id: crypto.randomUUID(),
-                          title: "Checklist",
+                          title: t('tasks.checklist'),
                           items: [],
                         };
                         setEditingTask({
@@ -1637,7 +1765,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                       }}
                     >
                       <Plus className="h-3 w-3 mr-1" />
-                      Add Checklist
+                      {t('tasks.addChecklist')}
                     </Button>
                   </div>
                   {(editingTask.checklists || []).map((checklist, clIdx) => {
@@ -1726,7 +1854,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                                 </div>
                               ))}
                               <Input
-                                placeholder="Add an item..."
+                                placeholder={t('tasks.addItem')}
                                 className="h-7 text-sm mt-1"
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter") {
@@ -1753,7 +1881,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Dependencies</Label>
+                  <Label>{t('tasks.dependencies')}</Label>
                   <div className="space-y-2">
                     {taskDependencies[editingTask.id]?.map((dep) => {
                       const depTask = tasks.find(t => t.id === dep.depends_on_task_id);
@@ -1765,7 +1893,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                             size="sm"
                             onClick={() => handleRemoveDependency(dep.id)}
                           >
-                            Remove
+                            {t('common.remove')}
                           </Button>
                         </div>
                       );
@@ -1774,7 +1902,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                       onValueChange={(value) => handleAddDependency(editingTask.id, value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Add dependency..." />
+                        <SelectValue placeholder={t('tasks.addDependency')} />
                       </SelectTrigger>
                       <SelectContent>
                         {tasks
@@ -1789,9 +1917,57 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                   </div>
                 </div>
                 
+                {/* Purchase Orders */}
+                <Separator className="my-4" />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                      <Label className="mb-0">{t('taskPanel.purchaseOrders')} ({editTaskMaterials.length})</Label>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPoDialogOpen(true)}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      {t('common.create')}
+                    </Button>
+                  </div>
+                  {editTaskMaterials.length > 0 ? (
+                    <div className="space-y-2">
+                      {editTaskMaterials.map((material) => (
+                        <div
+                          key={material.id}
+                          className="flex items-center justify-between bg-muted px-3 py-2 rounded-lg"
+                        >
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">{material.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {material.quantity} {material.unit}
+                              {material.price_per_unit != null && ` • ${material.price_per_unit.toFixed(2)}/${t('common.unit').toLowerCase()}`}
+                              {material.price_total != null && ` • ${t('purchases.priceTotal')}: ${material.price_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {material.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t('taskPanel.noPurchaseOrdersForTask')}</p>
+                  )}
+                </div>
+
                 {/* Photos */}
                 <Separator className="my-4" />
                 <EntityPhotoGallery entityId={editingTask.id} entityType="task" />
+
+                {/* Linked Files */}
+                <Separator className="my-4" />
+                <TaskFilesList taskId={editingTask.id} projectId={projectId} />
 
                 {/* Comments */}
                 <Separator className="my-4" />
@@ -1800,7 +1976,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                 {/* Save Button at Bottom of Input Fields */}
                 <div className="pt-6 pb-4">
                   <Button type="submit" className="w-full" disabled={creating}>
-                    {creating ? "Updating..." : "Update Task"}
+                    {creating ? t('tasks.updating') : t('tasks.updateTask')}
                   </Button>
                 </div>
                 </div>
@@ -1815,13 +1991,13 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
         <Card className="text-center py-12 border-dashed">
           <CardContent>
             <CheckCircle2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No tasks yet</h3>
+            <h3 className="text-lg font-medium mb-2">{t('tasks.noTasksYet')}</h3>
             <p className="text-muted-foreground mb-4">
-              Create tasks to track your renovation work
+              {t('tasks.noTasksDescription')}
             </p>
             <Button onClick={() => setDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Add First Task
+              {t('tasks.addFirstTask')}
             </Button>
           </CardContent>
         </Card>
@@ -1829,9 +2005,9 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
         <Card className="text-center py-12 border-dashed">
           <CardContent>
             <XCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No tasks match your filters</h3>
+            <h3 className="text-lg font-medium mb-2">{t('tasks.noTasksMatchFilters')}</h3>
             <p className="text-muted-foreground mb-4">
-              Try adjusting your filter criteria
+              {t('tasks.tryAdjustingFilters')}
             </p>
             <Button
               variant="outline"
@@ -1842,12 +2018,12 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                 setFilterCostCenters(new Set());
               }}
             >
-              Clear Filters
+              {t('tasks.clearFilters')}
             </Button>
           </CardContent>
         </Card>
       ) : viewMode === 'kanban' ? (
-        <div className="overflow-x-auto pb-4">
+        <div className="overflow-x-auto pb-4 snap-x snap-mandatory">
           <div className="flex gap-4 min-w-min p-2">
             {[...columnOrder, ...unknownStatuses].map((status) => {
               const tasksForStatus = groupedTasks[status] || [];
@@ -1865,8 +2041,8 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                     handleColumnDrop(status);
                   }}
                   onDragEnd={() => setDraggedColumn(null)}
-                  className={`flex-shrink-0 bg-muted/30 rounded-lg p-3 transition-all ${
-                    tasksForStatus.length === 0 ? 'w-auto' : 'w-80'
+                  className={`flex-shrink-0 bg-muted/30 rounded-lg p-3 transition-all snap-center ${
+                    tasksForStatus.length === 0 ? 'w-auto' : 'w-[85vw] md:w-80'
                   } ${draggedColumn === status ? 'opacity-50' : ''} cursor-grab active:cursor-grabbing`}
                 >
                   <div className="mb-3 flex items-center justify-between bg-background/50 rounded-md px-3 py-2">
@@ -1895,11 +2071,11 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                             e.stopPropagation();
                             handleStartEditColumnName(status, displayLabel);
                           }}
-                          title="Click to rename"
+                          title={t('tasks.clickToRename')}
                         >
                           {displayLabel}
                           {!statusLabels[status as keyof typeof statusLabels] && (
-                            <span className="text-xs text-muted-foreground ml-1">(Unknown)</span>
+                            <span className="text-xs text-muted-foreground ml-1">({t('common.unknown')})</span>
                           )}
                         </h4>
                       )}
@@ -1921,7 +2097,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                   >
                     {tasksForStatus.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground text-sm">
-                        Drop tasks here
+                        {t('tasks.dropTasksHere')}
                       </div>
                     ) : (
                       tasksForStatus.map((task) => (
@@ -1944,59 +2120,59 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                   <TableRow>
                     <TableHead className="w-[300px]">
                       <Button variant="ghost" size="sm" onClick={() => handleSort('title')} className="h-8 px-2">
-                        Task Title
+                        {t('tasks.taskTitle')}
                         {getSortIcon('title')}
                       </Button>
                     </TableHead>
                     <TableHead className="w-[130px]">
                       <Button variant="ghost" size="sm" onClick={() => handleSort('status')} className="h-8 px-2">
-                        Status
+                        {t('tasks.status')}
                         {getSortIcon('status')}
                       </Button>
                     </TableHead>
                     <TableHead className="w-[100px]">
                       <Button variant="ghost" size="sm" onClick={() => handleSort('priority')} className="h-8 px-2">
-                        Priority
+                        {t('tasks.priority')}
                         {getSortIcon('priority')}
                       </Button>
                     </TableHead>
                     <TableHead className="w-[150px]">
                       <Button variant="ghost" size="sm" onClick={() => handleSort('assigned_to_stakeholder_id')} className="h-8 px-2">
-                        Assignee
+                        {t('tasks.assignee')}
                         {getSortIcon('assigned_to_stakeholder_id')}
                       </Button>
                     </TableHead>
                     <TableHead className="w-[120px]">
                       <Button variant="ghost" size="sm" onClick={() => handleSort('room_id')} className="h-8 px-2">
-                        Room
+                        {t('tasks.room')}
                         {getSortIcon('room_id')}
                       </Button>
                     </TableHead>
                     <TableHead className="w-[120px]">
                       <Button variant="ghost" size="sm" onClick={() => handleSort('start_date')} className="h-8 px-2">
-                        Start Date
+                        {t('tasks.startDate')}
                         {getSortIcon('start_date')}
                       </Button>
                     </TableHead>
                     <TableHead className="w-[120px]">
                       <Button variant="ghost" size="sm" onClick={() => handleSort('finish_date')} className="h-8 px-2">
-                        Finish Date
+                        {t('tasks.finishDate')}
                         {getSortIcon('finish_date')}
                       </Button>
                     </TableHead>
                     <TableHead className="w-[100px]">
                       <Button variant="ghost" size="sm" onClick={() => handleSort('progress')} className="h-8 px-2">
-                        Progress
+                        {t('tasks.progress')}
                         {getSortIcon('progress')}
                       </Button>
                     </TableHead>
                     <TableHead className="w-[120px]">
                       <Button variant="ghost" size="sm" onClick={() => handleSort('budget')} className="h-8 px-2">
-                        Budget
+                        {t('tasks.budget')}
                         {getSortIcon('budget')}
                       </Button>
                     </TableHead>
-                    <TableHead className="w-[60px]">Actions</TableHead>
+                    <TableHead className="w-[60px]">{t('tasks.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -2016,7 +2192,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             {getStatusIcon(task.status)}
-                            <span className={task.status === "done" || task.status === "completed" ? "line-through text-muted-foreground" : ""}>
+                            <span className={task.status === "completed" ? "line-through text-muted-foreground" : ""}>
                               {task.title}
                             </span>
                           </div>
@@ -2039,7 +2215,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                                 {assignedTo}
                               </>
                             ) : (
-                              <span className="text-muted-foreground text-xs">Unassigned</span>
+                              <span className="text-muted-foreground text-xs">{t('common.unassigned')}</span>
                             )}
                           </div>
                         </TableCell>
@@ -2047,7 +2223,7 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
                           {roomName ? (
                             <span className="text-sm">{roomName}</span>
                           ) : (
-                            <span className="text-muted-foreground text-xs">No room</span>
+                            <span className="text-muted-foreground text-xs">{t('tasks.noRoom')}</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -2099,6 +2275,101 @@ const TasksTab = ({ projectId, tasksScope = 'all' }: TasksTabProps) => {
           </CardContent>
         </Card>
       )}
+      {/* Create Purchase Order Dialog */}
+      <Dialog open={poDialogOpen} onOpenChange={setPoDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t('taskPanel.createPOForTask')}</DialogTitle>
+            <DialogDescription>
+              {editingTask && t('taskPanel.poLinkedTo', { title: editingTask.title })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="tt-po-name">{t('purchases.materialName')} *</Label>
+              <Input
+                id="tt-po-name"
+                value={poName}
+                onChange={(e) => setPoName(e.target.value)}
+                placeholder="e.g. Floor tiles"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="tt-po-quantity">{t('common.quantity')}</Label>
+                <Input
+                  id="tt-po-quantity"
+                  type="number"
+                  value={poQuantity}
+                  onChange={(e) => setPoQuantity(e.target.value)}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+              <div>
+                <Label htmlFor="tt-po-unit">{t('common.unit')}</Label>
+                <Select value={poUnit} onValueChange={setPoUnit}>
+                  <SelectTrigger id="tt-po-unit">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pcs">{t('taskPanel.pieces')}</SelectItem>
+                    <SelectItem value="sqm">{t('taskPanel.squareMeters')}</SelectItem>
+                    <SelectItem value="m">{t('taskPanel.meters')}</SelectItem>
+                    <SelectItem value="kg">{t('taskPanel.kilograms')}</SelectItem>
+                    <SelectItem value="liters">{t('taskPanel.liters')}</SelectItem>
+                    <SelectItem value="hours">{t('taskPanel.hours')}</SelectItem>
+                    <SelectItem value="days">{t('taskPanel.days')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="tt-po-price-per-unit">{t('purchases.pricePerUnit')} ({t('common.optional')})</Label>
+              <Input
+                id="tt-po-price-per-unit"
+                type="number"
+                value={poPricePerUnit}
+                onChange={(e) => setPoPricePerUnit(e.target.value)}
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+              />
+              {poQuantity && poPricePerUnit && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('purchases.priceTotal')}: {(parseFloat(poQuantity) * parseFloat(poPricePerUnit)).toFixed(2)}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button
+                onClick={handleCreatePurchaseOrder}
+                disabled={creatingPO || !poName.trim()}
+                className="flex-1"
+              >
+                {creatingPO ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t('purchases.creating')}
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t('purchases.createOrder')}
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setPoDialogOpen(false)}
+                disabled={creatingPO}
+              >
+                {t('common.cancel')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

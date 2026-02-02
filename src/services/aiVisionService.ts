@@ -5,7 +5,8 @@
 
 import { v4 as uuidv4 } from "uuid";
 import { FloorMapShape } from "@/components/floormap/types";
-import { supabase } from "@/lib/supabaseClient"; // Se till att denna fil skapats i src/lib/
+import { supabase } from "@/lib/supabaseClient";
+import { postProcessWalls } from "@/services/wallPostProcess";
 
 export interface AIConversionResult {
   walls: Array<{
@@ -55,14 +56,17 @@ async function imageToBase64(file: File): Promise<string> {
  */
 async function callVisionAPI(
   base64Image: string,
-  ratio: number
+  ratio: number,
+  imageWidth?: number,
+  imageHeight?: number
 ): Promise<AIConversionResult> {
-  
-  // Vi anropar funktionen vi skapade tidigare i Supabase
+
   const { data, error } = await supabase.functions.invoke('process-floorplan', {
-    body: { 
+    body: {
       image: base64Image,
-      ratio: ratio 
+      ratio: ratio,
+      imageWidth,
+      imageHeight,
     },
   });
 
@@ -178,9 +182,12 @@ function convertToFloorMapShapes(
 export async function convertImageToBlueprint(
   imageFile: File,
   pixelToMmRatio: number,
-  planId: string
+  planId: string,
+  imageWidth?: number,
+  imageHeight?: number
 ): Promise<FloorMapShape[]> {
   const base64Image = await imageToBase64(imageFile);
-  const aiResult = await callVisionAPI(base64Image, pixelToMmRatio);
+  const aiResult = await callVisionAPI(base64Image, pixelToMmRatio, imageWidth, imageHeight);
+  aiResult.walls = postProcessWalls(aiResult.walls || []);
   return convertToFloorMapShapes(aiResult, pixelToMmRatio, planId);
 }

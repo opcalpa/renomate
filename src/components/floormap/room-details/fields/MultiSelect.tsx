@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,8 @@ import {
 
 interface Option {
   value: string;
-  label: string;
+  label?: string;
+  labelKey?: string;
 }
 
 interface MultiSelectProps {
@@ -41,7 +43,10 @@ export function MultiSelect({
   emptyText = "Inga alternativ hittades.",
   className,
 }: MultiSelectProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+
+  const getLabel = (option: Option) => option.labelKey ? t(option.labelKey) : (option.label || option.value);
 
   const handleToggle = (value: string) => {
     if (selected.includes(value)) {
@@ -57,7 +62,7 @@ export function MultiSelect({
   };
 
   const selectedLabels = selected
-    .map((v) => options.find((o) => o.value === v)?.label)
+    .map((v) => { const o = options.find((o) => o.value === v); return o ? getLabel(o) : undefined; })
     .filter(Boolean);
 
   return (
@@ -84,7 +89,7 @@ export function MultiSelect({
                     variant="secondary"
                     className="mr-1 mb-1"
                   >
-                    {option?.label}
+                    {option ? getLabel(option) : value}
                     <button
                       className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                       onKeyDown={(e) => {
@@ -130,7 +135,7 @@ export function MultiSelect({
                   >
                     <Check className="h-4 w-4" />
                   </div>
-                  {option.label}
+                  {getLabel(option)}
                 </CommandItem>
               ))}
             </CommandGroup>

@@ -11,6 +11,7 @@ import Konva from 'konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 import { useFloorMapStore } from '../../store';
 import { FloorMapShape } from '../../types';
+import { findNearestWall, projectOntoWall, splitWall, isOpeningType } from '../../utils/wallSnap';
 
 /**
  * Apply delta to shape coordinates based on shape type
@@ -37,6 +38,9 @@ function applyDelta(
   switch (shape.type) {
     case 'wall':
     case 'line':
+    case 'door_line':
+    case 'window_line':
+    case 'sliding_door_line':
       return {
         coordinates: {
           x1: (coords.x1 as number) + deltaX,
@@ -192,6 +196,77 @@ export function createDragHandlers(shapeId: string) {
         ? selectedShapeIds
         : [shapeId];
 
+      // Check for wall snap: single opening shape dragged near a wall
+      const draggedShape = shapes.find(s => s.id === shapeId);
+      if (
+        shapesToUpdate.length === 1 &&
+        draggedShape &&
+        isOpeningType(draggedShape.type)
+      ) {
+        const coords = draggedShape.coordinates as { x1: number; y1: number; x2: number; y2: number };
+        const newCoords = {
+          x1: coords.x1 + deltaX,
+          y1: coords.y1 + deltaY,
+          x2: coords.x2 + deltaX,
+          y2: coords.y2 + deltaY,
+        };
+
+        // Snap threshold: 50 canvas pixels
+        const SNAP_THRESHOLD = 50;
+        const walls = shapes.filter(s => s.type === 'wall' && s.id !== shapeId);
+        const nearest = findNearestWall(newCoords, walls, SNAP_THRESHOLD);
+
+        if (nearest) {
+          const wallCoords = nearest.wall.coordinates as { x1: number; y1: number; x2: number; y2: number };
+          const snappedCoords = projectOntoWall(newCoords, wallCoords);
+          const wallSegments = splitWall(wallCoords, snappedCoords);
+
+          state.applyWallSnap(
+            shapeId,
+            { coordinates: snappedCoords, attachedToWall: nearest.wall.id, positionOnWall: nearest.t },
+            nearest.wall.id,
+            wallSegments.map(seg => ({
+              color: nearest.wall.color,
+              strokeColor: nearest.wall.strokeColor,
+              strokeWidth: nearest.wall.strokeWidth,
+              heightMM: nearest.wall.heightMM,
+              thicknessMM: nearest.wall.thicknessMM,
+              coordinates: seg,
+            }))
+          );
+
+          // Reset nodes and return early
+          const stage = e.target.getStage();
+          if (stage) {
+            shapesToUpdate.forEach(id => {
+              const node = stage.findOne(`#shape-${id}`);
+              if (node) node.position({ x: 0, y: 0 });
+            });
+          }
+          e.target.position({ x: 0, y: 0 });
+          return;
+        }
+
+        // No wall nearby — if previously attached, detach
+        if (draggedShape.attachedToWall) {
+          const shapeUpdates = applyDelta(draggedShape, deltaX, deltaY);
+          updateShapes([{
+            id: shapeId,
+            updates: { ...shapeUpdates, attachedToWall: undefined, positionOnWall: undefined },
+          }]);
+
+          const stage = e.target.getStage();
+          if (stage) {
+            shapesToUpdate.forEach(id => {
+              const node = stage.findOne(`#shape-${id}`);
+              if (node) node.position({ x: 0, y: 0 });
+            });
+          }
+          e.target.position({ x: 0, y: 0 });
+          return;
+        }
+      }
+
       // Build updates for all affected shapes
       const updates: Array<{ id: string; updates: Partial<FloorMapShape> }> = [];
 
@@ -199,7 +274,6 @@ export function createDragHandlers(shapeId: string) {
         const shape = shapes.find(s => s.id === id);
         if (shape) {
           const shapeUpdates = applyDelta(shape, deltaX, deltaY);
-          // Check if we have any updates (coordinates or metadata)
           if (shapeUpdates.coordinates || shapeUpdates.metadata) {
             updates.push({ id, updates: shapeUpdates });
           }

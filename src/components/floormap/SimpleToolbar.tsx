@@ -97,6 +97,7 @@ import { useFloorMapStore } from "./store";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useRef, useCallback, useEffect } from "react";
 
 interface ToolItem {
@@ -458,8 +459,139 @@ export const SimpleToolbar = ({
   const isStructureActive = structureTools.some(t => t.id === activeTool);
   const isModifyActive = modifyTools.some(t => t.id === activeTool);
 
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+
+  const allToolCategories = [
+    { icon: Import, label: 'Importera', items: importTools },
+    { icon: PenTool, label: 'Rita', items: drawTools },
+    { icon: Building2, label: 'Struktur', items: structureTools },
+    { icon: Edit3, label: 'Modifiera', items: modifyTools },
+  ];
+
   return (
-    <div className="fixed left-4 top-20 w-14 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-lg shadow-black/5 flex flex-col items-center py-3 gap-1.5 z-50">
+    <>
+    {/* Mobile compact toolbar - sticky left strip with key tools + expand button */}
+    <div className="md:hidden fixed left-2 top-20 w-11 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-lg shadow-black/5 flex flex-col items-center py-2 gap-1 z-50">
+      {/* Select */}
+      <Button
+        variant={activeTool === 'select' ? 'default' : 'ghost'}
+        size="icon"
+        onClick={() => setActiveTool('select')}
+        className={cn("w-9 h-9", activeTool === 'select' && "bg-primary text-primary-foreground")}
+      >
+        <MousePointer2 className="h-4 w-4" />
+      </Button>
+
+      {/* Wall */}
+      <Button
+        variant={activeTool === 'wall' ? 'default' : 'ghost'}
+        size="icon"
+        onClick={() => setActiveTool('wall')}
+        className={cn("w-9 h-9", activeTool === 'wall' && "bg-primary text-primary-foreground")}
+      >
+        <Minus className="h-4 w-4" />
+      </Button>
+
+      {/* Room */}
+      <Button
+        variant={activeTool === 'room' ? 'default' : 'ghost'}
+        size="icon"
+        onClick={() => setActiveTool('room')}
+        className={cn("w-9 h-9", activeTool === 'room' && "bg-primary text-primary-foreground")}
+      >
+        <Home className="h-4 w-4" />
+      </Button>
+
+      {/* Undo */}
+      <Button variant="ghost" size="icon" onClick={onUndo} disabled={!canUndo} className="w-9 h-9">
+        <Undo className="h-4 w-4" />
+      </Button>
+
+      <Separator className="w-6 my-0.5" />
+
+      {/* More tools - opens bottom sheet */}
+      <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" className="w-9 h-9">
+            <Shapes className="h-4 w-4" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="bottom" className="max-h-[70vh] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Verktyg</SheetTitle>
+          </SheetHeader>
+          <div className="py-4 space-y-6">
+            {/* Select tool */}
+            <Button
+              variant={activeTool === 'select' ? 'default' : 'outline'}
+              className="w-full justify-start gap-3"
+              onClick={() => { setActiveTool('select'); setMobileSheetOpen(false); }}
+            >
+              <MousePointer2 className="h-5 w-5" />
+              Välj (V)
+            </Button>
+
+            {allToolCategories.map((cat) => (
+              <div key={cat.label}>
+                <div className="flex items-center gap-2 mb-2 text-sm font-semibold text-muted-foreground">
+                  <cat.icon className="h-4 w-4" />
+                  {cat.label}
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {cat.items.map((item) => {
+                    const ItemIcon = item.icon;
+                    const isActive = item.id === activeTool;
+                    return (
+                      <Button
+                        key={item.id}
+                        variant={isActive ? 'default' : 'outline'}
+                        size="sm"
+                        className="flex flex-col items-center gap-1 h-auto py-3"
+                        onClick={() => { item.onClick(); setMobileSheetOpen(false); }}
+                      >
+                        <ItemIcon className="h-5 w-5" />
+                        <span className="text-[10px] leading-tight">{item.label}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* Quick actions */}
+            <div>
+              <div className="flex items-center gap-2 mb-2 text-sm font-semibold text-muted-foreground">Åtgärder</div>
+              <div className="grid grid-cols-3 gap-2">
+                <Button variant="outline" size="sm" className="flex flex-col items-center gap-1 h-auto py-3" onClick={() => { onUndo(); setMobileSheetOpen(false); }} disabled={!canUndo}>
+                  <Undo className="h-5 w-5" />
+                  <span className="text-[10px]">Ångra</span>
+                </Button>
+                <Button variant="outline" size="sm" className="flex flex-col items-center gap-1 h-auto py-3" onClick={() => { onRedo(); setMobileSheetOpen(false); }} disabled={!canRedo}>
+                  <Redo className="h-5 w-5" />
+                  <span className="text-[10px]">Gör om</span>
+                </Button>
+                <Button variant="outline" size="sm" className="flex flex-col items-center gap-1 h-auto py-3" onClick={() => { onDelete(); setMobileSheetOpen(false); }}>
+                  <Trash2 className="h-5 w-5" />
+                  <span className="text-[10px]">Ta bort</span>
+                </Button>
+                <Button variant="outline" size="sm" className="flex flex-col items-center gap-1 h-auto py-3" onClick={() => { onSave(); setMobileSheetOpen(false); }}>
+                  <Save className="h-5 w-5" />
+                  <span className="text-[10px]">Spara</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Save */}
+      <Button variant="ghost" size="icon" onClick={onSave} className="w-9 h-9">
+        <Save className="h-4 w-4" />
+      </Button>
+    </div>
+
+    {/* Desktop toolbar */}
+    <div className="hidden md:flex fixed left-4 top-20 w-14 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-lg shadow-black/5 flex-col items-center py-3 gap-1.5 z-50">
       {/* Hidden file input */}
       <input
         ref={imageInputRef}
@@ -715,5 +847,6 @@ export const SimpleToolbar = ({
         </div>
       )}
     </div>
+    </>
   );
 };

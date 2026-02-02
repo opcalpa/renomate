@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Ruler, FileText, Edit2, Palette, RotateCw, Layers, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Image as ImageIcon } from 'lucide-react';
 import { FloorMapShape } from './types';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   onUpdateShape,
   pixelsPerMm
 }) => {
+  const { t } = useTranslation();
   const [isEditMode, setIsEditMode] = useState(false);
   const [editName, setEditName] = useState(shape.name || '');
   const [notes, setNotes] = useState(shape.notes || '');
@@ -102,7 +104,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
     const timeoutId = setTimeout(() => {
       if (notes !== shape.notes) {
         onUpdateShape(shape.id, { notes });
-        toast.success('Anteckningar sparade');
+        toast.success(t('propertyPanel.notesSaved'));
       }
     }, 1000);
 
@@ -123,13 +125,13 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
         const lengthMm = lengthMeters * 1000;
         
         return {
-          type: 'Vägg',
+          type: t('propertyPanel.wall'),
           displayValues: [
-            { label: 'Längd (m)', value: lengthMeters >= 1 ? `${lengthMeters.toFixed(2)} m` : `${lengthCm.toFixed(0)} cm`, highlight: true },
-            { label: 'Längd (cm)', value: `${lengthCm.toFixed(1)} cm` },
-            { label: 'Längd (mm)', value: `${lengthMm.toFixed(0)} mm` },
-            { label: 'Tjocklek', value: `${shape.thicknessMM || 150} mm` },
-            { label: 'Höjd', value: `${shape.heightMM || 2400} mm` },
+            { label: `${t('propertyPanel.length')} (m)`, value: lengthMeters >= 1 ? `${lengthMeters.toFixed(2)} m` : `${lengthCm.toFixed(0)} cm`, highlight: true },
+            { label: `${t('propertyPanel.length')} (cm)`, value: `${lengthCm.toFixed(1)} cm` },
+            { label: `${t('propertyPanel.length')} (mm)`, value: `${lengthMm.toFixed(0)} mm` },
+            { label: t('propertyPanel.thickness'), value: `${shape.thicknessMM || 150} mm` },
+            { label: t('propertyPanel.height'), value: `${shape.heightMM || 2400} mm` },
           ]
         };
       }
@@ -159,11 +161,11 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
         const perimeterM = perimeter / getPixelsPerMeter(pixelsPerMm);
         
         return {
-          type: 'Rum',
+          type: t('propertyPanel.room'),
           displayValues: [
-            { label: 'Area', value: `${areaSqM.toFixed(2)} m²`, highlight: true },
-            { label: 'Omkrets', value: `${perimeterM.toFixed(2)} m` },
-            { label: 'Antal hörn', value: `${points.length}` },
+            { label: t('propertyPanel.area'), value: `${areaSqM.toFixed(2)} m²`, highlight: true },
+            { label: t('propertyPanel.perimeter'), value: `${perimeterM.toFixed(2)} m` },
+            { label: t('propertyPanel.cornerCount'), value: `${points.length}` },
           ]
         };
       }
@@ -178,10 +180,10 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
         const heightCm = heightM * 100;
         
         return {
-          type: shape.type === 'door' ? 'Dörr' : shape.type === 'opening' ? 'Öppning' : 'Rektangel',
+          type: shape.type === 'door' ? t('propertyPanel.door') : shape.type === 'opening' ? t('propertyPanel.opening') : t('propertyPanel.rectangle'),
           displayValues: [
-            { label: 'Bredd', value: widthM >= 1 ? `${widthM.toFixed(2)} m` : `${widthCm.toFixed(0)} cm`, highlight: true },
-            { label: 'Höjd', value: heightM >= 1 ? `${heightM.toFixed(2)} m` : `${heightCm.toFixed(0)} cm`, highlight: true },
+            { label: t('propertyPanel.width'), value: widthM >= 1 ? `${widthM.toFixed(2)} m` : `${widthCm.toFixed(0)} cm`, highlight: true },
+            { label: t('propertyPanel.height'), value: heightM >= 1 ? `${heightM.toFixed(2)} m` : `${heightCm.toFixed(0)} cm`, highlight: true },
           ]
         };
       }
@@ -194,27 +196,27 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
         const areaSqM = area / (getPixelsPerMeter(pixelsPerMm) ** 2);
         
         return {
-          type: 'Cirkel',
+          type: t('propertyPanel.circle'),
           displayValues: [
-            { label: 'Radie', value: radiusM >= 1 ? `${radiusM.toFixed(2)} m` : `${radiusCm.toFixed(0)} cm` },
-            { label: 'Area', value: `${areaSqM.toFixed(2)} m²`, highlight: true },
+            { label: t('propertyPanel.radius'), value: radiusM >= 1 ? `${radiusM.toFixed(2)} m` : `${radiusCm.toFixed(0)} cm` },
+            { label: t('propertyPanel.area'), value: `${areaSqM.toFixed(2)} m²`, highlight: true },
           ]
         };
       }
       
       case 'text': {
         return {
-          type: 'Text',
+          type: t('propertyPanel.text'),
           displayValues: [
-            { label: 'Text', value: shape.text || '' },
-            { label: 'Storlek', value: `${shape.metadata?.lengthMM || 16}px` },
+            { label: t('propertyPanel.text'), value: shape.text || '' },
+            { label: t('propertyPanel.size'), value: `${shape.metadata?.lengthMM || 16}px` },
           ]
         };
       }
       
       default:
         return {
-          type: 'Objekt',
+          type: t('propertyPanel.object'),
           displayValues: []
         };
     }
@@ -229,7 +231,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
     });
     setIsEditMode(false);
     setIsEditingDimensions(false);
-    toast.success('Ändringar sparade!');
+    toast.success(t('propertyPanel.changesSaved'));
   };
   
   const handleCancel = () => {
@@ -261,17 +263,17 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
     const newHeightMm = parseFloat(editHeightMm);
     
     if (isNaN(newLengthM) || newLengthM <= 0) {
-      toast.error('Ogiltig längd. Ange ett positivt tal.');
+      toast.error(t('propertyPanel.invalidLength'));
       return;
     }
     
     if (isNaN(newThicknessMm) || newThicknessMm <= 0) {
-      toast.error('Ogiltig tjocklek. Ange ett positivt tal i mm.');
+      toast.error(t('propertyPanel.invalidThickness'));
       return;
     }
     
     if (isNaN(newHeightMm) || newHeightMm <= 0) {
-      toast.error('Ogiltig höjd. Ange ett positivt tal i mm.');
+      toast.error(t('propertyPanel.invalidHeight'));
       return;
     }
     
@@ -300,22 +302,30 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
     });
     
     setIsEditingDimensions(false);
-    toast.success('Dimensioner uppdaterade!');
+    toast.success(t('propertyPanel.dimensionsUpdated'));
   };
   
   return (
     <div
-      className="fixed top-0 right-0 h-screen w-96 bg-white border-l-4 border-blue-500 shadow-2xl z-[100] flex flex-col"
+      className="fixed top-0 right-0 h-screen w-full md:w-96 bg-white border-l-0 md:border-l-4 border-blue-500 shadow-2xl z-[100] flex flex-col"
       style={{
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
         borderLeft: '4px solid #3b82f6'
       }}
     >
+      {/* Mobile close bar */}
+      <div className="flex items-center justify-between p-3 border-b md:hidden">
+        <h3 className="font-semibold text-sm">{t('floormap.properties', 'Properties')}</h3>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0 bg-blue-50">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-blue-600" />
-          <h3 className="font-semibold text-lg text-blue-900">Objektdetaljer</h3>
+          <h3 className="font-semibold text-lg text-blue-900">{t('propertyPanel.objectDetails')}</h3>
           <div className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">
             {shape.type.toUpperCase()}
           </div>
@@ -328,13 +338,13 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                 size="sm"
                 onClick={handleCancel}
               >
-                Avbryt
+                {t('common.cancel')}
               </Button>
               <Button
                 size="sm"
                 onClick={handleSave}
               >
-                Spara
+                {t('common.save')}
               </Button>
             </>
           ) : (
@@ -343,11 +353,11 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
               size="sm"
               onClick={() => setIsEditMode(true)}
             >
-              Redigera
+              {t('common.edit')}
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10">
+            <X className="h-5 w-5" />
           </Button>
         </div>
       </div>
@@ -357,7 +367,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
         {/* Type & Name */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <Label className="text-sm font-medium text-gray-700">Typ</Label>
+            <Label className="text-sm font-medium text-gray-700">{t('propertyPanel.type')}</Label>
             <div className="mt-2">
               <Badge variant={shape.type === 'wall' || shape.type === 'room' ? 'default' : 'secondary'}>
                 {type}
@@ -367,19 +377,19 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
 
           {(shape.type === 'room' || shape.name) && (
             <div className="flex-1">
-              <Label className="text-sm font-medium text-gray-700">Namn</Label>
+              <Label className="text-sm font-medium text-gray-700">{t('common.name')}</Label>
               <div className="mt-2">
                 {isEditMode ? (
                   <Input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    placeholder="Ange namn..."
+                    placeholder={t('propertyPanel.enterName')}
                     className="w-full"
                   />
                 ) : (
                   <div className="bg-gray-50 rounded-lg p-3">
                     <span className="font-semibold text-gray-800">
-                      {shape.name || 'Namnlöst'}
+                      {shape.name || t('propertyPanel.unnamed')}
                     </span>
                   </div>
                 )}
@@ -395,7 +405,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Ruler className="h-4 w-4 text-gray-600" />
-              <Label className="text-sm font-medium text-gray-700">Dimensioner</Label>
+              <Label className="text-sm font-medium text-gray-700">{t('propertyPanel.dimensions')}</Label>
             </div>
             {isEditMode && (shape.type === 'wall' || shape.type === 'line') && !isEditingDimensions && (
               <Button
@@ -405,7 +415,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                 className="h-7 px-2 text-xs"
               >
                 <Edit2 className="h-3 w-3 mr-1" />
-                Ändra längd
+                {t('propertyPanel.changeLength')}
               </Button>
             )}
           </div>
@@ -417,7 +427,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                 {/* Length */}
                 <div>
                   <Label className="text-xs text-gray-600 mb-1">
-                    Längd (meter):
+                    {t('propertyPanel.lengthMeter')}
                   </Label>
                   <Input
                     type="number"
@@ -428,14 +438,14 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                     placeholder="3.450"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    💡 Väggen skalas proportionellt från startpunkten
+                    {t('propertyPanel.wallScalesProportionally')}
                   </p>
                 </div>
                 
                 {/* Thickness */}
                 <div>
                   <Label className="text-xs text-gray-600 mb-1">
-                    Tjocklek (mm):
+                    {t('propertyPanel.thicknessMm')}
                   </Label>
                   <Input
                     type="number"
@@ -446,14 +456,14 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                     placeholder="150"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Standard: 150mm (innerväggar), 200mm (ytterväggar)
+                    {t('propertyPanel.thicknessStandard')}
                   </p>
                 </div>
                 
                 {/* Height */}
                 <div>
                   <Label className="text-xs text-gray-600 mb-1">
-                    Höjd (mm):
+                    {t('propertyPanel.heightMm')}
                   </Label>
                   <Input
                     type="number"
@@ -464,7 +474,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                     placeholder="2400"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Standard: 2400mm (normal takhöjd)
+                    {t('propertyPanel.heightStandard')}
                   </p>
                 </div>
                 
@@ -475,7 +485,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                     onClick={handleSaveDimensions}
                     className="flex-1"
                   >
-                    Spara ändringar
+                    {t('propertyPanel.saveChanges')}
                   </Button>
                   <Button
                     size="sm"
@@ -528,14 +538,14 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Palette className="h-4 w-4 text-gray-600" />
-            <Label className="text-sm font-medium text-gray-700">Utseende</Label>
+            <Label className="text-sm font-medium text-gray-700">{t('propertyPanel.appearance')}</Label>
           </div>
 
           <div className="space-y-4 bg-gray-50 rounded-lg p-3">
             {/* Opacity Slider */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <Label className="text-xs text-gray-600">Opacitet</Label>
+                <Label className="text-xs text-gray-600">{t('propertyPanel.opacity')}</Label>
                 <span className="text-xs text-gray-500">{Math.round(opacity)}%</span>
               </div>
               <Slider
@@ -556,7 +566,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
               <div className="flex justify-between items-center mb-2">
                 <Label className="text-xs text-gray-600 flex items-center gap-1">
                   <RotateCw className="h-3 w-3" />
-                  Rotation
+                  {t('propertyPanel.rotation')}
                 </Label>
                 <span className="text-xs text-gray-500">{rotation}°</span>
               </div>
@@ -578,7 +588,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
             {/* Color Pickers */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs text-gray-600 mb-1 block">Fyllning</Label>
+                <Label className="text-xs text-gray-600 mb-1 block">{t('propertyPanel.fill')}</Label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
@@ -601,7 +611,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                 </div>
               </div>
               <div>
-                <Label className="text-xs text-gray-600 mb-1 block">Kontur</Label>
+                <Label className="text-xs text-gray-600 mb-1 block">{t('propertyPanel.stroke')}</Label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
@@ -633,7 +643,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Layers className="h-4 w-4 text-gray-600" />
-            <Label className="text-sm font-medium text-gray-700">Lager-ordning</Label>
+            <Label className="text-sm font-medium text-gray-700">{t('propertyPanel.layerOrder')}</Label>
             <span className="text-xs text-gray-400 ml-auto">z: {shape.zIndex ?? 0}</span>
           </div>
 
@@ -643,48 +653,48 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
               size="sm"
               onClick={() => {
                 bringToFront(shape.id);
-                toast.success('Flyttat längst fram');
+                toast.success(t('propertyPanel.movedToFront'));
               }}
               className="h-9 text-xs gap-1"
             >
               <ChevronsUp className="h-3 w-3" />
-              Längst fram
+              {t('propertyPanel.bringToFront')}
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
                 sendToBack(shape.id);
-                toast.success('Flyttat längst bak');
+                toast.success(t('propertyPanel.movedToBack'));
               }}
               className="h-9 text-xs gap-1"
             >
               <ChevronsDown className="h-3 w-3" />
-              Längst bak
+              {t('propertyPanel.sendToBack')}
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
                 bringForward(shape.id);
-                toast.success('Flyttat framåt');
+                toast.success(t('propertyPanel.movedForward'));
               }}
               className="h-9 text-xs gap-1"
             >
               <ArrowUp className="h-3 w-3" />
-              Framåt
+              {t('propertyPanel.bringForward')}
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
                 sendBackward(shape.id);
-                toast.success('Flyttat bakåt');
+                toast.success(t('propertyPanel.movedBackward'));
               }}
               className="h-9 text-xs gap-1"
             >
               <ArrowDown className="h-3 w-3" />
-              Bakåt
+              {t('propertyPanel.sendBackward')}
             </Button>
           </div>
         </div>
@@ -694,28 +704,28 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
         {/* Notes */}
         <div>
           <Label htmlFor="notes" className="text-sm font-medium text-gray-700">
-            Beskrivning & Anteckningar
+            {t('propertyPanel.notesTitle')}
           </Label>
           <p className="text-xs text-gray-500 mt-1 mb-2">
-            Lägg till instruktioner, material eller andra viktiga detaljer
+            {t('propertyPanel.notesDescription')}
           </p>
           {isEditMode ? (
             <Textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="T.ex. Vägg ska rivas, 10cm tjocklek, isolering behövs..."
+              placeholder={t('propertyPanel.notesPlaceholder')}
               className="min-h-[120px] resize-y"
             />
           ) : (
             <div className="bg-gray-50 rounded-lg p-3 min-h-[120px]">
               <span className="text-gray-800 whitespace-pre-wrap">
-                {notes || 'Inga anteckningar än...'}
+                {notes || t('propertyPanel.noNotes')}
               </span>
             </div>
           )}
           <p className="text-xs text-gray-400 mt-1">
-            Sparas automatiskt efter 1 sekund
+            {t('propertyPanel.autoSaveNote')}
           </p>
         </div>
 
@@ -735,7 +745,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
         {/* Comments Section */}
         <div>
           <Label className="text-sm font-medium text-gray-700 mb-3 block">
-            Kommentarer & Diskussion
+            {t('propertyPanel.commentsTitle')}
           </Label>
           <CommentsSection
             drawingObjectId={shape.id}
@@ -746,7 +756,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
         {/* Footer hint */}
         <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
           <p className="text-xs text-blue-700">
-            💡 <strong>Tips:</strong> Dra objektet för att flytta, använd hörnen för att ändra storlek
+            <strong>Tips:</strong> {t('propertyPanel.tipDragToMove')}
           </p>
         </div>
       </div>

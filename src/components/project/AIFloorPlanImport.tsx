@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ export const AIFloorPlanImport = ({
   initialImageUrl,
   initialFileName
 }: AIFloorPlanImportProps) => {
+  const { t } = useTranslation();
   const [internalOpen, setInternalOpen] = useState(false);
 
   // Use external control if provided, otherwise use internal state
@@ -59,7 +61,8 @@ export const AIFloorPlanImport = ({
   const [imageZoom, setImageZoom] = useState(1);
   const [imageOffset, setImageOffset] = useState({ x: 0, y: 0 });
   const [convertedShapeCount, setConvertedShapeCount] = useState(0);
-  
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -101,7 +104,8 @@ export const AIFloorPlanImport = ({
       
       img.onload = () => {
         imageRef.current = img;
-        
+        setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+
         // Set canvas size to match image
         canvas.width = img.width;
         canvas.height = img.height;
@@ -192,8 +196,8 @@ export const AIFloorPlanImport = ({
     // Validate file type
     if (!file.type.startsWith('image/')) {
       toast({
-        title: "Fel filtyp",
-        description: "Välj en bildfil (JPEG, PNG, etc.)",
+        title: t('aiFloorPlan.wrongFileType'),
+        description: t('aiFloorPlan.selectImageFile'),
         variant: "destructive",
       });
       return;
@@ -243,8 +247,8 @@ export const AIFloorPlanImport = ({
   const calculateRatio = () => {
     if (!calibrationLine || !realWorldLength) {
       toast({
-        title: "Saknas information",
-        description: "Rita en referenslinje och ange verklig längd",
+        title: t('aiFloorPlan.missingInfo'),
+        description: t('aiFloorPlan.drawLineAndEnterLength'),
         variant: "destructive",
       });
       return;
@@ -258,8 +262,8 @@ export const AIFloorPlanImport = ({
     const realLength = parseFloat(realWorldLength);
     if (isNaN(realLength) || realLength <= 0) {
       toast({
-        title: "Ogiltigt värde",
-        description: "Ange en giltig längd i millimeter",
+        title: t('aiFloorPlan.invalidValue'),
+        description: t('aiFloorPlan.enterValidLength'),
         variant: "destructive",
       });
       return;
@@ -269,7 +273,7 @@ export const AIFloorPlanImport = ({
     setPixelToMmRatio(ratio);
     
     toast({
-      title: "Kalibrering klar!",
+      title: t('aiFloorPlan.calibrationDone'),
       description: `Ratio: ${ratio.toFixed(3)} mm/pixel`,
     });
   };
@@ -277,8 +281,8 @@ export const AIFloorPlanImport = ({
   const handleProcessWithAI = async () => {
     if (!pixelToMmRatio || (!selectedFile && !imageUrl)) {
       toast({
-        title: "Kalibrering krävs",
-        description: "Slutför kalibreringen först",
+        title: t('aiFloorPlan.calibrationRequired'),
+        description: t('aiFloorPlan.completeCalibrationFirst'),
         variant: "destructive",
       });
       return;
@@ -320,7 +324,9 @@ export const AIFloorPlanImport = ({
       const shapes = await convertImageToBlueprint(
         fileToProcess,
         pixelToMmRatio,
-        newPlan.id
+        newPlan.id,
+        imageDimensions?.width,
+        imageDimensions?.height
       );
 
       // Save shapes to database FIRST (before switching plan)
@@ -422,15 +428,15 @@ export const AIFloorPlanImport = ({
       setStep('complete');
 
       toast({
-        title: "AI-konvertering klar!",
+        title: t('aiFloorPlan.aiConversionDone'),
         description: `${shapes.length} objekt skapade i nytt plan: "${newPlan.name}"`,
       });
 
     } catch (error: any) {
       console.error('AI conversion error:', error);
       toast({
-        title: "Konverteringsfel",
-        description: error.message || "Kunde inte konvertera ritningen",
+        title: t('aiFloorPlan.conversionError'),
+        description: error.message || t('aiFloorPlan.couldNotConvert'),
         variant: "destructive",
       });
       setStep('calibrate');
@@ -488,10 +494,10 @@ export const AIFloorPlanImport = ({
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              AI Floor Plan Import
+              {t('aiFloorPlan.title')}
             </DialogTitle>
             <DialogDescription>
-              Upload a floor plan image and let AI convert it to editable canvas objects
+              {t('aiFloorPlan.description')}
             </DialogDescription>
           </DialogHeader>
 
@@ -500,22 +506,22 @@ export const AIFloorPlanImport = ({
             <div className="flex items-center justify-center gap-2 pb-4 border-b">
               <Badge variant={step === 'upload' ? 'default' : 'secondary'}>
                 <Upload className="h-3 w-3 mr-1" />
-                1. Upload
+                {t('aiFloorPlan.stepUpload')}
               </Badge>
               <div className="h-px w-8 bg-border" />
               <Badge variant={step === 'calibrate' ? 'default' : 'secondary'}>
                 <Ruler className="h-3 w-3 mr-1" />
-                2. Calibrate
+                {t('aiFloorPlan.stepCalibrate')}
               </Badge>
               <div className="h-px w-8 bg-border" />
               <Badge variant={step === 'processing' ? 'default' : 'secondary'}>
                 <Sparkles className="h-3 w-3 mr-1" />
-                3. Process
+                {t('aiFloorPlan.stepProcess')}
               </Badge>
               <div className="h-px w-8 bg-border" />
               <Badge variant={step === 'complete' ? 'default' : 'secondary'}>
                 <Check className="h-3 w-3 mr-1" />
-                4. Done
+                {t('aiFloorPlan.stepDone')}
               </Badge>
             </div>
 
@@ -523,16 +529,16 @@ export const AIFloorPlanImport = ({
             {step === 'upload' && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Upload Floor Plan</CardTitle>
+                  <CardTitle>{t('aiFloorPlan.uploadTitle')}</CardTitle>
                   <CardDescription>
-                    Select an image of your floor plan (hand-drawn sketch or architectural drawing)
+                    {t('aiFloorPlan.uploadDescription')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg">
                     <Upload className="h-12 w-12 text-muted-foreground mb-4" />
                     <p className="text-sm text-muted-foreground mb-4">
-                      Supported: JPEG, PNG, WebP
+                      {t('aiFloorPlan.supportedFormats')}
                     </p>
                     <Input
                       ref={fileInputRef}
@@ -544,7 +550,7 @@ export const AIFloorPlanImport = ({
                     />
                     <Button onClick={() => fileInputRef.current?.click()}>
                       <Upload className="h-4 w-4 mr-2" />
-                      Choose Image
+                      {t('aiFloorPlan.chooseImage')}
                     </Button>
                   </div>
                 </CardContent>
@@ -561,13 +567,13 @@ export const AIFloorPlanImport = ({
                       <Ruler className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                       <div className="space-y-1">
                         <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                          Hur det fungerar:
+                          {t('aiFloorPlan.howItWorks')}
                         </p>
                         <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
-                          <li>Zooma och hitta ett känt mått på ritningen (vägg, dörr, etc.)</li>
-                          <li>Rita en linje genom att klicka och dra</li>
-                          <li>Scrolla ner och ange verklig längd i fältet nedan</li>
-                          <li>Klicka "Calculate Scale" för att beräkna skalan</li>
+                          <li>{t('aiFloorPlan.step1')}</li>
+                          <li>{t('aiFloorPlan.step2')}</li>
+                          <li>{t('aiFloorPlan.step3')}</li>
+                          <li>{t('aiFloorPlan.step4')}</li>
                         </ol>
                       </div>
                     </div>
@@ -578,7 +584,7 @@ export const AIFloorPlanImport = ({
                 <Card>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">Zoom & Navigation</CardTitle>
+                      <CardTitle className="text-base">{t('aiFloorPlan.zoomNavigation')}</CardTitle>
                       <div className="flex gap-1">
                         <Button
                           variant="outline"
@@ -606,7 +612,7 @@ export const AIFloorPlanImport = ({
                             setCalibrationLine(null);
                             setPixelToMmRatio(null);
                           }}
-                          title="Rensa linje"
+                          title={t('aiFloorPlan.clearLine')}
                         >
                           <RotateCcw className="h-4 w-4" />
                         </Button>
@@ -618,9 +624,9 @@ export const AIFloorPlanImport = ({
                 {/* Canvas - Fixed Height with Scroll */}
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Rita Referenslinje</CardTitle>
+                    <CardTitle className="text-base">{t('aiFloorPlan.drawReferenceLine')}</CardTitle>
                     <CardDescription>
-                      Klicka och dra för att rita en linje längs ett känt mått
+                      {t('aiFloorPlan.drawReferenceDescription')}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -641,7 +647,7 @@ export const AIFloorPlanImport = ({
                     {calibrationLine && (
                       <div className="mt-2 text-sm text-muted-foreground flex items-center gap-2">
                         <Check className="h-4 w-4 text-green-500" />
-                        Linje ritad! Scrolla ner för att ange längd.
+                        {t('aiFloorPlan.lineDrawn')}
                       </div>
                     )}
                   </CardContent>
@@ -650,16 +656,16 @@ export const AIFloorPlanImport = ({
                 {/* Input Fields - Always Accessible */}
                 <Card className="border-2 border-primary/20">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Ange Verklig Längd</CardTitle>
+                    <CardTitle className="text-base">{t('aiFloorPlan.enterRealLength')}</CardTitle>
                     <CardDescription>
-                      Hur lång är linjen du ritade i verkligheten?
+                      {t('aiFloorPlan.howLongIsLine')}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="real-length" className="text-base">
-                          Längd i millimeter
+                          {t('aiFloorPlan.lengthInMm')}
                         </Label>
                         <Input
                           id="real-length"
@@ -675,27 +681,27 @@ export const AIFloorPlanImport = ({
                             size="sm"
                             onClick={() => setRealWorldLength('900')}
                           >
-                            900mm (dörr)
+                            {t('aiFloorPlan.doorPreset')}
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setRealWorldLength('1000')}
                           >
-                            1000mm (1m)
+                            {t('aiFloorPlan.meterPreset')}
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setRealWorldLength('2400')}
                           >
-                            2400mm (vägg)
+                            {t('aiFloorPlan.wallPreset')}
                           </Button>
                         </div>
                       </div>
                       
                       <div className="space-y-2">
-                        <Label className="text-base">Beräknad Skala</Label>
+                        <Label className="text-base">{t('aiFloorPlan.calculatedScale')}</Label>
                         <div className="h-12 flex items-center justify-center px-3 bg-muted rounded-md border-2">
                           {pixelToMmRatio ? (
                             <span className="font-mono text-lg font-semibold text-green-600 dark:text-green-400">
@@ -703,14 +709,14 @@ export const AIFloorPlanImport = ({
                             </span>
                           ) : (
                             <span className="text-muted-foreground">
-                              Väntar på beräkning...
+                              {t('aiFloorPlan.waitingForCalculation')}
                             </span>
                           )}
                         </div>
                         {pixelToMmRatio && (
                           <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                             <Check className="h-3 w-3" />
-                            Skala beräknad! Klicka "Next" för att fortsätta.
+                            {t('aiFloorPlan.scaleCalculated')}
                           </p>
                         )}
                       </div>
@@ -724,16 +730,16 @@ export const AIFloorPlanImport = ({
                         className="flex-1"
                       >
                         <Ruler className="h-4 w-4 mr-2" />
-                        Calculate Scale
+                        {t('aiFloorPlan.calculateScale')}
                       </Button>
-                      
-                      <Button 
+
+                      <Button
                         onClick={handleProcessWithAI}
                         disabled={!pixelToMmRatio}
                         size="lg"
                         className="flex-1"
                       >
-                        Next: Process with AI
+                        {t('aiFloorPlan.nextProcessAI')}
                         <Sparkles className="h-4 w-4 ml-2" />
                       </Button>
                     </div>
@@ -748,11 +754,11 @@ export const AIFloorPlanImport = ({
                 <CardContent className="py-12">
                   <div className="flex flex-col items-center justify-center gap-4">
                     <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                    <h3 className="text-lg font-semibold">Processing with AI...</h3>
+                    <h3 className="text-lg font-semibold">{t('aiFloorPlan.processing')}</h3>
                     <p className="text-sm text-muted-foreground text-center max-w-md">
-                      Analyzing floor plan, detecting walls, doors, and rooms.
+                      {t('aiFloorPlan.processingDescription')}
                       <br />
-                      This may take 10-30 seconds.
+                      {t('aiFloorPlan.processingTime')}
                     </p>
                   </div>
                 </CardContent>
@@ -767,28 +773,28 @@ export const AIFloorPlanImport = ({
                     <div className="h-16 w-16 rounded-full bg-green-500/20 flex items-center justify-center">
                       <Check className="h-8 w-8 text-green-500" />
                     </div>
-                    <h3 className="text-2xl font-semibold">Import Klar!</h3>
+                    <h3 className="text-2xl font-semibold">{t('aiFloorPlan.importComplete')}</h3>
                     <div className="text-center space-y-2">
                       <p className="text-lg font-medium text-green-600 dark:text-green-400">
-                        {convertedShapeCount} objekt skapade
+                        {t('aiFloorPlan.objectsCreated', { count: convertedShapeCount })}
                       </p>
                       <div className="flex gap-4 text-sm text-muted-foreground">
-                        <span>🧱 Väggar</span>
-                        <span>🚪 Dörrar</span>
-                        <span>📐 Rum</span>
+                        <span>{t('aiFloorPlan.wallsLabel')}</span>
+                        <span>{t('aiFloorPlan.doorsLabel')}</span>
+                        <span>{t('aiFloorPlan.roomsLabel')}</span>
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground text-center max-w-md mt-4">
-                      Ritningen har konverterats till redigerbara canvas-objekt.
+                      {t('aiFloorPlan.conversionDone')}
                       <br />
-                      Gå till Floor Plan för att se och redigera!
+                      {t('aiFloorPlan.goToFloorPlan')}
                     </p>
                     <div className="flex gap-2 mt-4">
                       <Button variant="outline" onClick={handleClose}>
-                        Stäng
+                        {t('aiFloorPlan.close')}
                       </Button>
                       <Button onClick={handleViewCanvas} size="lg">
-                        Visa i Floor Plan
+                        {t('aiFloorPlan.viewInFloorPlan')}
                         <Sparkles className="h-4 w-4 ml-2" />
                       </Button>
                     </div>

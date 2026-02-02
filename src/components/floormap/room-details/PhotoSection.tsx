@@ -17,6 +17,7 @@ import {
 import { PinterestBoardEmbed, parsePinterestBoardUrl } from "@/components/pinterest";
 import { fetchPinterestPin, parsePinterestPinUrl } from "@/services/pinterestOEmbed";
 import { PhotoCarousel } from "@/components/ui/photo-carousel";
+import { useTranslation } from "react-i18next";
 import type { Photo } from "./types";
 
 // Pinterest Logo SVG
@@ -31,6 +32,7 @@ interface PhotoSectionProps {
 }
 
 export function PhotoSection({ roomId }: PhotoSectionProps) {
+  const { t } = useTranslation();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -64,7 +66,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
       setPhotos((data as Photo[]) || []);
     } catch (error) {
       console.error("Error loading photos:", error);
-      toast.error("Kunde inte ladda bilder");
+      toast.error(t('rooms.couldNotLoadPhotos', 'Could not load photos'));
     } finally {
       setLoadingPhotos(false);
     }
@@ -100,7 +102,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Du måste vara inloggad för att ladda upp bilder");
+        toast.error(t('rooms.mustBeLoggedInToUpload', 'You must be logged in to upload photos'));
         return;
       }
 
@@ -112,18 +114,18 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
         .single();
 
       if (!profile) {
-        toast.error("Profil hittades inte");
+        toast.error(t('rooms.profileNotFound', 'Profile not found'));
         return;
       }
 
       for (const file of Array.from(files)) {
         if (!file.type.startsWith("image/")) {
-          toast.error(`${file.name} är inte en bild`);
+          toast.error(t('rooms.notAnImage', '{{name}} is not an image', { name: file.name }));
           continue;
         }
 
         if (file.size > 10 * 1024 * 1024) {
-          toast.error(`${file.name} är för stor (max 10MB)`);
+          toast.error(t('rooms.fileTooLarge', '{{name}} is too large (max 10MB)', { name: file.name }));
           continue;
         }
 
@@ -136,7 +138,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
 
         if (uploadError) {
           console.error("Upload error:", uploadError);
-          toast.error(`Kunde inte ladda upp ${file.name}`);
+          toast.error(t('rooms.couldNotUpload', 'Could not upload {{name}}', { name: file.name }));
           continue;
         }
 
@@ -154,16 +156,16 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
 
         if (dbError) {
           console.error("Database error:", dbError);
-          toast.error(`Kunde inte spara ${file.name}`);
+          toast.error(t('rooms.couldNotSave', 'Could not save {{name}}', { name: file.name }));
           continue;
         }
       }
 
-      toast.success("Bilder uppladdade!");
+      toast.success(t('rooms.photosUploaded', 'Photos uploaded!'));
       loadPhotos();
     } catch (error) {
       console.error("Error uploading files:", error);
-      toast.error("Kunde inte ladda upp bilder");
+      toast.error(t('rooms.couldNotUploadPhotos', 'Could not upload photos'));
     } finally {
       setUploading(false);
       event.target.value = "";
@@ -171,7 +173,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
   };
 
   const handleDeletePhoto = async (photoId: string, photoUrl: string) => {
-    if (!confirm("Är du säker på att du vill ta bort denna bild?")) return;
+    if (!confirm(t('rooms.confirmDeletePhoto', 'Are you sure you want to delete this photo?'))) return;
 
     try {
       const urlParts = photoUrl.split("/room-photos/");
@@ -193,11 +195,11 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
 
       if (dbError) throw dbError;
 
-      toast.success("Bild borttagen");
+      toast.success(t('rooms.photoDeleted', 'Photo deleted'));
       loadPhotos();
     } catch (error) {
       console.error("Error deleting photo:", error);
-      toast.error("Kunde inte ta bort bild");
+      toast.error(t('rooms.couldNotDeletePhoto', 'Could not delete photo'));
     }
   };
 
@@ -221,7 +223,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
       return true;
     } catch (error) {
       console.error("Error saving Pinterest board URL:", error);
-      toast.error("Kunde inte spara Pinterest board");
+      toast.error(t('rooms.couldNotSavePinterestBoard', 'Could not save Pinterest board'));
       return false;
     } finally {
       setSavingPinterest(false);
@@ -236,7 +238,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
       const success = await savePinterestBoardToDb(null);
       if (success) {
         setPinterestDialogOpen(false);
-        toast.success("Pinterest board borttagen");
+        toast.success(t('rooms.pinterestBoardRemoved', 'Pinterest board removed'));
       }
       return;
     }
@@ -244,22 +246,22 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
     // Validate URL
     const parsed = parsePinterestBoardUrl(url);
     if (!parsed) {
-      setPinterestUrlError("Ogiltig Pinterest board URL. Använd format: pinterest.com/användare/board-namn");
+      setPinterestUrlError(t('rooms.invalidPinterestBoardUrl', 'Invalid Pinterest board URL. Use format: pinterest.com/user/board-name'));
       return;
     }
 
     const success = await savePinterestBoardToDb(url);
     if (success) {
       setPinterestDialogOpen(false);
-      toast.success("Pinterest board tillagd!");
+      toast.success(t('rooms.pinterestBoardAdded', 'Pinterest board added!'));
     }
   };
 
   const handleRemovePinterestBoard = async () => {
-    if (confirm("Är du säker på att du vill ta bort Pinterest board?")) {
+    if (confirm(t('rooms.confirmRemovePinterestBoard', 'Are you sure you want to remove Pinterest board?'))) {
       const success = await savePinterestBoardToDb(null);
       if (success) {
-        toast.success("Pinterest board borttagen");
+        toast.success(t('rooms.pinterestBoardRemoved', 'Pinterest board removed'));
       }
     }
   };
@@ -275,13 +277,13 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
     const url = pinUrlInput.trim();
 
     if (!url) {
-      setPinUrlError("Ange en Pinterest pin URL");
+      setPinUrlError(t('rooms.enterPinterestPinUrl', 'Enter a Pinterest pin URL'));
       return;
     }
 
     // Validate URL format first
     if (!parsePinterestPinUrl(url)) {
-      setPinUrlError("Ogiltig Pinterest pin URL. Använd format: pinterest.com/pin/123456789/");
+      setPinUrlError(t('rooms.invalidPinterestPinUrl', 'Invalid Pinterest pin URL. Use format: pinterest.com/pin/123456789/'));
       return;
     }
 
@@ -291,7 +293,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Du måste vara inloggad");
+        toast.error(t('rooms.mustBeLoggedIn', 'You must be logged in'));
         return;
       }
 
@@ -303,7 +305,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
         .single();
 
       if (!profile) {
-        toast.error("Profil hittades inte");
+        toast.error(t('rooms.profileNotFound', 'Profile not found'));
         return;
       }
 
@@ -324,7 +326,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
 
       if (error) throw error;
 
-      toast.success("Pin importerad!");
+      toast.success(t('rooms.pinImported', 'Pin imported!'));
       setPinImportDialogOpen(false);
       loadPhotos();
     } catch (error) {
@@ -332,7 +334,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
       if (error instanceof Error) {
         setPinUrlError(error.message);
       } else {
-        toast.error("Kunde inte importera pin");
+        toast.error(t('rooms.couldNotImportPin', 'Could not import pin'));
       }
     } finally {
       setImportingPin(false);
@@ -350,10 +352,10 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ImageIcon className="h-4 w-4 text-gray-600" />
-          <Label>Bilder</Label>
+          <Label>{t('rooms.photos', 'Photos')}</Label>
         </div>
         <div className="text-xs text-gray-500">
-          {photos.length} {photos.length === 1 ? "bild" : "bilder"}
+          {photos.length} {photos.length === 1 ? t('rooms.photo', 'photo') : t('rooms.photosCount', 'photos')}
         </div>
       </div>
 
@@ -376,7 +378,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
           onClick={() => document.getElementById("photo-camera")?.click()}
         >
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-          Ta foto
+          {t('rooms.takePhoto', 'Take photo')}
         </Button>
 
         <input
@@ -396,7 +398,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
           onClick={() => document.getElementById("photo-upload")?.click()}
         >
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          Ladda upp
+          {t('rooms.upload', 'Upload')}
         </Button>
       </div>
 
@@ -408,7 +410,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
           className="flex-1 gap-2 border-[#E60023]/30 text-[#E60023] hover:bg-[#E60023]/5 hover:border-[#E60023]"
         >
           <PinterestLogo className="h-4 w-4" />
-          Importera Pin
+          {t('rooms.importPin', 'Import Pin')}
         </Button>
         <Button
           variant="outline"
@@ -416,7 +418,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
           className="flex-1 gap-2 border-[#E60023]/30 text-[#E60023] hover:bg-[#E60023]/5 hover:border-[#E60023] opacity-70"
         >
           <Plus className="h-4 w-4" />
-          {pinterestBoardUrl ? "Ändra Board" : "Länka Board"}
+          {pinterestBoardUrl ? t('rooms.changeBoard', 'Change Board') : t('rooms.linkBoard', 'Link Board')}
         </Button>
       </div>
 
@@ -426,10 +428,10 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PinterestLogo className="h-5 w-5 text-[#E60023]" />
-              Importera Pinterest Pin
+              {t('rooms.importPinterestPin', 'Import Pinterest Pin')}
             </DialogTitle>
             <DialogDescription>
-              Klistra in länken till en Pinterest pin för att importera bilden till detta rum.
+              {t('rooms.pastePinterestPinLink', 'Paste the link to a Pinterest pin to import the image to this room.')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -458,22 +460,22 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
                 <p className="text-sm text-red-500">{pinUrlError}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                Öppna en pin på Pinterest och kopiera URL:en från webbläsaren.
+                {t('rooms.openPinAndCopyUrl', 'Open a pin on Pinterest and copy the URL from the browser.')}
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPinImportDialogOpen(false)} disabled={importingPin}>
-              Avbryt
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleImportPin} disabled={importingPin}>
               {importingPin ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Importerar...
+                  {t('rooms.importing', 'Importing...')}
                 </>
               ) : (
-                "Importera"
+                t('rooms.import', 'Import')
               )}
             </Button>
           </DialogFooter>
@@ -486,10 +488,10 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PinterestLogo className="h-5 w-5 text-[#E60023]" />
-              Pinterest Inspiration Board
+              {t('rooms.pinterestInspirationBoard', 'Pinterest Inspiration Board')}
             </DialogTitle>
             <DialogDescription>
-              Klistra in länken till din Pinterest board för att visa den som inspiration för detta rum.
+              {t('rooms.pastePinterestBoardLink', 'Paste the link to your Pinterest board to display it as inspiration for this room.')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -500,7 +502,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
                   <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     id="pinterest-url"
-                    placeholder="pinterest.com/användare/board-namn"
+                    placeholder="pinterest.com/user/board-name"
                     value={pinterestUrlInput}
                     onChange={(e) => {
                       setPinterestUrlInput(e.target.value);
@@ -514,7 +516,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
                 <p className="text-sm text-red-500">{pinterestUrlError}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                Öppna din Pinterest board och kopiera URL:en från webbläsaren.
+                {t('rooms.openBoardAndCopyUrl', 'Open your Pinterest board and copy the URL from the browser.')}
               </p>
             </div>
           </div>
@@ -529,20 +531,21 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
                 disabled={savingPinterest}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
               >
-                Ta bort board
+                {t('rooms.removeBoard', 'Remove board')}
               </Button>
             )}
             <Button variant="outline" onClick={() => setPinterestDialogOpen(false)} disabled={savingPinterest}>
-              Avbryt
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleSavePinterestBoard} disabled={savingPinterest}>
               {savingPinterest ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sparar...
+                  {t('common.saving', 'Saving...')}
                 </>
               ) : (
-                "Spara"
+                t('common.save')
+
               )}
             </Button>
           </DialogFooter>
@@ -565,7 +568,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
               >
                 <img
                   src={photo.url}
-                  alt={photo.caption || "Rumsbild"}
+                  alt={photo.caption || t('rooms.roomPhoto', 'Room photo')}
                   className="w-full h-32 object-cover rounded-lg border border-gray-200 transition-all group-hover:brightness-90"
                 />
                 {/* Expand icon overlay */}
@@ -578,7 +581,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
                 {photo.source === 'pinterest' && (
                   <div
                     className="absolute top-2 left-2 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm"
-                    title="Importerad från Pinterest"
+                    title={t('rooms.importedFromPinterest', 'Imported from Pinterest')}
                   >
                     <PinterestLogo className="h-3.5 w-3.5 text-[#E60023]" />
                   </div>
@@ -596,7 +599,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
                     text-white rounded-full p-1.5
                     z-10
                   "
-                  title="Ta bort bild"
+                  title={t('rooms.deletePhoto', 'Delete photo')}
                 >
                   <XCircle className="h-4 w-4" />
                 </button>
@@ -612,7 +615,7 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
       ) : (
         <div className="text-center py-6 text-gray-400 text-sm">
           <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p>Inga bilder uppladdade än</p>
+          <p>{t('rooms.noPhotosUploaded', 'No photos uploaded yet')}</p>
         </div>
       )}
 

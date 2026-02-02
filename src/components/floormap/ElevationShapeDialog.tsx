@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -94,6 +95,7 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
   wallHeightMM,
   elevationShapes = [],
 }) => {
+  const { t } = useTranslation();
   // Local state for editing
   const [fillColor, setFillColor] = useState('#93c5fd');
   const [strokeColor, setStrokeColor] = useState('#3b82f6');
@@ -214,16 +216,16 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
 
   // Get shape type label
   const getShapeLabel = () => {
-    if (isWall) return 'Vägg';
+    if (isWall) return t('elevationShapeDialog.wallLabel');
     switch (shape.type) {
       case 'rectangle':
-        return 'Rektangel';
+        return t('elevationShapeDialog.rectangleLabel');
       case 'circle':
-        return 'Cirkel';
+        return t('elevationShapeDialog.circleLabel');
       case 'line':
-        return 'Linje';
+        return t('elevationShapeDialog.lineLabel');
       case 'wall':
-        return 'Vägg';
+        return t('elevationShapeDialog.wallLabel');
       default:
         return shape.type;
     }
@@ -263,16 +265,16 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
             <span>{getShapeLabel()}</span>
             {isWall ? (
               <span className="text-sm font-normal text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                Floor Plan
+                {t('elevationShapeDialog.floorPlan')}
               </span>
             ) : (
               <span className="text-sm font-normal text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
-                Elevation
+                {t('elevationShapeDialog.elevationLabel')}
               </span>
             )}
           </DialogTitle>
           <DialogDescription>
-            {isWall ? 'Visa och redigera väggens egenskaper och materialuppgifter' : 'Visa och redigera objektets egenskaper'}
+            {isWall ? t('elevationShapeDialog.wallDescription') : t('elevationShapeDialog.objectDescription')}
           </DialogDescription>
         </DialogHeader>
 
@@ -281,22 +283,22 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
               <Ruler className="h-4 w-4 text-gray-500" />
-              <span className="font-medium text-sm">Dimensioner</span>
+              <span className="font-medium text-sm">{t('elevationShapeDialog.dimensions')}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-sm">
               {shape.type === 'rectangle' && (
                 <>
                   <div>
-                    <span className="text-gray-500">Bredd:</span>
+                    <span className="text-gray-500">{t('elevationShapeDialog.widthLabel')}</span>
                     <span className="ml-2 font-medium">{formatDimension(dimensions.width || 0)}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Höjd:</span>
+                    <span className="text-gray-500">{t('elevationShapeDialog.heightLabel')}</span>
                     <span className="ml-2 font-medium">{formatDimension(dimensions.height || 0)}</span>
                   </div>
                   <div className="col-span-2">
-                    <span className="text-gray-500">Area:</span>
+                    <span className="text-gray-500">{t('elevationShapeDialog.areaLabel')}</span>
                     <span className="ml-2 font-medium">{(dimensions.area || 0).toFixed(0)} mm²</span>
                   </div>
                 </>
@@ -305,19 +307,19 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
               {shape.type === 'circle' && (
                 <>
                   <div>
-                    <span className="text-gray-500">Radie:</span>
+                    <span className="text-gray-500">{t('elevationShapeDialog.radiusLabel')}</span>
                     <span className="ml-2 font-medium">{formatDimension(dimensions.radius || 0)}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Diameter:</span>
+                    <span className="text-gray-500">{t('elevationShapeDialog.diameterLabel')}</span>
                     <span className="ml-2 font-medium">{formatDimension(dimensions.diameter || 0)}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Omkrets:</span>
+                    <span className="text-gray-500">{t('elevationShapeDialog.circumferenceLabel')}</span>
                     <span className="ml-2 font-medium">{formatDimension(dimensions.circumference || 0)}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Area:</span>
+                    <span className="text-gray-500">{t('elevationShapeDialog.areaLabel')}</span>
                     <span className="ml-2 font-medium">{(dimensions.area || 0).toFixed(0)} mm²</span>
                   </div>
                 </>
@@ -326,11 +328,11 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
               {shape.type === 'line' && (
                 <>
                   <div>
-                    <span className="text-gray-500">Längd:</span>
+                    <span className="text-gray-500">{t('elevationShapeDialog.lengthLabel')}</span>
                     <span className="ml-2 font-medium">{formatDimension(dimensions.length || 0)}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Vinkel:</span>
+                    <span className="text-gray-500">{t('elevationShapeDialog.angleLabel')}</span>
                     <span className="ml-2 font-medium">{dimensions.angle}°</span>
                   </div>
                 </>
@@ -343,25 +345,25 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
             <div className="bg-green-50 rounded-lg p-4 border border-green-200">
               <div className="flex items-center gap-2 mb-3">
                 <Calculator className="h-4 w-4 text-green-600" />
-                <span className="font-medium text-sm text-green-800">Smarta uppgifter</span>
+                <span className="font-medium text-sm text-green-800">{t('elevationShapeDialog.smartData')}</span>
               </div>
 
               {/* Area breakdown */}
               <div className="space-y-2 text-sm mb-4">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Total väggyta:</span>
+                  <span className="text-gray-600">{t('elevationShapeDialog.totalWallArea')}</span>
                   <span className="font-medium">{formatArea(smartData.totalArea)}</span>
                 </div>
                 {smartData.objectCount > 0 && (
                   <div className="flex justify-between text-amber-600">
-                    <span>Objekt ({smartData.objectCount} st, {smartData.objectPercentage}%):</span>
+                    <span>{t('elevationShapeDialog.objects')} ({smartData.objectCount} st, {smartData.objectPercentage}%):</span>
                     <span className="font-medium">-{formatArea(smartData.objectsArea)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-green-700 font-medium pt-2 border-t border-green-200">
                   <span className="flex items-center gap-1">
                     <Paintbrush className="h-3.5 w-3.5" />
-                    Målbar yta (netto):
+                    {t('elevationShapeDialog.paintableArea')}
                   </span>
                   <span>{formatArea(smartData.paintableArea)}</span>
                 </div>
@@ -369,21 +371,21 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
 
               {/* Material estimates */}
               <div className="space-y-1.5 text-sm pt-3 border-t border-green-200">
-                <div className="text-xs font-medium text-green-700 mb-2">Materialåtgång (beräknat)</div>
+                <div className="text-xs font-medium text-green-700 mb-2">{t('elevationShapeDialog.materialEstimates')}</div>
                 <div className="flex justify-between text-gray-600">
-                  <span>Väggfärg (2 strykn.):</span>
+                  <span>{t('elevationShapeDialog.wallPaint')}</span>
                   <span className="font-medium">~{smartData.paintLiters} L</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
-                  <span>Primer:</span>
+                  <span>{t('elevationShapeDialog.primer')}</span>
                   <span className="font-medium">~{smartData.primerLiters} L</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
-                  <span>Golvlist:</span>
+                  <span>{t('elevationShapeDialog.skirting')}</span>
                   <span className="font-medium">{smartData.skirtingMeters.toFixed(1)} m</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
-                  <span>Taklist:</span>
+                  <span>{t('elevationShapeDialog.crownMolding')}</span>
                   <span className="font-medium">{smartData.crownMoldingMeters.toFixed(1)} m</span>
                 </div>
               </div>
@@ -391,7 +393,7 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
               <div className="mt-3 pt-2 border-t border-green-200">
                 <p className="text-xs text-gray-500 flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3" />
-                  Uppskattningar. Verifiera med leverantör.
+                  {t('elevationShapeDialog.estimatesDisclaimer')}
                 </p>
               </div>
             </div>
@@ -399,12 +401,12 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
 
           {/* Name */}
           <div className="space-y-2">
-            <Label htmlFor="shape-name">Namn (valfritt)</Label>
+            <Label htmlFor="shape-name">{t('elevationShapeDialog.nameOptional')}</Label>
             <Input
               id="shape-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="T.ex. Fönsterkarm, Tavla..."
+              placeholder={t('elevationShapeDialog.namePlaceholder')}
             />
           </div>
 
@@ -412,13 +414,13 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Palette className="h-4 w-4 text-gray-500" />
-              <span className="font-medium text-sm">Färger</span>
+              <span className="font-medium text-sm">{t('elevationShapeDialog.colors')}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               {shape.type !== 'line' && (
                 <div className="space-y-2">
-                  <Label htmlFor="fill-color" className="text-sm">Fyllnadsfärg</Label>
+                  <Label htmlFor="fill-color" className="text-sm">{t('elevationShapeDialog.fillColor')}</Label>
                   <div className="flex gap-2">
                     <input
                       type="color"
@@ -437,7 +439,7 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="stroke-color" className="text-sm">Kantfärg</Label>
+                <Label htmlFor="stroke-color" className="text-sm">{t('elevationShapeDialog.strokeColor')}</Label>
                 <div className="flex gap-2">
                   <input
                     type="color"
@@ -459,7 +461,7 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
           {/* Stroke Width */}
           <div className="space-y-2">
             <div className="flex justify-between">
-              <Label className="text-sm">Kantbredd</Label>
+              <Label className="text-sm">{t('elevationShapeDialog.strokeWidth')}</Label>
               <span className="text-sm text-gray-500">{strokeWidth}px</span>
             </div>
             <Slider
@@ -475,7 +477,7 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
           {shape.type !== 'line' && (
             <div className="space-y-2">
               <div className="flex justify-between">
-                <Label className="text-sm">Opacitet</Label>
+                <Label className="text-sm">{t('elevationShapeDialog.opacityLabel')}</Label>
                 <span className="text-sm text-gray-500">{opacity}%</span>
               </div>
               <Slider
@@ -492,20 +494,20 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
           <div className="space-y-3 pt-2 border-t">
             <div className="flex items-center gap-2">
               <Layers className="h-4 w-4 text-gray-500" />
-              <span className="font-medium text-sm">Material</span>
+              <span className="font-medium text-sm">{t('elevationShapeDialog.material')}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="material" className="text-sm">Materialtyp</Label>
+                <Label htmlFor="material" className="text-sm">{t('elevationShapeDialog.materialType')}</Label>
                 <Select value={material} onValueChange={setMaterial}>
                   <SelectTrigger id="material">
-                    <SelectValue placeholder="Välj material" />
+                    <SelectValue placeholder={t('elevationShapeDialog.selectMaterial')} />
                   </SelectTrigger>
                   <SelectContent>
                     {(isWall ? WALL_MATERIAL_OPTIONS : ELEVATION_OBJECT_MATERIAL_OPTIONS).map((option) => (
                       <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                        {t(option.labelKey)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -513,15 +515,15 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="treatment" className="text-sm">Ytbehandling</Label>
+                <Label htmlFor="treatment" className="text-sm">{t('elevationShapeDialog.surfaceTreatment')}</Label>
                 <Select value={treatment} onValueChange={setTreatment}>
                   <SelectTrigger id="treatment">
-                    <SelectValue placeholder="Välj behandling" />
+                    <SelectValue placeholder={t('elevationShapeDialog.selectTreatment')} />
                   </SelectTrigger>
                   <SelectContent>
                     {WALL_TREATMENT_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                        {t(option.labelKey)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -530,22 +532,22 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="material-spec" className="text-sm">Specifikation</Label>
+              <Label htmlFor="material-spec" className="text-sm">{t('elevationShapeDialog.specification')}</Label>
               <Input
                 id="material-spec"
                 value={materialSpec}
                 onChange={(e) => setMaterialSpec(e.target.value)}
-                placeholder="t.ex. Ek massiv, 20mm"
+                placeholder={t('elevationShapeDialog.specPlaceholder')}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="treatment-color" className="text-sm">Kulör/Finish</Label>
+              <Label htmlFor="treatment-color" className="text-sm">{t('elevationShapeDialog.colorFinish')}</Label>
               <Input
                 id="treatment-color"
                 value={treatmentColor}
                 onChange={(e) => setTreatmentColor(e.target.value)}
-                placeholder="t.ex. NCS S 0502-Y, RAL 9010"
+                placeholder={t('elevationShapeDialog.colorFinishPlaceholder')}
               />
             </div>
           </div>
@@ -554,27 +556,27 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
           <div className="space-y-3 pt-2 border-t">
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-gray-500" />
-              <span className="font-medium text-sm">Produktinfo</span>
+              <span className="font-medium text-sm">{t('elevationShapeDialog.productInfo')}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="manufacturer" className="text-sm">Tillverkare</Label>
+                <Label htmlFor="manufacturer" className="text-sm">{t('elevationShapeDialog.manufacturerLabel')}</Label>
                 <Input
                   id="manufacturer"
                   value={manufacturer}
                   onChange={(e) => setManufacturer(e.target.value)}
-                  placeholder="t.ex. IKEA, Byggmax"
+                  placeholder={t('elevationShapeDialog.manufacturerPlaceholder')}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="product-code" className="text-sm">Artikelnummer</Label>
+                <Label htmlFor="product-code" className="text-sm">{t('elevationShapeDialog.productCodeLabel')}</Label>
                 <Input
                   id="product-code"
                   value={productCode}
                   onChange={(e) => setProductCode(e.target.value)}
-                  placeholder="t.ex. 123-456-789"
+                  placeholder={t('elevationShapeDialog.productCodePlaceholder')}
                 />
               </div>
             </div>
@@ -582,12 +584,12 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
 
           {/* Notes */}
           <div className="space-y-2 pt-2 border-t">
-            <Label htmlFor="notes" className="text-sm">Anteckningar</Label>
+            <Label htmlFor="notes" className="text-sm">{t('elevationShapeDialog.notes')}</Label>
             <Textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Instruktioner, noteringar..."
+              placeholder={t('elevationShapeDialog.notesPlaceholder')}
               rows={2}
             />
           </div>
@@ -606,7 +608,7 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
           {/* Comments Section */}
           {projectId && (
             <div className="pt-2 border-t">
-              <Label className="text-sm font-medium mb-2 block">Kommentarer</Label>
+              <Label className="text-sm font-medium mb-2 block">{t('elevationShapeDialog.commentsLabel')}</Label>
               <CommentsSection
                 drawingObjectId={shape.id}
                 projectId={projectId}
@@ -629,14 +631,14 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
             className="gap-1"
           >
             <Trash2 className="h-4 w-4" />
-            Ta bort
+            {t('common.delete')}
           </Button>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Avbryt
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleSave}>
-              Spara
+              {t('common.save')}
             </Button>
           </div>
         </DialogFooter>

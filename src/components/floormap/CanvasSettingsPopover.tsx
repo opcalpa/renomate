@@ -60,7 +60,7 @@ export const CanvasSettingsPopover = () => {
           <Settings className="h-5 w-5" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-96 max-h-[85vh] overflow-y-auto" align="start">
+      <PopoverContent className="w-96 max-h-[80vh] overflow-y-auto" side="right" align="start" sideOffset={8} collisionPadding={16}>
         <div className="space-y-4">
           <div>
             <h4 className="font-semibold mb-3 flex items-center gap-2">

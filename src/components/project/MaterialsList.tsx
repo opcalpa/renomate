@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +78,7 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
   });
 
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetchMaterials();
@@ -179,8 +181,8 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
       if (error) throw error;
 
       toast({
-        title: "Success",
-        description: "Purchase order added successfully",
+        title: t('common.success', 'Success'),
+        description: t('purchases.orderAdded', 'Purchase order added successfully'),
       });
 
       setDialogOpen(false);
@@ -197,7 +199,7 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to add purchase order",
+        description: error.message || t('purchases.failedToAdd', 'Failed to add purchase order'),
         variant: "destructive",
       });
     } finally {
@@ -227,8 +229,8 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
       if (error) throw error;
 
       toast({
-        title: "Success",
-        description: "Purchase order updated successfully",
+        title: t('common.success', 'Success'),
+        description: t('purchases.orderUpdated', 'Purchase order updated successfully'),
       });
 
       setEditDialogOpen(false);
@@ -237,7 +239,7 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to update purchase order",
+        description: error.message || t('purchases.failedToUpdate', 'Failed to update purchase order'),
         variant: "destructive",
       });
     } finally {
@@ -255,8 +257,8 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
       if (error) throw error;
 
       toast({
-        title: "Status Updated",
-        description: `Purchase order status changed to ${newStatus}.`,
+        title: t('purchases.statusUpdated', 'Status Updated'),
+        description: t('purchases.statusChangedTo', 'Purchase order status changed to {{status}}.', { status: newStatus }),
       });
 
       fetchMaterials();
@@ -282,25 +284,25 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
           <Package className="h-4 w-4" />
-          Purchase Orders ({materials.length})
+          {t('purchases.title')} ({materials.length})
         </h4>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline">
               <Plus className="h-3 w-3 mr-1" />
-              Add Purchase Order
+              {t('purchases.addOrder')}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Purchase Order</DialogTitle>
+              <DialogTitle>{t('purchases.addOrder')}</DialogTitle>
               <DialogDescription>
-                Create a new purchase order for materials needed for this task
+                {t('purchases.addOrderDescription')}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddMaterial} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="material-name">Material Name*</Label>
+                <Label htmlFor="material-name">{t('purchases.materialName')}*</Label>
                 <Input
                   id="material-name"
                   placeholder="e.g., Paint, Wood, Tiles"
@@ -312,7 +314,7 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="quantity">Quantity*</Label>
+                  <Label htmlFor="quantity">{t('common.quantity')}*</Label>
                   <Input
                     id="quantity"
                     type="number"
@@ -324,7 +326,7 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="unit">Unit*</Label>
+                  <Label htmlFor="unit">{t('common.unit')}*</Label>
                   <Input
                     id="unit"
                     placeholder="e.g., gallons, sqft"
@@ -336,7 +338,7 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="price_per_unit">Price per Unit (Optional)</Label>
+                <Label htmlFor="price_per_unit">{t('purchases.pricePerUnit')} ({t('common.optional')})</Label>
                 <Input
                   id="price_per_unit"
                   type="number"
@@ -353,7 +355,7 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="vendor-name">Vendor Name (Optional)</Label>
+                <Label htmlFor="vendor-name">{t('purchases.vendorName')} ({t('common.optional')})</Label>
                 <Input
                   id="vendor-name"
                   placeholder="Home Depot, Lowe's, etc."
@@ -363,7 +365,7 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="vendor-link">Vendor Link (Optional)</Label>
+                <Label htmlFor="vendor-link">{t('purchases.vendorLink')} ({t('common.optional')})</Label>
                 <Input
                   id="vendor-link"
                   type="url"
@@ -382,7 +384,7 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
                   className="h-4 w-4 rounded border-gray-300"
                 />
                 <Label htmlFor="exclude-from-budget" className="text-sm font-normal cursor-pointer">
-                  Löpande kostnad (Exklusive budget)
+                  {t('purchases.excludeFromBudget')}
                 </Label>
               </div>
 
@@ -390,10 +392,10 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
                 {creating ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Creating...
+                    {t('purchases.creating')}
                   </>
                 ) : (
-                  "Create Purchase Order"
+                  t('purchases.createOrder')
                 )}
               </Button>
             </form>
@@ -405,15 +407,15 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Purchase Order</DialogTitle>
+            <DialogTitle>{t('purchases.editOrder')}</DialogTitle>
             <DialogDescription>
-              Update purchase order details
+              {t('purchases.editOrderDescription')}
             </DialogDescription>
           </DialogHeader>
           {editingMaterial && (
             <form onSubmit={handleEditMaterial} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-material-name">Material Name*</Label>
+                <Label htmlFor="edit-material-name">{t('purchases.materialName')}*</Label>
                 <Input
                   id="edit-material-name"
                   value={editingMaterial.name}
@@ -423,7 +425,7 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-quantity">Quantity*</Label>
+                  <Label htmlFor="edit-quantity">{t('common.quantity')}*</Label>
                   <Input
                     id="edit-quantity"
                     type="number"
@@ -434,7 +436,7 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-unit">Unit*</Label>
+                  <Label htmlFor="edit-unit">{t('common.unit')}*</Label>
                   <Input
                     id="edit-unit"
                     value={editingMaterial.unit}
@@ -484,11 +486,11 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
                   className="h-4 w-4 rounded border-gray-300"
                 />
                 <Label htmlFor="edit-exclude-from-budget" className="text-sm font-normal cursor-pointer">
-                  Löpande kostnad (Exklusive budget)
+                  {t('purchases.excludeFromBudget')}
                 </Label>
               </div>
               <Button type="submit" className="w-full" disabled={creating}>
-                {creating ? "Updating..." : "Update Purchase Order"}
+                {creating ? t('purchases.updating') : t('purchases.updateOrder')}
               </Button>
             </form>
           )}
@@ -498,21 +500,21 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
       {materials.length === 0 ? (
         <div className="text-center py-6 border border-dashed rounded-lg">
           <Package className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-          <p className="text-sm text-muted-foreground">No purchase orders yet</p>
+          <p className="text-sm text-muted-foreground">{t('purchases.noPurchaseOrders')}</p>
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Material Name</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Price/Unit</TableHead>
-                <TableHead>Price Total</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Added By</TableHead>
-                <TableHead>Added Date</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('purchases.materialName')}</TableHead>
+                <TableHead>{t('common.quantity')}</TableHead>
+                <TableHead>{t('purchases.pricePerUnit')}</TableHead>
+                <TableHead>{t('purchases.priceTotal')}</TableHead>
+                <TableHead>{t('purchases.vendor')}</TableHead>
+                <TableHead>{t('purchases.addedBy')}</TableHead>
+                <TableHead>{t('purchases.addedDate')}</TableHead>
+                <TableHead>{t('common.status')}</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -563,13 +565,13 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="new">New</SelectItem>
-                        <SelectItem value="ordered">Ordered</SelectItem>
-                        <SelectItem value="delivered">Delivered</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                        <SelectItem value="installed">Installed</SelectItem>
-                        <SelectItem value="done">Done</SelectItem>
-                        <SelectItem value="declined">Declined</SelectItem>
+                        <SelectItem value="new">{t('materialStatuses.new')}</SelectItem>
+                        <SelectItem value="ordered">{t('materialStatuses.ordered')}</SelectItem>
+                        <SelectItem value="delivered">{t('materialStatuses.delivered')}</SelectItem>
+                        <SelectItem value="paid">{t('materialStatuses.paid')}</SelectItem>
+                        <SelectItem value="installed">{t('materialStatuses.installed')}</SelectItem>
+                        <SelectItem value="done">{t('materialStatuses.done')}</SelectItem>
+                        <SelectItem value="declined">{t('materialStatuses.declined')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>

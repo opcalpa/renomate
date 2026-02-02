@@ -156,6 +156,50 @@ if (error) {
 - Types: `types.ts` or `ComponentName.types.ts`
 - Tests: `ComponentName.test.tsx`
 
+## Internationalization (i18n)
+
+- **No hardcoded UI strings** in components — use `t('namespace.key')` from `useTranslation()`
+- **Namespace convention:** `common.*` for shared terms (save, cancel, delete, etc.), component-specific namespaces for the rest (`statuses.*`, `purchases.*`, `floormap.*`, `files.*`, `overview.*`, `budget.*`, `taskPanel.*`, `taskDetail.*`, `roles.*`, etc.)
+- **New keys go in `en.json` first**, then add to `sv.json` (required), then `de.json`/`fr.json`/`es.json` (best effort)
+- **Constants with display labels** use `labelKey` pattern — render with `t(option.labelKey)`:
+  ```typescript
+  // In constants file
+  export const OPTIONS = [
+    { value: "existing", labelKey: "roomStatuses.existing" },
+  ];
+
+  // In component
+  {OPTIONS.map((opt) => (
+    <SelectItem key={opt.value} value={opt.value}>
+      {t(opt.labelKey)}
+    </SelectItem>
+  ))}
+  ```
+- **DB values are English keys** (e.g. `existing`, not `befintligt`) — translate at display time
+- **Fallback pattern:** `t('key', 'English fallback')` for keys that may not exist in all locales yet
+- **Status translation helper** for snake_case → camelCase mapping:
+  ```typescript
+  const statusKey = (s: string) => {
+    const map: Record<string, string> = {
+      to_do: 'toDo', in_progress: 'inProgress', on_hold: 'onHold',
+      new_construction: 'newConstruction', to_be_renovated: 'toBeRenovated',
+      not_paid: 'notPaid', partially_paid: 'partiallyPaid',
+    };
+    return map[s] || s;
+  };
+  // Usage: t(`statuses.${statusKey(task.status)}`)
+  ```
+
+### Locale file structure
+```
+src/i18n/locales/
+├── en.json   # Source of truth (all keys)
+├── sv.json   # Swedish (must stay in sync)
+├── de.json   # German
+├── fr.json   # French
+└── es.json   # Spanish
+```
+
 ## Before Committing
 
 - [ ] No TypeScript errors
@@ -164,6 +208,9 @@ if (error) {
 - [ ] All props destructured correctly
 - [ ] User actions have feedback
 - [ ] Tested with multiple shapes on canvas
+- [ ] No hardcoded UI strings in components — use `t()` from `useTranslation()`
+- [ ] New i18n keys added to `en.json` and `sv.json`
+- [ ] `npm run test:e2e` passes after major changes
 
 ---
-*Last Updated: 2025-01-23*
+*Last Updated: 2026-01-30*

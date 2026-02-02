@@ -5,6 +5,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -47,6 +48,7 @@ export const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
   selectedShapes,
   onSaveSuccess,
 }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<TemplateCategory>('other');
@@ -55,12 +57,12 @@ export const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
   
   const handleSave = async () => {
     if (!name.trim()) {
-      toast.error('Ange ett namn för mallen');
+      toast.error(t('saveTemplateDialog.enterNameError'));
       return;
     }
     
     if (selectedShapes.length === 0) {
-      toast.error('Inga objekt markerade');
+      toast.error(t('saveTemplateDialog.noObjectsError'));
       return;
     }
     
@@ -91,7 +93,7 @@ export const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
       });
       
       if (result) {
-        toast.success(`✅ Mall "${name}" sparad!`);
+        toast.success(t('saveTemplateDialog.templateSaved', { name }));
         
         // Reset form
         setName('');
@@ -107,11 +109,11 @@ export const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
           onSaveSuccess();
         }
       } else {
-        toast.error('Kunde inte spara mall. Försök igen.');
+        toast.error(t('saveTemplateDialog.saveError'));
       }
     } catch (error) {
       console.error('Error saving template:', error);
-      toast.error('Ett fel uppstod vid sparning');
+      toast.error(t('saveTemplateDialog.saveException'));
     } finally {
       setSaving(false);
     }
@@ -125,20 +127,19 @@ export const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>💾 Spara som Mall</DialogTitle>
+          <DialogTitle>{t('saveTemplateDialog.title')}</DialogTitle>
           <DialogDescription>
-            Spara {selectedShapes.length} {selectedShapes.length === 1 ? 'objekt' : 'objekt'} som
-            en återanvändbar mall
+            {t('saveTemplateDialog.description', { count: selectedShapes.length })}
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">
           {/* Name */}
           <div>
-            <Label htmlFor="template-name">Namn *</Label>
+            <Label htmlFor="template-name">{t('saveTemplateDialog.nameLabel')}</Label>
             <Input
               id="template-name"
-              placeholder="t.ex. Badrum komplett, L-formad vägg..."
+              placeholder={t('saveTemplateDialog.namePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
@@ -147,31 +148,31 @@ export const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
           
           {/* Category */}
           <div>
-            <Label htmlFor="template-category">Kategori</Label>
+            <Label htmlFor="template-category">{t('saveTemplateDialog.categoryLabel')}</Label>
             <Select value={category} onValueChange={(v) => setCategory(v as TemplateCategory)}>
               <SelectTrigger id="template-category">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="walls">Väggar</SelectItem>
-                <SelectItem value="bathroom">Badrum</SelectItem>
-                <SelectItem value="kitchen">Kök</SelectItem>
-                <SelectItem value="electrical">El</SelectItem>
-                <SelectItem value="furniture">Möbler</SelectItem>
-                <SelectItem value="doors_windows">Dörrar & Fönster</SelectItem>
-                <SelectItem value="stairs">Trappor</SelectItem>
-                <SelectItem value="structural">Struktur</SelectItem>
-                <SelectItem value="other">Övrigt</SelectItem>
+                <SelectItem value="walls">{t('saveTemplateDialog.walls')}</SelectItem>
+                <SelectItem value="bathroom">{t('saveTemplateDialog.bathroom')}</SelectItem>
+                <SelectItem value="kitchen">{t('saveTemplateDialog.kitchen')}</SelectItem>
+                <SelectItem value="electrical">{t('saveTemplateDialog.electrical')}</SelectItem>
+                <SelectItem value="furniture">{t('saveTemplateDialog.furniture')}</SelectItem>
+                <SelectItem value="doors_windows">{t('saveTemplateDialog.doorsWindows')}</SelectItem>
+                <SelectItem value="stairs">{t('saveTemplateDialog.stairs')}</SelectItem>
+                <SelectItem value="structural">{t('saveTemplateDialog.structural')}</SelectItem>
+                <SelectItem value="other">{t('saveTemplateDialog.other')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
           {/* Description */}
           <div>
-            <Label htmlFor="template-description">Beskrivning (valfritt)</Label>
+            <Label htmlFor="template-description">{t('saveTemplateDialog.descriptionLabel')}</Label>
             <Textarea
               id="template-description"
-              placeholder="Beskriv vad denna mall innehåller..."
+              placeholder={t('saveTemplateDialog.descriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -180,10 +181,10 @@ export const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
           
           {/* Tags */}
           <div>
-            <Label htmlFor="template-tags">Taggar (valfritt)</Label>
+            <Label htmlFor="template-tags">{t('saveTemplateDialog.tagsLabel')}</Label>
             <Input
               id="template-tags"
-              placeholder="standard, modern, kompakt (separera med komma)"
+              placeholder={t('saveTemplateDialog.tagsPlaceholder')}
               value={tags}
               onChange={(e) => setTags(e.target.value)}
             />
@@ -192,21 +193,21 @@ export const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
           {/* Info box */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-sm text-blue-900">
-              <strong>Storlek:</strong>{' '}
-              {selectedShapes.length} {selectedShapes.length === 1 ? 'objekt' : 'objekt'}
+              <strong>{t('saveTemplateDialog.sizeInfo')}</strong>{' '}
+              {t('saveTemplateDialog.objectCount', { count: selectedShapes.length })}
             </p>
             <p className="text-xs text-blue-700 mt-1">
-              Mallen sparas med relativa koordinater och kan placeras var som helst på canvas.
+              {t('saveTemplateDialog.relativeCoordinatesNote')}
             </p>
           </div>
         </div>
         
         <DialogFooter>
           <Button variant="outline" onClick={handleCancel}>
-            Avbryt
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleSave} disabled={!name.trim()}>
-            💾 Spara Mall
+            {t('saveTemplateDialog.saveTemplate')}
           </Button>
         </DialogFooter>
       </DialogContent>

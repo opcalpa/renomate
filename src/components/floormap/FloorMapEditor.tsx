@@ -2,15 +2,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { SimpleToolbar } from "./SimpleToolbar";
 import { UnifiedKonvaCanvas } from "./UnifiedKonvaCanvas";
 import { ElevationCanvas } from "./ElevationCanvas";
-import { RoomsList } from "./RoomsList";
 import { RoomDetailDialog } from "./RoomDetailDialog";
 import { SpacePlannerTopBar } from "./SpacePlannerTopBar";
 import { useFloorMapStore } from "./store";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { loadPlansFromDB, createPlanInDB } from "./utils/plans";
-import { Button } from "@/components/ui/button";
-import { Home, X, Box } from "lucide-react";
+import { Box } from "lucide-react";
 
 interface FloorMapEditorProps {
   projectId: string;
@@ -35,7 +33,6 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, isReadOnly }: F
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [canUndoState, setCanUndoState] = useState(false);
   const [canRedoState, setCanRedoState] = useState(false);
-  const [showRoomsList, setShowRoomsList] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
   const [roomDialogOpen, setRoomDialogOpen] = useState(false);
 
@@ -246,42 +243,6 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, isReadOnly }: F
           </main>
         )}
 
-        {/* Rooms List Panel - Only show in floor plan mode */}
-        {viewMode === 'floor' && showRoomsList && (
-          <div className="absolute top-0 right-0 w-96 h-full bg-white border-l border-border shadow-xl z-40 flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <Home className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold text-lg">Rum</h2>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowRoomsList(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              <RoomsList
-                projectId={projectId}
-                onRoomClick={handleRoomClick}
-                key={roomUpdateTrigger} // Force re-mount when rooms are updated
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Toggle Rooms Button - Only show in floor plan mode */}
-        {viewMode === 'floor' && !showRoomsList && (
-          <Button
-            className="absolute top-4 right-4 z-30"
-            onClick={() => setShowRoomsList(true)}
-          >
-            <Home className="h-4 w-4 mr-2" />
-            Rum
-          </Button>
-        )}
       </div>
 
       {/* Room Detail Dialog */}
