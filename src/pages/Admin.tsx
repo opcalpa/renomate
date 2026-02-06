@@ -4,8 +4,6 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -14,7 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Settings, Save, Ruler, DollarSign } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Settings, Save, DollarSign, Info } from "lucide-react";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -24,9 +23,6 @@ const Admin = () => {
   const [profile, setProfile] = useState<any>(null);
 
   // Default values state
-  const [wallThickness, setWallThickness] = useState<string>("200");
-  const [wallHeight, setWallHeight] = useState<string>("2400");
-  const [canvasScale, setCanvasScale] = useState<string>("standard");
   const [currency, setCurrency] = useState<string>("SEK");
 
   useEffect(() => {
@@ -59,23 +55,13 @@ const Admin = () => {
 
   const loadSettings = () => {
     // Load from localStorage
-    const savedWallThickness = localStorage.getItem("admin_wallThickness");
-    const savedWallHeight = localStorage.getItem("admin_wallHeight");
-    const savedCanvasScale = localStorage.getItem("admin_canvasScale");
     const savedCurrency = localStorage.getItem("admin_currency");
-
-    if (savedWallThickness) setWallThickness(savedWallThickness);
-    if (savedWallHeight) setWallHeight(savedWallHeight);
-    if (savedCanvasScale) setCanvasScale(savedCanvasScale);
     if (savedCurrency) setCurrency(savedCurrency);
   };
 
   const handleSave = () => {
     try {
       // Save to localStorage
-      localStorage.setItem("admin_wallThickness", wallThickness);
-      localStorage.setItem("admin_wallHeight", wallHeight);
-      localStorage.setItem("admin_canvasScale", canvasScale);
       localStorage.setItem("admin_currency", currency);
 
       toast({
@@ -133,107 +119,54 @@ const Admin = () => {
           </div>
         </div>
 
-        {/* Standardvärden Section */}
+        {/* Info Card */}
+        <Card className="mb-6 border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+              <div>
+                <p className="font-medium text-blue-900 dark:text-blue-100">
+                  {t('admin.canvasSettingsMoved', 'Canvas-inställningar har flyttats')}
+                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  {t('admin.canvasSettingsMovedDescription', 'Väggtjocklek, vägghöjd och skala finns nu i Canvas Settings-menyn direkt i ritverktyget.')}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Currency Settings */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              {t('admin.defaultValues')}
+              <DollarSign className="h-5 w-5" />
+              {t('admin.economy')}
             </CardTitle>
             <CardDescription>
               {t('admin.configureDefaults')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Canvas & Drawing Settings */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-lg font-semibold border-b pb-2">
-                <Ruler className="h-5 w-5 text-primary" />
-                <h3>{t('admin.canvasAndDrawing')}</h3>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="wall-thickness">
-                    {t('admin.wallThickness')}
-                  </Label>
-                  <Input
-                    id="wall-thickness"
-                    type="number"
-                    value={wallThickness}
-                    onChange={(e) => setWallThickness(e.target.value)}
-                    placeholder="200"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t('admin.wallThicknessDescription')}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="wall-height">
-                    {t('admin.wallHeight')}
-                  </Label>
-                  <Input
-                    id="wall-height"
-                    type="number"
-                    value={wallHeight}
-                    onChange={(e) => setWallHeight(e.target.value)}
-                    placeholder="2400"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t('admin.wallHeightDescription')}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="canvas-scale">
-                  {t('admin.canvasDefaultScale')}
-                </Label>
-                <Select value={canvasScale} onValueChange={setCanvasScale}>
-                  <SelectTrigger id="canvas-scale">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="architectural">{t('admin.scaleArchitectural')}</SelectItem>
-                    <SelectItem value="detailed">{t('admin.scaleDetailed')}</SelectItem>
-                    <SelectItem value="standard">{t('admin.scaleStandard')}</SelectItem>
-                    <SelectItem value="overview">{t('admin.scaleOverview')}</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {t('admin.scaleDescription')}
-                </p>
-              </div>
-            </div>
-
-            {/* Currency Settings */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-lg font-semibold border-b pb-2">
-                <DollarSign className="h-5 w-5 text-primary" />
-                <h3>{t('admin.economy')}</h3>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="currency">
-                  {t('admin.defaultCurrency')}
-                </Label>
-                <Select value={currency} onValueChange={setCurrency}>
-                  <SelectTrigger id="currency">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="SEK">SEK (kr)</SelectItem>
-                    <SelectItem value="EUR">EUR (€)</SelectItem>
-                    <SelectItem value="USD">USD ($)</SelectItem>
-                    <SelectItem value="NOK">NOK (kr)</SelectItem>
-                    <SelectItem value="DKK">DKK (kr)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {t('admin.currencyDescription')}
-                </p>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="currency">
+                {t('admin.defaultCurrency')}
+              </Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger id="currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SEK">SEK (kr)</SelectItem>
+                  <SelectItem value="EUR">EUR (€)</SelectItem>
+                  <SelectItem value="USD">USD ($)</SelectItem>
+                  <SelectItem value="NOK">NOK (kr)</SelectItem>
+                  <SelectItem value="DKK">DKK (kr)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {t('admin.currencyDescription')}
+              </p>
             </div>
 
             {/* Save Button */}
@@ -246,37 +179,6 @@ const Admin = () => {
           </CardContent>
         </Card>
 
-        {/* Current Values Display */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">{t('admin.currentValues')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">{t('admin.wallThickness')}</p>
-                <p className="font-semibold">{wallThickness} mm</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">{t('admin.wallHeight')}</p>
-                <p className="font-semibold">{wallHeight} mm</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">{t('admin.canvasScale')}</p>
-                <p className="font-semibold">
-                  {canvasScale === "architectural" && "1:20"}
-                  {canvasScale === "detailed" && "1:50"}
-                  {canvasScale === "standard" && "1:100"}
-                  {canvasScale === "overview" && "1:500"}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">{t('admin.currency')}</p>
-                <p className="font-semibold">{currency}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

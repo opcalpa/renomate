@@ -17,14 +17,17 @@ import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, DollarSign, Tag, LayoutGrid, Table as TableIcon, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Loader2, Filter, CheckSquare, Trash2, X, ShoppingCart } from "lucide-react";
+import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map } from "lucide-react";
+import { TaskListSkeleton } from "@/components/ui/skeleton-screens";
 import { DEFAULT_COST_CENTERS, getCostCenterIcon, getCostCenterLabel } from "@/lib/costCenters";
+import { formatCurrency } from "@/lib/currency";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import MaterialsList from "./MaterialsList";
 import { EntityPhotoGallery } from "@/components/shared/EntityPhotoGallery";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { TaskFilesList } from "./TaskFilesList";
 import { Separator } from "@/components/ui/separator";
+import ProjectTimeline from "./ProjectTimeline";
 
 interface ChecklistItem {
   id: string;
@@ -79,12 +82,16 @@ interface TaskDependency {
 
 interface TasksTabProps {
   projectId: string;
+  projectName?: string;
   tasksScope?: 'all' | 'assigned';
   openEntityId?: string | null;
   onEntityOpened?: () => void;
+  onNavigateToRoom?: (roomId: string) => void;
+  showTimeline?: boolean;
+  currency?: string | null;
 }
 
-const TasksTab = ({ projectId, tasksScope = 'all', openEntityId, onEntityOpened }: TasksTabProps) => {
+const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, onEntityOpened, onNavigateToRoom, showTimeline = true, currency }: TasksTabProps) => {
   const { t } = useTranslation();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,6 +137,9 @@ const TasksTab = ({ projectId, tasksScope = 'all', openEntityId, onEntityOpened 
   // Table sorting
   const [sortColumn, setSortColumn] = useState<string>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Timeline visibility
+  const [timelineOpen, setTimelineOpen] = useState(true);
   
   // Column order for Kanban view
   const [columnOrder, setColumnOrder] = useState<string[]>(() => {
@@ -903,7 +913,18 @@ const TasksTab = ({ projectId, tasksScope = 'all', openEntityId, onEntityOpened 
           <p className={`text-sm font-medium leading-tight ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
             {task.title}
           </p>
-          
+
+          {/* Room name */}
+          {task.room_id && (() => {
+            const roomName = rooms.find(r => r.id === task.room_id)?.name;
+            return roomName ? (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {roomName}
+              </p>
+            ) : null;
+          })()}
+
           {/* Icons Row */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Priority Icon */}
@@ -944,6 +965,32 @@ const TasksTab = ({ projectId, tasksScope = 'all', openEntityId, onEntityOpened 
 
   return (
     <div className="space-y-6">
+      {/* Collapsible Timeline Section */}
+      {showTimeline && (
+        <Collapsible open={timelineOpen} onOpenChange={setTimelineOpen}>
+          <div className="flex items-center justify-between mb-2">
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-2 -ml-2 hover:bg-accent">
+                <Calendar className="h-4 w-4" />
+                <span className="font-medium">{t('projectDetail.timeline')}</span>
+                {timelineOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent className="mb-6">
+            <Card>
+              <CardContent className="p-0">
+                <ProjectTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} />
+              </CardContent>
+            </Card>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
       <div className="flex flex-col gap-4">
         {/* Header with title */}
         <div className="flex items-center justify-between">
@@ -1529,27 +1576,44 @@ const TasksTab = ({ projectId, tasksScope = 'all', openEntityId, onEntityOpened 
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-task-room">{t('tasks.room')}</Label>
-                  <Select
-                    value={editingTask.room_id || "none"}
-                    onValueChange={(value) => 
-                      setEditingTask({ 
-                        ...editingTask, 
-                        room_id: value === "none" ? null : value 
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('tasks.noRoom')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">{t('tasks.noRoom')}</SelectItem>
-                      {rooms.map((room) => (
-                        <SelectItem key={room.id} value={room.id}>
-                          {room.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select
+                      value={editingTask.room_id || "none"}
+                      onValueChange={(value) =>
+                        setEditingTask({
+                          ...editingTask,
+                          room_id: value === "none" ? null : value
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('tasks.noRoom')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{t('tasks.noRoom')}</SelectItem>
+                        {rooms.map((room) => (
+                          <SelectItem key={room.id} value={room.id}>
+                            {room.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {editingTask.room_id && onNavigateToRoom && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        type="button"
+                        className="shrink-0"
+                        onClick={() => {
+                          setEditDialogOpen(false);
+                          onNavigateToRoom(editingTask.room_id!);
+                        }}
+                        title={t('tasks.viewOnFloorPlan')}
+                      >
+                        <Map className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
@@ -1946,8 +2010,8 @@ const TasksTab = ({ projectId, tasksScope = 'all', openEntityId, onEntityOpened 
                             <div className="font-medium text-sm">{material.name}</div>
                             <div className="text-xs text-muted-foreground">
                               {material.quantity} {material.unit}
-                              {material.price_per_unit != null && ` • ${material.price_per_unit.toFixed(2)}/${t('common.unit').toLowerCase()}`}
-                              {material.price_total != null && ` • ${t('purchases.priceTotal')}: ${material.price_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                              {material.price_per_unit != null && ` • ${formatCurrency(material.price_per_unit, currency, { decimals: 2 })}/${t('common.unit').toLowerCase()}`}
+                              {material.price_total != null && ` • ${t('purchases.priceTotal')}: ${formatCurrency(material.price_total, currency, { decimals: 2 })}`}
                             </div>
                           </div>
                           <Badge variant="outline" className="text-xs">
@@ -1987,7 +2051,9 @@ const TasksTab = ({ projectId, tasksScope = 'all', openEntityId, onEntityOpened 
       </div>
       </div>
 
-      {tasks.length === 0 ? (
+      {loading ? (
+        <TaskListSkeleton rows={5} />
+      ) : tasks.length === 0 ? (
         <Card className="text-center py-12 border-dashed">
           <CardContent>
             <CheckCircle2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -2248,7 +2314,7 @@ const TasksTab = ({ projectId, tasksScope = 'all', openEntityId, onEntityOpened 
                         </TableCell>
                         <TableCell>
                           {task.budget ? (
-                            <span className="text-sm">${task.budget.toLocaleString()}</span>
+                            <span className="text-sm">{formatCurrency(task.budget, currency)}</span>
                           ) : (
                             <span className="text-muted-foreground text-xs">-</span>
                           )}

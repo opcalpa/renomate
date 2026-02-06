@@ -31,7 +31,10 @@ export const WallShape = React.memo<WallShapeProps>(({
   viewState,
   scaleSettings,
   projectSettings,
-  transformState
+  transformState,
+  onBatchLengthChange,
+  wallIndex,
+  totalWalls
 }) => {
   const { zoom } = viewState;
   const { pixelsPerMm } = scaleSettings;
@@ -45,6 +48,9 @@ export const WallShape = React.memo<WallShapeProps>(({
   // Track temporary coordinates while dragging for real-time measurement
   const [draggedCoords, setDraggedCoords] = useState<{x1: number, y1: number, x2: number, y2: number} | null>(null);
   const [draggedHandle, setDraggedHandle] = useState<'start' | 'end' | null>(null);
+
+  // Hover state for showing wall number
+  const [isHovered, setIsHovered] = useState(false);
 
   // Store ref in shapeRefsMap for unified multi-select drag
   useEffect(() => {
@@ -180,6 +186,8 @@ export const WallShape = React.memo<WallShapeProps>(({
         // PERFORMANCE: Faster rendering during pan/zoom
         perfectDrawEnabled={false}
         hitStrokeWidth={Math.max(thickness, 20 / zoom)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       />
 
       {/* Start point handle - only show when selected */}
@@ -230,14 +238,36 @@ export const WallShape = React.memo<WallShapeProps>(({
               newY = Math.round(newY / snapSize) * snapSize;
             }
 
-            onTransform({
-              coordinates: {
-                x1: newX,
-                y1: newY,
-                x2: coords.x2,
-                y2: coords.y2,
-              }
-            });
+            // Calculate new length
+            const newDx = coords.x2 - newX;
+            const newDy = coords.y2 - newY;
+            const newLengthPixels = Math.sqrt(newDx * newDx + newDy * newDy);
+            const newLengthMM = newLengthPixels / pixelsPerMm;
+
+            // Check if Shift is held for batch update
+            if (e.evt.shiftKey && onBatchLengthChange) {
+              // First update this wall
+              onTransform({
+                coordinates: {
+                  x1: newX,
+                  y1: newY,
+                  x2: coords.x2,
+                  y2: coords.y2,
+                }
+              });
+              // Then apply same length to all other selected walls
+              onBatchLengthChange(newLengthMM);
+            } else {
+              // Normal single-wall update
+              onTransform({
+                coordinates: {
+                  x1: newX,
+                  y1: newY,
+                  x2: coords.x2,
+                  y2: coords.y2,
+                }
+              });
+            }
 
             // Reset temporary state
             setDraggedCoords(null);
@@ -294,14 +324,36 @@ export const WallShape = React.memo<WallShapeProps>(({
               newY = Math.round(newY / snapSize) * snapSize;
             }
 
-            onTransform({
-              coordinates: {
-                x1: coords.x1,
-                y1: coords.y1,
-                x2: newX,
-                y2: newY,
-              }
-            });
+            // Calculate new length
+            const newDx = newX - coords.x1;
+            const newDy = newY - coords.y1;
+            const newLengthPixels = Math.sqrt(newDx * newDx + newDy * newDy);
+            const newLengthMM = newLengthPixels / pixelsPerMm;
+
+            // Check if Shift is held for batch update
+            if (e.evt.shiftKey && onBatchLengthChange) {
+              // First update this wall
+              onTransform({
+                coordinates: {
+                  x1: coords.x1,
+                  y1: coords.y1,
+                  x2: newX,
+                  y2: newY,
+                }
+              });
+              // Then apply same length to all other selected walls
+              onBatchLengthChange(newLengthMM);
+            } else {
+              // Normal single-wall update
+              onTransform({
+                coordinates: {
+                  x1: coords.x1,
+                  y1: coords.y1,
+                  x2: newX,
+                  y2: newY,
+                }
+              });
+            }
 
             // Reset temporary state
             setDraggedCoords(null);
@@ -331,6 +383,32 @@ export const WallShape = React.memo<WallShapeProps>(({
           />
         </Group>
       )}
+
+      {/* Wall number badge - shown on hover or when selected */}
+      {wallIndex !== undefined && totalWalls !== undefined && (isHovered || isSelected) && (
+        <Group x={midX} y={midY}>
+          {/* Background circle */}
+          <Circle
+            x={0}
+            y={0}
+            radius={12 / zoom}
+            fill={isSelected ? '#3b82f6' : '#6b7280'}
+            listening={false}
+          />
+          {/* Wall number text */}
+          <KonvaText
+            x={-10 / zoom}
+            y={-6 / zoom}
+            width={20 / zoom}
+            text={String(wallIndex)}
+            fontSize={Math.max(8, 10 / zoom)}
+            fontStyle="bold"
+            fill="#ffffff"
+            align="center"
+            listening={false}
+          />
+        </Group>
+      )}
     </Group>
   );
 }, (prevProps, nextProps) => {
@@ -347,6 +425,8 @@ export const WallShape = React.memo<WallShapeProps>(({
     coordsEqual &&
     JSON.stringify(prevProps.transformState) === JSON.stringify(nextProps.transformState) &&
     prevProps.shape.thicknessMM === nextProps.shape.thicknessMM &&
-    prevProps.shape.strokeColor === nextProps.shape.strokeColor
+    prevProps.shape.strokeColor === nextProps.shape.strokeColor &&
+    prevProps.wallIndex === nextProps.wallIndex &&
+    prevProps.totalWalls === nextProps.totalWalls
   );
 });

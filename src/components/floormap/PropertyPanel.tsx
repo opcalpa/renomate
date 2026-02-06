@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Ruler, FileText, Edit2, Palette, RotateCw, Layers, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Image as ImageIcon } from 'lucide-react';
-import { FloorMapShape } from './types';
+import { X, Ruler, FileText, Edit2, Palette, RotateCw, Layers, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Image as ImageIcon, Package } from 'lucide-react';
+import { FloorMapShape, SymbolCoordinates, RectangleCoordinates, LineCoordinates, PolygonCoordinates } from './types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,7 +20,14 @@ interface PropertyPanelProps {
   projectId: string;
   onClose: () => void;
   onUpdateShape: (shapeId: string, updates: Partial<FloorMapShape>) => void;
+  onUpdateShapes?: (updates: Array<{ id: string; updates: Partial<FloorMapShape> }>) => void;
   pixelsPerMm: number;
+  selectedShapeIds?: string[];
+  allShapes?: FloorMapShape[];
+  /** Wall index (1-based) for display */
+  wallIndex?: number;
+  /** Total number of walls */
+  totalWalls?: number;
 }
 
 export const PropertyPanel: React.FC<PropertyPanelProps> = ({
@@ -28,7 +35,12 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   projectId,
   onClose,
   onUpdateShape,
-  pixelsPerMm
+  onUpdateShapes,
+  pixelsPerMm,
+  selectedShapeIds = [],
+  allShapes = [],
+  wallIndex,
+  totalWalls,
 }) => {
   const { t } = useTranslation();
   const [isEditMode, setIsEditMode] = useState(false);
@@ -45,23 +57,40 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   const [fillColor, setFillColor] = useState(shape.color || '#3b82f6');
   const [strokeColor, setStrokeColor] = useState(shape.strokeColor || '#1e40af');
 
+  // Template group editing state
+  const [isEditingGroupDimensions, setIsEditingGroupDimensions] = useState(false);
+  const [editGroupWidthMm, setEditGroupWidthMm] = useState('0');
+  const [editGroupHeightMm, setEditGroupHeightMm] = useState('0');
+
   // Layer actions from store
   const bringForward = useFloorMapStore((state) => state.bringForward);
   const sendBackward = useFloorMapStore((state) => state.sendBackward);
   const bringToFront = useFloorMapStore((state) => state.bringToFront);
   const sendToBack = useFloorMapStore((state) => state.sendToBack);
 
-  // Get all shapes for elevation data calculation
-  const allShapes = useFloorMapStore((state) => state.shapes);
+  // Get all shapes from store if not provided via props (for elevation data calculation)
+  const storeShapes = useFloorMapStore((state) => state.shapes);
+  const shapesForCalculation = allShapes.length > 0 ? allShapes : storeShapes;
 
   // Check if this is a wall shape
   const isWall = shape.type === 'wall' || shape.type === 'line';
 
+  // Get all selected shapes that are walls/lines (for batch dimension updates)
+  const selectedWallShapes = useMemo(() => {
+    if (!selectedShapeIds || selectedShapeIds.length <= 1) return [];
+    return shapesForCalculation.filter(
+      s => selectedShapeIds.includes(s.id) && (s.type === 'wall' || s.type === 'line')
+    );
+  }, [selectedShapeIds, shapesForCalculation]);
+
+  // Number of other walls that will be updated (excluding current shape)
+  const otherWallsCount = selectedWallShapes.filter(s => s.id !== shape.id).length;
+
   // Get elevation shapes linked to this wall
   const elevationShapes = useMemo(() => {
     if (!isWall) return [];
-    return allShapes.filter(s => s.parentWallId === shape.id && s.shapeViewMode === 'elevation');
-  }, [allShapes, shape.id, isWall]);
+    return shapesForCalculation.filter(s => s.parentWallId === shape.id && s.shapeViewMode === 'elevation');
+  }, [shapesForCalculation, shape.id, isWall]);
 
   // Calculate wall dimensions for smart data
   const wallDimensions = useMemo(() => {
@@ -74,6 +103,72 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
     const heightMM = shape.heightMM || 2400;
     return { lengthMM, heightMM };
   }, [shape.coordinates, shape.heightMM, isWall, pixelsPerMm]);
+
+  // Check if this is a template group leader
+  const isTemplateGroup = shape.isGroupLeader && shape.templateInfo;
+  const templateInfo = shape.templateInfo;
+
+  // Get all shapes in this group
+  const groupShapes = useMemo(() => {
+    if (!shape.groupId) return [];
+    return shapesForCalculation.filter(s => s.groupId === shape.groupId);
+  }, [shape.groupId, shapesForCalculation]);
+
+  // Calculate the actual bounding box of the group (in case it has been transformed)
+  const groupBounds = useMemo(() => {
+    if (!isTemplateGroup || groupShapes.length === 0) {
+      return templateInfo ? {
+        widthMM: templateInfo.boundsWidth,
+        heightMM: templateInfo.boundsHeight,
+        depthMM: templateInfo.boundsDepth || 2400,
+      } : { widthMM: 0, heightMM: 0, depthMM: 0 };
+    }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    for (const s of groupShapes) {
+      const coords = s.coordinates;
+      if ('x1' in coords && 'x2' in coords) {
+        // Line/wall
+        const c = coords as LineCoordinates;
+        minX = Math.min(minX, c.x1, c.x2);
+        minY = Math.min(minY, c.y1, c.y2);
+        maxX = Math.max(maxX, c.x1, c.x2);
+        maxY = Math.max(maxY, c.y1, c.y2);
+      } else if ('left' in coords && 'width' in coords) {
+        // Rectangle
+        const c = coords as RectangleCoordinates;
+        minX = Math.min(minX, c.left);
+        minY = Math.min(minY, c.top);
+        maxX = Math.max(maxX, c.left + c.width);
+        maxY = Math.max(maxY, c.top + c.height);
+      } else if ('x' in coords && 'width' in coords) {
+        // Symbol
+        const c = coords as SymbolCoordinates;
+        minX = Math.min(minX, c.x);
+        minY = Math.min(minY, c.y);
+        maxX = Math.max(maxX, c.x + c.width);
+        maxY = Math.max(maxY, c.y + c.height);
+      } else if ('points' in coords) {
+        // Polygon
+        const c = coords as PolygonCoordinates;
+        for (const p of c.points) {
+          minX = Math.min(minX, p.x);
+          minY = Math.min(minY, p.y);
+          maxX = Math.max(maxX, p.x);
+          maxY = Math.max(maxY, p.y);
+        }
+      }
+    }
+
+    const widthPixels = maxX - minX;
+    const heightPixels = maxY - minY;
+    return {
+      widthMM: widthPixels / pixelsPerMm,
+      heightMM: heightPixels / pixelsPerMm,
+      depthMM: templateInfo?.boundsDepth || 2400,
+    };
+  }, [isTemplateGroup, groupShapes, templateInfo, pixelsPerMm]);
 
   const getPixelsPerMeter = (pxPerMm: number) => pxPerMm * 1000;
   
@@ -97,7 +192,13 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
       setEditThicknessMm(String(shape.thicknessMM || 150));
       setEditHeightMm(String(shape.heightMM || 2400));
     }
-  }, [shape.id]);
+
+    // Initialize group dimension values
+    if (shape.isGroupLeader && shape.templateInfo) {
+      setEditGroupWidthMm(String(Math.round(shape.templateInfo.boundsWidth)));
+      setEditGroupHeightMm(String(Math.round(shape.templateInfo.boundsHeight)));
+    }
+  }, [shape.id, shape.isGroupLeader, shape.templateInfo]);
   
   // Auto-save notes after 1 second of no typing
   useEffect(() => {
@@ -256,55 +357,211 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   
   const handleSaveDimensions = () => {
     if (shape.type !== 'wall' && shape.type !== 'line') return;
-    
+
     // Validate inputs
     const newLengthM = parseFloat(editLengthM);
     const newThicknessMm = parseFloat(editThicknessMm);
     const newHeightMm = parseFloat(editHeightMm);
-    
+
     if (isNaN(newLengthM) || newLengthM <= 0) {
       toast.error(t('propertyPanel.invalidLength'));
       return;
     }
-    
+
     if (isNaN(newThicknessMm) || newThicknessMm <= 0) {
       toast.error(t('propertyPanel.invalidThickness'));
       return;
     }
-    
+
     if (isNaN(newHeightMm) || newHeightMm <= 0) {
       toast.error(t('propertyPanel.invalidHeight'));
       return;
     }
-    
-    // Calculate current length
-    const coords = shape.coordinates as any;
-    const dx = coords.x2 - coords.x1;
-    const dy = coords.y2 - coords.y1;
-    const currentLengthPixels = Math.sqrt(dx * dx + dy * dy);
-    const currentLengthM = currentLengthPixels / getPixelsPerMeter(pixelsPerMm);
-    
-    // Scale the wall proportionally if length changed
-    const angle = Math.atan2(dy, dx);
-    const newLengthPixels = newLengthM * getPixelsPerMeter(pixelsPerMm);
-    const newX2 = coords.x1 + Math.cos(angle) * newLengthPixels;
-    const newY2 = coords.y1 + Math.sin(angle) * newLengthPixels;
-    
-    onUpdateShape(shape.id, {
-      coordinates: {
-        x1: coords.x1,
-        y1: coords.y1,
-        x2: newX2,
-        y2: newY2,
-      },
-      thicknessMM: newThicknessMm,
-      heightMM: newHeightMm,
-    });
-    
-    setIsEditingDimensions(false);
-    toast.success(t('propertyPanel.dimensionsUpdated'));
+
+    // Check if we should batch update multiple shapes
+    const shapesToUpdate = selectedWallShapes.length > 1 ? selectedWallShapes : [shape];
+
+    if (shapesToUpdate.length > 1 && onUpdateShapes) {
+      // Batch update: apply same dimensions to all selected walls
+      const updates: Array<{ id: string; updates: Partial<FloorMapShape> }> = [];
+
+      for (const wallShape of shapesToUpdate) {
+        const wallCoords = wallShape.coordinates as { x1: number; y1: number; x2: number; y2: number };
+        const wallDx = wallCoords.x2 - wallCoords.x1;
+        const wallDy = wallCoords.y2 - wallCoords.y1;
+
+        // Calculate new endpoint based on current angle but new length
+        const wallAngle = Math.atan2(wallDy, wallDx);
+        const newLengthPixels = newLengthM * getPixelsPerMeter(pixelsPerMm);
+        const newX2 = wallCoords.x1 + Math.cos(wallAngle) * newLengthPixels;
+        const newY2 = wallCoords.y1 + Math.sin(wallAngle) * newLengthPixels;
+
+        updates.push({
+          id: wallShape.id,
+          updates: {
+            coordinates: {
+              x1: wallCoords.x1,
+              y1: wallCoords.y1,
+              x2: newX2,
+              y2: newY2,
+            },
+            thicknessMM: newThicknessMm,
+            heightMM: newHeightMm,
+          },
+        });
+      }
+
+      onUpdateShapes(updates);
+      setIsEditingDimensions(false);
+      toast.success(t('propertyPanel.batchDimensionsUpdated', { count: updates.length }));
+    } else {
+      // Single shape update (original behavior)
+      const coords = shape.coordinates as { x1: number; y1: number; x2: number; y2: number };
+      const dx = coords.x2 - coords.x1;
+      const dy = coords.y2 - coords.y1;
+
+      // Scale the wall proportionally if length changed
+      const angle = Math.atan2(dy, dx);
+      const newLengthPixels = newLengthM * getPixelsPerMeter(pixelsPerMm);
+      const newX2 = coords.x1 + Math.cos(angle) * newLengthPixels;
+      const newY2 = coords.y1 + Math.sin(angle) * newLengthPixels;
+
+      onUpdateShape(shape.id, {
+        coordinates: {
+          x1: coords.x1,
+          y1: coords.y1,
+          x2: newX2,
+          y2: newY2,
+        },
+        thicknessMM: newThicknessMm,
+        heightMM: newHeightMm,
+      });
+
+      setIsEditingDimensions(false);
+      toast.success(t('propertyPanel.dimensionsUpdated'));
+    }
   };
-  
+
+  // Handle saving template group dimensions (scales all group shapes proportionally)
+  const handleSaveGroupDimensions = () => {
+    if (!isTemplateGroup || !templateInfo || groupShapes.length === 0 || !onUpdateShapes) return;
+
+    const newWidthMM = parseFloat(editGroupWidthMm);
+    const newHeightMM = parseFloat(editGroupHeightMm);
+
+    if (isNaN(newWidthMM) || newWidthMM <= 0) {
+      toast.error(t('propertyPanel.invalidWidth', 'Invalid width'));
+      return;
+    }
+    if (isNaN(newHeightMM) || newHeightMM <= 0) {
+      toast.error(t('propertyPanel.invalidHeight', 'Invalid height'));
+      return;
+    }
+
+    // Calculate scale factors
+    const currentWidthMM = groupBounds.widthMM;
+    const currentHeightMM = groupBounds.heightMM;
+    const scaleX = newWidthMM / currentWidthMM;
+    const scaleY = newHeightMM / currentHeightMM;
+
+    // Find the group center point for scaling
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const s of groupShapes) {
+      const coords = s.coordinates;
+      if ('x1' in coords && 'x2' in coords) {
+        const c = coords as LineCoordinates;
+        minX = Math.min(minX, c.x1, c.x2);
+        minY = Math.min(minY, c.y1, c.y2);
+        maxX = Math.max(maxX, c.x1, c.x2);
+        maxY = Math.max(maxY, c.y1, c.y2);
+      } else if ('left' in coords && 'width' in coords) {
+        const c = coords as RectangleCoordinates;
+        minX = Math.min(minX, c.left);
+        minY = Math.min(minY, c.top);
+        maxX = Math.max(maxX, c.left + c.width);
+        maxY = Math.max(maxY, c.top + c.height);
+      } else if ('x' in coords && 'width' in coords) {
+        const c = coords as SymbolCoordinates;
+        minX = Math.min(minX, c.x);
+        minY = Math.min(minY, c.y);
+        maxX = Math.max(maxX, c.x + c.width);
+        maxY = Math.max(maxY, c.y + c.height);
+      } else if ('points' in coords) {
+        const c = coords as PolygonCoordinates;
+        for (const p of c.points) {
+          minX = Math.min(minX, p.x);
+          minY = Math.min(minY, p.y);
+          maxX = Math.max(maxX, p.x);
+          maxY = Math.max(maxY, p.y);
+        }
+      }
+    }
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    // Build updates for all group shapes
+    const updates: Array<{ id: string; updates: Partial<FloorMapShape> }> = [];
+
+    for (const s of groupShapes) {
+      const coords = s.coordinates;
+      let newCoords: Record<string, unknown> = {};
+
+      if ('x1' in coords && 'x2' in coords) {
+        const c = coords as LineCoordinates;
+        newCoords = {
+          x1: centerX + (c.x1 - centerX) * scaleX,
+          y1: centerY + (c.y1 - centerY) * scaleY,
+          x2: centerX + (c.x2 - centerX) * scaleX,
+          y2: centerY + (c.y2 - centerY) * scaleY,
+        };
+      } else if ('left' in coords && 'width' in coords) {
+        const c = coords as RectangleCoordinates;
+        const newLeft = centerX + (c.left - centerX) * scaleX;
+        const newTop = centerY + (c.top - centerY) * scaleY;
+        newCoords = {
+          left: newLeft,
+          top: newTop,
+          width: c.width * scaleX,
+          height: c.height * scaleY,
+        };
+      } else if ('x' in coords && 'width' in coords) {
+        const c = coords as SymbolCoordinates;
+        const newX = centerX + (c.x - centerX) * scaleX;
+        const newY = centerY + (c.y - centerY) * scaleY;
+        newCoords = {
+          x: newX,
+          y: newY,
+          width: c.width * scaleX,
+          height: c.height * scaleY,
+        };
+      } else if ('points' in coords) {
+        const c = coords as PolygonCoordinates;
+        newCoords = {
+          points: c.points.map(p => ({
+            x: centerX + (p.x - centerX) * scaleX,
+            y: centerY + (p.y - centerY) * scaleY,
+          })),
+        };
+      }
+
+      // Update templateInfo bounds on the group leader
+      const shapeUpdates: Partial<FloorMapShape> = { coordinates: newCoords as FloorMapShape['coordinates'] };
+      if (s.isGroupLeader && s.templateInfo) {
+        shapeUpdates.templateInfo = {
+          ...s.templateInfo,
+          boundsWidth: newWidthMM,
+          boundsHeight: newHeightMM,
+        };
+      }
+
+      updates.push({ id: s.id, updates: shapeUpdates });
+    }
+
+    onUpdateShapes(updates);
+    setIsEditingGroupDimensions(false);
+    toast.success(t('propertyPanel.groupDimensionsUpdated', `Group resized (${groupShapes.length} shapes)`));
+  };
+
   return (
     <div
       className="fixed top-0 right-0 h-screen w-full md:w-96 bg-white border-l-0 md:border-l-4 border-blue-500 shadow-2xl z-[100] flex flex-col"
@@ -329,6 +586,12 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
           <div className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">
             {shape.type.toUpperCase()}
           </div>
+          {/* Wall number badge */}
+          {isWall && wallIndex !== undefined && totalWalls !== undefined && (
+            <div className="bg-gray-700 text-white text-xs px-2 py-1 rounded-full font-bold">
+              #{wallIndex} / {totalWalls}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {isEditMode ? (
@@ -370,8 +633,14 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
             <Label className="text-sm font-medium text-gray-700">{t('propertyPanel.type')}</Label>
             <div className="mt-2">
               <Badge variant={shape.type === 'wall' || shape.type === 'room' ? 'default' : 'secondary'}>
-                {type}
+                {isTemplateGroup ? templateInfo?.templateName || t('propertyPanel.templateGroup', 'Template Group') : type}
               </Badge>
+              {isTemplateGroup && (
+                <Badge variant="outline" className="ml-2">
+                  <Package className="h-3 w-3 mr-1" />
+                  {groupShapes.length} {t('propertyPanel.shapes', 'shapes')}
+                </Badge>
+              )}
             </div>
           </div>
 
@@ -397,6 +666,128 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
             </div>
           )}
         </div>
+
+        {/* Template Group Section */}
+        {isTemplateGroup && (
+          <>
+            <Separator />
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-purple-600" />
+                  <Label className="text-sm font-medium text-gray-700">
+                    {t('propertyPanel.templateGroupDimensions', 'Group Dimensions')}
+                  </Label>
+                </div>
+                {isEditMode && !isEditingGroupDimensions && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditGroupWidthMm(String(Math.round(groupBounds.widthMM)));
+                      setEditGroupHeightMm(String(Math.round(groupBounds.heightMM)));
+                      setIsEditingGroupDimensions(true);
+                    }}
+                    className="h-7 px-2 text-xs"
+                  >
+                    <Edit2 className="h-3 w-3 mr-1" />
+                    {t('propertyPanel.resize', 'Resize')}
+                  </Button>
+                )}
+              </div>
+
+              <div className="space-y-2 bg-purple-50 rounded-lg p-3 border border-purple-200">
+                {isEditingGroupDimensions ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs text-gray-600 mb-1">
+                          {t('propertyPanel.widthMm', 'Width (mm)')}
+                        </Label>
+                        <Input
+                          type="number"
+                          step="1"
+                          value={editGroupWidthMm}
+                          onChange={(e) => setEditGroupWidthMm(e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-600 mb-1">
+                          {t('propertyPanel.heightMm', 'Height (mm)')}
+                        </Label>
+                        <Input
+                          type="number"
+                          step="1"
+                          value={editGroupHeightMm}
+                          onChange={(e) => setEditGroupHeightMm(e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-purple-700">
+                      {t('propertyPanel.groupScaleHint', 'All shapes in the group will scale proportionally')}
+                    </p>
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        onClick={handleSaveGroupDimensions}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700"
+                      >
+                        {t('propertyPanel.applyResize', 'Apply Resize')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsEditingGroupDimensions(false)}
+                        className="px-3"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">{t('propertyPanel.width', 'Width')}:</span>
+                      <span className="font-semibold text-purple-700">
+                        {groupBounds.widthMM >= 1000
+                          ? `${(groupBounds.widthMM / 1000).toFixed(2)} m`
+                          : `${Math.round(groupBounds.widthMM)} mm`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">{t('propertyPanel.height', 'Height')}:</span>
+                      <span className="font-semibold text-purple-700">
+                        {groupBounds.heightMM >= 1000
+                          ? `${(groupBounds.heightMM / 1000).toFixed(2)} m`
+                          : `${Math.round(groupBounds.heightMM)} mm`}
+                      </span>
+                    </div>
+                    {groupBounds.depthMM > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">{t('propertyPanel.depth', 'Depth/Height')}:</span>
+                        <span className="font-semibold text-purple-700">
+                          {groupBounds.depthMM >= 1000
+                            ? `${(groupBounds.depthMM / 1000).toFixed(2)} m`
+                            : `${Math.round(groupBounds.depthMM)} mm`}
+                        </span>
+                      </div>
+                    )}
+                    {templateInfo?.category && (
+                      <div className="flex justify-between items-center pt-2 border-t border-purple-200">
+                        <span className="text-xs text-gray-500">{t('propertyPanel.category', 'Category')}:</span>
+                        <Badge variant="outline" className="text-xs">
+                          {templateInfo.category}
+                        </Badge>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         <Separator />
 
@@ -424,6 +815,18 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
             {/* Show edit fields when editing wall/line dimensions */}
             {isEditingDimensions && (shape.type === 'wall' || shape.type === 'line') ? (
               <div className="space-y-4 pb-3 border-b border-gray-200">
+                {/* Batch update indicator */}
+                {otherWallsCount > 0 && (
+                  <div className="flex items-center gap-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      {otherWallsCount + 1} {t('propertyPanel.selectedWalls')}
+                    </Badge>
+                    <span className="text-xs text-blue-700">
+                      {t('propertyPanel.batchEditHint')}
+                    </span>
+                  </div>
+                )}
+
                 {/* Length */}
                 <div>
                   <Label className="text-xs text-gray-600 mb-1">

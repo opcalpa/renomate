@@ -4,7 +4,7 @@
  * Renders room polygon shapes with editable vertices, name labels, and edge measurements.
  */
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Line, Circle, Group, Text as KonvaText, Rect } from 'react-konva';
 import Konva from 'konva';
 import { useFloorMapStore } from '../store';
@@ -26,7 +26,9 @@ export const RoomShape = React.memo<RoomShapeProps>(({
   viewState,
   scaleSettings,
   projectSettings,
-  snapSize
+  snapSize,
+  isReadOnly,
+  isHighlighted,
 }) => {
   const { zoom } = viewState;
   const { pixelsPerMm } = scaleSettings;
@@ -80,8 +82,43 @@ export const RoomShape = React.memo<RoomShapeProps>(({
 
   // Get selected shapes for multi-select (refs are from parent component)
   const selectedShapeIds = useFloorMapStore((state) => state.selectedShapeIds);
+  const allShapes = useFloorMapStore((state) => state.shapes);
 
-  const isDraggable = true; // Always draggable
+  // Pre-compute which room edges have a matching wall, so we skip duplicate dimension labels.
+  // A wall "matches" if its endpoints are within a small tolerance of the room edge endpoints.
+  const edgesWithWall = useMemo(() => {
+    if (!showDimensions || points.length < 3) return new Set<number>();
+    const walls = allShapes.filter(s => s.type === 'wall' && s.id !== shape.id);
+    if (walls.length === 0) return new Set<number>();
+
+    const TOLERANCE = 2; // pixels
+    const matched = new Set<number>();
+
+    for (let i = 0; i < points.length; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % points.length];
+
+      for (const wall of walls) {
+        const wc = wall.coordinates as { x1: number; y1: number; x2: number; y2: number };
+        if (!('x1' in wc)) continue;
+
+        const fwd =
+          Math.abs(wc.x1 - p1.x) < TOLERANCE && Math.abs(wc.y1 - p1.y) < TOLERANCE &&
+          Math.abs(wc.x2 - p2.x) < TOLERANCE && Math.abs(wc.y2 - p2.y) < TOLERANCE;
+        const rev =
+          Math.abs(wc.x1 - p2.x) < TOLERANCE && Math.abs(wc.y1 - p2.y) < TOLERANCE &&
+          Math.abs(wc.x2 - p1.x) < TOLERANCE && Math.abs(wc.y2 - p1.y) < TOLERANCE;
+
+        if (fwd || rev) {
+          matched.add(i);
+          break;
+        }
+      }
+    }
+    return matched;
+  }, [points, allShapes, showDimensions, shape.id]);
+
+  const isDraggable = !isReadOnly;
 
   // Format measurement according to display unit preference
   const formatMeasurement = (lengthInMM: number, unit: 'mm' | 'cm' | 'm'): string => {
@@ -122,7 +159,7 @@ export const RoomShape = React.memo<RoomShapeProps>(({
       draggable={isDraggable}
       onClick={(e) => {
         e.cancelBubble = true;
-        onSelect(e);
+        if (onSelect) onSelect(e);
       }}
       onDblClick={(e) => {
         e.cancelBubble = true;
@@ -132,24 +169,30 @@ export const RoomShape = React.memo<RoomShapeProps>(({
       }}
       onTap={(e) => {
         e.cancelBubble = true;
-        onSelect(e);
+        if (isReadOnly && onDoubleClick) {
+          onDoubleClick();
+        } else if (onSelect) {
+          onSelect(e);
+        }
       }}
-      {...createUnifiedDragHandlers(shape.id)}
+      {...(isReadOnly ? {} : createUnifiedDragHandlers(shape.id))}
     >
       {/* Room polygon - filled area is clickable */}
       <Line
         points={flatPoints}
         closed
-        fill={shape.color || 'rgba(59, 130, 246, 0.2)'}
-        stroke={isSelected ? '#3b82f6' : (shape.strokeColor || 'rgba(41, 91, 172, 0.8)')}
-        strokeWidth={isSelected ? 3 : 2}
+        fill={isHighlighted ? 'rgba(34, 197, 94, 0.30)' : (shape.color || 'rgba(59, 130, 246, 0.2)')}
+        stroke={isSelected ? '#3b82f6' : isHighlighted ? '#16a34a' : (shape.strokeColor || 'rgba(41, 91, 172, 0.8)')}
+        strokeWidth={isSelected ? 3 : isHighlighted ? 3 : 2}
         shapeId={shape.id}
         perfectDrawEnabled={false}
         listening={true}
       />
 
-      {/* Edge measurements - show when showDimensions is enabled */}
+      {/* Edge measurements - show when showDimensions is enabled, skip edges covered by a wall */}
       {showDimensions && points.map((point: { x: number; y: number }, index: number) => {
+        if (edgesWithWall.has(index)) return null;
+
         const nextIndex = (index + 1) % points.length;
         const nextPoint = points[nextIndex];
         const edge = getEdgeMeasurement(point, nextPoint);

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { formatCurrency } from "@/lib/currency";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,7 @@ const EXTRA_COLUMN_KEYS: ColumnKey[] = ["room", "assignee", "costCenter", "start
 
 interface BudgetTabProps {
   projectId: string;
+  currency?: string | null;
 }
 
 // --- Saved Views ---
@@ -133,7 +135,7 @@ function persistSavedViews(projectId: string, views: SavedView[]) {
 
 // --- Component ---
 
-const BudgetTab = ({ projectId }: BudgetTabProps) => {
+const BudgetTab = ({ projectId, currency }: BudgetTabProps) => {
   const { t } = useTranslation();
   const [rows, setRows] = useState<BudgetRow[]>([]);
   const [extraTotal, setExtraTotal] = useState(0);
@@ -262,7 +264,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
     persistSavedViews(projectId, updated);
     setSaveViewName("");
     setSaveViewOpen(false);
-    toast({ title: t('budget.viewSaved'), description: `"${name}" has been saved` });
+    toast({ title: t('budget.viewSaved'), description: t('budget.viewSavedDescription', { name }) });
   };
 
   const handleLoadView = (view: SavedView) => {
@@ -282,7 +284,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
     setSortDir(view.sortDir);
     setCompactRows(view.compactRows ?? false);
     setLoadViewOpen(false);
-    toast({ title: t('budget.viewLoaded'), description: `"${view.name}" applied` });
+    toast({ title: t('budget.viewLoaded'), description: t('budget.viewLoadedDescription', { name: view.name }) });
   };
 
   const handleDeleteView = (viewId: string) => {
@@ -398,8 +400,8 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
 
       setRows([...taskRows, ...materialRows]);
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Failed to load budget data";
-      toast({ title: "Error", description: msg, variant: "destructive" });
+      const msg = error instanceof Error ? error.message : t('budget.failedToLoadData');
+      toast({ title: t('common.error'), description: msg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -454,8 +456,8 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
       }
       await fetchData();
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Failed to update status";
-      toast({ title: "Error", description: msg, variant: "destructive" });
+      const msg = error instanceof Error ? error.message : t('budget.failedToUpdateStatus');
+      toast({ title: t('common.error'), description: msg, variant: "destructive" });
     }
   };
 
@@ -487,8 +489,8 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
       setEditingCell(null);
       await fetchData();
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Failed to update value";
-      toast({ title: "Error", description: msg, variant: "destructive" });
+      const msg = error instanceof Error ? error.message : t('budget.failedToUpdateValue');
+      toast({ title: t('common.error'), description: msg, variant: "destructive" });
     }
   };
 
@@ -544,8 +546,8 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
         setMaterialDetail(data);
       }
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Failed to load details";
-      toast({ title: "Error", description: msg, variant: "destructive" });
+      const msg = error instanceof Error ? error.message : t('budget.failedToLoadDetails');
+      toast({ title: t('common.error'), description: msg, variant: "destructive" });
     } finally {
       setDetailLoading(false);
     }
@@ -699,7 +701,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
               setEditValue(String(row[col.key]));
             }}
           >
-            ${row[col.key].toLocaleString()}
+            {formatCurrency(row[col.key], currency)}
           </button>
         );
       }
@@ -707,7 +709,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
         const remaining = row.budget - row.paid;
         return (
           <span className={remaining < 0 ? "text-destructive" : ""}>
-            ${remaining.toLocaleString()}
+            {formatCurrency(remaining, currency)}
           </span>
         );
       }
@@ -749,16 +751,16 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
       case "name":
         return <span className="font-bold">{t('budget.totals')}</span>;
       case "budget":
-        return <span className="font-bold">${totals.budget.toLocaleString()}</span>;
+        return <span className="font-bold">{formatCurrency(totals.budget, currency)}</span>;
       case "ordered":
-        return <span className="font-bold">${totals.ordered.toLocaleString()}</span>;
+        return <span className="font-bold">{formatCurrency(totals.ordered, currency)}</span>;
       case "paid":
-        return <span className="font-bold">${totals.paid.toLocaleString()}</span>;
+        return <span className="font-bold">{formatCurrency(totals.paid, currency)}</span>;
       case "remaining": {
         const totalRemaining = totals.budget - totals.paid;
         return (
           <span className={`font-bold ${totalRemaining < 0 ? "text-destructive" : ""}`}>
-            ${totalRemaining.toLocaleString()}
+            {formatCurrency(totalRemaining, currency)}
           </span>
         );
       }
@@ -791,25 +793,25 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
           <div className="grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-4 mb-6">
             <div className="bg-muted/50 rounded-lg p-4 text-center">
               <p className="text-xs text-muted-foreground mb-1">{t('common.budget')}</p>
-              <p className="text-xl font-bold">${projectBudget.toLocaleString()}</p>
+              <p className="text-xl font-bold">{formatCurrency(projectBudget, currency)}</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-4 text-center">
               <p className="text-xs text-muted-foreground mb-1">{t('budget.ordered')}</p>
-              <p className="text-xl font-bold">${totals.ordered.toLocaleString()}</p>
+              <p className="text-xl font-bold">{formatCurrency(totals.ordered, currency)}</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-4 text-center">
               <p className="text-xs text-muted-foreground mb-1">{t('budget.paid')}</p>
-              <p className="text-xl font-bold">${totals.paid.toLocaleString()}</p>
+              <p className="text-xl font-bold">{formatCurrency(totals.paid, currency)}</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-4 text-center">
               <p className="text-xs text-muted-foreground mb-1">{t('budget.remaining')}</p>
               <p className={`text-xl font-bold ${remaining < 0 ? "text-destructive" : ""}`}>
-                ${remaining.toLocaleString()}
+                {formatCurrency(remaining, currency)}
               </p>
             </div>
             <div className="bg-muted/50 rounded-lg p-4 text-center">
               <p className="text-xs text-muted-foreground mb-1">{t('budget.extra')}</p>
-              <p className="text-xl font-bold">${extraTotal.toLocaleString()}</p>
+              <p className="text-xl font-bold">{formatCurrency(extraTotal, currency)}</p>
             </div>
           </div>
         );
@@ -866,7 +868,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
           className="gap-1"
         >
           <SlidersHorizontal className="h-4 w-4" />
-          Filter+
+          {t('budget.advancedFilter')}
         </Button>
 
         {/* Columns toggle */}
@@ -949,7 +951,7 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1">
                 <FolderOpen className="h-4 w-4" />
-                Views ({savedViews.length})
+                {t('budget.views', { count: savedViews.length })}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-64" align="end">
@@ -1157,9 +1159,9 @@ const BudgetTab = ({ projectId }: BudgetTabProps) => {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : detailRow?.type === "task" && taskDetail ? (
-              <TaskDetailView task={taskDetail} />
+              <TaskDetailView task={taskDetail} currency={currency} />
             ) : detailRow?.type === "material" && materialDetail ? (
-              <MaterialDetailView material={materialDetail} />
+              <MaterialDetailView material={materialDetail} currency={currency} />
             ) : (
               <p className="text-muted-foreground py-8 text-center">{t('budget.noData')}</p>
             )}
@@ -1182,7 +1184,7 @@ function DetailField({ label, value }: { label: string; value: React.ReactNode }
   );
 }
 
-function TaskDetailView({ task }: { task: TaskDetail }) {
+function TaskDetailView({ task, currency }: { task: TaskDetail; currency?: string | null }) {
   const { t } = useTranslation();
 
   const statusLabel = (s: string) => {
@@ -1224,8 +1226,8 @@ function TaskDetailView({ task }: { task: TaskDetail }) {
       <Separator />
 
       <div className="grid grid-cols-2 gap-4">
-        <DetailField label={t('common.budget')} value={task.budget != null ? `$${task.budget.toLocaleString()}` : undefined} />
-        <DetailField label={t('budget.detailPaidAmount')} value={task.paid_amount != null ? `$${task.paid_amount.toLocaleString()}` : undefined} />
+        <DetailField label={t('common.budget')} value={task.budget != null ? formatCurrency(task.budget, currency) : undefined} />
+        <DetailField label={t('budget.detailPaidAmount')} value={task.paid_amount != null ? formatCurrency(task.paid_amount, currency) : undefined} />
       </div>
       <DetailField label={t('budget.detailPaymentStatus')} value={task.payment_status ? <Badge variant="outline">{statusLabel(task.payment_status)}</Badge> : undefined} />
       <DetailField label={t('budget.costCenter')} value={task.cost_center} />
@@ -1241,7 +1243,7 @@ function TaskDetailView({ task }: { task: TaskDetail }) {
   );
 }
 
-function MaterialDetailView({ material }: { material: MaterialDetail }) {
+function MaterialDetailView({ material, currency }: { material: MaterialDetail; currency?: string | null }) {
   const { t } = useTranslation();
 
   const statusLabel = (s: string) => {
@@ -1265,9 +1267,9 @@ function MaterialDetailView({ material }: { material: MaterialDetail }) {
 
       <div className="grid grid-cols-2 gap-4">
         <DetailField label={t('budget.detailQuantity')} value={`${material.quantity} ${material.unit}`} />
-        <DetailField label={t('budget.detailPricePerUnit')} value={material.price_per_unit != null ? `$${material.price_per_unit.toLocaleString()}` : undefined} />
+        <DetailField label={t('budget.detailPricePerUnit')} value={material.price_per_unit != null ? formatCurrency(material.price_per_unit, currency) : undefined} />
       </div>
-      <DetailField label={t('budget.detailPriceTotal')} value={material.price_total != null ? `$${material.price_total.toLocaleString()}` : undefined} />
+      <DetailField label={t('budget.detailPriceTotal')} value={material.price_total != null ? formatCurrency(material.price_total, currency) : undefined} />
 
       <Separator />
 

@@ -48,6 +48,20 @@ export interface WallShapeProps extends ShapeWithViewProps {
     x: number;
     y: number;
   };
+  /**
+   * Callback for batch transforming multiple selected walls to the same length.
+   * Called when Shift is held during endpoint drag.
+   * @param newLengthMM The new length in millimeters to apply to all selected walls
+   */
+  onBatchLengthChange?: (newLengthMM: number) => void;
+  /**
+   * Wall index (1-based) for display purposes
+   */
+  wallIndex?: number;
+  /**
+   * Total number of walls in the plan
+   */
+  totalWalls?: number;
 }
 
 /**
@@ -56,6 +70,8 @@ export interface WallShapeProps extends ShapeWithViewProps {
 export interface RoomShapeProps extends ShapeWithViewProps {
   onDoubleClick?: () => void;
   snapSize: number;
+  isReadOnly?: boolean;
+  isHighlighted?: boolean;
 }
 
 /**

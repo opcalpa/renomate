@@ -130,7 +130,8 @@
     "addFirstTask": "Lisa esimene ülesanne",
     "taskCreated": "Ülesanne loodud!",
     "taskCreatedDescription": "Ülesanne on sinu projektile lisatud.",
-    "adding": "Lisamine..."
+    "adding": "Lisamine...",
+    "viewOnFloorPlan": "Vaata korruseplaani"
   },
   "rooms": {
     "title": "Ruumid",
@@ -305,6 +306,28 @@
     "notAuthenticated": "Pole autenditud",
     "profileNotFound": "Profiili ei leitud"
   },
+  "onboarding": {
+    "welcome": "Tere tulemast Renomate'i!",
+    "welcomeDescription": "Hallake oma renoveerimisprojekte planeerimisest lõpetamiseni.",
+    "createProject": "Looge oma esimene projekt",
+    "createProjectDesc": "Ma juhin renoveerimist",
+    "hasInvitation": "Mul on kutse",
+    "hasInvitationDesc": "Minu projektijuht kutsus mind",
+    "checklist": {
+      "title": "Alustamine",
+      "progress": "{{count}} / {{total}} sammu tehtud",
+      "completeProfile": "Täitke oma profiil",
+      "createProject": "Looge oma esimene projekt",
+      "drawRoom": "Joonistage oma esimene tuba",
+      "createQuote": "Looge testhinnapakkumine",
+      "createTaskRoom": "Looge ülesanne ja ühendage see toaga",
+      "completeProProfile": "Täitke oma professionaalne profiil",
+      "dismiss": "Peida kontrollnimekiri",
+      "confirmDismiss": "Peida alustamise juhend?",
+      "allDone": "Hästi tehtud! Olete valmis.",
+      "inviteClient": "Valmis oma esimest klienti kutsuma?"
+    }
+  },
   "roles": {
     "title": "Meeskond ja kutsed",
     "description": "Halda projekti meeskonnaliikmeid ja kutseid",
@@ -439,7 +462,24 @@
     "resendInvitationEmail": "Saada kutse e-post uuesti",
     "editInvitationPermissions": "Muuda kutse õigusi",
     "cancelInvitationTitle": "Tühista kutse",
-    "additionalInfo": "Lisainformatsioon"
+    "additionalInfo": "Lisainformatsioon",
+    "selectRole": "Vali roll",
+    "moreInfo": "Rohkem infot",
+    "customizeAccess": "Kohanda õigusi",
+    "cards": {
+      "contractor": {
+        "description": "Saab vaadata ajatelge, muuta määratud ülesandeid ja luua ostutellimusi"
+      },
+      "project_manager": {
+        "description": "Täielik juurdepääs kõigile projekti funktsioonidele, saab kutsuda meeskonnaliikmeid"
+      },
+      "client": {
+        "description": "Saab vaadata kogu projekti teavet, sealhulgas eelarvet"
+      },
+      "viewer": {
+        "description": "Ainult lugemisõigus ajateljele, ülesannetele ja ülevaatele"
+      }
+    }
   },
   "propertyPanel": {
     "objectDetails": "Objekti detailid",
@@ -815,7 +855,10 @@
     "createRoom": "Loo ruum",
     "deleteRoom": "Kustuta ruum",
     "scrollToPan": "Keri nihutatamiseks",
-    "ctrlZoom": "Kasuta suumitooteid või hiirerattad"
+    "ctrlZoom": "Kasuta suumitooteid või hiirerattad",
+    "openingRoomDetails": "Ruumi üksikasjade avamine",
+    "roomMustBeSavedFirst": "Ruum tuleb kõigepealt nimetada ja salvestada.",
+    "openingPropertyPanel": "Omaduste paneeli avamine"
   },
   "files": {
     "title": "Projekti failid",
@@ -1092,5 +1135,15 @@
     "notes": "Märkmed",
     "notesPlaceholder": "Juhised, märkmed...",
     "commentsLabel": "Kommentaarid"
+  },
+  "welcome": {
+    "chooseLanguage": "Valige oma keel",
+    "title": "Tere tulemast Renomate'i!",
+    "subtitle": "Mis kirjeldab teid kõige paremini?",
+    "homeowner": "Koduomanik",
+    "homeownerDesc": "Renoveeerin oma kodu",
+    "contractor": "Ehitaja",
+    "contractorDesc": "Juhin ehitusettevõtet",
+    "continue": "Jätka"
   }
 }

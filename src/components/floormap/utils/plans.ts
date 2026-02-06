@@ -359,37 +359,65 @@ export const saveShapesForPlan = async (
       // This handles shapes that were deleted in the UI
       const currentShapeIds = shapes.map(s => s.id);
       // Cleaning up deleted shapes
-      
-      // First, get all shapes in DB for this plan
+
+      // First, get all shapes in DB for this plan (including room_id so we can clear floor_plan_position)
       const { data: dbShapes } = await (supabase as any)
         .from('floor_map_shapes')
-        .select('id')
+        .select('id, room_id')
         .eq('plan_id', planId);
-      
+
       if (dbShapes && dbShapes.length > 0) {
-        const dbShapeIds = dbShapes.map((s: any) => s.id);
-        const shapesToDelete = dbShapeIds.filter((id: string) => !currentShapeIds.includes(id));
-        
+        const shapesToDelete = dbShapes.filter((s: any) => !currentShapeIds.includes(s.id));
+
         if (shapesToDelete.length > 0) {
+          const idsToDelete = shapesToDelete.map((s: any) => s.id);
           const { error: cleanupError } = await (supabase as any)
             .from('floor_map_shapes')
             .delete()
-            .in('id', shapesToDelete);
-            
+            .in('id', idsToDelete);
+
           if (cleanupError) {
             // Non-critical cleanup error - don't throw
+          }
+
+          // Clear floor_plan_position on rooms whose shapes were deleted
+          const roomIdsToClear = shapesToDelete
+            .filter((s: any) => s.room_id)
+            .map((s: any) => s.room_id);
+          if (roomIdsToClear.length > 0) {
+            await (supabase as any)
+              .from('rooms')
+              .update({ floor_plan_position: null })
+              .in('id', roomIdsToClear);
           }
         }
       }
     } else {
       // No shapes = delete all shapes for this plan
+      // First get room_ids to clear before deleting
+      const { data: remainingShapes } = await (supabase as any)
+        .from('floor_map_shapes')
+        .select('room_id')
+        .eq('plan_id', planId);
+
       const { error: deleteError } = await (supabase as any)
         .from('floor_map_shapes')
         .delete()
         .eq('plan_id', planId);
-        
+
       if (deleteError) {
         throw deleteError;
+      }
+
+      // Clear floor_plan_position on all affected rooms
+      const roomIdsToClear = (remainingShapes || [])
+        .filter((s: any) => s.room_id)
+        .map((s: any) => s.room_id);
+      if (roomIdsToClear.length > 0) {
+        await (supabase as any)
+          .from('rooms')
+          .update({ floor_plan_position: null })
+          .in('id', roomIdsToClear);
       }
     }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { formatCurrency } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -57,9 +58,10 @@ interface Material {
 
 interface MaterialsListProps {
   taskId: string;
+  currency?: string | null;
 }
 
-const MaterialsList = ({ taskId }: MaterialsListProps) => {
+const MaterialsList = ({ taskId, currency }: MaterialsListProps) => {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -349,7 +351,7 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
                 />
                 {newMaterial.quantity && newMaterial.price_per_unit && (
                   <p className="text-sm text-muted-foreground">
-                    Price Total: ${(parseFloat(newMaterial.quantity) * parseFloat(newMaterial.price_per_unit)).toFixed(2)}
+                    Price Total: {formatCurrency(parseFloat(newMaterial.quantity) * parseFloat(newMaterial.price_per_unit), currency, { decimals: 2 })}
                   </p>
                 )}
               </div>
@@ -456,7 +458,7 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
                 />
                 {editingMaterial.quantity && editingMaterial.price_per_unit && (
                   <p className="text-sm text-muted-foreground">
-                    Price Total: ${(editingMaterial.quantity * editingMaterial.price_per_unit).toFixed(2)}
+                    Price Total: {formatCurrency(editingMaterial.quantity * editingMaterial.price_per_unit, currency, { decimals: 2 })}
                   </p>
                 )}
               </div>
@@ -526,10 +528,10 @@ const MaterialsList = ({ taskId }: MaterialsListProps) => {
                     {material.quantity} {material.unit}
                   </TableCell>
                   <TableCell>
-                    {material.price_per_unit ? `$${material.price_per_unit.toFixed(2)}` : "-"}
+                    {material.price_per_unit ? formatCurrency(material.price_per_unit, currency, { decimals: 2 }) : "-"}
                   </TableCell>
                   <TableCell className="font-semibold">
-                    {material.price_total ? `$${material.price_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}
+                    {material.price_total ? formatCurrency(material.price_total, currency, { decimals: 2 }) : "-"}
                   </TableCell>
                   <TableCell>
                     {material.vendor_name ? (

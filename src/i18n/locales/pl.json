@@ -39,12 +39,35 @@
     "quantity": "Ilość",
     "unit": "Jednostka",
     "vendor": "Dostawca",
-    "search": "Szukaj"
+    "search": "Szukaj",
+    "viewOnly": "Tylko podgląd",
+    "use": "Użyj",
+    "selectOrType": "Wybierz lub wpisz...",
+    "searchOrType": "Szukaj lub wpisz...",
+    "noSuggestionsEnterToUse": "Brak sugestii. Naciśnij Enter, aby użyć.",
+    "noRoom": "Brak pokoju",
+    "unknownRoom": "Nieznany pokój",
+    "unknownUser": "Nieznany",
+    "settings": "Ustawienia"
   },
   "nav": {
     "home": "Start",
     "projects": "Projekty",
-    "profile": "Profil"
+    "profile": "Profil",
+    "tips": "Porady",
+    "feedback": "Kontakt",
+    "language": "Język",
+    "mobileNav": {
+      "overview": "Przegląd",
+      "plans": "Plany",
+      "tasks": "Zadania",
+      "purchases": "Zakupy",
+      "more": "Więcej",
+      "files": "Pliki",
+      "budget": "Budżet",
+      "team": "Zespół",
+      "feed": "Kanał"
+    }
   },
   "landing": {
     "heroTitle": "Przejmij kontrolę nad",
@@ -93,7 +116,32 @@
     "projectDescriptionPlaceholder": "Kompletny remont kuchni z nowymi szafkami i blatami",
     "projectCreated": "Projekt utworzony!",
     "projectCreatedDescription": "Twój nowy projekt został pomyślnie utworzony.",
-    "creating": "Tworzenie..."
+    "creating": "Tworzenie...",
+    "address": "Adres",
+    "addressPlaceholder": "Adres ulicy",
+    "postalCode": "Kod pocztowy",
+    "city": "Miasto",
+    "cityPlaceholder": "Miasto",
+    "projectType": "Typ projektu",
+    "selectProjectType": "Wybierz typ projektu",
+    "startDate": "Data rozpoczęcia",
+    "totalBudget": "Całkowity budżet (zł)",
+    "next": "Dalej",
+    "back": "Wstecz",
+    "skipAndCreate": "Pomiń i utwórz",
+    "noDescription": "Brak opisu",
+    "types": {
+      "kitchenRenovation": "Remont kuchni",
+      "bathroomRenovation": "Remont łazienki",
+      "fullRenovation": "Remont generalny",
+      "extension": "Rozbudowa / Dobudowa",
+      "newConstruction": "Nowa budowa",
+      "facade": "Elewacja",
+      "roof": "Dach",
+      "plumbing": "Hydraulika (rury/woda)",
+      "electrical": "Elektryka",
+      "other": "Inne"
+    }
   },
   "projectDetail": {
     "overview": "Przegląd",
@@ -107,7 +155,28 @@
     "toDo": "Do zrobienia",
     "noScheduledTasks": "Brak zaplanowanych zadań",
     "noScheduledTasksDescription": "Dodaj daty rozpoczęcia i zakończenia do zadań, aby zobaczyć je w harmonogramie",
-    "feed": "Kanał"
+    "feed": "Kanał",
+    "overviewDesc": "Podsumowanie i status projektu",
+    "roomsDesc": "Zarządzaj i konfiguruj pokoje",
+    "floorPlan": "Plan piętra",
+    "floorPlanDesc": "Projektuj i planuj układ piętra",
+    "feedDesc": "Komentarze i aktywność",
+    "allProjects": "Wszystkie projekty",
+    "files": "Pliki",
+    "purchases": "Zakupy",
+    "team": "Zespół",
+    "roomManagement": "Zarządzanie pokojami",
+    "roomManagementDescription": "Zarządzaj i konfiguruj pokoje w swoim projekcie.",
+    "confirmDeleteRoom": "Czy na pewno chcesz usunąć pokój \"{{name}}\"? Tej czynności nie można cofnąć.",
+    "roomDeleted": "Pokój usunięty",
+    "roomDeletedDescription": "\"{{name}}\" został usunięty",
+    "failedToDeleteRoom": "Nie udało się usunąć pokoju",
+    "imageAdded": "Obraz dodany",
+    "imageAddedDescription": "\"{{name}}\" został dodany jako obraz tła na płótnie",
+    "navigatingToRoom": "Nawigacja do pokoju",
+    "showingRoomOnDrawing": "Wyświetlanie \"{{name}}\" na rysunku",
+    "placeRoom": "Umieść pokój",
+    "clickToPlaceRoom": "Kliknij na rysunku, aby umieścić \"{{name}}\""
   },
   "tasks": {
     "title": "Zadania",
@@ -130,7 +199,8 @@
     "addFirstTask": "Dodaj pierwsze zadanie",
     "taskCreated": "Zadanie utworzone!",
     "taskCreatedDescription": "Zadanie zostało dodane do Twojego projektu.",
-    "adding": "Dodawanie..."
+    "adding": "Dodawanie...",
+    "viewOnFloorPlan": "Zobacz na planie piętra"
   },
   "rooms": {
     "title": "Pokoje",
@@ -208,7 +278,26 @@
     "noPOsMatchFilter": "Żadne zamówienie zakupowe nie pasuje do filtra",
     "pieces": "szt.",
     "area": "Powierzchnia",
-    "status": "Status"
+    "status": "Status",
+    "createTaskForRoom": "Utwórz zadanie",
+    "taskWillBeLinkedToRoom": "Zadanie zostanie powiązane z tym pokojem",
+    "taskCreatedForRoom": "Zadanie utworzone i powiązane z pokojem",
+    "taskTitleRequired": "Tytuł zadania jest wymagany",
+    "failedToCreateTask": "Nie udało się utworzyć zadania",
+    "taskTitlePlaceholder": "np. Instalacja podłogi, Malowanie ścian",
+    "taskDescriptionPlaceholder": "Dodaj szczegóły dotyczące zadania...",
+    "creatingTask": "Tworzenie...",
+    "createTask": "Utwórz zadanie",
+    "createPOForRoom": "Utwórz zamówienie zakupowe",
+    "poWillBeLinkedToRoom": "Zamówienie zakupowe zostanie powiązane z tym pokojem",
+    "poCreatedForRoom": "Zamówienie zakupowe utworzone i powiązane z pokojem",
+    "poNamePlaceholder": "np. Płytki podłogowe, Farba",
+    "pinterestInspirationBoard": "Tablica inspiracji Pinterest",
+    "importedFromPinterest": "Zaimportowane z Pinterest",
+    "showOnFloorPlan": "Pokaż na planie piętra",
+    "placeOnFloorPlan": "Umieść na planie piętra",
+    "placedOnCanvas": "Umieszczono na płótnie",
+    "notPlacedOnCanvas": "Nie umieszczono na płótnie"
   },
   "spacePlanner": {
     "title": "Planer przestrzeni",
@@ -257,7 +346,39 @@
     "passwordChanged": "Hasło zmienione",
     "passwordChangedDescription": "Twoje hasło zostało pomyślnie zaktualizowane.",
     "passwordsDoNotMatch": "Hasła nie pasują do siebie",
-    "passwordTooShort": "Hasło musi mieć co najmniej 6 znaków"
+    "passwordTooShort": "Hasło musi mieć co najmniej 6 znaków",
+    "professionalProfile": "Profil profesjonalny",
+    "professionalProfileDescription": "Włącz, aby pojawiać się w katalogu i być znajdywanym przez właścicieli domów i kierowników projektów",
+    "enableProfessional": "Aktywuj profil profesjonalny",
+    "enableProfessionalDescription": "Pokaż swoją firmę w katalogu, aby klienci mogli Cię znaleźć",
+    "companyName": "Nazwa firmy",
+    "companyNamePlaceholder": "np. Budowa i Remonty Sp. z o.o.",
+    "professionalCategory": "Kategoria zawodowa",
+    "selectCategory": "Wybierz kategorię",
+    "categoryBuilder": "Budowniczy / Wykonawca",
+    "categoryElectrician": "Elektryk",
+    "categoryPlumber": "Hydraulik",
+    "categoryPainter": "Malarz",
+    "categoryTiler": "Glazurnik",
+    "categoryCarpenter": "Stolarz",
+    "categoryArchitect": "Architekt / Projektant",
+    "categoryRoofer": "Dekarz",
+    "categoryLandscaper": "Ogrodnik krajobrazowy",
+    "categoryOther": "Inny",
+    "companyAddress": "Adres firmy",
+    "companyAddressPlaceholder": "Adres ulicy",
+    "companyCity": "Miasto",
+    "companyCityPlaceholder": "np. Warszawa",
+    "companyPostalCode": "Kod pocztowy",
+    "companyPostalCodePlaceholder": "np. 00-001",
+    "companyDescription": "Opis",
+    "companyDescriptionPlaceholder": "Opisz swoje usługi, doświadczenie i specjalizacje...",
+    "companyWebsite": "Strona internetowa",
+    "companyWebsitePlaceholder": "np. https://www.example.com",
+    "proBadge": "PRO",
+    "orgNumber": "Numer NIP",
+    "orgNumberPlaceholder": "np. 123-456-78-90",
+    "proFieldsRequired": "Uzupełnij nazwę firmy i kategorię, aby aktywować profil profesjonalny"
   },
   "languages": {
     "en": "Angielski",
@@ -298,7 +419,9 @@
     "saveError": "Błąd",
     "saveErrorDescription": "Nie można zapisać ustawień",
     "canvasScale": "Skala płótna",
-    "currency": "Waluta"
+    "currency": "Waluta",
+    "canvasSettingsMoved": "Ustawienia płótna zostały przeniesione",
+    "canvasSettingsMovedDescription": "Grubość ściany, wysokość ściany i skala są teraz w menu Ustawienia płótna bezpośrednio w narzędziu rysowania."
   },
   "errors": {
     "generic": "Wystąpił błąd",
@@ -439,7 +562,24 @@
     "resendInvitationEmail": "Wyślij ponownie e-mail z zaproszeniem",
     "editInvitationPermissions": "Edytuj uprawnienia zaproszenia",
     "cancelInvitationTitle": "Anuluj zaproszenie",
-    "additionalInfo": "Dodatkowe informacje"
+    "additionalInfo": "Dodatkowe informacje",
+    "selectRole": "Wybierz rolę",
+    "moreInfo": "Więcej informacji",
+    "customizeAccess": "Dostosuj uprawnienia",
+    "cards": {
+      "contractor": {
+        "description": "Może przeglądać harmonogram, edytować przypisane zadania i tworzyć zamówienia zakupu"
+      },
+      "project_manager": {
+        "description": "Pełny dostęp do wszystkich funkcji projektu, może zapraszać członków zespołu"
+      },
+      "client": {
+        "description": "Może przeglądać wszystkie informacje o projekcie, w tym budżet"
+      },
+      "viewer": {
+        "description": "Dostęp tylko do odczytu harmonogramu, zadań i przeglądu"
+      }
+    }
   },
   "propertyPanel": {
     "objectDetails": "Szczegóły obiektu",
@@ -498,7 +638,21 @@
     "cornerCount": "Liczba rogów",
     "width": "Szerokość",
     "radius": "Promień",
-    "size": "Rozmiar"
+    "size": "Rozmiar",
+    "batchDimensionsUpdated": "{{count}} ścian zaktualizowanych!",
+    "selectedWalls": "zaznaczonych ścian",
+    "batchEditHint": "Zmiany dotyczą wszystkich zaznaczonych ścian",
+    "templateGroup": "Grupa szablonu",
+    "shapes": "kształty",
+    "templateGroupDimensions": "Wymiary grupy",
+    "resize": "Zmień rozmiar",
+    "widthMm": "Szerokość (mm)",
+    "groupScaleHint": "Wszystkie kształty w grupie zostaną przeskalowane proporcjonalnie",
+    "applyResize": "Zastosuj zmianę rozmiaru",
+    "depth": "Głębokość/Wysokość",
+    "category": "Kategoria",
+    "invalidWidth": "Nieprawidłowa szerokość. Wprowadź liczbę dodatnią.",
+    "groupDimensionsUpdated": "Grupa przeskalowana pomyślnie!"
   },
   "saveTemplateDialog": {
     "title": "Zapisz jako szablon",
@@ -775,7 +929,10 @@
     "blocked": "Zablokowane",
     "completed": "Ukończone",
     "done": "Gotowe",
-    "scrapped": "Odrzucone"
+    "scrapped": "Odrzucone",
+    "planned": "Zaplanowane",
+    "waiting": "Oczekujące",
+    "cancelled": "Anulowane"
   },
   "materialStatuses": {
     "submitted": "Wysłane",
@@ -815,7 +972,50 @@
     "createRoom": "Utwórz pokój",
     "deleteRoom": "Usuń pokój",
     "scrollToPan": "Przewiń, aby przesunąć",
-    "ctrlZoom": "Użyj przycisków powiększenia lub kółka myszy"
+    "ctrlZoom": "Użyj przycisków powiększenia lub kółka myszy",
+    "touchGestures": "Gesty dotykowe",
+    "touchOneFingerDrag": "Przeciąganie jednym palcem",
+    "touchPinch": "Szczypanie",
+    "touchTapShape": "Dotknięcie kształtu",
+    "touchDoubleTap": "Podwójne dotknięcie pokoju",
+    "zoomInOut": "Powiększ/Pomniejsz",
+    "selectShape": "Zaznacz kształt",
+    "shortcutsTip": "Używaj siatki i przyciągania do precyzyjnych pomiarów. Kliknij prawym przyciskiem na dowolny kształt, aby przypisać go do pokoju i zastosować kolorowanie.",
+    "properties": "Właściwości",
+    "elevationView": "Widok ściany",
+    "individualShapeSelected": "Wybrany pojedynczy kształt",
+    "doubleClickToSelectIndividual": "Kliknij dwukrotnie, aby wybrać pojedynczy kształt",
+    "wall": "Ściana",
+    "rectangle": "Prostokąt",
+    "circle": "Okrąg",
+    "line": "Linia",
+    "room": "Pokój",
+    "elevation": "Elewacja",
+    "dimensions": "Wymiary",
+    "width": "Szerokość",
+    "height": "Wysokość",
+    "length": "Długość",
+    "radius": "Promień",
+    "thickness": "Grubość",
+    "surfaceCalculation": "Obliczanie powierzchni",
+    "totalWallArea": "Całkowita powierzchnia ściany",
+    "objects": "Obiekty",
+    "paintableArea": "Powierzchnia do malowania",
+    "type": "Typ",
+    "specification": "Specyfikacja",
+    "treatment": "Obróbka",
+    "color": "Kolor",
+    "manufacturer": "Producent",
+    "productCode": "Kod produktu",
+    "fillColor": "Kolor wypełnienia",
+    "strokeColor": "Kolor obramowania",
+    "doubleClickToEdit": "Kliknij dwukrotnie, aby edytować",
+    "doubleClickToEditRoom": "Kliknij dwukrotnie, aby edytować nazwę/kolor",
+    "doubleClickForDetails": "Kliknij dwukrotnie, aby zobaczyć szczegóły",
+    "roomColors": "Kolory pokoi",
+    "openingRoomDetails": "Otwieranie szczegółów pokoju",
+    "roomMustBeSavedFirst": "Pokój musi być najpierw nazwany i zapisany.",
+    "openingPropertyPanel": "Otwieranie panelu właściwości"
   },
   "files": {
     "title": "Pliki projektu",
@@ -860,7 +1060,21 @@
     "preview": "Podgląd",
     "downloadStarted": "Rozpoczęto pobieranie",
     "commentsOn": "Komentarze - {{name}}",
-    "commentsDescription": "Dyskutuj i komentuj ten plik podczas przeglądania"
+    "commentsDescription": "Dyskutuj i komentuj ten plik podczas przeglądania",
+    "linkToTask": "Powiąż z zadaniem",
+    "linkFile": "Powiąż plik",
+    "fileLinked": "Plik powiązany z zadaniem",
+    "errorLinkingFile": "Nie udało się powiązać pliku",
+    "selectTask": "Wybierz zadanie",
+    "fileType": "Typ pliku",
+    "invoice": "Faktura",
+    "receipt": "Paragon",
+    "contract": "Umowa",
+    "other": "Inne",
+    "linkedFiles": "Powiązane pliki",
+    "noLinkedFiles": "Brak powiązanych plików",
+    "unlinkFile": "Odwiąż plik",
+    "fileUnlinked": "Plik odwiązany"
   },
   "purchases": {
     "title": "Zamówienia zakupowe",
@@ -896,7 +1110,30 @@
     "selectRoom": "Wybierz pokój",
     "selectTask": "Wybierz zadanie",
     "selectTeamMember": "Wybierz członka zespołu",
-    "noMembers": "Brak członków"
+    "noMembers": "Brak członków",
+    "quickOrder": "Szybkie zamówienie",
+    "newOrder": "Nowe zamówienie zakupowe",
+    "showAllFields": "Pokaż wszystkie pola",
+    "quickMode": "Tryb szybki",
+    "quickNamePlaceholder": "np. Białe płytki 30x30",
+    "sendOrder": "Wyślij zamówienie",
+    "selectUnit": "Jednostka",
+    "units": {
+      "pieces": "szt.",
+      "sqm": "m²",
+      "meters": "m",
+      "kg": "kg",
+      "liters": "litry",
+      "packages": "opakowania"
+    },
+    "filters": "Filtr",
+    "clearFilters": "Wyczyść filtry",
+    "allUsers": "Wszyscy",
+    "showingResults": "Wyświetlanie {{count}} z {{total}} zamówień",
+    "vendor": "Dostawca",
+    "task": "Zadanie",
+    "assignedTo": "Przypisane do",
+    "statusChangedTo": "Status zmieniony na {{status}}"
   },
   "overview": {
     "projectOverview": "Przegląd projektu",
@@ -922,7 +1159,20 @@
     "budgetOverview": "Przegląd budżetu",
     "floorPlan": "Plan piętra",
     "floorPlanComingSoon": "Wizualizacja planu piętra wkrótce",
-    "floorPlanDescription": "Ta funkcja pozwoli Ci tworzyć i wizualizować przestrzeń remontową"
+    "floorPlanDescription": "Ta funkcja pozwoli Ci tworzyć i wizualizować przestrzeń remontową",
+    "pendingPurchaseOrders": "{{count}} oczekujących zamówień zakupowych",
+    "pendingPurchaseOrders_one": "{{count}} oczekujące zamówienie zakupowe",
+    "pendingPurchaseOrdersDescription": "Przejrzyj i zatwierdź złożone zamówienia",
+    "viewPurchaseOrders": "Pokaż zamówienia",
+    "advancedSettings": "Zaawansowane ustawienia",
+    "projectCurrency": "Waluta projektu",
+    "selectCurrency": "Wybierz walutę",
+    "currencyDescription": "Waluta używana dla wszystkich kwot w tym projekcie",
+    "currencyUpdated": "Waluta zaktualizowana",
+    "currencyUpdatedDescription": "Waluta projektu została zmieniona.",
+    "enterTotalBudget": "Wprowadź całkowity budżet",
+    "selectStartDate": "Wybierz datę rozpoczęcia",
+    "selectGoalDate": "Wybierz datę docelową"
   },
   "budget": {
     "title": "Budżet",
@@ -970,7 +1220,29 @@
     "paymentStatus": "Status płatności",
     "dueDate": "Termin płatności",
     "excludeFromBudget": "Wyklucz z budżetu",
-    "created": "Utworzono"
+    "created": "Utworzono",
+    "compactRows": "Kompaktowe",
+    "failedToLoadData": "Nie udało się załadować danych budżetowych",
+    "failedToUpdateStatus": "Nie udało się zaktualizować statusu",
+    "failedToUpdateValue": "Nie udało się zaktualizować wartości",
+    "failedToLoadDetails": "Nie udało się załadować szczegółów",
+    "advancedFilter": "Filtr+",
+    "views": "Widoki ({{count}})",
+    "detailTitle": "Tytuł",
+    "detailDescription": "Opis",
+    "detailPriority": "Priorytet",
+    "detailProgress": "Postęp",
+    "detailPaidAmount": "Opłacona kwota",
+    "detailPaymentStatus": "Status płatności",
+    "detailDueDate": "Termin płatności",
+    "detailName": "Nazwa",
+    "detailQuantity": "Ilość",
+    "detailPricePerUnit": "Cena za jednostkę",
+    "detailPriceTotal": "Cena całkowita",
+    "detailVendor": "Dostawca",
+    "detailVendorLink": "Link do dostawcy",
+    "detailExcludeFromBudget": "Wyklucz z budżetu",
+    "detailCreated": "Utworzono"
   },
   "taskPanel": {
     "title": "Szczegóły zadania",
@@ -998,7 +1270,15 @@
     "kilograms": "Kilogramy",
     "liters": "Litry",
     "hours": "Godziny",
-    "days": "Dni"
+    "days": "Dni",
+    "poCreatedAndLinked": "Zamówienie zakupowe utworzone i powiązane z zadaniem",
+    "failedToLoad": "Nie udało się załadować szczegółów zadania",
+    "failedToUpdate": "Nie udało się zaktualizować zadania",
+    "failedToCreatePO": "Nie udało się utworzyć zamówienia zakupowego",
+    "checklists": "Listy kontrolne",
+    "checklist": "Lista kontrolna",
+    "addChecklist": "Dodaj listę kontrolną",
+    "addItem": "Dodaj element..."
   },
   "taskDetail": {
     "timeline": "Harmonogram",
@@ -1028,7 +1308,10 @@
     "commentsCount": "{{count}} komentarzy",
     "commentCount": "1 komentarz",
     "mentionPlaceholder": "Wpisz, aby wyszukać...",
-    "noMentionResults": "Nie znaleziono członków zespołu"
+    "noMentionResults": "Nie znaleziono członków zespołu",
+    "filterAll": "Wszystko",
+    "filterComments": "Komentarze",
+    "filterActivity": "Aktywność"
   },
   "notifications": {
     "title": "Powiadomienia",
@@ -1092,5 +1375,766 @@
     "notes": "Notatki",
     "notesPlaceholder": "Instrukcje, notatki...",
     "commentsLabel": "Komentarze"
+  },
+  "onboarding": {
+    "welcome": "Witaj w Renomate!",
+    "welcomeDescription": "Zarządzaj projektami remontowymi od planowania do realizacji.",
+    "createProject": "Utwórz swój pierwszy projekt",
+    "createProjectDesc": "Zarządzam remontem",
+    "hasInvitation": "Mam zaproszenie",
+    "hasInvitationDesc": "Kierownik projektu mnie zaprosił",
+    "checklist": {
+      "title": "Pierwsze kroki",
+      "progress": "{{count}} z {{total}} kroków ukończonych",
+      "completeProfile": "Uzupełnij swój profil",
+      "createProject": "Utwórz swój pierwszy projekt",
+      "drawRoom": "Narysuj swój pierwszy pokój",
+      "createQuote": "Utwórz testową wycenę",
+      "createTaskRoom": "Utwórz zadanie i połącz je z pokojem",
+      "completeProProfile": "Uzupełnij swój profil zawodowy",
+      "dismiss": "Ukryj listę kontrolną",
+      "confirmDismiss": "Ukryć przewodnik wprowadzający?",
+      "allDone": "Doskonałe! Jesteś gotowy.",
+      "inviteClient": "Gotowy, aby zaprosić pierwszego klienta?"
+    }
+  },
+  "canvasSettings": {
+    "title": "Ustawienia płótna",
+    "roomColor": "Kolor pokoju na płótnie",
+    "transparency": "Przezroczystość",
+    "transparent": "Przezroczyste",
+    "solid": "Pełne",
+    "transparencyHelp": "Niższa przezroczystość ułatwia widoczność obiektów wewnątrz pokoju",
+    "layerOrder": "Kolejność warstw",
+    "layerOrderHelp": "Przenieś pokój na spód, aby łatwiej zaznaczać i przesuwać obiekty umieszczone wewnątrz pokoju (meble, urządzenia itp.)",
+    "sendToBack": "Przenieś na spód",
+    "sendBackward": "Przenieś do tyłu",
+    "bringForward": "Przenieś do przodu",
+    "bringToFront": "Przenieś na wierzch",
+    "currentLayer": "Bieżąca warstwa"
+  },
+  "aiProjectImport": {
+    "title": "Utwórz projekt z dokumentu",
+    "description": "Prześlij opis pomieszczeń lub specyfikację remontu — AI wyodrębni pokoje, zadania i utworzy projekt.",
+    "buttonLabel": "Import AI",
+    "smartImport": "Inteligentny import",
+    "smartImportTooltip": "Prześlij istniejący plik tekstowy z opisem remontu, a automatycznie utworzymy listę zadań i rozdzielimy opisy pokoi",
+    "uploadTitle": "Prześlij dokument",
+    "uploadDescription": "PDF, DOCX lub TXT — np. opis pomieszczeń lub specyfikacja remontu",
+    "chooseFile": "Wybierz plik",
+    "unsupportedFormat": "Nieobsługiwany format. Użyj PDF, DOCX lub TXT.",
+    "fileTooLarge": "Plik za duży (maks. 10 MB).",
+    "creating": "Tworzenie projektu...",
+    "createProject": "Utwórz projekt",
+    "projectCreated": "Projekt utworzony!",
+    "projectCreatedDescription": "Utworzono z {{rooms}} pokojami i {{tasks}} zadaniami."
+  },
+  "timeline": {
+    "unscheduledTasks": "{{count}} niezaplanowanych zadań",
+    "unscheduledTasksSingular": "1 niezaplanowane zadanie",
+    "resetZoom": "Resetuj do 1 miesiąca",
+    "gestureHint": "Przeciągnij, aby przesunąć, szczyp, aby powiększyć",
+    "days": "dni",
+    "weekly": "1T",
+    "monthly": "1M",
+    "threeMonths": "3M",
+    "fullProject": "Wszystko",
+    "today": "Dziś",
+    "showMoreDays": "Pokaż więcej dni",
+    "showFewerDays": "Pokaż mniej dni",
+    "noTasksInPeriod": "Brak zaplanowanych zadań w tym okresie",
+    "taskRescheduled": "Zadanie przeterminowane",
+    "taskDurationUpdated": "Czas trwania zadania zaktualizowany",
+    "taskUpdated": "Zadanie zaktualizowane",
+    "taskUpdatedDescription": "Zadanie zostało pomyślnie zaktualizowane",
+    "duration": "Czas trwania",
+    "groupBy": "Grupuj wg",
+    "noGrouping": "Bez grupowania",
+    "groupByStatus": "Status",
+    "groupByRoom": "Pokój",
+    "groupByAssignee": "Przypisany",
+    "groupByPriority": "Priorytet"
+  },
+  "canvas": {
+    "settings": "Ustawienia płótna",
+    "settingsDescription": "Konfiguruj środowisko robocze bez wpływu na rzeczywiste wymiary",
+    "wallDefaults": "Domyślne ustawienia ścian",
+    "wallDefaultsDesc": "Domyślne wymiary nowych ścian (zapisywane automatycznie)",
+    "thickness": "Grubość",
+    "height": "Wysokość",
+    "innerWall": "Ściana wewnętrzna",
+    "outerWall": "Ściana zewnętrzna",
+    "highCeiling": "Wysoki sufit",
+    "scale": "Skala",
+    "scaleDetailed": "Szczegółowa",
+    "scaleStandardDetail": "Standardowy szczegół",
+    "scaleStandard": "Standardowa",
+    "scaleOverview": "Przeglądowa",
+    "scaleDescription": "Wpływa na gęstość wizualną, grubość linii i rozmiar etykiet",
+    "displayUnit": "Jednostka wyświetlania",
+    "unit": "Jednostka",
+    "unitDescription": "Sposób wyświetlania wymiarów (dane zawsze w mm)",
+    "gridConfig": "Konfiguracja siatki",
+    "showGrid": "Pokaż siatkę",
+    "gridSpacing": "Odstęp siatki",
+    "gridFine": "5cm (Drobna)",
+    "grid10cm": "10cm",
+    "grid25cm": "25cm",
+    "gridStandard": "50cm (Standardowa)",
+    "grid1m": "1m",
+    "gridCoarse": "2m (Rzadka)",
+    "grid": "Siatka",
+    "snap": "Przyciąganie",
+    "snapToGrid": "Przyciągaj do siatki",
+    "canvasSize": "Rozmiar płótna",
+    "workspace": "Przestrzeń robocza",
+    "canvasSizeDesc": "Obszar rysowania pokryty liniami siatki",
+    "widthM": "Szerokość (m)",
+    "heightM": "Wysokość (m)",
+    "standardSizes": "Standard: 30×30m (mieszkanie/dom) · 50×50m (większe projekty)",
+    "displayOptions": "Opcje wyświetlania",
+    "showDimensions": "Pokaż wymiary ścian",
+    "dimensionsDesc": "Długości wyświetlane w wybranej jednostce",
+    "showAreaLabels": "Pokaż powierzchnie pokoi",
+    "activeConfig": "Aktywna konfiguracja:",
+    "on": "WŁ.",
+    "off": "WYŁ.",
+    "setStartingView": "Ustaw widok początkowy",
+    "clearStartingView": "Wyczyść widok początkowy",
+    "startingViewSaved": "Widok początkowy zapisany",
+    "startingViewCleared": "Widok początkowy usunięty — automatyczne dopasowanie"
+  },
+  "elevationInfo": {
+    "rectangle": "Prostokąt",
+    "circle": "Okrąg",
+    "line": "Linia",
+    "elevation": "Elewacja",
+    "dimensions": "Wymiary",
+    "width": "Szerokość",
+    "height": "Wysokość",
+    "length": "Długość",
+    "radius": "Promień",
+    "thickness": "Grubość",
+    "areaCalculation": "Obliczanie powierzchni",
+    "totalWallArea": "Całkowita powierzchnia ściany",
+    "objects": "Obiekty ({{count}} szt.)",
+    "paintableArea": "Powierzchnia do malowania",
+    "material": "Materiał",
+    "type": "Typ",
+    "spec": "Specyfikacja",
+    "treatment": "Obróbka",
+    "color": "Kolor",
+    "product": "Produkt",
+    "manufacturer": "Producent",
+    "productCode": "Kod produktu",
+    "fillColor": "Kolor wypełnienia",
+    "strokeColor": "Kolor obramowania"
+  },
+  "controls": {
+    "undo": "Cofnij",
+    "undoShortcut": "Cofnij (Ctrl+Z)",
+    "redo": "Ponów",
+    "redoShortcut": "Ponów (Ctrl+Y)",
+    "zoomIn": "Powiększ",
+    "zoomInShortcut": "Powiększ (Ctrl + +)",
+    "zoomOut": "Pomniejsz",
+    "zoomOutShortcut": "Pomniejsz (Ctrl + -)",
+    "resetView": "Resetuj widok",
+    "resetViewShortcut": "Resetuj widok (Ctrl + 0)"
+  },
+  "access": {
+    "noAccess": "Brak dostępu",
+    "noAccessDescription": "Nie masz dostępu do tej sekcji."
+  },
+  "pinterest": {
+    "invalidUrl": "Nieprawidłowy adres URL tablicy Pinterest",
+    "inspiration": "Inspiracje Pinterest",
+    "openOnPinterest": "Otwórz na Pinterest",
+    "removeBoard": "Usuń tablicę",
+    "loading": "Ładowanie tablicy Pinterest...",
+    "loadError": "Nie udało się załadować widżetu Pinterest",
+    "connected": "Połączono",
+    "connectedSuccess": "Pinterest połączony!",
+    "connectError": "Nie udało się połączyć z Pinterest",
+    "connect": "Połącz Pinterest",
+    "disconnect": "Rozłącz",
+    "disconnected": "Pinterest rozłączony",
+    "disconnectError": "Nie udało się rozłączyć Pinterest",
+    "confirmDisconnect": "Czy na pewno chcesz rozłączyć Pinterest?",
+    "notConfigured": "Pinterest nie jest skonfigurowany. Skontaktuj się z administratorem.",
+    "popupBlocked": "Wyświetlanie okien zablokowane. Zezwól na wyświetlanie okien dla tej strony.",
+    "error": "Wystąpił błąd"
+  },
+  "budgetDashboard": {
+    "failedToLoadPayments": "Nie udało się załadować szczegółów płatności",
+    "failedToLoadOngoingCosts": "Nie udało się załadować kosztów dodatkowych",
+    "noCostCenter": "Brak centrum kosztów",
+    "payments": "Płatności",
+    "vendor": "Dostawca",
+    "pending": "Oczekujące",
+    "remaining": "Pozostałe",
+    "totalBudget": "Całkowity budżet",
+    "extras": "Koszty dodatkowe",
+    "projectAllocation": "Alokacja projektu",
+    "budgetUsed": "{{percentage}}% budżetu wykorzystanego",
+    "pendingOrders": "Oczekujące zamówienia",
+    "ordersPending": "{{count}} oczekujących zamówień",
+    "excludedFromBudget": "{{count}} pozycji wykluczonych z budżetu",
+    "overBudget": "Przekroczenie budżetu",
+    "availableToSpend": "Dostępne do wydania",
+    "budgetExceeded": "Budżet przekroczony",
+    "budgetExceededDescription": "Przekroczono budżet o {{amount}}. Rozważ przejrzenie wydatków lub dostosowanie budżetu.",
+    "highPendingOrders": "Duża liczba oczekujących zamówień",
+    "highPendingOrdersDescription": "{{amount}} ({{percentage}}% budżetu) w oczekujących zamówieniach. Przejrzyj i zatwierdź lub odrzuć, aby zarządzać przepływem środków.",
+    "budgetDistribution": "Rozkład budżetu",
+    "budgetAllocationBreakdown": "Jak rozdzielony jest Twój budżet",
+    "costByRoom": "Podział kosztów wg pokoju",
+    "costByCostCenter": "Podział kosztów wg centrum kosztów",
+    "budgetOverview": "Przegląd budżetu",
+    "perRoom": "Wg pokoju",
+    "perCostCenter": "Wg centrum kosztów",
+    "noBudgetData": "Brak danych budżetowych",
+    "budgetComparison": "Porównanie budżetu",
+    "compareBudgetCategories": "Porównaj kategorie budżetowe obok siebie",
+    "budgetExpenses": "Wydatki budżetowe",
+    "budgetExpensesDescription": "Szczegółowa lista wszystkich zadań z budżetem i zamówień zakupowych ujętych w budżecie projektu",
+    "filterByType": "Filtruj wg typu",
+    "filterByDate": "Filtruj wg daty",
+    "purchaseOrders": "Zamówienia zakupowe",
+    "purchaseOrder": "Zamówienie zakupowe",
+    "totalPayments": "Łączne płatności",
+    "items": "Pozycje",
+    "noPaymentsFound": "Nie znaleziono płatności",
+    "amount": "Kwota",
+    "date": "Data",
+    "extrasTitle": "Koszty dodatkowe (poza budżetem)",
+    "extrasDescription": "Koszty operacyjne nieujęte w budżecie projektu",
+    "totalExtras": "Łączne koszty dodatkowe",
+    "excludedFromBudgetNote": "Te koszty są wykluczone z obliczeń budżetu projektu",
+    "noExtrasFound": "Nie znaleziono kosztów dodatkowych"
+  },
+  "activity": {
+    "created": "utworzył(a)",
+    "statusChanged": "zmienił(a) status",
+    "assigned": "przypisał(a)",
+    "deleted": "usunął(a)",
+    "memberAdded": "dodał(a)",
+    "memberRemoved": "usunął(a)",
+    "statusChange": "z {{old}} na {{new}}",
+    "entityTypes": {
+      "task": "zadanie",
+      "room": "pokój",
+      "material": "materiał",
+      "floorPlan": "plan piętra",
+      "teamMember": "członek zespołu"
+    }
+  },
+  "roomNames": {
+    "livingRoom": "Salon",
+    "kitchen": "Kuchnia",
+    "bedroom": "Sypialnia",
+    "bedroom1": "Sypialnia 1",
+    "bedroom2": "Sypialnia 2",
+    "bedroom3": "Sypialnia 3",
+    "bathroom": "Łazienka",
+    "toilet": "Toaleta",
+    "hallway": "Korytarz",
+    "entrance": "Przedpokój",
+    "study": "Gabinet",
+    "office": "Biuro",
+    "laundryRoom": "Pralnia",
+    "walkInCloset": "Garderoba",
+    "storage": "Schowek",
+    "balcony": "Balkon",
+    "patio": "Taras",
+    "garage": "Garaż",
+    "basement": "Piwnica",
+    "attic": "Poddasze",
+    "guestRoom": "Pokój gościnny",
+    "playroom": "Pokój zabaw",
+    "diningRoom": "Jadalnia",
+    "familyRoom": "Pokój rodzinny"
+  },
+  "materials": {
+    "parquet": "Parkiet",
+    "tiles": "Płytki",
+    "linoleum": "Linoleum",
+    "concrete": "Beton",
+    "laminate": "Laminat",
+    "vinyl": "Wykładzina winylowa",
+    "carpet": "Wykładzina dywanowa",
+    "stone": "Kamień",
+    "drywall": "Płyta gipsowo-kartonowa",
+    "plaster": "Tynk",
+    "acousticTiles": "Płytki akustyczne",
+    "woodPanel": "Panel drewniany",
+    "stretchCeiling": "Sufit napinany",
+    "brick": "Cegła",
+    "lightweightBlock": "Bloczek lekki",
+    "woodFraming": "Szkielet drewniany",
+    "steelStuds": "Profile stalowe",
+    "mdf": "MDF",
+    "osb": "OSB",
+    "plywood": "Sklejka",
+    "glassWall": "Ściana szklana",
+    "wood": "Drewno",
+    "metal": "Metal",
+    "glass": "Szkło",
+    "ceramic": "Ceramika",
+    "plastic": "Tworzywo sztuczne",
+    "fabric": "Tkanina",
+    "leather": "Skóra",
+    "none": "Brak"
+  },
+  "treatments": {
+    "waxed": "Woskowane",
+    "oiled": "Olejowane",
+    "matteLacquered": "Lakierowane matowe",
+    "natural": "Naturalne",
+    "highGloss": "Wysoki połysk",
+    "sanded": "Szlifowane",
+    "painted": "Malowane",
+    "wallpapered": "Tapetowane",
+    "tiled": "Wyłożone płytkami",
+    "panelled": "Panelowe"
+  },
+  "skirting": {
+    "wood10cm": "Drewno 10 cm",
+    "wood7cm": "Drewno 7 cm",
+    "wood5cm": "Drewno 5 cm",
+    "mdf10cm": "MDF 10 cm",
+    "mdf7cm": "MDF 7 cm",
+    "aluminium": "Aluminium"
+  },
+  "molding": {
+    "coveCornice": "Gzyms zaokrąglony",
+    "swanNeck": "Gzyms łabędzi",
+    "classic": "Klasyczny",
+    "modern": "Nowoczesny"
+  },
+  "doors": {
+    "panelDoor": "Drzwi panelowe",
+    "flush": "Drzwi gładkie",
+    "glazed": "Drzwi przeszklone",
+    "panel": "Panelowe",
+    "sliding": "Drzwi przesuwne",
+    "doubleDoor": "Drzwi podwójne"
+  },
+  "trim": {
+    "classic": "Klasyczna",
+    "modern": "Nowoczesna",
+    "minimalist": "Minimalistyczna",
+    "antique": "Antyczna"
+  },
+  "electrical": {
+    "schneiderRenova": "Schneider Renova",
+    "elkoRS": "Elko RS",
+    "gira": "Gira",
+    "jung": "Jung",
+    "abb": "ABB"
+  },
+  "outlets": {
+    "singleOutlet": "Gniazdko pojedyncze",
+    "doubleOutlet": "Gniazdko podwójne",
+    "usbOutlet": "Gniazdko USB",
+    "singleSwitch": "Włącznik pojedynczy",
+    "doubleSwitch": "Włącznik podwójny",
+    "dimmer": "Sciemniacz",
+    "motionSensor": "Czujnik ruchu"
+  },
+  "lighting": {
+    "ceilingLight": "Oświetlenie sufitowe",
+    "spotlights": "Reflektory punktowe",
+    "wallLight": "Kinkiet",
+    "ledStrip": "Taśma LED",
+    "floorLamp": "Lampa podłogowa (gniazdko)",
+    "pendant": "Lampa wisząca"
+  },
+  "heating": {
+    "radiator": "Grzejnik",
+    "underfloorHeating": "Ogrzewanie podłogowe",
+    "convector": "Konwektor",
+    "electricHeating": "Ogrzewanie elektryczne"
+  },
+  "colors": {
+    "blue": "Niebieski",
+    "green": "Zielony",
+    "orange": "Pomarańczowy",
+    "purple": "Fioletowy",
+    "pink": "Różowy",
+    "cyan": "Cyjanowy",
+    "yellow": "Żółty",
+    "grey": "Szary"
+  },
+  "roomForm": {
+    "nameRequired": "Nazwa pokoju jest wymagana",
+    "roomCreated": "Pokój utworzony!",
+    "roomUpdated": "Pokój zaktualizowany!",
+    "couldNotCreate": "Nie udało się utworzyć pokoju",
+    "couldNotUpdate": "Nie udało się zaktualizować pokoju",
+    "confirmDelete": "Czy na pewno chcesz usunąć ten pokój? Tej czynności nie można cofnąć.",
+    "roomDeleted": "Pokój usunięty!",
+    "couldNotDelete": "Nie udało się usunąć pokoju"
+  },
+  "helpBot": {
+    "title": "Renomate",
+    "placeholder": "Zapytaj o remonty lub jak korzystać z aplikacji...",
+    "disclaimer": "UWAGA: W kwestii przepisów budowlanych udzielam ogólnych wskazówek — zawsze skontaktuj się z właściwym urzędem w celu uzyskania wiążących decyzji.",
+    "greeting": "Cześć! Jestem Renomate — Twój ekspert od remontów i przewodnik po platformie. Zapytaj mnie o przepisy budowlane, porady remontowe lub jak najlepiej wykorzystać aplikację!",
+    "errorMessage": "Coś poszło nie tak. Spróbuj ponownie.",
+    "send": "Wyślij"
+  },
+  "feedback": {
+    "title": "Pomoc i opinie",
+    "subtitle": "Pomóż nam ulepszać Renomate. Zgłoś błąd lub zaproponuj nową funkcję — anonimowo, jeśli wolisz.",
+    "messageLabel": "Wiadomość",
+    "messagePlaceholder": "Opisz znaleziony błąd lub funkcję, którą chciałbyś zobaczyć...",
+    "emailLabel": "E-mail",
+    "emailPlaceholder": "twoj.email@example.com",
+    "emailHint": "Opcjonalne — tylko jeśli chcesz, żebyśmy się z Tobą skontaktowali.",
+    "send": "Wyślij opinię",
+    "sending": "Wysyłanie...",
+    "sent": "Dziękujemy! Twoja opinia została wysłana.",
+    "sendError": "Nie udało się wysłać opinii. Spróbuj ponownie.",
+    "anonymous": "Ten formularz jest anonimowy. Nie zbieramy danych osobowych, chyba że podasz swój adres e-mail."
+  },
+  "tips": {
+    "title": "Porady remontowe i FAQ",
+    "subtitle": "Odpowiedzi na częste pytania dotyczące pozwoleń budowlanych, procesów i przepisów (ze szczególnym uwzględnieniem przepisów szwedzkich)",
+    "searchPlaceholder": "Szukaj artykułów...",
+    "noResults": "Żadne artykuły nie pasują do wyszukiwania",
+    "disclaimer": "Te informacje mają charakter ogólny. Przepisy różnią się w zależności od gminy i mogą się zmieniać. W Szwecji należy zawsze skontaktować się z lokalnym komitetem budowlanym (byggnadnämnden). W innych krajach skontaktuj się z właściwym urzędem w sprawie swojego konkretnego projektu.",
+    "categories": {
+      "permits": "Pozwolenia budowlane",
+      "notifications": "Zgłoszenia budowlane",
+      "taxDeductions": "Odliczenia podatkowe (ROT)",
+      "contracts": "Umowy i zamówienia",
+      "insurance": "Ubezpieczenia i odpowiedzialność",
+      "condo": "Przepisy dla mieszkań własnościowych"
+    },
+    "sources": {
+      "boverket": "Źródło: Boverket (Szwedzki Urząd ds. Budownictwa)",
+      "skatteverket": "Źródło: Skatteverket (Szwedzki Urząd Skarbowy)",
+      "konsumentverket": "Źródło: Konsumentverket (Szwedzki Urząd Ochrony Konsumentów)",
+      "hallakonsument": "Źródło: Hallå konsument",
+      "konsumenternas": "Źródło: Konsumenternas"
+    },
+    "articles": {
+      "whenBuildingPermit": {
+        "title": "Kiedy potrzebne jest pozwolenie na budowę (bygglov)?",
+        "content": "Pozwolenie na budowę jest wymagane w przypadku większości zmian zewnętrznych budynku: nowe budowle, rozbudowy, zmiany elewacji, nowe okna lub drzwi zmieniające wygląd, zmiana przeznaczenia (np. garaż na pomieszczenie mieszkalne) oraz budowa nowych budynków gospodarczych ponad określoną wielkość.\n\nW Szwecji, w przypadku domów jednorodzinnych, niektóre zmiany nie wymagają pozwolenia, np. malowanie lub krycie dachu w tym samym stylu, budowa tzw. domu Attefall (maks. 30 m²) lub dodanie lukarny.\n\nZawsze sprawdź z właściwą gminą — przepisy mogą się różnić w zależności od planu zagospodarowania (detaljplan). W Polsce należy skonsultować się z Powiatowym Inspektoratem Nadzoru Budowlanego."
+      },
+      "permitProcess": {
+        "title": "Jak wygląda proces uzyskiwania pozwolenia na budowę?",
+        "content": "W Szwecji proces wygląda następująco:\n1. Przygotuj rysunki (plan sytuacyjny, plany pięter, elewacje, przekroje)\n2. Złóż wniosek do gminnego komitetu budowlanego\n3. Komitet rozpatruje wniosek (zwykle w ciągu 10 tygodni)\n4. Sąsiedzi mogą być konsultowani\n5. W przypadku zatwierdzenia otrzymujesz decyzję o pozwoleniu na budowę\n6. Przed rozpoczęciem budowy musisz uzyskać pozwolenie na start (startbesked)\n7. Po zakończeniu potrzebujesz końcowego odbioru (slutbesked) przed użytkowaniem\n\nW Polsce procedura różni się — wniosek składa się do starostwa powiatowego, a czas rozpatrzenia wynosi zwykle 65 dni."
+      },
+      "permitCost": {
+        "title": "Ile kosztuje pozwolenie na budowę?",
+        "content": "Koszty różnią się w zależności od gminy i zakresu projektu. W Szwecji typowe pozwolenie na budowę dla rozbudowy domu jednorodzinnego może kosztować 10 000–40 000 SEK. Bardziej złożone projekty lub budynki komercyjne kosztują więcej.\n\nOpłata obejmuje przegląd i administrację gminy. Nie ma krajowej stałej ceny — skontaktuj się z gminą, aby poznać cennik (taxa).\n\nW Polsce opłaty za pozwolenia budowlane regulowane są przepisami lokalnymi."
+      },
+      "whenNotification": {
+        "title": "Kiedy wymagane jest zgłoszenie budowlane?",
+        "content": "W Szwecji zgłoszenie budowlane (bygganmälan) jest wymagane dla prac, które nie wymagają pozwolenia, ale wpływają na konstrukcję budynku:\n\n• Instalacja lub istotna zmiana konstrukcji nośnych\n• Instalacja lub zmiana systemów wentylacyjnych\n• Instalacja lub zmiana instalacji wodno-kanalizacyjnych\n• Instalacja kominka lub pieca\n• Zmiana układu pomieszczeń wewnątrz budynku\n• Prace rozbiórkowe\n\nMusisz otrzymać pozwolenie na start (startbesked) przed rozpoczęciem prac. Przepisy te dotyczą Szwecji — w Polsce obowiązują odrębne regulacje dotyczące zgłoszeń budowlanych."
+      },
+      "notificationVsPermit": {
+        "title": "Różnica między pozwoleniem a zgłoszeniem budowlanym",
+        "content": "Pozwolenie na budowę (bygglov): Wymagane w przypadku zmian zewnętrznych, nowych budynków i zmiany przeznaczenia. Obejmuje dokładniejszy przegląd, w tym ocenę wpływu na otoczenie.\n\nZgłoszenie budowlane (anmälan): Wymagane w przypadku wewnętrznych zmian technicznych wpływających na integralność konstrukcyjną, bezpieczeństwo lub systemy techniczne budynku. Procedura jest prostsza i szybsza.\n\nNiektóre projekty wymagają zarówno pozwolenia, jak i zgłoszenia. Podział ten dotyczy prawa szwedzkiego — w Polsce obowiązują analogiczne, lecz odmienne regulacje."
+      },
+      "technicalConsultation": {
+        "title": "Czym jest konsultacja techniczna (tekniskt samråd)?",
+        "content": "W Szwecji, w przypadku większych lub bardziej złożonych projektów, komitet budowlany może wymagać konsultacji technicznej przed wydaniem pozwolenia na start.\n\nNa tym spotkaniu omawiane są plany budowy, dokumentacja jakości, inspekcje i bezpieczeństwo. Certyfikowany kierownik kontroli (kontrollansvarig, KA) jest zwykle wymagany w przypadku tych projektów.\n\nW Polsce odpowiednikiem jest m.in. obowiązkowy nadzór budowlany i wyznaczenie kierownika budowy."
+      },
+      "rotDeduction": {
+        "title": "Czym jest odliczenie ROT? (dotyczy Szwecji)",
+        "content": "ROT (Renovation, Ombyggnad, Tillbyggnad) to szwedzkie odliczenie podatkowe na koszty robocizny przy pracach remontowych w domu. Otrzymujesz 30% zniżki na koszty robocizny (nie materiałów), do maks. 50 000 SEK na osobę rocznie.\n\nOdliczenie jest stosowane bezpośrednio na fakturze — płacisz tylko 70% kosztów robocizny. Wykonawca pobiera resztę od Skatteverket.\n\nUwaga: To odliczenie dotyczy wyłącznie Szwecji. W Polsce obowiązują inne ulgi podatkowe — sprawdź aktualne przepisy."
+      },
+      "rotRules": {
+        "title": "Kto może skorzystać z odliczenia ROT? (Szwecja)",
+        "content": "Musisz:\n• Mieć co najmniej 18 lat\n• Być właścicielem (lub współwłaścicielem) nieruchomości\n• Mieszkać lub planować mieszkanie w nieruchomości\n• Mieć wystarczający podatek do odliczenia\n• Korzystać z wykonawcy zarejestrowanego na podatek F\n\nROT dotyczy domów, mieszkań własnościowych (bostadsrätt) i domów letniskowych. Nie dotyczy mieszkań czynszowych ani nowych budowli. Zasady te obowiązują wyłącznie w Szwecji."
+      },
+      "rotEligible": {
+        "title": "Jakie prace remontowe kwalifikują się do ROT? (Szwecja)",
+        "content": "Kwalifikujące się prace:\n• Malowanie i tapetowanie\n• Układanie podłóg\n• Remont łazienki\n• Remont kuchni (tylko robocizna)\n• Prace elektryczne\n• Prace hydrauliczne\n• Prace murarskie i glazurnicze\n• Naprawa dachu\n• Drenaż i prace ziemne\n\nNie kwalifikują się: nowe budowle, zakup materiałów/urządzeń, sprzątanie, prace ogrodowe (to jest RUT). Dotyczy wyłącznie Szwecji."
+      },
+      "contractTypes": {
+        "title": "Jaką umowę powinienem zawrzeć z wykonawcą?",
+        "content": "W Szwecji dla umów konsumenckich z wykonawcami zalecane są standardowe szablony:\n\n• Hantverkarformuläret 17 — Dla mniejszych prac remontowych\n• ABS 18 — Dla budowy nowego domu z wykonawcą\n• Småhus 22 — Dla budowy domu pod klucz\n\nUmowy te zostały opracowane wspólnie przez organizacje konsumenckie i branżowe. Nigdy nie rozpoczynaj prac bez pisemnej umowy.\n\nW Polsce warto korzystać z wzorców umów o roboty budowlane i zawsze podpisywać szczegółową umowę z wykonawcą."
+      },
+      "quotesOffers": {
+        "title": "Stała cena czy stawka godzinowa — co wybrać?",
+        "content": "Stała cena (fast pris): Wykonawca zobowiązuje się do ceny całkowitej. Znasz koszt z góry. Najlepsze dla dobrze zdefiniowanych projektów, gdy zakres jest jasny.\n\nStawka godzinowa (löpande räkning): Płacisz za faktycznie spędzony czas. Może być tańsza dla małych lub niepewnych prac, ale końcowy koszt jest nieznany. Wykonawca musi pracować efektywnie, a cena musi być rozsądna.\n\nWskazówka: Zawsze uzyskaj co najmniej 2-3 wyceny. Jeśli wycena wydaje się bardzo niska, zapytaj, co obejmuje — może pomijać ważne pozycje."
+      },
+      "consumerRights": {
+        "title": "Jakie mam prawa, jeśli coś pójdzie nie tak?",
+        "content": "W Szwecji, zgodnie z ustawą o usługach konsumenckich (konsumenttjänstlagen):\n\n• Praca musi być wykonana profesjonalnie (fackmässigt)\n• Wykonawca musi ostrzec o ryzyku lub niespodziewanych problemach\n• Możesz reklamować wady przez okres do 10 lat po zakończeniu\n• Jeśli praca jest wadliwa, możesz żądać bezpłatnej naprawy\n• Możesz wstrzymać płatność proporcjonalną do wady\n• W poważnych przypadkach możesz odstąpić od umowy\n\nW Polsce obowiązują przepisy Kodeksu cywilnego dotyczące umów o dzieło i rękojmi. Zawsze dokumentuj wady zdjęciami i informuj wykonawcę na piśmie."
+      },
+      "contractorInsurance": {
+        "title": "Czy mój wykonawca powinien mieć ubezpieczenie?",
+        "content": "Tak, zawsze sprawdź, czy Twój wykonawca ma:\n\n• Ubezpieczenie od odpowiedzialności cywilnej — pokrywa szkody w Twojej nieruchomości podczas prac\n• Rejestrację podatkową (w Szwecji: F-tax; w Polsce: NIP i działalność gospodarcza)\n• Sprawdź brak zaległości podatkowych\n\nW Szwecji możesz zweryfikować status F-tax na skatteverket.se. Poproś wykonawcę o okazanie polisy ubezpieczeniowej przed rozpoczęciem prac."
+      },
+      "warrantyRules": {
+        "title": "Jak długa jest gwarancja na prace remontowe?",
+        "content": "W Szwecji, zgodnie z prawem konsumenckim, możesz reklamować wady przez okres do 10 lat po zakończeniu prac. Należy jednak zgłaszać wady niezwłocznie po ich wykryciu (w „roszsądnym czasie”).\n\nWielu wykonawców oferuje określony okres gwarancji (1-5 lat) — nie ogranicza to Twoich praw ustawowych, ale może ułatwić proces reklamacji w tym okresie.\n\nZawsze przeprowadź dokładną inspekcję końcową (slutbesiktning) po zakończeniu prac. W Polsce gwarancja jest regulowana umową z wykonawcą, a rękojmia obowiązuje przez 2 lata (5 lat dla nieruchomości)."
+      },
+      "homeInsurance": {
+        "title": "Czy moje ubezpieczenie domu pokrywa szkody remontowe?",
+        "content": "Ubezpieczenie domu zazwyczaj pokrywa nagłe i nieprzewidziane szkody, ale zwykle NIE:\n• Szkody spowodowane zaniedbaniem wykonawcy (to jego ubezpieczenie OC)\n• Stopniowe szkody wynikające z kiepskiego wykonawstwa\n• Przekroczenia kosztów lub opóźnienia\n\nSprawdź u swojego ubezpieczyciela przed dużymi remontami. Niektórzy ubezpieczyciele chcą być powiadomieni o dużych projektach remontowych. Może być dostępne rozszerzone pokrycie."
+      },
+      "condoPermission": {
+        "title": "Jakie remonty mogę przeprowadzić w moim mieszkaniu własnościowym?",
+        "content": "Jako właściciel mieszkania jesteś odpowiedzialny za wnętrze swojego lokalu. Zwykle możesz:\n• Malować i tapetować\n• Zmieniać podłogi\n• Wymieniać szafki kuchenne i sprzęt AGD\n• Wymieniać drzwi wewnętrzne\n\nPotrzebujesz zgody zarządu/wspólnoty na:\n• Zmiany ścian nośnych\n• Zmiany instalacji wodno-kanalizacyjnej lub wentylacyjnej\n• Zmiany wpływające na wygląd budynku z zewnątrz\n• Wszelkie prace mogące wpłynąć na inne mieszkania\n\nSprawdź regulamin swojej wspólnoty mieszkaniowej."
+      },
+      "condoWetRooms": {
+        "title": "Remont łazienki w mieszkaniu własnościowym — specjalne zasady",
+        "content": "Remonty łazienek w mieszkaniach własnościowych wymagają szczególnej uwagi:\n\n• W większości wspólnot potrzebujesz zgody zarządu\n• Hydroizolacja (tätskikt) musi być wykonana przez certyfikowanego fachowca (w Szwecji: np. GVK lub BKR)\n• Prace muszą spełniać obowiązujące normy budowlane\n• Twoja wspólnota może wymagać określonych wykonawców lub materiałów\n• Ponosisz odpowiedzialność za zalanie innych mieszkań spowodowane wadliwym remontem\n\nZawsze korzystaj z certyfikowanych fachowców i dbaj o odpowiednią dokumentację."
+      },
+      "condoLiability": {
+        "title": "Kto ponosi odpowiedzialność za szkody podczas remontu mieszkania?",
+        "content": "Jesteś osobiście odpowiedzialny za wszystkie prace wykonane w Twoim mieszkaniu, nawet jeśli wykonuje je wykonawca. Oznacza to:\n\n• Musisz upewnić się, że wykonawca jest wykwalifikowany i ubezpieczony\n• Ponosisz odpowiedzialność za szkody w częściach wspólnych lub innych mieszkaniach\n• Zalanie z wadliwego remontu łazienki jest Twoją odpowiedzialnością\n• Wspólnota może wymagać przywrócenia stanu pierwotnego w przypadku nieautoryzowanych zmian\n\nWskazówka: Uzyskaj osobne ubezpieczenie remontowe dla dużych projektów."
+      }
+    }
+  },
+  "marketplace": {
+    "publicProfile": "Profil publiczny",
+    "findProfessionals": "Znajdź specjalistów",
+    "searchPlaceholder": "Szukaj wg nazwy, kategorii lub miasta...",
+    "mapView": "Mapa",
+    "listView": "Lista",
+    "contact": "Kontakt",
+    "sendMessage": "Wyślij wiadomość",
+    "noResults": "Nie znaleziono specjalistów",
+    "allCategories": "Wszystkie kategorie",
+    "visitWebsite": "Odwiedź stronę",
+    "locatedIn": "Lokalizacja",
+    "previewDescription": "Tak wygląda Twój profil dla innych"
+  },
+  "messaging": {
+    "placeholder": "Napisz wiadomość...",
+    "send": "Wyślij",
+    "noMessages": "Brak wiadomości. Wyślij wiadomość, aby rozpocząć rozmowę.",
+    "privateNotice": "Wiadomości są prywatne między Tobą a tym specjalistą.",
+    "messageSent": "Wiadomość wysłana",
+    "messageSentDescription": "Twoja wiadomość została dostarczona.",
+    "deleteMessage": "Usuń wiadomość",
+    "confirmDelete": "Czy na pewno chcesz usunąć tę wiadomość?"
+  },
+  "certifications": {
+    "title": "Certyfikaty i kwalifikacje",
+    "preset": "Certyfikaty branżowe",
+    "custom": "Inne certyfikaty",
+    "addCustom": "Dodaj certyfikat",
+    "name": "Nazwa certyfikatu",
+    "issuer": "Wystawca",
+    "year": "Rok",
+    "showAll": "Pokaż wszystkie ({{count}})",
+    "showLess": "Pokaż mniej",
+    "bf9k": "BF9K",
+    "sakerVatteninstallation": "Säker Vatteninstallation",
+    "id06": "ID06",
+    "basPU": "Bas-P/Bas-U",
+    "ka": "Kontrollansvarig (KA)",
+    "auktElinstallator": "Autoryzowany instalator elektryczny",
+    "esaEl": "ESA Instalacja elektryczna",
+    "sakerVatten": "Säker Vatten",
+    "auktVVS": "Autoryzowany instalator HVAC",
+    "auktMalare": "Autoryzowany malarz (MÅ)",
+    "gvk": "Certyfikat GVK",
+    "bkr": "Certyfikat BKR",
+    "hantverksmastare": "Mistrz rzemiosła",
+    "sarMsa": "SAR/MSA",
+    "certKa": "Certyfikowany kierownik kontroli (KA)",
+    "tib": "Certyfikat TIB",
+    "tradgardsmastare": "Mistrz ogrodnictwa"
+  },
+  "roomManagement": {
+    "title": "Pokoje i przestrzenie",
+    "description": "Zarządzaj pokojami w swoim projekcie",
+    "addRoom": "Dodaj pokój",
+    "createNewRoom": "Utwórz nowy pokój",
+    "roomName": "Nazwa pokoju",
+    "roomNamePlaceholder": "np. Salon, Kuchnia",
+    "descriptionPlaceholder": "Dodaj notatki dotyczące tego pokoju",
+    "createRoom": "Utwórz pokój",
+    "editRoom": "Edytuj pokój",
+    "updateRoom": "Zaktualizuj pokój",
+    "noRooms": "Brak pokoi. Utwórz swój pierwszy pokój, aby zacząć.",
+    "enterRoomName": "Wprowadź nazwę pokoju",
+    "roomCreated": "Pokój utworzony pomyślnie",
+    "roomUpdated": "Pokój zaktualizowany pomyślnie",
+    "roomDeleted": "Pokój usunięty pomyślnie",
+    "createFailed": "Nie udało się utworzyć pokoju",
+    "updateFailed": "Nie udało się zaktualizować pokoju",
+    "deleteFailed": "Nie udało się usunąć pokoju",
+    "confirmDelete": "Czy na pewno chcesz usunąć ten pokój?"
+  },
+  "clients": {
+    "title": "Rejestr klientów",
+    "name": "Nazwa",
+    "email": "E-mail",
+    "phone": "Telefon",
+    "address": "Adres",
+    "postalCode": "Kod pocztowy",
+    "city": "Miasto",
+    "reference": "Referencja",
+    "createNew": "Utwórz nowego klienta",
+    "editClient": "Edytuj klienta",
+    "deleteClient": "Usuń klienta",
+    "noClients": "Brak klientów",
+    "clientSaved": "Klient zapisany",
+    "confirmDelete": "Usunąć tego klienta?"
+  },
+  "pro": {
+    "title": "Funkcje Pro"
+  },
+  "quotes": {
+    "title": "Wyceny",
+    "createQuote": "Utwórz wycenę",
+    "newQuote": "Nowa wycena",
+    "selectProject": "Wybierz projekt",
+    "draft": "Szkic",
+    "sent": "Wysłana",
+    "accepted": "Zaakceptowana",
+    "rejected": "Odrzucona",
+    "expired": "Wygasła",
+    "totalAmount": "Suma",
+    "subtotal": "Kwota netto",
+    "vat": "VAT 23%",
+    "totalToPay": "Do zapłaty",
+    "rotDeduction": "Odliczenie ROT",
+    "totalAfterRot": "Suma po odliczeniu ROT",
+    "validUntil": "Ważna do",
+    "addItem": "Dodaj pozycję",
+    "description": "Opis",
+    "quantity": "Ilość",
+    "unitPrice": "Cena jednostkowa",
+    "rotEligible": "Kwalifikuje się do ROT",
+    "preview": "Podgląd",
+    "saveDraft": "Zapisz szkic",
+    "sendToClient": "Wyślij do klienta",
+    "importFromRoom": "Importuj z pokoju",
+    "selectRoom": "Wybierz pokój",
+    "roomArea": "Powierzchnia",
+    "noItems": "Nie dodano pozycji",
+    "acceptQuote": "Zaakceptuj wycenę",
+    "declineQuote": "Odrzuć / Zadaj pytanie",
+    "quoteAccepted": "Wycena zaakceptowana!",
+    "quoteDeclined": "Wycena odrzucona",
+    "tasksCreated": "{{count}} zadań utworzonych z wyceny",
+    "quoteAcceptedMessage": "{{name}} zaakceptował(a) wycenę \"{{title}}\"",
+    "quoteFor": "Wycena dla",
+    "chatAboutQuote": "Pytania dotyczące tej wyceny",
+    "saved": "Zapisane",
+    "shared": "Udostępnione",
+    "noSavedQuotes": "Brak zapisanych wycen",
+    "recipient": "Odbiorca",
+    "selectRecipient": "Wybierz odbiorcę",
+    "createNewClient": "Utwórz nowego...",
+    "freeTextPlaceholder": "Dodatkowe uwagi, warunki lub zastrzeżenia...",
+    "downloadPdf": "Pobierz PDF",
+    "confirmDelete": "Usunąć tę wycenę?",
+    "quoteDeleted": "Wycena usunięta"
+  },
+  "welcome": {
+    "chooseLanguage": "Wybierz swój język",
+    "title": "Witaj w Renomate!",
+    "subtitle": "Co najlepiej Cię opisuje?",
+    "homeowner": "Właściciel domu",
+    "homeownerDesc": "Remontuję swój dom",
+    "contractor": "Wykonawca",
+    "contractorDesc": "Prowadzę firmę budowlaną",
+    "continue": "Kontynuuj"
+  },
+  "demoProject": {
+    "badge": "Przykładowy projekt",
+    "title": "Remont mieszkania — Przykład",
+    "description": "Przejrzyj ten przykładowy projekt, aby poznać działanie Renomate",
+    "rooms": {
+      "livingRoom": "Salon z podłogą drewnianą i sztukterią sufitową. Niedawno otynkowany i pomalowany.",
+      "bedroom": "Sypialnia z miejscem na łóżko podwójne. Do tapetowania tapetą ze wzorem.",
+      "kitchen": "Kuchnia z jadalnią. Planowany nowy blat i płytki nad blatem.",
+      "bathroom": "Łazienka z prysznicem i pralką. Planowane pełne wyłożenie płytkami.",
+      "hallway": "Korytarz z szafą i wieszakiem. Oryginalny parkiet do cyklinowania."
+    },
+    "tasks": {
+      "preparation": {
+        "title": "Zabezpieczenie i przygotowanie",
+        "description": "Zabezpiecz podłogi i meble folią ochronną i papierem. Oklej taśmą krawędzie przy suficie i oknach."
+      },
+      "spackling": {
+        "title": "Szpachlowanie ścian",
+        "description": "Napraw pęknięcia i dziury w ścianach. Przeszlifuj i zagruntuj przed malowaniem."
+      },
+      "paintingLivingRoom": {
+        "title": "Malowanie salonu",
+        "description": "Pomaluj ściany farbą do ścian (2 warstwy) i sufit farbą sufitową. Kolor: NCS S 0502-Y."
+      },
+      "wallpaper": {
+        "title": "Tapetowanie sypialni",
+        "description": "Należ tapetę ze wzorem na ścianę akcentową. Pozostałe ściany pomalowane w pasującym kolorze."
+      },
+      "floorSanding": {
+        "title": "Cyklinowanie podłogi",
+        "description": "Wycyklinuj parkiet w salonie i korytarzu. Nałóż 3 warstwy lakieru do podłóg."
+      },
+      "kitchenSurfaces": {
+        "title": "Kuchnia — blat i ściana nad blatem",
+        "description": "Zamontuj nowy blat laminowany i płytki nad blatem za kuchenką."
+      },
+      "bathroomTiling": {
+        "title": "Glazurowanie łazienki",
+        "description": "Ułóż białe płytki 20x20 na ścianach i płytki podłogowe. Włącznie z membraną hydroizolacyjną."
+      },
+      "trim": {
+        "title": "Montaż listew",
+        "description": "Zamontuj nowe listwy przypodłogowe we wszystkich pokojach i sztukterię sufitową w salonie."
+      },
+      "electrical": {
+        "title": "Oświetlenie kuchni",
+        "description": "Zamontuj reflektory LED w suficie i oświetlenie pod szafkami."
+      },
+      "finalCleaning": {
+        "title": "Sprzątanie końcowe",
+        "description": "Sprzątanie pobudowlane całego mieszkania. Usuń folie ochronne i dokładnie odkuż."
+      }
+    },
+    "materials": {
+      "filler": "Gładź szpachlowa (wiadro 10l)",
+      "wallPaint": "Farba do ścian matowa biała",
+      "ceilingPaint": "Farba do sufitu biała matowa",
+      "wallpaper": "Tapeta Botanica",
+      "floorLacquer": "Lakier do podłóg półmatowy",
+      "countertop": "Blat laminowany czarny",
+      "backsplashTiles": "Płytki błyszczące białe 10x10",
+      "bathroomTiles": "Płytki ścienne i podłogowe białe matowe 20x20",
+      "grout": "Elastyczna fuga szara",
+      "floorTrim": "Listwa przypodłogowa sosnowa biała 12x56mm",
+      "ceilingTrim": "Sztukateria sufitowa 50mm",
+      "ledSpots": "Oprawa LED wpuszczana 7W ciepła biel"
+    }
+  },
+  "hotspots": {
+    "canvas": "Narysuj swoje pokoje tutaj w 30 sekund",
+    "createProject": "Zacznij tutaj! Utwórz swój pierwszy projekt",
+    "inviteTeam": "Zaproś wykonawców lub rodzinę do współpracy"
+  },
+  "directions": {
+    "north": "Północ",
+    "south": "Południe",
+    "east": "Wschód",
+    "west": "Zachód"
+  },
+  "roomElevation": {
+    "elevationView": "Widok elewacji",
+    "room": "Pokój",
+    "swipeHint": "Przesuń lub użyj strzałek, aby nawigować po ścianach",
+    "noWallsFound": "Nie znaleziono ścian",
+    "drawWallsFirst": "Narysuj ściany wokół tego pokoju, aby zobaczyć widok elewacji.",
+    "previousWall": "Poprzednia",
+    "nextWall": "Następna",
+    "wall": "Ściana",
+    "floor": "Podłoga",
+    "window": "Okno",
+    "door": "Drzwi",
+    "viewElevation": "Widok elewacji"
   }
 }

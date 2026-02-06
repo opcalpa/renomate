@@ -11,7 +11,8 @@ import Konva from 'konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 import { useFloorMapStore } from '../../store';
 import { FloorMapShape } from '../../types';
-import { findNearestWall, projectOntoWall, splitWall, isOpeningType } from '../../utils/wallSnap';
+import { findNearestWall, projectOntoWall, splitWall, isOpeningType, findMergeableWalls, findWallGap } from '../../utils/wallSnap';
+import { snapObjectToWall as snapToWallRelative, syncWallRelativeFromFloorplan } from './viewSync';
 
 /**
  * Apply delta to shape coordinates based on shape type
@@ -134,36 +135,112 @@ export function setDragSystemReadOnly(readOnly: boolean) {
 }
 
 /**
+ * Helper to get all shapes that should move together
+ * Handles both explicit selection and group membership
+ */
+function getShapesToMoveWithShape(shapeId: string): string[] {
+  const state = useFloorMapStore.getState();
+  const { shapes, selectedShapeIds } = state;
+
+  // Find the dragged shape
+  const draggedShape = shapes.find(s => s.id === shapeId);
+  if (!draggedShape) return [shapeId];
+
+  // If shape belongs to a group, include all group members
+  if (draggedShape.groupId) {
+    const groupShapeIds = shapes
+      .filter(s => s.groupId === draggedShape.groupId)
+      .map(s => s.id);
+
+    // Merge with any other selected shapes (in case multiple groups are selected)
+    const allIds = new Set([...selectedShapeIds, ...groupShapeIds]);
+    return Array.from(allIds);
+  }
+
+  // Otherwise, use the current selection if it includes this shape
+  if (selectedShapeIds.length > 1 && selectedShapeIds.includes(shapeId)) {
+    return selectedShapeIds;
+  }
+
+  return [shapeId];
+}
+
+/**
  * Creates simple drag handlers for a shape
- * Works with both single shapes and multi-select
+ * Works with both single shapes, multi-select, and grouped templates
  */
 export function createDragHandlers(shapeId: string) {
+  // Cache the shapes to move during a drag operation
+  let shapesToMoveDuringDrag: string[] = [];
+  // Store start positions to calculate true drag deltas
+  let dragStartPos = { x: 0, y: 0 };
+  let otherStartPositions = new Map<string, { x: number; y: number }>();
+
   return {
     draggable: !_isReadOnly,
     onDragStart: (e: KonvaEventObject<DragEvent>) => {
       if (_isReadOnly) { e.cancelBubble = true; return; }
       e.cancelBubble = true;
-      // Nothing else needed - Konva handles the visual drag
+
+      // Store the primary node's start position for accurate delta calculation
+      dragStartPos = { x: e.target.x(), y: e.target.y() };
+
+      // Determine which shapes should move together
+      shapesToMoveDuringDrag = getShapesToMoveWithShape(shapeId);
+
+      // Store start positions for other nodes in the drag group
+      otherStartPositions.clear();
+      if (shapesToMoveDuringDrag.length > 1) {
+        const stage = e.target.getStage();
+        if (stage) {
+          shapesToMoveDuringDrag.forEach(id => {
+            if (id !== shapeId) {
+              const node = stage.findOne(`#shape-${id}`);
+              if (node) {
+                otherStartPositions.set(id, { x: node.x(), y: node.y() });
+              }
+            }
+          });
+        }
+      }
+
+      // If this shape is part of a group, auto-select all group members
+      const state = useFloorMapStore.getState();
+      const draggedShape = state.shapes.find(s => s.id === shapeId);
+      if (draggedShape?.groupId) {
+        const groupShapeIds = state.shapes
+          .filter(s => s.groupId === draggedShape.groupId)
+          .map(s => s.id);
+        // Only update if not already all selected
+        const allSelected = groupShapeIds.every(id => state.selectedShapeIds.includes(id));
+        if (!allSelected) {
+          state.setSelectedShapeIds(groupShapeIds);
+        }
+      }
     },
 
     onDragMove: (e: KonvaEventObject<DragEvent>) => {
       e.cancelBubble = true;
 
-      // For multi-select: move other selected shapes visually
-      const state = useFloorMapStore.getState();
-      const selectedIds = state.selectedShapeIds;
+      // Move all shapes that should move together
+      if (shapesToMoveDuringDrag.length > 1) {
+        const currentDelta = {
+          x: e.target.x() - dragStartPos.x,
+          y: e.target.y() - dragStartPos.y,
+        };
 
-      if (selectedIds.length > 1 && selectedIds.includes(shapeId)) {
-        const delta = { x: e.target.x(), y: e.target.y() };
-
-        // Move all other selected shape groups
+        // Move all other shapes visually by the same delta
         const stage = e.target.getStage();
         if (stage) {
-          selectedIds.forEach(id => {
+          shapesToMoveDuringDrag.forEach(id => {
             if (id !== shapeId) {
               const node = stage.findOne(`#shape-${id}`);
               if (node) {
-                node.position(delta);
+                const startPos = otherStartPositions.get(id) || { x: 0, y: 0 };
+                node.position({
+                  x: startPos.x + currentDelta.x,
+                  y: startPos.y + currentDelta.y,
+                });
               }
             }
           });
@@ -175,12 +252,14 @@ export function createDragHandlers(shapeId: string) {
       e.cancelBubble = true;
 
       const state = useFloorMapStore.getState();
-      const { shapes, selectedShapeIds, projectSettings, updateShapes } = state;
+      const { shapes, projectSettings, updateShapes } = state;
       const { snapEnabled, gridInterval } = projectSettings;
 
-      // Get the delta this shape moved
-      let deltaX = e.target.x();
-      let deltaY = e.target.y();
+      // Calculate actual drag delta (not absolute position)
+      // Shapes like ImageShape render at (coords.x, coords.y), so e.target.x()
+      // includes the original position. We need just the movement offset.
+      let deltaX = e.target.x() - dragStartPos.x;
+      let deltaY = e.target.y() - dragStartPos.y;
 
       // Apply grid snap to the delta
       if (snapEnabled && gridInterval > 0) {
@@ -191,17 +270,20 @@ export function createDragHandlers(shapeId: string) {
         deltaY = Math.round(deltaY / snapSize) * snapSize;
       }
 
-      // Determine which shapes to update
-      const shapesToUpdate = selectedShapeIds.includes(shapeId) && selectedShapeIds.length > 1
-        ? selectedShapeIds
+      // Use the shapes determined during drag start (includes group members)
+      const shapesToUpdate = shapesToMoveDuringDrag.length > 0
+        ? shapesToMoveDuringDrag
         : [shapeId];
 
       // Check for wall snap: single opening shape dragged near a wall
+      // Skip wall snap for grouped shapes (template objects)
       const draggedShape = shapes.find(s => s.id === shapeId);
+      const isGroupedShape = draggedShape?.groupId != null;
       if (
         shapesToUpdate.length === 1 &&
         draggedShape &&
-        isOpeningType(draggedShape.type)
+        isOpeningType(draggedShape.type) &&
+        !isGroupedShape
       ) {
         const coords = draggedShape.coordinates as { x1: number; y1: number; x2: number; y2: number };
         const newCoords = {
@@ -214,6 +296,33 @@ export function createDragHandlers(shapeId: string) {
         // Snap threshold: 50 canvas pixels
         const SNAP_THRESHOLD = 50;
         const walls = shapes.filter(s => s.type === 'wall' && s.id !== shapeId);
+
+        // FIRST: Check for existing gap between walls (for placing back in original position)
+        const gap = findWallGap(newCoords, walls, SNAP_THRESHOLD);
+        if (gap) {
+          // Snap to the existing gap - no need to split walls
+          const gapCoords = gap.gapCoords;
+          updateShapes([{
+            id: shapeId,
+            updates: {
+              coordinates: gapCoords,
+              attachedToWall: `${gap.wall1.id}:${gap.wall2.id}`, // Mark as between these walls
+              positionOnWall: 0.5, // Middle of gap
+            },
+          }]);
+
+          const stage = e.target.getStage();
+          if (stage) {
+            shapesToUpdate.forEach(id => {
+              const node = stage.findOne(`#shape-${id}`);
+              if (node) node.position(id === shapeId ? dragStartPos : (otherStartPositions.get(id) || { x: 0, y: 0 }));
+            });
+          }
+          e.target.position(dragStartPos);
+          return;
+        }
+
+        // SECOND: Check for snapping to a solid wall
         const nearest = findNearestWall(newCoords, walls, SNAP_THRESHOLD);
 
         if (nearest) {
@@ -240,16 +349,26 @@ export function createDragHandlers(shapeId: string) {
           if (stage) {
             shapesToUpdate.forEach(id => {
               const node = stage.findOne(`#shape-${id}`);
-              if (node) node.position({ x: 0, y: 0 });
+              if (node) node.position(id === shapeId ? dragStartPos : (otherStartPositions.get(id) || { x: 0, y: 0 }));
             });
           }
-          e.target.position({ x: 0, y: 0 });
+          e.target.position(dragStartPos);
           return;
         }
 
-        // No wall nearby — if previously attached, detach
+        // No wall nearby — if previously attached, detach and try to merge walls
         if (draggedShape.attachedToWall) {
           const shapeUpdates = applyDelta(draggedShape, deltaX, deltaY);
+
+          // Try to find and merge the wall segments that were created when this door was placed
+          const oldCoords = draggedShape.coordinates as { x1: number; y1: number; x2: number; y2: number };
+          const mergeable = findMergeableWalls(oldCoords, walls, 30);
+
+          if (mergeable) {
+            // Merge the walls back together
+            state.mergeWalls(mergeable.wall1Id, mergeable.wall2Id, mergeable.mergedCoords);
+          }
+
           updateShapes([{
             id: shapeId,
             updates: { ...shapeUpdates, attachedToWall: undefined, positionOnWall: undefined },
@@ -259,10 +378,83 @@ export function createDragHandlers(shapeId: string) {
           if (stage) {
             shapesToUpdate.forEach(id => {
               const node = stage.findOne(`#shape-${id}`);
-              if (node) node.position({ x: 0, y: 0 });
+              if (node) node.position(id === shapeId ? dragStartPos : (otherStartPositions.get(id) || { x: 0, y: 0 }));
             });
           }
-          e.target.position({ x: 0, y: 0 });
+          e.target.position(dragStartPos);
+          return;
+        }
+      }
+
+      // Check for wall-relative snap: symbol/library shapes near a wall
+      // This enables synced positioning in elevation view
+      if (
+        shapesToUpdate.length === 1 &&
+        draggedShape &&
+        (draggedShape.type === 'symbol' || draggedShape.symbolType)
+      ) {
+        const walls = shapes.filter(
+          s => (s.type === 'wall' || s.type === 'line') &&
+               s.shapeViewMode !== 'elevation' &&
+               s.id !== shapeId
+        );
+
+        // Try to snap to nearest wall (threshold: 500mm = 50cm)
+        const WALL_RELATIVE_THRESHOLD = 500;
+
+        // Apply delta first to get new position
+        const updatedShape = {
+          ...draggedShape,
+          coordinates: applyDelta(draggedShape, deltaX, deltaY).coordinates || draggedShape.coordinates,
+        };
+
+        const wallRelativeUpdates = snapToWallRelative(updatedShape, walls, WALL_RELATIVE_THRESHOLD);
+        if (wallRelativeUpdates) {
+          updateShapes([{
+            id: shapeId,
+            updates: wallRelativeUpdates,
+          }]);
+
+          const stage = e.target.getStage();
+          if (stage) {
+            shapesToUpdate.forEach(id => {
+              const node = stage.findOne(`#shape-${id}`);
+              if (node) node.position(id === shapeId ? dragStartPos : (otherStartPositions.get(id) || { x: 0, y: 0 }));
+            });
+          }
+          e.target.position(dragStartPos);
+          return;
+        }
+      }
+
+      // If shape has wallRelative data, update it based on new position
+      if (draggedShape?.wallRelative) {
+        const walls = shapes.filter(
+          s => (s.type === 'wall' || s.type === 'line') &&
+               s.shapeViewMode !== 'elevation'
+        );
+
+        const updatedShape = {
+          ...draggedShape,
+          coordinates: applyDelta(draggedShape, deltaX, deltaY).coordinates || draggedShape.coordinates,
+        };
+
+        const syncUpdates = syncWallRelativeFromFloorplan(updatedShape, walls);
+        if (syncUpdates) {
+          const coordsUpdate = applyDelta(draggedShape, deltaX, deltaY);
+          updateShapes([{
+            id: shapeId,
+            updates: { ...coordsUpdate, ...syncUpdates },
+          }]);
+
+          const stage = e.target.getStage();
+          if (stage) {
+            shapesToUpdate.forEach(id => {
+              const node = stage.findOne(`#shape-${id}`);
+              if (node) node.position(id === shapeId ? dragStartPos : (otherStartPositions.get(id) || { x: 0, y: 0 }));
+            });
+          }
+          e.target.position(dragStartPos);
           return;
         }
       }
@@ -291,13 +483,13 @@ export function createDragHandlers(shapeId: string) {
         shapesToUpdate.forEach(id => {
           const node = stage.findOne(`#shape-${id}`);
           if (node) {
-            node.position({ x: 0, y: 0 });
+            node.position(id === shapeId ? dragStartPos : (otherStartPositions.get(id) || { x: 0, y: 0 }));
           }
         });
       }
 
       // Also reset the dragged node (in case it wasn't found above)
-      e.target.position({ x: 0, y: 0 });
+      e.target.position(dragStartPos);
     }
   };
 }

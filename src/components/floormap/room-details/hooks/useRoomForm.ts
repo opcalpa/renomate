@@ -107,6 +107,15 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
 
         if (createError) throw createError;
 
+        // Mark onboarding step for drawing first room
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from("profiles")
+            .update({ onboarding_drawn_room: true })
+            .eq("user_id", user.id);
+        }
+
         toast.success(t('roomForm.roomCreated', 'Room created!'));
         onRoomUpdated?.();
         onClose?.();

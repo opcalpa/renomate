@@ -130,7 +130,8 @@
     "addFirstTask": "Pridėti pirmąją užduotį",
     "taskCreated": "Užduotis sukurta!",
     "taskCreatedDescription": "Užduotis pridėta prie jūsų projekto.",
-    "adding": "Pridedama..."
+    "adding": "Pridedama...",
+    "viewOnFloorPlan": "Žiūrėti aukšto plane"
   },
   "rooms": {
     "title": "Kambariai",
@@ -305,6 +306,28 @@
     "notAuthenticated": "Neautentifikuota",
     "profileNotFound": "Profilis nerastas"
   },
+  "onboarding": {
+    "welcome": "Sveiki atvykę į Renomate!",
+    "welcomeDescription": "Valdykite savo renovacijos projektus nuo planavimo iki užbaigimo.",
+    "createProject": "Sukurkite pirmąjį projektą",
+    "createProjectDesc": "Aš valdau renovaciją",
+    "hasInvitation": "Turiu pakvietimą",
+    "hasInvitationDesc": "Mano projekto vadovas mane pakvietė",
+    "checklist": {
+      "title": "Pradžia",
+      "progress": "{{count}} iš {{total}} žingsnių atlikta",
+      "completeProfile": "Užpildykite savo profilį",
+      "createProject": "Sukurkite pirmąjį projektą",
+      "drawRoom": "Nubraižykite pirmąjį kambarį",
+      "createQuote": "Sukurkite bandomąją sąmatą",
+      "createTaskRoom": "Sukurkite užduotį ir susiekite ją su kambariu",
+      "completeProProfile": "Užpildykite savo profesinį profilį",
+      "dismiss": "Slėpti kontrolinį sąrašą",
+      "confirmDismiss": "Slėpti pradžios vadovą?",
+      "allDone": "Puiku! Esate pasiruošę.",
+      "inviteClient": "Pasiruošę pakviesti pirmąjį klientą?"
+    }
+  },
   "roles": {
     "title": "Komanda ir pakvietimai",
     "description": "Valdykite projekto komandos narius ir pakvietimus",
@@ -439,7 +462,24 @@
     "resendInvitationEmail": "Siųsti pakvietimo laišką pakartotinai",
     "editInvitationPermissions": "Redaguoti pakvietimo leidimus",
     "cancelInvitationTitle": "Atšaukti pakvietimą",
-    "additionalInfo": "Papildoma informacija"
+    "additionalInfo": "Papildoma informacija",
+    "selectRole": "Pasirinkite vaidmenį",
+    "moreInfo": "Daugiau informacijos",
+    "customizeAccess": "Tinkinti leidimus",
+    "cards": {
+      "contractor": {
+        "description": "Gali peržiūrėti tvarkaraštį, redaguoti priskirtas užduotis ir kurti pirkimo užsakymus"
+      },
+      "project_manager": {
+        "description": "Pilna prieiga prie visų projekto funkcijų, gali kviesti komandos narius"
+      },
+      "client": {
+        "description": "Gali peržiūrėti visą projekto informaciją, įskaitant biudžetą"
+      },
+      "viewer": {
+        "description": "Tik skaitymo prieiga prie tvarkaraščio, užduočių ir apžvalgos"
+      }
+    }
   },
   "propertyPanel": {
     "objectDetails": "Objekto detalės",
@@ -815,7 +855,10 @@
     "createRoom": "Sukurti kambarį",
     "deleteRoom": "Ištrinti kambarį",
     "scrollToPan": "Slinkite, kad slinktumėte",
-    "ctrlZoom": "Naudokite didinimo mygtukus arba pelės ratuką"
+    "ctrlZoom": "Naudokite didinimo mygtukus arba pelės ratuką",
+    "openingRoomDetails": "Atidaroma kambario informacija",
+    "roomMustBeSavedFirst": "Kambarys pirmiausia turi būti pavadintas ir išsaugotas.",
+    "openingPropertyPanel": "Atidaromas savybių skydelis"
   },
   "files": {
     "title": "Projekto failai",
@@ -1092,5 +1135,15 @@
     "notes": "Pastabos",
     "notesPlaceholder": "Instrukcijos, pastabos...",
     "commentsLabel": "Komentarai"
+  },
+  "welcome": {
+    "chooseLanguage": "Pasirinkite savo kalbą",
+    "title": "Sveiki atvykę į Renomate!",
+    "subtitle": "Kas jus geriausiai apibūdina?",
+    "homeowner": "Namų savininkas",
+    "homeownerDesc": "Remontuoju savo namus",
+    "contractor": "Rangovas",
+    "contractorDesc": "Vadovauju statybų įmonei",
+    "continue": "Tęsti"
   }
 }

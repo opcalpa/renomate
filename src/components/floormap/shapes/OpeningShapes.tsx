@@ -29,10 +29,15 @@ const formatMeasurement = (lengthInMM: number, unit: 'mm' | 'cm' | 'm'): string 
   }
 };
 
+// Extended props for opening shapes with batch length change support
+interface OpeningShapeProps extends ShapeWithViewProps {
+  onBatchLengthChange?: (newLengthMM: number) => void;
+}
+
 /**
  * WindowLineShape - Two thin parallel lines representing a window
  */
-export const WindowLineShape = React.memo<ShapeWithViewProps>(({
+export const WindowLineShape = React.memo<OpeningShapeProps>(({
   shape,
   isSelected,
   onSelect,
@@ -41,6 +46,7 @@ export const WindowLineShape = React.memo<ShapeWithViewProps>(({
   viewState,
   scaleSettings,
   projectSettings,
+  onBatchLengthChange,
 }) => {
   const { zoom } = viewState;
   const { pixelsPerMm } = scaleSettings;
@@ -178,7 +184,17 @@ export const WindowLineShape = React.memo<ShapeWithViewProps>(({
                 newX = Math.round(newX / snapSize) * snapSize;
                 newY = Math.round(newY / snapSize) * snapSize;
               }
+              // Calculate new length for batch sync
+              const newDx = coords.x2 - newX;
+              const newDy = coords.y2 - newY;
+              const newLengthMM = Math.sqrt(newDx * newDx + newDy * newDy) / pixelsPerMm;
+
               onTransform({ coordinates: { x1: newX, y1: newY, x2: coords.x2, y2: coords.y2 } });
+
+              // Shift+drag = batch sync all selected line shapes
+              if (e.evt.shiftKey && onBatchLengthChange) {
+                onBatchLengthChange(newLengthMM);
+              }
               setDraggedCoords(null);
               setDraggedHandle(null);
             }}
@@ -212,7 +228,17 @@ export const WindowLineShape = React.memo<ShapeWithViewProps>(({
                 newX = Math.round(newX / snapSize) * snapSize;
                 newY = Math.round(newY / snapSize) * snapSize;
               }
+              // Calculate new length for batch sync
+              const newDx = newX - coords.x1;
+              const newDy = newY - coords.y1;
+              const newLengthMM = Math.sqrt(newDx * newDx + newDy * newDy) / pixelsPerMm;
+
               onTransform({ coordinates: { x1: coords.x1, y1: coords.y1, x2: newX, y2: newY } });
+
+              // Shift+drag = batch sync all selected line shapes
+              if (e.evt.shiftKey && onBatchLengthChange) {
+                onBatchLengthChange(newLengthMM);
+              }
               setDraggedCoords(null);
               setDraggedHandle(null);
             }}
@@ -247,7 +273,7 @@ export const WindowLineShape = React.memo<ShapeWithViewProps>(({
 /**
  * DoorLineShape - Line with swing arc indicating opening direction
  */
-export const DoorLineShape = React.memo<ShapeWithViewProps & { onDoubleClick?: () => void }>(({
+export const DoorLineShape = React.memo<OpeningShapeProps & { onDoubleClick?: () => void }>(({
   shape,
   isSelected,
   onSelect,
@@ -257,6 +283,7 @@ export const DoorLineShape = React.memo<ShapeWithViewProps & { onDoubleClick?: (
   scaleSettings,
   projectSettings,
   onDoubleClick,
+  onBatchLengthChange,
 }) => {
   const { zoom } = viewState;
   const { pixelsPerMm } = scaleSettings;
@@ -406,7 +433,17 @@ export const DoorLineShape = React.memo<ShapeWithViewProps & { onDoubleClick?: (
                 newX = Math.round(newX / snapSize) * snapSize;
                 newY = Math.round(newY / snapSize) * snapSize;
               }
+              // Calculate new length for batch sync
+              const newDx = coords.x2 - newX;
+              const newDy = coords.y2 - newY;
+              const newLengthMM = Math.sqrt(newDx * newDx + newDy * newDy) / pixelsPerMm;
+
               onTransform({ coordinates: { x1: newX, y1: newY, x2: coords.x2, y2: coords.y2 } });
+
+              // Shift+drag = batch sync all selected line shapes
+              if (e.evt.shiftKey && onBatchLengthChange) {
+                onBatchLengthChange(newLengthMM);
+              }
               setDraggedCoords(null);
               setDraggedHandle(null);
             }}
@@ -440,7 +477,17 @@ export const DoorLineShape = React.memo<ShapeWithViewProps & { onDoubleClick?: (
                 newX = Math.round(newX / snapSize) * snapSize;
                 newY = Math.round(newY / snapSize) * snapSize;
               }
+              // Calculate new length for batch sync
+              const newDx = newX - coords.x1;
+              const newDy = newY - coords.y1;
+              const newLengthMM = Math.sqrt(newDx * newDx + newDy * newDy) / pixelsPerMm;
+
               onTransform({ coordinates: { x1: coords.x1, y1: coords.y1, x2: newX, y2: newY } });
+
+              // Shift+drag = batch sync all selected line shapes
+              if (e.evt.shiftKey && onBatchLengthChange) {
+                onBatchLengthChange(newLengthMM);
+              }
               setDraggedCoords(null);
               setDraggedHandle(null);
             }}
@@ -475,7 +522,7 @@ export const DoorLineShape = React.memo<ShapeWithViewProps & { onDoubleClick?: (
 /**
  * SlidingDoorLineShape - Two parallel tracks with overlapping door panels
  */
-export const SlidingDoorLineShape = React.memo<ShapeWithViewProps>(({
+export const SlidingDoorLineShape = React.memo<OpeningShapeProps>(({
   shape,
   isSelected,
   onSelect,
@@ -484,6 +531,7 @@ export const SlidingDoorLineShape = React.memo<ShapeWithViewProps>(({
   viewState,
   scaleSettings,
   projectSettings,
+  onBatchLengthChange,
 }) => {
   const { zoom } = viewState;
   const { pixelsPerMm } = scaleSettings;
@@ -635,7 +683,17 @@ export const SlidingDoorLineShape = React.memo<ShapeWithViewProps>(({
                 newX = Math.round(newX / snapSize) * snapSize;
                 newY = Math.round(newY / snapSize) * snapSize;
               }
+              // Calculate new length for batch sync
+              const newDx = coords.x2 - newX;
+              const newDy = coords.y2 - newY;
+              const newLengthMM = Math.sqrt(newDx * newDx + newDy * newDy) / pixelsPerMm;
+
               onTransform({ coordinates: { x1: newX, y1: newY, x2: coords.x2, y2: coords.y2 } });
+
+              // Shift+drag = batch sync all selected line shapes
+              if (e.evt.shiftKey && onBatchLengthChange) {
+                onBatchLengthChange(newLengthMM);
+              }
               setDraggedCoords(null);
               setDraggedHandle(null);
             }}
@@ -669,7 +727,17 @@ export const SlidingDoorLineShape = React.memo<ShapeWithViewProps>(({
                 newX = Math.round(newX / snapSize) * snapSize;
                 newY = Math.round(newY / snapSize) * snapSize;
               }
+              // Calculate new length for batch sync
+              const newDx = newX - coords.x1;
+              const newDy = newY - coords.y1;
+              const newLengthMM = Math.sqrt(newDx * newDx + newDy * newDy) / pixelsPerMm;
+
               onTransform({ coordinates: { x1: coords.x1, y1: coords.y1, x2: newX, y2: newY } });
+
+              // Shift+drag = batch sync all selected line shapes
+              if (e.evt.shiftKey && onBatchLengthChange) {
+                onBatchLengthChange(newLengthMM);
+              }
               setDraggedCoords(null);
               setDraggedHandle(null);
             }}

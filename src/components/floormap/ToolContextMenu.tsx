@@ -15,6 +15,14 @@ import {
   ImagePlus,
   Sparkles,
   Copy,
+  Info,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpToLine,
+  ArrowDownToLine,
+  Layers,
+  Grid3X3,
 } from "lucide-react";
 
 // Custom icons
@@ -50,6 +58,20 @@ interface ToolContextMenuProps {
   onOpenImageImport?: () => void;
   onOpenPinterestImport?: () => void;
   onOpenTemplates?: () => void;
+  // Selection-related actions
+  hasSelection?: boolean;
+  selectionCount?: number;
+  selectionType?: string; // 'wall', 'room', 'shape', etc.
+  hasRoomInSelection?: boolean; // True if at least one room is in the selection
+  onShowProperties?: () => void;
+  onDeleteSelection?: () => void;
+  // Layer ordering actions
+  onBringForward?: () => void;
+  onSendBackward?: () => void;
+  onBringToFront?: () => void;
+  onSendToBack?: () => void;
+  // Room-specific actions
+  onCreateWallsFromRoom?: () => void;
 }
 
 type IconComponent = React.FC<{ className?: string }>;
@@ -104,15 +126,40 @@ export const ToolContextMenu = memo(({
   onOpenImageImport,
   onOpenPinterestImport,
   onOpenTemplates,
+  hasSelection,
+  selectionCount,
+  selectionType,
+  hasRoomInSelection,
+  onShowProperties,
+  onDeleteSelection,
+  onBringForward,
+  onSendBackward,
+  onBringToFront,
+  onSendToBack,
+  onCreateWallsFromRoom,
 }: ToolContextMenuProps) => {
   // Get top 3 unique recent tools
   const topTools = recentTools.slice(0, 3);
 
   // Adjust position to keep menu on screen
   const menuWidth = 200;
-  const menuHeight = 250;
+  const menuHeight = hasSelection ? 450 : 250;
   const adjustedX = Math.min(x, window.innerWidth - menuWidth - 20);
   const adjustedY = Math.min(y, window.innerHeight - menuHeight - 20);
+
+  // Get selection label
+  const getSelectionLabel = () => {
+    if (!hasSelection || !selectionCount) return '';
+    if (selectionCount === 1) {
+      switch (selectionType) {
+        case 'wall':
+        case 'line': return '1 vägg markerad';
+        case 'room': return '1 rum markerat';
+        default: return '1 objekt markerat';
+      }
+    }
+    return `${selectionCount} objekt markerade`;
+  };
 
   return (
     <>
@@ -134,6 +181,123 @@ export const ToolContextMenu = memo(({
           top: `${adjustedY}px`,
         }}
       >
+        {/* Selection Actions Section - shown when something is selected */}
+        {hasSelection && (
+          <>
+            <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+              {getSelectionLabel()}
+            </div>
+
+            {onShowProperties && (
+              <button
+                className="w-full px-3 py-2 flex items-center gap-3 hover:bg-blue-50 transition-colors text-left"
+                onClick={() => {
+                  onShowProperties();
+                  onClose();
+                }}
+              >
+                <Info className="w-4 h-4 text-blue-500" />
+                <span className="text-sm font-medium text-gray-700">Visa egenskaper</span>
+                <span className="ml-auto text-[10px] text-gray-400">⌘I</span>
+              </button>
+            )}
+
+            {onDeleteSelection && (
+              <button
+                className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-50 transition-colors text-left"
+                onClick={() => {
+                  onDeleteSelection();
+                  onClose();
+                }}
+              >
+                <Trash2 className="w-4 h-4 text-red-500" />
+                <span className="text-sm font-medium text-gray-700">Ta bort</span>
+                <span className="ml-auto text-[10px] text-gray-400">⌫</span>
+              </button>
+            )}
+
+            {/* Room-specific actions */}
+            {(selectionType === 'room' || hasRoomInSelection) && onCreateWallsFromRoom && (
+              <>
+                <div className="my-1.5 border-t border-gray-100" />
+                <button
+                  className="w-full px-3 py-2 flex items-center gap-3 hover:bg-green-50 transition-colors text-left"
+                  onClick={() => {
+                    onCreateWallsFromRoom();
+                    onClose();
+                  }}
+                >
+                  <Grid3X3 className="w-4 h-4 text-green-600" />
+                  <span className="text-sm font-medium text-gray-700">Skapa väggar</span>
+                </button>
+              </>
+            )}
+
+            {/* Divider before layer ordering */}
+            <div className="my-1.5 border-t border-gray-100" />
+
+            {/* Layer Ordering Section */}
+            <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Layers className="w-3 h-3" />
+              Lagerordning
+            </div>
+
+            <div className="grid grid-cols-2 gap-1 px-2 pb-1">
+              {onBringToFront && (
+                <button
+                  className="px-2 py-1.5 flex items-center gap-2 hover:bg-blue-50 transition-colors text-left rounded"
+                  onClick={() => {
+                    onBringToFront();
+                    onClose();
+                  }}
+                >
+                  <ArrowUpToLine className="w-3.5 h-3.5 text-gray-500" />
+                  <span className="text-xs text-gray-700">Överst</span>
+                </button>
+              )}
+              {onSendToBack && (
+                <button
+                  className="px-2 py-1.5 flex items-center gap-2 hover:bg-blue-50 transition-colors text-left rounded"
+                  onClick={() => {
+                    onSendToBack();
+                    onClose();
+                  }}
+                >
+                  <ArrowDownToLine className="w-3.5 h-3.5 text-gray-500" />
+                  <span className="text-xs text-gray-700">Underst</span>
+                </button>
+              )}
+              {onBringForward && (
+                <button
+                  className="px-2 py-1.5 flex items-center gap-2 hover:bg-blue-50 transition-colors text-left rounded"
+                  onClick={() => {
+                    onBringForward();
+                    onClose();
+                  }}
+                >
+                  <ArrowUp className="w-3.5 h-3.5 text-gray-500" />
+                  <span className="text-xs text-gray-700">Framåt</span>
+                </button>
+              )}
+              {onSendBackward && (
+                <button
+                  className="px-2 py-1.5 flex items-center gap-2 hover:bg-blue-50 transition-colors text-left rounded"
+                  onClick={() => {
+                    onSendBackward();
+                    onClose();
+                  }}
+                >
+                  <ArrowDown className="w-3.5 h-3.5 text-gray-500" />
+                  <span className="text-xs text-gray-700">Bakåt</span>
+                </button>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="my-1.5 border-t border-gray-100" />
+          </>
+        )}
+
         {/* Recent Tools Section */}
         <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
           Senaste verktyg

@@ -6,6 +6,7 @@ import { useFloorMapStore } from './store';
 import { FloorMapShape, ScalePreset, GridPreset } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { RoomDetailDialog } from './RoomDetailDialog';
+import { RoomElevationView } from './RoomElevationView';
 import { NameRoomDialog } from './NameRoomDialog';
 import { PropertyPanel } from './PropertyPanel';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,10 +20,12 @@ import { getSymbolComponent, ArchSymbolType, SYMBOL_METADATA } from './SymbolLib
 import { getObjectById } from './ObjectRenderer';
 import { ObjectShape, ObjectDefinition } from './objectLibraryDefinitions';
 import { getTemplateById, placeTemplateShapes, calculateBounds, DEFAULT_TEMPLATES } from './templateDefinitions';
+import { useTranslation } from 'react-i18next';
 
 // Canvas module imports
 import { MIN_ZOOM, MAX_ZOOM, getAdminDefaults } from './canvas/constants';
-import { throttle, createUnifiedDragHandlers } from './canvas/utils';
+import { throttle, createUnifiedDragHandlers, calculateFitToContent } from './canvas/utils';
+import { generateWallsFromRoom } from './utils/roomWalls';
 
 // Shape components (extracted for better maintainability)
 import {
@@ -39,6 +42,7 @@ import {
   DoorLineShape,
   SlidingDoorLineShape,
   ImageShape,
+  TemplateGroupShape,
 } from './shapes';
 import { ToolContextMenu } from './ToolContextMenu';
 import { Tool } from './types';
@@ -213,20 +217,22 @@ const getGridLevels = (pixelsPerMm: number) => {
   const pixelsPerMeter = getPixelsPerMeter(pixelsPerMm);
   const pixelsPerCm = getPixelsPerCm(pixelsPerMm);
 
+  // IMPORTANT: Grid levels that appear together must be exact multiples
+  // 5m/1m=5 ✓, 1m/50cm=2 ✓, 50cm/10cm=5 ✓
   return {
     // Major grids - building/apartment overview
-    METER_5: { size: pixelsPerMeter * 5, color: "#707070", lineWidth: 2, label: "5m", opacity: 0.8 },
-    METER_1: { size: pixelsPerMeter, color: "#888888", lineWidth: 1.5, label: "1m", opacity: 0.7 },
-    
+    METER_5: { size: pixelsPerMeter * 5, color: "#606060", lineWidth: 2, label: "5m", opacity: 0.9 },
+    METER_1: { size: pixelsPerMeter, color: "#808080", lineWidth: 1.5, label: "1m", opacity: 0.7 },
+
     // Working grids - standard architectural precision
-    CM_50: { size: pixelsPerCm * 50, color: "#a0a0a0", lineWidth: 1, label: "50cm", opacity: 0.55 },
-    CM_25: { size: pixelsPerCm * 25, color: "#b8b8b8", lineWidth: 0.8, label: "25cm", opacity: 0.45 },
-    CM_10: { size: pixelsPerCm * 10, color: "#d0d0d0", lineWidth: 0.7, label: "10cm (100mm)", opacity: 0.4 },
+    CM_50: { size: pixelsPerCm * 50, color: "#a0a0a0", lineWidth: 1, label: "50cm", opacity: 0.5 },
+    CM_10: { size: pixelsPerCm * 10, color: "#c8c8c8", lineWidth: 0.6, label: "10cm", opacity: 0.35 },
   };
 };
 
 // Simplified zoom-based grid system for practical floor plan work
-// 5 logical zoom levels optimized for architectural workflow
+// All paired levels are exact multiples to prevent misaligned lines:
+// 5m/1m=5, 1m/50cm=2, 50cm/10cm=5
 const getActiveGridLevels = (zoomLevel: number, pixelsPerMm: number) => {
   const GRID_LEVELS = getGridLevels(pixelsPerMm);
   const levels = [];
@@ -235,22 +241,17 @@ const getActiveGridLevels = (zoomLevel: number, pixelsPerMm: number) => {
   if (zoomLevel < 0.5) {
     levels.push(GRID_LEVELS.METER_5);
   }
-  // Level 2: Zoomed out - floor plan overview (5m + 1m)
+  // Level 2: Zoomed out - floor plan overview (5m + 1m, ratio 5:1)
   else if (zoomLevel < 1.0) {
     levels.push(GRID_LEVELS.METER_5, GRID_LEVELS.METER_1);
   }
-  // Level 3: Standard working view - room layout (1m + 50cm)
+  // Level 3: Standard working view - room layout (1m + 50cm, ratio 2:1)
   else if (zoomLevel < 2.0) {
     levels.push(GRID_LEVELS.METER_1, GRID_LEVELS.CM_50);
   }
-  // Level 4: Detailed view - furniture placement (50cm + 25cm)
-  else if (zoomLevel < 3.5) {
-    levels.push(GRID_LEVELS.CM_50, GRID_LEVELS.CM_25);
-  }
-  // Level 5: Maximum detail - precise measurements (25cm + 10cm)
-  // 10cm (100mm) is the finest grid - perfect for architectural work
+  // Level 4+: Detailed view - precise work (50cm + 10cm, ratio 5:1)
   else {
-    levels.push(GRID_LEVELS.CM_25, GRID_LEVELS.CM_10);
+    levels.push(GRID_LEVELS.CM_50, GRID_LEVELS.CM_10);
   }
 
   return levels;
@@ -436,14 +437,15 @@ const Grid: React.FC<GridProps> = ({ viewState, scaleSettings, projectSettings }
     const endYIndex = Math.ceil(extendedBottom / gridSize);
 
     // Vertical lines - use integer index and multiply to get position
+    // Round to avoid sub-pixel rendering artifacts at high zoom
     for (let i = startXIndex; i <= endXIndex; i++) {
-      const x = i * gridSize;
+      const x = Math.round(i * gridSize * 100) / 100; // Round to 2 decimals for precision
       lines.push(
         <Line
           key={`${levelIndex}-v-${i}`}
           points={[x, extendedTop, x, extendedBottom]}
           stroke={gridLevel.color}
-          strokeWidth={Math.max(0.3, gridLevel.lineWidth / zoom)}
+          strokeWidth={Math.max(0.5, gridLevel.lineWidth / zoom)}
           opacity={gridLevel.opacity}
           listening={false}
           perfectDrawEnabled={false}
@@ -452,14 +454,15 @@ const Grid: React.FC<GridProps> = ({ viewState, scaleSettings, projectSettings }
     }
 
     // Horizontal lines - use integer index and multiply to get position
+    // Round to avoid sub-pixel rendering artifacts at high zoom
     for (let j = startYIndex; j <= endYIndex; j++) {
-      const y = j * gridSize;
+      const y = Math.round(j * gridSize * 100) / 100; // Round to 2 decimals for precision
       lines.push(
         <Line
           key={`${levelIndex}-h-${j}`}
           points={[extendedLeft, y, extendedRight, y]}
           stroke={gridLevel.color}
-          strokeWidth={Math.max(0.3, gridLevel.lineWidth / zoom)}
+          strokeWidth={Math.max(0.5, gridLevel.lineWidth / zoom)}
           opacity={gridLevel.opacity}
           listening={false}
           perfectDrawEnabled={false}
@@ -508,9 +511,11 @@ const Grid: React.FC<GridProps> = ({ viewState, scaleSettings, projectSettings }
 interface UnifiedKonvaCanvasProps {
   onRoomCreated?: () => void;
   isReadOnly?: boolean;
+  highlightedRoomIds?: string[];
 }
 
-export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCreated, isReadOnly }) => {
+export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCreated, isReadOnly, highlightedRoomIds }) => {
+  const { t } = useTranslation();
   const stageRef = useRef<Konva.Stage>(null);
   const shapeRefs = useRef<Map<string, Konva.Node>>(new Map());
   
@@ -538,8 +543,9 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const touchPanStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   
   // Double-click handling state (simplified like old canvas)
-  const [lastClickTime, setLastClickTime] = useState(0);
-  const [lastClickedShapeId, setLastClickedShapeId] = useState<string | null>(null);
+  // Use refs for synchronous access in rapid click sequences
+  const lastClickTimeRef = useRef(0);
+  const lastClickedShapeIdRef = useRef<string | null>(null);
   const [isGroupMode, setIsGroupMode] = useState(true); // Start in group mode
   
   // Wall chaining state (for continuous wall drawing like old canvas)
@@ -564,6 +570,9 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const [isRoomDetailOpen, setIsRoomDetailOpen] = useState(false);
   const [roomData, setRoomData] = useState<any>(null);
 
+  // Room elevation view state
+  const [roomElevationShape, setRoomElevationShape] = useState<FloorMapShape | null>(null);
+
   // Property panel state (for all object types)
   const [showPropertyPanel, setShowPropertyPanel] = useState(false);
   const [propertyPanelShape, setPropertyPanelShape] = useState<FloorMapShape | null>(null);
@@ -579,8 +588,10 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   // Wall unit selection mode (for nested interaction)
   const [selectedWallUnit, setSelectedWallUnit] = useState<string[] | null>(null); // IDs of connected walls
   const [wallSelectionMode, setWallSelectionMode] = useState<'unit' | 'segment'>('unit');
-  
-  
+
+  // Template group individual shape selection (double-click to select single shape in group)
+  const [selectedGroupIndividualId, setSelectedGroupIndividualId] = useState<string | null>(null);
+
   // Text input dialog state
   const [isTextDialogOpen, setIsTextDialogOpen] = useState(false);
   const [textInputValue, setTextInputValue] = useState('');
@@ -661,6 +672,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const pendingLibrarySymbol = useFloorMapStore((state) => state.pendingLibrarySymbol);
   const pendingObjectId = useFloorMapStore((state) => state.pendingObjectId);
   const pendingTemplateId = useFloorMapStore((state) => state.pendingTemplateId);
+  const pendingRoomPlacement = useFloorMapStore((state) => state.pendingRoomPlacement);
   
   // Actions (don't cause re-renders)
   const setViewState = useFloorMapStore((state) => state.setViewState);
@@ -669,6 +681,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const setSelectedShapeIds = useFloorMapStore((state) => state.setSelectedShapeIds);
   const setShapes = useFloorMapStore((state) => state.setShapes);
   const updateShape = useFloorMapStore((state) => state.updateShape);
+  const updateShapes = useFloorMapStore((state) => state.updateShapes);
   const addShape = useFloorMapStore((state) => state.addShape);
   const deleteShape = useFloorMapStore((state) => state.deleteShape);
   const deleteShapes = useFloorMapStore((state) => state.deleteShapes);
@@ -684,7 +697,12 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const setPendingLibrarySymbol = useFloorMapStore((state) => state.setPendingLibrarySymbol);
   const setPendingObjectId = useFloorMapStore((state) => state.setPendingObjectId);
   const setPendingTemplateId = useFloorMapStore((state) => state.setPendingTemplateId);
+  const setPendingRoomPlacement = useFloorMapStore((state) => state.setPendingRoomPlacement);
   const setActiveTool = useFloorMapStore((state) => state.setActiveTool);
+  const bringForward = useFloorMapStore((state) => state.bringForward);
+  const sendBackward = useFloorMapStore((state) => state.sendBackward);
+  const bringToFront = useFloorMapStore((state) => state.bringToFront);
+  const sendToBack = useFloorMapStore((state) => state.sendToBack);
 
   // Clear measurement when tool changes
   useEffect(() => {
@@ -722,6 +740,43 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     ),
     [shapes, currentPlanId]
   );
+
+  // Separate shapes into template groups and individual shapes
+  const { templateGroups, individualShapes } = useMemo(() => {
+    const groups: Map<string, { shapes: FloorMapShape[]; leader: FloorMapShape }> = new Map();
+    const individual: FloorMapShape[] = [];
+
+    for (const shape of currentShapes) {
+      if (shape.groupId) {
+        // This shape belongs to a template group
+        const existing = groups.get(shape.groupId);
+        if (existing) {
+          existing.shapes.push(shape);
+          // Update leader if this shape is the group leader
+          if (shape.isGroupLeader) {
+            existing.leader = shape;
+          }
+        } else {
+          groups.set(shape.groupId, {
+            shapes: [shape],
+            leader: shape.isGroupLeader ? shape : shape, // Fallback to first shape
+          });
+        }
+      } else {
+        // Individual shape (not part of a group)
+        individual.push(shape);
+      }
+    }
+
+    return {
+      templateGroups: Array.from(groups.entries()).map(([groupId, data]) => ({
+        groupId,
+        shapes: data.shapes,
+        leader: data.leader,
+      })),
+      individualShapes: individual,
+    };
+  }, [currentShapes]);
 
   // Calculate bounding box for multi-selection visual indicator
   const multiSelectionBounds = useMemo(() => {
@@ -899,24 +954,19 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     }));
   }, [canUndo, canRedo, shapes]);
   
-  // Initialize viewport on mount - simple initial state
-  useEffect(() => {
-    // Start centered - constrainPan will be applied on first interaction
-    setViewState({ panX: 0, panY: 0, zoom: 1 });
-  }, [setViewState]); // Run once on mount
-  
-  // Load shapes when plan changes
+  // Load shapes when plan changes, then apply initial view
   useEffect(() => {
     if (!currentPlanId) {
       // No plan selected, clear shapes
       setShapes([]);
       return;
     }
-    
+
     const loadShapes = async () => {
       const loadedShapes = await loadShapesForPlan(currentPlanId);
-      
+
       // Load room names from rooms table for room shapes
+      let finalShapes = loadedShapes;
       const roomShapes = loadedShapes.filter(s => s.type === 'room' && s.roomId);
       if (roomShapes.length > 0 && currentProjectId) {
         try {
@@ -925,10 +975,10 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             .from('rooms')
             .select('id, name, color')
             .in('id', roomIds);
-          
+
           if (!error && rooms) {
             // Map room names and colors to shapes
-            const shapesWithRoomData = loadedShapes.map(shape => {
+            finalShapes = loadedShapes.map(shape => {
               if (shape.type === 'room' && shape.roomId) {
                 const room = rooms.find(r => r.id === shape.roomId);
                 if (room) {
@@ -943,9 +993,9 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
                     }
                     return rgbaColor || 'rgba(41, 91, 172, 0.8)';
                   };
-                  
-                  return { 
-                    ...shape, 
+
+                  return {
+                    ...shape,
                     name: room.name,
                     color: room.color || shape.color || 'rgba(59, 130, 246, 0.2)',
                     strokeColor: getDarkerColor(room.color || shape.color || 'rgba(59, 130, 246, 0.2)')
@@ -954,34 +1004,50 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
               }
               return shape;
             });
-            setShapes(shapesWithRoomData);
-            // Loaded room data successfully
-            return;
           }
         } catch (error) {
           console.error('Error loading room data:', error);
         }
       }
-      
-      setShapes(loadedShapes);
-      
+
+      setShapes(finalShapes);
+
       // Check if AI import has centering instructions
-      setTimeout(() => {
-        const aiCenterView = (window as any).__aiImportCenterView;
-        if (aiCenterView) {
-          // Applying AI import center view
+      const aiCenterView = (window as any).__aiImportCenterView;
+      if (aiCenterView) {
+        setTimeout(() => {
           setViewState({
             zoom: aiCenterView.zoom,
             panX: aiCenterView.panX,
             panY: aiCenterView.panY,
           });
-          // Clear the flag
           delete (window as any).__aiImportCenterView;
           toast.success('Canvas centrerad på AI-importerade objekt');
+        }, 800);
+        return;
+      }
+
+      // Apply initial view: saved starting view → auto-fit → default center
+      const plans = useFloorMapStore.getState().plans;
+      const currentPlan = plans.find(p => p.id === currentPlanId);
+      const savedView = currentPlan?.viewSettings?.startingView;
+
+      if (savedView) {
+        setViewState({ panX: savedView.panX, panY: savedView.panY, zoom: savedView.zoom });
+      } else {
+        const fitView = calculateFitToContent(
+          finalShapes,
+          window.innerWidth,
+          window.innerHeight - 70
+        );
+        if (fitView) {
+          setViewState(fitView);
+        } else {
+          setViewState({ panX: 0, panY: 0, zoom: 1 });
         }
-      }, 800); // Delay to ensure shapes are rendered
+      }
     };
-    
+
     loadShapes();
   }, [currentPlanId, currentProjectId, setShapes]);
   
@@ -1699,40 +1765,45 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     }
     
     const now = Date.now();
-    const timeSinceLastClick = now - lastClickTime;
-    // Increased timeout from 300ms to 500ms for more reliable double-click detection
-    const isDoubleClick = timeSinceLastClick < 500 && lastClickedShapeId === shapeId;
+    const timeSinceLastClick = now - lastClickTimeRef.current;
+    const currentlySelected = useFloorMapStore.getState().selectedShapeIds;
+
+    // Double-click detection:
+    // - For walls: count as double-click if clicking any wall in the selected group
+    // - For other shapes: must be the same shape
+    const isWallType = shapeType === 'wall' || shapeType === 'line';
+    const isDoubleClickOnSameShape = timeSinceLastClick < 500 && lastClickedShapeIdRef.current === shapeId;
+    const isDoubleClickOnSelectedWall = isWallType && timeSinceLastClick < 500 && currentlySelected.includes(shapeId);
+    const isDoubleClick = isDoubleClickOnSameShape || isDoubleClickOnSelectedWall;
 
     if (isDoubleClick) {
       // DOUBLE-CLICK → Different behavior based on shape type
 
       const shape = currentShapes.find(s => s.id === shapeId);
       if (!shape) {
-        setLastClickTime(0);
-        setLastClickedShapeId(null);
+        lastClickTimeRef.current = 0;
+        lastClickedShapeIdRef.current = null;
         return;
       }
 
       // Wall-specific 3-step logic: group → individual → property panel
-      if (shapeType === 'wall' || shapeType === 'line') {
-        const currentlySelected = useFloorMapStore.getState().selectedShapeIds;
-
+      if (isWallType) {
         if (currentlySelected.length === 1 && currentlySelected[0] === shapeId) {
           // Step 3: Already individually selected → open PropertyPanel
           setSelectedShapeId(shapeId);
           setPropertyPanelShape(shape);
           setShowPropertyPanel(true);
           toast.success('Vägg markerad - Öppnar egenskapspanel');
-          setLastClickTime(0);
-          setLastClickedShapeId(null);
+          lastClickTimeRef.current = 0;
+          lastClickedShapeIdRef.current = null;
         } else {
           // Step 2: Drill-in from group → select only this wall
           setSelectedShapeId(shapeId);
           setSelectedShapeIds([shapeId]);
           toast.success('Enskild vägg markerad');
           // Keep lastClick tracking alive for next double-click
-          setLastClickTime(now);
-          setLastClickedShapeId(shapeId);
+          lastClickTimeRef.current = now;
+          lastClickedShapeIdRef.current = shapeId;
         }
         return;
       }
@@ -1746,21 +1817,20 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         setPropertyPanelShape(null);
         setSelectedRoomForDetail(shape.roomId);
         setIsRoomDetailOpen(true);
-        toast.success('Rum markerat - Öppnar rumsdetaljer');
+        toast.success(t('floormap.openingRoomDetails', 'Opening room details'));
       } else {
         setPropertyPanelShape(shape);
         setShowPropertyPanel(true);
-        toast.success('Objekt markerat - Öppnar egenskapspanel');
+        toast.success(t('floormap.openingPropertyPanel', 'Opening property panel'));
       }
 
-      setLastClickTime(0);
-      setLastClickedShapeId(null);
+      lastClickTimeRef.current = 0;
+      lastClickedShapeIdRef.current = null;
     } else {
       // SINGLE CLICK - Miro-style selection with modifier support
 
       // Check for modifier keys to enable multi-select
       const isMultiSelect = evt && (evt.evt.ctrlKey || evt.evt.metaKey || evt.evt.shiftKey);
-      const currentlySelected = useFloorMapStore.getState().selectedShapeIds;
 
       if (isMultiSelect) {
         // MODIFIER + CLICK: Toggle selection (add/remove from current selection)
@@ -1782,14 +1852,35 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         }
       } else {
         // REGULAR CLICK: Replace selection
-        // For walls: auto-select all connected walls (sharing endpoints)
-        if (shapeType === 'wall' || shapeType === 'line') {
-          const connectedWallIds = getConnectedWalls(shapeId, currentShapes);
-          setSelectedShapeIds(connectedWallIds);
-          if (connectedWallIds.length > 1) {
-            toast.success(`${connectedWallIds.length} anslutna väggar markerade`);
+        // Check if shape belongs to a group (template object)
+        const clickedShape = currentShapes.find(s => s.id === shapeId);
+        const groupId = clickedShape?.groupId;
+
+        if (groupId) {
+          // GROUPED SHAPE: Select all shapes in the group
+          const groupShapeIds = currentShapes
+            .filter(s => s.groupId === groupId)
+            .map(s => s.id);
+          setSelectedShapeIds(groupShapeIds);
+          const groupLeader = currentShapes.find(s => s.groupId === groupId && s.isGroupLeader);
+          const groupName = groupLeader?.templateInfo?.templateName || 'Grupp';
+          toast.success(`${groupName} markerat (${groupShapeIds.length} former)`);
+        } else if (shapeType === 'wall' || shapeType === 'line') {
+          // For walls: check if this wall is already individually selected
+          const isAlreadyIndividuallySelected = currentlySelected.length === 1 && currentlySelected[0] === shapeId;
+
+          if (isAlreadyIndividuallySelected) {
+            // Keep individual selection - don't re-select connected walls
+            // This allows double-click to work for opening property panel
           } else {
-            toast.success(`Enskild vägg markerad`);
+            // Auto-select all connected walls (sharing endpoints)
+            const connectedWallIds = getConnectedWalls(shapeId, currentShapes);
+            setSelectedShapeIds(connectedWallIds);
+            if (connectedWallIds.length > 1) {
+              toast.success(`${connectedWallIds.length} anslutna väggar markerade`);
+            } else {
+              toast.success(`Enskild vägg markerad`);
+            }
           }
         } else {
           // Non-wall shapes: select just the one clicked
@@ -1802,10 +1893,10 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       setSelectedWallUnit(null);
       setWallSelectionMode('unit');
 
-      setLastClickTime(now);
-      setLastClickedShapeId(shapeId);
+      lastClickTimeRef.current = now;
+      lastClickedShapeIdRef.current = shapeId;
     }
-  }, [activeTool, deleteShape, addShape, viewState, gridSettings, scaleSettings, currentShapes, lastClickTime, lastClickedShapeId, saveRoomToDB, setSelectedShapeId, setSelectedShapeIds, selectedShapeIds, setSelectedRoomForDetail, setIsRoomDetailOpen, setPropertyPanelShape, setShowPropertyPanel]);
+  }, [activeTool, deleteShape, addShape, viewState, gridSettings, scaleSettings, currentShapes, saveRoomToDB, setSelectedShapeId, setSelectedShapeIds, selectedShapeIds, setSelectedRoomForDetail, setIsRoomDetailOpen, setPropertyPanelShape, setShowPropertyPanel]);
   
   // Helper function to constrain pan within canvas bounds
   const constrainPan = useCallback((panX: number, panY: number, zoom: number): { panX: number; panY: number } => {
@@ -2509,14 +2600,89 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         
         addShape(newShape);
         toast.success(`✨ ${objectDef.name} placed`);
-        
+
         // Clear the pending object so user can continue working
         setPendingObjectId(null);
       }
-      
+
       return;
     }
-    
+
+    // ============================================================================
+    // ROOM PLACEMENT - Place existing room from rooms list onto canvas
+    // ============================================================================
+    if (pendingRoomPlacement && currentPlanId) {
+      const roomId = pendingRoomPlacement.roomId;
+      const roomName = pendingRoomPlacement.roomName;
+      const roomColor = pendingRoomPlacement.color || 'rgba(59, 130, 246, 0.2)';
+
+      // Create a rectangular room shape at click position
+      // Default size: 3m x 4m (3000mm x 4000mm)
+      const defaultWidth = 3000 * scaleSettings.pixelsPerMm;
+      const defaultHeight = 4000 * scaleSettings.pixelsPerMm;
+
+      // Center the room on the click position
+      const startX = pos.x - defaultWidth / 2;
+      const startY = pos.y - defaultHeight / 2;
+
+      const roomPoints = [
+        { x: startX, y: startY },
+        { x: startX + defaultWidth, y: startY },
+        { x: startX + defaultWidth, y: startY + defaultHeight },
+        { x: startX, y: startY + defaultHeight },
+      ];
+
+      const newRoomShape: FloorMapShape = {
+        id: uuidv4(),
+        planId: currentPlanId,
+        type: 'room',
+        roomId: roomId, // Link to database room
+        coordinates: {
+          points: roomPoints,
+        },
+        color: roomColor,
+        strokeColor: 'rgba(41, 91, 172, 0.8)',
+        name: roomName,
+      };
+
+      addShape(newRoomShape);
+
+      // Update the room in the database with floor_plan_position
+      const updateRoomPosition = async () => {
+        try {
+          const { error } = await supabase
+            .from('rooms')
+            .update({
+              floor_plan_position: {
+                points: roomPoints.map(p => ({
+                  x: p.x / scaleSettings.pixelsPerMm, // Store in mm
+                  y: p.y / scaleSettings.pixelsPerMm,
+                })),
+              },
+            })
+            .eq('id', roomId);
+
+          if (error) {
+            console.error('Error updating room position:', error);
+          }
+        } catch (err) {
+          console.error('Error updating room position:', err);
+        }
+      };
+
+      updateRoomPosition();
+
+      toast.success(`🏠 "${roomName}" placerat på ritningen`);
+
+      // Clear the pending room placement
+      setPendingRoomPlacement(null);
+
+      // Select the new room
+      setSelectedShapeIds([newRoomShape.id]);
+
+      return;
+    }
+
     // ============================================================================
     // TEMPLATE PLACEMENT - Place saved template (group of shapes)
     // ============================================================================
@@ -3276,18 +3442,19 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     // CRITICAL: Only handle clicks on empty stage, not on shapes
     // Shapes handle their own clicks via onClick handlers
     const clickedOnEmpty = e.target === e.target.getStage();
-    
+
     if (!clickedOnEmpty) {
       // Clicked on a shape - let the shape's onClick handler deal with it
       // Don't interfere here
       return;
     }
-    
+
     // Only handle clicks on empty space
     // Select tool - clear selection when clicking empty space
     if (activeTool === 'select') {
       setSelectedShapeIds([]);
       setSelectedShapeId(null);
+      setSelectedGroupIndividualId(null); // Clear individual group selection
     }
   }, [activeTool, setSelectedShapeIds, setSelectedShapeId]);
   
@@ -3295,6 +3462,115 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const handleShapeTransform = useCallback((shapeId: string, updates: Partial<FloorMapShape>) => {
     updateShape(shapeId, updates);
   }, [updateShape]);
+
+  // Handle template group transformation (move, rotate, scale)
+  const handleGroupTransform = useCallback((updates: Array<{ id: string; updates: Partial<FloorMapShape> }>) => {
+    if (updates.length === 0) return;
+    updateShapes(updates);
+  }, [updateShapes]);
+
+  // Handle template group selection
+  const handleGroupSelect = useCallback((groupId: string, evt?: KonvaEventObject<MouseEvent>) => {
+    if (evt) {
+      evt.cancelBubble = true;
+    }
+    // Clear any individual shape selection within group
+    setSelectedGroupIndividualId(null);
+
+    // Select all shapes in the group
+    const groupShapeIds = currentShapes
+      .filter(s => s.groupId === groupId)
+      .map(s => s.id);
+    setSelectedShapeIds(groupShapeIds);
+
+    // Find the group leader to show in PropertyPanel
+    const groupLeader = currentShapes.find(s => s.groupId === groupId && s.isGroupLeader);
+    const groupName = groupLeader?.templateInfo?.templateName || 'Mall';
+
+    // Show PropertyPanel with group leader
+    if (groupLeader) {
+      setPropertyPanelShape(groupLeader);
+      setShowPropertyPanel(true);
+    }
+
+    toast.success(`${groupName} markerad`);
+  }, [currentShapes, setSelectedShapeIds, setPropertyPanelShape, setShowPropertyPanel]);
+
+  // Handle individual shape selection within a template group (double-click)
+  const handleGroupIndividualSelect = useCallback((shapeId: string, evt?: KonvaEventObject<MouseEvent>) => {
+    if (evt) {
+      evt.cancelBubble = true;
+    }
+    setSelectedGroupIndividualId(shapeId);
+
+    // Find the shape to show info
+    const shape = currentShapes.find(s => s.id === shapeId);
+    if (shape) {
+      setPropertyPanelShape(shape);
+      setShowPropertyPanel(true);
+      toast.success('Enskild form markerad');
+    }
+  }, [currentShapes, setPropertyPanelShape, setShowPropertyPanel]);
+
+  // Handle opening property panel for individual shape (second double-click)
+  const handleGroupOpenPropertyPanel = useCallback((shape: FloorMapShape) => {
+    setPropertyPanelShape(shape);
+    setShowPropertyPanel(true);
+  }, [setPropertyPanelShape, setShowPropertyPanel]);
+
+  // Handle batch length change for walls (Shift+drag endpoint)
+  // Applies the same length to all other selected walls while preserving their angles
+  const handleBatchWallLengthChange = useCallback((sourceShapeId: string, newLengthMM: number) => {
+    const currentShapes = useFloorMapStore.getState().shapes;
+    const currentSelectedIds = useFloorMapStore.getState().selectedShapeIds;
+
+    // Line-based shape types that can be batch-synced
+    const lineTypes = ['wall', 'line', 'window_line', 'door_line', 'sliding_door_line'];
+
+    // Get all selected wall/line shapes except the source (which was already updated)
+    const otherSelectedWalls = currentShapes.filter(
+      s => currentSelectedIds.includes(s.id) &&
+           s.id !== sourceShapeId &&
+           lineTypes.includes(s.type)
+    );
+
+    if (otherSelectedWalls.length === 0) return;
+
+    const newLengthPixels = newLengthMM * scaleSettings.pixelsPerMm;
+
+    // Build batch updates
+    const updates: Array<{ id: string; updates: Partial<FloorMapShape> }> = [];
+
+    for (const wall of otherSelectedWalls) {
+      const wallCoords = wall.coordinates as { x1: number; y1: number; x2: number; y2: number };
+      const dx = wallCoords.x2 - wallCoords.x1;
+      const dy = wallCoords.y2 - wallCoords.y1;
+
+      // Calculate current angle (preserve it)
+      const angle = Math.atan2(dy, dx);
+
+      // Calculate new endpoint based on same angle but new length
+      const newX2 = wallCoords.x1 + Math.cos(angle) * newLengthPixels;
+      const newY2 = wallCoords.y1 + Math.sin(angle) * newLengthPixels;
+
+      updates.push({
+        id: wall.id,
+        updates: {
+          coordinates: {
+            x1: wallCoords.x1,
+            y1: wallCoords.y1,
+            x2: newX2,
+            y2: newY2,
+          }
+        }
+      });
+    }
+
+    if (updates.length > 0) {
+      updateShapes(updates);
+      toast.success(`${updates.length + 1} objekt synkade till samma längd (Shift+drag)`);
+    }
+  }, [scaleSettings.pixelsPerMm, updateShapes]);
 
   // Transformer removed - shapes handle their own drag and selection
   // Multi-select is handled by unified drag system
@@ -3484,17 +3760,44 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             setRoomData(null);
             setSelectedRoomForDetail(null);
           }}
+          onViewElevation={() => {
+            // Find the room shape by roomId
+            const roomShape = currentShapes.find(s => s.roomId === selectedRoomForDetail);
+            if (roomShape) {
+              setRoomElevationShape(roomShape);
+            }
+          }}
+        />
+      )}
+
+      {/* Room Elevation View */}
+      {roomElevationShape && currentProjectId && (
+        <RoomElevationView
+          room={roomElevationShape}
+          projectId={currentProjectId}
+          onClose={() => setRoomElevationShape(null)}
         />
       )}
 
       {/* Property Panel */}
       {/* PropertyPanel - for all shapes EXCEPT rooms (rooms use RoomDetailDialog) */}
       {showPropertyPanel && propertyPanelShape && currentProjectId && propertyPanelShape.type !== 'room' && (
-        <>
+        (() => {
+          // Calculate wall index for display
+          const isWall = propertyPanelShape.type === 'wall' || propertyPanelShape.type === 'line';
+          const walls = isWall ? currentShapes.filter(s => s.type === 'wall' || s.type === 'line') : [];
+          const wallIndex = isWall ? walls.findIndex(w => w.id === propertyPanelShape.id) + 1 : undefined;
+          const totalWalls = isWall ? walls.length : undefined;
+
+          return (
           <PropertyPanel
             shape={propertyPanelShape}
             projectId={currentProjectId}
             pixelsPerMm={scaleSettings.pixelsPerMm}
+            selectedShapeIds={selectedShapeIds}
+            allShapes={currentShapes}
+            wallIndex={wallIndex}
+            totalWalls={totalWalls}
             onClose={() => {
               setShowPropertyPanel(false);
               setPropertyPanelShape(null);
@@ -3503,8 +3806,17 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
               updateShape(shapeId, updates);
               setPropertyPanelShape({ ...propertyPanelShape, ...updates });
             }}
+            onUpdateShapes={(updates) => {
+              updateShapes(updates);
+              // Update the property panel shape if it was included in the batch
+              const currentShapeUpdate = updates.find(u => u.id === propertyPanelShape.id);
+              if (currentShapeUpdate) {
+                setPropertyPanelShape({ ...propertyPanelShape, ...currentShapeUpdate.updates });
+              }
+            }}
           />
-        </>
+          );
+        })()
       )}
       
       {/* Konva Stage */}
@@ -3763,42 +4075,55 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             </Group>
           )}
 
-          {/* All shapes - sorted by zIndex for proper layering */}
+          {/* Template Groups - rendered as unified transformable units */}
           <Group listening={!isReadOnly}>
-          {[...currentShapes].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0)).map((shape) => {
-            const isSelected = isReadOnly ? false : selectedShapeIds.includes(shape.id);
-            const handleSelect = isReadOnly ? undefined : (evt?: KonvaEventObject<MouseEvent>) => handleShapeClick(shape.id, shape.type, evt);
-            const handleTransform = isReadOnly ? (() => {}) : (updates: Partial<FloorMapShape>) => handleShapeTransform(shape.id, updates);
-            
-            if (shape.type === 'freehand' || shape.type === 'polygon') {
-              if (shape.metadata?.isLibrarySymbol) {
-                return (<LibrarySymbolShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} />);
-              }
-              if (shape.metadata?.isObjectLibrary) {
-                return (<ObjectLibraryShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} />);
-              }
-              return (<FreehandShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} />);
-            }
-            
-            if (shape.type === 'wall') {
-              return (<WallShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} />);
-            }
-            
-            if (shape.type === 'room') {
-              const handleRoomDoubleClick = () => {
-                // Open RoomDetailDialog for rooms with roomId
+            {templateGroups.map(({ groupId, shapes: groupShapes, leader }) => {
+              const isGroupSelected = groupShapes.some(s => selectedShapeIds.includes(s.id));
+              // Check if any shape in this group is individually selected
+              const individualId = groupShapes.find(s => s.id === selectedGroupIndividualId)?.id || null;
+              return (
+                <TemplateGroupShape
+                  key={`group-${groupId}`}
+                  shapes={groupShapes}
+                  groupLeader={leader}
+                  isSelected={!isReadOnly && isGroupSelected}
+                  selectedIndividualId={individualId}
+                  onSelect={() => handleGroupSelect(groupId)}
+                  onSelectIndividual={handleGroupIndividualSelect}
+                  onOpenPropertyPanel={handleGroupOpenPropertyPanel}
+                  onTransformGroup={handleGroupTransform}
+                  pixelsPerMm={scaleSettings.pixelsPerMm}
+                  gridSnapSize={projectSettings.snapEnabled ? projectSettings.gridInterval * scaleSettings.pixelsPerMm : 0}
+                  snapEnabled={projectSettings.snapEnabled}
+                  showDimensions={projectSettings.showDimensions}
+                />
+              );
+            })}
+          </Group>
+
+          {/* Room shapes - rendered first (bottom layer), always listening for read-only click-through */}
+          <Group>
+          {(() => {
+            const sortedShapes = [...individualShapes].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
+            return sortedShapes.filter(s => s.type === 'room').map((shape) => {
+              const isSelected = isReadOnly ? false : selectedShapeIds.includes(shape.id);
+              const openRoomDetail = () => {
                 if (shape.roomId) {
                   setShowPropertyPanel(false);
                   setPropertyPanelShape(null);
                   setSelectedRoomForDetail(shape.roomId);
                   setIsRoomDetailOpen(true);
-                  toast.success('Rum markerat - Öppnar rumsdetaljer');
+                  toast.success(t('floormap.openingRoomDetails', 'Opening room details'));
                 } else {
-                  // Room not saved to database yet
-                  toast.info('Rummet måste namnges och sparas först. Dubbelklicka igen efter att det har sparats.');
+                  toast.info(t('floormap.roomMustBeSavedFirst', 'Room must be named and saved first.'));
                 }
               };
-
+              const handleSelect = isReadOnly
+                ? (() => { openRoomDetail(); })
+                : (evt?: KonvaEventObject<MouseEvent>) => handleShapeClick(shape.id, shape.type, evt);
+              const handleTransform = isReadOnly ? (() => {}) : (updates: Partial<FloorMapShape>) => handleShapeTransform(shape.id, updates);
+              const handleRoomDoubleClick = openRoomDetail;
+              const roomIsHighlighted = !!(highlightedRoomIds && shape.roomId && highlightedRoomIds.includes(shape.roomId));
               return (
                 <RoomShape
                   key={shape.id}
@@ -3812,8 +4137,44 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
                   scaleSettings={scaleSettings}
                   projectSettings={projectSettings}
                   snapSize={100 * scaleSettings.pixelsPerMm}
+                  isReadOnly={isReadOnly}
+                  isHighlighted={roomIsHighlighted}
                 />
               );
+            });
+          })()}
+          </Group>
+
+          {/* Non-room individual shapes - sorted by zIndex, disabled in read-only */}
+          <Group listening={!isReadOnly}>
+          {(() => {
+            // Pre-calculate wall indices for display
+            const sortedShapes = [...individualShapes].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
+            const nonRoomShapes = sortedShapes.filter(s => s.type !== 'room');
+            const walls = nonRoomShapes.filter(s => s.type === 'wall' || s.type === 'line');
+            const wallIndexMap = new Map<string, number>();
+            walls.forEach((wall, idx) => wallIndexMap.set(wall.id, idx + 1));
+            const totalWalls = walls.length;
+
+            return nonRoomShapes.map((shape) => {
+            const isSelected = isReadOnly ? false : selectedShapeIds.includes(shape.id);
+            const handleSelect = isReadOnly ? undefined : (evt?: KonvaEventObject<MouseEvent>) => handleShapeClick(shape.id, shape.type, evt);
+            const handleTransform = isReadOnly ? (() => {}) : (updates: Partial<FloorMapShape>) => handleShapeTransform(shape.id, updates);
+
+            if (shape.type === 'freehand' || shape.type === 'polygon') {
+              if (shape.metadata?.isLibrarySymbol) {
+                return (<LibrarySymbolShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} />);
+              }
+              if (shape.metadata?.isObjectLibrary) {
+                return (<ObjectLibraryShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} />);
+              }
+              return (<FreehandShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} />);
+            }
+
+            if (shape.type === 'wall' || shape.type === 'line') {
+              const handleBatchLength = (newLengthMM: number) => handleBatchWallLengthChange(shape.id, newLengthMM);
+              const wallIndex = wallIndexMap.get(shape.id);
+              return (<WallShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} onBatchLengthChange={handleBatchLength} wallIndex={wallIndex} totalWalls={totalWalls} />);
             }
             
             if (shape.type === 'rectangle') {
@@ -3834,15 +4195,18 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
 
             // Line-based opening shapes (window, door, sliding door)
             if (shape.type === 'window_line') {
-              return (<WindowLineShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} />);
+              const handleBatchLength = (newLengthMM: number) => handleBatchWallLengthChange(shape.id, newLengthMM);
+              return (<WindowLineShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} onBatchLengthChange={handleBatchLength} />);
             }
 
             if (shape.type === 'door_line') {
-              return (<DoorLineShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} />);
+              const handleBatchLength = (newLengthMM: number) => handleBatchWallLengthChange(shape.id, newLengthMM);
+              return (<DoorLineShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} onBatchLengthChange={handleBatchLength} />);
             }
 
             if (shape.type === 'sliding_door_line') {
-              return (<SlidingDoorLineShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} />);
+              const handleBatchLength = (newLengthMM: number) => handleBatchWallLengthChange(shape.id, newLengthMM);
+              return (<SlidingDoorLineShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} onBatchLengthChange={handleBatchLength} />);
             }
 
             // Background image shapes
@@ -3851,7 +4215,8 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             }
 
             return null;
-          })}
+          });
+          })()}
           </Group>
 
           {/* Transformer removed - shapes handle their own selection visual (blue stroke) */}
@@ -3909,6 +4274,84 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           }}
           onOpenTemplates={() => {
             window.dispatchEvent(new CustomEvent('openTemplateGallery'));
+          }}
+          // Selection-related props
+          hasSelection={selectedShapeIds.length > 0}
+          selectionCount={selectedShapeIds.length}
+          selectionType={selectedShapeIds.length > 0 ? currentShapes.find(s => s.id === selectedShapeIds[0])?.type : undefined}
+          hasRoomInSelection={selectedShapeIds.some(id => currentShapes.find(s => s.id === id)?.type === 'room')}
+          onShowProperties={() => {
+            // Find the selected shape(s) and open property panel
+            if (selectedShapeIds.length > 0) {
+              const firstSelectedShape = currentShapes.find(s => s.id === selectedShapeIds[0]);
+              if (firstSelectedShape) {
+                // For rooms with roomId, open room detail dialog
+                if (firstSelectedShape.type === 'room' && firstSelectedShape.roomId) {
+                  setShowPropertyPanel(false);
+                  setPropertyPanelShape(null);
+                  setSelectedRoomForDetail(firstSelectedShape.roomId);
+                  setIsRoomDetailOpen(true);
+                } else {
+                  // For other shapes, open property panel
+                  setSelectedShapeId(firstSelectedShape.id);
+                  setPropertyPanelShape(firstSelectedShape);
+                  setShowPropertyPanel(true);
+                }
+              }
+            }
+          }}
+          onDeleteSelection={() => {
+            if (selectedShapeIds.length > 0) {
+              deleteShapes(selectedShapeIds);
+              setSelectedShapeIds([]);
+              toast.success(`${selectedShapeIds.length > 1 ? selectedShapeIds.length + ' objekt' : 'Objekt'} borttaget`);
+            }
+          }}
+          onBringForward={() => {
+            if (selectedShapeIds.length > 0) {
+              selectedShapeIds.forEach(id => bringForward(id));
+            }
+          }}
+          onSendBackward={() => {
+            if (selectedShapeIds.length > 0) {
+              selectedShapeIds.forEach(id => sendBackward(id));
+            }
+          }}
+          onBringToFront={() => {
+            if (selectedShapeIds.length > 0) {
+              selectedShapeIds.forEach(id => bringToFront(id));
+            }
+          }}
+          onSendToBack={() => {
+            if (selectedShapeIds.length > 0) {
+              selectedShapeIds.forEach(id => sendToBack(id));
+            }
+          }}
+          onCreateWallsFromRoom={() => {
+            // Find all selected rooms
+            const selectedRooms = selectedShapeIds
+              .map(id => currentShapes.find(s => s.id === id))
+              .filter((s): s is FloorMapShape => s?.type === 'room');
+
+            if (selectedRooms.length > 0) {
+              const { wallThicknessMM, wallHeightMM } = getAdminDefaults();
+              let totalWallsCreated = 0;
+
+              selectedRooms.forEach(roomShape => {
+                const walls = generateWallsFromRoom(roomShape, uuidv4, {
+                  heightMM: wallHeightMM,
+                  thicknessMM: wallThicknessMM,
+                  planId: currentPlanId || undefined,
+                });
+                walls.forEach(wall => addShape(wall));
+                totalWallsCreated += walls.length;
+              });
+
+              if (totalWallsCreated > 0) {
+                const roomText = selectedRooms.length === 1 ? 'rummet' : `${selectedRooms.length} rum`;
+                toast.success(`${totalWallsCreated} väggar skapade runt ${roomText}`);
+              }
+            }
           }}
         />
       )}

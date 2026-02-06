@@ -47,8 +47,8 @@ export const ActivityCard = ({ activity }: ActivityCardProps) => {
   const entityTypeText = t(`activity.entityTypes.${activity.entity_type === "floor_plan" ? "floorPlan" : activity.entity_type === "team_member" ? "teamMember" : activity.entity_type}`);
 
   return (
-    <div className={`flex items-center gap-3 px-3 py-2 rounded-lg border-l-2 bg-muted/40 ${borderColors[activity.entity_type] || "border-l-gray-400"}`}>
-      <Avatar className="h-6 w-6 flex-shrink-0">
+    <div className={`flex items-start gap-3 px-3 py-2 rounded-lg border-l-2 bg-muted/40 ${borderColors[activity.entity_type] || "border-l-gray-400"}`}>
+      <Avatar className="h-6 w-6 flex-shrink-0 mt-0.5">
         <AvatarFallback className="text-[10px]">
           {actorName.charAt(0)}
         </AvatarFallback>
@@ -76,8 +76,17 @@ export const ActivityCard = ({ activity }: ActivityCardProps) => {
             </span>
           )}
         </p>
+        <div className="flex items-center gap-1.5 mt-1 md:hidden">
+          {entityIcons[activity.entity_type]}
+          <span className="text-xs text-muted-foreground">
+            {formatDistanceToNow(new Date(activity.created_at), {
+              addSuffix: true,
+              locale: getDateLocale(i18n.language),
+            })}
+          </span>
+        </div>
       </div>
-      <div className="flex items-center gap-1.5 flex-shrink-0">
+      <div className="hidden md:flex items-center gap-1.5 flex-shrink-0 mt-0.5">
         {entityIcons[activity.entity_type]}
         <span className="text-xs text-muted-foreground whitespace-nowrap">
           {formatDistanceToNow(new Date(activity.created_at), {

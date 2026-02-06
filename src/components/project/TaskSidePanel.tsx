@@ -15,11 +15,12 @@ import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
-import { Calendar, User, AlertCircle, Package, Save, Loader2, Trash2, Plus, ShoppingCart, ChevronDown, Tag, X } from "lucide-react";
+import { Calendar, User, AlertCircle, Package, Save, Loader2, Trash2, Plus, ShoppingCart, ChevronDown, Tag, X, Map } from "lucide-react";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { EntityPhotoGallery } from "@/components/shared/EntityPhotoGallery";
 import { TaskFilesList } from "./TaskFilesList";
 import { DEFAULT_COST_CENTERS } from "@/lib/costCenters";
+import { formatCurrency } from "@/lib/currency";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
@@ -47,6 +48,8 @@ interface TaskSidePanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTaskUpdated?: () => void;
+  onNavigateToRoom?: (roomId: string) => void;
+  currency?: string | null;
 }
 
 interface TaskDetail {
@@ -58,7 +61,7 @@ interface TaskDetail {
   start_date: string | null;
   finish_date: string | null;
   progress: number;
-  assigned_to_contractor_id: string | null;
+  assigned_to_stakeholder_id: string | null;
   budget: number | null;
   ordered_amount: number | null;
   paid_amount: number | null;
@@ -104,7 +107,7 @@ const statusKey = (s: string) => {
   return map[s] || s;
 };
 
-const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }: TaskSidePanelProps) => {
+const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated, onNavigateToRoom, currency }: TaskSidePanelProps) => {
   const { t } = useTranslation();
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -222,11 +225,11 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
 
       // Fetch assigned user profile if exists
       let profileData = null;
-      if (taskData.assigned_to_contractor_id) {
+      if (taskData.assigned_to_stakeholder_id) {
         const { data: profile } = await supabase
           .from("profiles")
           .select("name")
-          .eq("id", taskData.assigned_to_contractor_id)
+          .eq("id", taskData.assigned_to_stakeholder_id)
           .single();
 
         profileData = profile;
@@ -252,7 +255,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
       setOrderedAmount(formattedTask.ordered_amount?.toString() || "");
       setPaidAmount(formattedTask.paid_amount?.toString() || "");
       setPaymentStatus(formattedTask.payment_status || "not_paid");
-      setAssignedTo(formattedTask.assigned_to_contractor_id || "");
+      setAssignedTo(formattedTask.assigned_to_stakeholder_id || "");
       setRoomId(formattedTask.room_id || "");
       setCostCenters(formattedTask.cost_centers || (formattedTask.cost_center ? [formattedTask.cost_center] : []));
       setChecklists(formattedTask.checklists || []);
@@ -331,7 +334,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
         ordered_amount: orderedAmount ? parseFloat(orderedAmount) : null,
         paid_amount: paidAmount ? parseFloat(paidAmount) : null,
         payment_status: paymentStatus || null,
-        assigned_to_contractor_id: assignedTo || null,
+        assigned_to_stakeholder_id: assignedTo || null,
         room_id: roomId || null,
         cost_centers: costCenters.length > 0 ? costCenters : null,
         cost_center: costCenters[0] || null,
@@ -616,19 +619,32 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
             {/* Room */}
             <div className="space-y-2">
               <Label>{t('purchases.room')}</Label>
-              <Select value={roomId || "none"} onValueChange={(v) => setRoomId(v === "none" ? "" : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('purchases.selectRoom')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t('purchases.noRoom')}</SelectItem>
-                  {rooms.map((room) => (
-                    <SelectItem key={room.id} value={room.id}>
-                      {room.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={roomId || "none"} onValueChange={(v) => setRoomId(v === "none" ? "" : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('purchases.selectRoom')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('purchases.noRoom')}</SelectItem>
+                    {rooms.map((room) => (
+                      <SelectItem key={room.id} value={room.id}>
+                        {room.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {roomId && onNavigateToRoom && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => onNavigateToRoom(roomId)}
+                    title={t('tasks.viewOnFloorPlan')}
+                  >
+                    <Map className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Financial Fields */}
@@ -891,8 +907,8 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated }:
                         <div className="font-medium text-sm">{material.name}</div>
                         <div className="text-xs text-muted-foreground">
                           {material.quantity} {material.unit}
-                          {material.price_per_unit != null && ` • ${material.price_per_unit.toFixed(2)}/${t('common.unit').toLowerCase()}`}
-                          {material.price_total != null && ` • ${t('purchases.priceTotal')}: ${material.price_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                          {material.price_per_unit != null && ` • ${formatCurrency(material.price_per_unit, currency, { decimals: 2 })}/${t('common.unit').toLowerCase()}`}
+                          {material.price_total != null && ` • ${t('purchases.priceTotal')}: ${formatCurrency(material.price_total, currency, { decimals: 2 })}`}
                         </div>
                       </div>
                       <Badge variant="outline" className="text-xs">

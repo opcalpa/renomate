@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
-import { Home, Loader2, Save, X, Trash2, Plus } from "lucide-react";
+import { Home, Loader2, Save, X, Trash2, Plus, Eye } from "lucide-react";
 import { RoomDetailForm } from "./RoomDetailForm";
 import { useRoomForm } from "./hooks/useRoomForm";
 import { useTranslation } from "react-i18next";
@@ -20,6 +20,7 @@ export function RoomDetailDialog({
   onOpenChange,
   onRoomUpdated,
   isCreateMode = false,
+  onViewElevation,
 }: RoomDetailDialogProps) {
   const { t } = useTranslation();
   const {
@@ -115,6 +116,19 @@ export function RoomDetailDialog({
               </>
             )}
           </Button>
+          {!isNewRoom && onViewElevation && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                onOpenChange(false);
+                onViewElevation();
+              }}
+              disabled={saving}
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              {t('roomElevation.viewElevation', 'View Elevation')}
+            </Button>
+          )}
           {!isNewRoom && (
             <Button variant="destructive" onClick={handleDelete} disabled={saving}>
               <Trash2 className="mr-2 h-4 w-4" />

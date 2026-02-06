@@ -77,7 +77,7 @@ export function VerticalSection({
                 }
               />
               <Label htmlFor="has-accent-wall" className="cursor-pointer">
-                {t('rooms.accentWall')}
+                {t('rooms.featureWall')}
               </Label>
             </div>
 

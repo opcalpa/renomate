@@ -162,3 +162,188 @@ const OPENING_TYPES = new Set(['door_line', 'window_line', 'sliding_door_line'])
 export function isOpeningType(type: string): boolean {
   return OPENING_TYPES.has(type);
 }
+
+/**
+ * Check if two walls are collinear (same direction within tolerance)
+ */
+function areCollinear(wall1: LineCoords, wall2: LineCoords, angleTolerance = 0.01): boolean {
+  const dx1 = wall1.x2 - wall1.x1;
+  const dy1 = wall1.y2 - wall1.y1;
+  const dx2 = wall2.x2 - wall2.x1;
+  const dy2 = wall2.y2 - wall2.y1;
+
+  const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+  const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+
+  if (len1 < 1 || len2 < 1) return false;
+
+  // Normalize directions
+  const ux1 = dx1 / len1;
+  const uy1 = dy1 / len1;
+  const ux2 = dx2 / len2;
+  const uy2 = dy2 / len2;
+
+  // Check if directions are parallel (dot product close to 1 or -1)
+  const dot = ux1 * ux2 + uy1 * uy2;
+  return Math.abs(Math.abs(dot) - 1) < angleTolerance;
+}
+
+/**
+ * Check if a point lies on a line segment (extended by tolerance)
+ */
+function pointOnLineExtended(
+  px: number,
+  py: number,
+  lineCoords: LineCoords,
+  tolerance: number
+): boolean {
+  const { distance } = pointToSegment(px, py, lineCoords.x1, lineCoords.y1, lineCoords.x2, lineCoords.y2);
+  return distance <= tolerance;
+}
+
+/**
+ * Distance between two points
+ */
+function pointDistance(x1: number, y1: number, x2: number, y2: number): number {
+  return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+}
+
+/**
+ * Find two wall segments that can be merged around an opening position.
+ * Returns the two wall IDs and the merged coordinates, or null if no merge possible.
+ */
+export function findMergeableWalls(
+  openingCoords: LineCoords,
+  walls: FloorMapShape[],
+  tolerance = 20
+): { wall1Id: string; wall2Id: string; mergedCoords: LineCoords } | null {
+  // Look for two walls that:
+  // 1. Are collinear
+  // 2. Have endpoints close to the opening's endpoints
+  // 3. Together would form a continuous wall spanning the opening
+
+  const wallShapes = walls.filter(w => w.type === 'wall');
+
+  for (let i = 0; i < wallShapes.length; i++) {
+    for (let j = i + 1; j < wallShapes.length; j++) {
+      const wall1 = wallShapes[i];
+      const wall2 = wallShapes[j];
+      const coords1 = getLineCoords(wall1);
+      const coords2 = getLineCoords(wall2);
+
+      if (!areCollinear(coords1, coords2)) continue;
+
+      // Check if walls connect near the opening endpoints
+      // Possible configurations:
+      // wall1.end -> opening.start ... opening.end -> wall2.start
+      // wall1.start -> opening.start ... opening.end -> wall2.end
+      // etc.
+
+      const openingStart = { x: openingCoords.x1, y: openingCoords.y1 };
+      const openingEnd = { x: openingCoords.x2, y: openingCoords.y2 };
+
+      // Check if wall1.end is near opening.start AND wall2.start is near opening.end
+      if (
+        pointDistance(coords1.x2, coords1.y2, openingStart.x, openingStart.y) <= tolerance &&
+        pointDistance(coords2.x1, coords2.y1, openingEnd.x, openingEnd.y) <= tolerance
+      ) {
+        return {
+          wall1Id: wall1.id,
+          wall2Id: wall2.id,
+          mergedCoords: { x1: coords1.x1, y1: coords1.y1, x2: coords2.x2, y2: coords2.y2 }
+        };
+      }
+
+      // Check if wall1.end is near opening.end AND wall2.start is near opening.start
+      if (
+        pointDistance(coords1.x2, coords1.y2, openingEnd.x, openingEnd.y) <= tolerance &&
+        pointDistance(coords2.x1, coords2.y1, openingStart.x, openingStart.y) <= tolerance
+      ) {
+        return {
+          wall1Id: wall1.id,
+          wall2Id: wall2.id,
+          mergedCoords: { x1: coords2.x1, y1: coords2.y1, x2: coords1.x1, y2: coords1.y1 }
+        };
+      }
+
+      // Check if wall2.end is near opening.start AND wall1.start is near opening.end
+      if (
+        pointDistance(coords2.x2, coords2.y2, openingStart.x, openingStart.y) <= tolerance &&
+        pointDistance(coords1.x1, coords1.y1, openingEnd.x, openingEnd.y) <= tolerance
+      ) {
+        return {
+          wall1Id: wall1.id,
+          wall2Id: wall2.id,
+          mergedCoords: { x1: coords2.x1, y1: coords2.y1, x2: coords1.x2, y2: coords1.y2 }
+        };
+      }
+
+      // Check if wall2.end is near opening.end AND wall1.start is near opening.start
+      if (
+        pointDistance(coords2.x2, coords2.y2, openingEnd.x, openingEnd.y) <= tolerance &&
+        pointDistance(coords1.x1, coords1.y1, openingStart.x, openingStart.y) <= tolerance
+      ) {
+        return {
+          wall1Id: wall1.id,
+          wall2Id: wall2.id,
+          mergedCoords: { x1: coords1.x1, y1: coords1.y1, x2: coords2.x2, y2: coords2.y2 }
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Find a gap between two collinear walls where a door could fit.
+ * Returns snap info if found: the virtual wall spanning both walls, and the gap position.
+ */
+export function findWallGap(
+  openingCoords: LineCoords,
+  walls: FloorMapShape[],
+  tolerance = 50
+): { wall1: FloorMapShape; wall2: FloorMapShape; gapCoords: LineCoords } | null {
+  const wallShapes = walls.filter(w => w.type === 'wall');
+  const openingLen = length(openingCoords);
+  const openingMid = midpoint(openingCoords);
+
+  for (let i = 0; i < wallShapes.length; i++) {
+    for (let j = i + 1; j < wallShapes.length; j++) {
+      const wall1 = wallShapes[i];
+      const wall2 = wallShapes[j];
+      const coords1 = getLineCoords(wall1);
+      const coords2 = getLineCoords(wall2);
+
+      if (!areCollinear(coords1, coords2)) continue;
+
+      // Check for gap between walls
+      // Possible configurations: wall1.end --- gap --- wall2.start (or reversed)
+      const gaps = [
+        { start: { x: coords1.x2, y: coords1.y2 }, end: { x: coords2.x1, y: coords2.y1 } },
+        { start: { x: coords2.x2, y: coords2.y2 }, end: { x: coords1.x1, y: coords1.y1 } },
+      ];
+
+      for (const gap of gaps) {
+        const gapLen = pointDistance(gap.start.x, gap.start.y, gap.end.x, gap.end.y);
+
+        // Gap should be similar to opening length (within tolerance)
+        if (Math.abs(gapLen - openingLen) > tolerance) continue;
+
+        // Check if opening midpoint is near the gap midpoint
+        const gapMid = { x: (gap.start.x + gap.end.x) / 2, y: (gap.start.y + gap.end.y) / 2 };
+        const midDist = pointDistance(openingMid.x, openingMid.y, gapMid.x, gapMid.y);
+
+        if (midDist <= tolerance) {
+          return {
+            wall1,
+            wall2,
+            gapCoords: { x1: gap.start.x, y1: gap.start.y, x2: gap.end.x, y2: gap.end.y }
+          };
+        }
+      }
+    }
+  }
+
+  return null;
+}

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Layers, Trash2, MoreVertical, Home, User, Settings, LogOut, Globe, LayoutDashboard, CheckSquare, ShoppingCart, Users, Map, PanelTop, Box } from "lucide-react";
+import { ArrowLeft, Plus, Layers, Trash2, Pencil, MoreVertical, Home, User, Settings, LogOut, Globe, LayoutDashboard, CheckSquare, ShoppingCart, Users, Map, PanelTop, Box, Eye } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useFloorMapStore } from "./store";
@@ -40,16 +40,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { createPlanInDB, deletePlanFromDB } from "./utils/plans";
+import { createPlanInDB, deletePlanFromDB, updatePlanInDB } from "./utils/plans";
 
 interface SpacePlannerTopBarProps {
   projectId: string;
   projectName?: string;
   onBack?: () => void;
+  backLabel?: string;
   isReadOnly?: boolean;
 }
 
-export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly }: SpacePlannerTopBarProps) => {
+export const SpacePlannerTopBar = ({ projectId, projectName, onBack, backLabel, isReadOnly }: SpacePlannerTopBarProps) => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -64,13 +65,14 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
     i18n.changeLanguage(lang);
     setCurrentLanguage(lang);
   };
-  const { 
-    viewMode, 
-    setViewMode, 
-    plans, 
-    currentPlanId, 
-    setCurrentPlanId, 
+  const {
+    viewMode,
+    setViewMode,
+    plans,
+    currentPlanId,
+    setCurrentPlanId,
     addPlan,
+    updatePlan,
     deletePlan,
     shapes
   } = useFloorMapStore();
@@ -78,6 +80,8 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
   const [newPlanName, setNewPlanName] = useState("");
   const [newPlanDescription, setNewPlanDescription] = useState("");
   const [planToDelete, setPlanToDelete] = useState<string | null>(null);
+  const [planToRename, setPlanToRename] = useState<string | null>(null);
+  const [renamePlanName, setRenamePlanName] = useState("");
 
   // No auto-hide - always visible for better UX
   // This matches industry standard design tools (Figma, Canva, etc.)
@@ -167,6 +171,38 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
     }
   };
 
+  const handleRenamePlan = async () => {
+    if (!planToRename || !renamePlanName.trim()) return;
+
+    const trimmedName = renamePlanName.trim();
+    const plan = plans.find(p => p.id === planToRename);
+    if (!plan || plan.name === trimmedName) {
+      setPlanToRename(null);
+      return;
+    }
+
+    try {
+      const success = await updatePlanInDB(planToRename, { name: trimmedName });
+      if (!success) throw new Error(t('floormap.couldNotRenamePlan', 'Could not rename plan'));
+
+      updatePlan(planToRename, { name: trimmedName });
+      setPlanToRename(null);
+      setRenamePlanName("");
+
+      toast({
+        title: t('floormap.planRenamed', 'Plan renamed'),
+        description: t('floormap.planRenamedDescription', { name: trimmedName, defaultValue: `Plan renamed to "${trimmedName}"` }),
+      });
+    } catch (error: unknown) {
+      console.error('Error renaming plan:', error);
+      toast({
+        title: t('floormap.errorRenaming', 'Error renaming plan'),
+        description: error instanceof Error ? error.message : t('floormap.couldNotRenamePlan', 'Could not rename plan'),
+        variant: "destructive",
+      });
+    }
+  };
+
   const currentPlan = plans.find(p => p.id === currentPlanId);
   const currentPlanShapes = shapes.filter(s => s.planId === currentPlanId);
 
@@ -243,7 +279,7 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
           className="gap-2 shrink-0"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span className="hidden sm:inline">{t("Back")}</span>
+          <span className="hidden sm:inline">{backLabel ? t(backLabel) : t("Back")}</span>
         </Button>
       ) : (
         <Link
@@ -251,7 +287,7 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
           className="inline-flex items-center justify-center gap-2 shrink-0 h-9 px-3 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span className="hidden sm:inline">{t("Back")}</span>
+          <span className="hidden sm:inline">{backLabel ? t(backLabel) : t("Back")}</span>
         </Link>
       )}
       
@@ -264,6 +300,12 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
         >
           {projectName || t("Project")}
         </span>
+        {isReadOnly && (
+          <Badge variant="secondary" className="text-xs shrink-0">
+            <Eye className="h-3 w-3 mr-1" />
+            {t('common.viewOnly', 'View only')}
+          </Badge>
+        )}
       </div>
 
       {/* Plan Selector */}
@@ -318,17 +360,31 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
                       )}
                     </div>
                     {!isReadOnly && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity ml-2 flex-shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPlanToDelete(plan.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-2 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPlanToRename(plan.id);
+                            setRenamePlanName(plan.name);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPlanToDelete(plan.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     )}
                   </DropdownMenuItem>
                 );
@@ -434,6 +490,40 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, isReadOnly 
             <Button onClick={handleCreateNewPlan}>
               <Plus className="h-4 w-4 mr-2" />
               {t('floormap.createNewPlan', 'Create new plan')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Plan Dialog */}
+      <Dialog open={!!planToRename} onOpenChange={(open) => { if (!open) { setPlanToRename(null); setRenamePlanName(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('floormap.renamePlan', 'Rename plan')}</DialogTitle>
+            <DialogDescription>
+              {t('floormap.renamePlanDescription', 'Enter a new name for the plan')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="rename-plan">{t('floormap.planName', 'Plan name')} *</Label>
+              <Input
+                id="rename-plan"
+                value={renamePlanName}
+                onChange={(e) => setRenamePlanName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRenamePlan();
+                }}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPlanToRename(null); setRenamePlanName(""); }}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleRenamePlan} disabled={!renamePlanName.trim()}>
+              {t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

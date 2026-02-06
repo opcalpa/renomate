@@ -191,7 +191,8 @@ export function normalizeShapes(shapes: FloorMapShape[]): FloorMapShape[] {
 
 /**
  * Place template shapes at a specific position (convert relative to absolute)
- * This function recalculates bounds from the actual shapes to ensure correct placement
+ * This function recalculates bounds from the actual shapes to ensure correct placement.
+ * All shapes from the same template placement share a groupId for unified manipulation.
  */
 export function placeTemplateShapes(
   template: Template | null,
@@ -202,7 +203,7 @@ export function placeTemplateShapes(
     console.error('Invalid template or template.shapes is undefined');
     return [];
   }
-  
+
   // Calculate actual bounds from the template shapes (in case normalization wasn't perfect)
   const actualBounds = calculateBounds(template.shapes);
 
@@ -210,14 +211,37 @@ export function placeTemplateShapes(
   // We want the top-left corner of the bounding box to be at the click position
   const offsetX = position.x - actualBounds.minX;
   const offsetY = position.y - actualBounds.minY;
-  
-  return template.shapes.map(shape => {
-    const placed = JSON.parse(JSON.stringify(shape)); // Deep clone
+
+  // Generate a shared groupId for all shapes from this template placement
+  const groupId = crypto.randomUUID();
+
+  // Template info to attach to the group leader
+  const templateInfo = {
+    templateId: template.id,
+    templateName: template.name,
+    category: template.category,
+    boundsWidth: actualBounds.width,
+    boundsHeight: actualBounds.height,
+    boundsDepth: 2400, // Default height in mm (can be edited later)
+    originalWidth: actualBounds.width,
+    originalHeight: actualBounds.height,
+    originalDepth: 2400,
+  };
+
+  return template.shapes.map((shape, index) => {
+    const placed = JSON.parse(JSON.stringify(shape)) as FloorMapShape; // Deep clone
     placed.id = crypto.randomUUID(); // New unique ID
     placed.planId = planId; // Assign to current plan
-    
+    placed.groupId = groupId; // Link all shapes from same template
+
+    // First shape is the group leader (holds templateInfo and represents the group)
+    if (index === 0) {
+      placed.isGroupLeader = true;
+      placed.templateInfo = templateInfo;
+    }
+
     const coords = placed.coordinates as any;
-    
+
     // WALLS: {x1, y1, x2, y2}
     if (shape.type === 'wall' && coords.x1 !== undefined) {
       coords.x1 += offsetX;

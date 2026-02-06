@@ -7,14 +7,16 @@ import { useProjectPermissions } from "@/hooks/useProjectPermissions";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ChevronDown, FolderOpen, Lock } from "lucide-react";
+import { ArrowLeft, ChevronDown, FolderOpen, Lock, BookOpen, Loader2 } from "lucide-react";
+import { isDemoProject, refreshDemoProjectDates } from "@/services/demoProjectService";
+import { ProjectDetailSkeleton } from "@/components/ui/skeleton-screens";
+import { WithHotspot } from "@/components/onboarding/Hotspot";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslation } from "react-i18next";
 import SpacePlannerTab from "@/components/project/SpacePlannerTab";
 import TasksTab from "@/components/project/TasksTab";
 import OverviewTab from "@/components/project/OverviewTab";
-import ProjectTimeline from "@/components/project/ProjectTimeline";
 import TeamManagement from "@/components/project/TeamManagement";
 import PurchaseRequestsTab from "@/components/project/PurchaseRequestsTab";
 import BudgetTab from "@/components/project/BudgetTab";
@@ -47,15 +49,20 @@ interface Project {
   spent_amount: number | null;
   start_date: string | null;
   finish_goal_date: string | null;
+  project_type?: string | null;
+  currency?: string | null;
 }
 
-const NoAccessPlaceholder = () => (
-  <div className="container mx-auto px-4 py-16 flex flex-col items-center justify-center text-center">
-    <Lock className="h-12 w-12 text-muted-foreground mb-4" />
-    <h2 className="text-xl font-semibold mb-2">Ingen behörighet</h2>
-    <p className="text-muted-foreground">Du har inte tillgång till den här sektionen.</p>
-  </div>
-);
+const NoAccessPlaceholder = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="container mx-auto px-4 py-16 flex flex-col items-center justify-center text-center">
+      <Lock className="h-12 w-12 text-muted-foreground mb-4" />
+      <h2 className="text-xl font-semibold mb-2">{t('access.noAccess')}</h2>
+      <p className="text-muted-foreground">{t('access.noAccessDescription')}</p>
+    </div>
+  );
+};
 
 const ProjectDetail = () => {
   const { projectId } = useParams();
@@ -66,18 +73,15 @@ const ProjectDetail = () => {
   // Menu configurations for hover dropdowns
   const menuConfigs = {
     overview: [
-      { label: "Overview", value: "overview", description: "Project summary and status" },
-      { label: "Feed", value: "feed", description: "Comments and activity feed" },
+      { label: t('projectDetail.overview'), value: "overview", description: t('projectDetail.overviewDesc', 'Project summary and status') },
+      { label: t('nav.mobileNav.feed'), value: "feed", description: t('projectDetail.feedDesc', 'Comments and activity feed') },
     ],
     spaceplanner: [
-      { label: "Floor Plan", value: "floorplan", description: "Design and plan your floor layout" },
-      { label: "Rooms", value: "rooms", description: "Manage and configure rooms" },
+      { label: t('projectDetail.floorPlan', 'Floor Plan'), value: "floorplan", description: t('projectDetail.floorPlanDesc', 'Design and plan your floor layout') },
+      { label: t('projectDetail.rooms', 'Rooms'), value: "rooms", description: t('projectDetail.roomsDesc', 'Manage and configure rooms') },
     ],
     files: [],
-    tasks: [
-      { label: "Task List", value: "tasklist", description: "View and manage all tasks" },
-      { label: "Timeline", value: "timeline", description: "Project timeline and scheduling" },
-    ],
+    tasks: [],
     purchases: [],
     budget: [],
     team: [],
@@ -138,8 +142,28 @@ const ProjectDetail = () => {
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
   const [showRoomDialog, setShowRoomDialog] = useState(false);
   const [showCreateRoomDialog, setShowCreateRoomDialog] = useState(false);
+  // Track previous tab for "Back" navigation from floor planner
+  const getTabLabelKey = (tab: string): string => {
+    const map: Record<string, string> = {
+      overview: 'nav.mobileNav.overview',
+      tasks: 'nav.mobileNav.tasks',
+      purchases: 'nav.mobileNav.purchases',
+      files: 'nav.mobileNav.files',
+      budget: 'nav.mobileNav.budget',
+      team: 'nav.mobileNav.team',
+      feed: 'nav.mobileNav.feed',
+      spaceplanner: 'nav.mobileNav.plans',
+    };
+    return map[tab] || 'common.back';
+  };
+  const [previousTab, setPreviousTab] = useState<{ tab: string; subTab: string | null; label: string }>({
+    tab: 'overview',
+    subTab: null,
+    label: 'nav.mobileNav.overview',
+  });
   const [roomsData, setRoomsData] = useState<any[]>([]);
   const [roomsLoading, setRoomsLoading] = useState(true);
+  const [contractorRoomIds, setContractorRoomIds] = useState<string[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -181,6 +205,12 @@ const ProjectDetail = () => {
       if (projectError) throw projectError;
       setProject(projectData);
 
+      // If this is a demo project, refresh task dates to be relative to today
+      // This ensures the timeline always shows relevant example data
+      if (isDemoProject(projectData?.project_type) && profileData?.id) {
+        refreshDemoProjectDates(profileData.id);
+      }
+
       // Fetch all projects for the dropdown
       const { data: allProjects } = await supabase
         .from("projects")
@@ -191,7 +221,7 @@ const ProjectDetail = () => {
       setProjects(allProjects || []);
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -264,13 +294,33 @@ const ProjectDetail = () => {
     }
   }, [projectId]);
 
+  // Fetch room IDs for tasks assigned to the current user (for highlighting on floor plan)
+  useEffect(() => {
+    const fetchContractorRoomIds = async () => {
+      if (!profile?.id || !projectId || permissions.isOwner) return;
+
+      const { data } = await supabase
+        .from("tasks")
+        .select("room_id")
+        .eq("project_id", projectId)
+        .eq("assigned_to_stakeholder_id" as never, profile.id)
+        .not("room_id", "is", null);
+
+      if (data) {
+        const uniqueRoomIds = [...new Set(data.map(t => t.room_id).filter(Boolean))] as string[];
+        setContractorRoomIds(uniqueRoomIds);
+      }
+    };
+    fetchContractorRoomIds();
+  }, [profile?.id, projectId, permissions.isOwner]);
+
   const handleDeleteRoom = async (roomId: string) => {
     // Hitta rummet för att visa namnet i bekräftelsen
     const room = roomsData.find(r => r.id === roomId);
 
     if (!room) return;
 
-    if (!confirm(`Är du säker på att du vill ta bort rummet "${room.name}"? Denna åtgärd kan inte ångras.`)) {
+    if (!confirm(t('projectDetail.confirmDeleteRoom', { name: room.name }))) {
       return;
     }
 
@@ -283,8 +333,8 @@ const ProjectDetail = () => {
       if (error) throw error;
 
       toast({
-        title: "Rum borttaget",
-        description: `"${room.name}" har tagits bort`,
+        title: t('projectDetail.roomDeleted'),
+        description: t('projectDetail.roomDeletedDescription', { name: room.name }),
       });
 
       // Uppdatera rooms state direkt istället för att hämta från databasen
@@ -294,8 +344,8 @@ const ProjectDetail = () => {
     } catch (error: any) {
       console.error("Error deleting room:", error);
       toast({
-        title: "Error",
-        description: error.message || "Kunde inte ta bort rum",
+        title: t('common.error'),
+        description: error.message || t('projectDetail.failedToDeleteRoom'),
         variant: "destructive",
       });
     }
@@ -316,6 +366,15 @@ const ProjectDetail = () => {
   const handleMenuSelect = (menuId: string, itemValue: string) => {
     if (menuId !== "overview" && isTabBlocked(menuId)) return;
     if (isSubTabBlocked(menuId, itemValue)) return;
+
+    // Save current tab before navigating to floor planner (for Back button)
+    if (menuId === 'spaceplanner' && (itemValue === 'floorplan' || !itemValue)) {
+      // Only save if we're not already in spaceplanner
+      if (activeTab !== 'spaceplanner') {
+        setPreviousTab({ tab: activeTab, subTab: activeSubTab, label: getTabLabelKey(activeTab) });
+      }
+    }
+
     setActiveTab(menuId);
 
     // Handle sub-tabs for menus with sub-items
@@ -332,11 +391,7 @@ const ProjectDetail = () => {
         setActiveSubTab('floorplan');
       }
     } else if (menuId === 'tasks') {
-      if (menuConfigs.tasks.find(item => item.value === itemValue)) {
-        setActiveSubTab(itemValue);
-      } else {
-        setActiveSubTab('tasklist');
-      }
+      setActiveSubTab(null);
     } else {
       setActiveSubTab(null);
     }
@@ -368,13 +423,16 @@ const ProjectDetail = () => {
     // Add the shape to the store
     addShape(imageShape);
 
+    // Save current tab before navigating to floor planner
+    setPreviousTab({ tab: activeTab, subTab: activeSubTab, label: getTabLabelKey(activeTab) });
+
     // Navigate to Floor Plan tab
     setActiveTab('spaceplanner');
     setActiveSubTab('floorplan');
 
     toast({
-      title: "Bild tillagd",
-      description: `"${fileName}" har lagts till som bakgrundsbild på canvas`,
+      title: t('projectDetail.imageAdded'),
+      description: t('projectDetail.imageAddedDescription', { name: fileName }),
     });
   };
 
@@ -407,19 +465,82 @@ const ProjectDetail = () => {
         }
         break;
       case "drawing_object":
+        // Save current tab before navigating to floor planner
+        setPreviousTab({ tab: activeTab, subTab: activeSubTab, label: getTabLabelKey(activeTab) });
         setActiveTab("spaceplanner");
         setActiveSubTab("floorplan");
         break;
     }
   };
 
+  // Handle navigating to a room that's placed on the floor plan
+  const handleNavigateToRoom = (room: Room) => {
+    // Save current tab before navigating to floor planner
+    setPreviousTab({ tab: activeTab, subTab: activeSubTab, label: getTabLabelKey(activeTab) });
+
+    // Navigate to floor plan first
+    setActiveTab('spaceplanner');
+    setActiveSubTab('floorplan');
+
+    // Center on the room after delays to ensure canvas is fully rendered
+    // First attempt after 300ms (for fast renders)
+    setTimeout(() => {
+      const { centerOnRoom, shapes } = useFloorMapStore.getState();
+      const roomShape = shapes.find(s => s.roomId === room.id && s.type === 'room');
+      if (roomShape) {
+        centerOnRoom(room.id);
+      }
+    }, 300);
+
+    // Second attempt after 600ms (fallback for slower renders)
+    setTimeout(() => {
+      const { centerOnRoom, shapes, selectedShapeIds } = useFloorMapStore.getState();
+      const roomShape = shapes.find(s => s.roomId === room.id && s.type === 'room');
+      // Only center if room exists and isn't already selected
+      if (roomShape && !selectedShapeIds.includes(roomShape.id)) {
+        centerOnRoom(room.id);
+      }
+    }, 600);
+
+    toast({
+      title: t('projectDetail.navigatingToRoom'),
+      description: t('projectDetail.showingRoomOnDrawing', { name: room.name }),
+    });
+  };
+
+  const handleNavigateToRoomById = (roomId: string) => {
+    const room = roomsData.find((r: { id: string }) => r.id === roomId);
+    if (room) {
+      handleNavigateToRoom(room);
+    }
+  };
+
+  // Handle placing an unplaced room on the floor plan
+  const handlePlaceRoom = (room: Room) => {
+    const { setPendingRoomPlacement } = useFloorMapStore.getState();
+
+    // Set the pending room placement
+    setPendingRoomPlacement({
+      roomId: room.id,
+      roomName: room.name,
+    });
+
+    // Save current tab before navigating to floor planner
+    setPreviousTab({ tab: activeTab, subTab: activeSubTab, label: getTabLabelKey(activeTab) });
+
+    // Navigate to floor plan
+    setActiveTab('spaceplanner');
+    setActiveSubTab('floorplan');
+
+    toast({
+      title: t('projectDetail.placeRoom'),
+      description: t('projectDetail.clickToPlaceRoom', { name: room.name }),
+    });
+  };
+
   // Show loading while auth or data is loading
   if (authLoading || loading || permissions.loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <ProjectDetailSkeleton />;
   }
 
   if (!project) {
@@ -431,10 +552,26 @@ const ProjectDetail = () => {
     navigate("/auth");
   };
 
+  const isDemo = project ? isDemoProject(project.project_type) : false;
+
+  const demoBannerContent = isDemo ? (
+    <>
+      <BookOpen className="h-4 w-4" />
+      <span className="font-medium">Demo</span>
+      <span className="text-primary-foreground/80">– {t("demoProject.description")}</span>
+      {!permissions.isSystemAdmin && (
+        <span className="ml-2 px-2 py-0.5 bg-primary-foreground/20 rounded text-xs font-medium">
+          {t("common.viewOnly", "Endast visning")}
+        </span>
+      )}
+    </>
+  ) : null;
+
   return (
-    <div className={cn("min-h-screen bg-background flex flex-col overflow-y-auto md:pb-0", isHeaderVisible ? "pb-20" : "pb-0")}>
+    <div className={cn("min-h-screen bg-background flex flex-col md:pb-0", isHeaderVisible ? "pb-20" : "pb-0")}>
       {/* Unified Header - Hidden in Floor Plan edit mode */}
       {isHeaderVisible && (
+        <div className="sticky top-0 z-50">
         <AppHeader
           userName={profile?.name}
           userEmail={profile?.email || user?.email}
@@ -455,11 +592,11 @@ const ProjectDetail = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-64 bg-popover z-[100]">
-                <DropdownMenuLabel>Projects</DropdownMenuLabel>
+                <DropdownMenuLabel>{t('nav.projects')}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/projects")} className="cursor-pointer">
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  All Projects
+                  {t('projectDetail.allProjects')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {projects.map((proj) => (
@@ -489,21 +626,28 @@ const ProjectDetail = () => {
                 activeValue={activeTab === "overview" ? activeSubTab || "overview" : undefined}
               />
 
-              <HoverTabMenu
-                trigger={
-                  <div className={cn(
-                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
-                    activeTab === "spaceplanner" ? "border border-primary text-primary" : "border border-transparent",
-                    isTabBlocked("spaceplanner") && "opacity-40 pointer-events-none cursor-default"
-                  )}>
-                    Space Planner
-                  </div>
-                }
-                items={menuConfigs.spaceplanner}
-                onSelect={(value) => handleMenuSelect('spaceplanner', value)}
-                onMainClick={() => handleMenuSelect('spaceplanner', 'floorplan')}
-                activeValue={activeTab === "spaceplanner" ? activeSubTab || "floorplan" : undefined}
-              />
+              <WithHotspot
+                hotspotId="canvas-tab"
+                hotspotContent="hotspots.canvas"
+                hotspotPosition="top-right"
+                showOnce={true}
+              >
+                <HoverTabMenu
+                  trigger={
+                    <div className={cn(
+                      "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
+                      activeTab === "spaceplanner" ? "border border-primary text-primary" : "border border-transparent",
+                      isTabBlocked("spaceplanner") && "opacity-40 pointer-events-none cursor-default"
+                    )}>
+                      {t('projectDetail.spacePlanner')}
+                    </div>
+                  }
+                  items={menuConfigs.spaceplanner}
+                  onSelect={(value) => handleMenuSelect('spaceplanner', value)}
+                  onMainClick={() => handleMenuSelect('spaceplanner', 'floorplan')}
+                  activeValue={activeTab === "spaceplanner" ? activeSubTab || "floorplan" : undefined}
+                />
+              </WithHotspot>
 
               <HoverTabMenu
                 trigger={
@@ -513,7 +657,7 @@ const ProjectDetail = () => {
                     isTabBlocked("files") && "opacity-40 pointer-events-none cursor-default"
                   )}>
                     <FolderOpen className="h-4 w-4" />
-                    Filer
+                    {t('projectDetail.files')}
                   </div>
                 }
                 items={menuConfigs.files}
@@ -532,13 +676,10 @@ const ProjectDetail = () => {
                     {t("projectDetail.tasks")}
                   </div>
                 }
-                items={menuConfigs.tasks.filter(item => !isSubTabBlocked('tasks', item.value))}
+                items={menuConfigs.tasks}
                 onSelect={(value) => handleMenuSelect('tasks', value)}
-                onMainClick={() => {
-                  if (!isSubTabBlocked('tasks', 'tasklist')) handleMenuSelect('tasks', 'tasklist');
-                  else if (!isSubTabBlocked('tasks', 'timeline')) handleMenuSelect('tasks', 'timeline');
-                }}
-                activeValue={activeTab === "tasks" ? activeSubTab || "tasklist" : undefined}
+                onMainClick={() => handleMenuSelect('tasks', 'tasks')}
+                activeValue={activeTab === "tasks" ? "tasks" : undefined}
               />
 
               <HoverTabMenu
@@ -548,7 +689,7 @@ const ProjectDetail = () => {
                     activeTab === "purchases" ? "border border-primary text-primary" : "border border-transparent",
                     isTabBlocked("purchases") && "opacity-40 pointer-events-none cursor-default"
                   )}>
-                    Purchases
+                    {t('projectDetail.purchases')}
                   </div>
                 }
                 items={menuConfigs.purchases}
@@ -564,7 +705,7 @@ const ProjectDetail = () => {
                     activeTab === "budget" ? "border border-primary text-primary" : "border border-transparent",
                     isTabBlocked("budget") && "opacity-40 pointer-events-none cursor-default"
                   )}>
-                    Budget
+                    {t('common.budget')}
                   </div>
                 }
                 items={menuConfigs.budget}
@@ -573,24 +714,45 @@ const ProjectDetail = () => {
                 activeValue={activeTab === "budget" ? "budget" : undefined}
               />
 
-              <HoverTabMenu
-                trigger={
-                  <div className={cn(
-                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
-                    activeTab === "team" ? "border border-primary text-primary" : "border border-transparent",
-                    isTabBlocked("team") && "opacity-40 pointer-events-none cursor-default"
-                  )}>
-                    Team
-                  </div>
-                }
-                items={menuConfigs.team}
-                onSelect={(value) => handleMenuSelect('team', value)}
-                onMainClick={() => handleMenuSelect('team', 'team')}
-                activeValue={activeTab === "team" ? activeSubTab || "team" : undefined}
-              />
+              <WithHotspot
+                hotspotId="invite-team"
+                hotspotContent="hotspots.inviteTeam"
+                hotspotPosition="top-right"
+                showOnce={true}
+              >
+                <HoverTabMenu
+                  trigger={
+                    <div className={cn(
+                      "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
+                      activeTab === "team" ? "border border-primary text-primary" : "border border-transparent",
+                      isTabBlocked("team") && "opacity-40 pointer-events-none cursor-default"
+                    )}>
+                      {t('projectDetail.team')}
+                    </div>
+                  }
+                  items={menuConfigs.team}
+                  onSelect={(value) => handleMenuSelect('team', value)}
+                  onMainClick={() => handleMenuSelect('team', 'team')}
+                  activeValue={activeTab === "team" ? activeSubTab || "team" : undefined}
+                />
+              </WithHotspot>
             </div>
           </div>
         </AppHeader>
+        {/* Demo banner inside sticky wrapper — sticks with header */}
+        {isDemo && (
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 flex items-center justify-center gap-2 text-sm">
+            {demoBannerContent}
+          </div>
+        )}
+        </div>
+      )}
+
+      {/* Demo banner in floorplan mode — fixed below SpacePlannerTopBar */}
+      {!isHeaderVisible && isDemo && (
+        <div className="fixed top-14 left-0 right-0 z-[59] bg-primary text-primary-foreground px-4 py-2.5 flex items-center justify-center gap-2 text-sm">
+          {demoBannerContent}
+        </div>
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col">
@@ -606,7 +768,28 @@ const ProjectDetail = () => {
             </div>
           ) : (
             <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
-              <OverviewTab project={project} onProjectUpdate={loadData} projectFinishDate={project.finish_goal_date} onNavigateToEntity={handleFeedNavigate} />
+              <OverviewTab
+                project={project}
+                onProjectUpdate={loadData}
+                onNavigateToEntity={handleFeedNavigate}
+                onNavigateToPurchases={() => {
+                  setActiveTab('purchases');
+                  setActiveSubTab(null);
+                }}
+                onNavigateToTasks={(taskId?: string) => {
+                  setActiveTab('tasks');
+                  setActiveSubTab(null);
+                  if (taskId) setOpenEntityId(taskId);
+                }}
+                onNavigateToFeed={() => {
+                  setActiveTab('overview');
+                  setActiveSubTab('feed');
+                }}
+                onNavigateToBudget={() => {
+                  setActiveTab('budget');
+                  setActiveSubTab(null);
+                }}
+              />
             </div>
           )}
         </TabsContent>
@@ -621,16 +804,20 @@ const ProjectDetail = () => {
                   projectId={project.id}
                   projectName={project.name}
                   onBack={() => {
-                    setActiveTab('overview');
-                    setActiveSubTab(null);
+                    // Restore previous tab (where user was before entering floor planner)
+                    setActiveTab(previousTab.tab);
+                    setActiveSubTab(previousTab.subTab);
                   }}
+                  backLabel={previousTab.label}
                   isReadOnly={permissions.spacePlanner === 'view'}
+                  isDemo={isDemo}
+                  highlightedRoomIds={contractorRoomIds}
                 />
               )}
               {activeSubTab === 'rooms' && (
                 <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
-                  <h2 className="text-2xl font-bold mb-4">Room Management</h2>
-                  <p className="text-muted-foreground mb-6">Manage and configure rooms for your project.</p>
+                  <h2 className="text-2xl font-bold mb-4">{t('projectDetail.roomManagement')}</h2>
+                  <p className="text-muted-foreground mb-6">{t('projectDetail.roomManagementDescription')}</p>
                   {roomsLoading ? (
                     <div className="flex items-center justify-center h-64">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -643,6 +830,8 @@ const ProjectDetail = () => {
                       onAddRoom={handleAddRoom}
                       onDeleteRoom={handleDeleteRoom}
                       onRoomDeleted={handleRoomDeleted}
+                      onNavigateToRoom={handleNavigateToRoom}
+                      onPlaceRoom={handlePlaceRoom}
                     />
                   )}
                 </div>
@@ -659,6 +848,8 @@ const ProjectDetail = () => {
               projectId={project.id}
               projectName={project.name}
               onNavigateToFloorPlan={() => {
+                // Save current tab before navigating to floor planner
+                setPreviousTab({ tab: activeTab, subTab: activeSubTab, label: getTabLabelKey(activeTab) });
                 setActiveTab('spaceplanner');
                 setActiveSubTab('floorplan');
               }}
@@ -672,22 +863,16 @@ const ProjectDetail = () => {
             <NoAccessPlaceholder />
           ) : (
             <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
-              {(!activeSubTab || activeSubTab === 'tasklist') && (
-                permissions.tasks === 'none' ? (
-                  <NoAccessPlaceholder />
-                ) : (
-                  <TasksTab projectId={project.id} tasksScope={permissions.tasksScope as 'all' | 'assigned'} openEntityId={activeTab === "tasks" ? openEntityId : null} onEntityOpened={() => setOpenEntityId(null)} />
-                )
-              )}
-              {activeSubTab === 'timeline' && (
-                permissions.timeline === 'none' ? (
-                  <NoAccessPlaceholder />
-                ) : (
-                  <div>
-                    <ProjectTimeline projectId={project.id} projectName={project.name} />
-                  </div>
-                )
-              )}
+              <TasksTab
+                projectId={project.id}
+                projectName={project.name}
+                tasksScope={permissions.tasksScope as 'all' | 'assigned'}
+                openEntityId={activeTab === "tasks" ? openEntityId : null}
+                onEntityOpened={() => setOpenEntityId(null)}
+                onNavigateToRoom={handleNavigateToRoomById}
+                showTimeline={permissions.timeline !== 'none'}
+                currency={project?.currency}
+              />
             </div>
           )}
         </TabsContent>
@@ -697,7 +882,7 @@ const ProjectDetail = () => {
             <NoAccessPlaceholder />
           ) : (
             <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
-              <PurchaseRequestsTab projectId={project.id} openEntityId={activeTab === "purchases" ? openEntityId : null} onEntityOpened={() => setOpenEntityId(null)} />
+              <PurchaseRequestsTab projectId={project.id} openEntityId={activeTab === "purchases" ? openEntityId : null} onEntityOpened={() => setOpenEntityId(null)} currency={project?.currency} />
             </div>
           )}
         </TabsContent>
@@ -707,7 +892,7 @@ const ProjectDetail = () => {
             <NoAccessPlaceholder />
           ) : (
             <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
-              <BudgetTab projectId={project.id} />
+              <BudgetTab projectId={project.id} currency={project?.currency} />
             </div>
           )}
         </TabsContent>

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { FloorMapShape, FloorMapPlan, ViewMode, Tool, GridSettings, ViewState, SymbolType, ScaleSettings, ScalePreset, GridPreset } from './types';
+import { FloorMapShape, FloorMapPlan, ViewMode, Tool, GridSettings, ViewState, SymbolType, ScaleSettings, ScalePreset, GridPreset, WallRelativePosition, WallObjectCategory } from './types';
 import { Unit, Scale, getDefaultGridInterval } from './utils/formatting';
+import { snapObjectToWall, syncFromElevation, setObjectCategory as setObjectCategoryUtil } from './canvas/utils/viewSync';
 
 // Scale presets: 1px = X mm
 const SCALE_PRESETS: Record<ScalePreset, ScaleSettings> = {
@@ -78,6 +79,7 @@ interface FloorMapStore {
   pendingLibrarySymbol: string | null; // ArchSymbolType from SymbolLibrary
   pendingObjectId: string | null; // ObjectDefinition ID from ObjectLibrary
   pendingTemplateId: string | null; // Template ID from Template Gallery
+  pendingRoomPlacement: { roomId: string; roomName: string; color?: string } | null; // Room from list to place on canvas
 
   // History for Undo/Redo
   history: FloorMapShape[][];
@@ -123,6 +125,8 @@ interface FloorMapStore {
   setPendingLibrarySymbol: (symbolType: string | null) => void;
   setPendingObjectId: (objectId: string | null) => void;
   setPendingTemplateId: (templateId: string | null) => void;
+  setPendingRoomPlacement: (room: { roomId: string; roomName: string; color?: string } | null) => void;
+  centerOnRoom: (roomId: string) => void;
   
   // Actions - Drawing state
   setIsDrawing: (isDrawing: boolean) => void;
@@ -173,9 +177,41 @@ interface FloorMapStore {
     newWallSegments: Array<Partial<FloorMapShape>>
   ) => void;
 
+  // Merge two wall segments into one (used when door is removed from gap)
+  mergeWalls: (
+    wall1Id: string,
+    wall2Id: string,
+    mergedCoords: { x1: number; y1: number; x2: number; y2: number }
+  ) => void;
+
+  // Wall-relative positioning actions (for floorplan/elevation sync)
+  updateShapeWallRelative: (shapeId: string, wallRelative: Partial<WallRelativePosition>) => void;
+  snapShapeToWall: (shapeId: string) => void;
+  syncShapeFromElevation: (
+    shapeId: string,
+    elevationX: number,
+    elevationY: number,
+    width: number,
+    height: number,
+    canvasParams: {
+      wallHeightMM: number;
+      effectiveScale: number;
+      wallXOffset: number;
+      wallYOffset: number;
+    }
+  ) => void;
+  setShapeObjectCategory: (shapeId: string, category: WallObjectCategory) => void;
+
   // Getters
   getSelectedShape: () => FloorMapShape | null;
   getCurrentPlan: () => FloorMapPlan | null;
+
+  // Group helpers (for template objects)
+  getShapesInGroup: (groupId: string) => FloorMapShape[];
+  getGroupLeader: (groupId: string) => FloorMapShape | null;
+  selectGroup: (groupId: string) => void;
+  isShapeInGroup: (shapeId: string) => boolean;
+  getGroupIdForShape: (shapeId: string) => string | null;
 }
 
 export const useFloorMapStore = create<FloorMapStore>((set, get) => ({
@@ -190,6 +226,7 @@ export const useFloorMapStore = create<FloorMapStore>((set, get) => ({
   pendingLibrarySymbol: null, // NEW: For architectural symbol placement
   pendingObjectId: null, // NEW: For object library placement
   pendingTemplateId: null, // NEW: For template gallery placement
+  pendingRoomPlacement: null, // NEW: For placing existing room from list onto canvas
   history: [[]],
   historyIndex: 0,
   isDrawing: false,
@@ -350,11 +387,69 @@ export const useFloorMapStore = create<FloorMapStore>((set, get) => ({
   }),
   
   // Template gallery actions (NEW)
-  setPendingTemplateId: (templateId) => set({ 
+  setPendingTemplateId: (templateId) => set({
     pendingTemplateId: templateId,
     pendingLibrarySymbol: null, // Clear symbol when setting template
     pendingObjectId: null, // Clear object when setting template
     activeTool: templateId ? 'select' : 'select' // Keep select tool for template placement
+  }),
+
+  // Room placement from list (NEW)
+  setPendingRoomPlacement: (room) => set({
+    pendingRoomPlacement: room,
+    pendingLibrarySymbol: null,
+    pendingObjectId: null,
+    pendingTemplateId: null,
+    activeTool: room ? 'room' : 'select'
+  }),
+
+  // Center view on a specific room by roomId
+  centerOnRoom: (roomId) => set((state) => {
+    const roomShape = state.shapes.find(s => s.roomId === roomId && s.type === 'room');
+    if (!roomShape || !roomShape.coordinates?.points) {
+      console.warn('centerOnRoom: Room shape not found for roomId:', roomId);
+      return state;
+    }
+
+    // Calculate center of room (coordinates are in pixels)
+    const points = roomShape.coordinates.points;
+    const centerX = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+    const centerY = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+
+    // Calculate room bounds for optimal zoom
+    const minX = Math.min(...points.map(p => p.x));
+    const maxX = Math.max(...points.map(p => p.x));
+    const minY = Math.min(...points.map(p => p.y));
+    const maxY = Math.max(...points.map(p => p.y));
+    const roomWidth = maxX - minX;
+    const roomHeight = maxY - minY;
+
+    // Get viewport dimensions (use window size as the stage does)
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
+    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+
+    // Calculate zoom to fit room with padding (show room at ~60% of viewport)
+    const paddingFactor = 0.6;
+    const zoomToFitWidth = (viewportWidth * paddingFactor) / roomWidth;
+    const zoomToFitHeight = (viewportHeight * paddingFactor) / roomHeight;
+    const optimalZoom = Math.min(zoomToFitWidth, zoomToFitHeight, 2); // Cap at 2x zoom
+    const zoom = Math.max(optimalZoom, 0.3); // Minimum 0.3x zoom
+
+    // Calculate pan to center the room in the viewport
+    // Formula: panX = viewportWidth/2 - centerX * zoom
+    const panX = (viewportWidth / 2) - (centerX * zoom);
+    const panY = (viewportHeight / 2) - (centerY * zoom);
+
+    return {
+      viewState: {
+        ...state.viewState,
+        panX,
+        panY,
+        zoom
+      },
+      selectedShapeId: roomShape.id, // Select the room shape
+      selectedShapeIds: [roomShape.id]
+    };
   }),
 
   // Drawing state actions
@@ -500,17 +595,191 @@ export const useFloorMapStore = create<FloorMapStore>((set, get) => ({
     };
   }),
 
+  // Merge Walls Action - combines two wall segments into one
+  mergeWalls: (wall1Id, wall2Id, mergedCoords) => set((state) => {
+    const wall1 = state.shapes.find(s => s.id === wall1Id);
+    const wall2 = state.shapes.find(s => s.id === wall2Id);
+
+    if (!wall1 || !wall2) return state;
+
+    // Remove both wall segments
+    let newShapes = state.shapes.filter(s => s.id !== wall1Id && s.id !== wall2Id);
+
+    // Create merged wall inheriting properties from wall1
+    const mergedWall: FloorMapShape = {
+      id: crypto.randomUUID(),
+      type: 'wall',
+      coordinates: mergedCoords,
+      color: wall1.color,
+      strokeColor: wall1.strokeColor,
+      strokeWidth: wall1.strokeWidth,
+      heightMM: wall1.heightMM,
+      thicknessMM: wall1.thicknessMM,
+      zIndex: wall1.zIndex,
+      planId: wall1.planId,
+    };
+    newShapes.push(mergedWall);
+
+    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(newShapes)));
+    return {
+      shapes: newShapes,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    };
+  }),
+
+  // ============================================================================
+  // WALL-RELATIVE POSITIONING ACTIONS (Floorplan/Elevation Sync)
+  // ============================================================================
+
+  updateShapeWallRelative: (shapeId, wallRelative) => set((state) => {
+    const shape = state.shapes.find(s => s.id === shapeId);
+    if (!shape) return state;
+
+    const newShapes = state.shapes.map(s => {
+      if (s.id === shapeId) {
+        return {
+          ...s,
+          wallRelative: s.wallRelative
+            ? { ...s.wallRelative, ...wallRelative }
+            : wallRelative as WallRelativePosition,
+        };
+      }
+      return s;
+    });
+
+    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(newShapes)));
+
+    return {
+      shapes: newShapes,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    };
+  }),
+
+  snapShapeToWall: (shapeId) => set((state) => {
+    const shape = state.shapes.find(s => s.id === shapeId);
+    if (!shape) return state;
+
+    // Get all walls from the same plan
+    const walls = state.shapes.filter(
+      s => s.planId === shape.planId && (s.type === 'wall' || s.type === 'line') && s.shapeViewMode !== 'elevation'
+    );
+
+    const updates = snapObjectToWall(shape, walls, 500);
+    if (!updates) return state;
+
+    const newShapes = state.shapes.map(s => {
+      if (s.id === shapeId) {
+        return { ...s, ...updates };
+      }
+      return s;
+    });
+
+    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(newShapes)));
+
+    return {
+      shapes: newShapes,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    };
+  }),
+
+  syncShapeFromElevation: (shapeId, elevationX, elevationY, width, height, canvasParams) => set((state) => {
+    const shape = state.shapes.find(s => s.id === shapeId);
+    if (!shape || !shape.wallRelative?.wallId) return state;
+
+    const wall = state.shapes.find(s => s.id === shape.wallRelative!.wallId);
+    if (!wall) return state;
+
+    const updates = syncFromElevation(shape, wall, elevationX, elevationY, width, height, canvasParams);
+    if (!updates) return state;
+
+    const newShapes = state.shapes.map(s => {
+      if (s.id === shapeId) {
+        return { ...s, ...updates };
+      }
+      return s;
+    });
+
+    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(newShapes)));
+
+    return {
+      shapes: newShapes,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    };
+  }),
+
+  setShapeObjectCategory: (shapeId, category) => set((state) => {
+    const shape = state.shapes.find(s => s.id === shapeId);
+    if (!shape) return state;
+
+    const updates = setObjectCategoryUtil(shape, category);
+
+    const newShapes = state.shapes.map(s => {
+      if (s.id === shapeId) {
+        return { ...s, ...updates };
+      }
+      return s;
+    });
+
+    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(newShapes)));
+
+    return {
+      shapes: newShapes,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    };
+  }),
+
   // Getters
   getSelectedShape: () => {
     const state = get();
     return state.shapes.find((s) => s.id === state.selectedShapeId) || null;
   },
-  
+
   getCurrentPlan: () => {
     const state = get();
     return state.plans.find((p) => p.id === state.currentPlanId) || null;
   },
-  
+
+  // Group helpers (for template objects)
+  getShapesInGroup: (groupId: string) => {
+    const state = get();
+    return state.shapes.filter(s => s.groupId === groupId);
+  },
+
+  getGroupLeader: (groupId: string) => {
+    const state = get();
+    return state.shapes.find(s => s.groupId === groupId && s.isGroupLeader) || null;
+  },
+
+  selectGroup: (groupId: string) => {
+    const state = get();
+    const groupShapeIds = state.shapes
+      .filter(s => s.groupId === groupId)
+      .map(s => s.id);
+    set({ selectedShapeIds: groupShapeIds, selectedShapeId: groupShapeIds[0] || null });
+  },
+
+  isShapeInGroup: (shapeId: string) => {
+    const state = get();
+    const shape = state.shapes.find(s => s.id === shapeId);
+    return !!shape?.groupId;
+  },
+
+  getGroupIdForShape: (shapeId: string) => {
+    const state = get();
+    const shape = state.shapes.find(s => s.id === shapeId);
+    return shape?.groupId || null;
+  },
+
   // ============================================================================
   // PROJECT SETTINGS ACTIONS (NEW)
   // ============================================================================

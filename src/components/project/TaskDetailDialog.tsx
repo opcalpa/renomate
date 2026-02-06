@@ -9,12 +9,14 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { TaskFilesList } from "./TaskFilesList";
 import { Separator } from "@/components/ui/separator";
+import { formatCurrency } from "@/lib/currency";
 
 interface TaskDetailDialogProps {
   taskId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit?: () => void;
+  currency?: string | null;
 }
 
 interface TaskDetail {
@@ -26,7 +28,7 @@ interface TaskDetail {
   start_date: string | null;
   finish_date: string | null;
   progress: number;
-  assigned_to_contractor_id: string | null;
+  assigned_to_stakeholder_id: string | null;
   project_id: string;
   budget: number | null;
   created_at: string;
@@ -60,7 +62,7 @@ const statusKey = (s: string) => {
   return map[s] || s;
 };
 
-const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDialogProps) => {
+const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit, currency }: TaskDetailDialogProps) => {
   const { t } = useTranslation();
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -83,7 +85,7 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
         .from("tasks")
         .select(`
           *,
-          profiles!tasks_assigned_to_contractor_id_fkey(name)
+          profiles!tasks_assigned_to_stakeholder_id_fkey(name)
         `)
         .eq("id", taskId)
         .single();
@@ -232,7 +234,7 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
                 <div>
                   <h3 className="font-medium mb-1">{t('taskDetail.taskBudget')}</h3>
                   <p className="text-sm text-muted-foreground">
-                    ${task.budget.toLocaleString()}
+                    {formatCurrency(task.budget, currency)}
                   </p>
                 </div>
               </div>
@@ -285,8 +287,8 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit }: TaskDetailDial
                           <div className="font-medium text-sm">{material.name}</div>
                           <div className="text-xs text-muted-foreground">
                             {material.quantity} {material.unit}
-                            {material.price_per_unit && ` • $${material.price_per_unit.toFixed(2)}/unit`}
-                            {material.price_total && ` • Total: $${material.price_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            {material.price_per_unit && ` • ${formatCurrency(material.price_per_unit, currency, { decimals: 2 })}/unit`}
+                            {material.price_total && ` • Total: ${formatCurrency(material.price_total, currency, { decimals: 2 })}`}
                           </div>
                         </div>
                         <Badge variant="outline" className="text-xs">

@@ -120,7 +120,24 @@ export interface FloorMapShape {
   attachedToWall?: string; // ID of wall this door/opening is attached to
   positionOnWall?: number; // Position along wall (0-1)
   parentWallId?: string; // ID of wall this elevation shape belongs to (for elevation view objects)
-  
+
+  // Template grouping - shapes from same template placement share a groupId
+  groupId?: string; // Unique ID linking shapes from the same template instance
+  isGroupLeader?: boolean; // True for the "main" shape that represents the group
+  templateInfo?: {
+    templateId: string; // Original template ID
+    templateName: string; // Template name for display
+    category?: string; // Template category
+    // Group bounding box in mm (for dimension display and scaling)
+    boundsWidth: number;
+    boundsHeight: number;
+    boundsDepth?: number; // Height/depth for 3D/elevation
+    // Original bounds for proportional scaling
+    originalWidth: number;
+    originalHeight: number;
+    originalDepth?: number;
+  };
+
   // Visual properties
   color?: string; // Fill color
   strokeColor?: string; // Stroke/border color
@@ -167,6 +184,10 @@ export interface FloorMapShape {
     // Allow additional properties
     [key: string]: unknown;
   };
+
+  // Wall-relative positioning (for synchronized floorplan/elevation views)
+  wallRelative?: WallRelativePosition;
+  objectCategory?: WallObjectCategory;
 }
 
 export interface FloorMapPlan {
@@ -185,6 +206,11 @@ export interface ViewSettings {
   zoom: number;
   rotation?: number;
   mode: ViewMode;
+  startingView?: {
+    panX: number;
+    panY: number;
+    zoom: number;
+  } | null;
 }
 
 export interface LineCoordinates {
@@ -266,3 +292,41 @@ export interface ViewState {
   panX: number;
   panY: number;
 }
+
+// ============================================================================
+// WALL-RELATIVE COORDINATE SYSTEM
+// ============================================================================
+// Objects attached to walls store position relative to the wall, not absolute.
+// This enables IKEA Kitchen Planner / Revit-style synchronization:
+// - Floorplan shows objects from above (bird's eye)
+// - Elevation view shows objects from the front (face-on)
+// - Moving/resizing in either view updates the same underlying data
+
+/**
+ * Position of an object relative to a wall.
+ * All measurements in millimeters (mm).
+ */
+export interface WallRelativePosition {
+  wallId: string;                    // Which wall this object is attached to
+  distanceFromWallStart: number;     // mm from wall start point (along wall direction)
+  perpendicularOffset: number;       // mm from wall surface (+ = into room, - = outside)
+  elevationBottom: number;           // mm from floor (bottom of object)
+  width: number;                     // mm (along wall direction)
+  height: number;                    // mm (vertical in elevation view)
+  depth: number;                     // mm (perpendicular to wall into room)
+}
+
+/**
+ * Object categories with predefined elevation heights.
+ * These correspond to typical installation heights in construction.
+ */
+export type WallObjectCategory =
+  | 'floor_cabinet'      // elevationBottom: 0mm (sits on floor)
+  | 'wall_cabinet'       // elevationBottom: 1400mm (mounted on wall)
+  | 'countertop'         // elevationBottom: 850mm (kitchen counter height)
+  | 'appliance_floor'    // elevationBottom: 0mm (fridge, dishwasher, etc.)
+  | 'appliance_wall'     // elevationBottom: varies (wall oven, microwave, etc.)
+  | 'window'             // elevationBottom: 900mm (typical window sill)
+  | 'door'               // elevationBottom: 0mm (starts at floor)
+  | 'decoration'         // elevationBottom: 1200mm (artwork, mirrors, etc.)
+  | 'custom';

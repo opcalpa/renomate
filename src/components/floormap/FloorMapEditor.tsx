@@ -9,15 +9,20 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { loadPlansFromDB, createPlanInDB } from "./utils/plans";
 import { Box } from "lucide-react";
+import { useOnboarding } from "@/hooks/useOnboarding";
+import { CanvasHint } from "@/components/onboarding/CanvasHint";
 
 interface FloorMapEditorProps {
   projectId: string;
   projectName?: string;
   onBack?: () => void;
+  backLabel?: string;
   isReadOnly?: boolean;
+  isDemo?: boolean;
+  highlightedRoomIds?: string[];
 }
 
-export const FloorMapEditor = ({ projectId, projectName, onBack, isReadOnly }: FloorMapEditorProps) => {
+export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isReadOnly, isDemo, highlightedRoomIds }: FloorMapEditorProps) => {
   const { t } = useTranslation();
   const {
     plans,
@@ -28,6 +33,9 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, isReadOnly }: F
     setPlans,
     setCurrentPlanId,
   } = useFloorMapStore();
+
+  const onboarding = useOnboarding();
+  const [canvasHintDismissed, setCanvasHintDismissed] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -83,6 +91,13 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, isReadOnly }: F
   useEffect(() => {
     loadInitialData();
   }, [projectId]);
+
+  // Mark enterCanvas step as complete when user enters the canvas
+  useEffect(() => {
+    if (onboarding.isStepActive("enterCanvas")) {
+      onboarding.markStepComplete("enterCanvas");
+    }
+  }, [onboarding.currentStepKey]);
 
   const loadInitialData = async () => {
     // Load all plans for this project
@@ -162,7 +177,7 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, isReadOnly }: F
   return (
     <div className="flex flex-col h-full">
       {/* Top Bar with Plan Selector */}
-      <SpacePlannerTopBar projectId={projectId} projectName={projectName} onBack={onBack} isReadOnly={isReadOnly} />
+      <SpacePlannerTopBar projectId={projectId} projectName={projectName} onBack={onBack} backLabel={backLabel} isReadOnly={isReadOnly} />
       
       <style dangerouslySetInnerHTML={{
         __html: `
@@ -203,7 +218,7 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, isReadOnly }: F
           }
         `
       }} />
-      <div className="flex flex-1 relative pt-14"> {/* Padding for fixed TopBar */}
+      <div className={`flex flex-1 relative ${isDemo ? 'pt-[96px]' : 'pt-14'}`}> {/* Padding for fixed TopBar + optional demo banner */}
         {/* Left Toolbar - Only show in floor plan mode and when not read-only */}
         {viewMode === 'floor' && !isReadOnly && (
           <SimpleToolbar
@@ -214,6 +229,7 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, isReadOnly }: F
             onRedo={handleRedo}
             canUndo={canUndoState}
             canRedo={canRedoState}
+            isDemo={isDemo}
           />
         )}
 
@@ -221,9 +237,24 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, isReadOnly }: F
         {viewMode === 'floor' && (
           <main className="flex-1 overflow-auto canvas-scroll-area relative">
             <UnifiedKonvaCanvas
-              onRoomCreated={() => setRoomUpdateTrigger(prev => prev + 1)}
+              onRoomCreated={() => {
+                setRoomUpdateTrigger(prev => prev + 1);
+                // Mark drawRoom step as complete when user draws a room
+                if (onboarding.isStepActive("drawRoom")) {
+                  onboarding.markStepComplete("drawRoom");
+                }
+              }}
               isReadOnly={isReadOnly}
+              highlightedRoomIds={highlightedRoomIds}
             />
+            {/* Onboarding canvas hint */}
+            {!isReadOnly && !canvasHintDismissed && !onboarding.isDismissed && onboarding.currentStep?.canvasHintKey && (
+              <CanvasHint
+                currentStepKey={onboarding.currentStepKey}
+                canvasHintKey={onboarding.currentStep.canvasHintKey}
+                onDismiss={() => setCanvasHintDismissed(true)}
+              />
+            )}
           </main>
         )}
 

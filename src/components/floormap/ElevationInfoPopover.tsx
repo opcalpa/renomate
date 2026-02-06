@@ -5,6 +5,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Popover,
   PopoverContent,
@@ -76,6 +77,7 @@ export const ElevationInfoPopover: React.FC<ElevationInfoPopoverProps> = ({
   wallHeightMM,
   elevationShapes = [],
 }) => {
+  const { t } = useTranslation();
   // Calculate wall areas when it's a wall
   const wallAreas = useMemo(() => {
     if (!isWall || !wallLengthMM || !wallHeightMM) return null;
@@ -114,16 +116,16 @@ export const ElevationInfoPopover: React.FC<ElevationInfoPopoverProps> = ({
 
   // Get shape label
   const getShapeLabel = () => {
-    if (isWall) return 'Vägg';
+    if (isWall) return t('floormap.wall');
     switch (shape.type) {
       case 'rectangle':
-        return 'Rektangel';
+        return t('elevationInfo.rectangle');
       case 'circle':
-        return 'Cirkel';
+        return t('elevationInfo.circle');
       case 'line':
-        return 'Linje';
+        return t('elevationInfo.line');
       case 'wall':
-        return 'Vägg';
+        return t('floormap.wall');
       default:
         return shape.type;
     }
@@ -185,10 +187,10 @@ export const ElevationInfoPopover: React.FC<ElevationInfoPopoverProps> = ({
             )}
           </div>
           {isWall && (
-            <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">Vägg</span>
+            <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">{t('floormap.wall')}</span>
           )}
           {!isWall && shape.shapeViewMode === 'elevation' && (
-            <span className="text-xs bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">Elevation</span>
+            <span className="text-xs bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">{t('elevationInfo.elevation')}</span>
           )}
         </div>
 
@@ -196,36 +198,36 @@ export const ElevationInfoPopover: React.FC<ElevationInfoPopoverProps> = ({
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-1.5 text-gray-600">
             <Ruler className="h-3.5 w-3.5" />
-            <span className="font-medium">Dimensioner</span>
+            <span className="font-medium">{t('elevationInfo.dimensions')}</span>
           </div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-1 pl-5 text-xs">
             {dimensions.width !== undefined && (
               <div>
-                <span className="text-gray-500">Bredd: </span>
+                <span className="text-gray-500">{t('elevationInfo.width')}: </span>
                 <span className="font-medium">{formatDim(dimensions.width)}</span>
               </div>
             )}
             {dimensions.height !== undefined && (
               <div>
-                <span className="text-gray-500">Höjd: </span>
+                <span className="text-gray-500">{t('elevationInfo.height')}: </span>
                 <span className="font-medium">{formatDim(dimensions.height)}</span>
               </div>
             )}
             {dimensions.length !== undefined && (
               <div>
-                <span className="text-gray-500">Längd: </span>
+                <span className="text-gray-500">{t('elevationInfo.length')}: </span>
                 <span className="font-medium">{formatDim(dimensions.length)}</span>
               </div>
             )}
             {dimensions.radius !== undefined && (
               <div>
-                <span className="text-gray-500">Radie: </span>
+                <span className="text-gray-500">{t('elevationInfo.radius')}: </span>
                 <span className="font-medium">{formatDim(dimensions.radius)}</span>
               </div>
             )}
             {shape.thicknessMM && (
               <div>
-                <span className="text-gray-500">Tjocklek: </span>
+                <span className="text-gray-500">{t('elevationInfo.thickness')}: </span>
                 <span className="font-medium">{formatDim(shape.thicknessMM)}</span>
               </div>
             )}
@@ -237,21 +239,21 @@ export const ElevationInfoPopover: React.FC<ElevationInfoPopoverProps> = ({
           <div className="space-y-2 text-sm mt-3 pt-2 border-t">
             <div className="flex items-center gap-1.5 text-gray-600">
               <Paintbrush className="h-3.5 w-3.5" />
-              <span className="font-medium">Ytberäkning</span>
+              <span className="font-medium">{t('elevationInfo.areaCalculation')}</span>
             </div>
             <div className="pl-5 text-xs space-y-1.5">
               <div className="flex justify-between">
-                <span className="text-gray-500">Total väggyta:</span>
+                <span className="text-gray-500">{t('elevationInfo.totalWallArea')}:</span>
                 <span className="font-medium">{formatArea(wallAreas.totalArea)}</span>
               </div>
               {wallAreas.objectCount > 0 && (
                 <div className="flex justify-between text-amber-600">
-                  <span>Objekt ({wallAreas.objectCount} st):</span>
+                  <span>{t('elevationInfo.objects', { count: wallAreas.objectCount })}:</span>
                   <span className="font-medium">-{formatArea(wallAreas.objectsArea)}</span>
                 </div>
               )}
               <div className="flex justify-between text-green-600 font-medium pt-1 border-t">
-                <span>Målbar yta:</span>
+                <span>{t('elevationInfo.paintableArea')}:</span>
                 <span>{formatArea(wallAreas.paintableArea)}</span>
               </div>
             </div>
@@ -263,12 +265,12 @@ export const ElevationInfoPopover: React.FC<ElevationInfoPopoverProps> = ({
           <div className="space-y-2 text-sm mt-3 pt-2 border-t">
             <div className="flex items-center gap-1.5 text-gray-600">
               <Layers className="h-3.5 w-3.5" />
-              <span className="font-medium">Material</span>
+              <span className="font-medium">{t('elevationInfo.material')}</span>
             </div>
             <div className="pl-5 text-xs space-y-1">
               {shape.material && (
                 <div>
-                  <span className="text-gray-500">Typ: </span>
+                  <span className="text-gray-500">{t('elevationInfo.type')}: </span>
                   <span className="font-medium">
                     {getOptionLabel(
                       isWall ? WALL_MATERIAL_OPTIONS : ELEVATION_OBJECT_MATERIAL_OPTIONS,
@@ -279,13 +281,13 @@ export const ElevationInfoPopover: React.FC<ElevationInfoPopoverProps> = ({
               )}
               {shape.materialSpec && (
                 <div>
-                  <span className="text-gray-500">Spec: </span>
+                  <span className="text-gray-500">{t('elevationInfo.spec')}: </span>
                   <span className="font-medium">{shape.materialSpec}</span>
                 </div>
               )}
               {shape.treatment && (
                 <div>
-                  <span className="text-gray-500">Behandling: </span>
+                  <span className="text-gray-500">{t('elevationInfo.treatment')}: </span>
                   <span className="font-medium">
                     {getOptionLabel(WALL_TREATMENT_OPTIONS, shape.treatment)}
                   </span>
@@ -293,7 +295,7 @@ export const ElevationInfoPopover: React.FC<ElevationInfoPopoverProps> = ({
               )}
               {shape.treatmentColor && (
                 <div>
-                  <span className="text-gray-500">Kulör: </span>
+                  <span className="text-gray-500">{t('elevationInfo.color')}: </span>
                   <span className="font-medium">{shape.treatmentColor}</span>
                 </div>
               )}
@@ -306,18 +308,18 @@ export const ElevationInfoPopover: React.FC<ElevationInfoPopoverProps> = ({
           <div className="space-y-2 text-sm mt-3 pt-2 border-t">
             <div className="flex items-center gap-1.5 text-gray-600">
               <Package className="h-3.5 w-3.5" />
-              <span className="font-medium">Produkt</span>
+              <span className="font-medium">{t('elevationInfo.product')}</span>
             </div>
             <div className="pl-5 text-xs space-y-1">
               {shape.manufacturer && (
                 <div>
-                  <span className="text-gray-500">Tillverkare: </span>
+                  <span className="text-gray-500">{t('elevationInfo.manufacturer')}: </span>
                   <span className="font-medium">{shape.manufacturer}</span>
                 </div>
               )}
               {shape.productCode && (
                 <div>
-                  <span className="text-gray-500">Artikelnr: </span>
+                  <span className="text-gray-500">{t('elevationInfo.productCode')}: </span>
                   <span className="font-medium">{shape.productCode}</span>
                 </div>
               )}
@@ -333,14 +335,14 @@ export const ElevationInfoPopover: React.FC<ElevationInfoPopoverProps> = ({
               <div
                 className="w-5 h-5 rounded border"
                 style={{ backgroundColor: shape.color }}
-                title="Fyllnadsfärg"
+                title={t('elevationInfo.fillColor')}
               />
             )}
             {shape.strokeColor && (
               <div
                 className="w-5 h-5 rounded border-2"
                 style={{ borderColor: shape.strokeColor, backgroundColor: 'transparent' }}
-                title="Kantfärg"
+                title={t('elevationInfo.strokeColor')}
               />
             )}
           </div>
@@ -355,7 +357,7 @@ export const ElevationInfoPopover: React.FC<ElevationInfoPopoverProps> = ({
 
         {/* Double-click hint */}
         <div className="mt-3 pt-2 border-t text-center">
-          <span className="text-xs text-gray-400">Dubbelklicka för att redigera</span>
+          <span className="text-xs text-gray-400">{t('floormap.doubleClickToEdit')}</span>
         </div>
       </PopoverContent>
     </Popover>

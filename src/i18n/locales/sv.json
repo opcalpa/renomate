@@ -20,6 +20,7 @@
     "language": "Språk",
     "optional": "valfritt",
     "close": "Stäng",
+    "viewOnly": "Endast visning",
     "saving": "Sparar...",
     "update": "Uppdatera",
     "remove": "Ta bort",
@@ -43,14 +44,18 @@
     "use": "Använd",
     "selectOrType": "Välj eller skriv...",
     "searchOrType": "Sök eller skriv...",
-    "noSuggestionsEnterToUse": "Inga förslag. Tryck Enter för att använda."
+    "noSuggestionsEnterToUse": "Inga förslag. Tryck Enter för att använda.",
+    "noRoom": "Inget rum",
+    "unknownRoom": "Okänt rum",
+    "unknownUser": "Okänd",
+    "settings": "Inställningar"
   },
   "nav": {
     "home": "Hem",
     "projects": "Projekt",
     "profile": "Profil",
     "tips": "Tips",
-    "feedback": "Hjälp",
+    "feedback": "Kontakt",
     "language": "Språk",
     "mobileNav": {
       "overview": "Översikt",
@@ -125,6 +130,11 @@
     "back": "Tillbaka",
     "skipAndCreate": "Hoppa över & skapa",
     "noDescription": "Ingen beskrivning",
+    "deleteTitle": "Ta bort projekt?",
+    "deleteWarning": "Detta tar permanent bort \"{{name}}\" och alla dess uppgifter, material, rum, filer och aktivitetshistorik.",
+    "deleteIrreversible": "Denna åtgärd kan inte ångras.",
+    "deleteSuccess": "Projekt borttaget",
+    "deleteSuccessDescription": "\"{{name}}\" har tagits bort permanent.",
     "types": {
       "kitchenRenovation": "Köksrenovering",
       "bathroomRenovation": "Badrumsrenovering",
@@ -144,11 +154,59 @@
     "createProject": "Skapa ditt första projekt",
     "createProjectDesc": "Jag leder en renovering",
     "hasInvitation": "Jag har en inbjudan",
-    "hasInvitationDesc": "Min platschef bjöd in mig"
+    "hasInvitationDesc": "Min platschef bjöd in mig",
+    "checklist": {
+      "title": "Kom igång",
+      "progress": "{{count}} av {{total}} steg klara",
+      "completeProfile": "Fyll i din profil",
+      "createProject": "Skapa ditt första projekt",
+      "drawRoom": "Rita ditt första rum",
+      "createQuote": "Skapa en test-offert",
+      "createTaskRoom": "Skapa en uppgift och koppla den till ett rum",
+      "completeProProfile": "Fyll i din företagsprofil",
+      "dismiss": "Dölj checklistan",
+      "confirmDismiss": "Dölj startguiden?",
+      "allDone": "Bra jobbat! Du är redo.",
+      "inviteClient": "Redo att bjuda in din första kund?",
+      "showMe": "Visa mig"
+    },
+    "steps": {
+      "project": {
+        "label": "Skapa ett projekt",
+        "instruction": "Klicka på knappen ovan för att skapa ditt första renoveringsprojekt."
+      },
+      "enterCanvas": {
+        "label": "Öppna planlösningen",
+        "instruction": "Navigera till fliken Planlösning för att börja designa din ritning."
+      },
+      "drawRoom": {
+        "label": "Rita ditt första rum",
+        "instruction": "Välj rumsverktyget och rita ett rum på ritningen.",
+        "canvasHint": "Klicka och dra för att rita ett rum"
+      },
+      "generateWalls": {
+        "label": "Generera väggar",
+        "instruction": "Välj ett rum och klicka på 'Generera väggar' för att lägga till väggar automatiskt.",
+        "canvasHint": "Välj ett rum först, klicka sedan på Generera väggar"
+      },
+      "taskWithRoom": {
+        "label": "Skapa en uppgift kopplad till ett rum",
+        "instruction": "Skapa en uppgift och koppla den till ett rum för att spåra arbete per plats."
+      },
+      "profile": {
+        "label": "Fyll i din företagsprofil",
+        "instruction": "Lägg till företagsuppgifter och professionell information för att attrahera kunder."
+      }
+    }
   },
   "projectDetail": {
     "overview": "Översikt",
+    "overviewDesc": "Projektsammanfattning och status",
     "rooms": "Rum",
+    "roomsDesc": "Hantera och konfigurera rum",
+    "floorPlan": "Planlösning",
+    "floorPlanDesc": "Designa och planera din planlösning",
+    "feedDesc": "Kommentarer och aktivitetsflöde",
     "spacePlanner": "Planlösning",
     "tasks": "Uppgifter",
     "timeline": "Projekttidslinje",
@@ -158,7 +216,23 @@
     "toDo": "Att göra",
     "noScheduledTasks": "Inga schemalagda uppgifter",
     "noScheduledTasksDescription": "Lägg till start- och slutdatum för uppgifter för att se dem i tidslinjen",
-    "feed": "Flöde"
+    "feed": "Flöde",
+    "allProjects": "Alla projekt",
+    "files": "Filer",
+    "purchases": "Inköp",
+    "team": "Team",
+    "roomManagement": "Rumshantering",
+    "roomManagementDescription": "Hantera och konfigurera rum för ditt projekt.",
+    "confirmDeleteRoom": "Är du säker på att du vill ta bort rummet \"{{name}}\"? Denna åtgärd kan inte ångras.",
+    "roomDeleted": "Rum borttaget",
+    "roomDeletedDescription": "\"{{name}}\" har tagits bort",
+    "failedToDeleteRoom": "Kunde inte ta bort rum",
+    "imageAdded": "Bild tillagd",
+    "imageAddedDescription": "\"{{name}}\" har lagts till som bakgrundsbild på canvas",
+    "navigatingToRoom": "Navigerar till rum",
+    "showingRoomOnDrawing": "Visar \"{{name}}\" på ritningen",
+    "placeRoom": "Placera rum",
+    "clickToPlaceRoom": "Klicka på ritningen för att placera \"{{name}}\""
   },
   "tasks": {
     "title": "Uppgifter",
@@ -181,7 +255,8 @@
     "addFirstTask": "Lägg till första uppgiften",
     "taskCreated": "Uppgift skapad!",
     "taskCreatedDescription": "Uppgiften har lagts till i ditt projekt.",
-    "adding": "Lägger till..."
+    "adding": "Lägger till...",
+    "viewOnFloorPlan": "Visa i planlösning"
   },
   "rooms": {
     "title": "Rum",
@@ -200,6 +275,10 @@
     "roomCreatedDescription": "Rummet har lagts till i ditt projekt.",
     "pinterestInspirationBoard": "Pinterest Inspirationstavla",
     "importedFromPinterest": "Importerad från Pinterest",
+    "showOnFloorPlan": "Visa på ritning",
+    "placeOnFloorPlan": "Placera på ritning",
+    "placedOnCanvas": "Placerad på canvas",
+    "notPlacedOnCanvas": "Ej placerad på canvas",
     "smartData": "Åtgångsberäkning",
     "materialConsumption": "Materialförbrukning",
     "floor": "Golv",
@@ -220,6 +299,7 @@
     "selectTreatment": "Välj behandling",
     "mainColor": "Huvudfärg",
     "accentWall": "Accentvägg",
+    "featureWall": "Fondvägg",
     "accentWallColor": "Accentväggfärg",
     "joinery": "Snickerier",
     "doorType": "Dörrtyp",
@@ -256,12 +336,42 @@
     "loadingTasks": "Laddar uppgifter...",
     "noTasksForRoom": "Inga uppgifter för detta rum",
     "noTasksMatchFilter": "Inga uppgifter matchar filtret",
+    "createTaskForRoom": "Skapa uppgift",
+    "taskWillBeLinkedToRoom": "Uppgiften kommer att länkas till detta rum",
+    "taskCreatedForRoom": "Uppgift skapad och länkad till rummet",
+    "taskTitleRequired": "Uppgiftstitel krävs",
+    "failedToCreateTask": "Kunde inte skapa uppgift",
+    "taskTitlePlaceholder": "t.ex. Lägg golv, Måla väggar",
+    "taskDescriptionPlaceholder": "Lägg till detaljer om uppgiften...",
+    "creatingTask": "Skapar...",
+    "createTask": "Skapa uppgift",
     "loadingPurchaseOrders": "Laddar inköpsordrar...",
     "noPOsForRoom": "Inga inköpsordrar för detta rum",
     "noPOsMatchFilter": "Inga inköpsordrar matchar filtret",
+    "createPOForRoom": "Skapa inköpsorder",
+    "poWillBeLinkedToRoom": "Inköpsordern kommer att länkas till detta rum",
+    "poCreatedForRoom": "Inköpsorder skapad och länkad till rummet",
+    "poNamePlaceholder": "t.ex. Klinker, Färg",
     "pieces": "st",
     "area": "Yta",
-    "status": "Status"
+    "status": "Status",
+    "quickInfo": "Snabbinfo",
+    "quickNote": "Snabbnotering",
+    "quickNotePlaceholder": "Lägg till en snabb notering om rummet...",
+    "wallPaintShort": "Väggfärg",
+    "twoCoats": "2 strykningar",
+    "floorAndCeiling": "Golv & Tak",
+    "wallsAndJoinery": "Väggar & Snickerier",
+    "electricalAndHeating": "El & Värme",
+    "projectData": "Projektdata",
+    "mediaAndComments": "Media & Kommentarer",
+    "canvasSettings": "Canvasinställningar",
+    "roomColor": "Rumsfärg",
+    "identity": "Identitet",
+    "unnamed": "Namnlöst rum",
+    "ceilingHeightShort": "h",
+    "relatedTasks": "Kopplade uppgifter",
+    "relatedPurchaseOrders": "Inköpsordrar"
   },
   "profile": {
     "title": "Profilinställningar",
@@ -316,7 +426,14 @@
     "proBadge": "PRO",
     "orgNumber": "Organisationsnummer",
     "orgNumberPlaceholder": "t.ex. 556677-8899",
-    "proFieldsRequired": "Fyll i företagsnamn och yrkeskategori för att aktivera din professionella profil"
+    "proFieldsRequired": "Fyll i företagsnamn och yrkeskategori för att aktivera din professionella profil",
+    "dataPrivacy": "Data & Integritet",
+    "dataPrivacyDescription": "Hantera din data och integritetsinställningar",
+    "exportData": "Exportera din data",
+    "exportDataDescription": "Ladda ner all din data i JSON-format (GDPR-kompatibelt)",
+    "downloadData": "Ladda ner",
+    "dataExported": "Data exporterad",
+    "dataExportedDescription": "Din data har laddats ner."
   },
   "languages": {
     "en": "Engelska",
@@ -357,7 +474,9 @@
     "saveError": "Fel",
     "saveErrorDescription": "Kunde inte spara inställningar",
     "canvasScale": "Canvas Skala",
-    "currency": "Valuta"
+    "currency": "Valuta",
+    "canvasSettingsMoved": "Canvas-inställningar har flyttats",
+    "canvasSettingsMovedDescription": "Väggtjocklek, vägghöjd och skala finns nu i Canvas Settings-menyn direkt i ritverktyget."
   },
   "errors": {
     "generic": "Ett fel uppstod",
@@ -524,11 +643,50 @@
     "resendInvitationEmail": "Skicka inbjudan igen",
     "editInvitationPermissions": "Redigera inbjudans behörigheter",
     "cancelInvitationTitle": "Avbryt inbjudan",
-    "additionalInfo": "Övrig information"
+    "additionalInfo": "Övrig information",
+    "selectRole": "Välj en roll",
+    "moreInfo": "Mer info",
+    "customizeAccess": "Anpassa behörigheter",
+    "cards": {
+      "contractor": {
+        "description": "Kan visa tidslinje, redigera tilldelade uppgifter och skapa inköpsordrar"
+      },
+      "project_manager": {
+        "description": "Full åtkomst till alla projektfunktioner, kan bjuda in teammedlemmar"
+      },
+      "client": {
+        "description": "Kan visa all projektinformation inklusive budget"
+      },
+      "viewer": {
+        "description": "Skrivskyddad åtkomst till tidslinje, uppgifter och översikt"
+      }
+    }
   },
   "timeline": {
     "unscheduledTasks": "{{count}} oschemalagda uppgifter",
-    "unscheduledTasksSingular": "1 oschemalagd uppgift"
+    "unscheduledTasksSingular": "1 oschemalagd uppgift",
+    "resetZoom": "Återställ till 1 månad",
+    "gestureHint": "Dra för att panorera, nyp för att zooma",
+    "days": "dagar",
+    "weekly": "1V",
+    "monthly": "1M",
+    "threeMonths": "3M",
+    "fullProject": "Alla",
+    "today": "Idag",
+    "showMoreDays": "Visa fler dagar",
+    "showFewerDays": "Visa färre dagar",
+    "noTasksInPeriod": "Inga uppgifter schemalagda i denna period",
+    "taskRescheduled": "Uppgift omplanerad",
+    "taskDurationUpdated": "Uppgiftens varaktighet uppdaterad",
+    "taskUpdated": "Uppgift uppdaterad",
+    "taskUpdatedDescription": "Uppgiften har uppdaterats",
+    "duration": "Varaktighet",
+    "groupBy": "Gruppera efter",
+    "noGrouping": "Ingen gruppering",
+    "groupByStatus": "Status",
+    "groupByRoom": "Rum",
+    "groupByAssignee": "Tilldelad",
+    "groupByPriority": "Prioritet"
   },
   "statuses": {
     "ideas": "Idéer",
@@ -593,7 +751,154 @@
     "selectShape": "Välj form",
     "shortcutsTip": "Använd rutnät och snappning för exakta mått. Högerklicka på en form för att tilldela den till ett rum för färgkodning.",
     "properties": "Egenskaper",
-    "elevationView": "Väggvy"
+    "elevationView": "Väggvy",
+    "individualShapeSelected": "Enskild form markerad",
+    "doubleClickToSelectIndividual": "Dubbelklicka för att markera enskild form",
+    "wall": "Vägg",
+    "rectangle": "Rektangel",
+    "circle": "Cirkel",
+    "line": "Linje",
+    "room": "Rum",
+    "elevation": "Elevation",
+    "dimensions": "Dimensioner",
+    "width": "Bredd",
+    "height": "Höjd",
+    "length": "Längd",
+    "radius": "Radie",
+    "thickness": "Tjocklek",
+    "surfaceCalculation": "Ytberäkning",
+    "totalWallArea": "Total väggyta",
+    "objects": "Objekt",
+    "paintableArea": "Målbar yta",
+    "type": "Typ",
+    "specification": "Specifikation",
+    "treatment": "Behandling",
+    "color": "Kulör",
+    "manufacturer": "Tillverkare",
+    "productCode": "Artikelnr",
+    "fillColor": "Fyllnadsfärg",
+    "strokeColor": "Kantfärg",
+    "doubleClickToEdit": "Dubbelklicka för att redigera",
+    "doubleClickToEditRoom": "Dubbelklicka för att redigera namn/färg",
+    "doubleClickForDetails": "Dubbelklicka för detaljer",
+    "roomColors": "Rumsfärger",
+    "renamePlan": "Döp om plan",
+    "renamePlanDescription": "Ange ett nytt namn för planen",
+    "planRenamed": "Plan omdöpt",
+    "planRenamedDescription": "Plan omdöpt till \"{{name}}\"",
+    "openingRoomDetails": "Öppnar rumsdetaljer",
+    "roomMustBeSavedFirst": "Rummet måste namnges och sparas först.",
+    "openingPropertyPanel": "Öppnar egenskapspanel"
+  },
+  "canvas": {
+    "settings": "Canvasinställningar",
+    "settingsDescription": "Konfigurera arbetsytemiljö utan att påverka faktiska mått",
+    "wallDefaults": "Vägg Standardvärden",
+    "wallDefaultsDesc": "Standardmått för nya väggar (sparas automatiskt)",
+    "thickness": "Tjocklek",
+    "height": "Höjd",
+    "innerWall": "Innervägg",
+    "outerWall": "Yttervägg",
+    "highCeiling": "Högt i tak",
+    "scale": "Skala",
+    "scaleDetailed": "Detaljerad",
+    "scaleStandardDetail": "Standard detalj",
+    "scaleStandard": "Standard",
+    "scaleOverview": "Översikt",
+    "scaleDescription": "Påverkar visuell densitet, linjetjocklek och etikettstorlek",
+    "displayUnit": "Visningsenhet",
+    "unit": "Enhet",
+    "unitDescription": "Hur mått visas (lagras alltid i mm)",
+    "gridConfig": "Rutnätskonfiguration",
+    "showGrid": "Visa rutnät",
+    "gridSpacing": "Rutnätsavstånd",
+    "gridFine": "5cm (Fint)",
+    "grid10cm": "10cm",
+    "grid25cm": "25cm",
+    "gridStandard": "50cm (Standard)",
+    "grid1m": "1m",
+    "gridCoarse": "2m (Grovt)",
+    "grid": "Rutnät",
+    "snap": "Snäpp",
+    "snapToGrid": "Snäpp till rutnät",
+    "canvasSize": "Arbetsyta Storlek",
+    "workspace": "Arbetsyta",
+    "canvasSizeDesc": "Ritningsyta täckt med gridlines",
+    "widthM": "Bredd (m)",
+    "heightM": "Höjd (m)",
+    "standardSizes": "Standard: 30×30m (lägenhet/villa) · 50×50m (större projekt)",
+    "displayOptions": "Visningsalternativ",
+    "showDimensions": "Visa mått på väggar",
+    "dimensionsDesc": "Längdmått visas i vald måttenhet",
+    "showAreaLabels": "Visa rumsareor",
+    "activeConfig": "Aktiv Konfiguration:",
+    "on": "PÅ",
+    "off": "AV",
+    "setStartingView": "Ställ in startvy",
+    "clearStartingView": "Rensa startvy",
+    "startingViewSaved": "Startvy sparad",
+    "startingViewCleared": "Startvy rensad — vyn anpassas automatiskt"
+  },
+  "elevationInfo": {
+    "rectangle": "Rektangel",
+    "circle": "Cirkel",
+    "line": "Linje",
+    "elevation": "Elevation",
+    "dimensions": "Dimensioner",
+    "width": "Bredd",
+    "height": "Höjd",
+    "length": "Längd",
+    "radius": "Radie",
+    "thickness": "Tjocklek",
+    "areaCalculation": "Ytberäkning",
+    "totalWallArea": "Total väggyta",
+    "objects": "Objekt ({{count}} st)",
+    "paintableArea": "Målbar yta",
+    "material": "Material",
+    "type": "Typ",
+    "spec": "Spec",
+    "treatment": "Behandling",
+    "color": "Kulör",
+    "product": "Produkt",
+    "manufacturer": "Tillverkare",
+    "productCode": "Artikelnr",
+    "fillColor": "Fyllnadsfärg",
+    "strokeColor": "Kantfärg"
+  },
+  "controls": {
+    "undo": "Ångra",
+    "undoShortcut": "Ångra (Ctrl+Z)",
+    "redo": "Gör om",
+    "redoShortcut": "Gör om (Ctrl+Y)",
+    "zoomIn": "Zooma in",
+    "zoomInShortcut": "Zooma in (Ctrl + +)",
+    "zoomOut": "Zooma ut",
+    "zoomOutShortcut": "Zooma ut (Ctrl + -)",
+    "resetView": "Återställ vy",
+    "resetViewShortcut": "Återställ vy (Ctrl + 0)"
+  },
+  "access": {
+    "noAccess": "Ingen behörighet",
+    "noAccessDescription": "Du har inte tillgång till den här sektionen."
+  },
+  "pinterest": {
+    "invalidUrl": "Ogiltig Pinterest board URL",
+    "inspiration": "Pinterest Inspiration",
+    "openOnPinterest": "Öppna på Pinterest",
+    "removeBoard": "Ta bort board",
+    "loading": "Laddar Pinterest board...",
+    "loadError": "Kunde inte ladda Pinterest widget",
+    "connected": "Kopplad",
+    "connectedSuccess": "Pinterest kopplat!",
+    "connectError": "Kunde inte ansluta till Pinterest",
+    "connect": "Koppla Pinterest",
+    "disconnect": "Koppla bort",
+    "disconnected": "Pinterest bortkopplat",
+    "disconnectError": "Kunde inte koppla bort Pinterest",
+    "confirmDisconnect": "Är du säker på att du vill koppla bort Pinterest?",
+    "notConfigured": "Pinterest är inte konfigurerat. Kontakta administratören.",
+    "popupBlocked": "Popup blockerad. Tillåt popups för denna sida.",
+    "error": "Ett fel uppstod"
   },
   "files": {
     "title": "Projektfiler",
@@ -703,7 +1008,15 @@
       "kg": "kg",
       "liters": "liter",
       "packages": "förp"
-    }
+    },
+    "filters": "Filter",
+    "clearFilters": "Rensa filter",
+    "allUsers": "Alla",
+    "showingResults": "Visar {{count}} av {{total}} ordrar",
+    "vendor": "Leverantör",
+    "task": "Uppgift",
+    "assignedTo": "Tilldelad till",
+    "statusChangedTo": "Status ändrad till {{status}}"
   },
   "overview": {
     "projectOverview": "Projektöversikt",
@@ -729,7 +1042,67 @@
     "budgetOverview": "Budgetöversikt",
     "floorPlan": "Planlösning",
     "floorPlanComingSoon": "Visualisering av planlösning kommer snart",
-    "floorPlanDescription": "Denna funktion låter dig skapa och visualisera ditt renoveringsutrymme"
+    "floorPlanDescription": "Denna funktion låter dig skapa och visualisera ditt renoveringsutrymme",
+    "pendingPurchaseOrders": "{{count}} väntande inköpsordrar",
+    "pendingPurchaseOrders_one": "{{count}} väntande inköpsorder",
+    "pendingPurchaseOrdersDescription": "Granska och godkänn inskickade ordrar",
+    "viewPurchaseOrders": "Visa ordrar",
+    "advancedSettings": "Avancerade inställningar",
+    "projectCurrency": "Projektvaluta",
+    "selectCurrency": "Välj valuta",
+    "currencyDescription": "Valuta som används för alla belopp i detta projekt",
+    "currencyUpdated": "Valuta uppdaterad",
+    "currencyUpdatedDescription": "Projektets valuta har ändrats.",
+    "enterTotalBudget": "Ange total budget",
+    "selectStartDate": "Välj startdatum",
+    "selectGoalDate": "Välj måldatum",
+    "pulseCards": {
+      "tasks": "Uppgifter",
+      "timeline": "Tidslinje",
+      "budget": "Budget",
+      "orders": "Beställningar",
+      "daysRemaining": "{{count}} dagar kvar",
+      "daysRemaining_one": "{{count}} dag kvar",
+      "overdue": "Försenad",
+      "noDeadlineSet": "Inget slutdatum satt",
+      "noBudgetSet": "Ingen budget satt",
+      "needsReview": "behöver granskas",
+      "noPending": "Allt klart"
+    },
+    "needsAction": {
+      "title": "Behöver åtgärd",
+      "overdueTasks": "{{count}} försenade uppgifter",
+      "overdueTasks_one": "{{count}} försenad uppgift",
+      "blockedTasks": "{{count}} uppgifter blockerade eller pausade",
+      "blockedTasks_one": "{{count}} uppgift blockerad eller pausad",
+      "pendingOrders": "{{count}} väntande inköpsordrar",
+      "pendingOrders_one": "{{count}} väntande inköpsorder",
+      "budgetWarning": "Budget {{percentage}}% använd",
+      "view": "Visa"
+    },
+    "activeTasks": {
+      "title": "Pågående",
+      "noTasks": "Inga pågående uppgifter",
+      "viewAllTasks": "Visa alla uppgifter",
+      "unassigned": "Ej tilldelad"
+    },
+    "recentActivity": {
+      "title": "Senaste aktivitet",
+      "noActivity": "Ingen senaste aktivitet",
+      "viewAllActivity": "Visa all aktivitet"
+    },
+    "settings": {
+      "title": "Projektinställningar",
+      "description": "Uppdatera projektnamn, beskrivning, datum, budget och valuta",
+      "projectName": "Projektnamn",
+      "projectDescription": "Beskrivning",
+      "startDate": "Startdatum",
+      "goalDate": "Måldatum",
+      "totalBudget": "Total budget",
+      "currency": "Valuta",
+      "saved": "Inställningar uppdaterade",
+      "savedDescription": "Projektinställningarna har sparats."
+    }
   },
   "budget": {
     "title": "Budget",
@@ -778,7 +1151,76 @@
     "paymentStatus": "Betalningsstatus",
     "dueDate": "Förfallodatum",
     "excludeFromBudget": "Exkludera från budget",
-    "created": "Skapad"
+    "created": "Skapad",
+    "failedToLoadData": "Kunde inte ladda budgetdata",
+    "failedToUpdateStatus": "Kunde inte uppdatera status",
+    "failedToUpdateValue": "Kunde inte uppdatera värde",
+    "failedToLoadDetails": "Kunde inte ladda detaljer",
+    "advancedFilter": "Filter+",
+    "views": "Vyer ({{count}})",
+    "detailTitle": "Titel",
+    "detailDescription": "Beskrivning",
+    "detailPriority": "Prioritet",
+    "detailProgress": "Framsteg",
+    "detailPaidAmount": "Betalt belopp",
+    "detailPaymentStatus": "Betalningsstatus",
+    "detailDueDate": "Förfallodatum",
+    "detailName": "Namn",
+    "detailQuantity": "Antal",
+    "detailPricePerUnit": "Pris per enhet",
+    "detailPriceTotal": "Totalpris",
+    "detailVendor": "Leverantör",
+    "detailVendorLink": "Leverantörslänk",
+    "detailExcludeFromBudget": "Exkludera från budget",
+    "detailCreated": "Skapad"
+  },
+  "budgetDashboard": {
+    "failedToLoadPayments": "Kunde inte ladda betalningsdetaljer",
+    "failedToLoadOngoingCosts": "Kunde inte ladda tillägg",
+    "noCostCenter": "Inget kostnadsställe",
+    "payments": "Betalningar",
+    "vendor": "Leverantör",
+    "pending": "Väntande",
+    "remaining": "Återstående",
+    "totalBudget": "Total budget",
+    "extras": "Tillägg",
+    "projectAllocation": "Projektallokering",
+    "budgetUsed": "{{percentage}}% av budgeten använd",
+    "pendingOrders": "Väntande ordrar",
+    "ordersPending": "{{count}} ordrar väntar",
+    "excludedFromBudget": "{{count}} poster exkluderade från budget",
+    "overBudget": "Över budget",
+    "availableToSpend": "Tillgängligt att spendera",
+    "budgetExceeded": "Budget överskriden",
+    "budgetExceededDescription": "Du har överskridit den totala budgeten med {{amount}}. Överväg att granska utgifter eller justera budgeten.",
+    "highPendingOrders": "Många väntande ordrar",
+    "highPendingOrdersDescription": "{{amount}} ({{percentage}}% av budgeten) i väntande ordrar. Granska och godkänn eller avvisa för att hantera kassaflödet.",
+    "budgetDistribution": "Budgetfördelning",
+    "budgetAllocationBreakdown": "Hur din budget är fördelad",
+    "costByRoom": "Kostnadsfördelning per rum",
+    "costByCostCenter": "Kostnadsfördelning per kostnadsställe",
+    "budgetOverview": "Budgetöversikt",
+    "perRoom": "Per rum",
+    "perCostCenter": "Per kostnadsställe",
+    "noBudgetData": "Ingen budgetdata tillgänglig",
+    "budgetComparison": "Budgetjämförelse",
+    "compareBudgetCategories": "Jämför budgetkategorier sida vid sida",
+    "budgetExpenses": "Budgetutgifter",
+    "budgetExpensesDescription": "Detaljerad lista över alla uppgifter med budget och inköpsordrar inkluderade i projektbudgeten",
+    "filterByType": "Filtrera efter typ",
+    "filterByDate": "Filtrera efter datum",
+    "purchaseOrders": "Inköpsordrar",
+    "purchaseOrder": "Inköpsorder",
+    "totalPayments": "Totala betalningar",
+    "items": "Poster",
+    "noPaymentsFound": "Inga betalningar hittades",
+    "amount": "Belopp",
+    "date": "Datum",
+    "extrasTitle": "Tillägg (utanför budget)",
+    "extrasDescription": "Driftskostnader som inte ingår i projektbudgeten",
+    "totalExtras": "Totala tillägg",
+    "excludedFromBudgetNote": "Dessa kostnader är exkluderade från projektbudgetberäkningar",
+    "noExtrasFound": "Inga tillägg hittades"
   },
   "taskPanel": {
     "title": "Uppgiftsdetaljer",
@@ -861,6 +1303,9 @@
     "notesSaved": "Anteckningar sparade",
     "changesSaved": "Ändringar sparade!",
     "dimensionsUpdated": "Dimensioner uppdaterade!",
+    "batchDimensionsUpdated": "{{count}} väggar uppdaterade!",
+    "selectedWalls": "väggar markerade",
+    "batchEditHint": "Ändringar gäller alla markerade väggar",
     "invalidLength": "Ogiltig längd. Ange ett positivt tal.",
     "invalidThickness": "Ogiltig tjocklek. Ange ett positivt tal i mm.",
     "invalidHeight": "Ogiltig höjd. Ange ett positivt tal i mm.",
@@ -880,7 +1325,19 @@
     "cornerCount": "Antal hörn",
     "width": "Bredd",
     "radius": "Radie",
-    "size": "Storlek"
+    "size": "Storlek",
+    "templateGroup": "Mallgrupp",
+    "shapes": "former",
+    "templateGroupDimensions": "Gruppdimensioner",
+    "resize": "Ändra storlek",
+    "widthMm": "Bredd (mm)",
+    "heightMm": "Höjd (mm)",
+    "groupScaleHint": "Alla former i gruppen skalas proportionellt",
+    "applyResize": "Tillämpa storlek",
+    "depth": "Djup/Höjd",
+    "category": "Kategori",
+    "invalidWidth": "Ogiltig bredd. Ange ett positivt tal.",
+    "groupDimensionsUpdated": "Gruppen har ändrat storlek!"
   },
   "saveTemplateDialog": {
     "title": "Spara som Mall",
@@ -984,6 +1441,21 @@
     "useColor": "Använd färg",
     "status": "Status",
     "area": "Yta"
+  },
+  "canvasSettings": {
+    "title": "Canvasinställningar",
+    "roomColor": "Rumsfärg på canvas",
+    "transparency": "Transparens",
+    "transparent": "Transparent",
+    "solid": "Solid",
+    "transparencyHelp": "Lägre transparens gör det enklare att se objekt inuti rummet",
+    "layerOrder": "Lagerordning",
+    "layerOrderHelp": "Skicka rummet till bakgrunden för att enkelt markera och flytta objekt placerade inuti rummet (möbler, vitvaror, etc.)",
+    "sendToBack": "Skicka längst bak",
+    "sendBackward": "Skicka bakåt",
+    "bringForward": "Flytta framåt",
+    "bringToFront": "Flytta längst fram",
+    "currentLayer": "Aktuellt lager"
   },
   "entityPhotos": {
     "photos": "Bilder",
@@ -1091,6 +1563,8 @@
     "title": "Skapa projekt från dokument",
     "description": "Ladda upp en rumsbeskrivning eller renoveringsspec — AI extraherar rum, uppgifter och skapar ett projekt åt dig.",
     "buttonLabel": "AI-import",
+    "smartImport": "Smart Import",
+    "smartImportTooltip": "Ladda upp befintlig textfil med renoveringsbeskrivning och vi skapar automatiskt att-göra lista och uppdelade rumsbeskrivningar",
     "uploadTitle": "Ladda upp dokument",
     "uploadDescription": "PDF, DOCX eller TXT — t.ex. en rumsbeskrivning eller renoveringsspec",
     "chooseFile": "Välj fil",
@@ -1419,10 +1893,26 @@
     "disclaimer": "OBS: För byggregler ger jag allmän vägledning — kontakta alltid din kommuns byggnadsnämnd för slutgiltigt besked.",
     "greeting": "Hej! Jag är Renomate — din renoveringsexpert och plattformsguide. Fråga mig om byggregler, renoveringstips eller hur du får ut mest av appen!",
     "errorMessage": "Något gick fel. Försök igen.",
-    "send": "Skicka"
+    "send": "Skicka",
+    "quick": {
+      "getStarted": "Kom igång",
+      "permits": "Tillstånd & regler",
+      "spacePlanner": "Planlösningsguide",
+      "budgetTips": "Budget & kostnader",
+      "projectManagement": "Projekthantering",
+      "teamBudget": "Team & budget"
+    },
+    "quickMessage": {
+      "getStarted": "Jag är ny — vad är bästa sättet att sätta upp mitt första renoveringsprojekt?",
+      "permits": "Vilka bygglov och regler bör jag känna till för renoveringsarbeten?",
+      "spacePlanner": "Hur använder jag planlösningen för att skapa planritningar och koppla rum till uppgifter?",
+      "budgetTips": "Hur spårar jag renoveringskostnader och hanterar min budget i appen?",
+      "projectManagement": "Hur kan jag hantera mina renoveringsprojekt mer effektivt i appen?",
+      "teamBudget": "Hur bjuder jag in teammedlemmar och spårar kostnader mellan projekt?"
+    }
   },
   "feedback": {
-    "title": "Hjälp & feedback",
+    "title": "Kontakt & feedback",
     "subtitle": "Hjälp oss förbättra Renomate. Rapportera en bugg eller önska en funktion — anonymt om du vill.",
     "messageLabel": "Meddelande",
     "messagePlaceholder": "Beskriv buggen du hittade eller funktionen du önskar se...",
@@ -1670,5 +2160,108 @@
     "downloadPdf": "Ladda ned PDF",
     "confirmDelete": "Ta bort denna offert?",
     "quoteDeleted": "Offert borttagen"
+  },
+  "welcome": {
+    "chooseLanguage": "Välj ditt språk",
+    "title": "Välkommen till Renomate!",
+    "subtitle": "Vad beskriver dig bäst?",
+    "homeowner": "Husägare",
+    "homeownerDesc": "Jag renoverar mitt eget hem",
+    "contractor": "Byggföretag",
+    "contractorDesc": "Jag driver ett byggföretag",
+    "continue": "Fortsätt"
+  },
+  "demoProject": {
+    "badge": "Exempelprojekt",
+    "title": "Lägenhetsrenovering 3:a - Exempel",
+    "description": "Utforska detta exempelprojekt för att lära dig hur Renomate fungerar",
+    "rooms": {
+      "livingRoom": "Vardagsrum med parkettgolv och stuckatur. Nyligen spacklat och målat.",
+      "bedroom": "Sovrum med plats för dubbelsäng. Ska tapetseras med mönstrad tapet.",
+      "kitchen": "Kök med plats för matbord. Ny bänkskiva och stänkskydd planeras.",
+      "bathroom": "Badrum med dusch och tvättmaskin. Komplett kakling planeras.",
+      "hallway": "Hall med garderob och hatthylla. Slipning av originalgolv."
+    },
+    "tasks": {
+      "preparation": {
+        "title": "Skydda och förbered",
+        "description": "Täck golv och möbler med skyddspapp och plast. Tejpa kanter vid tak och fönster."
+      },
+      "spackling": {
+        "title": "Spackling av väggar",
+        "description": "Laga sprickor och hål i väggar. Slipa och grunda inför målning."
+      },
+      "paintingLivingRoom": {
+        "title": "Målning vardagsrum",
+        "description": "Måla väggar med väggfärg (2 strykningar) och tak med takfärg. Kulör: NCS S 0502-Y."
+      },
+      "wallpaper": {
+        "title": "Tapetsering sovrum",
+        "description": "Sätt upp mönstrad tapet på fondvägg. Övriga väggar målas i matchande kulör."
+      },
+      "floorSanding": {
+        "title": "Golvslipning",
+        "description": "Slipa parkettgolv i vardagsrum och hall. Lacka med 3 lager golvlack."
+      },
+      "kitchenSurfaces": {
+        "title": "Kök - bänkskiva & stänkskydd",
+        "description": "Montera ny kompaktlaminatskiva och sätt kakel som stänkskydd bakom spis."
+      },
+      "bathroomTiling": {
+        "title": "Kakling badrum",
+        "description": "Sätt vitt kakel 20x20 på väggar och klinker på golv.Inklusive tätskikt."
+      },
+      "trim": {
+        "title": "Montera lister",
+        "description": "Sätt nya golvlister i alla rum och taklister i vardagsrummet."
+      },
+      "electrical": {
+        "title": "El - belysning kök",
+        "description": "Installera LED-spots i tak och bänkbelysning under överskåp."
+      },
+      "finalCleaning": {
+        "title": "Slutstädning",
+        "description": "Byggstädning av hela lägenheten. Ta bort skyddspapper och dammsug noggrant."
+      }
+    },
+    "materials": {
+      "filler": "Spackel fin (10 liter hink)",
+      "wallPaint": "Väggfärg helmatt vit - Alcro",
+      "ceilingPaint": "Takfärg vit matt - Alcro",
+      "wallpaper": "Tapet Botanica - Boråstapeter",
+      "floorLacquer": "Golvlack halvmatt - Bona Traffic",
+      "countertop": "Bänkskiva kompaktlaminat svart",
+      "backsplashTiles": "Kakel vit blank 10x10",
+      "bathroomTiles": "Klinker & väggkakel vit matt 20x20",
+      "grout": "Kakelfog flexibel grå",
+      "floorTrim": "Golvlist furu vit 12x56mm",
+      "ceilingTrim": "Taklist stuckatur 50mm",
+      "ledSpots": "LED downlight 7W varmvit"
+    }
+  },
+  "hotspots": {
+    "canvas": "Rita dina rum här på 30 sekunder",
+    "createProject": "Börja här! Skapa ditt första projekt",
+    "inviteTeam": "Bjud in hantverkare eller familj för att samarbeta"
+  },
+  "directions": {
+    "north": "Norr",
+    "south": "Söder",
+    "east": "Öst",
+    "west": "Väst"
+  },
+  "roomElevation": {
+    "elevationView": "Elevationsvy",
+    "room": "Rum",
+    "swipeHint": "Svep eller använd pilarna för att navigera väggar",
+    "noWallsFound": "Inga väggar hittades",
+    "drawWallsFirst": "Rita väggar runt detta rum för att se elevationsvyn.",
+    "previousWall": "Föregående",
+    "nextWall": "Nästa",
+    "wall": "Vägg",
+    "floor": "Golv",
+    "window": "Fönster",
+    "door": "Dörr",
+    "viewElevation": "Visa elevation"
   }
 }

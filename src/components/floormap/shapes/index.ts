@@ -23,3 +23,6 @@ export { WindowLineShape, DoorLineShape, SlidingDoorLineShape } from './OpeningS
 
 // Background image shape
 export { ImageShape } from './ImageShape';
+
+// Template group shape (grouped template objects)
+export { TemplateGroupShape } from './TemplateGroupShape';

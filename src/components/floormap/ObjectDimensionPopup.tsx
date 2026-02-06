@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Ruler } from "lucide-react";
 import { DrawnObject } from "./types";
 
@@ -9,6 +10,7 @@ interface ObjectDimensionPopupProps {
 }
 
 export const ObjectDimensionPopup = ({ object, canvasRect, zoom, panOffset }: ObjectDimensionPopupProps) => {
+  const { t } = useTranslation();
   if (!object.selected || object.points.length === 0) return null;
 
   // Scale: 1:100 means 100 pixels = 1 meter in real life
@@ -56,7 +58,7 @@ export const ObjectDimensionPopup = ({ object, canvasRect, zoom, panOffset }: Ob
           <Ruler className="h-4 w-4 text-gray-600" />
           <div className="flex flex-col">
             <span className="text-xs font-medium text-gray-900">
-              {object.type === 'wall' ? 'Vägg' : 'Linje'}
+              {object.type === 'wall' ? t('floormap.wall') : t('elevationInfo.line')}
             </span>
             <div className="flex items-center gap-2 text-xs">
               <span className="font-semibold text-blue-600">
@@ -72,7 +74,7 @@ export const ObjectDimensionPopup = ({ object, canvasRect, zoom, panOffset }: Ob
           </div>
         </div>
         <div className="text-[10px] text-gray-400 mt-1">
-          {object.type === 'room' ? 'Dubbelklicka för att redigera namn/färg' : 'Dubbelklicka för detaljer'}
+          {object.type === 'room' ? t('floormap.doubleClickToEditRoom') : t('floormap.doubleClickForDetails')}
         </div>
       </div>
     </div>

@@ -130,7 +130,8 @@
     "addFirstTask": "Adaugă prima sarcină",
     "taskCreated": "Sarcină creată!",
     "taskCreatedDescription": "Sarcina a fost adăugată la proiectul tău.",
-    "adding": "Se adaugă..."
+    "adding": "Se adaugă...",
+    "viewOnFloorPlan": "Vezi pe planul etajului"
   },
   "rooms": {
     "title": "Camere",
@@ -305,6 +306,28 @@
     "notAuthenticated": "Neautentificat",
     "profileNotFound": "Profil negăsit"
   },
+  "onboarding": {
+    "welcome": "Bine ai venit la Renomate!",
+    "welcomeDescription": "Gestionează proiectele tale de renovare de la planificare la finalizare.",
+    "createProject": "Creează primul tău proiect",
+    "createProjectDesc": "Gestionez o renovare",
+    "hasInvitation": "Am o invitație",
+    "hasInvitationDesc": "Managerul de proiect m-a invitat",
+    "checklist": {
+      "title": "Primii pași",
+      "progress": "{{count}} din {{total}} pași finalizați",
+      "completeProfile": "Completează-ți profilul",
+      "createProject": "Creează primul tău proiect",
+      "drawRoom": "Desenează prima ta cameră",
+      "createQuote": "Creează o ofertă de test",
+      "createTaskRoom": "Creează o sarcină și conecteaz-o la o cameră",
+      "completeProProfile": "Completează-ți profilul profesional",
+      "dismiss": "Ascunde lista de verificare",
+      "confirmDismiss": "Ascunde ghidul de pornire?",
+      "allDone": "Bine făcut! Ești gata.",
+      "inviteClient": "Gata să inviți primul tău client?"
+    }
+  },
   "roles": {
     "title": "Echipă și invitații",
     "description": "Gestionează membrii echipei proiectului și invitațiile",
@@ -439,7 +462,24 @@
     "resendInvitationEmail": "Retrimite email invitație",
     "editInvitationPermissions": "Editează permisiuni invitație",
     "cancelInvitationTitle": "Anulează invitația",
-    "additionalInfo": "Informații suplimentare"
+    "additionalInfo": "Informații suplimentare",
+    "selectRole": "Selectează un rol",
+    "moreInfo": "Mai multe informații",
+    "customizeAccess": "Personalizează permisiunile",
+    "cards": {
+      "contractor": {
+        "description": "Poate vizualiza cronologia, edita sarcinile atribuite și crea comenzi de achiziție"
+      },
+      "project_manager": {
+        "description": "Acces complet la toate funcțiile proiectului, poate invita membri în echipă"
+      },
+      "client": {
+        "description": "Poate vizualiza toate informațiile proiectului, inclusiv bugetul"
+      },
+      "viewer": {
+        "description": "Acces doar de citire la cronologie, sarcini și prezentare generală"
+      }
+    }
   },
   "propertyPanel": {
     "objectDetails": "Detalii obiect",
@@ -815,7 +855,10 @@
     "createRoom": "Creează cameră",
     "deleteRoom": "Șterge cameră",
     "scrollToPan": "Derulează pentru a panorama",
-    "ctrlZoom": "Folosește butoanele de zoom sau rotița mouse-ului"
+    "ctrlZoom": "Folosește butoanele de zoom sau rotița mouse-ului",
+    "openingRoomDetails": "Se deschid detaliile camerei",
+    "roomMustBeSavedFirst": "Camera trebuie mai întâi denumită și salvată.",
+    "openingPropertyPanel": "Se deschide panoul de proprietăți"
   },
   "files": {
     "title": "Fișiere proiect",
@@ -1092,5 +1135,15 @@
     "notes": "Notițe",
     "notesPlaceholder": "Instrucțiuni, notițe...",
     "commentsLabel": "Comentarii"
+  },
+  "welcome": {
+    "chooseLanguage": "Alegeți limba",
+    "title": "Bine ați venit la Renomate!",
+    "subtitle": "Ce vă descrie cel mai bine?",
+    "homeowner": "Proprietar",
+    "homeownerDesc": "Îmi renovez propria casă",
+    "contractor": "Constructor",
+    "contractorDesc": "Conduc o firmă de construcții",
+    "continue": "Continuare"
   }
 }

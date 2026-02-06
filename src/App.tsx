@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,16 +25,36 @@ import CreateQuote from "./pages/CreateQuote";
 import ViewQuote from "./pages/ViewQuote";
 import ClientRegistry from "./pages/ClientRegistry";
 import { HelpBot } from "./components/HelpBot";
+import { BetaBanner } from "./components/BetaBanner";
 
 const queryClient = new QueryClient();
 
+const ErrorFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="text-center max-w-md">
+      <h1 className="text-2xl font-semibold mb-2">Something went wrong</h1>
+      <p className="text-muted-foreground mb-4">
+        An unexpected error occurred. Please refresh the page to continue.
+      </p>
+      <button
+        onClick={() => window.location.reload()}
+        className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:opacity-90"
+      >
+        Refresh Page
+      </button>
+    </div>
+  </div>
+);
+
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
+  <Sentry.ErrorBoundary fallback={<ErrorFallback />}>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <BetaBanner />
+          <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/projects" element={<Projects />} />
@@ -59,6 +80,7 @@ const App = () => (
       <HelpBot />
     </TooltipProvider>
   </QueryClientProvider>
+  </Sentry.ErrorBoundary>
 );
 
 export default App;

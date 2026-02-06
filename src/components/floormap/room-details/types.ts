@@ -138,6 +138,8 @@ export interface RoomDetailDialogProps {
   onRoomUpdated?: () => void;
   /** Set to true when intentionally creating a new room (not loading existing room data) */
   isCreateMode?: boolean;
+  /** Callback to open room elevation view */
+  onViewElevation?: () => void;
 }
 
 // Props for section components

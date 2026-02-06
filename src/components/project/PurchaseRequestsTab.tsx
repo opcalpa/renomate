@@ -9,7 +9,9 @@ import {
   Loader2,
   Plus,
   Pencil,
-  ExternalLink
+  ExternalLink,
+  Filter,
+  X
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useTranslation } from "react-i18next";
+import { formatCurrency } from "@/lib/currency";
 
 interface Material {
   id: string;
@@ -79,9 +82,10 @@ interface PurchaseRequestsTabProps {
   projectId: string;
   openEntityId?: string | null;
   onEntityOpened?: () => void;
+  currency?: string | null;
 }
 
-const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened }: PurchaseRequestsTabProps) => {
+const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency }: PurchaseRequestsTabProps) => {
   const { t } = useTranslation();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,6 +102,11 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened }: Purcha
   const [userPurchasesScope, setUserPurchasesScope] = useState<string>('assigned');
 
   const [quickMode, setQuickMode] = useState(true);
+
+  // Filter state
+  const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [filterCreatedBy, setFilterCreatedBy] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   const [newMaterial, setNewMaterial] = useState({
     name: "",
@@ -493,6 +502,51 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened }: Purcha
     }
   };
 
+  // Filter materials based on selected filters
+  const filteredMaterials = materials.filter((material) => {
+    if (filterStatus && material.status !== filterStatus) return false;
+    if (filterCreatedBy && material.created_by_user_id !== filterCreatedBy) return false;
+    return true;
+  });
+
+  // Get unique creators for filter dropdown
+  const uniqueCreators = Array.from(
+    new Map(
+      materials
+        .filter((m) => m.created_by_user_id && m.creator?.name)
+        .map((m) => [m.created_by_user_id, { id: m.created_by_user_id!, name: m.creator!.name }])
+    ).values()
+  );
+
+  // Status options for filter
+  const statusOptions = [
+    { value: "submitted", labelKey: "materialStatuses.submitted" },
+    { value: "declined", labelKey: "materialStatuses.declined" },
+    { value: "approved", labelKey: "materialStatuses.approved" },
+    { value: "billed", labelKey: "materialStatuses.billed" },
+    { value: "paid", labelKey: "materialStatuses.paid" },
+    { value: "paused", labelKey: "materialStatuses.paused" },
+  ];
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "submitted": return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      case "approved": return "bg-blue-100 text-blue-700 border-blue-200";
+      case "declined": return "bg-red-100 text-red-700 border-red-200";
+      case "billed": return "bg-purple-100 text-purple-700 border-purple-200";
+      case "paid": return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      case "paused": return "bg-gray-100 text-gray-500 border-gray-200";
+      default: return "bg-slate-100 text-slate-700 border-slate-200";
+    }
+  };
+
+  const clearFilters = () => {
+    setFilterStatus(null);
+    setFilterCreatedBy(null);
+  };
+
+  const hasActiveFilters = filterStatus !== null || filterCreatedBy !== null;
+
   if (loading) {
     return (
       <Card>
@@ -669,7 +723,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened }: Purcha
                     />
                     {newMaterial.quantity && newMaterial.price_per_unit && (
                       <p className="text-sm text-muted-foreground">
-                        {t('purchases.priceTotal')}: ${(parseFloat(newMaterial.quantity) * parseFloat(newMaterial.price_per_unit)).toFixed(2)}
+                        {t('purchases.priceTotal')}: {formatCurrency(parseFloat(newMaterial.quantity) * parseFloat(newMaterial.price_per_unit), currency, { decimals: 2 })}
                       </p>
                     )}
                   </div>
@@ -801,7 +855,92 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened }: Purcha
               </p>
             </div>
           ) : (
-            <div className="border rounded-lg overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
+            <>
+              {/* Filter Section */}
+              <div className="mb-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={hasActiveFilters ? "border-primary text-primary" : ""}
+                  >
+                    <Filter className="h-4 w-4 mr-2" />
+                    {t('purchases.filters', 'Filter')}
+                    {hasActiveFilters && (
+                      <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                        {(filterStatus ? 1 : 0) + (filterCreatedBy ? 1 : 0)}
+                      </Badge>
+                    )}
+                  </Button>
+                  {hasActiveFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters}>
+                      <X className="h-4 w-4 mr-1" />
+                      {t('purchases.clearFilters', 'Rensa filter')}
+                    </Button>
+                  )}
+                </div>
+
+                {showFilters && (
+                  <div className="flex flex-wrap gap-4 p-4 bg-muted/50 rounded-lg">
+                    {/* Status Filter */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">{t('common.status')}</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {statusOptions.map((status) => (
+                          <button
+                            key={status.value}
+                            type="button"
+                            onClick={() => setFilterStatus(filterStatus === status.value ? null : status.value)}
+                            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                              filterStatus === status.value
+                                ? getStatusColor(status.value)
+                                : "bg-transparent text-muted-foreground border-dashed border-muted-foreground/40 hover:border-muted-foreground"
+                            }`}
+                          >
+                            {t(status.labelKey)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Created By Filter */}
+                    {uniqueCreators.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">{t('purchases.addedBy')}</Label>
+                        <Select
+                          value={filterCreatedBy || "all"}
+                          onValueChange={(value) => setFilterCreatedBy(value === "all" ? null : value)}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder={t('purchases.allUsers', 'Alla')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">{t('purchases.allUsers', 'Alla')}</SelectItem>
+                            {uniqueCreators.map((creator) => (
+                              <SelectItem key={creator.id} value={creator.id}>
+                                {creator.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Active Filters Summary */}
+                {hasActiveFilters && (
+                  <div className="text-sm text-muted-foreground">
+                    {t('purchases.showingResults', 'Visar {{count}} av {{total}} ordrar', {
+                      count: filteredMaterials.length,
+                      total: materials.length
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="border rounded-lg overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -820,7 +959,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened }: Purcha
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {materials.map((material) => (
+                  {filteredMaterials.map((material) => (
                     <TableRow
                       key={material.id}
                       className="cursor-pointer hover:bg-muted/50"
@@ -860,10 +999,10 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened }: Purcha
                         {material.quantity} {material.unit}
                       </TableCell>
                       <TableCell>
-                        {material.price_per_unit ? `$${material.price_per_unit.toFixed(2)}` : "-"}
+                        {material.price_per_unit ? formatCurrency(material.price_per_unit, currency, { decimals: 2 }) : "-"}
                       </TableCell>
                       <TableCell className="font-semibold">
-                        {material.price_total ? `$${material.price_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}
+                        {material.price_total ? formatCurrency(material.price_total, currency, { decimals: 2 }) : "-"}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         {material.vendor_name ? (
@@ -925,6 +1064,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened }: Purcha
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -1013,7 +1153,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened }: Purcha
                 />
                 {editingMaterial.quantity && editingMaterial.price_per_unit && (
                   <p className="text-sm text-muted-foreground">
-                    {t('purchases.priceTotal')}: ${(editingMaterial.quantity * editingMaterial.price_per_unit).toFixed(2)}
+                    {t('purchases.priceTotal')}: {formatCurrency(editingMaterial.quantity * editingMaterial.price_per_unit, currency, { decimals: 2 })}
                   </p>
                 )}
               </div>

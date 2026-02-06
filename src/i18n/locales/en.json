@@ -20,6 +20,7 @@
     "language": "Language",
     "optional": "optional",
     "close": "Close",
+    "viewOnly": "View only",
     "saving": "Saving...",
     "update": "Update",
     "remove": "Remove",
@@ -43,14 +44,18 @@
     "use": "Use",
     "selectOrType": "Select or type...",
     "searchOrType": "Search or type...",
-    "noSuggestionsEnterToUse": "No suggestions. Press Enter to use."
+    "noSuggestionsEnterToUse": "No suggestions. Press Enter to use.",
+    "noRoom": "No Room",
+    "unknownRoom": "Unknown Room",
+    "unknownUser": "Unknown",
+    "settings": "Settings"
   },
   "nav": {
     "home": "Home",
     "projects": "Projects",
     "profile": "Profile",
     "tips": "Tips",
-    "feedback": "Help",
+    "feedback": "Contact",
     "language": "Language",
     "mobileNav": {
       "overview": "Overview",
@@ -125,6 +130,11 @@
     "back": "Back",
     "skipAndCreate": "Skip & create",
     "noDescription": "No description",
+    "deleteTitle": "Delete project?",
+    "deleteWarning": "This will permanently delete \"{{name}}\" and all its tasks, materials, rooms, files, and activity history.",
+    "deleteIrreversible": "This action cannot be undone.",
+    "deleteSuccess": "Project deleted",
+    "deleteSuccessDescription": "\"{{name}}\" has been permanently deleted.",
     "types": {
       "kitchenRenovation": "Kitchen renovation",
       "bathroomRenovation": "Bathroom renovation",
@@ -144,11 +154,59 @@
     "createProject": "Create your first project",
     "createProjectDesc": "I'm managing a renovation",
     "hasInvitation": "I have an invitation",
-    "hasInvitationDesc": "My project manager invited me"
+    "hasInvitationDesc": "My project manager invited me",
+    "checklist": {
+      "title": "Getting Started",
+      "progress": "{{count}} of {{total}} steps completed",
+      "completeProfile": "Complete your profile",
+      "createProject": "Create your first project",
+      "drawRoom": "Draw your first room",
+      "createQuote": "Create a test quote",
+      "createTaskRoom": "Create a task and connect it to a room",
+      "completeProProfile": "Complete your professional profile",
+      "dismiss": "Hide checklist",
+      "confirmDismiss": "Hide getting started guide?",
+      "allDone": "Well done! You're ready to go.",
+      "inviteClient": "Ready to invite your first client?",
+      "showMe": "Show me"
+    },
+    "steps": {
+      "project": {
+        "label": "Create a project",
+        "instruction": "Click the button above to create your first renovation project."
+      },
+      "enterCanvas": {
+        "label": "Open the floor planner",
+        "instruction": "Navigate to the Space Planner tab to start designing your floor plan."
+      },
+      "drawRoom": {
+        "label": "Draw your first room",
+        "instruction": "Select the room tool and draw a room on the canvas.",
+        "canvasHint": "Click and drag to draw a room"
+      },
+      "generateWalls": {
+        "label": "Generate walls",
+        "instruction": "Select a room and click 'Generate Walls' to add walls automatically.",
+        "canvasHint": "Select a room first, then click Generate Walls"
+      },
+      "taskWithRoom": {
+        "label": "Create a task linked to a room",
+        "instruction": "Create a task and assign it to a room to track work by location."
+      },
+      "profile": {
+        "label": "Complete your professional profile",
+        "instruction": "Add your company details and professional information to attract clients."
+      }
+    }
   },
   "projectDetail": {
     "overview": "Overview",
+    "overviewDesc": "Project summary and status",
     "rooms": "Rooms",
+    "roomsDesc": "Manage and configure rooms",
+    "floorPlan": "Floor Plan",
+    "floorPlanDesc": "Design and plan your floor layout",
+    "feedDesc": "Comments and activity feed",
     "spacePlanner": "Space Planner",
     "tasks": "Tasks",
     "timeline": "Project Timeline",
@@ -158,7 +216,23 @@
     "toDo": "To Do",
     "noScheduledTasks": "No scheduled tasks",
     "noScheduledTasksDescription": "Add start and finish dates to tasks to see them in the timeline",
-    "feed": "Feed"
+    "feed": "Feed",
+    "allProjects": "All Projects",
+    "files": "Files",
+    "purchases": "Purchases",
+    "team": "Team",
+    "roomManagement": "Room Management",
+    "roomManagementDescription": "Manage and configure rooms for your project.",
+    "confirmDeleteRoom": "Are you sure you want to delete the room \"{{name}}\"? This action cannot be undone.",
+    "roomDeleted": "Room deleted",
+    "roomDeletedDescription": "\"{{name}}\" has been removed",
+    "failedToDeleteRoom": "Could not delete room",
+    "imageAdded": "Image added",
+    "imageAddedDescription": "\"{{name}}\" has been added as a background image on canvas",
+    "navigatingToRoom": "Navigating to room",
+    "showingRoomOnDrawing": "Showing \"{{name}}\" on the drawing",
+    "placeRoom": "Place room",
+    "clickToPlaceRoom": "Click on the drawing to place \"{{name}}\""
   },
   "tasks": {
     "title": "Tasks",
@@ -181,7 +255,8 @@
     "addFirstTask": "Add First Task",
     "taskCreated": "Task created!",
     "taskCreatedDescription": "The task has been added to your project.",
-    "adding": "Adding..."
+    "adding": "Adding...",
+    "viewOnFloorPlan": "View on floor plan"
   },
   "rooms": {
     "title": "Rooms",
@@ -218,6 +293,7 @@
     "selectTreatment": "Select treatment(s)",
     "mainColor": "Main color",
     "accentWall": "Accent wall",
+    "featureWall": "Feature wall",
     "accentWallColor": "Accent wall color",
     "joinery": "Joinery",
     "doorType": "Door type",
@@ -254,14 +330,48 @@
     "loadingTasks": "Loading tasks...",
     "noTasksForRoom": "No tasks linked to this room",
     "noTasksMatchFilter": "No tasks match the filter",
+    "createTaskForRoom": "Create Task",
+    "taskWillBeLinkedToRoom": "The task will be linked to this room",
+    "taskCreatedForRoom": "Task created and linked to room",
+    "taskTitleRequired": "Task title is required",
+    "failedToCreateTask": "Failed to create task",
+    "taskTitlePlaceholder": "e.g. Install flooring, Paint walls",
+    "taskDescriptionPlaceholder": "Add details about the task...",
+    "creatingTask": "Creating...",
+    "createTask": "Create Task",
     "loadingPurchaseOrders": "Loading purchase orders...",
     "noPOsForRoom": "No purchase orders linked to this room",
     "noPOsMatchFilter": "No purchase orders match the filter",
+    "createPOForRoom": "Create Purchase Order",
+    "poWillBeLinkedToRoom": "The purchase order will be linked to this room",
+    "poCreatedForRoom": "Purchase order created and linked to room",
+    "poNamePlaceholder": "e.g. Floor tiles, Paint",
     "pieces": "pcs",
     "area": "Area",
     "status": "Status",
     "pinterestInspirationBoard": "Pinterest Inspiration Board",
-    "importedFromPinterest": "Imported from Pinterest"
+    "importedFromPinterest": "Imported from Pinterest",
+    "showOnFloorPlan": "Show on floor plan",
+    "placeOnFloorPlan": "Place on floor plan",
+    "placedOnCanvas": "Placed on canvas",
+    "notPlacedOnCanvas": "Not placed on canvas",
+    "quickInfo": "Quick Info",
+    "quickNote": "Quick note",
+    "quickNotePlaceholder": "Add a quick note about this room...",
+    "wallPaintShort": "Wall paint",
+    "twoCoats": "2 coats",
+    "floorAndCeiling": "Floor & Ceiling",
+    "wallsAndJoinery": "Walls & Joinery",
+    "electricalAndHeating": "Electrical & Heating",
+    "projectData": "Project Data",
+    "mediaAndComments": "Media & Comments",
+    "canvasSettings": "Canvas settings",
+    "roomColor": "Room color",
+    "identity": "Identity",
+    "unnamed": "Unnamed room",
+    "ceilingHeightShort": "h",
+    "relatedTasks": "Related Tasks",
+    "relatedPurchaseOrders": "Purchase Orders"
   },
   "spacePlanner": {
     "title": "Space Planner",
@@ -342,7 +452,14 @@
     "proBadge": "PRO",
     "orgNumber": "Organization Number",
     "orgNumberPlaceholder": "e.g. 556677-8899",
-    "proFieldsRequired": "Please fill in company name and category to activate your professional profile"
+    "proFieldsRequired": "Please fill in company name and category to activate your professional profile",
+    "dataPrivacy": "Data & Privacy",
+    "dataPrivacyDescription": "Manage your data and privacy settings",
+    "exportData": "Export Your Data",
+    "exportDataDescription": "Download all your data in JSON format (GDPR compliant)",
+    "downloadData": "Download",
+    "dataExported": "Data exported",
+    "dataExportedDescription": "Your data has been downloaded successfully."
   },
   "languages": {
     "en": "English",
@@ -383,7 +500,9 @@
     "saveError": "Error",
     "saveErrorDescription": "Could not save settings",
     "canvasScale": "Canvas Scale",
-    "currency": "Currency"
+    "currency": "Currency",
+    "canvasSettingsMoved": "Canvas settings have been moved",
+    "canvasSettingsMovedDescription": "Wall thickness, wall height and scale are now in the Canvas Settings menu directly in the drawing tool."
   },
   "errors": {
     "generic": "An error occurred",
@@ -524,7 +643,24 @@
     "resendInvitationEmail": "Resend invitation email",
     "editInvitationPermissions": "Edit invitation permissions",
     "cancelInvitationTitle": "Cancel invitation",
-    "additionalInfo": "Additional Information"
+    "additionalInfo": "Additional Information",
+    "selectRole": "Select a role",
+    "moreInfo": "More info",
+    "customizeAccess": "Customize permissions",
+    "cards": {
+      "contractor": {
+        "description": "Can view timeline, edit assigned tasks, and create purchase orders"
+      },
+      "project_manager": {
+        "description": "Full access to all project features, can invite team members"
+      },
+      "client": {
+        "description": "Can view all project information including budget"
+      },
+      "viewer": {
+        "description": "Read-only access to timeline, tasks, and overview"
+      }
+    }
   },
   "propertyPanel": {
     "objectDetails": "Object Details",
@@ -564,6 +700,9 @@
     "notesSaved": "Notes saved",
     "changesSaved": "Changes saved!",
     "dimensionsUpdated": "Dimensions updated!",
+    "batchDimensionsUpdated": "{{count}} walls updated!",
+    "selectedWalls": "walls selected",
+    "batchEditHint": "Changes apply to all selected walls",
     "invalidLength": "Invalid length. Enter a positive number.",
     "invalidThickness": "Invalid thickness. Enter a positive number in mm.",
     "invalidHeight": "Invalid height. Enter a positive number in mm.",
@@ -583,7 +722,19 @@
     "cornerCount": "Corner count",
     "width": "Width",
     "radius": "Radius",
-    "size": "Size"
+    "size": "Size",
+    "templateGroup": "Template Group",
+    "shapes": "shapes",
+    "templateGroupDimensions": "Group Dimensions",
+    "resize": "Resize",
+    "widthMm": "Width (mm)",
+    "heightMm": "Height (mm)",
+    "groupScaleHint": "All shapes in the group will scale proportionally",
+    "applyResize": "Apply Resize",
+    "depth": "Depth/Height",
+    "category": "Category",
+    "invalidWidth": "Invalid width. Enter a positive number.",
+    "groupDimensionsUpdated": "Group resized successfully!"
   },
   "saveTemplateDialog": {
     "title": "Save as Template",
@@ -687,6 +838,21 @@
     "useColor": "Use color",
     "status": "Status",
     "area": "Area"
+  },
+  "canvasSettings": {
+    "title": "Canvas Settings",
+    "roomColor": "Room Color on Canvas",
+    "transparency": "Transparency",
+    "transparent": "Transparent",
+    "solid": "Solid",
+    "transparencyHelp": "Lower transparency makes it easier to see objects inside the room",
+    "layerOrder": "Layer Order",
+    "layerOrderHelp": "Send room to back to easily select and move objects placed inside the room (furniture, appliances, etc.)",
+    "sendToBack": "Send to Back",
+    "sendBackward": "Send Backward",
+    "bringForward": "Bring Forward",
+    "bringToFront": "Bring to Front",
+    "currentLayer": "Current layer"
   },
   "entityPhotos": {
     "photos": "Photos",
@@ -794,6 +960,8 @@
     "title": "Create Project from Document",
     "description": "Upload a room description or renovation spec — AI will extract rooms, tasks and create a project for you.",
     "buttonLabel": "AI Import",
+    "smartImport": "Smart Import",
+    "smartImportTooltip": "Upload an existing text file with renovation description and we'll automatically create a to-do list and split room descriptions",
     "uploadTitle": "Upload Document",
     "uploadDescription": "PDF, DOCX or TXT — e.g. a room description or renovation spec",
     "chooseFile": "Choose File",
@@ -866,7 +1034,29 @@
   },
   "timeline": {
     "unscheduledTasks": "{{count}} unscheduled tasks",
-    "unscheduledTasksSingular": "1 unscheduled task"
+    "unscheduledTasksSingular": "1 unscheduled task",
+    "resetZoom": "Reset to 1 month",
+    "gestureHint": "Drag to pan, pinch to zoom",
+    "days": "days",
+    "weekly": "1W",
+    "monthly": "1M",
+    "threeMonths": "3M",
+    "fullProject": "All",
+    "today": "Today",
+    "showMoreDays": "Show more days",
+    "showFewerDays": "Show fewer days",
+    "noTasksInPeriod": "No tasks scheduled in this time period",
+    "taskRescheduled": "Task rescheduled",
+    "taskDurationUpdated": "Task duration updated",
+    "taskUpdated": "Task updated",
+    "taskUpdatedDescription": "Task has been updated successfully",
+    "duration": "Duration",
+    "groupBy": "Group by",
+    "noGrouping": "No grouping",
+    "groupByStatus": "Status",
+    "groupByRoom": "Room",
+    "groupByAssignee": "Assignee",
+    "groupByPriority": "Priority"
   },
   "statuses": {
     "ideas": "Ideas",
@@ -931,7 +1121,154 @@
     "selectShape": "Select shape",
     "shortcutsTip": "Use the grid and snap features for precise measurements. Right-click any shape to assign it to a room for color coding.",
     "properties": "Properties",
-    "elevationView": "Wall view"
+    "elevationView": "Wall view",
+    "individualShapeSelected": "Individual shape selected",
+    "doubleClickToSelectIndividual": "Double-click to select individual shape",
+    "wall": "Wall",
+    "rectangle": "Rectangle",
+    "circle": "Circle",
+    "line": "Line",
+    "room": "Room",
+    "elevation": "Elevation",
+    "dimensions": "Dimensions",
+    "width": "Width",
+    "height": "Height",
+    "length": "Length",
+    "radius": "Radius",
+    "thickness": "Thickness",
+    "surfaceCalculation": "Surface Calculation",
+    "totalWallArea": "Total wall area",
+    "objects": "Objects",
+    "paintableArea": "Paintable area",
+    "type": "Type",
+    "specification": "Specification",
+    "treatment": "Treatment",
+    "color": "Color",
+    "manufacturer": "Manufacturer",
+    "productCode": "Product code",
+    "fillColor": "Fill color",
+    "strokeColor": "Stroke color",
+    "doubleClickToEdit": "Double-click to edit",
+    "doubleClickToEditRoom": "Double-click to edit name/color",
+    "doubleClickForDetails": "Double-click for details",
+    "roomColors": "Room Colors",
+    "renamePlan": "Rename plan",
+    "renamePlanDescription": "Enter a new name for the plan",
+    "planRenamed": "Plan renamed",
+    "planRenamedDescription": "Plan renamed to \"{{name}}\"",
+    "openingRoomDetails": "Opening room details",
+    "roomMustBeSavedFirst": "Room must be named and saved first.",
+    "openingPropertyPanel": "Opening property panel"
+  },
+  "canvas": {
+    "settings": "Canvas Settings",
+    "settingsDescription": "Configure workspace environment without affecting actual measurements",
+    "wallDefaults": "Wall Defaults",
+    "wallDefaultsDesc": "Default dimensions for new walls (saved automatically)",
+    "thickness": "Thickness",
+    "height": "Height",
+    "innerWall": "Inner wall",
+    "outerWall": "Outer wall",
+    "highCeiling": "High ceiling",
+    "scale": "Scale",
+    "scaleDetailed": "Detailed",
+    "scaleStandardDetail": "Standard detail",
+    "scaleStandard": "Standard",
+    "scaleOverview": "Overview",
+    "scaleDescription": "Affects visual density, line thickness and label size",
+    "displayUnit": "Display Unit",
+    "unit": "Unit",
+    "unitDescription": "How measurements are displayed (storage always in mm)",
+    "gridConfig": "Grid Configuration",
+    "showGrid": "Show Grid",
+    "gridSpacing": "Grid Spacing",
+    "gridFine": "5cm (Fine)",
+    "grid10cm": "10cm",
+    "grid25cm": "25cm",
+    "gridStandard": "50cm (Standard)",
+    "grid1m": "1m",
+    "gridCoarse": "2m (Coarse)",
+    "grid": "Grid",
+    "snap": "Snap",
+    "snapToGrid": "Snap to Grid",
+    "canvasSize": "Canvas Size",
+    "workspace": "Workspace",
+    "canvasSizeDesc": "Drawing area covered with gridlines",
+    "widthM": "Width (m)",
+    "heightM": "Height (m)",
+    "standardSizes": "Standard: 30×30m (apartment/villa) · 50×50m (larger projects)",
+    "displayOptions": "Display Options",
+    "showDimensions": "Show wall dimensions",
+    "dimensionsDesc": "Lengths displayed in selected unit",
+    "showAreaLabels": "Show room areas",
+    "activeConfig": "Active Configuration:",
+    "on": "ON",
+    "off": "OFF",
+    "setStartingView": "Set starting view",
+    "clearStartingView": "Clear starting view",
+    "startingViewSaved": "Starting view saved",
+    "startingViewCleared": "Starting view cleared — will auto-fit to content"
+  },
+  "elevationInfo": {
+    "rectangle": "Rectangle",
+    "circle": "Circle",
+    "line": "Line",
+    "elevation": "Elevation",
+    "dimensions": "Dimensions",
+    "width": "Width",
+    "height": "Height",
+    "length": "Length",
+    "radius": "Radius",
+    "thickness": "Thickness",
+    "areaCalculation": "Area Calculation",
+    "totalWallArea": "Total wall area",
+    "objects": "Objects ({{count}} pcs)",
+    "paintableArea": "Paintable area",
+    "material": "Material",
+    "type": "Type",
+    "spec": "Spec",
+    "treatment": "Treatment",
+    "color": "Color",
+    "product": "Product",
+    "manufacturer": "Manufacturer",
+    "productCode": "Product code",
+    "fillColor": "Fill color",
+    "strokeColor": "Stroke color"
+  },
+  "controls": {
+    "undo": "Undo",
+    "undoShortcut": "Undo (Ctrl+Z)",
+    "redo": "Redo",
+    "redoShortcut": "Redo (Ctrl+Y)",
+    "zoomIn": "Zoom In",
+    "zoomInShortcut": "Zoom In (Ctrl + +)",
+    "zoomOut": "Zoom Out",
+    "zoomOutShortcut": "Zoom Out (Ctrl + -)",
+    "resetView": "Reset View",
+    "resetViewShortcut": "Reset View (Ctrl + 0)"
+  },
+  "access": {
+    "noAccess": "No access",
+    "noAccessDescription": "You do not have access to this section."
+  },
+  "pinterest": {
+    "invalidUrl": "Invalid Pinterest board URL",
+    "inspiration": "Pinterest Inspiration",
+    "openOnPinterest": "Open on Pinterest",
+    "removeBoard": "Remove board",
+    "loading": "Loading Pinterest board...",
+    "loadError": "Could not load Pinterest widget",
+    "connected": "Connected",
+    "connectedSuccess": "Pinterest connected!",
+    "connectError": "Could not connect to Pinterest",
+    "connect": "Connect Pinterest",
+    "disconnect": "Disconnect",
+    "disconnected": "Pinterest disconnected",
+    "disconnectError": "Could not disconnect Pinterest",
+    "confirmDisconnect": "Are you sure you want to disconnect Pinterest?",
+    "notConfigured": "Pinterest is not configured. Contact the administrator.",
+    "popupBlocked": "Popup blocked. Allow popups for this site.",
+    "error": "An error occurred"
   },
   "files": {
     "title": "Project Files",
@@ -1041,7 +1378,15 @@
       "kg": "kg",
       "liters": "liters",
       "packages": "packages"
-    }
+    },
+    "filters": "Filter",
+    "clearFilters": "Clear filters",
+    "allUsers": "All",
+    "showingResults": "Showing {{count}} of {{total}} orders",
+    "vendor": "Vendor",
+    "task": "Task",
+    "assignedTo": "Assigned To",
+    "statusChangedTo": "Status changed to {{status}}"
   },
   "overview": {
     "projectOverview": "Project Overview",
@@ -1067,7 +1412,67 @@
     "budgetOverview": "Budget Overview",
     "floorPlan": "Floor Plan",
     "floorPlanComingSoon": "Floor plan visualization coming soon",
-    "floorPlanDescription": "This feature will allow you to create and visualize your renovation space"
+    "floorPlanDescription": "This feature will allow you to create and visualize your renovation space",
+    "pendingPurchaseOrders": "{{count}} pending purchase orders",
+    "pendingPurchaseOrders_one": "{{count}} pending purchase order",
+    "pendingPurchaseOrdersDescription": "Review and approve submitted orders",
+    "viewPurchaseOrders": "View orders",
+    "advancedSettings": "Advanced settings",
+    "projectCurrency": "Project Currency",
+    "selectCurrency": "Select currency",
+    "currencyDescription": "Currency used for all amounts in this project",
+    "currencyUpdated": "Currency updated",
+    "currencyUpdatedDescription": "Project currency has been changed.",
+    "enterTotalBudget": "Enter total budget",
+    "selectStartDate": "Select start date",
+    "selectGoalDate": "Select goal date",
+    "pulseCards": {
+      "tasks": "Tasks",
+      "timeline": "Timeline",
+      "budget": "Budget",
+      "orders": "Orders",
+      "daysRemaining": "{{count}} days remaining",
+      "daysRemaining_one": "{{count}} day remaining",
+      "overdue": "Overdue",
+      "noDeadlineSet": "No deadline set",
+      "noBudgetSet": "No budget set",
+      "needsReview": "needs review",
+      "noPending": "All clear"
+    },
+    "needsAction": {
+      "title": "Needs Action",
+      "overdueTasks": "{{count}} overdue tasks",
+      "overdueTasks_one": "{{count}} overdue task",
+      "blockedTasks": "{{count}} tasks blocked or on hold",
+      "blockedTasks_one": "{{count}} task blocked or on hold",
+      "pendingOrders": "{{count}} pending purchase orders",
+      "pendingOrders_one": "{{count}} pending purchase order",
+      "budgetWarning": "Budget {{percentage}}% spent",
+      "view": "View"
+    },
+    "activeTasks": {
+      "title": "In Progress",
+      "noTasks": "No tasks in progress",
+      "viewAllTasks": "View all tasks",
+      "unassigned": "Unassigned"
+    },
+    "recentActivity": {
+      "title": "Recent Activity",
+      "noActivity": "No recent activity",
+      "viewAllActivity": "View all activity"
+    },
+    "settings": {
+      "title": "Project Settings",
+      "description": "Update project name, description, dates, budget, and currency",
+      "projectName": "Project Name",
+      "projectDescription": "Description",
+      "startDate": "Start Date",
+      "goalDate": "Goal Date",
+      "totalBudget": "Total Budget",
+      "currency": "Currency",
+      "saved": "Settings updated",
+      "savedDescription": "Project settings have been saved."
+    }
   },
   "budget": {
     "title": "Budget",
@@ -1116,7 +1521,76 @@
     "paymentStatus": "Payment Status",
     "dueDate": "Due Date",
     "excludeFromBudget": "Exclude from Budget",
-    "created": "Created"
+    "created": "Created",
+    "failedToLoadData": "Failed to load budget data",
+    "failedToUpdateStatus": "Failed to update status",
+    "failedToUpdateValue": "Failed to update value",
+    "failedToLoadDetails": "Failed to load details",
+    "advancedFilter": "Filter+",
+    "views": "Views ({{count}})",
+    "detailTitle": "Title",
+    "detailDescription": "Description",
+    "detailPriority": "Priority",
+    "detailProgress": "Progress",
+    "detailPaidAmount": "Paid Amount",
+    "detailPaymentStatus": "Payment Status",
+    "detailDueDate": "Due Date",
+    "detailName": "Name",
+    "detailQuantity": "Quantity",
+    "detailPricePerUnit": "Price per Unit",
+    "detailPriceTotal": "Total Price",
+    "detailVendor": "Vendor",
+    "detailVendorLink": "Vendor Link",
+    "detailExcludeFromBudget": "Exclude from Budget",
+    "detailCreated": "Created"
+  },
+  "budgetDashboard": {
+    "failedToLoadPayments": "Failed to load payment details",
+    "failedToLoadOngoingCosts": "Failed to load extras",
+    "noCostCenter": "No Cost Center",
+    "payments": "Payments",
+    "vendor": "Vendor",
+    "pending": "Pending",
+    "remaining": "Remaining",
+    "totalBudget": "Total Budget",
+    "extras": "Extras",
+    "projectAllocation": "Project allocation",
+    "budgetUsed": "{{percentage}}% of budget used",
+    "pendingOrders": "Pending Orders",
+    "ordersPending": "{{count}} orders pending",
+    "excludedFromBudget": "{{count}} items excluded from budget",
+    "overBudget": "Over budget",
+    "availableToSpend": "Available to spend",
+    "budgetExceeded": "Budget Exceeded",
+    "budgetExceededDescription": "You are {{amount}} over the total budget. Consider reviewing expenses or adjusting the budget.",
+    "highPendingOrders": "High Pending Orders",
+    "highPendingOrdersDescription": "{{amount}} ({{percentage}}% of budget) in pending orders. Review and approve or reject to manage cash flow.",
+    "budgetDistribution": "Budget Distribution",
+    "budgetAllocationBreakdown": "How your budget is allocated",
+    "costByRoom": "Cost breakdown by room",
+    "costByCostCenter": "Cost breakdown by cost center",
+    "budgetOverview": "Budget Overview",
+    "perRoom": "Per Room",
+    "perCostCenter": "Per Cost Center",
+    "noBudgetData": "No budget data available",
+    "budgetComparison": "Budget Comparison",
+    "compareBudgetCategories": "Compare budget categories side by side",
+    "budgetExpenses": "Budget Expenses",
+    "budgetExpensesDescription": "Detailed list of all tasks with budget and purchase orders included in the project budget",
+    "filterByType": "Filter by Type",
+    "filterByDate": "Filter by Date",
+    "purchaseOrders": "Purchase Orders",
+    "purchaseOrder": "Purchase Order",
+    "totalPayments": "Total Payments",
+    "items": "Items",
+    "noPaymentsFound": "No payments found",
+    "amount": "Amount",
+    "date": "Date",
+    "extrasTitle": "Extras (Outside Budget)",
+    "extrasDescription": "Operational costs not included in project budget",
+    "totalExtras": "Total Extras",
+    "excludedFromBudgetNote": "These costs are excluded from project budget calculations",
+    "noExtrasFound": "No extras found"
   },
   "taskPanel": {
     "title": "Task Details",
@@ -1419,10 +1893,26 @@
     "disclaimer": "NOTE: For building regulations I provide general guidance — always contact your municipality's building committee for final decisions.",
     "greeting": "Hi! I'm Renomate — your renovation expert and platform guide. Ask me about building regulations, renovation tips, or how to get the most out of the app!",
     "errorMessage": "Something went wrong. Please try again.",
-    "send": "Send"
+    "send": "Send",
+    "quick": {
+      "getStarted": "Getting started",
+      "permits": "Permits & regulations",
+      "spacePlanner": "Space Planner guide",
+      "budgetTips": "Budget & costs",
+      "projectManagement": "Project management",
+      "teamBudget": "Team & budget"
+    },
+    "quickMessage": {
+      "getStarted": "I'm new — what's the best way to set up my first renovation project?",
+      "permits": "What building permits and regulations should I be aware of for renovation work?",
+      "spacePlanner": "How do I use the Space Planner to create floor plans and link rooms to tasks?",
+      "budgetTips": "How do I track renovation costs and manage my budget in the app?",
+      "projectManagement": "How can I manage my renovation projects more efficiently in the app?",
+      "teamBudget": "How do I invite team members and track costs across projects?"
+    }
   },
   "feedback": {
-    "title": "Help & Feedback",
+    "title": "Contact & Feedback",
     "subtitle": "Help us improve Renomate. Report a bug or request a feature — anonymously if you prefer.",
     "messageLabel": "Message",
     "messagePlaceholder": "Describe the bug you found or the feature you'd like to see...",
@@ -1670,5 +2160,108 @@
     "downloadPdf": "Download PDF",
     "confirmDelete": "Delete this quote?",
     "quoteDeleted": "Quote deleted"
+  },
+  "welcome": {
+    "chooseLanguage": "Choose your language",
+    "title": "Welcome to Renomate!",
+    "subtitle": "What describes you best?",
+    "homeowner": "Homeowner",
+    "homeownerDesc": "I'm renovating my own home",
+    "contractor": "Contractor",
+    "contractorDesc": "I run a construction business",
+    "continue": "Continue"
+  },
+  "demoProject": {
+    "badge": "Example Project",
+    "title": "Apartment Renovation - Example",
+    "description": "Explore this example project to learn how Renomate works",
+    "rooms": {
+      "livingRoom": "Living room with hardwood floors and crown molding. Recently plastered and painted.",
+      "bedroom": "Bedroom with space for double bed. To be wallpapered with patterned wallpaper.",
+      "kitchen": "Kitchen with dining area. New countertop and backsplash planned.",
+      "bathroom": "Bathroom with shower and washing machine. Complete tiling planned.",
+      "hallway": "Hallway with closet and coat rack. Original floor sanding."
+    },
+    "tasks": {
+      "preparation": {
+        "title": "Protect and prepare",
+        "description": "Cover floors and furniture with protective paper and plastic. Tape edges at ceiling and windows."
+      },
+      "spackling": {
+        "title": "Wall spackling",
+        "description": "Repair cracks and holes in walls. Sand and prime before painting."
+      },
+      "paintingLivingRoom": {
+        "title": "Living room painting",
+        "description": "Paint walls with wall paint (2 coats) and ceiling with ceiling paint. Color: NCS S 0502-Y."
+      },
+      "wallpaper": {
+        "title": "Bedroom wallpapering",
+        "description": "Apply patterned wallpaper on feature wall. Other walls painted in matching color."
+      },
+      "floorSanding": {
+        "title": "Floor sanding",
+        "description": "Sand hardwood floors in living room and hallway. Apply 3 coats of floor lacquer."
+      },
+      "kitchenSurfaces": {
+        "title": "Kitchen - countertop & backsplash",
+        "description": "Install new laminate countertop and tile backsplash behind stove."
+      },
+      "bathroomTiling": {
+        "title": "Bathroom tiling",
+        "description": "Install white 20x20 tiles on walls and floor tiles. Including waterproofing membrane."
+      },
+      "trim": {
+        "title": "Install trim",
+        "description": "Install new baseboards in all rooms and crown molding in living room."
+      },
+      "electrical": {
+        "title": "Kitchen lighting",
+        "description": "Install LED spotlights in ceiling and under-cabinet lighting."
+      },
+      "finalCleaning": {
+        "title": "Final cleaning",
+        "description": "Construction cleaning of entire apartment. Remove protective paper and vacuum thoroughly."
+      }
+    },
+    "materials": {
+      "filler": "Fine filler (10 liter bucket)",
+      "wallPaint": "Wall paint matte white",
+      "ceilingPaint": "Ceiling paint white matte",
+      "wallpaper": "Wallpaper Botanica",
+      "floorLacquer": "Floor lacquer semi-matte",
+      "countertop": "Laminate countertop black",
+      "backsplashTiles": "White glossy tiles 10x10",
+      "bathroomTiles": "Floor & wall tiles white matte 20x20",
+      "grout": "Flexible tile grout gray",
+      "floorTrim": "Baseboard pine white 12x56mm",
+      "ceilingTrim": "Crown molding 50mm",
+      "ledSpots": "LED downlight 7W warm white"
+    }
+  },
+  "hotspots": {
+    "canvas": "Draw your rooms here in 30 seconds",
+    "createProject": "Start here! Create your first project",
+    "inviteTeam": "Invite contractors or family to collaborate"
+  },
+  "directions": {
+    "north": "North",
+    "south": "South",
+    "east": "East",
+    "west": "West"
+  },
+  "roomElevation": {
+    "elevationView": "Elevation View",
+    "room": "Room",
+    "swipeHint": "Swipe or use arrows to navigate walls",
+    "noWallsFound": "No walls found",
+    "drawWallsFirst": "Draw walls around this room to see the elevation view.",
+    "previousWall": "Previous",
+    "nextWall": "Next",
+    "wall": "Wall",
+    "floor": "Floor",
+    "window": "Window",
+    "door": "Door",
+    "viewElevation": "View Elevation"
   }
 }

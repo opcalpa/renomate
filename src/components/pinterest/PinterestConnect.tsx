@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -41,6 +42,7 @@ export function PinterestConnect({
   onDisconnected,
   compact = false,
 }: PinterestConnectProps) {
+  const { t } = useTranslation();
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [username, setUsername] = useState<string | null>(null);
@@ -56,9 +58,9 @@ export function PinterestConnect({
         setIsConnected(true);
         setUsername(event.data.username || null);
         onConnected?.();
-        toast.success("Pinterest kopplat!");
+        toast.success(t('pinterest.connectedSuccess'));
       } else if (event.data?.type === 'PINTEREST_AUTH_ERROR') {
-        toast.error("Kunde inte ansluta till Pinterest");
+        toast.error(t('pinterest.connectError'));
       }
     };
 
@@ -85,7 +87,7 @@ export function PinterestConnect({
 
   const handleConnect = () => {
     if (!isPinterestConfigured()) {
-      toast.error("Pinterest är inte konfigurerat. Kontakta administratören.");
+      toast.error(t('pinterest.notConfigured'));
       return;
     }
 
@@ -104,13 +106,13 @@ export function PinterestConnect({
 
     // Check if popup was blocked
     if (!popup) {
-      toast.error("Popup blockerad. Tillåt popups för denna sida.");
+      toast.error(t('pinterest.popupBlocked'));
       return;
     }
   };
 
   const handleDisconnect = async () => {
-    if (!confirm("Är du säker på att du vill koppla bort Pinterest?")) return;
+    if (!confirm(t('pinterest.confirmDisconnect'))) return;
 
     setIsLoading(true);
     try {
@@ -119,13 +121,13 @@ export function PinterestConnect({
         setIsConnected(false);
         setUsername(null);
         onDisconnected?.();
-        toast.success("Pinterest bortkopplat");
+        toast.success(t('pinterest.disconnected'));
       } else {
-        toast.error("Kunde inte koppla bort Pinterest");
+        toast.error(t('pinterest.disconnectError'));
       }
     } catch (error) {
       console.error("Error disconnecting Pinterest:", error);
-      toast.error("Ett fel uppstod");
+      toast.error(t('pinterest.error'));
     } finally {
       setIsLoading(false);
     }
@@ -135,7 +137,7 @@ export function PinterestConnect({
     return (
       <Button variant="outline" disabled className={compact ? "h-9" : ""}>
         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        {!compact && "Laddar..."}
+        {!compact && t('common.loading')}
       </Button>
     );
   }
@@ -146,7 +148,7 @@ export function PinterestConnect({
         <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg">
           <PinterestLogo className="h-4 w-4" style={{ color: PINTEREST_RED }} />
           <span className="text-sm text-green-700">
-            {username ? `@${username}` : "Kopplad"}
+            {username ? `@${username}` : t('pinterest.connected')}
           </span>
         </div>
         <Button
@@ -155,7 +157,7 @@ export function PinterestConnect({
           onClick={handleDisconnect}
           className="text-gray-500 hover:text-red-500"
         >
-          Koppla bort
+          {t('pinterest.disconnect')}
         </Button>
       </div>
     );
@@ -172,7 +174,7 @@ export function PinterestConnect({
       }}
     >
       <PinterestLogo className="h-4 w-4" />
-      {!compact && "Koppla Pinterest"}
+      {!compact && t('pinterest.connect')}
     </Button>
   );
 }

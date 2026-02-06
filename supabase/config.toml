@@ -10,6 +10,16 @@ entrypoint = "./functions/ai-design/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/ai-design/*.html" ]
 
+[functions.help-bot]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/help-bot/index.ts"
+
+[functions.pinterest-oembed]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/pinterest-oembed/index.ts"
+
 [functions.translate-comments]
 enabled = true
 verify_jwt = false

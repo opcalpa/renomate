@@ -10,11 +10,13 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Stage, Layer, Rect, Line, Text as KonvaText, Group, Circle, Transformer, Arrow } from 'react-konva';
+import { Stage, Layer, Rect, Line, Text as KonvaText, Group, Circle, Transformer } from 'react-konva';
 import Konva from 'konva';
 import { v4 as uuidv4 } from 'uuid';
 import { useFloorMapStore } from './store';
 import { FloorMapShape } from './types';
+import { wallRelativeToElevation } from './canvas/utils/wallCoordinates';
+import { inferCategoryFromSymbolType } from './canvas/utils/wallObjectDefaults';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, Layers, Save } from 'lucide-react';
 import { getAdminDefaults } from './canvas/constants';
@@ -159,6 +161,8 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
     selectedShapeIds,
     setSelectedShapeIds,
     saveToHistory,
+    syncShapeFromElevation,
+    updateShapeWallRelative,
   } = useFloorMapStore();
 
   const { pixelsPerMm } = scaleSettings;
@@ -228,6 +232,15 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
     return selectedWallIndex === 0;
   });
 
+  // Get wall-relative objects (from floorplan) that are attached to this wall
+  // These are synced bidirectionally between floorplan and elevation views
+  const wallRelativeObjects = shapes.filter(s => {
+    if (s.planId !== currentPlanId) return false;
+    if (s.shapeViewMode === 'elevation') return false; // Already in elevationShapes
+    // Must have wallRelative data attached to the current wall
+    return s.wallRelative?.wallId === selectedWall?.id;
+  });
+
   // Handle container resize
   useEffect(() => {
     const updateDimensions = () => {
@@ -244,12 +257,23 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Select first wall if none selected
+  // Select wall based on floor plan selection, or first wall if none selected
   useEffect(() => {
-    if (!selectedWallId && walls.length > 0) {
+    if (walls.length === 0) return;
+
+    // Check if there's a wall selected in the floor plan view
+    const selectedWallFromPlan = selectedShapeIds.length === 1
+      ? walls.find(w => w.id === selectedShapeIds[0])
+      : null;
+
+    if (selectedWallFromPlan) {
+      // Use the wall selected in floor plan
+      setSelectedWallId(selectedWallFromPlan.id);
+    } else if (!selectedWallId || !walls.find(w => w.id === selectedWallId)) {
+      // Fall back to first wall if no valid selection
       setSelectedWallId(walls[0].id);
     }
-  }, [walls, selectedWallId]);
+  }, [walls, selectedWallId, selectedShapeIds]);
 
   // Update transformer when selection changes
   useEffect(() => {
@@ -779,6 +803,75 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
     toast.success(`${symbol.nameSv} placerad på väggen`);
   }, [currentPlanId, addShape, saveToHistory, setSelectedShapeIds, setActiveTool]);
 
+  // Handler for dragging wall-relative objects in elevation view
+  const handleWallRelativeDragEnd = useCallback((shape: FloorMapShape, node: Konva.Node) => {
+    if (!shape.wallRelative || !selectedWall) return;
+
+    const geom = wallGeometryRef.current;
+    if (!geom) return;
+
+    saveToHistory();
+
+    // Convert new screen position to wall-relative coordinates
+    const newX = node.x();
+    const newY = node.y();
+
+    syncShapeFromElevation(
+      shape.id,
+      newX,
+      newY,
+      shape.wallRelative.width * geom.effectiveScale,
+      shape.wallRelative.height * geom.effectiveScale,
+      {
+        wallHeightMM: geom.wallHeightMM,
+        effectiveScale: geom.effectiveScale,
+        wallXOffset: geom.wallX,
+        wallYOffset: geom.wallY,
+      }
+    );
+
+    // Reset node position (store handles actual coordinates)
+    node.position({ x: 0, y: 0 });
+  }, [selectedWall, saveToHistory, syncShapeFromElevation]);
+
+  // Handler for resizing wall-relative objects in elevation view
+  const handleWallRelativeTransformEnd = useCallback((shape: FloorMapShape, node: Konva.Node) => {
+    if (!shape.wallRelative || !selectedWall) return;
+
+    const geom = wallGeometryRef.current;
+    if (!geom) return;
+
+    saveToHistory();
+
+    // Get new dimensions from transform
+    const scaleX = node.scaleX();
+    const scaleY = node.scaleY();
+    node.scaleX(1);
+    node.scaleY(1);
+
+    const newWidth = shape.wallRelative.width * scaleX;
+    const newHeight = shape.wallRelative.height * scaleY;
+
+    // Update wall-relative data with new dimensions
+    updateShapeWallRelative(shape.id, {
+      width: newWidth,
+      height: newHeight,
+      // Also update position based on node position after transform
+      distanceFromWallStart: shape.wallRelative.distanceFromWallStart + (node.x() / geom.effectiveScale),
+      elevationBottom: Math.max(0, shape.wallRelative.elevationBottom - (node.y() / geom.effectiveScale)),
+    });
+
+    node.position({ x: 0, y: 0 });
+  }, [selectedWall, saveToHistory, updateShapeWallRelative]);
+
+  // Clear measurement when changing tools
+  useEffect(() => {
+    if (activeTool !== 'measure') {
+      setMeasureStart(null);
+      setMeasureEnd(null);
+    }
+  }, [activeTool]);
+
   // Empty state - no walls
   if (!selectedWall) {
     return (
@@ -1182,6 +1275,138 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
     });
   };
 
+  // Render wall-relative objects (synced from floorplan)
+  // Note: handlers are defined earlier in the component to satisfy React hooks rules
+  const renderWallRelativeObjects = () => {
+    if (!selectedWall) return null;
+
+    const geom = wallGeometryRef.current;
+    if (!geom) return null;
+
+    return wallRelativeObjects.map(shape => {
+      if (!shape.wallRelative) return null;
+
+      const isSelected = selectedShapeIds.includes(shape.id);
+
+      // Convert wall-relative position to elevation screen coordinates
+      const elevPos = wallRelativeToElevation(
+        shape.wallRelative,
+        selectedWall,
+        geom.wallHeightMM,
+        0, // canvasHeight not used in this calculation
+        geom.effectiveScale,
+        geom.wallX,
+        geom.wallY
+      );
+
+      if (!elevPos) return null;
+
+      const { x, y, width, height } = elevPos;
+
+      // Get category-based color
+      const category = shape.objectCategory || inferCategoryFromSymbolType(shape.symbolType);
+      const categoryColors: Record<string, { fill: string; stroke: string }> = {
+        floor_cabinet: { fill: '#f5f5f4', stroke: '#78716c' },
+        wall_cabinet: { fill: '#fef3c7', stroke: '#ca8a04' },
+        countertop: { fill: '#e5e7eb', stroke: '#6b7280' },
+        appliance_floor: { fill: '#f0fdf4', stroke: '#16a34a' },
+        appliance_wall: { fill: '#fef9c3', stroke: '#eab308' },
+        window: { fill: '#e0f2fe', stroke: '#0284c7' },
+        door: { fill: '#f0fdf4', stroke: '#22c55e' },
+        decoration: { fill: '#fdf4ff', stroke: '#a855f7' },
+        custom: { fill: '#f3f4f6', stroke: '#374151' },
+      };
+      const colors = categoryColors[category] || categoryColors.custom;
+
+      return (
+        <Group key={`wall-rel-${shape.id}`}>
+          <Rect
+            id={`elevation-wall-rel-${shape.id}`}
+            x={x}
+            y={y}
+            width={width}
+            height={height}
+            fill={shape.color || colors.fill}
+            stroke={isSelected ? '#2563eb' : colors.stroke}
+            strokeWidth={isSelected ? 3 : 2}
+            draggable={activeTool === 'select'}
+            onClick={(e) => handleShapeClick(shape.id, e)}
+            onTap={(e) => handleShapeClick(shape.id, e)}
+            onDblClick={(e) => handleShapeDoubleClick(shape, e)}
+            onDblTap={(e) => handleShapeDoubleClick(shape, e)}
+            onDragEnd={(e) => handleWallRelativeDragEnd(shape, e.target)}
+            onTransformEnd={(e) => handleWallRelativeTransformEnd(shape, e.target)}
+          />
+          {/* Label showing object name and elevation */}
+          {isSelected && (
+            <Group listening={false}>
+              {/* Name label */}
+              {shape.name && (
+                <KonvaText
+                  x={x}
+                  y={y - 18}
+                  width={width}
+                  text={shape.name}
+                  fontSize={12}
+                  fill="#1e40af"
+                  align="center"
+                  fontStyle="bold"
+                />
+              )}
+              {/* Elevation from floor label */}
+              <Rect
+                x={x + width + 4}
+                y={y + height / 2 - 10}
+                width={80}
+                height={18}
+                fill="white"
+                stroke="#059669"
+                strokeWidth={1}
+                cornerRadius={3}
+              />
+              <KonvaText
+                x={x + width + 8}
+                y={y + height / 2 - 6}
+                text={`${formatDim(shape.wallRelative.elevationBottom)} ↑`}
+                fontSize={10}
+                fill="#059669"
+                fontStyle="bold"
+              />
+              {/* Dimensions */}
+              <Rect
+                x={x + width / 2 - 40}
+                y={y + height + 4}
+                width={80}
+                height={18}
+                fill="white"
+                stroke="#3b82f6"
+                strokeWidth={1}
+                cornerRadius={3}
+              />
+              <KonvaText
+                x={x + width / 2 - 40}
+                y={y + height + 6}
+                width={80}
+                text={`${formatDim(shape.wallRelative.width)} × ${formatDim(shape.wallRelative.height)}`}
+                fontSize={9}
+                fill="#3b82f6"
+                align="center"
+              />
+            </Group>
+          )}
+          {/* "Synced from floorplan" indicator */}
+          <Circle
+            x={x + 8}
+            y={y + 8}
+            radius={4}
+            fill="#059669"
+            listening={false}
+          />
+        </Group>
+      );
+    });
+  };
+
   // Render measurement line
   const renderMeasurement = () => {
     if (!measureStart || !measureEnd) return null;
@@ -1271,14 +1496,6 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
       </Group>
     );
   };
-
-  // Clear measurement when changing tools
-  useEffect(() => {
-    if (activeTool !== 'measure') {
-      setMeasureStart(null);
-      setMeasureEnd(null);
-    }
-  }, [activeTool]);
 
   return (
     <div className="flex-1 flex flex-col bg-gray-100 relative">
@@ -1533,6 +1750,9 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
               <KonvaText x={wallX} y={wallY + renderedWallHeight + floorHeight + 30} width={renderedWallWidth} text={`${Math.round(wallLengthMM)}mm`} fontSize={12} fill="#374151" align="center" />
             </Group>
 
+            {/* Wall-relative objects (synced from floorplan) */}
+            {renderWallRelativeObjects()}
+
             {/* Elevation-specific shapes */}
             {renderElevationShapes()}
 
@@ -1571,6 +1791,12 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
         <div className="flex items-center gap-4">
           <span>Väggtjocklek: {selectedWall.thicknessMM || adminDefaults.wallThicknessMM}mm</span>
           <span>•</span>
+          {wallRelativeObjects.length > 0 && (
+            <>
+              <span className="text-emerald-600">{wallRelativeObjects.length} synkade objekt</span>
+              <span>•</span>
+            </>
+          )}
           <span>Öppningar: {openings.length}</span>
           <span>•</span>
           <span className="text-amber-600">Elevation-former: {elevationShapes.length}</span>

@@ -42,6 +42,13 @@ export async function createQuote(projectId: string, title: string, creatorId: s
     toast.error("Kunde inte skapa offert");
     return null;
   }
+
+  // Mark onboarding step for creating first quote
+  await supabase
+    .from("profiles")
+    .update({ onboarding_created_quote: true })
+    .eq("id", creatorId);
+
   return data;
 }
 

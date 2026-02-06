@@ -4,7 +4,9 @@
  * Separated from drawing tools to reduce cognitive load
  */
 
-import { Settings, Grid3x3, Ruler, Eye, EyeOff, Magnet, Maximize2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { Settings, Grid3x3, Ruler, Magnet, Maximize2, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -23,10 +25,15 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useFloorMapStore } from "./store";
 import { Scale, Unit } from "./utils/formatting";
-import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+
+// localStorage keys for persistent settings
+const WALL_THICKNESS_KEY = "admin_wallThickness";
+const WALL_HEIGHT_KEY = "admin_wallHeight";
 
 export const CanvasSettingsPopover = () => {
+  const { t } = useTranslation();
   const {
     projectSettings,
     setScale,
@@ -39,13 +46,37 @@ export const CanvasSettingsPopover = () => {
     setCanvasSize,
   } = useFloorMapStore();
 
+  // Wall defaults (persisted in localStorage)
+  const [wallThickness, setWallThickness] = useState<string>("150");
+  const [wallHeight, setWallHeight] = useState<string>("2400");
+
+  // Load wall settings from localStorage on mount
+  useEffect(() => {
+    const savedThickness = localStorage.getItem(WALL_THICKNESS_KEY);
+    const savedHeight = localStorage.getItem(WALL_HEIGHT_KEY);
+    if (savedThickness) setWallThickness(savedThickness);
+    if (savedHeight) setWallHeight(savedHeight);
+  }, []);
+
+  // Save wall thickness to localStorage
+  const handleWallThicknessChange = (value: string) => {
+    setWallThickness(value);
+    localStorage.setItem(WALL_THICKNESS_KEY, value);
+  };
+
+  // Save wall height to localStorage
+  const handleWallHeightChange = (value: string) => {
+    setWallHeight(value);
+    localStorage.setItem(WALL_HEIGHT_KEY, value);
+  };
+
   const gridIntervalOptions = [
-    { value: 50, label: '5cm (Fine)' },
-    { value: 100, label: '10cm' },
-    { value: 250, label: '25cm' },
-    { value: 500, label: '50cm (Standard)' },
-    { value: 1000, label: '1m' },
-    { value: 2000, label: '2m (Coarse)' },
+    { value: 50, labelKey: 'canvas.gridFine' },
+    { value: 100, labelKey: 'canvas.grid10cm' },
+    { value: 250, labelKey: 'canvas.grid25cm' },
+    { value: 500, labelKey: 'canvas.gridStandard' },
+    { value: 1000, labelKey: 'canvas.grid1m' },
+    { value: 2000, labelKey: 'canvas.gridCoarse' },
   ];
 
   return (
@@ -55,7 +86,7 @@ export const CanvasSettingsPopover = () => {
           variant="ghost"
           size="icon"
           className="w-10 h-10"
-          title="Inställningar"
+          title={t('common.settings')}
         >
           <Settings className="h-5 w-5" />
         </Button>
@@ -65,11 +96,94 @@ export const CanvasSettingsPopover = () => {
           <div>
             <h4 className="font-semibold mb-3 flex items-center gap-2">
               <Settings className="h-4 w-4" />
-              Canvas Settings
+              {t('canvas.settings')}
             </h4>
             <p className="text-xs text-muted-foreground mb-4">
-              Configure workspace environment without affecting actual measurements
+              {t('canvas.settingsDescription')}
             </p>
+          </div>
+
+          <Separator />
+
+          {/* Wall Defaults */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2 font-semibold">
+              <Layers className="h-3.5 w-3.5" />
+              {t('canvas.wallDefaults')}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {t('canvas.wallDefaultsDesc')}
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="wall-thickness" className="text-xs">
+                  {t('canvas.thickness')} (mm)
+                </Label>
+                <Input
+                  id="wall-thickness"
+                  type="number"
+                  min="50"
+                  max="500"
+                  step="10"
+                  value={wallThickness}
+                  onChange={(e) => handleWallThicknessChange(e.target.value)}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="wall-height" className="text-xs">
+                  {t('canvas.height')} (mm)
+                </Label>
+                <Input
+                  id="wall-height"
+                  type="number"
+                  min="1000"
+                  max="5000"
+                  step="100"
+                  value={wallHeight}
+                  onChange={(e) => handleWallHeightChange(e.target.value)}
+                  className="h-8"
+                />
+              </div>
+            </div>
+
+            {/* Quick Presets for walls */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-7 flex-1"
+                onClick={() => {
+                  handleWallThicknessChange("100");
+                  handleWallHeightChange("2400");
+                }}
+              >
+                {t('canvas.innerWall')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-7 flex-1"
+                onClick={() => {
+                  handleWallThicknessChange("200");
+                  handleWallHeightChange("2400");
+                }}
+              >
+                {t('canvas.outerWall')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-7 flex-1"
+                onClick={() => {
+                  handleWallThicknessChange("150");
+                  handleWallHeightChange("2700");
+                }}
+              >
+                {t('canvas.highCeiling')}
+              </Button>
+            </div>
           </div>
 
           <Separator />
@@ -78,7 +192,7 @@ export const CanvasSettingsPopover = () => {
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <Ruler className="h-3.5 w-3.5" />
-              Drawing Scale
+              {t('canvas.scale')}
             </Label>
             <Select
               value={projectSettings.scale}
@@ -88,14 +202,14 @@ export const CanvasSettingsPopover = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1:20">1:20 (Detailed)</SelectItem>
-                <SelectItem value="1:50">1:50 (Standard Detail)</SelectItem>
-                <SelectItem value="1:100">1:100 (Default)</SelectItem>
-                <SelectItem value="1:500">1:500 (Overview)</SelectItem>
+                <SelectItem value="1:20">1:20 ({t('canvas.scaleDetailed')})</SelectItem>
+                <SelectItem value="1:50">1:50 ({t('canvas.scaleStandardDetail')})</SelectItem>
+                <SelectItem value="1:100">1:100 ({t('canvas.scaleStandard')})</SelectItem>
+                <SelectItem value="1:500">1:500 ({t('canvas.scaleOverview')})</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Affects visual density, line weights, and label sizes
+              {t('canvas.scaleDescription')}
             </p>
           </div>
 
@@ -103,7 +217,7 @@ export const CanvasSettingsPopover = () => {
 
           {/* Unit Toggle */}
           <div className="space-y-2">
-            <Label>Display Unit</Label>
+            <Label>{t('canvas.displayUnit')}</Label>
             <div className="flex gap-2">
               {(['mm', 'cm', 'm'] as Unit[]).map((unit) => (
                 <Button
@@ -118,7 +232,7 @@ export const CanvasSettingsPopover = () => {
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              How measurements are displayed (storage always in mm)
+              {t('canvas.unitDescription')}
             </p>
           </div>
 
@@ -128,13 +242,13 @@ export const CanvasSettingsPopover = () => {
           <div className="space-y-3">
             <Label className="flex items-center gap-2">
               <Grid3x3 className="h-3.5 w-3.5" />
-              Grid Configuration
+              {t('canvas.gridConfig')}
             </Label>
 
             {/* Grid Visibility */}
             <div className="flex items-center justify-between">
               <Label htmlFor="grid-visible" className="text-sm font-normal">
-                Show Grid
+                {t('canvas.showGrid')}
               </Label>
               <Switch
                 id="grid-visible"
@@ -145,7 +259,7 @@ export const CanvasSettingsPopover = () => {
 
             {/* Grid Interval */}
             <div className="space-y-2">
-              <Label className="text-sm">Grid Spacing</Label>
+              <Label className="text-sm">{t('canvas.gridSpacing')}</Label>
               <Select
                 value={projectSettings.gridInterval.toString()}
                 onValueChange={(value) => setGridInterval(parseInt(value))}
@@ -156,7 +270,7 @@ export const CanvasSettingsPopover = () => {
                 <SelectContent>
                   {gridIntervalOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value.toString()}>
-                      {option.label}
+                      {t(option.labelKey)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -167,7 +281,7 @@ export const CanvasSettingsPopover = () => {
             <div className="flex items-center justify-between">
               <Label htmlFor="snap-enabled" className="text-sm font-normal flex items-center gap-2">
                 <Magnet className="h-3.5 w-3.5" />
-                Snap to Grid
+                {t('canvas.snapToGrid')}
               </Label>
               <Switch
                 id="snap-enabled"
@@ -183,16 +297,16 @@ export const CanvasSettingsPopover = () => {
           <div className="space-y-3">
             <Label className="text-sm font-semibold flex items-center gap-2">
               <Maximize2 className="h-3.5 w-3.5" />
-              Arbetsyta Storlek
+              {t('canvas.canvasSize')}
             </Label>
             <p className="text-xs text-muted-foreground">
-              Ritningsyta täckt med gridlines
+              {t('canvas.canvasSizeDesc')}
             </p>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="canvas-width" className="text-xs">
-                  Bredd (m)
+                  {t('canvas.widthM')}
                 </Label>
                 <Input
                   id="canvas-width"
@@ -210,7 +324,7 @@ export const CanvasSettingsPopover = () => {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="canvas-height" className="text-xs">
-                  Höjd (m)
+                  {t('canvas.heightM')}
                 </Label>
                 <Input
                   id="canvas-height"
@@ -256,7 +370,7 @@ export const CanvasSettingsPopover = () => {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Standard: 30×30m (lägenhet/villa) · 50×50m (större projekt)
+              {t('canvas.standardSizes')}
             </p>
           </div>
 
@@ -264,12 +378,12 @@ export const CanvasSettingsPopover = () => {
 
           {/* Display Options */}
           <div className="space-y-3">
-            <Label>Display Options</Label>
+            <Label>{t('canvas.displayOptions')}</Label>
 
             {/* Show Dimensions */}
             <div className="flex items-center justify-between">
               <Label htmlFor="show-dimensions" className="text-sm font-normal">
-                Visa mått på väggar
+                {t('canvas.showDimensions')}
               </Label>
               <Switch
                 id="show-dimensions"
@@ -278,13 +392,13 @@ export const CanvasSettingsPopover = () => {
               />
             </div>
             <p className="text-xs text-muted-foreground -mt-1">
-              Längdmått visas i vald måttenhet ({projectSettings.unit})
+              {t('canvas.dimensionsDesc')}
             </p>
 
             {/* Show Area Labels */}
             <div className="flex items-center justify-between">
               <Label htmlFor="show-area" className="text-sm font-normal">
-                Visa rumsareor
+                {t('canvas.showAreaLabels')}
               </Label>
               <Switch
                 id="show-area"
@@ -296,14 +410,14 @@ export const CanvasSettingsPopover = () => {
 
           {/* Current Settings Summary */}
           <div className="mt-4 p-3 bg-muted/50 rounded-md">
-            <p className="text-xs font-medium mb-2">Aktiv Konfiguration:</p>
+            <p className="text-xs font-medium mb-2">{t('canvas.activeConfig')}</p>
             <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-              <span>Skala: {projectSettings.scale}</span>
-              <span>Enhet: {projectSettings.unit}</span>
-              <span>Grid: {projectSettings.gridInterval}mm</span>
-              <span>Snap: {projectSettings.snapEnabled ? 'PÅ' : 'AV'}</span>
-              <span>Arbetsyta: {projectSettings.canvasWidthMeters}×{projectSettings.canvasHeightMeters}m</span>
-              <span>Mått: {projectSettings.showDimensions ? 'Synliga' : 'Dolda'}</span>
+              <span>{t('floormap.wall')}: {wallThickness}×{wallHeight}mm</span>
+              <span>{t('canvas.scale')}: {projectSettings.scale}</span>
+              <span>{t('canvas.unit')}: {projectSettings.unit}</span>
+              <span>{t('canvas.grid')}: {projectSettings.gridInterval}mm</span>
+              <span>{t('canvas.snap')}: {projectSettings.snapEnabled ? t('canvas.on') : t('canvas.off')}</span>
+              <span>{t('canvas.workspace')}: {projectSettings.canvasWidthMeters}×{projectSettings.canvasHeightMeters}m</span>
             </div>
           </div>
         </div>

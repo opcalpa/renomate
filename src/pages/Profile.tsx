@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Loader2, Save, BadgeCheck, Eye, ShieldCheck, Plus, X } from "lucide-react";
+import { Loader2, Save, BadgeCheck, Eye, ShieldCheck, Plus, X, Download } from "lucide-react";
+import { downloadUserDataAsJson } from "@/services/dataExportService";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CERTIFICATION_PRESETS } from "@/lib/professionalCertifications";
 import { PublicProfileSheet } from "@/components/shared/PublicProfileSheet";
@@ -62,6 +63,7 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [exportingData, setExportingData] = useState(false);
   
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -201,11 +203,23 @@ const Profile = () => {
         await i18n.changeLanguage(languagePreference);
       }
 
+      // Mark onboarding profile step complete
+      // For contractors: requires professional fields (is_professional, company_name, contractor_category)
+      // For basic users: requires name and (phone or avatar)
+      const isContractorProfileComplete = isProfessional && companyName?.trim() && contractorCategory?.trim();
+      const isBasicProfileComplete = name.trim() && (phone?.trim() || profile?.avatar_url);
+      if (isContractorProfileComplete || isBasicProfileComplete) {
+        await supabase
+          .from("profiles")
+          .update({ onboarding_completed_profile: true })
+          .eq("user_id", user?.id);
+      }
+
       toast({
         title: t('profile.profileUpdated'),
         description: t('profile.profileUpdatedDescription'),
       });
-      
+
       fetchProfile();
     } catch (error: any) {
       toast({
@@ -269,6 +283,26 @@ const Profile = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
+  };
+
+  const handleExportData = async () => {
+    setExportingData(true);
+    try {
+      await downloadUserDataAsJson();
+      toast({
+        title: t('profile.dataExported'),
+        description: t('profile.dataExportedDescription'),
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : t('errors.generic');
+      toast({
+        title: t('errors.generic'),
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setExportingData(false);
+    }
   };
 
   if (authLoading || loading) {
@@ -662,6 +696,36 @@ const Profile = () => {
                 )}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Data & Privacy */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>{t('profile.dataPrivacy')}</CardTitle>
+            <CardDescription>{t('profile.dataPrivacyDescription')}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">{t('profile.exportData')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('profile.exportDataDescription')}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleExportData}
+                disabled={exportingData}
+              >
+                {exportingData ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                {t('profile.downloadData')}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </main>

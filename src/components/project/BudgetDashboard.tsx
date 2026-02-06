@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/currency";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -56,9 +58,11 @@ interface BudgetDashboardProps {
   projectId: string;
   totalBudget: number | null;
   spentAmount: number | null;
+  currency?: string | null;
 }
 
-const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboardProps) => {
+const BudgetDashboard = ({ projectId, totalBudget, spentAmount, currency }: BudgetDashboardProps) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [pendingTotal, setPendingTotal] = useState(0);
   const [approvedTotal, setApprovedTotal] = useState(0);
@@ -145,8 +149,8 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
     } catch (error: any) {
       console.error("Error fetching payments:", error);
       toast({
-        title: "Error",
-        description: "Failed to load payments",
+        title: t('common.error'),
+        description: t('budgetDashboard.failedToLoadPayments'),
         variant: "destructive",
       });
     }
@@ -190,8 +194,8 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
     } catch (error: any) {
       console.error("Error fetching ongoing costs:", error);
       toast({
-        title: "Error",
-        description: "Failed to load ongoing costs",
+        title: t('common.error'),
+        description: t('budgetDashboard.failedToLoadOngoingCosts'),
         variant: "destructive",
       });
     }
@@ -272,7 +276,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
 
       const roomCosts: any = {};
       materialsData?.forEach((mat: any) => {
-        const roomName = mat.room?.name || "Ingen rum";
+        const roomName = mat.room?.name || t('common.noRoom');
         roomCosts[roomName] = (roomCosts[roomName] || 0) + (mat.price_total || 0);
       });
 
@@ -297,7 +301,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
 
       const centerCosts: any = {};
       tasksData?.forEach((task: any) => {
-        const center = task.cost_center || "Ingen kostnadspost";
+        const center = task.cost_center || t('budgetDashboard.noCostCenter');
         centerCosts[center] = (centerCosts[center] || 0) + (task.budget || 0);
       });
 
@@ -382,7 +386,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
       setOngoingCostsCount(ongoingCnt);
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -420,10 +424,10 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
     }
     // Default: budget view
     return [
-      { name: 'Payments', value: spent, color: '#ef4444' },
-      { name: 'Vendor', value: committed, color: '#f97316' },
-      { name: 'Pending', value: pending, color: '#eab308' },
-      { name: 'Remaining', value: Math.max(0, remaining), color: '#22c55e' },
+      { name: t('budgetDashboard.payments'), value: spent, color: '#ef4444' },
+      { name: t('budgetDashboard.vendor'), value: committed, color: '#f97316' },
+      { name: t('budgetDashboard.pending'), value: pending, color: '#eab308' },
+      { name: t('budgetDashboard.remaining'), value: Math.max(0, remaining), color: '#22c55e' },
     ].filter(item => item.value > 0);
   };
 
@@ -431,12 +435,12 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
 
   // Bar chart data (includes ongoing costs separately)
   const barData = [
-    { category: 'Total Budget', amount: budget },
-    { category: 'Payments', amount: spent },
-    { category: 'Vendor', amount: committed },
-    { category: 'Pending', amount: pending },
-    { category: 'Löpande', amount: ongoingCostsTotal },
-    { category: 'Remaining', amount: Math.max(0, remaining) },
+    { category: t('budgetDashboard.totalBudget'), amount: budget },
+    { category: t('budgetDashboard.payments'), amount: spent },
+    { category: t('budgetDashboard.vendor'), amount: committed },
+    { category: t('budgetDashboard.pending'), amount: pending },
+    { category: t('budgetDashboard.extras'), amount: ongoingCostsTotal },
+    { category: t('budgetDashboard.remaining'), amount: Math.max(0, remaining) },
   ];
 
   const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e'];
@@ -447,15 +451,15 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Budget</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('budgetDashboard.totalBudget')}</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${budget.toLocaleString()}
+              {formatCurrency(budget, currency)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Project allocation
+              {t('budgetDashboard.projectAllocation')}
             </p>
           </CardContent>
         </Card>
@@ -465,30 +469,30 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
           onClick={handleOpenPayments}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Payments</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('budgetDashboard.payments')}</CardTitle>
             <TrendingUp className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-destructive">
-              ${spent.toLocaleString()}
+              {formatCurrency(spent, currency)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {budgetPercentage.toFixed(1)}% of budget used • Click to view details
+              {t('budgetDashboard.budgetUsed', { percentage: budgetPercentage.toFixed(1) })}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('budgetDashboard.pendingOrders')}</CardTitle>
             <Clock className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-warning">
-              ${pending.toLocaleString()}
+              {formatCurrency(pending, currency)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {pendingCount} order{pendingCount !== 1 ? 's' : ''} pending
+              {t('budgetDashboard.ordersPending', { count: pendingCount })}
             </p>
           </CardContent>
         </Card>
@@ -498,22 +502,22 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
           onClick={handleOpenOngoingCosts}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tillägg (utanför budget)</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('budgetDashboard.extras')}</CardTitle>
             <Package className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              ${ongoingCostsTotal.toLocaleString()}
+              {formatCurrency(ongoingCostsTotal, currency)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Exklusive budget • {ongoingCostsCount} items
+              {t('budgetDashboard.excludedFromBudget', { count: ongoingCostsCount })}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Remaining</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('budgetDashboard.remaining')}</CardTitle>
             {remaining < 0 ? (
               <AlertTriangle className="h-4 w-4 text-destructive" />
             ) : (
@@ -522,10 +526,10 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${remaining < 0 ? 'text-destructive' : 'text-success'}`}>
-              ${remaining.toLocaleString()}
+              {formatCurrency(remaining, currency)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {remaining < 0 ? 'Over budget!' : 'Available to spend'}
+              {remaining < 0 ? t('budgetDashboard.overBudget') : t('budgetDashboard.availableToSpend')}
             </p>
           </CardContent>
         </Card>
@@ -537,10 +541,10 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
           <CardHeader>
             <CardTitle className="text-destructive flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" />
-              Budget Exceeded
+              {t('budgetDashboard.budgetExceeded')}
             </CardTitle>
             <CardDescription>
-              Your project is ${Math.abs(remaining).toLocaleString()} over budget. Consider reviewing pending orders or adjusting your budget.
+              {t('budgetDashboard.budgetExceededDescription', { amount: formatCurrency(Math.abs(remaining), currency) })}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -551,10 +555,10 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
           <CardHeader>
             <CardTitle className="text-warning flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              High Pending Orders
+              {t('budgetDashboard.highPendingOrders')}
             </CardTitle>
             <CardDescription>
-              You have ${pending.toLocaleString()} ({pendingPercentage.toFixed(1)}% of budget) in pending purchase orders.
+              {t('budgetDashboard.highPendingOrdersDescription', { amount: formatCurrency(pending, currency), percentage: pendingPercentage.toFixed(1) })}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -567,11 +571,11 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
           <CardHeader>
             <div className="flex items-start justify-between">
               <div>
-                <CardTitle>Budget Distribution</CardTitle>
+                <CardTitle>{t('budgetDashboard.budgetDistribution')}</CardTitle>
                 <CardDescription>
-                  {pieChartView === "budget" && "Visual breakdown of budget allocation"}
-                  {pieChartView === "room" && "Cost breakdown by room"}
-                  {pieChartView === "costCenter" && "Cost breakdown by cost center"}
+                  {pieChartView === "budget" && t('budgetDashboard.budgetAllocationBreakdown')}
+                  {pieChartView === "room" && t('budgetDashboard.costByRoom')}
+                  {pieChartView === "costCenter" && t('budgetDashboard.costByCostCenter')}
                 </CardDescription>
               </div>
               <Select value={pieChartView} onValueChange={setPieChartView}>
@@ -579,9 +583,9 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="budget">Budget Overview</SelectItem>
-                  <SelectItem value="room">Per Rum</SelectItem>
-                  <SelectItem value="costCenter">Per Kostnadspost</SelectItem>
+                  <SelectItem value="budget">{t('budgetDashboard.budgetOverview')}</SelectItem>
+                  <SelectItem value="room">{t('budgetDashboard.perRoom')}</SelectItem>
+                  <SelectItem value="costCenter">{t('budgetDashboard.perCostCenter')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -604,7 +608,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value, currency)} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -612,7 +616,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                 <div className="text-center">
                   <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No budget data available</p>
+                  <p>{t('budgetDashboard.noBudgetData')}</p>
                 </div>
               </div>
             )}
@@ -622,8 +626,8 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
         {/* Bar Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Budget Comparison</CardTitle>
-            <CardDescription>Compare budget categories</CardDescription>
+            <CardTitle>{t('budgetDashboard.budgetComparison')}</CardTitle>
+            <CardDescription>{t('budgetDashboard.compareBudgetCategories')}</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -636,11 +640,11 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
                   height={80}
                   fontSize={12}
                 />
-                <YAxis 
-                  tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                <YAxis
+                  tickFormatter={(value) => formatCurrency(value, currency, { compact: true })}
                   fontSize={12}
                 />
-                <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+                <Tooltip formatter={(value: number) => formatCurrency(value, currency)} />
                 <Bar dataKey="amount" fill="hsl(var(--primary))" />
               </BarChart>
             </ResponsiveContainer>
@@ -652,9 +656,9 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
       <Dialog open={paymentsDialogOpen} onOpenChange={setPaymentsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Budget Expenses</DialogTitle>
+            <DialogTitle>{t('budgetDashboard.budgetExpenses')}</DialogTitle>
             <DialogDescription>
-              All expenses included in project budget (tasks with budget + purchase orders)
+              {t('budgetDashboard.budgetExpensesDescription')}
             </DialogDescription>
           </DialogHeader>
 
@@ -663,23 +667,23 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
             <div className="flex-1">
               <Label htmlFor="filter-type" className="text-sm mb-2 block">
                 <Filter className="h-4 w-4 inline mr-1" />
-                Filter by Type
+                {t('budgetDashboard.filterByType')}
               </Label>
               <Select value={filterType} onValueChange={setFilterType}>
                 <SelectTrigger id="filter-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="task">Tasks</SelectItem>
-                  <SelectItem value="purchase_order">Purchase Orders</SelectItem>
+                  <SelectItem value="all">{t('budget.allTypes')}</SelectItem>
+                  <SelectItem value="task">{t('budget.tasks')}</SelectItem>
+                  <SelectItem value="purchase_order">{t('budgetDashboard.purchaseOrders')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="flex-1">
               <Label htmlFor="filter-date" className="text-sm mb-2 block">
-                Filter by Date
+                {t('budgetDashboard.filterByDate')}
               </Label>
               <div className="relative">
                 <Input
@@ -704,13 +708,13 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
           <div className="bg-muted/50 p-4 rounded-lg mb-4">
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-sm text-muted-foreground">Total Payments</p>
+                <p className="text-sm text-muted-foreground">{t('budgetDashboard.totalPayments')}</p>
                 <p className="text-2xl font-bold">
-                  ${filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}
+                  {formatCurrency(filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0), currency)}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-muted-foreground">Items</p>
+                <p className="text-sm text-muted-foreground">{t('budgetDashboard.items')}</p>
                 <p className="text-2xl font-bold">{filteredPayments.length}</p>
               </div>
             </div>
@@ -720,18 +724,18 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
           {filteredPayments.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>No payments found</p>
+              <p>{t('budgetDashboard.noPaymentsFound')}</p>
             </div>
           ) : (
             <div className="border rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>{t('budget.type')}</TableHead>
+                    <TableHead>{t('budget.name')}</TableHead>
+                    <TableHead>{t('common.status')}</TableHead>
+                    <TableHead className="text-right">{t('budgetDashboard.amount')}</TableHead>
+                    <TableHead>{t('budgetDashboard.date')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -739,7 +743,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
                     <TableRow key={`${payment.type}-${payment.id}`}>
                       <TableCell>
                         <Badge variant={payment.type === "task" ? "default" : "secondary"}>
-                          {payment.type === "task" ? "Task" : "Purchase Order"}
+                          {payment.type === "task" ? t('budget.task') : t('budgetDashboard.purchaseOrder')}
                         </Badge>
                       </TableCell>
                       <TableCell className="font-medium">{payment.name}</TableCell>
@@ -751,7 +755,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
                         )}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        ${payment.amount?.toLocaleString()}
+                        {formatCurrency(payment.amount, currency)}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {new Date(payment.date).toLocaleDateString('sv-SE')}
@@ -769,9 +773,9 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
       <Dialog open={ongoingCostsDialogOpen} onOpenChange={setOngoingCostsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Tillägg (utanför budget) (Exklusive Budget)</DialogTitle>
+            <DialogTitle>{t('budgetDashboard.extrasTitle')}</DialogTitle>
             <DialogDescription>
-              Operational costs not included in project budget
+              {t('budgetDashboard.extrasDescription')}
             </DialogDescription>
           </DialogHeader>
 
@@ -779,7 +783,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
           <div className="flex gap-4 mb-4">
             <div className="flex-1">
               <Label htmlFor="ongoing-filter-date" className="text-sm mb-2 block">
-                Filter by Date
+                {t('budgetDashboard.filterByDate')}
               </Label>
               <div className="relative">
                 <Input
@@ -804,18 +808,18 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
           <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg mb-4 border border-blue-200 dark:border-blue-800">
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-sm text-muted-foreground">Total Tillägg (utanför budget)</p>
+                <p className="text-sm text-muted-foreground">{t('budgetDashboard.totalExtras')}</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  ${filteredOngoingCosts.reduce((sum, c) => sum + (c.amount || 0), 0).toLocaleString()}
+                  {formatCurrency(filteredOngoingCosts.reduce((sum, c) => sum + (c.amount || 0), 0), currency)}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-muted-foreground">Items</p>
+                <p className="text-sm text-muted-foreground">{t('budgetDashboard.items')}</p>
                 <p className="text-2xl font-bold text-blue-600">{filteredOngoingCosts.length}</p>
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              These costs are excluded from project budget calculations
+              {t('budgetDashboard.excludedFromBudgetNote')}
             </p>
           </div>
 
@@ -823,18 +827,18 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
           {filteredOngoingCosts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>No ongoing costs found</p>
+              <p>{t('budgetDashboard.noExtrasFound')}</p>
             </div>
           ) : (
             <div className="border rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>{t('budget.type')}</TableHead>
+                    <TableHead>{t('budget.name')}</TableHead>
+                    <TableHead>{t('common.status')}</TableHead>
+                    <TableHead className="text-right">{t('budgetDashboard.amount')}</TableHead>
+                    <TableHead>{t('budgetDashboard.date')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -842,7 +846,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
                     <TableRow key={`${cost.type}-${cost.id}`}>
                       <TableCell>
                         <Badge variant="secondary">
-                          Purchase Order
+                          {t('budgetDashboard.purchaseOrder')}
                         </Badge>
                       </TableCell>
                       <TableCell className="font-medium">{cost.name}</TableCell>
@@ -852,7 +856,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount }: BudgetDashboar
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-semibold text-blue-600">
-                        ${cost.amount?.toLocaleString()}
+                        {formatCurrency(cost.amount, currency)}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {new Date(cost.date).toLocaleDateString('sv-SE')}

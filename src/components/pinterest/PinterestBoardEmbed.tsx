@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { X, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -51,6 +52,7 @@ function parsePinterestBoardUrl(url: string): { username: string; boardName: str
 }
 
 export function PinterestBoardEmbed({ boardUrl, onRemove, editable = true }: PinterestBoardEmbedProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +61,7 @@ export function PinterestBoardEmbed({ boardUrl, onRemove, editable = true }: Pin
 
   useEffect(() => {
     if (!parsed) {
-      setError("Ogiltig Pinterest board URL");
+      setError(t('pinterest.invalidUrl'));
       setLoading(false);
       return;
     }
@@ -110,7 +112,7 @@ export function PinterestBoardEmbed({ boardUrl, onRemove, editable = true }: Pin
         setLoading(false);
       } catch (err) {
         console.error('Pinterest SDK error:', err);
-        setError('Kunde inte ladda Pinterest widget');
+        setError(t('pinterest.loadError'));
         setLoading(false);
       }
     };
@@ -121,11 +123,11 @@ export function PinterestBoardEmbed({ boardUrl, onRemove, editable = true }: Pin
   if (!parsed) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-center">
-        <p className="text-sm text-red-600">Ogiltig Pinterest board URL</p>
+        <p className="text-sm text-red-600">{t('pinterest.invalidUrl')}</p>
         <p className="text-xs text-red-500 mt-1">{boardUrl}</p>
         {editable && onRemove && (
           <Button variant="ghost" size="sm" onClick={onRemove} className="mt-2">
-            Ta bort
+            {t('common.remove')}
           </Button>
         )}
       </div>
@@ -140,7 +142,7 @@ export function PinterestBoardEmbed({ boardUrl, onRemove, editable = true }: Pin
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50">
         <div className="flex items-center gap-2">
           <PinterestLogo className="h-4 w-4 text-[#E60023]" />
-          <span className="text-sm font-medium text-gray-700">Pinterest Inspiration</span>
+          <span className="text-sm font-medium text-gray-700">{t('pinterest.inspiration')}</span>
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -148,7 +150,7 @@ export function PinterestBoardEmbed({ boardUrl, onRemove, editable = true }: Pin
             size="sm"
             className="h-7 px-2 text-gray-500 hover:text-gray-700"
             onClick={() => window.open(fullUrl, '_blank')}
-            title="Öppna på Pinterest"
+            title={t('pinterest.openOnPinterest')}
           >
             <ExternalLink className="h-3.5 w-3.5" />
           </Button>
@@ -158,7 +160,7 @@ export function PinterestBoardEmbed({ boardUrl, onRemove, editable = true }: Pin
               size="sm"
               className="h-7 px-2 text-gray-500 hover:text-red-600"
               onClick={onRemove}
-              title="Ta bort board"
+              title={t('pinterest.removeBoard')}
             >
               <X className="h-3.5 w-3.5" />
             </Button>
@@ -171,7 +173,7 @@ export function PinterestBoardEmbed({ boardUrl, onRemove, editable = true }: Pin
         {loading && (
           <div className="flex flex-col items-center justify-center py-8 text-gray-400">
             <Loader2 className="h-6 w-6 animate-spin mb-2" />
-            <span className="text-sm">Laddar Pinterest board...</span>
+            <span className="text-sm">{t('pinterest.loading')}</span>
           </div>
         )}
 

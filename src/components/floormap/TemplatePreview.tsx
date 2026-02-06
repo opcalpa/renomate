@@ -19,6 +19,18 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
   width = 80,
   height = 80,
 }) => {
+  // Guard: Return empty preview if no valid data
+  if (!template || !template.bounds || !template.shapes || template.shapes.length === 0) {
+    return (
+      <div
+        style={{ width, height }}
+        className="bg-gray-100 flex items-center justify-center"
+      >
+        <span className="text-gray-400 text-xs">-</span>
+      </div>
+    );
+  }
+
   // Calculate scale to fit template in preview area
   const padding = 8;
   const availableWidth = width - padding * 2;

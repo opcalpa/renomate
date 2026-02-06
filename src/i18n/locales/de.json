@@ -129,7 +129,8 @@
     "addFirstTask": "Erste Aufgabe hinzufügen",
     "taskCreated": "Aufgabe erstellt!",
     "taskCreatedDescription": "Die Aufgabe wurde zu Ihrem Projekt hinzugefügt.",
-    "adding": "Hinzufügen..."
+    "adding": "Hinzufügen...",
+    "viewOnFloorPlan": "Auf Grundriss anzeigen"
   },
   "rooms": {
     "title": "Räume",
@@ -208,6 +209,28 @@
     "notAuthenticated": "Nicht authentifiziert",
     "profileNotFound": "Profil nicht gefunden"
   },
+  "onboarding": {
+    "welcome": "Willkommen bei Renomate!",
+    "welcomeDescription": "Verwalten Sie Ihre Renovierungsprojekte von der Planung bis zur Fertigstellung.",
+    "createProject": "Erstellen Sie Ihr erstes Projekt",
+    "createProjectDesc": "Ich manage eine Renovierung",
+    "hasInvitation": "Ich habe eine Einladung",
+    "hasInvitationDesc": "Mein Projektmanager hat mich eingeladen",
+    "checklist": {
+      "title": "Erste Schritte",
+      "progress": "{{count}} von {{total}} Schritten abgeschlossen",
+      "completeProfile": "Profil vervollständigen",
+      "createProject": "Erstes Projekt erstellen",
+      "drawRoom": "Ersten Raum zeichnen",
+      "createQuote": "Testangebot erstellen",
+      "createTaskRoom": "Aufgabe erstellen und mit einem Raum verknüpfen",
+      "completeProProfile": "Berufliches Profil vervollständigen",
+      "dismiss": "Checkliste ausblenden",
+      "confirmDismiss": "Erste-Schritte-Anleitung ausblenden?",
+      "allDone": "Gut gemacht! Sie sind bereit.",
+      "inviteClient": "Bereit, Ihren ersten Kunden einzuladen?"
+    }
+  },
   "roles": {
     "title": "Team & Einladungen",
     "description": "Projektteammitglieder und Einladungen verwalten",
@@ -253,6 +276,23 @@
       "editor": "Bearbeiter - Kann Aufgaben und Materialien bearbeiten",
       "admin": "Admin - Voller Zugriff außer Projekt löschen",
       "material_requester": "Materialanforderer - Raumplan anzeigen & Bestellungen verwalten"
+    },
+    "selectRole": "Rolle auswählen",
+    "moreInfo": "Mehr Infos",
+    "customizeAccess": "Berechtigungen anpassen",
+    "cards": {
+      "contractor": {
+        "description": "Kann Zeitplan einsehen, zugewiesene Aufgaben bearbeiten und Bestellungen erstellen"
+      },
+      "project_manager": {
+        "description": "Voller Zugriff auf alle Projektfunktionen, kann Teammitglieder einladen"
+      },
+      "client": {
+        "description": "Kann alle Projektinformationen einschließlich Budget einsehen"
+      },
+      "viewer": {
+        "description": "Nur-Lese-Zugriff auf Zeitplan, Aufgaben und Übersicht"
+      }
     }
   },
   "statuses": {
@@ -304,7 +344,10 @@
     "createRoom": "Raum erstellen",
     "deleteRoom": "Raum löschen",
     "scrollToPan": "Scrollen zum Schwenken",
-    "ctrlZoom": "Zoom-Tasten oder Mausrad verwenden"
+    "ctrlZoom": "Zoom-Tasten oder Mausrad verwenden",
+    "openingRoomDetails": "Raumdetails werden geöffnet",
+    "roomMustBeSavedFirst": "Der Raum muss zuerst benannt und gespeichert werden.",
+    "openingPropertyPanel": "Eigenschaftenpanel wird geöffnet"
   },
   "files": {
     "title": "Projektdateien",
@@ -517,5 +560,15 @@
     "showOriginal": "Original anzeigen",
     "translating": "Übersetze...",
     "translationError": "Kommentare konnten nicht übersetzt werden"
+  },
+  "welcome": {
+    "chooseLanguage": "Wähle deine Sprache",
+    "title": "Willkommen bei Renomate!",
+    "subtitle": "Was beschreibt dich am besten?",
+    "homeowner": "Hausbesitzer",
+    "homeownerDesc": "Ich renoviere mein eigenes Zuhause",
+    "contractor": "Bauunternehmer",
+    "contractorDesc": "Ich führe ein Bauunternehmen",
+    "continue": "Weiter"
   }
 }

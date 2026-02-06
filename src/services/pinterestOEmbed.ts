@@ -9,6 +9,7 @@ export interface ParsedPinData {
   pinId: string;
   title: string;
   imageUrl: string;
+  storageUrl?: string | null;
   authorName: string;
   authorUrl: string;
   sourceUrl: string;
@@ -55,7 +56,7 @@ export function parsePinterestPinUrl(url: string): string | null {
 /**
  * Fetches pin data via Supabase Edge Function (avoids CORS issues)
  */
-export async function fetchPinterestPin(pinUrl: string): Promise<ParsedPinData> {
+export async function fetchPinterestPin(pinUrl: string, projectId?: string): Promise<ParsedPinData> {
   const normalizedUrl = parsePinterestPinUrl(pinUrl);
 
   if (!normalizedUrl) {
@@ -64,7 +65,7 @@ export async function fetchPinterestPin(pinUrl: string): Promise<ParsedPinData> 
 
   try {
     const { data, error } = await supabase.functions.invoke('pinterest-oembed', {
-      body: { pinUrl: normalizedUrl },
+      body: { pinUrl: normalizedUrl, projectId },
     });
 
     if (error) {
@@ -83,6 +84,7 @@ export async function fetchPinterestPin(pinUrl: string): Promise<ParsedPinData> 
       pinId: data.pinId,
       title: data.title || 'Pinterest pin',
       imageUrl: data.imageUrl,
+      storageUrl: data.storageUrl || null,
       authorName: data.authorName || '',
       authorUrl: data.authorUrl || '',
       sourceUrl: normalizedUrl,

@@ -3,18 +3,36 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useProfileLanguage } from "@/hooks/useProfileLanguage";
+import { useOnboarding } from "@/hooks/useOnboarding";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader2, Home, ChevronRight, ChevronLeft, Users, Sparkles } from "lucide-react";
+import { Plus, ChevronRight, ChevronLeft, Users, Sparkles, BookOpen, Wand2, Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AIProjectImportModal } from "@/components/project/AIProjectImportModal";
+import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
+import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
+import { WithHotspot } from "@/components/onboarding/Hotspot";
+import { PageLoadingSkeleton } from "@/components/ui/skeleton-screens";
+import { seedDemoProject, isDemoProject, hasDemoProject } from "@/services/demoProjectService";
 
 interface Project {
   id: string;
@@ -26,13 +44,15 @@ interface Project {
   postal_code?: string | null;
   city?: string | null;
   project_type?: string | null;
+  owner_id?: string | null;
 }
 
 const Projects = () => {
   const { user, signOut, loading: authLoading } = useAuthSession();
   useProfileLanguage();
   const { t } = useTranslation();
-  const [profile, setProfile] = useState<any>(null);
+  const onboarding = useOnboarding();
+  const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -47,6 +67,9 @@ const Projects = () => {
   const [createStep, setCreateStep] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [aiImportOpen, setAiImportOpen] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -70,6 +93,11 @@ const Projects = () => {
         .eq("user_id", user?.id)
         .single();
       setProfile(data);
+
+      // Check if we need to show the welcome modal
+      if (data && !data.onboarding_welcome_completed) {
+        setShowWelcomeModal(true);
+      }
     } catch (error) {
       console.error("Error fetching profile:", error);
     }
@@ -87,6 +115,12 @@ const Projects = () => {
         .single();
 
       if (!profile) return;
+
+      // Auto-seed demo project for users who don't have one
+      const hasDemo = await hasDemoProject(profile.id);
+      if (!hasDemo) {
+        await seedDemoProject(profile.id);
+      }
 
       // Fetch both owned projects and shared projects
       // RLS will handle access control, so we don't need to filter by owner_id
@@ -147,6 +181,9 @@ const Projects = () => {
         description: t('projects.projectCreatedDescription'),
       });
 
+      // Mark onboarding step as complete
+      onboarding.markStepComplete("project");
+
       setDialogOpen(false);
       setCreateStep(1);
       setNewProjectName("");
@@ -174,13 +211,59 @@ const Projects = () => {
     navigate("/auth");
   };
 
+  const handleWelcomeComplete = async (userType: "homeowner" | "contractor") => {
+    setShowWelcomeModal(false);
+
+    // Seed demo project for all user types (both homeowners and contractors need to learn the system)
+    if (profile?.id) {
+      const demoProjectId = await seedDemoProject(profile.id as string);
+      if (demoProjectId) {
+        // Refresh projects to show the demo
+        fetchProjects();
+        toast({
+          title: t("demoProject.badge"),
+          description: t("demoProject.description"),
+        });
+      }
+    }
+
+    // Refresh onboarding state
+    onboarding.refresh();
+  };
+
+  const handleDeleteProject = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .delete()
+        .eq("id", deleteTarget.id);
+
+      if (error) throw error;
+
+      toast({
+        title: t("projects.deleteSuccess"),
+        description: t("projects.deleteSuccessDescription", { name: deleteTarget.name }),
+      });
+      setDeleteTarget(null);
+      fetchProjects();
+    } catch (error: unknown) {
+      toast({
+        title: t("common.error"),
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const profileId = profile?.id as string | undefined;
+
   // Show loading while auth or data is loading
   if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageLoadingSkeleton />;
   }
 
   return (
@@ -193,23 +276,50 @@ const Projects = () => {
       />
 
       <main className="container mx-auto px-4 py-8">
+        {!onboarding.loading && !onboarding.isDismissed && !onboarding.isComplete && onboarding.steps.length > 0 && (
+          <OnboardingChecklist
+            steps={onboarding.steps}
+            completedCount={onboarding.completedCount}
+            totalSteps={onboarding.totalSteps}
+            isComplete={onboarding.isComplete}
+            onDismiss={onboarding.dismiss}
+            onCreateProject={() => setDialogOpen(true)}
+            firstProjectId={projects[0]?.id}
+            currentStepKey={onboarding.currentStepKey}
+          />
+        )}
+
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-2xl font-semibold mb-2">{t('projects.title')}</h2>
             <p className="text-muted-foreground">{t('projects.description')}</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setAiImportOpen(true)}>
-              <Sparkles className="h-4 w-4 mr-2" />
-              {t('aiProjectImport.buttonLabel')}
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" onClick={() => setAiImportOpen(true)}>
+                    <Wand2 className="h-4 w-4 mr-2" />
+                    {t('aiProjectImport.smartImport', 'Smart Import')}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p>{t('aiProjectImport.smartImportTooltip', 'Ladda upp befintlig textfil med renoveringsbeskrivning och vi skapar automatiskt att-göra lista och uppdelade rumsbeskrivningar')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <WithHotspot
+              hotspotId="create-project"
+              hotspotContent="hotspots.createProject"
+              hotspotPosition="top-right"
+              showOnce={true}
+            >
+              <Button onClick={() => setDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                {t('projects.newProject')}
+              </Button>
+            </WithHotspot>
             <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setCreateStep(1); setNewProjectName(""); setNewProjectDescription(""); setNewProjectAddress(""); setNewProjectPostalCode(""); setNewProjectCity(""); setNewProjectType(""); setNewProjectStartDate(""); setNewProjectBudget(""); } }}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t('projects.newProject')}
-                </Button>
-              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{t('projects.createProjectTitle')}</DialogTitle>
@@ -379,40 +489,100 @@ const Projects = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
-              <Card
-                key={project.id}
-                className="cursor-pointer card-elevated"
-                onClick={() => navigate(`/projects/${project.id}`)}
-              >
-                <CardHeader>
-                  <CardTitle>{project.name}</CardTitle>
-                  <CardDescription>
-                    {project.address
-                      ? [project.address, project.city].filter(Boolean).join(", ")
-                      : project.description || t('projects.noDescription')}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <span className="capitalize">{project.status}</span>
-                    <span className="mx-2">•</span>
-                    <span>
-                      {new Date(project.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            {projects.map((project) => {
+              const isDemo = isDemoProject(project.project_type);
+              return (
+                <Card
+                  key={project.id}
+                  className={`cursor-pointer card-elevated overflow-hidden ${isDemo ? 'ring-2 ring-primary/30' : ''}`}
+                  onClick={() => navigate(`/projects/${project.id}`)}
+                >
+                  {isDemo && (
+                    <div className="bg-primary text-primary-foreground px-4 py-2 flex items-center gap-2 text-sm font-medium">
+                      <BookOpen className="h-4 w-4" />
+                      <span>Demo</span>
+                      <span className="text-primary-foreground/70 font-normal">– {t("demoProject.description")}</span>
+                    </div>
+                  )}
+                  <CardHeader>
+                    <CardTitle>{project.name}</CardTitle>
+                    <CardDescription>
+                      {project.address
+                        ? [project.address, project.city].filter(Boolean).join(", ")
+                        : project.description || t('projects.noDescription')}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <span className="capitalize">{project.status}</span>
+                        <span className="mx-2">•</span>
+                        <span>
+                          {new Date(project.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {profileId && project.owner_id === profileId && !isDemo && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget(project);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("projects.deleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                {t("projects.deleteWarning", { name: deleteTarget?.name })}
+              </span>
+              <span className="block font-medium text-destructive">
+                {t("projects.deleteIrreversible")}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteProject}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? t("common.loading") : t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AIProjectImportModal
         open={aiImportOpen}
         onOpenChange={setAiImportOpen}
         onProjectCreated={(projectId) => navigate(`/projects/${projectId}`)}
       />
+
+      {/* Welcome modal for new users */}
+      {profile?.id && (
+        <WelcomeModal
+          open={showWelcomeModal}
+          profileId={profile.id as string}
+          onComplete={handleWelcomeComplete}
+        />
+      )}
     </div>
   );
 };

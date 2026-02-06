@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -32,17 +33,24 @@ import {
   Building2,
   LucideIcon,
   Ruler,
+  Frame,
+  Grid3X3,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CanvasSettingsPopover } from "./CanvasSettingsPopover";
 import { AIFloorPlanImport } from "@/components/project/AIFloorPlanImport";
 import { TemplateGallery } from "./TemplateGallery";
+import { TemplateGalleryDropdown } from "./TemplateGalleryDropdown";
 import { SaveTemplateDialog } from "./SaveTemplateDialog";
 import { LayerControls } from "./toolbar";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from 'uuid';
 import { FloorMapShape } from "./types";
+import { updatePlanInDB } from "./utils/plans";
 import { fetchPinterestPin, parsePinterestPinUrl } from "@/services/pinterestOEmbed";
+import { generateWallsFromRoom } from "./utils/roomWalls";
+import { getAdminDefaults } from "./canvas/constants";
+import { useOnboarding } from "@/hooks/useOnboarding";
 import {
   Dialog,
   DialogContent,
@@ -98,7 +106,7 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 
 interface ToolItem {
   id: string;
@@ -211,6 +219,7 @@ interface SimpleToolbarProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  isDemo?: boolean;
 }
 
 export const SimpleToolbar = ({
@@ -221,8 +230,14 @@ export const SimpleToolbar = ({
   onRedo,
   canUndo,
   canRedo,
+  isDemo,
 }: SimpleToolbarProps) => {
+  const { t } = useTranslation();
   const { activeTool, setActiveTool, viewState, setViewState, selectedShapeIds, addShape, currentPlanId } = useFloorMapStore();
+  const shapes = useFloorMapStore(s => s.shapes);
+  const plans = useFloorMapStore(s => s.plans);
+  const updatePlan = useFloorMapStore(s => s.updatePlan);
+  const onboarding = useOnboarding();
 
   // Category open states
   const [openCategory, setOpenCategory] = useState<string | null>(null);
@@ -240,6 +255,63 @@ export const SimpleToolbar = ({
 
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const modKey = isMac ? '⌘' : 'Ctrl';
+
+  // Starting view state
+  const currentPlan = plans.find(p => p.id === currentPlanId);
+  const hasStartingView = Boolean(currentPlan?.viewSettings?.startingView);
+
+  const handleToggleStartingView = useCallback(async () => {
+    if (!currentPlanId || !currentPlan) return;
+
+    if (hasStartingView) {
+      const newSettings = { ...currentPlan.viewSettings, startingView: null };
+      updatePlan(currentPlanId, { viewSettings: newSettings });
+      await updatePlanInDB(currentPlanId, { viewSettings: newSettings });
+      toast.success(t('canvas.startingViewCleared', 'Starting view cleared — will auto-fit to content'));
+    } else {
+      const newSettings = {
+        ...currentPlan.viewSettings,
+        startingView: { panX: viewState.panX, panY: viewState.panY, zoom: viewState.zoom },
+      };
+      updatePlan(currentPlanId, { viewSettings: newSettings });
+      await updatePlanInDB(currentPlanId, { viewSettings: newSettings });
+      toast.success(t('canvas.startingViewSaved', 'Starting view saved'));
+    }
+  }, [currentPlanId, currentPlan, hasStartingView, viewState, updatePlan, t]);
+
+  // Generate walls from selected room(s)
+  const selectedRooms = useMemo(
+    () => selectedShapeIds
+      .map(id => shapes.find(s => s.id === id))
+      .filter((s): s is FloorMapShape => s?.type === 'room'),
+    [selectedShapeIds, shapes]
+  );
+  const hasSelectedRooms = selectedRooms.length > 0;
+
+  const handleCreateWallsFromRoom = useCallback(() => {
+    if (selectedRooms.length === 0) return;
+    const { wallThicknessMM, wallHeightMM } = getAdminDefaults();
+    let totalWallsCreated = 0;
+
+    selectedRooms.forEach(roomShape => {
+      const walls = generateWallsFromRoom(roomShape, uuidv4, {
+        heightMM: wallHeightMM,
+        thicknessMM: wallThicknessMM,
+        planId: currentPlanId || undefined,
+      });
+      walls.forEach(wall => addShape(wall));
+      totalWallsCreated += walls.length;
+    });
+
+    if (totalWallsCreated > 0) {
+      const roomText = selectedRooms.length === 1 ? 'rummet' : `${selectedRooms.length} rum`;
+      toast.success(`${totalWallsCreated} väggar skapade runt ${roomText}`);
+      // Mark generateWalls step as complete
+      if (onboarding.isStepActive("generateWalls")) {
+        onboarding.markStepComplete("generateWalls");
+      }
+    }
+  }, [selectedRooms, currentPlanId, addShape, onboarding]);
 
   // Listen for context menu events from canvas
   useEffect(() => {
@@ -358,10 +430,10 @@ export const SimpleToolbar = ({
     setPinterestUrlError(null);
 
     try {
-      // Fetch pin data via oEmbed
-      const pinData = await fetchPinterestPin(url);
+      // Fetch pin data via oEmbed (edge function also uploads image to Storage)
+      const pinData = await fetchPinterestPin(url, projectId);
 
-      // Create image shape on canvas
+      // Create image shape on canvas (prefer storage URL to avoid CORS)
       const imageShape: FloorMapShape = {
         id: uuidv4(),
         type: 'image',
@@ -372,7 +444,7 @@ export const SimpleToolbar = ({
           width: pinData.width || 0,
           height: pinData.height || 0,
         },
-        imageUrl: pinData.imageUrl,
+        imageUrl: pinData.storageUrl || pinData.imageUrl,
         imageOpacity: 1,
         locked: false,
         zIndex: 0,
@@ -398,7 +470,7 @@ export const SimpleToolbar = ({
     } finally {
       setImportingPin(false);
     }
-  }, [pinterestUrlInput, addShape, currentPlanId]);
+  }, [pinterestUrlInput, addShape, currentPlanId, projectId]);
 
   // Tool categories
   const importTools: ToolItem[] = [
@@ -471,7 +543,7 @@ export const SimpleToolbar = ({
   return (
     <>
     {/* Mobile compact toolbar - sticky left strip with key tools + expand button */}
-    <div className="md:hidden fixed left-2 top-20 w-11 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-lg shadow-black/5 flex flex-col items-center py-2 gap-1 z-50">
+    <div className={cn("md:hidden fixed left-2 w-11 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-lg shadow-black/5 flex flex-col items-center py-2 gap-1 z-50", isDemo ? "top-[104px]" : "top-20")}>
       {/* Select */}
       <Button
         variant={activeTool === 'select' ? 'default' : 'ghost'}
@@ -578,6 +650,26 @@ export const SimpleToolbar = ({
                   <Save className="h-5 w-5" />
                   <span className="text-[10px]">Spara</span>
                 </Button>
+                <Button
+                  variant={hasStartingView ? "default" : "outline"}
+                  size="sm"
+                  className="flex flex-col items-center gap-1 h-auto py-3"
+                  onClick={() => { handleToggleStartingView(); setMobileSheetOpen(false); }}
+                >
+                  <Frame className="h-5 w-5" />
+                  <span className="text-[10px]">{hasStartingView ? t('canvas.clearStartingView', 'Clear view') : t('canvas.setStartingView', 'Set view')}</span>
+                </Button>
+                {hasSelectedRooms && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex flex-col items-center gap-1 h-auto py-3 border-green-300 bg-green-50"
+                    onClick={() => { handleCreateWallsFromRoom(); setMobileSheetOpen(false); }}
+                  >
+                    <Grid3X3 className="h-5 w-5 text-green-600" />
+                    <span className="text-[10px]">Skapa väggar</span>
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -591,7 +683,7 @@ export const SimpleToolbar = ({
     </div>
 
     {/* Desktop toolbar */}
-    <div className="hidden md:flex fixed left-4 top-20 w-14 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-lg shadow-black/5 flex-col items-center py-3 gap-1.5 z-50">
+    <div className={cn("hidden md:flex fixed left-4 w-14 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-lg shadow-black/5 flex-col items-center py-3 gap-1.5 z-50", isDemo ? "top-[104px]" : "top-20")}>
       {/* Hidden file input */}
       <input
         ref={imageInputRef}
@@ -648,6 +740,23 @@ export const SimpleToolbar = ({
         activeItemId={activeTool}
       />
 
+      {/* Create Walls from Room - Contextual */}
+      {hasSelectedRooms && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleCreateWallsFromRoom}
+              className="w-10 h-10 bg-green-50 hover:bg-green-100 border border-green-300"
+            >
+              <Grid3X3 className="h-5 w-5 text-green-600" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Skapa väggar ({selectedRooms.length} rum)</TooltipContent>
+        </Tooltip>
+      )}
+
       {/* Modify Category */}
       <ToolCategory
         icon={Edit3}
@@ -658,14 +767,20 @@ export const SimpleToolbar = ({
         activeItemId={activeTool}
       />
 
-      {/* Templates */}
+      {/* Templates - Dropdown Menu */}
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" onClick={() => setTemplateGalleryOpen(true)} className="w-10 h-10">
-            <Copy className="h-5 w-5" />
-          </Button>
+          <div>
+            <TemplateGalleryDropdown
+              trigger={
+                <Button variant="ghost" size="icon" className="w-10 h-10">
+                  <Copy className="h-5 w-5" />
+                </Button>
+              }
+            />
+          </div>
         </TooltipTrigger>
-        <TooltipContent side="right">Mallar</TooltipContent>
+        <TooltipContent side="right">Mall Galleri</TooltipContent>
       </Tooltip>
 
       {/* Save as Template - Contextual */}
@@ -750,6 +865,23 @@ export const SimpleToolbar = ({
 
       {/* Settings */}
       <CanvasSettingsPopover />
+
+      {/* Starting View Toggle */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleToggleStartingView}
+            className={cn("w-10 h-10", hasStartingView && "text-primary bg-primary/10")}
+          >
+            <Frame className="h-5 w-5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          {hasStartingView ? t('canvas.clearStartingView', 'Clear starting view') : t('canvas.setStartingView', 'Set starting view')}
+        </TooltipContent>
+      </Tooltip>
 
       {/* Save */}
       <Tooltip>

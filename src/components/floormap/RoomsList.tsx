@@ -3,9 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Home, Plus, Search, Trash2 } from "lucide-react";
+import { Loader2, Home, Plus, Search, Trash2, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useTranslation } from "react-i18next";
 
 interface Room {
   id: string;
@@ -32,12 +34,20 @@ interface RoomsListProps {
   onAddRoom?: () => void;
   onDeleteRoom?: (roomId: string) => void;
   onRoomDeleted?: () => void;
+  onNavigateToRoom?: (room: Room) => void;
+  onPlaceRoom?: (room: Room) => void;
 }
 
-export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddRoom, onDeleteRoom, onRoomDeleted }: RoomsListProps) => {
+export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddRoom, onDeleteRoom, onRoomDeleted, onNavigateToRoom, onPlaceRoom }: RoomsListProps) => {
+  const { t } = useTranslation();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(!externalRooms);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Check if a room is placed on canvas
+  const isRoomPlacedOnCanvas = (room: Room): boolean => {
+    return !!(room.floor_plan_position?.points && room.floor_plan_position.points.length > 0);
+  };
 
   // Use external rooms if provided, otherwise fetch locally
   useEffect(() => {
@@ -159,19 +169,63 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
                       )}
                     </div>
                   </div>
-                  {onDeleteRoom && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="ml-2 text-red-500 hover:text-red-700 hover:bg-red-50"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteRoom?.(room.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-1 ml-2">
+                    {/* Map Pin Icon - Shows placement status */}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={isRoomPlacedOnCanvas(room)
+                              ? "text-green-600 hover:text-green-700 hover:bg-green-50"
+                              : "text-gray-400 hover:text-amber-600 hover:bg-amber-50"
+                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isRoomPlacedOnCanvas(room)) {
+                                onNavigateToRoom?.(room);
+                              } else {
+                                onPlaceRoom?.(room);
+                              }
+                            }}
+                          >
+                            <MapPin className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {isRoomPlacedOnCanvas(room)
+                            ? t('rooms.showOnFloorPlan', 'Visa på ritning')
+                            : t('rooms.placeOnFloorPlan', 'Placera på ritning')
+                          }
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    {/* Delete Button */}
+                    {onDeleteRoom && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteRoom?.(room.id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {t('common.delete', 'Ta bort')}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -1,9 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { isDemoProject } from "@/services/demoProjectService";
 
 export interface ProjectPermissions {
   isOwner: boolean;
+  isSystemAdmin: boolean;
+  isDemoProject: boolean;
   overview: string;
   timeline: string;
   tasks: string;
@@ -19,6 +22,8 @@ export interface ProjectPermissions {
 
 const ALL_EDIT: Omit<ProjectPermissions, "loading"> = {
   isOwner: true,
+  isSystemAdmin: false,
+  isDemoProject: false,
   overview: "edit",
   timeline: "edit",
   tasks: "edit",
@@ -31,8 +36,27 @@ const ALL_EDIT: Omit<ProjectPermissions, "loading"> = {
   teams: "invite",
 };
 
+// View-only permissions for demo project (non-admin users)
+const DEMO_VIEW_ONLY: Omit<ProjectPermissions, "loading"> = {
+  isOwner: false,
+  isSystemAdmin: false,
+  isDemoProject: true,
+  overview: "view",
+  timeline: "view",
+  tasks: "view",
+  tasksScope: "all",
+  spacePlanner: "view",
+  purchases: "view",
+  purchasesScope: "all",
+  budget: "view",
+  files: "view",
+  teams: "none",
+};
+
 const ALL_NONE: Omit<ProjectPermissions, "loading"> = {
   isOwner: false,
+  isSystemAdmin: false,
+  isDemoProject: false,
   overview: "none",
   timeline: "none",
   tasks: "none",
@@ -63,7 +87,7 @@ export function useProjectPermissions(projectId: string | undefined): ProjectPer
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id")
+        .select("id, is_system_admin")
         .eq("user_id", user.id)
         .single();
 
@@ -72,9 +96,11 @@ export function useProjectPermissions(projectId: string | undefined): ProjectPer
         return;
       }
 
+      const isAdmin = (profile as { id: string; is_system_admin?: boolean }).is_system_admin === true;
+
       const { data: project } = await supabase
         .from("projects")
-        .select("owner_id")
+        .select("owner_id, project_type")
         .eq("id", projectId)
         .single();
 
@@ -83,8 +109,21 @@ export function useProjectPermissions(projectId: string | undefined): ProjectPer
         return;
       }
 
+      const isDemo = isDemoProject(project.project_type);
+
+      // Demo project: only system admin can edit, others get view-only
+      if (isDemo) {
+        if (isAdmin) {
+          setPerms({ ...ALL_EDIT, isSystemAdmin: true, isDemoProject: true });
+        } else {
+          setPerms(DEMO_VIEW_ONLY);
+        }
+        setLoading(false);
+        return;
+      }
+
       if (project.owner_id === profile.id) {
-        setPerms(ALL_EDIT);
+        setPerms({ ...ALL_EDIT, isSystemAdmin: isAdmin });
         setLoading(false);
         return;
       }

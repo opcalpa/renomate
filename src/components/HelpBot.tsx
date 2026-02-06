@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { HelpCircle, Send, X } from "lucide-react";
+import { HelpCircle, Send, X, Lightbulb, BookOpen, Wrench, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,15 +9,40 @@ interface Message {
   content: string;
 }
 
+interface QuickPrompt {
+  icon: React.ReactNode;
+  labelKey: string;
+  fallback: string;
+  message: string;
+}
+
 export function HelpBot() {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [userType, setUserType] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch user type from profile
+  useEffect(() => {
+    const fetchUserType = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("onboarding_user_type")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (data?.onboarding_user_type) {
+        setUserType(data.onboarding_user_type);
+      }
+    };
+    fetchUserType();
+  }, []);
 
   // Reset conversation when language changes so greeting appears in new language
   const currentLang = i18n.language;
@@ -56,25 +81,27 @@ export function HelpBot() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
-  const handleSend = useCallback(async () => {
-    const trimmed = input.trim();
-    if (!trimmed || loading) return;
+  const sendMessage = useCallback(async (text: string) => {
+    if (!text.trim() || loading) return;
 
-    const userMsg: Message = { role: "user", content: trimmed };
+    const userMsg: Message = { role: "user", content: text.trim() };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setLoading(true);
 
     try {
-      const conversationMessages = [...messages.filter((m) => m === messages[0] ? false : true), userMsg]
+      const allConversation = [...messages.filter((m) => m === messages[0] ? false : true), userMsg]
         .map((m) => ({ role: m.role, content: m.content }));
 
-      if (conversationMessages.length === 0) {
-        conversationMessages.push({ role: userMsg.role, content: userMsg.content });
+      if (allConversation.length === 0) {
+        allConversation.push({ role: userMsg.role, content: userMsg.content });
       }
 
+      // Trim to last 8 messages to reduce token usage
+      const conversationMessages = allConversation.slice(-8);
+
       const { data, error } = await supabase.functions.invoke("help-bot", {
-        body: { messages: conversationMessages, language: i18n.language },
+        body: { messages: conversationMessages, language: i18n.language, userType },
       });
 
       if (error) throw error;
@@ -91,7 +118,72 @@ export function HelpBot() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, t, i18n.language]);
+  }, [loading, messages, t, i18n.language, userType]);
+
+  const handleSend = useCallback(() => {
+    sendMessage(input);
+  }, [input, sendMessage]);
+
+  const handleQuickPrompt = useCallback((prompt: QuickPrompt) => {
+    sendMessage(prompt.message);
+  }, [sendMessage]);
+
+  // Quick prompts shown before first user message
+  const quickPrompts: QuickPrompt[] = userType === "contractor"
+    ? [
+        {
+          icon: <Wrench className="h-3.5 w-3.5 shrink-0" />,
+          labelKey: "helpBot.quick.projectManagement",
+          fallback: "Project management tips",
+          message: t("helpBot.quickMessage.projectManagement", "How can I manage my renovation projects more efficiently in the app?"),
+        },
+        {
+          icon: <FileText className="h-3.5 w-3.5 shrink-0" />,
+          labelKey: "helpBot.quick.permits",
+          fallback: "Building permits & regulations",
+          message: t("helpBot.quickMessage.permits", "What building permits and regulations should I be aware of for renovation work?"),
+        },
+        {
+          icon: <Lightbulb className="h-3.5 w-3.5 shrink-0" />,
+          labelKey: "helpBot.quick.spacePlanner",
+          fallback: "Space Planner guide",
+          message: t("helpBot.quickMessage.spacePlanner", "How do I use the Space Planner to create floor plans and link rooms to tasks?"),
+        },
+        {
+          icon: <BookOpen className="h-3.5 w-3.5 shrink-0" />,
+          labelKey: "helpBot.quick.teamBudget",
+          fallback: "Team & budget tracking",
+          message: t("helpBot.quickMessage.teamBudget", "How do I invite team members and track costs across projects?"),
+        },
+      ]
+    : [
+        {
+          icon: <Lightbulb className="h-3.5 w-3.5 shrink-0" />,
+          labelKey: "helpBot.quick.getStarted",
+          fallback: "Getting started",
+          message: t("helpBot.quickMessage.getStarted", "I'm new — what's the best way to set up my first renovation project?"),
+        },
+        {
+          icon: <FileText className="h-3.5 w-3.5 shrink-0" />,
+          labelKey: "helpBot.quick.permits",
+          fallback: "Building permits & regulations",
+          message: t("helpBot.quickMessage.permits", "What building permits and regulations should I be aware of for renovation work?"),
+        },
+        {
+          icon: <Wrench className="h-3.5 w-3.5 shrink-0" />,
+          labelKey: "helpBot.quick.spacePlanner",
+          fallback: "Space Planner guide",
+          message: t("helpBot.quickMessage.spacePlanner", "How do I use the Space Planner to create floor plans and link rooms to tasks?"),
+        },
+        {
+          icon: <BookOpen className="h-3.5 w-3.5 shrink-0" />,
+          labelKey: "helpBot.quick.budgetTips",
+          fallback: "Budget & cost tracking",
+          message: t("helpBot.quickMessage.budgetTips", "How do I track renovation costs and manage my budget in the app?"),
+        },
+      ];
+
+  const showQuickPrompts = messages.length <= 1 && !loading;
 
   return (
     <>
@@ -144,6 +236,23 @@ export function HelpBot() {
                 </div>
               </div>
             ))}
+
+            {/* Quick prompt buttons */}
+            {showQuickPrompts && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {quickPrompts.map((prompt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleQuickPrompt(prompt)}
+                    className="inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                  >
+                    {prompt.icon}
+                    {t(prompt.labelKey, prompt.fallback)}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {loading && (
               <div className="flex justify-start">
                 <div className="bg-muted rounded-lg px-3 py-2 text-sm text-muted-foreground">

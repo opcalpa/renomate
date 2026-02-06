@@ -467,6 +467,15 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           name: string
+          onboarding_completed_at: string | null
+          onboarding_completed_profile: boolean | null
+          onboarding_created_project: boolean | null
+          onboarding_created_quote: boolean | null
+          onboarding_created_task_room: boolean | null
+          onboarding_dismissed: boolean | null
+          onboarding_drawn_room: boolean | null
+          onboarding_user_type: string | null
+          onboarding_welcome_completed: boolean | null
           phone: string | null
           role: string | null
           updated_at: string
@@ -491,6 +500,15 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           name: string
+          onboarding_completed_at?: string | null
+          onboarding_completed_profile?: boolean | null
+          onboarding_created_project?: boolean | null
+          onboarding_created_quote?: boolean | null
+          onboarding_created_task_room?: boolean | null
+          onboarding_dismissed?: boolean | null
+          onboarding_drawn_room?: boolean | null
+          onboarding_user_type?: string | null
+          onboarding_welcome_completed?: boolean | null
           phone?: string | null
           role?: string | null
           updated_at?: string
@@ -515,6 +533,15 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           name?: string
+          onboarding_completed_at?: string | null
+          onboarding_completed_profile?: boolean | null
+          onboarding_created_project?: boolean | null
+          onboarding_created_quote?: boolean | null
+          onboarding_created_task_room?: boolean | null
+          onboarding_dismissed?: boolean | null
+          onboarding_drawn_room?: boolean | null
+          onboarding_user_type?: string | null
+          onboarding_welcome_completed?: boolean | null
           phone?: string | null
           role?: string | null
           updated_at?: string

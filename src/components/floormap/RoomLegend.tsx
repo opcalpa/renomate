@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getRoomColor } from "./RoomColorPalette";
@@ -13,6 +14,7 @@ interface RoomLegendProps {
 }
 
 export const RoomLegend = ({ rooms, assignedRooms }: RoomLegendProps) => {
+  const { t } = useTranslation();
   if (rooms.length === 0) return null;
 
   const activeRooms = rooms.filter((room) => assignedRooms.has(room.id));
@@ -22,7 +24,7 @@ export const RoomLegend = ({ rooms, assignedRooms }: RoomLegendProps) => {
   return (
     <Card className="w-full">
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm">Room Colors</CardTitle>
+        <CardTitle className="text-sm">{t('floormap.roomColors')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {activeRooms.map((room) => (

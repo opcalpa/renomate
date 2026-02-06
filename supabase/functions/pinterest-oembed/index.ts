@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { pinUrl } = await req.json();
+    const { pinUrl, projectId } = await req.json();
 
     if (!pinUrl) {
       return new Response(
@@ -65,10 +66,46 @@ serve(async (req) => {
     const pinIdMatch = pinUrl.match(/\/pin\/(\d+)/);
     const pinId = pinIdMatch ? pinIdMatch[1] : data.pin_id || "";
 
+    // Download image server-side and upload to Supabase Storage to avoid CORS
+    let storageUrl: string | null = null;
+    if (imageUrl && projectId) {
+      try {
+        const imgResponse = await fetch(imageUrl, {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; Renomate/1.0)" },
+        });
+        if (imgResponse.ok) {
+          const contentType = imgResponse.headers.get("content-type") || "image/jpeg";
+          const ext = contentType.includes("png") ? "png" : "jpg";
+          const arrayBuffer = await imgResponse.arrayBuffer();
+
+          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+          const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+          const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+          const filePath = `projects/${projectId}/floorplan-images/${Date.now()}-pin-${pinId}.${ext}`;
+          const { error: uploadError } = await supabaseAdmin.storage
+            .from("project-files")
+            .upload(filePath, arrayBuffer, { contentType });
+
+          if (!uploadError) {
+            const { data: urlData } = supabaseAdmin.storage
+              .from("project-files")
+              .getPublicUrl(filePath);
+            storageUrl = urlData.publicUrl;
+          } else {
+            console.error("Storage upload error:", uploadError);
+          }
+        }
+      } catch (imgErr) {
+        console.error("Failed to proxy image to storage:", imgErr);
+      }
+    }
+
     const result = {
       pinId,
       title: data.title || "Pinterest pin",
       imageUrl,
+      storageUrl,
       authorName: data.author_name || "",
       authorUrl: data.author_url || "",
       sourceUrl: pinUrl,

@@ -1,8 +1,11 @@
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { useFloorMapStore } from "./store";
+import { calculateFitToContent } from "./canvas/utils";
 
 export const ZoomControls = () => {
+  const { t } = useTranslation();
   const { viewState, setViewState } = useFloorMapStore();
 
   const handleZoomIn = () => {
@@ -16,9 +19,13 @@ export const ZoomControls = () => {
   };
 
   const handleResetView = () => {
-    const centerX = window.innerWidth / 2;
-    const centerY = (window.innerHeight - 70) / 2;
-    setViewState({ zoom: 1, panX: centerX, panY: centerY });
+    const shapes = useFloorMapStore.getState().shapes;
+    const fitView = calculateFitToContent(shapes, window.innerWidth, window.innerHeight - 70);
+    if (fitView) {
+      setViewState(fitView);
+    } else {
+      setViewState({ zoom: 1, panX: 0, panY: 0 });
+    }
   };
 
   return (
@@ -27,7 +34,7 @@ export const ZoomControls = () => {
         variant="ghost"
         size="icon"
         onClick={handleZoomOut}
-        title="Zoom Out (Ctrl + -)"
+        title={t('controls.zoomOutShortcut')}
         className="h-8 w-8 hover:bg-accent transition-colors"
       >
         <ZoomOut className="h-4 w-4" />
@@ -36,7 +43,7 @@ export const ZoomControls = () => {
         variant="ghost"
         size="icon"
         onClick={handleResetView}
-        title="Reset View (Ctrl + 0)"
+        title={t('controls.resetViewShortcut')}
         className="h-8 w-8 hover:bg-accent transition-colors"
       >
         <Maximize2 className="h-4 w-4" />
@@ -45,7 +52,7 @@ export const ZoomControls = () => {
         variant="ghost"
         size="icon"
         onClick={handleZoomIn}
-        title="Zoom In (Ctrl + +)"
+        title={t('controls.zoomInShortcut')}
         className="h-8 w-8 hover:bg-accent transition-colors"
       >
         <ZoomIn className="h-4 w-4" />

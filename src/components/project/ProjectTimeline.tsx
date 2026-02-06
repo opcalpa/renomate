@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Calendar, Loader2, ChevronLeft, ChevronRight, Move } from "lucide-react";
-import { getCostCenterIcon } from "@/lib/costCenters";
-import { format, differenceInDays, parseISO, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addMonths, addWeeks, addDays } from "date-fns";
+import { Calendar, Loader2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Move, ZoomIn, ZoomOut, RotateCcw, Layers } from "lucide-react";
+import { useTimelineGestures } from "@/hooks/useTimelineGestures";
+import { Slider } from "@/components/ui/slider";
+import { format, differenceInDays, parseISO, addDays } from "date-fns";
 import { sv } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -17,7 +18,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Slider } from "@/components/ui/slider";
 import TaskSidePanel from "./TaskSidePanel";
 interface Task {
   id: string;
@@ -43,29 +43,46 @@ interface TeamMember {
   id: string;
   name: string;
 }
+interface Room {
+  id: string;
+  name: string;
+}
+type GroupByOption = 'none' | 'status' | 'room' | 'assignee' | 'priority';
+
+interface TaskGroup {
+  id: string;
+  label: string;
+  color?: string;
+  tasks: Task[];
+  isCollapsed: boolean;
+}
 interface ProjectTimelineProps {
   projectId: string;
   projectName?: string;
   projectStartDate?: string | null;
   projectFinishDate?: string | null;
   onTaskClick?: (taskId: string) => void;
+  onNavigateToRoom?: (roomId: string) => void;
+  currency?: string | null;
 }
-type ViewMode = 'daily' | 'weekly' | 'monthly' | 'fullProject';
 const ProjectTimeline = ({
   projectId,
   projectName,
   projectStartDate,
   projectFinishDate,
-  onTaskClick
+  onTaskClick,
+  onNavigateToRoom,
+  currency
 }: ProjectTimelineProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [unscheduledCount, setUnscheduledCount] = useState(0);
   const [dependencies, setDependencies] = useState<TaskDependency[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedAssignee, setSelectedAssignee] = useState<string>("all");
+  const [groupBy, setGroupBy] = useState<GroupByOption>('none');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<ViewMode>('monthly');
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [draggingTask, setDraggingTask] = useState<Task | null>(null);
   const [resizingTask, setResizingTask] = useState<Task | null>(null);
   const [resizeSide, setResizeSide] = useState<'left' | 'right' | null>(null);
@@ -76,10 +93,34 @@ const ProjectTimeline = ({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const { toast } = useToast();
   const { t } = useTranslation();
+
+  // Touch gestures for pan and zoom - controls visible time range
+  const {
+    containerRef: gestureContainerRef,
+    daysVisible,
+    centerDate,
+    startDate: gestureStartDate,
+    endDate: gestureEndDate,
+    setDaysVisible,
+    setCenterDate,
+    zoomIn,
+    zoomOut,
+    goToToday,
+    panByDays,
+    minDays,
+    maxDays,
+    isDragging,
+  } = useTimelineGestures({
+    minDays: 7,
+    maxDays: 365,
+    initialDays: 30,
+    initialCenterDate: new Date(),
+  });
   useEffect(() => {
     fetchTasks();
     fetchDependencies();
     fetchTeamMembers();
+    fetchRooms();
   }, [projectId]);
   const fetchTasks = async () => {
     try {
@@ -158,96 +199,279 @@ const ProjectTimeline = ({
       console.error("Error fetching team members:", error);
     }
   };
-  const handlePrevious = () => {
-    if (viewMode === 'fullProject') return;
-    if (viewMode === 'monthly') {
-      setCurrentDate(addMonths(currentDate, -1));
-    } else if (viewMode === 'weekly') {
-      setCurrentDate(addWeeks(currentDate, -1));
-    } else {
-      setCurrentDate(addDays(currentDate, -1));
+  const fetchRooms = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("rooms")
+        .select("id, name")
+        .eq("project_id", projectId)
+        .order("name");
+      if (error) throw error;
+      setRooms(data || []);
+    } catch (error: any) {
+      console.error("Error fetching rooms:", error);
     }
   };
+
+  // Toggle group collapsed state
+  const toggleGroupCollapse = (groupId: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  };
+
+  // Navigation functions using gesture hook
+  const handlePrevious = () => {
+    panByDays(-Math.ceil(daysVisible / 2));
+  };
+
   const handleNext = () => {
-    if (viewMode === 'fullProject') return;
-    if (viewMode === 'monthly') {
-      setCurrentDate(addMonths(currentDate, 1));
-    } else if (viewMode === 'weekly') {
-      setCurrentDate(addWeeks(currentDate, 1));
-    } else {
-      setCurrentDate(addDays(currentDate, 1));
-    }
+    panByDays(Math.ceil(daysVisible / 2));
   };
 
   const handleToday = () => {
-    setCurrentDate(new Date());
-    if (viewMode === 'fullProject') {
-      setViewMode('monthly');
+    goToToday();
+  };
+
+  // View mode presets - set specific day ranges
+  const setViewPreset = (preset: 'week' | 'month' | '3months' | 'full') => {
+    switch (preset) {
+      case 'week':
+        setDaysVisible(7);
+        break;
+      case 'month':
+        setDaysVisible(30);
+        break;
+      case '3months':
+        setDaysVisible(90);
+        break;
+      case 'full':
+        // Calculate full project span
+        const dates: Date[] = [];
+        if (projectStartDate) dates.push(parseISO(projectStartDate));
+        if (projectFinishDate) dates.push(parseISO(projectFinishDate));
+        tasks.forEach(task => {
+          if (task.start_date) dates.push(parseISO(task.start_date));
+          if (task.finish_date) dates.push(parseISO(task.finish_date));
+        });
+        if (dates.length >= 2) {
+          const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+          const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+          const span = differenceInDays(maxDate, minDate) + 14; // Add padding
+          setDaysVisible(Math.min(span, maxDays));
+          setCenterDate(addDays(minDate, Math.floor(span / 2)));
+        }
+        break;
     }
   };
 
-  // Calculate timeline bounds based on view mode
-  const getTimelineBounds = () => {
-    let minDate: Date;
-    let maxDate: Date;
-    if (viewMode === 'fullProject') {
-      // Find earliest start date from project or tasks
-      const dates: Date[] = [];
-      
-      // Add project start date if exists
-      if (projectStartDate) {
-        dates.push(parseISO(projectStartDate));
-      }
-      
-      // Add all task start dates
-      tasks.forEach(task => {
-        if (task.start_date) {
-          dates.push(parseISO(task.start_date));
-        }
-      });
-      
-      // Find earliest date
-      minDate = dates.length > 0 
-        ? new Date(Math.min(...dates.map(d => d.getTime())))
-        : startOfMonth(new Date());
-      
-      // Find latest finish date from project goal or tasks
-      const endDates: Date[] = [];
-      
-      // Add project goal date if exists
-      if (projectFinishDate) {
-        endDates.push(parseISO(projectFinishDate));
-      }
-      
-      // Add all task finish dates
-      tasks.forEach(task => {
-        if (task.finish_date) {
-          endDates.push(parseISO(task.finish_date));
-        }
-      });
-      
-      // Find latest date
-      maxDate = endDates.length > 0
-        ? new Date(Math.max(...endDates.map(d => d.getTime())))
-        : endOfMonth(addMonths(new Date(), 3));
-        
-    } else if (viewMode === 'monthly') {
-      minDate = startOfMonth(currentDate);
-      maxDate = endOfMonth(currentDate);
-    } else if (viewMode === 'weekly') {
-      minDate = startOfWeek(currentDate, { weekStartsOn: 1 }); // Week starts on Monday
-      maxDate = endOfWeek(currentDate, { weekStartsOn: 1 }); // Week ends on Sunday
+  // Use gesture-controlled dates for timeline bounds
+  const minDate = gestureStartDate;
+  const maxDate = gestureEndDate;
+  const totalDays = differenceInDays(maxDate, minDate) + 1;
+
+  // Generate date markers for the timeline based on visible days
+  // Must be called before any early returns (React hooks rule)
+  const dateMarkers = useMemo(() => {
+    const markers: Date[] = [];
+    let currentMarker = minDate;
+    // Dynamically choose interval based on days visible
+    let interval: number;
+    if (daysVisible <= 14) {
+      interval = 1; // Show every day for 2 weeks or less
+    } else if (daysVisible <= 45) {
+      interval = Math.ceil(daysVisible / 15); // ~15 markers
+    } else if (daysVisible <= 90) {
+      interval = Math.ceil(daysVisible / 12); // ~12 markers
     } else {
-      minDate = currentDate;
-      maxDate = addDays(currentDate, 1);
+      interval = Math.ceil(daysVisible / 10); // ~10 markers for longer ranges
     }
-    const totalDays = differenceInDays(maxDate, minDate) + 1;
-    return {
-      minDate,
-      maxDate,
-      totalDays
-    };
+    while (currentMarker <= maxDate) {
+      markers.push(currentMarker);
+      currentMarker = addDays(currentMarker, interval);
+    }
+    return markers;
+  }, [minDate, maxDate, daysVisible]);
+
+  // Filter tasks that overlap with current view and match assignee filter
+  // Must be called before any early returns (React hooks rule)
+  const visibleTasks = useMemo(() => {
+    return tasks.filter(task => {
+      if (!task.start_date || !task.finish_date) return false;
+      const taskStart = parseISO(task.start_date);
+      const taskEnd = parseISO(task.finish_date);
+      const inTimeRange = taskStart <= maxDate && taskEnd >= minDate;
+      const matchesAssignee = selectedAssignee === "all" ||
+        (selectedAssignee === "unassigned" && !task.assigned_to_stakeholder_id) ||
+        task.assigned_to_stakeholder_id === selectedAssignee;
+      return inTimeRange && matchesAssignee;
+    });
+  }, [tasks, minDate, maxDate, selectedAssignee]);
+
+  // Status colors for task bars - following universal conventions
+  // Green = Completed, Blue = In Progress, Amber = Waiting/On Hold, Red = Blocked/Cancelled, Gray = To Do
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed":
+      case "done":
+        return "bg-emerald-500";
+      case "in_progress":
+      case "doing":
+        return "bg-blue-500";
+      case "waiting":
+      case "on_hold":
+        return "bg-amber-500";
+      case "blocked":
+        return "bg-red-500";
+      case "cancelled":
+      case "scrapped":
+        return "bg-red-400";
+      case "planned":
+      case "discovery":
+        return "bg-indigo-400";
+      case "ideas":
+        return "bg-purple-400";
+      default:
+        return "bg-slate-400";
+    }
   };
+
+  const getStatusLabel = (status: string) => {
+    const statusKey = status.replace(/_/g, '');
+    const keyMap: Record<string, string> = {
+      'todo': 'toDo',
+      'inprogress': 'inProgress',
+      'onhold': 'onHold',
+    };
+    const key = keyMap[statusKey] || status;
+    return t(`statuses.${key}`, status);
+  };
+
+  // Group tasks based on selected grouping option
+  const groupedTasks = useMemo((): TaskGroup[] => {
+    if (groupBy === 'none') {
+      return [{
+        id: 'all',
+        label: '',
+        tasks: visibleTasks,
+        isCollapsed: false,
+      }];
+    }
+
+    const groupMap = new Map<string, Task[]>();
+    const groupOrder: string[] = [];
+
+    // Define group order and colors based on groupBy type
+    const statusOrder = ['in_progress', 'to_do', 'waiting', 'on_hold', 'blocked', 'completed', 'cancelled'];
+    const priorityOrder = ['high', 'medium', 'low'];
+
+    visibleTasks.forEach(task => {
+      let groupKey: string;
+
+      switch (groupBy) {
+        case 'status':
+          groupKey = task.status || 'to_do';
+          break;
+        case 'room':
+          groupKey = task.room_id || 'unassigned';
+          break;
+        case 'assignee':
+          groupKey = task.assigned_to_stakeholder_id || 'unassigned';
+          break;
+        case 'priority':
+          groupKey = task.priority || 'medium';
+          break;
+        default:
+          groupKey = 'all';
+      }
+
+      if (!groupMap.has(groupKey)) {
+        groupMap.set(groupKey, []);
+        groupOrder.push(groupKey);
+      }
+      groupMap.get(groupKey)!.push(task);
+    });
+
+    // Sort groups based on type
+    let sortedKeys: string[];
+    if (groupBy === 'status') {
+      sortedKeys = groupOrder.sort((a, b) => {
+        const aIndex = statusOrder.indexOf(a);
+        const bIndex = statusOrder.indexOf(b);
+        return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+      });
+    } else if (groupBy === 'priority') {
+      sortedKeys = groupOrder.sort((a, b) => {
+        const aIndex = priorityOrder.indexOf(a);
+        const bIndex = priorityOrder.indexOf(b);
+        return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+      });
+    } else {
+      sortedKeys = groupOrder.sort((a, b) => {
+        if (a === 'unassigned') return 1;
+        if (b === 'unassigned') return -1;
+        return a.localeCompare(b);
+      });
+    }
+
+    // Build group objects with labels and colors
+    return sortedKeys.map(key => {
+      let label: string;
+      let color: string | undefined;
+
+      switch (groupBy) {
+        case 'status':
+          label = getStatusLabel(key);
+          color = getStatusColor(key);
+          break;
+        case 'room':
+          if (key === 'unassigned') {
+            label = t('common.noRoom', 'No Room');
+          } else {
+            const room = rooms.find(r => r.id === key);
+            label = room?.name || t('common.unknownRoom', 'Unknown Room');
+          }
+          break;
+        case 'assignee':
+          if (key === 'unassigned') {
+            label = t('common.unassigned', 'Unassigned');
+          } else {
+            const member = teamMembers.find(m => m.id === key);
+            label = member?.name || t('common.unknownUser', 'Unknown');
+          }
+          break;
+        case 'priority':
+          label = t(`tasks.priority${key.charAt(0).toUpperCase() + key.slice(1)}`, key);
+          color = key === 'high' ? 'bg-red-500' : key === 'medium' ? 'bg-amber-500' : 'bg-slate-400';
+          break;
+        default:
+          label = key;
+      }
+
+      return {
+        id: key,
+        label,
+        color,
+        tasks: groupMap.get(key) || [],
+        isCollapsed: collapsedGroups.has(key),
+      };
+    });
+  }, [visibleTasks, groupBy, rooms, teamMembers, collapsedGroups, t]);
+
+  // Calculate total visible rows (accounting for collapsed groups)
+  const totalVisibleRows = useMemo(() => {
+    if (groupBy === 'none') return visibleTasks.length;
+    return groupedTasks.reduce((sum, group) => {
+      return sum + 1 + (group.isCollapsed ? 0 : group.tasks.length); // 1 for header
+    }, 0);
+  }, [groupedTasks, groupBy, visibleTasks.length]);
+
   const getTaskPosition = (task: Task, minDate: Date, totalDays: number) => {
     if (!task.start_date || !task.finish_date) return {
       left: 0,
@@ -264,44 +488,34 @@ const ProjectTimeline = ({
       width
     };
   };
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-emerald-500/90";
-      case "in_progress":
-        return "bg-blue-500/90";
-      case "waiting":
-        return "bg-yellow-500/90";
-      default:
-        return "bg-slate-400/90";
-    }
-  };
 
+  // Status badge colors for hover card and other UI elements
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      case "done":
+        return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800";
       case "in_progress":
-        return "bg-blue-100 text-blue-700 border-blue-200";
+      case "doing":
+        return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800";
       case "waiting":
-        return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      case "on_hold":
+        return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800";
+      case "blocked":
+        return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800";
+      case "cancelled":
+      case "scrapped":
+        return "bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800";
+      case "planned":
+      case "discovery":
+        return "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800";
+      case "ideas":
+        return "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800";
       default:
-        return "bg-slate-100 text-slate-700 border-slate-200";
+        return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "completed":
-        return t('statuses.completed');
-      case "in_progress":
-        return t('statuses.inProgress');
-      case "waiting":
-        return t('statuses.waiting');
-      default:
-        return t('statuses.toDo');
-    }
-  };
   const getPriorityBorderColor = (priority: string) => {
     switch (priority) {
       case "high":
@@ -485,49 +699,7 @@ const ProjectTimeline = ({
         </CardContent>
       </Card>;
   }
-  const {
-    minDate,
-    maxDate,
-    totalDays
-  } = getTimelineBounds();
 
-  // Generate date markers for the timeline
-  const getDateMarkers = () => {
-    const markers: Date[] = [];
-    let currentMarker = minDate;
-    if (viewMode === 'daily') {
-      // Show every day
-      while (currentMarker <= maxDate) {
-        markers.push(currentMarker);
-        currentMarker = addDays(currentMarker, 1);
-      }
-    } else if (viewMode === 'weekly') {
-      // Show every 2 days
-      while (currentMarker <= maxDate) {
-        markers.push(currentMarker);
-        currentMarker = addDays(currentMarker, 2);
-      }
-    } else {
-      // Monthly - show every 3-5 days depending on total days
-      const interval = Math.ceil(totalDays / 8);
-      while (currentMarker <= maxDate) {
-        markers.push(currentMarker);
-        currentMarker = addDays(currentMarker, interval);
-      }
-    }
-    return markers;
-  };
-  const dateMarkers = getDateMarkers();
-
-  // Filter tasks that overlap with current view and match assignee filter
-  const visibleTasks = tasks.filter(task => {
-    if (!task.start_date || !task.finish_date) return false;
-    const taskStart = parseISO(task.start_date);
-    const taskEnd = parseISO(task.finish_date);
-    const inTimeRange = taskStart <= maxDate && taskEnd >= minDate;
-    const matchesAssignee = selectedAssignee === "all" || selectedAssignee === "unassigned" && !task.assigned_to_stakeholder_id || task.assigned_to_stakeholder_id === selectedAssignee;
-    return inTimeRange && matchesAssignee;
-  });
   if (tasks.length === 0) {
     return <Card className="border-dashed">
         <CardContent className="py-12 text-center">
@@ -545,10 +717,24 @@ const ProjectTimeline = ({
           <div>
             <CardTitle>{projectName || t('projectDetail.timeline')}</CardTitle>
             <CardDescription>
-              {format(minDate, "MMM d, yyyy")} - {format(maxDate, "MMM d, yyyy")}
+              {format(minDate, "MMM d, yyyy")} - {format(maxDate, "MMM d, yyyy")} ({daysVisible} {t('timeline.days', 'days')})
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Group by dropdown */}
+            <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupByOption)}>
+              <SelectTrigger className="w-full sm:w-36">
+                <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder={t('timeline.groupBy', 'Group by')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t('timeline.noGrouping', 'No grouping')}</SelectItem>
+                <SelectItem value="status">{t('timeline.groupByStatus', 'Status')}</SelectItem>
+                <SelectItem value="room">{t('timeline.groupByRoom', 'Room')}</SelectItem>
+                <SelectItem value="assignee">{t('timeline.groupByAssignee', 'Assignee')}</SelectItem>
+                <SelectItem value="priority">{t('timeline.groupByPriority', 'Priority')}</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
               <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Filter by assignee" />
@@ -561,31 +747,69 @@ const ProjectTimeline = ({
                   </SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={viewMode} onValueChange={value => setViewMode(value as ViewMode)}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="daily">{t('timeline.daily', 'Daily')}</SelectItem>
-                <SelectItem value="weekly">{t('timeline.weekly', 'Weekly')}</SelectItem>
-                <SelectItem value="monthly">{t('timeline.monthly', 'Monthly')}</SelectItem>
-                <SelectItem value="fullProject">{t('timeline.fullProject', 'Full project')}</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* View preset buttons */}
+            <div className="flex items-center gap-1 border rounded-md p-0.5">
+              <Button
+                variant={daysVisible <= 10 ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewPreset('week')}
+                className="h-7 px-2 text-xs"
+              >
+                {t('timeline.weekly', '1W')}
+              </Button>
+              <Button
+                variant={daysVisible > 10 && daysVisible <= 45 ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewPreset('month')}
+                className="h-7 px-2 text-xs"
+              >
+                {t('timeline.monthly', '1M')}
+              </Button>
+              <Button
+                variant={daysVisible > 45 && daysVisible <= 120 ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewPreset('3months')}
+                className="h-7 px-2 text-xs"
+              >
+                {t('timeline.threeMonths', '3M')}
+              </Button>
+              <Button
+                variant={daysVisible > 120 ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewPreset('full')}
+                className="h-7 px-2 text-xs"
+              >
+                {t('timeline.fullProject', 'All')}
+              </Button>
+            </div>
             <Button variant="outline" onClick={handleToday}>
               {t('timeline.today', 'Today')}
             </Button>
-            {viewMode !== 'fullProject' && (
-              <>
-                <Button variant="outline" size="icon" onClick={handlePrevious}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={handleNext}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </>
-            )}
+            <Button variant="outline" size="icon" onClick={handlePrevious}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={handleNext}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
+        </div>
+        {/* Zoom controls */}
+        <div className="flex items-center gap-2 mt-3 pb-2 border-b">
+          <Button variant="ghost" size="icon" onClick={zoomOut} disabled={daysVisible >= maxDays} className="h-8 w-8" title={t('timeline.showMoreDays', 'Show more days')}>
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <span className="text-sm text-muted-foreground min-w-[80px] text-center">
+            {daysVisible} {t('timeline.days', 'days')}
+          </span>
+          <Button variant="ghost" size="icon" onClick={zoomIn} disabled={daysVisible <= minDays} className="h-8 w-8" title={t('timeline.showFewerDays', 'Show fewer days')}>
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => setViewPreset('month')} className="h-8 w-8" title={t('timeline.resetZoom', 'Reset to 1 month')}>
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+          <span className="text-xs text-muted-foreground ml-2 hidden sm:inline">
+            {t('timeline.gestureHint', 'Pinch to zoom, swipe to pan')}
+          </span>
         </div>
         <div className="flex items-center gap-4 text-sm flex-wrap">
           <div className="flex items-center gap-2">
@@ -628,86 +852,35 @@ const ProjectTimeline = ({
         <div className="space-y-6">
           {visibleTasks.length === 0 ? <div className="text-center py-8 text-muted-foreground">
               {t('timeline.noTasksInPeriod', 'No tasks scheduled in this time period')}
-            </div> : <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0"><div className="relative min-w-[600px]">
-              {/* Vertical grid lines that span entire timeline - connected to dates */}
-              <div className="absolute inset-0 pointer-events-none" style={{ top: 0 }}>
-                {Array.from({ length: totalDays + 1 }, (_, i) => {
-                  const currentDate = addDays(minDate, i);
-                  const isToday = format(currentDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
-                  const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
-                  const left = (i / totalDays) * 100;
-                  
-                  return (
-                    <React.Fragment key={`global-grid-${i}`}>
-                      {/* Vertical grid line spanning from date ruler to bottom */}
-                      <div
-                        className={`absolute ${isToday ? 'w-0.5 bg-primary/30' : 'w-px bg-border/30'}`}
-                        style={{ 
-                          left: `${left}%`,
-                          top: '0',
-                          bottom: '0',
-                          height: '100%'
-                        }}
-                      />
-                      {/* Weekend shading */}
-                      {isWeekend && i < totalDays && (
-                        <div
-                          className="absolute bg-muted/15 pointer-events-none"
-                          style={{ 
-                            left: `${left}%`,
-                            width: `${100/totalDays}%`,
-                            top: '0',
-                            bottom: '0',
-                            height: '100%'
-                          }}
-                        />
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-                
-                {/* Today marker - prominent vertical line */}
-                {(() => {
-                  const today = new Date();
-                  if (today >= minDate && today <= maxDate) {
-                    const daysFromStart = differenceInDays(today, minDate);
-                    const left = (daysFromStart / totalDays) * 100;
-                    return (
-                      <div
-                        className="absolute w-0.5 bg-primary z-20 pointer-events-none"
-                        style={{ 
-                          left: `${left}%`,
-                          top: '0',
-                          bottom: '0',
-                          height: '100%'
-                        }}
-                      >
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-primary" />
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-
-              {/* Date ruler/timeline axis - Monday.com style */}
-              <div className="relative border-b-2 border-border/50 pb-4 mb-6 bg-gradient-to-b from-muted/30 to-transparent">
-                <div className="relative h-14 z-10">
+            </div> : <div
+              ref={gestureContainerRef}
+              className="overflow-x-auto overflow-y-auto -mx-3 px-3 md:mx-0 md:px-0 touch-pan-x touch-pan-y select-none scrollbar-thin rounded-lg"
+              style={{ maxHeight: '70vh', cursor: isDragging ? 'grabbing' : 'grab' }}
+            ><div
+              className="relative min-w-[800px]"
+            >
+              {/* Sticky date ruler/timeline axis - clean design without vertical lines */}
+              <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border/40 shadow-sm flex">
+                {/* Spacer for left sidebar when grouping */}
+                {groupBy !== 'none' && <div className="w-40 flex-shrink-0 border-r border-border/30 flex items-end pb-2 px-3">
+                  <span className="text-xs font-medium text-muted-foreground">{t('timeline.groupBy', 'Group by')}: {groupBy}</span>
+                </div>}
+                <div className="relative h-12 flex items-end pb-2 flex-1">
                   {dateMarkers.map((date, index) => {
-                const daysFromStart = differenceInDays(date, minDate);
-                const left = daysFromStart / totalDays * 100;
-                const isToday = format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
-                return <TooltipProvider key={index}>
+                    const daysFromStart = differenceInDays(date, minDate);
+                    const left = daysFromStart / totalDays * 100;
+                    const isToday = format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+                    return <TooltipProvider key={index}>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className={`absolute top-0 flex flex-col items-center cursor-help ${isToday ? 'z-20' : ''}`} style={{
+                            <div className={`absolute flex flex-col items-center cursor-help ${isToday ? 'z-20' : ''}`} style={{
                               left: `${left}%`,
                               transform: 'translateX(-50%)'
                             }}>
-                              <div className={`h-3 w-px ${isToday ? 'bg-primary' : 'bg-border/40'}`} />
-                              <div className={`text-xs mt-1 whitespace-nowrap font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
-                                {viewMode === 'daily' ? format(date, "EEE d") : viewMode === 'weekly' ? format(date, "MMM d") : format(date, "MMM d")}
+                              <div className={`text-xs whitespace-nowrap font-medium ${isToday ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+                                {daysVisible <= 14 ? format(date, "EEE d") : daysVisible <= 60 ? format(date, "MMM d") : format(date, "d MMM")}
                               </div>
+                              {isToday && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />}
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>
@@ -715,178 +888,225 @@ const ProjectTimeline = ({
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>;
-              })}
+                  })}
                   {/* Project start date marker if it's in view */}
-                  {projectStartDate && parseISO(projectStartDate) >= minDate && parseISO(projectStartDate) <= maxDate && <div className="absolute top-0 flex flex-col items-center z-10" style={{
-                left: `${differenceInDays(parseISO(projectStartDate), minDate) / totalDays * 100}%`,
-                transform: 'translateX(-50%)'
-              }}>
-                      <div className="h-full w-0.5 bg-primary" />
-                      <Badge variant="default" className="text-xs mt-1">Start</Badge>
+                  {projectStartDate && parseISO(projectStartDate) >= minDate && parseISO(projectStartDate) <= maxDate && <div className="absolute flex flex-col items-center z-10" style={{
+                    left: `${differenceInDays(parseISO(projectStartDate), minDate) / totalDays * 100}%`,
+                    transform: 'translateX(-50%)'
+                  }}>
+                      <Badge variant="default" className="text-xs">Start</Badge>
                     </div>}
-                  
+
                   {/* Goal date marker if it's in view */}
-                  {projectFinishDate && parseISO(projectFinishDate) >= minDate && parseISO(projectFinishDate) <= maxDate && <div className="absolute top-0 flex flex-col items-center z-10" style={{
-                left: `${differenceInDays(parseISO(projectFinishDate), minDate) / totalDays * 100}%`,
-                transform: 'translateX(-50%)'
-              }}>
-                      <div className="h-full w-0.5 bg-primary" />
-                      <Badge variant="default" className="text-xs mt-1">Goal</Badge>
+                  {projectFinishDate && parseISO(projectFinishDate) >= minDate && parseISO(projectFinishDate) <= maxDate && <div className="absolute flex flex-col items-center z-10" style={{
+                    left: `${differenceInDays(parseISO(projectFinishDate), minDate) / totalDays * 100}%`,
+                    transform: 'translateX(-50%)'
+                  }}>
+                      <Badge variant="default" className="text-xs">Goal</Badge>
                     </div>}
                 </div>
               </div>
 
-              {/* Timeline bars */}
-              <div className="relative space-y-2 pt-2 overflow-hidden bg-gradient-to-b from-background to-muted/10 rounded-lg p-4" onDragOver={handleDragOver} onDrop={handleDrop}>
-                {/* Horizontal grid lines - subtle separators */}
-                <div className="absolute inset-0 pointer-events-none">
-                  {visibleTasks.map((_, index) => {
-                    const top = index * 64 + 32; // 64px per task row + 32px offset
-                    return (
-                      <div
-                        key={`h-grid-${index}`}
-                        className="absolute left-0 right-0 h-px bg-border/10"
-                        style={{ top: `${top}px` }}
-                      />
-                    );
-                  })}
-                </div>
-                {visibleTasks.map(task => {
-              const {
-                left,
-                width
-              } = getTaskPosition(task, minDate, totalDays);
-              const taskDeps = dependencies.filter(d => d.task_id === task.id);
-              return <div key={task.id} className="relative h-16 py-1">
-                      {/* Dependency lines */}
-                      {taskDeps.map(dep => {
-                  const dependsOnTask = visibleTasks.find(t => t.id === dep.depends_on_task_id);
-                  if (!dependsOnTask) return null;
-                  const depPos = getTaskPosition(dependsOnTask, minDate, totalDays);
-                  const depIndex = visibleTasks.indexOf(dependsOnTask);
-                  const taskIndex = visibleTasks.indexOf(task);
-                  const verticalDistance = (taskIndex - depIndex) * 64; // 64px = h-16
-
-                  return <svg key={dep.id} className="absolute pointer-events-none z-0" style={{
-                    left: `${depPos.left + depPos.width}%`,
-                    top: -verticalDistance,
-                    width: `${left - (depPos.left + depPos.width)}%`,
-                    height: verticalDistance + 32
-                  }}>
-                            <line x1="0" y1={verticalDistance} x2="100%" y2={verticalDistance + 32} stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeDasharray="5,5" opacity="0.3" />
-                          </svg>;
-                })}
-                      
-                      {/* Task bar - Monday.com inspired */}
-                      <HoverCard openDelay={300}>
-                        <HoverCardTrigger asChild>
-                          <div className={`absolute h-14 rounded-xl ${getStatusColor(task.status)} shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer overflow-hidden group border border-white/20`} style={{
-                            left: `${left}%`,
-                            width: `${width}%`,
-                            minWidth: '60px'
-                          }}
-                          onClick={() => handleTaskClick(task)}
+              {/* Timeline content with optional left sidebar for grouping */}
+              <div className="flex">
+                {/* Left sidebar for group labels - only shown when grouping is active */}
+                {groupBy !== 'none' && (
+                  <div className="sticky left-0 z-20 bg-background/95 backdrop-blur-sm border-r border-border/30 w-40 flex-shrink-0">
+                    <div className="pt-4">
+                      {groupedTasks.map((group) => (
+                        <div key={group.id}>
+                          {/* Group header */}
+                          <div
+                            className="h-10 flex items-center gap-2 px-3 cursor-pointer hover:bg-muted/50 transition-colors border-b border-border/20"
+                            onClick={() => toggleGroupCollapse(group.id)}
                           >
-                            {/* Left resize handle */}
-                            <div draggable onDragStart={e => {
-                              e.stopPropagation();
-                              handleDragStart(e, task);
-                            }} className="resize-handle resize-left absolute left-0 top-0 h-full w-3 cursor-ew-resize hover:bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity z-30 rounded-l-xl" onClick={e => e.stopPropagation()} />
-
-                            {/* Progress bar overlay - striped pattern */}
-                            {task.progress > 0 && <div className="absolute inset-0 bg-white/20 pointer-events-none rounded-xl" style={{
-                              width: `${task.progress}%`,
-                              backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.05) 10px, rgba(255,255,255,.05) 20px)'
-                            }} />}
-                            
-                            {/* Task title - Top left corner */}
-                            <div className="absolute top-1 left-2 right-2 z-20 flex items-center gap-1.5">
-                              <span className="text-xs font-semibold text-white drop-shadow truncate">
-                                {task.title}
-                              </span>
-                              {/* Drag handle - visible on hover */}
-                              <div
-                                draggable
-                                onDragStart={(e) => {
-                                  e.stopPropagation();
-                                  handleDragStart(e, task);
-                                }}
-                                onDragEnd={handleDragEnd}
-                                onClick={(e) => e.stopPropagation()}
-                                className="cursor-move"
-                              >
-                                <Move className="h-3 w-3 text-white/70 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 drop-shadow" />
-                              </div>
-                            </div>
-                            
-                            <div className="h-full flex items-center justify-between px-2 py-2 relative z-10 gap-2 pt-6">
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                {/* Status badge */}
-                                <div className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${getStatusBadgeColor(task.status)} whitespace-nowrap flex-shrink-0`}>
-                                  {getStatusLabel(task.status)}
-                                </div>
-                                
-                                {/* Cost center icon */}
-                                {(() => {
-                                  const CostCenterIcon = getCostCenterIcon(task.cost_center);
-                                  return CostCenterIcon ? (
-                                    <CostCenterIcon className="h-4 w-4 text-white/90 flex-shrink-0 drop-shadow" />
-                                  ) : null;
-                                })()}
-                              </div>
-                              
-                              {/* Progress percentage */}
-                              {task.progress > 0 && <div className="flex items-center gap-1 flex-shrink-0 bg-black/20 px-2 py-1 rounded-md">
-                                  <span className="text-xs font-bold text-white">
-                                    {task.progress}%
-                                  </span>
-                                </div>}
-                            </div>
-                            
-                            {/* Date range display on hover - bottom of bar */}
-                            <div className="absolute bottom-0 left-0 right-0 bg-black/30 text-white text-[9px] px-2 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-b-xl flex items-center justify-between">
-                              <span>{format(parseISO(task.start_date!), "MMM d")}</span>
-                              <span>→</span>
-                              <span>{format(parseISO(task.finish_date!), "MMM d")}</span>
-                            </div>
-
-                            {/* Right resize handle */}
-                            <div draggable onDragStart={e => {
-                              e.stopPropagation();
-                              handleDragStart(e, task);
-                            }} className="resize-handle resize-right absolute right-0 top-0 h-full w-3 cursor-ew-resize hover:bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity z-30 rounded-r-xl" onClick={e => e.stopPropagation()} />
-                          </div>
-                        </HoverCardTrigger>
-                        <HoverCardContent className="w-80">
-                          <div className="space-y-2">
-                            <h4 className="font-semibold">{task.title}</h4>
-                            {task.description && (
-                              <p className="text-sm text-muted-foreground">{task.description}</p>
+                            {group.isCollapsed ? (
+                              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                             )}
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                              <div>
-                                <span className="font-medium">{t('common.status')}:</span> {task.status}
-                              </div>
-                              <div>
-                                <span className="font-medium">{t('tasks.priority')}:</span> {task.priority}
-                              </div>
-                              <div>
-                                <span className="font-medium">{t('common.progress')}:</span> {task.progress}%
-                              </div>
-                              {task.budget && (
-                                <div>
-                                  <span className="font-medium">{t('common.budget')}:</span> {task.budget}
-                                </div>
-                              )}
-                              <div className="col-span-2">
-                                <span className="font-medium">{t('timeline.duration', 'Duration')}:</span> {format(parseISO(task.start_date!), "MMM d")} - {format(parseISO(task.finish_date!), "MMM d, yyyy")}
-                              </div>
+                            {group.color && (
+                              <div className={`w-2.5 h-2.5 rounded-full ${group.color} flex-shrink-0`} />
+                            )}
+                            <span className="text-sm font-medium truncate flex-1">{group.label}</span>
+                            <Badge variant="secondary" className="text-xs h-5 px-1.5">
+                              {group.tasks.length}
+                            </Badge>
+                          </div>
+                          {/* Spacer rows for tasks (when not collapsed) */}
+                          {!group.isCollapsed && group.tasks.map((task) => (
+                            <div key={task.id} className="h-11 border-b border-border/10 flex items-center px-3">
+                              <span className="text-xs text-muted-foreground truncate">{task.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Main timeline area */}
+                <div className="flex-1 min-w-0">
+                  <div className="relative pt-4 overflow-hidden rounded-lg p-4" onDragOver={handleDragOver} onDrop={handleDrop}>
+                    {/* Background grid - subtle week lines and weekend shading */}
+                    <div className="absolute inset-0 pointer-events-none" style={{ top: 0 }}>
+                      {Array.from({ length: totalDays + 1 }, (_, i) => {
+                        const currentDate = addDays(minDate, i);
+                        const isMonday = currentDate.getDay() === 1;
+                        const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
+                        const isToday = format(currentDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+                        const left = (i / totalDays) * 100;
+
+                        return (
+                          <React.Fragment key={`grid-${i}`}>
+                            {/* Week separator line (between Sunday and Monday) */}
+                            {isMonday && (
+                              <div
+                                className="absolute w-px bg-border/50"
+                                style={{ left: `${left}%`, top: '0', bottom: '0', height: '100%' }}
+                              />
+                            )}
+                            {isWeekend && i < totalDays && (
+                              <div
+                                className="absolute bg-muted/10 pointer-events-none"
+                                style={{ left: `${left}%`, width: `${100/totalDays}%`, top: '0', bottom: '0', height: '100%' }}
+                              />
+                            )}
+                            {isToday && (
+                              <div
+                                className="absolute w-0.5 bg-primary z-20 pointer-events-none"
+                                style={{ left: `${left}%`, top: '0', bottom: '0', height: '100%' }}
+                              />
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
+
+                    {/* Grouped task rows */}
+                    {groupedTasks.map((group) => (
+                      <div key={group.id}>
+                        {/* Group header row (only when grouping is active) */}
+                        {groupBy !== 'none' && (
+                          <div className="h-10 flex items-center border-b border-border/30 bg-muted/20 -mx-4 px-4">
+                            <div className="flex items-center gap-2">
+                              {group.color && <div className={`w-3 h-3 rounded-full ${group.color}`} />}
+                              <span className="text-sm font-semibold text-foreground">{group.label}</span>
+                              <Badge variant="outline" className="text-xs">{group.tasks.length} {group.tasks.length === 1 ? 'task' : 'tasks'}</Badge>
                             </div>
                           </div>
-                        </HoverCardContent>
-                      </HoverCard>
-                    </div>;
-            })}
+                        )}
+
+                        {/* Task rows (hidden when collapsed) */}
+                        {!group.isCollapsed && group.tasks.map((task) => {
+                          const { left, width } = getTaskPosition(task, minDate, totalDays);
+                          return (
+                            <div key={task.id} className="relative h-11 py-0.5">
+                              {/* Task bar - compact design */}
+                              <HoverCard openDelay={300}>
+                                <HoverCardTrigger asChild>
+                                  <div
+                                    className={`task-bar absolute h-10 rounded-lg ${getStatusColor(task.status)} shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer overflow-hidden group border border-white/20`}
+                                    style={{ left: `${left}%`, width: `${width}%`, minWidth: '50px' }}
+                                    onClick={() => handleTaskClick(task)}
+                                  >
+                                    {/* Left resize handle */}
+                                    <div
+                                      draggable
+                                      onDragStart={e => { e.stopPropagation(); handleDragStart(e, task); }}
+                                      className="resize-handle resize-left absolute left-0 top-0 h-full w-2 cursor-ew-resize hover:bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity z-30 rounded-l-lg"
+                                      onClick={e => e.stopPropagation()}
+                                    />
+
+                                    {/* Progress bar overlay */}
+                                    {task.progress > 0 && (
+                                      <div
+                                        className="absolute inset-0 bg-white/20 pointer-events-none rounded-lg"
+                                        style={{
+                                          width: `${task.progress}%`,
+                                          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,.05) 8px, rgba(255,255,255,.05) 16px)'
+                                        }}
+                                      />
+                                    )}
+
+                                    {/* Task content - single row with title and progress */}
+                                    <div className="h-full flex items-center justify-between px-2 py-1 relative z-10 gap-2">
+                                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                        <span className="text-xs font-semibold text-white drop-shadow truncate">{task.title}</span>
+                                        <div
+                                          draggable
+                                          onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, task); }}
+                                          onDragEnd={handleDragEnd}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="cursor-move flex-shrink-0"
+                                        >
+                                          <Move className="h-3 w-3 text-white/70 opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
+                                        </div>
+                                      </div>
+                                      {task.progress > 0 && (
+                                        <div className="flex-shrink-0 bg-black/20 px-1.5 py-0.5 rounded">
+                                          <span className="text-[10px] font-bold text-white">{task.progress}%</span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Date range on hover */}
+                                    <div className="absolute bottom-0 left-0 right-0 bg-black/30 text-white text-[9px] px-2 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-b-lg flex items-center justify-between">
+                                      <span>{format(parseISO(task.start_date!), "MMM d")}</span>
+                                      <span>→</span>
+                                      <span>{format(parseISO(task.finish_date!), "MMM d")}</span>
+                                    </div>
+
+                                    {/* Right resize handle */}
+                                    <div
+                                      draggable
+                                      onDragStart={e => { e.stopPropagation(); handleDragStart(e, task); }}
+                                      className="resize-handle resize-right absolute right-0 top-0 h-full w-2 cursor-ew-resize hover:bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity z-30 rounded-r-lg"
+                                      onClick={e => e.stopPropagation()}
+                                    />
+                                  </div>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-80">
+                                  <div className="space-y-3">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <h4 className="font-semibold leading-tight">{task.title}</h4>
+                                      <span className={`px-2 py-0.5 rounded text-xs font-medium border whitespace-nowrap ${getStatusBadgeColor(task.status)}`}>
+                                        {getStatusLabel(task.status)}
+                                      </span>
+                                    </div>
+                                    {task.description && (
+                                      <p className="text-sm text-muted-foreground">{task.description}</p>
+                                    )}
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                      <div>
+                                        <span className="text-muted-foreground">{t('tasks.priority')}:</span>{' '}
+                                        <span className="font-medium">{task.priority}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">{t('common.progress')}:</span>{' '}
+                                        <span className="font-medium">{task.progress}%</span>
+                                      </div>
+                                      {task.budget && (
+                                        <div className="col-span-2">
+                                          <span className="text-muted-foreground">{t('common.budget')}:</span>{' '}
+                                          <span className="font-medium">{task.budget}</span>
+                                        </div>
+                                      )}
+                                      <div className="col-span-2">
+                                        <span className="text-muted-foreground">{t('timeline.duration', 'Duration')}:</span>{' '}
+                                        <span className="font-medium">{format(parseISO(task.start_date!), "MMM d")} - {format(parseISO(task.finish_date!), "MMM d, yyyy")}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div></div>}
         </div>
@@ -1049,6 +1269,8 @@ const ProjectTimeline = ({
           fetchTasks();
           fetchDependencies();
         }}
+        onNavigateToRoom={onNavigateToRoom}
+        currency={currency}
       />
     </Card>;
 };
