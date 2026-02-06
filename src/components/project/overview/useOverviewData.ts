@@ -10,6 +10,7 @@ interface RawTask {
   status: string | null;
   priority: string | null;
   due_date: string | null;
+  finish_date: string | null;
   progress: number | null;
   assigned_to_contractor_id: string | null;
   assigned_to_stakeholder_id?: string | null;
@@ -76,12 +77,13 @@ export function useOverviewData(project: OverviewProject): OverviewData {
 
       const mapTask = (t: RawTask): OverviewTask => {
         const assigneeId = t.assigned_to_stakeholder_id || t.assigned_to_contractor_id;
+        const effectiveDueDate = t.due_date || t.finish_date;
         return {
           id: t.id,
           title: t.title,
           status: t.status || "",
           priority: t.priority || "",
-          due_date: t.due_date,
+          due_date: effectiveDueDate,
           progress: t.progress || 0,
           assigned_to_contractor_id: assigneeId || null,
           assignee_name: assigneeId ? stakeholderMap.get(assigneeId) || null : null,
@@ -89,7 +91,10 @@ export function useOverviewData(project: OverviewProject): OverviewData {
       };
 
       const overdue = tasks
-        .filter(t => t.due_date && t.status !== "completed" && startOfDay(parseISO(t.due_date)) < today)
+        .filter(t => {
+          const effectiveDate = t.due_date || t.finish_date;
+          return effectiveDate && t.status !== "completed" && startOfDay(parseISO(effectiveDate)) < today;
+        })
         .map(mapTask);
 
       const blockedOrOnHold = tasks
