@@ -31,7 +31,7 @@ export function BetaBanner() {
           <span>
             <strong>{t("beta.title", "Beta")}</strong>
             {" — "}
-            {t("beta.message", "This is a beta version. We recommend regularly exporting your data.")}
+{t("beta.message", "This is a beta version. Some features may change.")}
           </span>
         </div>
         <Button
