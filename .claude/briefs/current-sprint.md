@@ -1162,7 +1162,7 @@ Denna checklista används för att mäta om produkten är redo för varje steg i
 
 ### Öppna frågor
 
-<!-- Lägg till nya frågor här -->
+1. **CRO + CM (2026-02-12):** Strategisk retention page ("Discover"-flik) — viktig långsiktigt för att hålla användare engagerade mellan projektuppgifter. API-integrationsmöjligheter kartlagda (Boverket, SMHI, Pinterest, eventuellt Hemnet/Booli via partnerskap). **Rekommendation:** Parkera till Sprint 4+ (efter activation >50%, retention >40%). Om vi vill börja nu: minimal MVP med RSS + Tips + väder = 1 vecka. **Beslut önskas:** Parkera eller påbörja minimal version?
 
 ---
 
@@ -1699,3 +1699,293 @@ Nuvarande:  Översikt │ Plans │ Tasks │ Purchases │ More
 - Kund-Dashboard: Medium (3-5 dagar)
 - Roll-baserad nav: Medium (2-3 dagar)
 - Push-notiser: Stor (1-2 veckor)
+
+---
+
+### Community Manager (CM)
+
+**Datum:** 2026-02-12
+
+**Analys:** Strategisk retention page — "Discover"-koncept för att hålla användare engagerade mellan projektuppgifter
+
+---
+
+## RETENTION PAGE — GEMENSAM ANALYS (CRO + CM)
+
+### Bakgrund
+
+CEO:s idé: Skapa en inspirationssida som håller användare (husägare + proffs) engagerade även när de inte har aktiva projektuppgifter. Potentiellt via API-integrationer, RSS-feeds, och personaliserat innehåll.
+
+### Timing-bedömning
+
+```
+Revenue Readiness: STEG 2 (RETENTION)
+Nuvarande fas:     STEG 1 (ACTIVATION) — ej klart
+
+⚠️ VARNING: 50 testare kämpar med "Vad gör jag nu?"
+   Retention-features FÖRE activation = optimera något ingen använder.
+```
+
+| Tidpunkt | CRO-bedömning | CM-bedömning |
+|----------|---------------|--------------|
+| Nu (Sprint 1) | ❌ Fokus activation | ❌ Fokus activation |
+| Sprint 2-3 | ⚠️ OK som experiment | ⚠️ Seed content first |
+| Sprint 4+ | ✅ Om retention >40% | ✅ Om UGC börjar flöda |
+
+### Strategisk risk/möjlighet
+
+| Aspekt | Bedömning |
+|--------|-----------|
+| **Konkurrenter** | Houzz, Pinterest, Hemnet dominerar generisk inspiration |
+| **Differentiering** | Låg om generisk — HÖG om kopplad till användarens projekt |
+| **Viral potential** | Medium — "kolla denna artikeln" kan delas |
+| **Revenue impact** | Indirekt — retention → uppgradering till Pro |
+
+### Rätt vs Fel approach
+
+```
+❌ FEL: Generisk inspirationssida
+   → Houzz/Pinterest gör det bättre
+   → Ingen anledning att stanna på Renomate
+
+✅ RÄTT: Kontextuell inspiration kopplad till projekt
+   → "Du renoverar kök? Här är 5 projekt med liknande budget"
+   → "Din badrumsrenovering är 60% klar — så här kan det se ut färdigt"
+   → Data från Renomate = unikt, kan inte kopieras
+```
+
+### Content Mix-strategi
+
+```
+┌──────────────┬───────────────────┬───────────────┬──────────────┐
+│ Typ          │ Källa             │ Teknik        │ Status       │
+├──────────────┼───────────────────┼───────────────┼──────────────┤
+│ CURATED      │ RSS/API           │ Auto-ingest   │ Planerat     │
+│ CREATED      │ Tips-sidan        │ i18n          │ ✅ KLAR      │
+│ COMMUNITY    │ Renomate-projekt  │ Opt-in UGC    │ Behöver data │
+└──────────────┴───────────────────┴───────────────┴──────────────┘
+```
+
+---
+
+## API/RSS INTEGRATIONS-ROADMAP (Research 2026-02-12)
+
+### Tier 1: Myndigheter & Officiella källor (Hög prioritet, bevisad tillgänglighet)
+
+| Källa | API/Teknik | Innehåll | Insats | Status | Länk |
+|-------|------------|----------|--------|--------|------|
+| **Boverket** | ✅ Officiellt API | Byggregler, BBR, författningar | 1d | Tillgänglig via Lantmäteriet | [Info](https://www.lantmateriet.se/sv/smartare-samhallsbyggnadsprocess/) |
+| **Skatteverket** | RSS/Nyhetsbrev | ROT/RUT-uppdateringar | 2h | Publik | [Nyheter](https://www.skatteverket.se) |
+| **Konsumentverket** | RSS | Konsumenträtt, hantverkarregler | 2h | Publik | [Hallå Konsument](https://www.hallakonsument.se) |
+| **SMHI** | ✅ Öppen API | Väder, prognoser | 4h | Gratis, öppen | [API](https://opendata.smhi.se/apidocs/) |
+
+### Tier 2: Gratis bildbanker (Bekräftad tillgänglighet)
+
+| Källa | API/Teknik | Innehåll | Insats | Licens | Länk |
+|-------|------------|----------|--------|--------|------|
+| **Unsplash** | ✅ Gratis API | 50,000+ renoverings-/inredningsbilder | 4h | Gratis, ingen attribution | [Developers](https://unsplash.com/developers) |
+| **Pinterest** | ✅ oEmbed | Inspirationsboards | ✅ FINNS | Publik | Redan integrerat |
+| **Pexels** | ✅ Gratis API | Interiör-/renovationsbilder | 4h | Gratis | [API](https://www.pexels.com/api/) |
+
+### Tier 3: Fastighet & Marknad (Kräver partnerskap)
+
+| Källa | API/Teknik | Innehåll | Insats | Tillgänglighet | Kontakt |
+|-------|------------|----------|--------|----------------|---------|
+| **Hemnet** | BostadsAPI | Bostadspriser, listings | - | ❌ Endast mäklare (kontrakt krävs) | [Integration](https://integration.hemnet.se) |
+| **Booli Pro** | Prenumeration | Prisstatistik, analysverktyg | - | 💰 Betald tjänst | pro@booli.se |
+| **Lantmäteriet** | API | Fastighetsdata, kartor | 2v | Licensavtal krävs | [Geodata](https://www.lantmateriet.se) |
+
+### Tier 4: Produktkataloger (Inofficiella, instabila)
+
+| Källa | API/Teknik | Innehåll | Insats | Risk | Notering |
+|-------|------------|----------|--------|------|----------|
+| **IKEA** | ⚠️ Inofficiell | Produkter, priser, 3D-modeller | 1v | ⚠️ Kan sluta fungera | [GitHub](https://github.com/vrslev/ikea-api-client) |
+| **Bauhaus/Hornbach** | Scraping | Byggmaterial, priser | - | ⚠️ ToS-brott | Ej rekommenderat |
+
+### Tier 5: Inspiration & Livsstil (Varierad tillgänglighet)
+
+| Källa | API/Teknik | Innehåll | Insats | Status | Notering |
+|-------|------------|----------|--------|--------|----------|
+| **Houzz** | ❌ Ingen API | Home design inspiration | - | Stängd | Endast browsing |
+| **Trendenser** | RSS | Svensk inredningsblogg | 2h | Publik | [Blog](https://trendenser.se) |
+| **My Scandinavian Home** | RSS | Nordisk inspiration | 2h | Publik | [Blog](https://www.myscandinavianhome.com) |
+| **Residence Magazine** | RSS | Svenska inredningstrender | 2h | Osäker | Kolla tillgänglighet |
+| **Dezeen** | RSS | Arkitektur/design (internationell) | 2h | Publik | [RSS](https://www.dezeen.com/rss/) |
+
+### Tier 6: Branschspecifikt (Framtida research)
+
+| Källa | Potentiell nytta | Notering |
+|-------|------------------|----------|
+| **Byggföretagen** | Branschnyheter för proffs | Kolla RSS |
+| **Villaägarna** | Tips för husägare | Kolla RSS |
+| **Bostadsrätterna** | BRF-specifikt | Kolla RSS |
+| **Svensk Byggtjänst** | Produktinformation | Kommersiell |
+
+---
+
+## API-PRIORITERING FÖR MVP
+
+### Fas 1: Gratis & Bevisat (Sprint 4-5, ~2 dagar)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ SMHI Väder API ──► "Torrt imorgon — bra för utomhusarbete"      │
+│ Unsplash API ───► Inspirationsbilder per rumstyp                │
+│ Pinterest oEmbed ► Redan integrerat ✅                           │
+│ Boverket RSS ───► Automatiska byggregelsnyheter                 │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Fas 2: Personalisering (Sprint 6-7, ~1 vecka)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ Boverket API ───► Visa relevanta regler per projekttyp          │
+│ Skatteverket ───► ROT-kalkylator kopplad till projekt           │
+│ Inredningsbloggar RSS ► Trendande innehåll                      │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Fas 3: Partnerskap (Sprint 8+, kräver affärskontakt)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ Booli Pro ─────► Prisstatistik per område (kontakta pro@booli)  │
+│ Hemnet ────────► Bostadsinspiration (mäklarpartnerskap?)        │
+│ IKEA (inofficiell) ► Produktförslag per rum (riskabelt)         │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## TEKNISK IMPLEMENTATION (skiss)
+
+```typescript
+// src/services/discover/feeds.ts
+
+export const FEED_SOURCES = {
+  // Tier 1 — Officiella
+  boverket: {
+    type: 'api',
+    url: 'https://api.boverket.se/...',  // Verifiera endpoint
+    refresh: '24h',
+    tags: ['regler', 'byggnormer']
+  },
+  smhi: {
+    type: 'api',
+    url: 'https://opendata-download-metfcst.smhi.se/api/...',
+    refresh: '3h',
+    personalize: (user) => user.project?.address?.coords
+  },
+
+  // Tier 2 — Bilder
+  unsplash: {
+    type: 'api',
+    url: 'https://api.unsplash.com/search/photos',
+    queries: ['kitchen renovation', 'bathroom design', 'scandinavian interior'],
+    refresh: '12h'
+  },
+
+  // Tier 5 — RSS
+  trendenser: {
+    type: 'rss',
+    url: 'https://trendenser.se/feed/',
+    refresh: '6h',
+    tags: ['inspiration', 'trender']
+  },
+  dezeen: {
+    type: 'rss',
+    url: 'https://www.dezeen.com/interiors/feed/',
+    refresh: '6h',
+    tags: ['arkitektur', 'design']
+  }
+};
+
+// Personalisering baserat på användarens projekt
+export const getPersonalizedFeed = async (user: User) => {
+  const project = user.activeProject;
+
+  return {
+    weather: await fetchSMHI(project?.address),
+    inspiration: await fetchUnsplash(project?.rooms.map(r => r.type)),
+    news: await fetchBoverketNews(project?.type),
+    blogs: await fetchRSSFeeds(['trendenser', 'dezeen'])
+  };
+};
+```
+
+---
+
+## DRÖMSCENARIO: "Discover"-fliken (Sprint 4+)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  📖 Discover                                    Stockholm 🌤️ 3°│
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  🏷️ FÖR DITT PROJEKT: Köksreno Söder                            │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ 📸 5 köksrenoveringar med liknande budget (120-180k)        ││
+│  │    från Renomate-community                                  ││
+│  │ 💡 "ROT-taket höjt — du kan spara 7 500 kr extra"          ││
+│  │ 🔧 "Komplettera ditt kök med dessa IKEA-lösningar"         ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                  │
+│  📰 NYHETER DENNA VECKA                                          │
+│  • Boverket: Nya regler för våtutrymmen från 1 juli             │
+│  • Skatteverket: Så fungerar ROT-avdraget 2026                  │
+│  • Konsumentverket: Dina rättigheter vid försenat arbete        │
+│                                                                  │
+│  🌤️ VÄDER I STOCKHOLM (din projektadress)                       │
+│  "Torrt nästa vecka — bra för utomhusarbeten"                   │
+│  "Solnedgång 17:42 — planera dagsljusarbeten"                   │
+│                                                                  │
+│  📐 INSPIRATION FRÅN NÄTET                                       │
+│  ┌────┐ ┌────┐ ┌────┐ ┌────┐                                    │
+│  │ 📌 │ │ 📌 │ │ 📌 │ │ 📌 │  ← Pinterest: "kök skandinavisk"  │
+│  └────┘ └────┘ └────┘ └────┘                                    │
+│                                                                  │
+│  🏠 DITT OMRÅDE: Södermalm                                       │
+│  "Genomsnittspris kök i området: 145 000 kr"                    │
+│  "Din budget är 8% under genomsnitt — smart!"                   │
+│                                                                  │
+│  🎯 POPULÄRT PÅ RENOMATE                                         │
+│  • 23 nya badrum skapade denna vecka                            │
+│  • Trending rumstyp: Tvättstuga (+15%)                          │
+│  • Nytt: AI-import av planlösning från PDF                      │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ 🌟 DELA DITT PROJEKT                                        ││
+│  │ Visa andra hur din renovering går — få feedback!            ││
+│  │ [ Publicera före/efter-bilder ]                             ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## MINIMAL VIABLE RETENTION (om vi börjar nu)
+
+**Insats:** ~1 vecka
+
+| # | Komponent | Källa | Insats |
+|---|-----------|-------|--------|
+| 1 | Boverket/Skatteverket RSS | Myndigheter | 4h |
+| 2 | Tips-sidan | ✅ Finns | 0h |
+| 3 | Väder-widget | SMHI | 4h |
+| 4 | Pinterest oEmbed | Befintlig integration | 2h |
+| 5 | "Liknande projekt" | Demo-projektet | 4h |
+| 6 | CTA för icke-inloggade | Egen | 2h |
+
+**Vad vi INTE bygger nu:**
+- Full personalisering (kräver data)
+- UGC showcase (kräver användare)
+- Hemnet/Booli-integration (kräver partnerskap)
+- Forum/diskussioner (för tidigt)
+
+---
+
+**Prioritet:** Parkerad (Sprint 4+)
+**Förslag:** Logga API-listan som framtida roadmap. Börja med Tier 1 (myndighets-RSS) som "free wins" när activation är löst.
+**Insats:** Minimal nu (logga plan), 1 vecka för MVP senare

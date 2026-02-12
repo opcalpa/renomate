@@ -566,7 +566,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
@@ -578,9 +578,9 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
             </div>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t('purchases.addOrder')}
+                <Button size="sm" className="w-full sm:w-auto">
+                  <Plus className="h-4 w-4 sm:mr-2" />
+                  <span className="sm:inline">{t('purchases.addOrder')}</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">

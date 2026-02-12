@@ -474,15 +474,15 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
     <div className="h-full bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <FolderOpen className="h-8 w-8 text-primary" />
+            <FolderOpen className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             <div>
-              <h1 className="text-3xl font-bold">{t('files.title')}</h1>
-              <p className="text-muted-foreground">{projectName}</p>
+              <h1 className="text-xl sm:text-3xl font-bold">{t('files.title')}</h1>
+              <p className="text-muted-foreground text-sm sm:text-base">{projectName}</p>
             </div>
           </div>
-          
+
           <div className="flex gap-2">
             <Input
               ref={fileInputRef}
@@ -496,23 +496,27 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
             <Button
               variant="outline"
               onClick={() => setShowNewFolderDialog(true)}
+              size="sm"
+              className="flex-1 sm:flex-none"
             >
-              <FolderPlus className="h-4 w-4 mr-2" />
-              {t('files.newFolder')}
+              <FolderPlus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">{t('files.newFolder')}</span>
             </Button>
             <Button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
+              size="sm"
+              className="flex-1 sm:flex-none"
             >
               {uploading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t('files.uploading')}
+                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                  <span className="hidden sm:inline">{t('files.uploading')}</span>
                 </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  {t('files.uploadFiles')}
+                  <Upload className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{t('files.uploadFiles')}</span>
                 </>
               )}
             </Button>

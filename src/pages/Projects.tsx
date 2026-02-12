@@ -310,18 +310,18 @@ const Projects = () => {
           />
         )}
 
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
             <h2 className="text-2xl font-semibold mb-2">{t('projects.title')}</h2>
             <p className="text-muted-foreground">{t('projects.description')}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" onClick={() => setAiImportOpen(true)}>
-                    <Wand2 className="h-4 w-4 mr-2" />
-                    {t('aiProjectImport.smartImport', 'Smart Import')}
+                  <Button variant="outline" onClick={() => setAiImportOpen(true)} className="flex-1 sm:flex-none">
+                    <Wand2 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">{t('aiProjectImport.smartImport', 'Smart Import')}</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs">
@@ -335,9 +335,10 @@ const Projects = () => {
               hotspotPosition="top-right"
               showOnce={true}
             >
-              <Button onClick={() => setDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                {t('projects.newProject')}
+              <Button onClick={() => setDialogOpen(true)} className="flex-1 sm:flex-none">
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">{t('projects.newProject')}</span>
+                <span className="sm:hidden">{t('common.create', 'Skapa')}</span>
               </Button>
             </WithHotspot>
             <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setCreateStep(1); setNewProjectName(""); setNewProjectDescription(""); setNewProjectAddress(""); setNewProjectPostalCode(""); setNewProjectCity(""); setNewProjectType(""); setNewProjectStartDate(""); setNewProjectBudget(""); } }}>

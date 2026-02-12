@@ -73,32 +73,35 @@ const OverviewTab = ({
     <div className="space-y-6">
       <ProjectLockBanner lockStatus={lockStatus} />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-semibold">{t("overview.projectOverview")}</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setCustomerFormOpen(true)}
+            className="flex-1 sm:flex-none"
           >
-            <Mail className="h-4 w-4 mr-2" />
-            {t("overview.customerForm")}
+            <Mail className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">{t("overview.customerForm")}</span>
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => setQuoteDialogOpen(true)}
+            className="flex-1 sm:flex-none"
           >
-            <FileText className="h-4 w-4 mr-2" />
-            {t("overview.createQuote")}
+            <FileText className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">{t("overview.createQuote")}</span>
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => setReceiptModalOpen(true)}
+            className="flex-1 sm:flex-none"
           >
-            <Receipt className="h-4 w-4 mr-2" />
-            {t("overview.addPurchase")}
+            <Receipt className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">{t("overview.addPurchase")}</span>
           </Button>
           <Button
             variant="ghost"
