@@ -1139,7 +1139,13 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
         </div>
       )}
 
-      {/* Table */}
+      {/* Table Section */}
+      <div className="mt-6 mb-2 flex items-center justify-between">
+        <h3 className="text-lg font-semibold">{t('budget.detailedView', 'Detaljerad vy')}</h3>
+        <span className="text-xs text-muted-foreground md:hidden flex items-center gap-1">
+          ← {t('budget.swipeToSeeMore', 'Svep för mer')} →
+        </span>
+      </div>
       <div className="border rounded-lg overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
         <Table>
           <TableHeader>

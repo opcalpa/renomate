@@ -1375,7 +1375,9 @@
     "simpleTasks": "Arbete & tjänster",
     "simpleMaterials": "Material & inköp",
     "simpleExtra": "Utanför budget",
-    "simpleEmpty": "Inga budgetposter ännu. Din projektledare lägger till kostnader allt eftersom arbetet fortskrider."
+    "simpleEmpty": "Inga budgetposter ännu. Din projektledare lägger till kostnader allt eftersom arbetet fortskrider.",
+    "detailedView": "Detaljerad vy",
+    "swipeToSeeMore": "Svep för mer"
   },
   "budgetDashboard": {
     "failedToLoadPayments": "Kunde inte ladda betalningsdetaljer",

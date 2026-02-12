@@ -1777,7 +1777,9 @@
     "simpleTasks": "Work & services",
     "simpleMaterials": "Materials & purchases",
     "simpleExtra": "Outside budget",
-    "simpleEmpty": "No budget items yet. Your project manager will add costs as work progresses."
+    "simpleEmpty": "No budget items yet. Your project manager will add costs as work progresses.",
+    "detailedView": "Detailed View",
+    "swipeToSeeMore": "Swipe to see more"
   },
   "budgetDashboard": {
     "failedToLoadPayments": "Failed to load payment details",
