@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -8,7 +8,7 @@ import { updateQuoteStatus, createTasksFromQuote } from "@/services/quoteService
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle, XCircle, Download, Trash2 } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Download, Trash2, ArrowLeft } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,9 +69,13 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function ViewQuote() {
   const { quoteId } = useParams<{ quoteId: string }>();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuthSession();
+
+  // Check if we came from a project
+  const returnTo = searchParams.get("returnTo");
 
   const [userName, setUserName] = useState<string>();
   const [userEmail, setUserEmail] = useState<string>();
@@ -364,6 +368,19 @@ export default function ViewQuote() {
         onSignOut={handleSignOut}
       />
       <main className="container mx-auto px-4 py-8 max-w-2xl space-y-6">
+        {/* Back to project link */}
+        {returnTo && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
+            onClick={() => navigate(returnTo)}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t("quotes.backToProject")}
+          </Button>
+        )}
+
         {/* Company header */}
         <div className="flex items-center justify-between">
           <div>

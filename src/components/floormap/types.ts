@@ -99,6 +99,35 @@ export interface ImageCoordinates {
   height: number;
 }
 
+// 3D dimensions for unified 2D/3D rendering
+export interface Dimensions3D {
+  width: number;      // mm - X axis (along wall or local width)
+  height: number;     // mm - Z axis (vertical, floor to top)
+  depth: number;      // mm - Y axis (perpendicular to wall)
+}
+
+// 3D position for freestanding objects
+export interface Position3D {
+  x: number;          // mm - world X
+  y: number;          // mm - world Y
+  z: number;          // mm - height from floor
+}
+
+// Rotation in 3D space
+export interface Rotation3D {
+  x: number;          // radians - pitch
+  y: number;          // radians - yaw
+  z: number;          // radians - roll
+}
+
+// Asset references for 2D sprites and 3D models
+export interface ShapeAssets {
+  sprite2D?: string;     // URL to PNG sprite for 2D view
+  spriteTop?: string;    // URL to top-down view sprite
+  model3D?: string;      // URL to GLTF model for 3D view
+  thumbnail?: string;    // URL for library preview
+}
+
 export interface FloorMapShape {
   id: string; // Unique persistent ID
   type: 'line' | 'rectangle' | 'wall' | 'circle' | 'polygon' | 'symbol' | 'measurement' | 'text' | 'triangle' | 'door' | 'opening' | 'room' | 'freehand' | 'bezier' | 'window_line' | 'door_line' | 'sliding_door_line' | 'image';
@@ -107,6 +136,18 @@ export interface FloorMapShape {
   coordinates: LineCoordinates | RectangleCoordinates | CircleCoordinates | PolygonCoordinates | SymbolCoordinates | TextCoordinates | BezierCoordinates;
   heightMM?: number; // Wall height for elevation/3D view (for walls/lines)
   thicknessMM?: number; // Wall thickness (for walls/lines)
+
+  // Unified 3D dimensions (mm) - drives both 2D and 3D rendering
+  dimensions3D?: Dimensions3D;
+
+  // 3D position when not wall-relative (freestanding furniture)
+  position3D?: Position3D;
+
+  // 3D rotation when not wall-relative
+  rotation3D?: Rotation3D;
+
+  // Asset references for image-based 2D rendering and 3D models
+  assets?: ShapeAssets;
   roomId?: string; // Database reference if this is a saved room
   planId?: string; // Reference to the floor plan this shape belongs to
   symbolType?: SymbolType; // For symbol shapes
@@ -329,4 +370,6 @@ export type WallObjectCategory =
   | 'window'             // elevationBottom: 900mm (typical window sill)
   | 'door'               // elevationBottom: 0mm (starts at floor)
   | 'decoration'         // elevationBottom: 1200mm (artwork, mirrors, etc.)
+  | 'electrical_outlet'  // elevationBottom: 200mm (Swedish standard outlet height)
+  | 'electrical_switch'  // elevationBottom: 1000mm (Swedish standard switch height)
   | 'custom';

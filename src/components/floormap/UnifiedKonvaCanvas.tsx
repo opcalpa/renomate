@@ -7,6 +7,7 @@ import { FloorMapShape, ScalePreset, GridPreset } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { RoomDetailDialog } from './RoomDetailDialog';
 import { RoomElevationView } from './RoomElevationView';
+import { WallElevationView } from './WallElevationView';
 import { NameRoomDialog } from './NameRoomDialog';
 import { PropertyPanel } from './PropertyPanel';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,16 +21,23 @@ import { getSymbolComponent, ArchSymbolType, SYMBOL_METADATA } from './SymbolLib
 import { getObjectById } from './ObjectRenderer';
 import { ObjectShape, ObjectDefinition } from './objectLibraryDefinitions';
 import { getTemplateById, placeTemplateShapes, calculateBounds, DEFAULT_TEMPLATES } from './templateDefinitions';
+import { getUnifiedObjectById, UnifiedObjectDefinition } from './objectLibrary';
 import { useTranslation } from 'react-i18next';
 
 // Canvas module imports
 import { MIN_ZOOM, MAX_ZOOM, getAdminDefaults } from './canvas/constants';
 import { throttle, createUnifiedDragHandlers, calculateFitToContent } from './canvas/utils';
-import { generateWallsFromRoom } from './utils/roomWalls';
+import { generateWallsFromRoom, generateWallsFromRooms } from './utils/roomWalls';
+import { findNearestWallForPoint, getWallGeometry, wallRelativeToWorld } from './canvas/utils/wallCoordinates';
+import { findNearestWall, projectOntoWall, splitWall } from './utils/wallSnap';
+import { snapObjectToWall } from './canvas/utils/viewSync';
+import { mapLibraryCategoryToWallCategory, shouldAttachToWall, getDefaultsForCategory } from './canvas/utils/wallObjectDefaults';
 
 // Shape components (extracted for better maintainability)
 import {
   WallShape,
+  WallGroupOutline,
+  WallSnapIndicator,
   RoomShape,
   RectangleShape,
   CircleShape,
@@ -46,6 +54,9 @@ import {
 } from './shapes';
 import { ToolContextMenu } from './ToolContextMenu';
 import { Tool } from './types';
+import { HoverInfoTooltip } from './HoverInfoTooltip';
+import { InlineCommentPopover } from '@/components/comments/InlineCommentPopover';
+import { MessageCircle } from 'lucide-react';
 
 // Canvas dimensions are now dynamic - read from projectSettings
 // Default: 50m × 50m grid + 10m margin = 70m total (configurable in Canvas Settings)
@@ -570,8 +581,16 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const [isRoomDetailOpen, setIsRoomDetailOpen] = useState(false);
   const [roomData, setRoomData] = useState<any>(null);
 
-  // Room elevation view state
+  // Room elevation view state (room-centric with 4 cardinal directions)
   const [roomElevationShape, setRoomElevationShape] = useState<FloorMapShape | null>(null);
+  const [elevationInitialWallId, setElevationInitialWallId] = useState<string | undefined>(undefined);
+
+  // Hover info tooltip state
+  const [hoveredShapeId, setHoveredShapeId] = useState<string | null>(null);
+  const [hoverMousePosition, setHoverMousePosition] = useState<{ x: number; y: number } | null>(null);
+
+  // Wall elevation view state (shows combined collinear walls)
+  const [wallElevationId, setWallElevationId] = useState<string | null>(null);
 
   // Property panel state (for all object types)
   const [showPropertyPanel, setShowPropertyPanel] = useState(false);
@@ -607,10 +626,32 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [recentTools, setRecentTools] = useState<Tool[]>(['wall', 'room', 'select']);
 
+  // Comments state for floor plan objects
+  const [activeComment, setActiveComment] = useState<{ objectId: string; position: { x: number; y: number } } | null>(null);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [resolvedStatus, setResolvedStatus] = useState<Record<string, boolean>>({});
+
   // Measurement tool state
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [measureStart, setMeasureStart] = useState<{ x: number; y: number } | null>(null);
   const [measureEnd, setMeasureEnd] = useState<{ x: number; y: number } | null>(null);
+
+  // CAD-style numeric input state (type exact length during wall drawing)
+  const [numericInput, setNumericInput] = useState<string>('');
+  const [showNumericInput, setShowNumericInput] = useState(false);
+  const currentMousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Note: initializedViewForPlanId is now stored in Zustand store (not a ref)
+  // This allows it to survive component unmounts when switching between floor/elevation views
+
+  // Ghost preview state for stamp placement mode (library objects/symbols)
+  // Shows a preview following the cursor with auto-rotation towards nearest wall
+  const [ghostPreview, setGhostPreview] = useState<{
+    x: number;
+    y: number;
+    rotation: number; // Degrees, auto-calculated from nearest wall
+    nearWall: boolean; // True if snapped to a wall
+  } | null>(null);
 
   // Handle context menu (right-click)
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
@@ -628,7 +669,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       throttledSetSelectionBox.cancel();
     };
   }, [throttledSetSelectionBox]);
-  
+
   // Fetch room data when room is selected for detail
   useEffect(() => {
     if (selectedRoomForDetail && isRoomDetailOpen) {
@@ -673,7 +714,9 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const pendingObjectId = useFloorMapStore((state) => state.pendingObjectId);
   const pendingTemplateId = useFloorMapStore((state) => state.pendingTemplateId);
   const pendingRoomPlacement = useFloorMapStore((state) => state.pendingRoomPlacement);
-  
+  const initializedViewForPlanId = useFloorMapStore((state) => state.initializedViewForPlanId);
+  const wallSnapPreview = useFloorMapStore((state) => state.wallSnapPreview);
+
   // Actions (don't cause re-renders)
   const setViewState = useFloorMapStore((state) => state.setViewState);
   const setCurrentPlanId = useFloorMapStore((state) => state.setCurrentPlanId);
@@ -699,10 +742,59 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const setPendingTemplateId = useFloorMapStore((state) => state.setPendingTemplateId);
   const setPendingRoomPlacement = useFloorMapStore((state) => state.setPendingRoomPlacement);
   const setActiveTool = useFloorMapStore((state) => state.setActiveTool);
+  const setInitializedViewForPlanId = useFloorMapStore((state) => state.setInitializedViewForPlanId);
   const bringForward = useFloorMapStore((state) => state.bringForward);
   const sendBackward = useFloorMapStore((state) => state.sendBackward);
   const bringToFront = useFloorMapStore((state) => state.bringToFront);
   const sendToBack = useFloorMapStore((state) => state.sendToBack);
+
+  // Set cursor style based on active tool
+  useEffect(() => {
+    const container = stageRef.current?.container();
+    if (!container) return;
+
+    const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'room', 'bezier', 'measure'];
+
+    if (drawingTools.includes(activeTool)) {
+      container.style.cursor = 'crosshair';
+    } else if (activeTool === 'pan') {
+      container.style.cursor = 'grab';
+    } else {
+      container.style.cursor = 'default';
+    }
+
+    return () => {
+      if (container) container.style.cursor = 'default';
+    };
+  }, [activeTool]);
+
+  // Handle opening comments popover for a shape
+  const handleOpenComments = useCallback((objectId?: string, screenX?: number, screenY?: number) => {
+    // Use provided objectId or fall back to first selected shape
+    const targetId = objectId || (selectedShapeIds.length > 0 ? selectedShapeIds[0] : null);
+    if (!targetId) return;
+
+    // Use provided position or context menu position or default
+    const x = screenX ?? contextMenuPos?.x ?? 200;
+    const y = screenY ?? contextMenuPos?.y ?? 200;
+    setActiveComment({ objectId: targetId, position: { x, y } });
+    setContextMenuPos(null);
+  }, [selectedShapeIds, contextMenuPos]);
+
+  // Handle closing comments popover
+  const handleCloseComments = useCallback(() => {
+    setActiveComment(null);
+  }, []);
+
+  // Handle comment count change from popover
+  const handleCommentCountChange = useCallback((objectId: string, count: number) => {
+    setCommentCounts(prev => ({ ...prev, [objectId]: count }));
+  }, []);
+
+  // Handle resolved state change from popover
+  const handleResolvedChange = useCallback((objectId: string, isResolved: boolean) => {
+    setResolvedStatus(prev => ({ ...prev, [objectId]: isResolved }));
+  }, []);
 
   // Clear measurement when tool changes
   useEffect(() => {
@@ -710,6 +802,9 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       setMeasureStart(null);
       setMeasureEnd(null);
     }
+    // Clear CAD numeric input when tool changes
+    setNumericInput('');
+    setShowNumericInput(false);
   }, [activeTool]);
 
   // Track tool changes to update recent tools (for context menu)
@@ -740,6 +835,57 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     ),
     [shapes, currentPlanId]
   );
+
+  // Stable reference to shape IDs for fetching comments
+  const shapeIdsKey = useMemo(() => currentShapes.map(s => s.id).join(','), [currentShapes]);
+
+  // Fetch comment counts and resolved status for all shapes on canvas
+  useEffect(() => {
+    const fetchCommentData = async () => {
+      const shapeIds = shapeIdsKey.split(',').filter(Boolean);
+      if (shapeIds.length === 0) return;
+
+      try {
+        // Try fetching with is_resolved (new schema)
+        let result = await supabase
+          .from('comments')
+          .select('drawing_object_id, is_resolved')
+          .in('drawing_object_id', shapeIds);
+
+        // Fallback if is_resolved column doesn't exist
+        if (result.error?.code === '42703') {
+          result = await supabase
+            .from('comments')
+            .select('drawing_object_id')
+            .in('drawing_object_id', shapeIds);
+        }
+
+        if (result.error) {
+          console.error('Error fetching comment data:', result.error);
+          return;
+        }
+
+        const counts: Record<string, number> = {};
+        const resolved: Record<string, boolean> = {};
+
+        result.data?.forEach((row: { drawing_object_id: string | null; is_resolved?: boolean }) => {
+          if (row.drawing_object_id) {
+            counts[row.drawing_object_id] = (counts[row.drawing_object_id] || 0) + 1;
+            if (row.is_resolved) {
+              resolved[row.drawing_object_id] = true;
+            }
+          }
+        });
+
+        setCommentCounts(counts);
+        setResolvedStatus(resolved);
+      } catch (err) {
+        console.error('Error fetching comment data:', err);
+      }
+    };
+
+    fetchCommentData();
+  }, [shapeIdsKey]);
 
   // Separate shapes into template groups and individual shapes
   const { templateGroups, individualShapes } = useMemo(() => {
@@ -955,12 +1101,19 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   }, [canUndo, canRedo, shapes]);
   
   // Load shapes when plan changes, then apply initial view
+  // Note: This effect should only reset view on FIRST load of a plan, not when re-rendering
   useEffect(() => {
     if (!currentPlanId) {
       // No plan selected, clear shapes
       setShapes([]);
+      setInitializedViewForPlanId(null);
       return;
     }
+
+    // Capture whether we've already initialized at the START of the effect
+    // This prevents race conditions with async operations
+    // Note: Using store value instead of ref so it survives component unmount
+    const wasAlreadyInitialized = initializedViewForPlanId === currentPlanId;
 
     const loadShapes = async () => {
       const loadedShapes = await loadShapesForPlan(currentPlanId);
@@ -1012,9 +1165,10 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
 
       setShapes(finalShapes);
 
-      // Check if AI import has centering instructions
+      // Check if AI import has centering instructions (always apply these, even if initialized)
       const aiCenterView = (window as any).__aiImportCenterView;
       if (aiCenterView) {
+        setInitializedViewForPlanId(currentPlanId);
         setTimeout(() => {
           setViewState({
             zoom: aiCenterView.zoom,
@@ -1026,6 +1180,17 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         }, 800);
         return;
       }
+
+      // Only apply initial view on first load for this plan
+      // This prevents view reset when returning from elevation view, room detail, etc.
+      // Use the captured flag from the START of the effect to avoid race conditions
+      if (wasAlreadyInitialized) {
+        // Already initialized for this plan - keep current view, don't reset
+        return;
+      }
+
+      // Mark as initialized BEFORE setting view to prevent race conditions
+      setInitializedViewForPlanId(currentPlanId);
 
       // Apply initial view: saved starting view → auto-fit → default center
       const plans = useFloorMapStore.getState().plans;
@@ -1049,7 +1214,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     };
 
     loadShapes();
-  }, [currentPlanId, currentProjectId, setShapes]);
+  }, [currentPlanId, currentProjectId, setShapes, initializedViewForPlanId, setInitializedViewForPlanId]);
   
   // Auto-save shapes to database when they change
   useEffect(() => {
@@ -1155,6 +1320,12 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const clipboardRef = useRef(clipboard);
   const currentPlanIdRef = useRef(currentPlanId);
   const setActiveToolRef = useRef(setActiveTool);
+  // CAD numeric input refs (for keyboard handler access)
+  const isDrawingRef = useRef(isDrawing);
+  const currentDrawingPointsRef = useRef(currentDrawingPoints);
+  const activeToolRef = useRef(activeTool);
+  const numericInputRef = useRef(numericInput);
+  const confirmWallWithLengthRef = useRef<((lengthMM: number) => void) | null>(null);
   
   // Update refs whenever values change
   useEffect(() => {
@@ -1174,7 +1345,12 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     clipboardRef.current = clipboard;
     currentPlanIdRef.current = currentPlanId;
     setActiveToolRef.current = setActiveTool;
-  }, [undo, redo, canUndo, canRedo, addShape, updateShape, deleteShape, deleteShapes, setSelectedShapeId, setSelectedShapeIds, selectedShapeId, selectedShapeIds, currentShapes, clipboard, currentPlanId, setActiveTool]);
+    // CAD numeric input refs
+    isDrawingRef.current = isDrawing;
+    currentDrawingPointsRef.current = currentDrawingPoints;
+    activeToolRef.current = activeTool;
+    numericInputRef.current = numericInput;
+  }, [undo, redo, canUndo, canRedo, addShape, updateShape, deleteShape, deleteShapes, setSelectedShapeId, setSelectedShapeIds, selectedShapeId, selectedShapeIds, currentShapes, clipboard, currentPlanId, setActiveTool, isDrawing, currentDrawingPoints, activeTool, numericInput]);
   
   // Keyboard handlers for spacebar panning, delete, undo/redo
   useEffect(() => {
@@ -1204,24 +1380,69 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       if (e.key === 'Shift' && !e.repeat && !isTyping) {
         setIsShiftPressed(true);
       }
-      
+
+      // CAD-style numeric input during wall drawing
+      // Allows typing exact length in mm and pressing Enter to create wall
+      // Uses refs to get current values (keyboard handler has [] deps)
+      const isWallDrawingActive = isDrawingRef.current && activeToolRef.current === 'wall' && currentDrawingPointsRef.current.length > 0;
+
+      if (isWallDrawingActive && !isTyping) {
+        // Digit keys (0-9) - add to numeric input
+        if (/^[0-9]$/.test(e.key)) {
+          e.preventDefault();
+          setNumericInput(prev => prev + e.key);
+          setShowNumericInput(true);
+          return;
+        }
+
+        // Backspace - remove last digit from numeric input (not delete shape)
+        if (e.key === 'Backspace' && numericInputRef.current.length > 0) {
+          e.preventDefault();
+          setNumericInput(prev => prev.slice(0, -1));
+          if (numericInputRef.current.length === 1) {
+            setShowNumericInput(false);
+          }
+          return;
+        }
+
+        // Enter - confirm wall with typed length
+        if (e.key === 'Enter' && numericInputRef.current.length > 0) {
+          e.preventDefault();
+          if (confirmWallWithLengthRef.current) {
+            confirmWallWithLengthRef.current(parseFloat(numericInputRef.current));
+          }
+          return;
+        }
+      }
+
       // Escape key - cancel operation and return to select tool
       if (e.key === 'Escape' && !isTyping) {
         e.preventDefault();
-        
+
+        // Clear CAD numeric input
+        setNumericInput('');
+        setShowNumericInput(false);
+
         // Cancel any active drawing operations
         setLastWallEndPoint(null);
         setIsDrawing(false);
         setCurrentDrawingPoints([]);
-        
+
+        // Clear ghost preview and pending library objects
+        setGhostPreview(null);
+        const { setPendingObjectId, setPendingLibrarySymbol } = useFloorMapStore.getState();
+        setPendingObjectId(null);
+        setPendingLibrarySymbol(null);
+
         // Return to select tool (basic pointer functionality)
         setActiveToolRef.current('select');
-        
+
         toast.info('Återgick till markör-verktyget');
       }
-      
+
       // Delete key (disabled in read-only mode)
-      if ((e.key === 'Delete' || e.key === 'Backspace') && !isTyping && !isReadOnly) {
+      // Note: When drawing wall with numeric input, Backspace is handled above
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !isTyping && !isReadOnly && !isWallDrawingActive) {
         e.preventDefault();
         if (selectedShapeIdsRef.current.length > 0) {
           deleteShapesRef.current(selectedShapeIdsRef.current);
@@ -1507,6 +1728,11 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           e.preventDefault();
           setActiveToolRef.current('eraser');
         }
+        // M - Measure/Ruler tool
+        else if (key === 'm') {
+          e.preventDefault();
+          setActiveToolRef.current('measure');
+        }
         // ] - Bring Forward
         else if (key === ']') {
           e.preventDefault();
@@ -1568,13 +1794,28 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   
   // Handle shape click - SIMPLIFIED double-click detection (like old canvas)
   const handleShapeClick = useCallback(async (shapeId: string, shapeType: string, evt?: KonvaEventObject<MouseEvent>) => {
+    // Get fresh activeTool to avoid stale closures
+    const { activeTool: currentTool } = useFloorMapStore.getState();
+
+    // MEASURE TOOL - don't select shapes, let stage handler start measuring
+    if (currentTool === 'measure') {
+      // Don't cancel bubble - let the click pass through to stage for measuring
+      return;
+    }
+
     // ERASER TOOL - delete shape immediately (before any other logic)
     if (activeTool === 'eraser') {
       deleteShape(shapeId);
       toast.success('Objekt raderat');
       return; // Stop here, don't select or open panels
     }
-    
+
+    // OBJECT PLACEMENT MODE - don't select shapes, let stage handler place the object
+    const { pendingObjectId, pendingLibrarySymbol } = useFloorMapStore.getState();
+    if (pendingObjectId || pendingLibrarySymbol) {
+      return; // Skip selection during placement mode
+    }
+
     // SCISSORS TOOL - split wall/line at click point
     if (activeTool === 'scissors') {
       const shape = currentShapes.find(s => s.id === shapeId);
@@ -2108,31 +2349,35 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   
   // Handle mouse down
   const handleMouseDown = useCallback((e: KonvaEventObject<MouseEvent>) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+
+    // Get fresh state to avoid stale closures
+    const { activeTool: currentTool, viewState: currentViewState } = useFloorMapStore.getState();
+
+    // Transform to canvas coordinates
+    let pos = {
+      x: (pointer.x - currentViewState.panX) / currentViewState.zoom,
+      y: (pointer.y - currentViewState.panY) / currentViewState.zoom,
+    };
+
+    // MEASURE TOOL - Always handle first, regardless of what's under cursor
+    if (currentTool === 'measure') {
+      e.cancelBubble = true;
+      setIsMeasuring(true);
+      setMeasureStart(pos);
+      setMeasureEnd(pos);
+      return;
+    }
+
     // CRITICAL: If clicking on a shape, let the shape handle it - don't interfere
     const target = e.target;
     const isShape = target !== target.getStage() && (target as any).attrs?.shapeId;
     if (isShape) {
       // Shape will handle its own events - don't interfere
-      return;
-    }
-    
-    const stage = stageRef.current;
-    if (!stage) return;
-    
-    const pointer = stage.getPointerPosition();
-    if (!pointer) return;
-    
-    // Transform to canvas coordinates
-    let pos = {
-      x: (pointer.x - viewState.panX) / viewState.zoom,
-      y: (pointer.y - viewState.panY) / viewState.zoom,
-    };
-
-    // Handle measure tool
-    if (activeTool === 'measure') {
-      setIsMeasuring(true);
-      setMeasureStart(pos);
-      setMeasureEnd(pos);
       return;
     }
 
@@ -2525,8 +2770,11 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     // ============================================================================
     if (pendingLibrarySymbol && currentPlanId) {
       const symbolMetadata = SYMBOL_METADATA.find(s => s.type === pendingLibrarySymbol);
-      
+
       if (symbolMetadata) {
+        // Use ghost preview rotation (auto-calculated from nearest wall) or default to 0
+        const placementRotation = ghostPreview?.rotation ?? 0;
+
         // Create a freehand shape that will render the library symbol
         // We store the symbol type in metadata so it can be rendered correctly
         const newShape: FloorMapShape = {
@@ -2550,17 +2798,18 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             placementX: pos.x,
             placementY: pos.y,
             scale: 1, // Default scale - user can transform after placement
-            rotation: 0,
+            rotation: placementRotation, // Auto-rotated towards nearest wall
           }
         };
-        
+
         addShape(newShape);
         toast.success(`✨ ${symbolMetadata.name} placed`);
-        
-        // Clear the pending symbol so user can continue working
+
+        // Clear the pending symbol and ghost preview
         setPendingLibrarySymbol(null);
+        setGhostPreview(null);
       }
-      
+
       return;
     }
     
@@ -2568,9 +2817,134 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     // OBJECT LIBRARY PLACEMENT - JSON-based Architectural Objects
     // ============================================================================
     if (pendingObjectId && currentPlanId) {
+      // First check for unified objects (new SVG-based library)
+      const unifiedDef = getUnifiedObjectById(pendingObjectId);
+
+      if (unifiedDef) {
+        // Use ghost preview rotation (auto-calculated from nearest wall) or default to 0
+        const placementRotation = ghostPreview?.rotation ?? 0;
+
+        // Get default elevation values from unified object definition
+        const defaultElevation = unifiedDef.wallBehavior.defaultElevationMM;
+
+        // Calculate z-index for the new object (place on top of rooms)
+        const maxZIndex = Math.max(
+          ...shapes
+            .filter(s => s.planId === currentPlanId && s.type !== 'room')
+            .map(s => s.zIndex ?? 0),
+          99
+        );
+        const newZIndex = maxZIndex + 1;
+
+        // Create a shape that will render the unified object
+        const newShape: FloorMapShape = {
+          id: uuidv4(),
+          type: 'freehand',
+          planId: currentPlanId,
+          coordinates: {
+            points: [
+              { x: pos.x, y: pos.y },
+              { x: pos.x + 1, y: pos.y + 1 },
+            ]
+          },
+          strokeColor: '#374151',
+          color: 'transparent',
+          strokeWidth: 2,
+          name: unifiedDef.name,
+          objectCategory: unifiedDef.category,
+          zIndex: newZIndex,
+          metadata: {
+            isUnifiedObject: true,
+            unifiedObjectId: pendingObjectId,
+            placementX: pos.x,
+            placementY: pos.y,
+            scale: 1,
+            rotation: placementRotation,
+            elevationHeight: unifiedDef.dimensions.height,
+            elevationBottom: defaultElevation,
+            depth: unifiedDef.dimensions.depth,
+          }
+        };
+
+        // If object should attach to walls
+        if (unifiedDef.wallBehavior.attachesToWall) {
+          const walls = shapes.filter(
+            s => s.planId === currentPlanId &&
+                 (s.type === 'wall' || s.type === 'line') &&
+                 s.shapeViewMode !== 'elevation'
+          );
+
+          if (walls.length > 0) {
+            const tempShape: FloorMapShape = {
+              ...newShape,
+              coordinates: {
+                x: pos.x,
+                y: pos.y,
+                width: unifiedDef.dimensions.width * scaleSettings.pixelsPerMm,
+                height: unifiedDef.dimensions.depth * scaleSettings.pixelsPerMm,
+              }
+            };
+
+            const wallSnap = snapObjectToWall(tempShape, walls, 500);
+
+            if (wallSnap) {
+              newShape.wallRelative = {
+                ...wallSnap.wallRelative!,
+                height: unifiedDef.dimensions.height,
+                elevationBottom: defaultElevation,
+                depth: unifiedDef.dimensions.depth,
+              };
+              newShape.rotation = wallSnap.rotation;
+              if (wallSnap.coordinates && 'x' in wallSnap.coordinates) {
+                const snappedCoords = wallSnap.coordinates as { x: number; y: number };
+                newShape.metadata!.placementX = snappedCoords.x;
+                newShape.metadata!.placementY = snappedCoords.y;
+              }
+            }
+          }
+        }
+
+        addShape(newShape);
+        toast.success(`${unifiedDef.name} placed${newShape.wallRelative ? ' (wall attached)' : ''}`);
+
+        setPendingObjectId(null);
+        setGhostPreview(null);
+        return;
+      }
+
+      // Fall back to legacy object library
       const objectDef = getObjectById(pendingObjectId);
-      
+
       if (objectDef) {
+        // Use ghost preview rotation (auto-calculated from nearest wall) or default to 0
+        const placementRotation = ghostPreview?.rotation ?? 0;
+
+        // Determine if this object should attach to walls
+        const shouldSnap = shouldAttachToWall(
+          objectDef.category,
+          objectDef.wallMountable,
+          objectDef.freestanding
+        );
+
+        // Get object category for elevation positioning
+        const objectCategory = mapLibraryCategoryToWallCategory(
+          objectDef.category,
+          objectDef.objectCategory
+        );
+
+        // Get default elevation values for this category
+        const categoryDefaults = getDefaultsForCategory(objectCategory);
+
+        // Calculate z-index for the new object (place on top of rooms)
+        // Rooms typically have zIndex around -100 to 0, so objects start at 100+
+        const maxZIndex = Math.max(
+          ...shapes
+            .filter(s => s.planId === currentPlanId && s.type !== 'room')
+            .map(s => s.zIndex ?? 0),
+          99 // Minimum base for objects
+        );
+        const newZIndex = maxZIndex + 1;
+
         // Create a freehand shape that will render the object library object
         // We store the object ID in metadata so it can be rendered with ObjectRenderer
         const newShape: FloorMapShape = {
@@ -2588,21 +2962,70 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           color: 'transparent',
           strokeWidth: 2,
           name: objectDef.name,
+          objectCategory: objectCategory,
+          zIndex: newZIndex, // Objects always render above rooms
           metadata: {
             isObjectLibrary: true,
             objectId: pendingObjectId,
             placementX: pos.x,
             placementY: pos.y,
             scale: 1, // Default scale - user can transform after placement
-            rotation: 0,
+            rotation: placementRotation, // Auto-rotated towards nearest wall
+            // Store 3D properties from object definition for elevation view
+            elevationHeight: objectDef.elevationHeight ?? objectDef.defaultHeight,
+            elevationBottom: objectDef.elevationBottom ?? categoryDefaults.elevationBottom,
+            depth: objectDef.depth ?? objectDef.defaultHeight,
           }
         };
-        
-        addShape(newShape);
-        toast.success(`✨ ${objectDef.name} placed`);
 
-        // Clear the pending object so user can continue working
+        // If object should attach to walls, try to snap to nearest wall
+        if (shouldSnap) {
+          const walls = shapes.filter(
+            s => s.planId === currentPlanId &&
+                 (s.type === 'wall' || s.type === 'line') &&
+                 s.shapeViewMode !== 'elevation'
+          );
+
+          if (walls.length > 0) {
+            // Create a temporary shape with SymbolCoordinates for snapObjectToWall
+            const tempShape: FloorMapShape = {
+              ...newShape,
+              coordinates: {
+                x: pos.x,
+                y: pos.y,
+                width: objectDef.defaultWidth * scaleSettings.pixelsPerMm,
+                height: objectDef.defaultHeight * scaleSettings.pixelsPerMm,
+              }
+            };
+
+            const wallSnap = snapObjectToWall(tempShape, walls, 500); // 500mm threshold
+
+            if (wallSnap) {
+              // Apply wall-relative positioning
+              newShape.wallRelative = {
+                ...wallSnap.wallRelative!,
+                // Override with object-specific elevation data
+                height: objectDef.elevationHeight ?? objectDef.defaultHeight,
+                elevationBottom: objectDef.elevationBottom ?? categoryDefaults.elevationBottom,
+                depth: objectDef.depth ?? objectDef.defaultHeight,
+              };
+              newShape.rotation = wallSnap.rotation;
+              // Update placement position to snapped position
+              if (wallSnap.coordinates && 'x' in wallSnap.coordinates) {
+                const snappedCoords = wallSnap.coordinates as { x: number; y: number };
+                newShape.metadata!.placementX = snappedCoords.x;
+                newShape.metadata!.placementY = snappedCoords.y;
+              }
+            }
+          }
+        }
+
+        addShape(newShape);
+        toast.success(`${objectDef.name} placed${newShape.wallRelative ? ' (wall attached)' : ''}`);
+
+        // Clear the pending object and ghost preview
         setPendingObjectId(null);
+        setGhostPreview(null);
       }
 
       return;
@@ -2643,6 +3066,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         color: roomColor,
         strokeColor: 'rgba(41, 91, 172, 0.8)',
         name: roomName,
+        zIndex: -100, // Rooms render below objects/furniture
       };
 
       addShape(newRoomShape);
@@ -2914,10 +3338,13 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     const pointer = stage.getPointerPosition();
     if (!pointer) return;
 
+    // Get fresh viewState to avoid stale closures
+    const { viewState: currentViewState } = useFloorMapStore.getState();
+
     // Calculate position
     const pos = {
-      x: (pointer.x - viewState.panX) / viewState.zoom,
-      y: (pointer.y - viewState.panY) / viewState.zoom,
+      x: (pointer.x - currentViewState.panX) / currentViewState.zoom,
+      y: (pointer.y - currentViewState.panY) / currentViewState.zoom,
     };
 
     // Handle measure tool movement
@@ -2960,9 +3387,87 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       // Freehand uses raw pos (no snap), walls and line tools use snapped pos
       const drawPos = activeTool === 'freehand' ? pos : snappedPos;
       addDrawingPoint(drawPos);
+      // Track current mouse position for CAD numeric input overlay
+      currentMousePosRef.current = snappedPos;
       return;
     }
-  }, [isPanning, panStart, isBoxSelecting, selectionBox, isDrawing, currentDrawingPoints, viewState, activeTool, gridSettings.snap, scaleSettings.pixelsPerMm, setViewState, addDrawingPoint, setCurrentDrawingPoints, throttledSetSelectionBox, projectSettings.snapEnabled, constrainPan]);
+
+    // Ghost preview for stamp placement mode (library objects/symbols)
+    // When user has selected an object from library, show preview at cursor
+    const { pendingObjectId, pendingLibrarySymbol } = useFloorMapStore.getState();
+    if (pendingObjectId || pendingLibrarySymbol) {
+      // Get all walls to detect nearest one
+      const walls = shapes.filter(s => s.type === 'wall');
+
+      // Find nearest wall within 300mm (snapping distance)
+      const WALL_SNAP_DISTANCE = 300; // mm
+      const nearestWall = findNearestWallForPoint(snappedPos.x, snappedPos.y, walls, WALL_SNAP_DISTANCE);
+
+      let rotation = 0;
+      let nearWall = false;
+
+      if (nearestWall) {
+        // Calculate rotation to face the wall
+        // Wall angle is the direction the wall runs, we want to face perpendicular to it
+        const wallGeom = getWallGeometry(nearestWall.wall);
+        if (wallGeom) {
+          // Wall angle in degrees + 90 to face the wall (perpendicular)
+          // The object should "face into" the room, away from the wall
+          const wallAngleDeg = (wallGeom.angle * 180) / Math.PI;
+
+          // Determine which side of the wall we're on using the normal vector
+          const toPointX = snappedPos.x - wallGeom.x1;
+          const toPointY = snappedPos.y - wallGeom.y1;
+          const dotNormal = toPointX * wallGeom.normalX + toPointY * wallGeom.normalY;
+
+          // If on the "normal" side, rotate to face that direction; otherwise rotate 180°
+          if (dotNormal >= 0) {
+            rotation = wallAngleDeg + 90;
+          } else {
+            rotation = wallAngleDeg - 90;
+          }
+
+          // Normalize rotation to 0-360
+          rotation = ((rotation % 360) + 360) % 360;
+          nearWall = true;
+        }
+      }
+
+      setGhostPreview({
+        x: snappedPos.x,
+        y: snappedPos.y,
+        rotation,
+        nearWall,
+      });
+      return;
+    } else {
+      // Clear ghost preview if no pending object
+      if (ghostPreview) {
+        setGhostPreview(null);
+      }
+    }
+
+    // Hover detection for info tooltip (only when not actively doing something)
+    // Only show tooltip when using select tool and not drawing/panning/box-selecting
+    if (activeTool === 'select' && !isPanning && !isDrawing && !isBoxSelecting) {
+      const target = e.target;
+      const shapeId = (target as any).attrs?.shapeId;
+      if (shapeId && shapeId !== hoveredShapeId) {
+        setHoveredShapeId(shapeId);
+        setHoverMousePosition({ x: e.evt.clientX, y: e.evt.clientY });
+      } else if (!shapeId && hoveredShapeId) {
+        setHoveredShapeId(null);
+        setHoverMousePosition(null);
+      } else if (shapeId) {
+        // Update position for same shape
+        setHoverMousePosition({ x: e.evt.clientX, y: e.evt.clientY });
+      }
+    } else if (hoveredShapeId) {
+      // Clear hover when doing other actions
+      setHoveredShapeId(null);
+      setHoverMousePosition(null);
+    }
+  }, [isPanning, panStart, isBoxSelecting, selectionBox, isDrawing, currentDrawingPoints, viewState, activeTool, gridSettings.snap, scaleSettings.pixelsPerMm, setViewState, addDrawingPoint, setCurrentDrawingPoints, throttledSetSelectionBox, projectSettings.snapEnabled, constrainPan, shapes, ghostPreview, hoveredShapeId]);
   
   // Handle mouse up
   const handleMouseUp = useCallback((e: KonvaEventObject<MouseEvent>) => {
@@ -3015,6 +3520,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             },
             color: 'rgba(59, 130, 246, 0.2)',
             strokeColor: 'rgba(41, 91, 172, 0.8)',
+            zIndex: -100, // Rooms render below objects/furniture
           };
           
           addShape(newRoom);
@@ -3345,13 +3851,14 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         const dx = end.x - start.x;
         const dy = end.y - start.y;
         const length = Math.sqrt(dx * dx + dy * dy);
-        const defaultWindowWidth = 1000; // 1000mm standard window
+        const defaultWindowWidthMM = 1000; // 1000mm standard window
+        const defaultWindowWidthPx = defaultWindowWidthMM * scaleSettings.pixelsPerMm;
         const minLength = 50; // Minimum to consider as "dragged"
 
         let finalEnd = end;
         if (length < minLength) {
-          // Single click - use default horizontal window
-          finalEnd = { x: start.x + defaultWindowWidth, y: start.y };
+          // Single click - use default horizontal window (converted to pixels)
+          finalEnd = { x: start.x + defaultWindowWidthPx, y: start.y };
         }
 
         newShape = {
@@ -3373,13 +3880,14 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         const dx = end.x - start.x;
         const dy = end.y - start.y;
         const length = Math.sqrt(dx * dx + dy * dy);
-        const defaultDoorWidth = 900; // 900mm standard door
+        const defaultDoorWidthMM = 900; // 900mm standard door
+        const defaultDoorWidthPx = defaultDoorWidthMM * scaleSettings.pixelsPerMm;
         const minLength = 50;
 
         let finalEnd = end;
         if (length < minLength) {
-          // Single click - use default horizontal door
-          finalEnd = { x: start.x + defaultDoorWidth, y: start.y };
+          // Single click - use default horizontal door (converted to pixels)
+          finalEnd = { x: start.x + defaultDoorWidthPx, y: start.y };
         }
 
         newShape = {
@@ -3402,13 +3910,14 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         const dx = end.x - start.x;
         const dy = end.y - start.y;
         const length = Math.sqrt(dx * dx + dy * dy);
-        const defaultSlidingDoorWidth = 1800; // 1800mm standard sliding door
+        const defaultSlidingDoorWidthMM = 1800; // 1800mm standard sliding door
+        const defaultSlidingDoorWidthPx = defaultSlidingDoorWidthMM * scaleSettings.pixelsPerMm;
         const minLength = 50;
 
         let finalEnd = end;
         if (length < minLength) {
-          // Single click - use default horizontal sliding door
-          finalEnd = { x: start.x + defaultSlidingDoorWidth, y: start.y };
+          // Single click - use default horizontal sliding door (converted to pixels)
+          finalEnd = { x: start.x + defaultSlidingDoorWidthPx, y: start.y };
         }
 
         newShape = {
@@ -3429,14 +3938,123 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
 
       if (newShape) {
         addShape(newShape);
+
+        // Auto-snap openings (doors, windows) to walls and break the wall
+        const openingTypes = ['door_line', 'window_line', 'sliding_door_line'];
+        if (openingTypes.includes(newShape.type)) {
+          const openingCoords = newShape.coordinates as { x1: number; y1: number; x2: number; y2: number };
+          const walls = shapes.filter(
+            s => s.planId === currentPlanId &&
+                 s.type === 'wall' &&
+                 s.id !== newShape.id
+          );
+
+          // Find nearest wall within 50 pixels
+          const nearest = findNearestWall(openingCoords, walls, 50);
+
+          if (nearest) {
+            const wallCoords = nearest.wall.coordinates as { x1: number; y1: number; x2: number; y2: number };
+            const snappedCoords = projectOntoWall(openingCoords, wallCoords);
+            const wallSegments = splitWall(wallCoords, snappedCoords);
+
+            // Use store action to snap opening and split wall
+            const state = useFloorMapStore.getState();
+            state.applyWallSnap(
+              newShape.id,
+              { coordinates: snappedCoords, attachedToWall: nearest.wall.id, positionOnWall: nearest.t },
+              nearest.wall.id,
+              wallSegments.map(seg => ({
+                color: nearest.wall.color,
+                strokeColor: nearest.wall.strokeColor,
+                strokeWidth: nearest.wall.strokeWidth,
+                heightMM: nearest.wall.heightMM,
+                thicknessMM: nearest.wall.thicknessMM,
+                coordinates: seg,
+              }))
+            );
+            toast.success('Öppning placerad på vägg');
+          }
+        }
       }
-      
+
+      // Clear CAD numeric input after drawing completes
+      setNumericInput('');
+      setShowNumericInput(false);
+
       setIsDrawing(false);
       setCurrentDrawingPoints([]);
       return;
     }
-  }, [isPanning, isBoxSelecting, selectionBox, isDrawing, isExtendingSelection, selectedShapeIds, currentDrawingPoints, currentPlanId, activeTool, currentShapes, viewState, gridSettings.snap, scaleSettings.pixelsPerMm, addShape, setIsDrawing, setCurrentDrawingPoints, setSelectedShapeIds, setSelectedShapeId, setIsPanning, setPanStart, setIsBoxSelecting, setSelectionBox, updateShape, projectSettings]);
-  
+  }, [isPanning, isBoxSelecting, selectionBox, isDrawing, isExtendingSelection, selectedShapeIds, currentDrawingPoints, currentPlanId, activeTool, currentShapes, viewState, gridSettings.snap, scaleSettings.pixelsPerMm, addShape, setIsDrawing, setCurrentDrawingPoints, setSelectedShapeIds, setSelectedShapeId, setIsPanning, setPanStart, setIsBoxSelecting, setSelectionBox, updateShape, projectSettings, shapes]);
+
+  // CAD-style: Confirm wall with exact length (typed in mm)
+  const confirmWallWithLength = useCallback((lengthMM: number) => {
+    if (currentDrawingPoints.length === 0 || !currentPlanId) return;
+
+    const start = currentDrawingPoints[0];
+    const mousePos = currentMousePosRef.current;
+
+    // Calculate direction vector from start to current mouse
+    const dx = mousePos.x - start.x;
+    const dy = mousePos.y - start.y;
+    const currentLength = Math.sqrt(dx * dx + dy * dy);
+
+    if (currentLength === 0) {
+      toast.error('Flytta musen för att ange riktning');
+      return;
+    }
+
+    // Normalize direction and scale to desired length in pixels
+    const targetLengthPixels = lengthMM * scaleSettings.pixelsPerMm;
+    const scale = targetLengthPixels / currentLength;
+
+    const end = {
+      x: start.x + dx * scale,
+      y: start.y + dy * scale,
+    };
+
+    // Get wall settings
+    const customThickness = (window as any).__wallThickness;
+    const wallThickness = customThickness || projectSettings.wallThicknessMM || 200;
+    const wallDefaults = getAdminDefaults();
+
+    // Clear custom thickness after use
+    if (customThickness) {
+      delete (window as any).__wallThickness;
+      delete (window as any).__wallType;
+    }
+
+    // Create wall with exact length
+    const newShape: FloorMapShape = {
+      id: uuidv4(),
+      planId: currentPlanId,
+      type: 'wall',
+      coordinates: {
+        x1: start.x,
+        y1: start.y,
+        x2: end.x,
+        y2: end.y,
+      },
+      strokeColor: '#2d3748',
+      thicknessMM: wallThickness,
+      heightMM: wallDefaults.wallHeightMM,
+    };
+
+    addShape(newShape);
+    toast.success(`Vägg skapad: ${lengthMM} mm`);
+
+    // Reset state
+    setNumericInput('');
+    setShowNumericInput(false);
+    setIsDrawing(false);
+    setCurrentDrawingPoints([]);
+  }, [currentDrawingPoints, currentPlanId, scaleSettings.pixelsPerMm, projectSettings.wallThicknessMM, addShape, setIsDrawing, setCurrentDrawingPoints]);
+
+  // Update confirmWallWithLength ref for keyboard handler access
+  useEffect(() => {
+    confirmWallWithLengthRef.current = confirmWallWithLength;
+  }, [confirmWallWithLength]);
+
   // Handle stage click - ONLY for empty space, NOT for shapes
   const handleStageClick = useCallback((e: KonvaEventObject<MouseEvent>) => {
     // CRITICAL: Only handle clicks on empty stage, not on shapes
@@ -3764,6 +4382,8 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             // Find the room shape by roomId
             const roomShape = currentShapes.find(s => s.roomId === selectedRoomForDetail);
             if (roomShape) {
+              // Clear any previous wall selection - start at first wall (wall #1)
+              setElevationInitialWallId(undefined);
               setRoomElevationShape(roomShape);
             }
           }}
@@ -3775,7 +4395,20 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         <RoomElevationView
           room={roomElevationShape}
           projectId={currentProjectId}
-          onClose={() => setRoomElevationShape(null)}
+          initialWallId={elevationInitialWallId}
+          onClose={() => {
+            setRoomElevationShape(null);
+            setElevationInitialWallId(undefined);
+          }}
+        />
+      )}
+
+      {/* Wall Elevation View - shows combined collinear walls */}
+      {wallElevationId && currentProjectId && (
+        <WallElevationView
+          wallId={wallElevationId}
+          projectId={currentProjectId}
+          onClose={() => setWallElevationId(null)}
         />
       )}
 
@@ -3818,7 +4451,55 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           );
         })()
       )}
-      
+
+      {/* Floating Wall Elevation Button - Shows when a wall is selected */}
+      {(() => {
+        // Check if a wall is selected (single selection)
+        const selectedWall = selectedShapeIds.length === 1
+          ? currentShapes.find(s => s.id === selectedShapeIds[0] && (s.type === 'wall' || s.type === 'line'))
+          : null;
+
+        if (!selectedWall) return null;
+
+        // Calculate button position near the wall's midpoint
+        const wallCoords = selectedWall.coordinates as { x1: number; y1: number; x2: number; y2: number };
+        if (!wallCoords.x1) return null;
+
+        const wallMidX = (wallCoords.x1 + wallCoords.x2) / 2;
+        const wallMidY = (wallCoords.y1 + wallCoords.y2) / 2;
+
+        // Convert to screen coordinates
+        const screenX = wallMidX * scaleSettings.pixelsPerMm * viewState.zoom + viewState.panX;
+        const screenY = wallMidY * scaleSettings.pixelsPerMm * viewState.zoom + viewState.panY;
+
+        // Only show if on screen
+        if (screenX < 0 || screenX > window.innerWidth || screenY < 0 || screenY > window.innerHeight) {
+          return null;
+        }
+
+        return (
+          <button
+            onClick={() => {
+              // Open combined wall elevation view for this wall
+              // This shows all collinear (same-line) wall segments plus openings
+              setWallElevationId(selectedWall.id);
+            }}
+            className="fixed z-50 flex items-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg transition-all hover:scale-105"
+            style={{
+              left: `${Math.min(Math.max(screenX - 60, 60), window.innerWidth - 180)}px`,
+              top: `${Math.min(Math.max(screenY - 50, 60), window.innerHeight - 60)}px`,
+            }}
+            title="Visa väggvy (Elevation)"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+            </svg>
+            <span className="text-sm font-medium">Väggvy</span>
+          </button>
+        );
+      })()}
+
       {/* Konva Stage */}
       <Stage
         ref={stageRef}
@@ -3856,7 +4537,163 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
               listening={false}
             />
           )}
-          
+
+          {/* Ghost preview for stamp placement mode (library objects/symbols) */}
+          {ghostPreview && (pendingLibrarySymbol || pendingObjectId) && (() => {
+            // Render actual symbol/object as ghost with reduced opacity
+            if (pendingLibrarySymbol) {
+              const SymbolComponent = getSymbolComponent(pendingLibrarySymbol as ArchSymbolType);
+              if (SymbolComponent) {
+                const symbolMeta = SYMBOL_METADATA.find(s => s.type === pendingLibrarySymbol);
+                const defaultSize = symbolMeta?.defaultSize || 600;
+                const symbolScale = (defaultSize / 1000) * scaleSettings.pixelsPerMm;
+                return (
+                  <Group
+                    x={ghostPreview.x}
+                    y={ghostPreview.y}
+                    rotation={ghostPreview.rotation}
+                    opacity={0.6}
+                    listening={false}
+                  >
+                    <SymbolComponent
+                      width={100 * symbolScale}
+                      height={100 * symbolScale}
+                      strokeWidth={1.5 / viewState.zoom}
+                      stroke={ghostPreview.nearWall ? '#10b981' : '#3b82f6'}
+                      fill="transparent"
+                    />
+                    {/* Snap indicator when near wall */}
+                    {ghostPreview.nearWall && (
+                      <Circle
+                        x={0}
+                        y={0}
+                        radius={8 / viewState.zoom}
+                        fill="#10b981"
+                        opacity={0.8}
+                      />
+                    )}
+                  </Group>
+                );
+              }
+            }
+            if (pendingObjectId) {
+              // First check for unified object (new SVG-based library)
+              const unifiedDef = getUnifiedObjectById(pendingObjectId);
+              if (unifiedDef) {
+                const objectScale = scaleSettings.pixelsPerMm;
+                const width = unifiedDef.dimensions.width * objectScale;
+                const height = unifiedDef.dimensions.depth * objectScale;
+                const symbol = unifiedDef.floorPlanSymbol;
+                const [, , vbWidth, vbHeight] = symbol.viewBox.split(' ').map(Number);
+                const scaleX = width / vbWidth;
+                const scaleY = height / vbHeight;
+
+                return (
+                  <Group
+                    x={ghostPreview.x}
+                    y={ghostPreview.y}
+                    rotation={ghostPreview.rotation}
+                    opacity={0.6}
+                    listening={false}
+                  >
+                    {/* Selection box */}
+                    <Rect
+                      x={-width / 2}
+                      y={-height / 2}
+                      width={width}
+                      height={height}
+                      stroke={ghostPreview.nearWall ? '#10b981' : '#3b82f6'}
+                      strokeWidth={2 / viewState.zoom}
+                      dash={[6 / viewState.zoom, 3 / viewState.zoom]}
+                      fill={ghostPreview.nearWall ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)'}
+                    />
+                    {/* SVG Symbol */}
+                    <Group x={-width / 2} y={-height / 2}>
+                      {symbol.paths.map((path, index) => (
+                        <Path
+                          key={index}
+                          data={path.d}
+                          fill={path.fill || 'none'}
+                          stroke={ghostPreview.nearWall ? '#10b981' : (path.stroke || '#3b82f6')}
+                          strokeWidth={(path.strokeWidth || 2) * Math.min(scaleX, scaleY)}
+                          scaleX={scaleX}
+                          scaleY={scaleY}
+                        />
+                      ))}
+                    </Group>
+                    {/* Object name label */}
+                    <KonvaText
+                      x={-width / 2}
+                      y={-height / 2 - 20 / viewState.zoom}
+                      text={unifiedDef.name}
+                      fontSize={12 / viewState.zoom}
+                      fill={ghostPreview.nearWall ? '#10b981' : '#3b82f6'}
+                    />
+                    {/* Snap indicator when near wall */}
+                    {ghostPreview.nearWall && (
+                      <Circle
+                        x={0}
+                        y={0}
+                        radius={8 / viewState.zoom}
+                        fill="#10b981"
+                        opacity={0.8}
+                      />
+                    )}
+                  </Group>
+                );
+              }
+
+              // Fall back to legacy object library
+              const objectDef = getObjectById(pendingObjectId);
+              if (objectDef) {
+                const objectScale = scaleSettings.pixelsPerMm;
+                // Render a placeholder rectangle for the object ghost
+                // Use defaultWidth/defaultHeight (the correct property names)
+                const width = (objectDef.defaultWidth || 600) * objectScale;
+                const height = (objectDef.defaultHeight || 600) * objectScale;
+                return (
+                  <Group
+                    x={ghostPreview.x}
+                    y={ghostPreview.y}
+                    rotation={ghostPreview.rotation}
+                    opacity={0.6}
+                    listening={false}
+                  >
+                    <Rect
+                      x={-width / 2}
+                      y={-height / 2}
+                      width={width}
+                      height={height}
+                      stroke={ghostPreview.nearWall ? '#10b981' : '#3b82f6'}
+                      strokeWidth={2 / viewState.zoom}
+                      dash={[6 / viewState.zoom, 3 / viewState.zoom]}
+                      fill={ghostPreview.nearWall ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)'}
+                    />
+                    {/* Object name label */}
+                    <KonvaText
+                      x={-width / 2}
+                      y={-height / 2 - 20 / viewState.zoom}
+                      text={objectDef.name}
+                      fontSize={12 / viewState.zoom}
+                      fill={ghostPreview.nearWall ? '#10b981' : '#3b82f6'}
+                    />
+                    {/* Snap indicator when near wall */}
+                    {ghostPreview.nearWall && (
+                      <Circle
+                        x={0}
+                        y={0}
+                        radius={8 / viewState.zoom}
+                        fill="#10b981"
+                        opacity={0.8}
+                      />
+                    )}
+                  </Group>
+                );
+              }
+            }
+            return null;
+          })()}
+
           {/* Box selection/room preview - blue dashed rectangle */}
           {isBoxSelecting && selectionBox && activeTool !== 'bezier' && activeTool !== 'circle' && (
             <Rect
@@ -3952,17 +4789,17 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
 
           {/* Measurement line - for ruler/measure tool */}
           {measureStart && measureEnd && (() => {
-            const x1 = measureStart.x * viewState.zoom + viewState.panX;
-            const y1 = measureStart.y * viewState.zoom + viewState.panY;
-            const x2 = measureEnd.x * viewState.zoom + viewState.panX;
-            const y2 = measureEnd.y * viewState.zoom + viewState.panY;
+            // Use world coordinates directly - Stage already handles zoom/pan transform
+            const x1 = measureStart.x;
+            const y1 = measureStart.y;
+            const x2 = measureEnd.x;
+            const y2 = measureEnd.y;
 
-            const dx = measureEnd.x - measureStart.x;
-            const dy = measureEnd.y - measureStart.y;
+            const dx = x2 - x1;
+            const dy = y2 - y1;
             // Convert pixel distance to mm using pixelsPerMm
             const distancePixels = Math.sqrt(dx * dx + dy * dy);
             const distanceMm = distancePixels / scaleSettings.pixelsPerMm;
-            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
 
             const midX = (x1 + x2) / 2;
             const midY = (y1 + y2) / 2;
@@ -3970,67 +4807,76 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             // Only show if there's a meaningful distance
             if (distancePixels < 5) return null;
 
+            // Scale-independent sizes (divide by zoom to keep constant screen size)
+            const strokeWidth = 2 / viewState.zoom;
+            const markerSize = 6 / viewState.zoom;
+            const circleRadius = 4 / viewState.zoom;
+            const labelWidth = 90 / viewState.zoom;
+            const labelHeight = 24 / viewState.zoom;
+            const fontSize = 14 / viewState.zoom;
+            const dashSize = [8 / viewState.zoom, 4 / viewState.zoom];
+
             return (
               <Group listening={false}>
                 {/* Main measurement line */}
                 <Line
                   points={[x1, y1, x2, y2]}
                   stroke="#ef4444"
-                  strokeWidth={2}
-                  dash={[8, 4]}
+                  strokeWidth={strokeWidth}
+                  dash={dashSize}
                 />
                 {/* Start point */}
-                <Circle x={x1} y={y1} radius={4} fill="#ef4444" />
+                <Circle x={x1} y={y1} radius={circleRadius} fill="#ef4444" />
                 {/* End point */}
-                <Circle x={x2} y={y2} radius={4} fill="#ef4444" />
+                <Circle x={x2} y={y2} radius={circleRadius} fill="#ef4444" />
                 {/* X markers at endpoints */}
                 <Line
-                  points={[x1 - 6, y1 - 6, x1 + 6, y1 + 6]}
+                  points={[x1 - markerSize, y1 - markerSize, x1 + markerSize, y1 + markerSize]}
                   stroke="#ef4444"
-                  strokeWidth={2}
+                  strokeWidth={strokeWidth}
                 />
                 <Line
-                  points={[x1 - 6, y1 + 6, x1 + 6, y1 - 6]}
+                  points={[x1 - markerSize, y1 + markerSize, x1 + markerSize, y1 - markerSize]}
                   stroke="#ef4444"
-                  strokeWidth={2}
+                  strokeWidth={strokeWidth}
                 />
                 <Line
-                  points={[x2 - 6, y2 - 6, x2 + 6, y2 + 6]}
+                  points={[x2 - markerSize, y2 - markerSize, x2 + markerSize, y2 + markerSize]}
                   stroke="#ef4444"
-                  strokeWidth={2}
+                  strokeWidth={strokeWidth}
                 />
                 <Line
-                  points={[x2 - 6, y2 + 6, x2 + 6, y2 - 6]}
+                  points={[x2 - markerSize, y2 + markerSize, x2 + markerSize, y2 - markerSize]}
                   stroke="#ef4444"
-                  strokeWidth={2}
+                  strokeWidth={strokeWidth}
                 />
                 {/* Distance label with background */}
                 <Rect
-                  x={midX - 45}
-                  y={midY - 28}
-                  width={90}
-                  height={24}
+                  x={midX - labelWidth / 2}
+                  y={midY - labelHeight - 4 / viewState.zoom}
+                  width={labelWidth}
+                  height={labelHeight}
                   fill="white"
                   stroke="#ef4444"
-                  strokeWidth={1}
-                  cornerRadius={4}
+                  strokeWidth={strokeWidth / 2}
+                  cornerRadius={4 / viewState.zoom}
                 />
                 <KonvaText
-                  x={midX - 45}
-                  y={midY - 24}
-                  width={90}
+                  x={midX - labelWidth / 2}
+                  y={midY - labelHeight}
+                  width={labelWidth}
                   text={formatDim(distanceMm)}
-                  fontSize={14}
+                  fontSize={fontSize}
                   fill="#ef4444"
                   align="center"
                   fontStyle="bold"
                 />
                 {/* Angle indicator */}
                 <KonvaText
-                  x={midX - 25}
-                  y={midY + 4}
-                  text={`${angle.toFixed(1)}°`}
-                  fontSize={10}
+                  x={midX - 25 / viewState.zoom}
+                  y={midY + 4 / viewState.zoom}
+                  text={`${(Math.atan2(dy, dx) * 180 / Math.PI).toFixed(1)}°`}
+                  fontSize={10 / viewState.zoom}
                   fill="#9ca3af"
                 />
               </Group>
@@ -4076,7 +4922,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           )}
 
           {/* Template Groups - rendered as unified transformable units */}
-          <Group listening={!isReadOnly}>
+          <Group listening={!isReadOnly && activeTool !== 'measure'}>
             {templateGroups.map(({ groupId, shapes: groupShapes, leader }) => {
               const isGroupSelected = groupShapes.some(s => selectedShapeIds.includes(s.id));
               // Check if any shape in this group is individually selected
@@ -4101,8 +4947,8 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             })}
           </Group>
 
-          {/* Room shapes - rendered first (bottom layer), always listening for read-only click-through */}
-          <Group>
+          {/* Room shapes - rendered first (bottom layer), always listening for read-only click-through, disabled in measure mode */}
+          <Group listening={activeTool !== 'measure'}>
           {(() => {
             const sortedShapes = [...individualShapes].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
             return sortedShapes.filter(s => s.type === 'room').map((shape) => {
@@ -4145,8 +4991,24 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           })()}
           </Group>
 
-          {/* Non-room individual shapes - sorted by zIndex, disabled in read-only */}
-          <Group listening={!isReadOnly}>
+          {/* Non-room individual shapes - sorted by zIndex, disabled in read-only and measure mode */}
+          <Group listening={!isReadOnly && activeTool !== 'measure'}>
+          {/* Unified wall outlines - renders merged L-shapes FIRST (underneath shapes) */}
+          <WallGroupOutline
+            walls={currentShapes.filter(s => s.type === 'wall' || s.type === 'line')}
+            selectedIds={selectedShapeIds}
+            zoom={viewState.zoom}
+          />
+          {/* Wall snap indicator - visual feedback during drag */}
+          {wallSnapPreview && (
+            <WallSnapIndicator
+              wallId={wallSnapPreview.wallId}
+              snapPoint={wallSnapPreview.snapPoint}
+              snapRotation={wallSnapPreview.snapRotation}
+              walls={currentShapes.filter(s => s.type === 'wall' || s.type === 'line')}
+              zoom={viewState.zoom}
+            />
+          )}
           {(() => {
             // Pre-calculate wall indices for display
             const sortedShapes = [...individualShapes].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
@@ -4164,6 +5026,274 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             if (shape.type === 'freehand' || shape.type === 'polygon') {
               if (shape.metadata?.isLibrarySymbol) {
                 return (<LibrarySymbolShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} />);
+              }
+              // Render unified objects (new SVG-based library)
+              if (shape.metadata?.isUnifiedObject && shape.metadata?.unifiedObjectId) {
+                const unifiedDef = getUnifiedObjectById(shape.metadata.unifiedObjectId as string);
+                if (unifiedDef) {
+                  const scale = (shape.metadata.scale as number) || 1;
+                  let posX = (shape.metadata.placementX as number) || 0;
+                  let posY = (shape.metadata.placementY as number) || 0;
+                  let rotation = shape.rotation || 0;
+
+                  // If object has wallRelative data, calculate position from wall
+                  if (shape.wallRelative?.wallId) {
+                    const wall = shapes.find(s => s.id === shape.wallRelative?.wallId);
+                    if (wall) {
+                      // Wall coordinates are in pixels, wallRelative distances are in mm
+                      // We need to:
+                      // 1. Get wall geometry (in pixels)
+                      // 2. Calculate position along wall using mm distances converted to pixels
+                      const wallCoords = wall.coordinates as { x1: number; y1: number; x2: number; y2: number };
+                      if (wallCoords && typeof wallCoords.x1 === 'number') {
+                        const dx = wallCoords.x2 - wallCoords.x1;
+                        const dy = wallCoords.y2 - wallCoords.y1;
+                        const wallLengthPx = Math.sqrt(dx * dx + dy * dy);
+                        const angle = Math.atan2(dy, dx);
+
+                        // Unit vectors
+                        const unitX = dx / wallLengthPx;
+                        const unitY = dy / wallLengthPx;
+                        const normalX = -unitY;
+                        const normalY = unitX;
+
+                        // Convert mm distances to pixels
+                        const distAlongPx = (shape.wallRelative.distanceFromWallStart + shape.wallRelative.width / 2) * scaleSettings.pixelsPerMm;
+                        const perpOffsetPx = (shape.wallRelative.perpendicularOffset + shape.wallRelative.depth / 2) * scaleSettings.pixelsPerMm;
+
+                        // Calculate position
+                        posX = wallCoords.x1 + distAlongPx * unitX + perpOffsetPx * normalX;
+                        posY = wallCoords.y1 + distAlongPx * unitY + perpOffsetPx * normalY;
+                        rotation = (angle * 180) / Math.PI;
+                      }
+                    }
+                  }
+
+                  const symbol = unifiedDef.floorPlanSymbol;
+                  const width = unifiedDef.dimensions.width * scaleSettings.pixelsPerMm * scale;
+                  const height = unifiedDef.dimensions.depth * scaleSettings.pixelsPerMm * scale;
+                  const [, , vbWidth, vbHeight] = symbol.viewBox.split(' ').map(Number);
+                  const scaleX = width / vbWidth;
+                  const scaleY = height / vbHeight;
+                  const canSelect = activeTool === 'select';
+
+                  // Track if object is wall-attached (for visual indicator)
+                  const isWallAttached = Boolean(shape.wallRelative?.wallId);
+
+                  // Comment count for this object
+                  const objectCommentCount = commentCounts[shape.id] || 0;
+                  const hasComments = objectCommentCount > 0;
+                  const isCommentResolved = resolvedStatus[shape.id] || false;
+
+                  return (
+                    <Group
+                      key={shape.id}
+                      id={shape.id}
+                      name={shape.id}
+                      x={posX}
+                      y={posY}
+                      rotation={rotation}
+                      draggable={canSelect}
+                      listening={canSelect}
+                      onClick={(e) => {
+                        e.cancelBubble = true;
+                        handleSelect(e);
+                      }}
+                      onTap={(e) => {
+                        e.cancelBubble = true;
+                        handleSelect(e);
+                      }}
+                      onDragStart={(e) => {
+                        e.cancelBubble = true;
+                      }}
+                      onDragEnd={(e) => {
+                        e.cancelBubble = true;
+                        // Get new position from drag
+                        const newX = e.target.x();
+                        const newY = e.target.y();
+
+                        // Find nearest wall within threshold (300mm = 30cm)
+                        const WALL_SNAP_THRESHOLD_MM = 300;
+                        const thresholdPx = WALL_SNAP_THRESHOLD_MM * scaleSettings.pixelsPerMm;
+                        const walls = shapes.filter(s => s.type === 'wall' || s.type === 'line');
+
+                        let nearestWall: FloorMapShape | null = null;
+                        let nearestDist = thresholdPx;
+                        let nearestT = 0;
+
+                        for (const wall of walls) {
+                          const wc = wall.coordinates as { x1: number; y1: number; x2: number; y2: number };
+                          if (!wc || typeof wc.x1 !== 'number') continue;
+
+                          // Calculate distance from point to wall segment
+                          const dx = wc.x2 - wc.x1;
+                          const dy = wc.y2 - wc.y1;
+                          const wallLenSq = dx * dx + dy * dy;
+                          if (wallLenSq === 0) continue;
+
+                          // Project point onto wall line
+                          let t = ((newX - wc.x1) * dx + (newY - wc.y1) * dy) / wallLenSq;
+                          t = Math.max(0, Math.min(1, t)); // Clamp to wall segment
+
+                          const projX = wc.x1 + t * dx;
+                          const projY = wc.y1 + t * dy;
+                          const dist = Math.sqrt((newX - projX) ** 2 + (newY - projY) ** 2);
+
+                          if (dist < nearestDist) {
+                            nearestDist = dist;
+                            nearestWall = wall;
+                            nearestT = t;
+                          }
+                        }
+
+                        if (nearestWall) {
+                          // Snap to wall - calculate wall-relative position
+                          const wc = nearestWall.coordinates as { x1: number; y1: number; x2: number; y2: number };
+                          const dx = wc.x2 - wc.x1;
+                          const dy = wc.y2 - wc.y1;
+                          const wallLengthPx = Math.sqrt(dx * dx + dy * dy);
+                          const wallLengthMM = wallLengthPx / scaleSettings.pixelsPerMm;
+
+                          // Distance along wall in mm
+                          const distAlongMM = nearestT * wallLengthMM - (unifiedDef.dimensions.width / 2);
+
+                          // Perpendicular offset in mm (how far from wall center)
+                          const perpDistPx = nearestDist;
+                          const perpDistMM = perpDistPx / scaleSettings.pixelsPerMm - (unifiedDef.dimensions.depth / 2);
+
+                          // Preserve elevation or use default
+                          const elevationBottom = shape.wallRelative?.elevationBottom ??
+                            unifiedDef.wallBehavior.defaultElevationMM;
+
+                          updateShape(shape.id, {
+                            wallRelative: {
+                              wallId: nearestWall.id,
+                              distanceFromWallStart: Math.max(0, distAlongMM),
+                              perpendicularOffset: Math.max(0, perpDistMM),
+                              elevationBottom,
+                              width: unifiedDef.dimensions.width,
+                              height: unifiedDef.dimensions.height,
+                              depth: unifiedDef.dimensions.depth,
+                            },
+                            metadata: {
+                              ...shape.metadata,
+                              placementX: newX,
+                              placementY: newY,
+                            },
+                          });
+                        } else {
+                          // No wall nearby - make freestanding (remove wallRelative)
+                          updateShape(shape.id, {
+                            wallRelative: undefined,
+                            metadata: {
+                              ...shape.metadata,
+                              placementX: newX,
+                              placementY: newY,
+                            },
+                          });
+                        }
+
+                        // Reset node position (store update will re-render)
+                        e.target.position({ x: posX, y: posY });
+                      }}
+                      onDblClick={(e) => {
+                        e.cancelBubble = true;
+                        // Open property panel on double-click
+                        setPropertyPanelShape(shape);
+                        setShowPropertyPanel(true);
+                      }}
+                      onContextMenu={(e) => {
+                        e.evt.preventDefault();
+                        e.cancelBubble = true;
+                        // Open comment popover on right-click
+                        const stage = e.target.getStage();
+                        if (stage) {
+                          const containerRect = stage.container().getBoundingClientRect();
+                          const pointer = stage.getPointerPosition();
+                          if (pointer) {
+                            setActiveComment({
+                              objectId: shape.id,
+                              position: {
+                                x: containerRect.left + pointer.x,
+                                y: containerRect.top + pointer.y,
+                              },
+                            });
+                          }
+                        }
+                      }}
+                      onMouseEnter={(e) => {
+                        const container = e.target.getStage()?.container();
+                        if (container) container.style.cursor = 'pointer';
+                        setHoveredShapeId(shape.id);
+                        setHoverMousePosition({ x: e.evt.clientX, y: e.evt.clientY });
+                      }}
+                      onMouseLeave={(e) => {
+                        const container = e.target.getStage()?.container();
+                        if (container) container.style.cursor = activeTool === 'select' ? 'default' : 'crosshair';
+                        setHoveredShapeId(null);
+                        setHoverMousePosition(null);
+                      }}
+                      onMouseMove={(e) => {
+                        if (hoveredShapeId === shape.id) {
+                          setHoverMousePosition({ x: e.evt.clientX, y: e.evt.clientY });
+                        }
+                      }}
+                      ref={(node) => {
+                        if (node) shapeRefs.current.set(shape.id, node);
+                      }}
+                    >
+                      {/* Hit area with shapeId for hover detection */}
+                      <Rect
+                        x={-width / 2 - 4 / viewState.zoom}
+                        y={-height / 2 - 4 / viewState.zoom}
+                        width={width + 8 / viewState.zoom}
+                        height={height + 8 / viewState.zoom}
+                        fill="transparent"
+                        shapeId={shape.id}
+                      />
+                      {/* Selection highlight */}
+                      {isSelected && (
+                        <Rect
+                          x={-width / 2 - 4 / viewState.zoom}
+                          y={-height / 2 - 4 / viewState.zoom}
+                          width={width + 8 / viewState.zoom}
+                          height={height + 8 / viewState.zoom}
+                          fill="rgba(59, 130, 246, 0.1)"
+                          stroke="#3b82f6"
+                          strokeWidth={2 / viewState.zoom}
+                          dash={[4 / viewState.zoom, 4 / viewState.zoom]}
+                          listening={false}
+                        />
+                      )}
+                      {/* Wall attachment indicator */}
+                      {isWallAttached && (
+                        <Line
+                          points={[0, -height/2 - 2/viewState.zoom, 0, height/2 + 2/viewState.zoom]}
+                          stroke={isSelected ? '#3b82f6' : '#9ca3af'}
+                          strokeWidth={3 / viewState.zoom}
+                          lineCap="round"
+                          listening={false}
+                        />
+                      )}
+                      {/* SVG Symbol */}
+                      <Group x={-width / 2} y={-height / 2}>
+                        {symbol.paths.map((path, index) => (
+                          <Path
+                            key={index}
+                            data={path.d}
+                            fill={path.fill || 'none'}
+                            stroke={isSelected ? '#3b82f6' : (path.stroke || '#374151')}
+                            strokeWidth={(path.strokeWidth || 2) * Math.min(scaleX, scaleY)}
+                            scaleX={scaleX}
+                            scaleY={scaleY}
+                            listening={false}
+                            perfectDrawEnabled={false}
+                          />
+                        ))}
+                      </Group>
+                    </Group>
+                  );
+                }
               }
               if (shape.metadata?.isObjectLibrary) {
                 return (<ObjectLibraryShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} />);
@@ -4219,10 +5349,190 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           })()}
           </Group>
 
+
           {/* Transformer removed - shapes handle their own selection visual (blue stroke) */}
           {/* Multi-select dragging handled by unified drag system */}
+
+          {/* Comment indicators - blue badges on shapes with comments */}
+          <Group>
+            {currentShapes.map((shape) => {
+              const count = commentCounts[shape.id];
+              if (!count || count === 0) return null;
+              if (!shape.coordinates) return null;
+
+              const isResolved = resolvedStatus[shape.id];
+
+              // Calculate position based on shape type
+              let indicatorX: number | null = null;
+              let indicatorY: number | null = null;
+
+              try {
+                if (shape.type === 'room') {
+                  const coords = shape.coordinates as { points?: { x: number; y: number }[] };
+                  if (coords.points && coords.points.length > 0) {
+                    const xs = coords.points.map(p => p.x);
+                    const ys = coords.points.map(p => p.y);
+                    indicatorX = Math.max(...xs);
+                    indicatorY = Math.min(...ys);
+                  }
+                } else if (shape.type === 'wall' || shape.type === 'line') {
+                  const coords = shape.coordinates as { x1?: number; y1?: number; x2?: number; y2?: number };
+                  if (coords.x1 != null && coords.x2 != null && coords.y1 != null && coords.y2 != null) {
+                    indicatorX = Math.max(coords.x1, coords.x2);
+                    indicatorY = Math.min(coords.y1, coords.y2);
+                  }
+                } else if (shape.type === 'rectangle') {
+                  const coords = shape.coordinates as { left?: number; x?: number; top?: number; y?: number; width?: number };
+                  const x = coords.left ?? coords.x ?? 0;
+                  const y = coords.top ?? coords.y ?? 0;
+                  const width = coords.width ?? 100;
+                  indicatorX = x + width;
+                  indicatorY = y;
+                } else if (shape.type === 'circle') {
+                  const coords = shape.coordinates as { cx?: number; x?: number; cy?: number; y?: number; radius?: number };
+                  const cx = coords.cx ?? coords.x ?? 0;
+                  const cy = coords.cy ?? coords.y ?? 0;
+                  const r = coords.radius ?? 50;
+                  indicatorX = cx + r * 0.7;
+                  indicatorY = cy - r * 0.7;
+                } else if (shape.type === 'text') {
+                  const coords = shape.coordinates as { x?: number; y?: number };
+                  indicatorX = (coords.x ?? 0) + 50;
+                  indicatorY = (coords.y ?? 0) - 10;
+                } else if (shape.type === 'freehand' || shape.type === 'polygon') {
+                  // Handle unified objects (SVG-based library objects with wallRelative)
+                  if (shape.metadata?.isUnifiedObject && shape.metadata?.unifiedObjectId) {
+                    const unifiedDef = getUnifiedObjectById(shape.metadata.unifiedObjectId as string);
+                    const scale = (shape.metadata.scale as number) || 1;
+                    let posX = (shape.metadata.placementX as number) || 0;
+                    let posY = (shape.metadata.placementY as number) || 0;
+
+                    // If object has wallRelative data, calculate position from wall
+                    if (shape.wallRelative?.wallId) {
+                      const wall = shapes.find(s => s.id === shape.wallRelative?.wallId);
+                      if (wall) {
+                        const wallCoords = wall.coordinates as { x1: number; y1: number; x2: number; y2: number };
+                        if (wallCoords && typeof wallCoords.x1 === 'number') {
+                          const dx = wallCoords.x2 - wallCoords.x1;
+                          const dy = wallCoords.y2 - wallCoords.y1;
+                          const wallLengthPx = Math.sqrt(dx * dx + dy * dy);
+                          const unitX = dx / wallLengthPx;
+                          const unitY = dy / wallLengthPx;
+                          const normalX = -unitY;
+                          const normalY = unitX;
+                          const distAlongPx = (shape.wallRelative.distanceFromWallStart + shape.wallRelative.width / 2) * scaleSettings.pixelsPerMm;
+                          const perpOffsetPx = (shape.wallRelative.perpendicularOffset + shape.wallRelative.depth / 2) * scaleSettings.pixelsPerMm;
+                          posX = wallCoords.x1 + distAlongPx * unitX + perpOffsetPx * normalX;
+                          posY = wallCoords.y1 + distAlongPx * unitY + perpOffsetPx * normalY;
+                        }
+                      }
+                    }
+
+                    // Position badge at top-right of the object
+                    const width = unifiedDef ? unifiedDef.dimensions.width * scaleSettings.pixelsPerMm * scale : 40;
+                    indicatorX = posX + width / 2;
+                    indicatorY = posY - width / 2;
+                  } else {
+                    // Standard freehand/polygon with points
+                    const coords = shape.coordinates as { points?: { x: number; y: number }[] };
+                    if (coords.points && coords.points.length > 0) {
+                      const xs = coords.points.map(p => p.x);
+                      const ys = coords.points.map(p => p.y);
+                      indicatorX = Math.max(...xs);
+                      indicatorY = Math.min(...ys);
+                    }
+                  }
+                }
+              } catch {
+                return null; // Skip if calculation fails
+              }
+
+              // Skip if position couldn't be calculated
+              if (indicatorX == null || indicatorY == null || !isFinite(indicatorX) || !isFinite(indicatorY)) {
+                return null;
+              }
+
+              const badgeSize = 18 / viewState.zoom;
+              const fontSize = 10 / viewState.zoom;
+
+              return (
+                <Group
+                  key={`comment-${shape.id}`}
+                  x={indicatorX}
+                  y={indicatorY - badgeSize / 2}
+                  onClick={(e) => {
+                    e.cancelBubble = true;
+                    const stage = e.target.getStage();
+                    if (stage) {
+                      const containerRect = stage.container().getBoundingClientRect();
+                      const pointer = stage.getPointerPosition();
+                      if (pointer) {
+                        handleOpenComments(shape.id, containerRect.left + pointer.x, containerRect.top + pointer.y);
+                      }
+                    }
+                  }}
+                  onMouseEnter={(e) => {
+                    const container = e.target.getStage()?.container();
+                    if (container) container.style.cursor = 'pointer';
+                  }}
+                  onMouseLeave={(e) => {
+                    const container = e.target.getStage()?.container();
+                    if (container) container.style.cursor = 'default';
+                  }}
+                >
+                  <Rect
+                    x={0}
+                    y={0}
+                    width={badgeSize}
+                    height={badgeSize}
+                    fill={isResolved ? '#22c55e' : '#3b82f6'}
+                    cornerRadius={badgeSize / 2}
+                    shadowColor="#000"
+                    shadowBlur={3 / viewState.zoom}
+                    shadowOpacity={0.3}
+                  />
+                  <KonvaText
+                    x={isResolved ? badgeSize * 0.2 : (count > 9 ? badgeSize * 0.15 : badgeSize * 0.35)}
+                    y={isResolved ? badgeSize * 0.15 : badgeSize * 0.2}
+                    text={isResolved ? '✓' : (count > 9 ? '9+' : String(count))}
+                    fontSize={isResolved ? fontSize * 1.1 : fontSize}
+                    fontStyle="bold"
+                    fill="white"
+                  />
+                </Group>
+              );
+            })}
+          </Group>
         </Layer>
       </Stage>
+
+      {/* CAD-style numeric input overlay - shows typed length during wall drawing */}
+      {showNumericInput && isDrawing && currentDrawingPoints.length > 0 && (
+        <div
+          style={{
+            position: 'fixed',
+            left: currentMousePosRef.current.x * viewState.zoom + viewState.panX + 20,
+            top: currentMousePosRef.current.y * viewState.zoom + viewState.panY - 30,
+            background: '#1e293b',
+            color: '#fff',
+            padding: '6px 12px',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+            fontWeight: 600,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+            pointerEvents: 'none',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+          }}
+        >
+          <span style={{ color: '#60a5fa' }}>{numericInput || '0'}</span>
+          <span style={{ color: '#94a3b8', fontSize: '12px' }}>mm</span>
+          <span style={{ color: '#475569', fontSize: '11px', marginLeft: '8px' }}>Enter ↵</span>
+        </div>
+      )}
 
       {/* Minimap - Floating overview in bottom-right */}
       <Minimap
@@ -4280,6 +5590,13 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           selectionCount={selectedShapeIds.length}
           selectionType={selectedShapeIds.length > 0 ? currentShapes.find(s => s.id === selectedShapeIds[0])?.type : undefined}
           hasRoomInSelection={selectedShapeIds.some(id => currentShapes.find(s => s.id === id)?.type === 'room')}
+          hasWallInSelection={selectedShapeIds.some(id => {
+            const shape = currentShapes.find(s => s.id === id);
+            return shape?.type === 'wall' || shape?.type === 'line';
+          })}
+          onAddComment={selectedShapeIds.length === 1 ? () => handleOpenComments() : undefined}
+          commentCount={selectedShapeIds.length === 1 ? commentCounts[selectedShapeIds[0]] : undefined}
+          isCommentResolved={selectedShapeIds.length === 1 ? resolvedStatus[selectedShapeIds[0]] : undefined}
           onShowProperties={() => {
             // Find the selected shape(s) and open property panel
             if (selectedShapeIds.length > 0) {
@@ -4335,24 +5652,67 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
 
             if (selectedRooms.length > 0) {
               const { wallThicknessMM, wallHeightMM } = getAdminDefaults();
-              let totalWallsCreated = 0;
 
-              selectedRooms.forEach(roomShape => {
-                const walls = generateWallsFromRoom(roomShape, uuidv4, {
-                  heightMM: wallHeightMM,
-                  thicknessMM: wallThicknessMM,
-                  planId: currentPlanId || undefined,
-                });
-                walls.forEach(wall => addShape(wall));
-                totalWallsCreated += walls.length;
-              });
+              // Get existing walls to avoid duplicates
+              const existingWalls = currentShapes.filter(s => s.type === 'wall' || s.type === 'line');
 
-              if (totalWallsCreated > 0) {
+              // Generate walls with automatic deduplication
+              // This prevents duplicate walls where rooms share edges
+              const walls = generateWallsFromRooms(selectedRooms, uuidv4, {
+                heightMM: wallHeightMM,
+                thicknessMM: wallThicknessMM,
+                planId: currentPlanId || undefined,
+              }, existingWalls);
+
+              walls.forEach(wall => addShape(wall));
+
+              if (walls.length > 0) {
                 const roomText = selectedRooms.length === 1 ? 'rummet' : `${selectedRooms.length} rum`;
-                toast.success(`${totalWallsCreated} väggar skapade runt ${roomText}`);
+                const dedupNote = selectedRooms.length > 1 ? ' (utan dubbletter)' : '';
+                toast.success(`${walls.length} väggar skapade runt ${roomText}${dedupNote}`);
               }
             }
           }}
+          onViewElevation={() => {
+            // Find selected room or wall
+            if (selectedShapeIds.length > 0) {
+              const firstSelected = currentShapes.find(s => s.id === selectedShapeIds[0]);
+              if (!firstSelected) return;
+
+              // If a room is selected, show room-centric elevation view
+              if (firstSelected.type === 'room') {
+                setElevationInitialWallId(undefined); // No specific wall
+                setRoomElevationShape(firstSelected);
+                return;
+              }
+
+              // If a wall is selected, show wall-centric elevation view
+              // This shows the entire "logical wall" - all collinear segments plus openings
+              if (firstSelected.type === 'wall' || firstSelected.type === 'line') {
+                setWallElevationId(firstSelected.id);
+              }
+            }
+          }}
+        />
+      )}
+
+      {/* Hover info tooltip - shows dimensions on hover (BIM/CAD standard) */}
+      <HoverInfoTooltip
+        shape={hoveredShapeId ? currentShapes.find(s => s.id === hoveredShapeId) || null : null}
+        mousePosition={hoverMousePosition}
+        unit={projectSettings.unit}
+      />
+
+      {/* Inline Comments Popover */}
+      {activeComment && (
+        <InlineCommentPopover
+          objectId={activeComment.objectId}
+          projectId={currentProjectId}
+          position={activeComment.position}
+          onClose={handleCloseComments}
+          onCommentCountChange={(count) => handleCommentCountChange(activeComment.objectId, count)}
+          onResolvedChange={(isResolved) => handleResolvedChange(activeComment.objectId, isResolved)}
+          isResolved={resolvedStatus[activeComment.objectId] || false}
         />
       )}
     </div>

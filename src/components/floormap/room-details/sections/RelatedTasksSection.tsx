@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import TaskDetailDialog from "@/components/project/TaskDetailDialog";
 
 interface Task {
   id: string;
@@ -30,17 +31,6 @@ interface Task {
   priority: string;
   assigned_to_stakeholder_id: string | null;
 }
-
-const ALL_STATUSES = [
-  "ideas",
-  "to_do",
-  "in_progress",
-  "on_hold",
-  "completed",
-  "scrapped",
-] as const;
-
-const DEFAULT_HIDDEN = new Set(["completed", "scrapped"]);
 
 const statusKey = (s: string) => {
   const map: Record<string, string> = {
@@ -75,9 +65,10 @@ export function RelatedTasksSection({ roomId, projectId }: RelatedTasksSectionPr
   const { t } = useTranslation();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeStatuses, setActiveStatuses] = useState<Set<string>>(
-    () => new Set(ALL_STATUSES.filter((s) => !DEFAULT_HIDDEN.has(s)))
-  );
+
+  // Task detail dialog state
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   // Task form state
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -161,22 +152,10 @@ export function RelatedTasksSection({ roomId, projectId }: RelatedTasksSectionPr
     }
   };
 
-  const toggleStatus = (status: string) => {
-    setActiveStatuses((prev) => {
-      const next = new Set(prev);
-      if (next.has(status)) {
-        next.delete(status);
-      } else {
-        next.add(status);
-      }
-      return next;
-    });
+  const handleTaskClick = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    setDetailDialogOpen(true);
   };
-
-  const filtered = useMemo(
-    () => tasks.filter((task) => activeStatuses.has(task.status)),
-    [tasks, activeStatuses]
-  );
 
   if (loading) {
     return <p className="text-sm text-muted-foreground py-2">{t('rooms.loadingTasks')}</p>;
@@ -186,44 +165,29 @@ export function RelatedTasksSection({ roomId, projectId }: RelatedTasksSectionPr
     <>
       <div className="space-y-3">
         {/* Header with Create button */}
-        <div className="flex items-center justify-between">
-          <div className="flex flex-wrap gap-1.5 flex-1">
-            {ALL_STATUSES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => toggleStatus(s)}
-                className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
-                  activeStatuses.has(s)
-                    ? getStatusColor(s)
-                    : "bg-transparent text-muted-foreground border-dashed border-muted-foreground/40"
-                }`}
-              >
-                {t(`statuses.${statusKey(s)}`)}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center justify-end">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setTaskDialogOpen(true)}
-            className="ml-2 shrink-0"
           >
             <Plus className="h-3 w-3 mr-1" />
             {t('common.create')}
           </Button>
         </div>
 
-        {filtered.length === 0 ? (
+        {tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2">
-            {tasks.length === 0
-              ? t('rooms.noTasksForRoom')
-              : t('rooms.noTasksMatchFilter')}
+            {t('rooms.noTasksForRoom')}
           </p>
         ) : (
           <ul className="space-y-1.5">
-            {filtered.map((task) => (
-              <li key={task.id} className="flex items-center gap-2 text-sm">
+            {tasks.map((task) => (
+              <li
+                key={task.id}
+                className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1.5 -mx-2 transition-colors"
+                onClick={() => handleTaskClick(task.id)}
+              >
                 <Badge variant="outline" className={`text-[10px] shrink-0 ${getStatusColor(task.status)}`}>
                   {t(`statuses.${statusKey(task.status)}`)}
                 </Badge>
@@ -233,6 +197,16 @@ export function RelatedTasksSection({ roomId, projectId }: RelatedTasksSectionPr
           </ul>
         )}
       </div>
+
+      {/* Task Detail Dialog */}
+      <TaskDetailDialog
+        taskId={selectedTaskId}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        onEdit={() => {
+          // Could navigate to full task edit page if needed
+        }}
+      />
 
       {/* Create Task Dialog */}
       <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>

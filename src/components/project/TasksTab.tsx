@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { analytics, AnalyticsEvents } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -28,6 +29,8 @@ import { CommentsSection } from "@/components/comments/CommentsSection";
 import { TaskFilesList } from "./TaskFilesList";
 import { Separator } from "@/components/ui/separator";
 import ProjectTimeline from "./ProjectTimeline";
+import { ProjectLockBanner } from "./ProjectLockBanner";
+import { useProjectLock } from "@/hooks/useProjectLock";
 
 interface ChecklistItem {
   id: string;
@@ -123,7 +126,8 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const { toast } = useToast();
-  
+  const { lockStatus } = useProjectLock(projectId);
+
   // Filters (multi-select: empty set = show all)
   const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set());
   const [filterAssignees, setFilterAssignees] = useState<Set<string>>(new Set());
@@ -397,6 +401,16 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
         });
 
       if (error) throw error;
+
+      // Track task creation
+      analytics.capture(AnalyticsEvents.TASK_CREATED, {
+        has_description: Boolean(newTaskDescription),
+        has_room: Boolean(newTaskRoomId),
+        has_assignee: Boolean(newTaskAssignee && newTaskAssignee !== "unassigned"),
+        has_dates: Boolean(newTaskStartDate || newTaskFinishDate),
+        has_budget: Boolean(newTaskBudget),
+        priority: newTaskPriority,
+      });
 
       toast({
         title: t('tasks.taskCreated'),
@@ -689,13 +703,15 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
   };
 
   // Group tasks by status (supporting both old and new status values)
-  const statusOrder = ['planned', 'to_do', 'in_progress', 'waiting', 'completed', 'cancelled'] as const;
+  // Note: 'done' is a legacy status that maps to 'completed'
+  const statusOrder = ['planned', 'to_do', 'in_progress', 'waiting', 'completed', 'done', 'cancelled'] as const;
   const statusLabels: Record<string, string> = {
     planned: t('statuses.planned', 'Planned'),
     to_do: t('statuses.toDo'),
     in_progress: t('statuses.inProgress'),
     waiting: t('statuses.waiting', 'Waiting'),
     completed: t('statuses.completed'),
+    done: t('statuses.completed'), // Legacy status, same as completed
     cancelled: t('statuses.cancelled', 'Cancelled'),
   };
   
@@ -965,6 +981,8 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
 
   return (
     <div className="space-y-6">
+      <ProjectLockBanner lockStatus={lockStatus} />
+
       {/* Collapsible Timeline Section */}
       {showTimeline && (
         <Collapsible open={timelineOpen} onOpenChange={setTimelineOpen}>
@@ -2057,14 +2075,17 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
         <Card className="text-center py-12 border-dashed">
           <CardContent>
             <CheckCircle2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">{t('tasks.noTasksYet')}</h3>
+            <h3 className="text-lg font-medium mb-2">{t('tasks.noTasks')}</h3>
             <p className="text-muted-foreground mb-4">
               {t('tasks.noTasksDescription')}
             </p>
-            <Button onClick={() => setDialogOpen(true)}>
+            <Button onClick={() => setDialogOpen(true)} className="mb-4">
               <Plus className="h-4 w-4 mr-2" />
               {t('tasks.addFirstTask')}
             </Button>
+            <p className="text-xs text-muted-foreground">
+              {t('tasks.emptyStateTip', 'Tip: Link tasks to rooms for better organization')}
+            </p>
           </CardContent>
         </Card>
       ) : filteredTasks.length === 0 ? (

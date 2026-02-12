@@ -34,6 +34,11 @@ export const RoomShape = React.memo<RoomShapeProps>(({
   const { pixelsPerMm } = scaleSettings;
   const { snapEnabled, showDimensions, unit: displayUnit } = projectSettings;
 
+  // Get active tool to disable selection during drawing
+  const activeTool = useFloorMapStore((state) => state.activeTool);
+  const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'room', 'bezier'];
+  const isDrawingMode = drawingTools.includes(activeTool);
+
   const groupRef = useRef<Konva.Group>(null);
 
   // Store ref in shapeRefsMap for unified multi-select drag
@@ -118,7 +123,8 @@ export const RoomShape = React.memo<RoomShapeProps>(({
     return matched;
   }, [points, allShapes, showDimensions, shape.id]);
 
-  const isDraggable = !isReadOnly;
+  const isDraggable = !isReadOnly && !isDrawingMode;
+  const canSelect = !isDrawingMode;
 
   // Format measurement according to display unit preference
   const formatMeasurement = (lengthInMM: number, unit: 'mm' | 'cm' | 'm'): string => {
@@ -157,25 +163,26 @@ export const RoomShape = React.memo<RoomShapeProps>(({
       name={shape.id}
       shapeId={shape.id}
       draggable={isDraggable}
-      onClick={(e) => {
+      listening={canSelect}
+      onClick={canSelect ? (e) => {
         e.cancelBubble = true;
         if (onSelect) onSelect(e);
-      }}
-      onDblClick={(e) => {
+      } : undefined}
+      onDblClick={canSelect ? (e) => {
         e.cancelBubble = true;
         if (onDoubleClick) {
           onDoubleClick();
         }
-      }}
-      onTap={(e) => {
+      } : undefined}
+      onTap={canSelect ? (e) => {
         e.cancelBubble = true;
         if (isReadOnly && onDoubleClick) {
           onDoubleClick();
         } else if (onSelect) {
           onSelect(e);
         }
-      }}
-      {...(isReadOnly ? {} : createUnifiedDragHandlers(shape.id))}
+      } : undefined}
+      {...(isReadOnly || isDrawingMode ? {} : createUnifiedDragHandlers(shape.id))}
     >
       {/* Room polygon - filled area is clickable */}
       <Line

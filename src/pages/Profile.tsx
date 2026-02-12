@@ -372,16 +372,6 @@ const Profile = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="role">{t('common.role')}</Label>
-                  <Input
-                    id="role"
-                    value={profile?.role || "homeowner"}
-                    disabled
-                    className="bg-muted capitalize"
-                  />
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="language">{t('profile.defaultLanguage')}</Label>
                   <Select value={languagePreference} onValueChange={setLanguagePreference}>
                     <SelectTrigger id="language">

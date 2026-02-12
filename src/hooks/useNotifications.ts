@@ -95,9 +95,9 @@ export function useNotifications() {
     // Shared select for comment queries (includes task/material name + project_id fallback)
     const commentSelect = `
       id, content, created_at, created_by_user_id, task_id, material_id, project_id,
-      creator:profiles!comments_created_by_user_id_fkey(name),
-      task:tasks!comments_task_id_fkey(title, project_id),
-      material:materials!comments_material_id_fkey(name, project_id)
+      creator:profiles(name),
+      task:tasks(title, project_id),
+      material:materials(name, project_id)
     `;
 
     type CommentRow = {

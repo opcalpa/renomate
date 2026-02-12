@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/react";
 import App from "./App.tsx";
 import "./index.css";
 import { supabase } from "./integrations/supabase/client";
+import { analytics } from "./lib/analytics";
 
 // Initialize Sentry for error tracking (only in production or when DSN is set)
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
@@ -25,6 +26,9 @@ if (sentryDsn) {
     replaysOnErrorSampleRate: 1.0,
   });
 }
+
+// Initialize PostHog analytics
+analytics.init();
 
 // Expose supabase globally for debugging
 if (typeof window !== 'undefined') {

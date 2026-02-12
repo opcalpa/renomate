@@ -300,10 +300,10 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
           images,
           created_at,
           created_by_user_id,
-          creator:profiles!comments_created_by_user_id_fkey(name, email),
+          creator:profiles(name, email),
           mentions:comment_mentions(
             mentioned_user_id,
-            mentioned_user:profiles!comment_mentions_mentioned_user_id_fkey(name)
+            mentioned_user:profiles(name)
           )
         `)
         .order("created_at", { ascending: true });

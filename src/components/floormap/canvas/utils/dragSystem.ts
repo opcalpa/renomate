@@ -5,6 +5,7 @@
  * - During drag: Konva moves the node naturally
  * - On drag end: Read delta, apply snap, update store
  * - Multi-select: Apply same delta to all selected shapes
+ * - Option/Alt-drag: Duplicate shape instead of moving
  */
 
 import Konva from 'konva';
@@ -13,6 +14,8 @@ import { useFloorMapStore } from '../../store';
 import { FloorMapShape } from '../../types';
 import { findNearestWall, projectOntoWall, splitWall, isOpeningType, findMergeableWalls, findWallGap } from '../../utils/wallSnap';
 import { snapObjectToWall as snapToWallRelative, syncWallRelativeFromFloorplan } from './viewSync';
+import { findNearestWallForPoint, getWallGeometry } from './wallCoordinates';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Apply delta to shape coordinates based on shape type
@@ -135,6 +138,34 @@ export function setDragSystemReadOnly(readOnly: boolean) {
 }
 
 /**
+ * Create a duplicate of a shape with a new ID
+ */
+function duplicateShape(shape: FloorMapShape): FloorMapShape {
+  const newId = uuidv4();
+  const duplicate: FloorMapShape = {
+    ...shape,
+    id: newId,
+    // Clear any wall attachment on duplicate
+    attachedToWall: undefined,
+    positionOnWall: undefined,
+    // Clear group membership - duplicate is independent
+    groupId: undefined,
+  };
+
+  // Deep copy coordinates to avoid reference issues
+  if (shape.coordinates) {
+    duplicate.coordinates = JSON.parse(JSON.stringify(shape.coordinates));
+  }
+
+  // Deep copy metadata if present
+  if (shape.metadata) {
+    duplicate.metadata = JSON.parse(JSON.stringify(shape.metadata));
+  }
+
+  return duplicate;
+}
+
+/**
  * Helper to get all shapes that should move together
  * Handles both explicit selection and group membership
  */
@@ -168,6 +199,7 @@ function getShapesToMoveWithShape(shapeId: string): string[] {
 /**
  * Creates simple drag handlers for a shape
  * Works with both single shapes, multi-select, and grouped templates
+ * Supports Option/Alt-drag to duplicate shapes
  */
 export function createDragHandlers(shapeId: string) {
   // Cache the shapes to move during a drag operation
@@ -175,6 +207,10 @@ export function createDragHandlers(shapeId: string) {
   // Store start positions to calculate true drag deltas
   let dragStartPos = { x: 0, y: 0 };
   let otherStartPositions = new Map<string, { x: number; y: number }>();
+  // Option-drag duplication state
+  let isDuplicating = false;
+  let duplicatedShapeIds: string[] = [];
+  let originalToNewIdMap = new Map<string, string>();
 
   return {
     draggable: !_isReadOnly,
@@ -187,6 +223,35 @@ export function createDragHandlers(shapeId: string) {
 
       // Determine which shapes should move together
       shapesToMoveDuringDrag = getShapesToMoveWithShape(shapeId);
+
+      // Detect Option (Mac) / Alt (Windows) key for duplicate-drag
+      const nativeEvent = e.evt;
+      isDuplicating = nativeEvent.altKey;
+      duplicatedShapeIds = [];
+      originalToNewIdMap.clear();
+
+      // If Option/Alt is held, create duplicates of all shapes being dragged
+      const state = useFloorMapStore.getState();
+      if (isDuplicating) {
+        const { shapes, addShape, setSelectedShapeIds } = state;
+        const newShapeIds: string[] = [];
+
+        shapesToMoveDuringDrag.forEach(id => {
+          const originalShape = shapes.find(s => s.id === id);
+          if (originalShape) {
+            const duplicate = duplicateShape(originalShape);
+            addShape(duplicate);
+            duplicatedShapeIds.push(duplicate.id);
+            originalToNewIdMap.set(id, duplicate.id);
+            newShapeIds.push(duplicate.id);
+          }
+        });
+
+        // Select the new duplicates
+        if (newShapeIds.length > 0) {
+          setSelectedShapeIds(newShapeIds);
+        }
+      }
 
       // Store start positions for other nodes in the drag group
       otherStartPositions.clear();
@@ -205,9 +270,8 @@ export function createDragHandlers(shapeId: string) {
       }
 
       // If this shape is part of a group, auto-select all group members
-      const state = useFloorMapStore.getState();
       const draggedShape = state.shapes.find(s => s.id === shapeId);
-      if (draggedShape?.groupId) {
+      if (draggedShape?.groupId && !isDuplicating) {
         const groupShapeIds = state.shapes
           .filter(s => s.groupId === draggedShape.groupId)
           .map(s => s.id);
@@ -222,13 +286,13 @@ export function createDragHandlers(shapeId: string) {
     onDragMove: (e: KonvaEventObject<DragEvent>) => {
       e.cancelBubble = true;
 
+      const currentDelta = {
+        x: e.target.x() - dragStartPos.x,
+        y: e.target.y() - dragStartPos.y,
+      };
+
       // Move all shapes that should move together
       if (shapesToMoveDuringDrag.length > 1) {
-        const currentDelta = {
-          x: e.target.x() - dragStartPos.x,
-          y: e.target.y() - dragStartPos.y,
-        };
-
         // Move all other shapes visually by the same delta
         const stage = e.target.getStage();
         if (stage) {
@@ -246,14 +310,98 @@ export function createDragHandlers(shapeId: string) {
           });
         }
       }
+
+      // Wall snap preview for single shapes (symbols, openings)
+      if (shapesToMoveDuringDrag.length === 1) {
+        const state = useFloorMapStore.getState();
+        const { shapes, setWallSnapPreview } = state;
+        const draggedShape = shapes.find(s => s.id === shapeId);
+
+        if (draggedShape) {
+          const isGroupedShape = draggedShape.groupId != null;
+          // Check for various object types that can snap to walls
+          const isSymbolOrOpening = draggedShape.type === 'symbol' ||
+                                     draggedShape.symbolType ||
+                                     isOpeningType(draggedShape.type) ||
+                                     draggedShape.wallRelative ||
+                                     draggedShape.metadata?.isUnifiedObject ||
+                                     draggedShape.objectCategory;
+
+          if (!isGroupedShape && isSymbolOrOpening) {
+            // Get object center position after delta
+            const coords = draggedShape.coordinates as Record<string, unknown>;
+            let centerX: number;
+            let centerY: number;
+
+            if ('x' in coords && 'width' in coords) {
+              centerX = (coords.x as number) + (coords.width as number) / 2 + currentDelta.x;
+              centerY = (coords.y as number) + ((coords.height as number) || (coords.width as number)) / 2 + currentDelta.y;
+            } else if ('x1' in coords) {
+              // Opening types (door, window)
+              centerX = ((coords.x1 as number) + (coords.x2 as number)) / 2 + currentDelta.x;
+              centerY = ((coords.y1 as number) + (coords.y2 as number)) / 2 + currentDelta.y;
+            } else if ('points' in coords) {
+              // Freehand/polygon shapes - calculate bounding box center
+              const points = coords.points as Array<{ x: number; y: number }>;
+              if (points && points.length > 0) {
+                const minX = Math.min(...points.map(p => p.x));
+                const maxX = Math.max(...points.map(p => p.x));
+                const minY = Math.min(...points.map(p => p.y));
+                const maxY = Math.max(...points.map(p => p.y));
+                centerX = (minX + maxX) / 2 + currentDelta.x;
+                centerY = (minY + maxY) / 2 + currentDelta.y;
+              } else {
+                setWallSnapPreview(null);
+                return;
+              }
+            } else {
+              setWallSnapPreview(null);
+              return;
+            }
+
+            // Find nearest wall
+            const walls = shapes.filter(
+              s => (s.type === 'wall' || s.type === 'line') &&
+                   s.shapeViewMode !== 'elevation' &&
+                   s.id !== shapeId
+            );
+
+            const SNAP_THRESHOLD = 500; // 500mm = 50cm
+            const nearest = findNearestWallForPoint(centerX, centerY, walls, SNAP_THRESHOLD);
+
+            if (nearest) {
+              const geom = getWallGeometry(nearest.wall);
+              if (geom) {
+                // Calculate snap point on wall
+                const snapX = geom.x1 + nearest.t * (geom.x2 - geom.x1);
+                const snapY = geom.y1 + nearest.t * (geom.y2 - geom.y1);
+                const snapRotation = (geom.angle * 180 / Math.PI);
+
+                setWallSnapPreview({
+                  wallId: nearest.wall.id,
+                  snapPoint: { x: snapX, y: snapY },
+                  snapRotation,
+                });
+                return;
+              }
+            }
+
+            // No wall nearby, clear preview
+            setWallSnapPreview(null);
+          }
+        }
+      }
     },
 
     onDragEnd: (e: KonvaEventObject<DragEvent>) => {
       e.cancelBubble = true;
 
       const state = useFloorMapStore.getState();
-      const { shapes, projectSettings, updateShapes } = state;
+      const { shapes, projectSettings, updateShapes, setWallSnapPreview } = state;
       const { snapEnabled, gridInterval } = projectSettings;
+
+      // Clear wall snap preview
+      setWallSnapPreview(null);
 
       // Calculate actual drag delta (not absolute position)
       // Shapes like ImageShape render at (coords.x, coords.y), so e.target.x()
@@ -276,10 +424,11 @@ export function createDragHandlers(shapeId: string) {
         : [shapeId];
 
       // Check for wall snap: single opening shape dragged near a wall
-      // Skip wall snap for grouped shapes (template objects)
+      // Skip wall snap for grouped shapes (template objects) and when duplicating
       const draggedShape = shapes.find(s => s.id === shapeId);
       const isGroupedShape = draggedShape?.groupId != null;
       if (
+        !isDuplicating &&
         shapesToUpdate.length === 1 &&
         draggedShape &&
         isOpeningType(draggedShape.type) &&
@@ -388,7 +537,9 @@ export function createDragHandlers(shapeId: string) {
 
       // Check for wall-relative snap: symbol/library shapes near a wall
       // This enables synced positioning in elevation view
+      // Skip when duplicating
       if (
+        !isDuplicating &&
         shapesToUpdate.length === 1 &&
         draggedShape &&
         (draggedShape.type === 'symbol' || draggedShape.symbolType)
@@ -428,7 +579,8 @@ export function createDragHandlers(shapeId: string) {
       }
 
       // If shape has wallRelative data, update it based on new position
-      if (draggedShape?.wallRelative) {
+      // Skip when duplicating
+      if (!isDuplicating && draggedShape?.wallRelative) {
         const walls = shapes.filter(
           s => (s.type === 'wall' || s.type === 'line') &&
                s.shapeViewMode !== 'elevation'
@@ -462,7 +614,10 @@ export function createDragHandlers(shapeId: string) {
       // Build updates for all affected shapes
       const updates: Array<{ id: string; updates: Partial<FloorMapShape> }> = [];
 
-      shapesToUpdate.forEach(id => {
+      // If duplicating, update the duplicated shapes instead of originals
+      const idsToUpdate = isDuplicating ? duplicatedShapeIds : shapesToUpdate;
+
+      idsToUpdate.forEach(id => {
         const shape = shapes.find(s => s.id === id);
         if (shape) {
           const shapeUpdates = applyDelta(shape, deltaX, deltaY);
@@ -478,6 +633,7 @@ export function createDragHandlers(shapeId: string) {
       }
 
       // Reset all moved nodes to position 0
+      // When duplicating, reset original nodes (they didn't actually move in store)
       const stage = e.target.getStage();
       if (stage) {
         shapesToUpdate.forEach(id => {
@@ -490,6 +646,11 @@ export function createDragHandlers(shapeId: string) {
 
       // Also reset the dragged node (in case it wasn't found above)
       e.target.position(dragStartPos);
+
+      // Clean up duplication state
+      isDuplicating = false;
+      duplicatedShapeIds = [];
+      originalToNewIdMap.clear();
     }
   };
 }

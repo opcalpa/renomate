@@ -24,6 +24,8 @@ import FindProfessionals from "./pages/FindProfessionals";
 import CreateQuote from "./pages/CreateQuote";
 import ViewQuote from "./pages/ViewQuote";
 import ClientRegistry from "./pages/ClientRegistry";
+import CustomerIntake from "./pages/CustomerIntake";
+import IntakeRequests from "./pages/IntakeRequests";
 import { HelpBot } from "./components/HelpBot";
 import { BetaBanner } from "./components/BetaBanner";
 
@@ -73,6 +75,8 @@ const App = () => (
           <Route path="/quotes/new" element={<CreateQuote />} />
           <Route path="/quotes/:quoteId" element={<ViewQuote />} />
           <Route path="/clients" element={<ClientRegistry />} />
+          <Route path="/intake/:token" element={<CustomerIntake />} />
+          <Route path="/intake-requests" element={<IntakeRequests />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -6,8 +6,9 @@ import { useProfileLanguage } from "@/hooks/useProfileLanguage";
 import { useProjectPermissions } from "@/hooks/useProjectPermissions";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ChevronDown, FolderOpen, Lock, BookOpen, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, FolderOpen, Lock, BookOpen, Loader2, PartyPopper, X } from "lucide-react";
 import { isDemoProject, refreshDemoProjectDates } from "@/services/demoProjectService";
 import { ProjectDetailSkeleton } from "@/components/ui/skeleton-screens";
 import { WithHotspot } from "@/components/onboarding/Hotspot";
@@ -164,6 +165,18 @@ const ProjectDetail = () => {
   const [roomsData, setRoomsData] = useState<any[]>([]);
   const [roomsLoading, setRoomsLoading] = useState(true);
   const [contractorRoomIds, setContractorRoomIds] = useState<string[]>([]);
+
+  // Welcome banner for invited users
+  const isInvitedWelcome = searchParams.get("welcome") === "invited";
+  const welcomeDismissKey = `renomate_invited_welcome_dismissed_${projectId}`;
+  const [showInvitedWelcome, setShowInvitedWelcome] = useState(() => {
+    if (!isInvitedWelcome) return false;
+    return !localStorage.getItem(welcomeDismissKey);
+  });
+  const dismissInvitedWelcome = () => {
+    setShowInvitedWelcome(false);
+    localStorage.setItem(welcomeDismissKey, "true");
+  };
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -768,6 +781,24 @@ const ProjectDetail = () => {
             </div>
           ) : (
             <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
+              {showInvitedWelcome && (
+                <Card className="mb-4 border-primary/20 bg-primary/5">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <PartyPopper className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <p className="font-medium">{t("onboarding.invitedWelcome.title", "Welcome to your project!")}</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {t("onboarding.invitedWelcome.description", "Here you can follow the progress, view photos, and communicate with your project team.")}
+                        </p>
+                      </div>
+                      <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={dismissInvitedWelcome}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               <OverviewTab
                 project={project}
                 onProjectUpdate={loadData}
@@ -787,6 +818,10 @@ const ProjectDetail = () => {
                 }}
                 onNavigateToBudget={() => {
                   setActiveTab('budget');
+                  setActiveSubTab(null);
+                }}
+                onNavigateToFiles={() => {
+                  setActiveTab('files');
                   setActiveSubTab(null);
                 }}
               />

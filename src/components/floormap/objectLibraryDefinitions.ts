@@ -41,16 +41,48 @@ export interface ObjectShape {
   opacity?: number;
 }
 
+// Asset URLs for 2D sprites and 3D models
+export interface ObjectAssets {
+  sprite2D?: string;        // URL to top-down PNG sprite for 2D view
+  model3D?: string;         // URL to GLTF model for 3D view
+  thumbnail?: string;       // URL for library preview image
+}
+
 export interface ObjectDefinition {
   id: string;
   name: string;
   category: 'bathroom' | 'kitchen' | 'furniture' | 'electrical' | 'doors' | 'windows' | 'stairs' | 'other';
   description: string;
-  defaultWidth: number; // mm
-  defaultHeight: number; // mm
+
+  // Floor plan dimensions (top-down view)
+  defaultWidth: number;     // mm (X in floor plan, along wall direction)
+  defaultHeight: number;    // mm (Y in floor plan = depth perpendicular to wall)
+  // Aliases for clarity - these map to the same values
+  floorplanWidth?: number;  // mm - width when viewed from above (alias for defaultWidth)
+  floorplanDepth?: number;  // mm - depth when viewed from above (alias for defaultHeight)
+
+  // Vector shape definitions (fallback when no sprite available)
   shapes: ObjectShape[];
   tags?: string[];
   icon?: string; // Emoji or simple text representation
+
+  // 3D properties for elevation view synchronization
+  elevationHeight?: number;    // mm vertical height in elevation view (default: same as defaultHeight)
+  elevationBottom?: number;    // mm from floor (default: 0 = sits on floor)
+  depth?: number;              // mm perpendicular to wall (default: same as defaultHeight)
+  height3D?: number;           // mm - vertical height for 3D view (alias for elevationHeight)
+  elevationFromFloor?: number; // mm - bottom of object from floor (alias for elevationBottom)
+
+  // Placement behavior
+  wallMountable?: boolean;     // Can attach to wall (default: true for kitchen/bathroom, false for furniture)
+  freestanding?: boolean;      // Can exist without wall attachment (default: false for kitchen, true for furniture)
+  snapToWall?: boolean;        // Auto-snap when placed near wall
+
+  // Object category for default elevation heights
+  objectCategory?: 'floor_cabinet' | 'wall_cabinet' | 'countertop' | 'appliance_floor' | 'appliance_wall' | 'decoration' | 'custom';
+
+  // Asset URLs for image/model-based rendering
+  assets?: ObjectAssets;
 }
 
 // ============================================================================
@@ -69,6 +101,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 500,
     defaultHeight: 700,
     icon: '🚽',
+    // 3D properties
+    elevationHeight: 400,    // Toilet height from floor
+    elevationBottom: 0,      // Sits on floor
+    depth: 700,              // Depth from wall
+    wallMountable: true,
+    freestanding: false,     // Must be against wall
+    objectCategory: 'floor_cabinet',
     shapes: [
       // Bowl (ellipse)
       {
@@ -115,6 +154,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 600,
     defaultHeight: 500,
     icon: '🚰',
+    // 3D properties
+    elevationHeight: 200,    // Basin height
+    elevationBottom: 850,    // Standard sink height from floor
+    depth: 500,
+    wallMountable: true,
+    freestanding: false,
+    objectCategory: 'floor_cabinet',
     shapes: [
       // Basin (ellipse)
       {
@@ -155,6 +201,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 1700,
     defaultHeight: 700,
     icon: '🛁',
+    // 3D properties
+    elevationHeight: 550,    // Bathtub rim height
+    elevationBottom: 0,      // Sits on floor
+    depth: 700,
+    wallMountable: true,
+    freestanding: false,     // Usually against wall
+    objectCategory: 'appliance_floor',
     shapes: [
       // Outer rectangle
       {
@@ -200,6 +253,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 900,
     defaultHeight: 900,
     icon: '🚿',
+    // 3D properties
+    elevationHeight: 2100,   // Full height shower enclosure
+    elevationBottom: 0,      // Starts at floor
+    depth: 900,
+    wallMountable: true,
+    freestanding: false,
+    objectCategory: 'custom',
     shapes: [
       // Shower tray (square)
       {
@@ -260,6 +320,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 600,
     defaultHeight: 600,
     icon: '🍳',
+    // 3D properties
+    elevationHeight: 50,     // Cooktop is thin, sits on countertop
+    elevationBottom: 850,    // At countertop height
+    depth: 600,
+    wallMountable: true,
+    freestanding: false,
+    objectCategory: 'countertop',
     shapes: [
       // Stove body (rectangle)
       {
@@ -323,6 +390,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 800,
     defaultHeight: 500,
     icon: '🚰',
+    // 3D properties
+    elevationHeight: 200,    // Sink basin depth
+    elevationBottom: 850,    // Countertop height
+    depth: 500,
+    wallMountable: true,
+    freestanding: false,
+    objectCategory: 'countertop',
     shapes: [
       // Main basin (rectangle with rounded corners approximation)
       {
@@ -374,6 +448,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 600,
     defaultHeight: 600,
     icon: '🧊',
+    // 3D properties
+    elevationHeight: 1800,   // Full height refrigerator
+    elevationBottom: 0,      // Sits on floor
+    depth: 600,
+    wallMountable: true,
+    freestanding: false,
+    objectCategory: 'appliance_floor',
     shapes: [
       // Outer body
       {
@@ -413,77 +494,306 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
 
   // ============================================================================
   // ELECTRICAL OBJECTS
+  // Swedish standard: outlets at 200mm, switches at 1000mm from floor
   // ============================================================================
   {
-    id: 'outlet_standard',
-    name: 'Eluttag (Standard)',
+    id: 'outlet_single',
+    name: 'Eluttag (Enkelt)',
     category: 'electrical',
-    description: 'Standard vägguttag 230V',
-    defaultWidth: 100,
-    defaultHeight: 100,
+    description: 'Standard vägguttag 230V, enkelt',
+    defaultWidth: 80,
+    defaultHeight: 80,
     icon: '⚡',
+    // 3D properties
+    elevationHeight: 80,     // Outlet face height
+    elevationBottom: 200,    // Swedish standard: 200mm from floor
+    depth: 50,
+    wallMountable: true,
+    freestanding: false,
+    objectCategory: 'electrical_outlet',
     shapes: [
-      // Outer circle
+      // Outer frame
+      {
+        type: 'rect',
+        x: 5,
+        y: 5,
+        width: 70,
+        height: 70,
+        stroke: '#374151',
+        strokeWidth: 2,
+        fill: '#f3f4f6',
+      },
+      // Inner circle (socket)
+      {
+        type: 'circle',
+        x: 40,
+        y: 40,
+        radius: 25,
+        stroke: '#374151',
+        strokeWidth: 1.5,
+        fill: '#ffffff',
+      },
+      // Two holes (live/neutral)
+      {
+        type: 'circle',
+        x: 30,
+        y: 40,
+        radius: 4,
+        stroke: '#374151',
+        strokeWidth: 1,
+        fill: '#374151',
+      },
       {
         type: 'circle',
         x: 50,
-        y: 50,
-        radius: 40,
-        stroke: '#000000',
-        strokeWidth: 2,
-        fill: 'transparent',
-      },
-      // Two holes (circles)
-      {
-        type: 'circle',
-        x: 35,
-        y: 50,
-        radius: 8,
-        stroke: '#000000',
+        y: 40,
+        radius: 4,
+        stroke: '#374151',
         strokeWidth: 1,
-        fill: '#000000',
-      },
-      {
-        type: 'circle',
-        x: 65,
-        y: 50,
-        radius: 8,
-        stroke: '#000000',
-        strokeWidth: 1,
-        fill: '#000000',
+        fill: '#374151',
       },
     ],
-    tags: ['outlet', 'eluttag', 'electrical', 'el'],
+    tags: ['outlet', 'eluttag', 'electrical', 'el', 'vägguttag'],
+  },
+  {
+    id: 'outlet_double',
+    name: 'Eluttag (Dubbelt)',
+    category: 'electrical',
+    description: 'Dubbelt vägguttag 230V',
+    defaultWidth: 150,
+    defaultHeight: 80,
+    icon: '⚡⚡',
+    // 3D properties
+    elevationHeight: 80,     // Outlet face height
+    elevationBottom: 200,    // Swedish standard: 200mm from floor
+    depth: 50,
+    wallMountable: true,
+    freestanding: false,
+    objectCategory: 'electrical_outlet',
+    shapes: [
+      // Outer frame
+      {
+        type: 'rect',
+        x: 5,
+        y: 5,
+        width: 140,
+        height: 70,
+        stroke: '#374151',
+        strokeWidth: 2,
+        fill: '#f3f4f6',
+      },
+      // Left socket circle
+      {
+        type: 'circle',
+        x: 40,
+        y: 40,
+        radius: 25,
+        stroke: '#374151',
+        strokeWidth: 1.5,
+        fill: '#ffffff',
+      },
+      // Left holes
+      {
+        type: 'circle',
+        x: 30,
+        y: 40,
+        radius: 4,
+        stroke: '#374151',
+        strokeWidth: 1,
+        fill: '#374151',
+      },
+      {
+        type: 'circle',
+        x: 50,
+        y: 40,
+        radius: 4,
+        stroke: '#374151',
+        strokeWidth: 1,
+        fill: '#374151',
+      },
+      // Right socket circle
+      {
+        type: 'circle',
+        x: 110,
+        y: 40,
+        radius: 25,
+        stroke: '#374151',
+        strokeWidth: 1.5,
+        fill: '#ffffff',
+      },
+      // Right holes
+      {
+        type: 'circle',
+        x: 100,
+        y: 40,
+        radius: 4,
+        stroke: '#374151',
+        strokeWidth: 1,
+        fill: '#374151',
+      },
+      {
+        type: 'circle',
+        x: 120,
+        y: 40,
+        radius: 4,
+        stroke: '#374151',
+        strokeWidth: 1,
+        fill: '#374151',
+      },
+    ],
+    tags: ['outlet', 'eluttag', 'electrical', 'el', 'dubbelt', 'vägguttag'],
+  },
+  {
+    id: 'outlet_kitchen',
+    name: 'Eluttag (Kök/Bänk)',
+    category: 'electrical',
+    description: 'Eluttag vid köks-bänk, 1100mm höjd',
+    defaultWidth: 80,
+    defaultHeight: 80,
+    icon: '⚡',
+    // 3D properties
+    elevationHeight: 80,
+    elevationBottom: 1100,   // Kitchen countertop height + margin
+    depth: 50,
+    wallMountable: true,
+    freestanding: false,
+    objectCategory: 'electrical_outlet',
+    shapes: [
+      // Same as single outlet
+      {
+        type: 'rect',
+        x: 5,
+        y: 5,
+        width: 70,
+        height: 70,
+        stroke: '#374151',
+        strokeWidth: 2,
+        fill: '#f3f4f6',
+      },
+      {
+        type: 'circle',
+        x: 40,
+        y: 40,
+        radius: 25,
+        stroke: '#374151',
+        strokeWidth: 1.5,
+        fill: '#ffffff',
+      },
+      {
+        type: 'circle',
+        x: 30,
+        y: 40,
+        radius: 4,
+        stroke: '#374151',
+        strokeWidth: 1,
+        fill: '#374151',
+      },
+      {
+        type: 'circle',
+        x: 50,
+        y: 40,
+        radius: 4,
+        stroke: '#374151',
+        strokeWidth: 1,
+        fill: '#374151',
+      },
+    ],
+    tags: ['outlet', 'eluttag', 'electrical', 'el', 'kök', 'bänk'],
   },
   {
     id: 'light_switch',
-    name: 'Ljusströmbrytare',
+    name: 'Strömbrytare',
     category: 'electrical',
     description: 'Standard ljusströmbrytare',
-    defaultWidth: 100,
-    defaultHeight: 100,
-    icon: '💡',
+    defaultWidth: 80,
+    defaultHeight: 80,
+    icon: '🔘',
+    // 3D properties
+    elevationHeight: 80,     // Switch face height
+    elevationBottom: 1000,   // Swedish standard: 1000mm from floor
+    depth: 50,
+    wallMountable: true,
+    freestanding: false,
+    objectCategory: 'electrical_switch',
     shapes: [
-      // Outer rectangle
+      // Outer frame
+      {
+        type: 'rect',
+        x: 5,
+        y: 5,
+        width: 70,
+        height: 70,
+        stroke: '#374151',
+        strokeWidth: 2,
+        fill: '#f3f4f6',
+      },
+      // Inner switch area
       {
         type: 'rect',
         x: 20,
-        y: 20,
-        width: 60,
-        height: 60,
-        stroke: '#000000',
-        strokeWidth: 2,
-        fill: 'transparent',
+        y: 15,
+        width: 40,
+        height: 50,
+        stroke: '#374151',
+        strokeWidth: 1.5,
+        fill: '#ffffff',
       },
-      // Switch (small vertical line)
+      // Switch toggle (vertical line)
       {
         type: 'line',
-        points: [50, 35, 50, 65],
-        stroke: '#000000',
+        points: [40, 25, 40, 55],
+        stroke: '#374151',
         strokeWidth: 3,
       },
     ],
     tags: ['switch', 'strömbrytare', 'ljusknapp', 'electrical', 'el'],
+  },
+  {
+    id: 'dimmer_switch',
+    name: 'Dimmer',
+    category: 'electrical',
+    description: 'Dimmer för ljusstyrka',
+    defaultWidth: 80,
+    defaultHeight: 80,
+    icon: '🔆',
+    // 3D properties
+    elevationHeight: 80,
+    elevationBottom: 1000,   // Swedish standard: 1000mm from floor
+    depth: 50,
+    wallMountable: true,
+    freestanding: false,
+    objectCategory: 'electrical_switch',
+    shapes: [
+      // Outer frame
+      {
+        type: 'rect',
+        x: 5,
+        y: 5,
+        width: 70,
+        height: 70,
+        stroke: '#374151',
+        strokeWidth: 2,
+        fill: '#f3f4f6',
+      },
+      // Dimmer knob (circle)
+      {
+        type: 'circle',
+        x: 40,
+        y: 40,
+        radius: 22,
+        stroke: '#374151',
+        strokeWidth: 1.5,
+        fill: '#ffffff',
+      },
+      // Knob indicator
+      {
+        type: 'line',
+        points: [40, 25, 40, 40],
+        stroke: '#374151',
+        strokeWidth: 2,
+      },
+    ],
+    tags: ['dimmer', 'ljusstyrka', 'electrical', 'el'],
   },
   {
     id: 'ceiling_light',
@@ -493,6 +803,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 200,
     defaultHeight: 200,
     icon: '💡',
+    // 3D properties - ceiling mounted, not wall-relative
+    elevationHeight: 100,
+    elevationBottom: 2300,   // Near ceiling
+    depth: 100,
+    wallMountable: false,
+    freestanding: true,      // Ceiling mounted, not wall attached
+    objectCategory: 'decoration',
     shapes: [
       // Center circle
       {
@@ -544,6 +861,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 1600,
     defaultHeight: 2000,
     icon: '🛏️',
+    // 3D properties - freestanding furniture
+    elevationHeight: 500,    // Bed height including mattress
+    elevationBottom: 0,
+    depth: 2000,
+    wallMountable: false,
+    freestanding: true,      // Can be placed anywhere in room
+    objectCategory: 'custom',
     shapes: [
       // Mattress (main rectangle)
       {
@@ -597,6 +921,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 2100,
     defaultHeight: 900,
     icon: '🛋️',
+    // 3D properties - can be against wall or freestanding
+    elevationHeight: 850,    // Sofa back height
+    elevationBottom: 0,
+    depth: 900,
+    wallMountable: true,
+    freestanding: true,      // Can be placed anywhere
+    objectCategory: 'custom',
     shapes: [
       // Main body
       {
@@ -649,6 +980,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 1200,
     defaultHeight: 1200,
     icon: '🍽️',
+    // 3D properties - freestanding dining table
+    elevationHeight: 750,    // Standard table height
+    elevationBottom: 0,
+    depth: 1200,
+    wallMountable: false,
+    freestanding: true,      // Placed in room center
+    objectCategory: 'custom',
     shapes: [
       // Table top (circle)
       {
@@ -681,6 +1019,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 500,
     defaultHeight: 500,
     icon: '🪑',
+    // 3D properties - freestanding chair
+    elevationHeight: 850,    // Chair back height
+    elevationBottom: 0,
+    depth: 500,
+    wallMountable: false,
+    freestanding: true,
+    objectCategory: 'custom',
     shapes: [
       // Seat (rectangle)
       {
@@ -715,6 +1060,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 900,
     defaultHeight: 200,
     icon: '🚪',
+    // 3D properties - door
+    elevationHeight: 2100,   // Standard door height
+    elevationBottom: 0,      // Starts at floor
+    depth: 100,
+    wallMountable: true,
+    freestanding: false,
+    objectCategory: 'custom',
     shapes: [
       // Door frame (thick line)
       {
@@ -749,6 +1101,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 900,
     defaultHeight: 200,
     icon: '🚪',
+    // 3D properties - sliding door
+    elevationHeight: 2100,
+    elevationBottom: 0,
+    depth: 50,
+    wallMountable: true,
+    freestanding: false,
+    objectCategory: 'custom',
     shapes: [
       // Track (dashed line)
       {
@@ -803,6 +1162,13 @@ export const DEFAULT_OBJECT_LIBRARY: ObjectDefinition[] = [
     defaultWidth: 1200,
     defaultHeight: 150,
     icon: '🪟',
+    // 3D properties - window
+    elevationHeight: 1200,   // Standard window height
+    elevationBottom: 900,    // Window sill height
+    depth: 150,
+    wallMountable: true,
+    freestanding: false,
+    objectCategory: 'custom',
     shapes: [
       // Outer frame (top)
       {

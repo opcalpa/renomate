@@ -243,7 +243,7 @@ const BudgetTab = ({ projectId, currency }: BudgetTabProps) => {
   const [saveViewName, setSaveViewName] = useState("");
   const [saveViewOpen, setSaveViewOpen] = useState(false);
   const [loadViewOpen, setLoadViewOpen] = useState(false);
-  const [compactRows, setCompactRows] = useState(false);
+  const [compactRows, setCompactRows] = useState(true);
 
   const handleSaveView = () => {
     const name = saveViewName.trim();

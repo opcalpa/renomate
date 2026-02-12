@@ -23,6 +23,8 @@ import {
   ArrowDownToLine,
   Layers,
   Grid3X3,
+  PanelLeft,
+  MessageCircle,
 } from "lucide-react";
 
 // Custom icons
@@ -72,6 +74,13 @@ interface ToolContextMenuProps {
   onSendToBack?: () => void;
   // Room-specific actions
   onCreateWallsFromRoom?: () => void;
+  // Elevation view - for rooms and walls
+  onViewElevation?: () => void;
+  hasWallInSelection?: boolean;
+  // Comments
+  onAddComment?: () => void;
+  commentCount?: number;
+  isCommentResolved?: boolean;
 }
 
 type IconComponent = React.FC<{ className?: string }>;
@@ -137,6 +146,11 @@ export const ToolContextMenu = memo(({
   onBringToFront,
   onSendToBack,
   onCreateWallsFromRoom,
+  onViewElevation,
+  hasWallInSelection,
+  onAddComment,
+  commentCount,
+  isCommentResolved,
 }: ToolContextMenuProps) => {
   // Get top 3 unique recent tools
   const topTools = recentTools.slice(0, 3);
@@ -202,6 +216,28 @@ export const ToolContextMenu = memo(({
               </button>
             )}
 
+            {onAddComment && (
+              <button
+                className={`w-full px-3 py-2 flex items-center gap-3 transition-colors text-left ${
+                  isCommentResolved ? 'hover:bg-green-50' : 'hover:bg-blue-50'
+                }`}
+                onClick={() => {
+                  onAddComment();
+                  onClose();
+                }}
+              >
+                <MessageCircle className={`w-4 h-4 ${isCommentResolved ? 'text-green-500' : 'text-blue-500'}`} />
+                <span className="text-sm font-medium text-gray-700">
+                  {isCommentResolved
+                    ? `Kommentarer ✓`
+                    : commentCount && commentCount > 0
+                      ? `Kommentarer (${commentCount})`
+                      : 'Lägg till kommentar'
+                  }
+                </span>
+              </button>
+            )}
+
             {onDeleteSelection && (
               <button
                 className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-50 transition-colors text-left"
@@ -229,6 +265,24 @@ export const ToolContextMenu = memo(({
                 >
                   <Grid3X3 className="w-4 h-4 text-green-600" />
                   <span className="text-sm font-medium text-gray-700">Skapa väggar</span>
+                </button>
+              </>
+            )}
+
+            {/* Elevation view - for rooms and walls */}
+            {onViewElevation && (selectionType === 'room' || hasRoomInSelection || selectionType === 'wall' || hasWallInSelection) && (
+              <>
+                {!(selectionType === 'room' || hasRoomInSelection) && <div className="my-1.5 border-t border-gray-100" />}
+                <button
+                  className="w-full px-3 py-2 flex items-center gap-3 hover:bg-purple-50 transition-colors text-left"
+                  onClick={() => {
+                    onViewElevation();
+                    onClose();
+                  }}
+                >
+                  <PanelLeft className="w-4 h-4 text-purple-600" />
+                  <span className="text-sm font-medium text-gray-700">Väggvy</span>
+                  <span className="ml-auto text-[10px] text-gray-400">Elevation</span>
                 </button>
               </>
             )}

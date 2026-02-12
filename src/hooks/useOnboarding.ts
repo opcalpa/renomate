@@ -8,7 +8,9 @@ export type StepKey =
   | "drawRoom"
   | "generateWalls"
   | "taskWithRoom"
-  | "profile";
+  | "profile"
+  | "viewProject"
+  | "postComment";
 
 export interface OnboardingStep {
   key: string;
@@ -50,6 +52,24 @@ interface StepConfig {
 }
 
 function getStepsConfig(userType: string | null): StepConfig[] {
+  if (userType === "invited_client") {
+    return [
+      {
+        key: "viewProject" as StepKey,
+        dbField: "onboarding_entered_canvas",
+        labelKey: "onboarding.steps.viewProject.label",
+        instructionKey: "onboarding.steps.viewProject.instruction",
+      },
+      {
+        key: "postComment" as StepKey,
+        dbField: "onboarding_created_quote",
+        labelKey: "onboarding.steps.postComment.label",
+        instructionKey: "onboarding.steps.postComment.instruction",
+        optional: true,
+      },
+    ];
+  }
+
   if (userType === "homeowner") {
     return [
       {
@@ -134,6 +154,8 @@ const STEP_DB_FIELDS: Record<StepKey, string> = {
   drawRoom: "onboarding_drawn_room",
   generateWalls: "onboarding_generated_walls",
   taskWithRoom: "onboarding_created_task_room",
+  viewProject: "onboarding_entered_canvas",
+  postComment: "onboarding_created_quote",
 };
 
 export function useOnboarding(): OnboardingState {
@@ -174,6 +196,14 @@ export function useOnboarding(): OnboardingState {
 
       // Auto-detect completion based on actual data
       const projectsRes = await supabase.from("projects").select("id").eq("owner_id", profile.id).limit(50);
+
+      // For invited clients, check shared projects
+      let hasSharedProject = false;
+      if (profile.onboarding_user_type === "invited_client") {
+        const sharesRes = await supabase.from("project_shares").select("id").eq("shared_with_user_id", profile.id).limit(1);
+        hasSharedProject = (sharesRes.data?.length ?? 0) > 0;
+      }
+
       const roomsRes = await supabase.from("rooms").select("id, project_id").limit(50);
 
       const hasProject = (projectsRes.data?.length ?? 0) > 0;
@@ -211,6 +241,8 @@ export function useOnboarding(): OnboardingState {
         generateWalls: profile.onboarding_generated_walls ?? false,
         taskWithRoom: hasTaskRoom || (profile.onboarding_created_task_room ?? false),
         profile: profileComplete || (profile.onboarding_completed_profile ?? false),
+        viewProject: hasSharedProject || (profile.onboarding_entered_canvas ?? false),
+        postComment: profile.onboarding_created_quote ?? false,
       };
 
       // Build steps array based on user type

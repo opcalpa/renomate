@@ -213,4 +213,40 @@ src/i18n/locales/
 - [ ] `npm run test:e2e` passes after major changes
 
 ---
-*Last Updated: 2026-01-30*
+
+## Persona System
+
+Renomate använder AI-personas för strategisk rådgivning. Personas finns i `.claude/personas/`.
+
+### Aktiva personas
+
+| Persona | Fil | Fokusområde |
+|---------|-----|-------------|
+| CEO | `ceo.md` | Prioritering, strategi, beslut |
+| CRO | `cro.md` | Revenue, pricing, go-to-market, ICP |
+| UX-Designer | `ux-designer.md` | Layout, navigation, användarvänlighet |
+| CTO | `cto.md` | Arkitektur, säkerhet, prestanda |
+| Inredningsarkitekt | `inredningsarkitekt.md` | Canvas, ritverktyg, BIM |
+| Platschef | `platschef.md` | Fältarbete, terminologi, arbetsflöden |
+| Firmaägare | `firmaagare.md` | Småföretagarperspektiv, offerter, kundhantering |
+| Hemägare | `hemagare.md` | Oteknisk slutanvändare, begriplighet, samarbete |
+
+### Sprint-brief
+
+**VIKTIGT:** Alla personas ska läsa `.claude/briefs/current-sprint.md` vid start av varje session.
+
+Filen innehåller:
+- Aktuell kontext (användare, feedback, teknisk status)
+- CEO:s prioriteringsbeslut för veckan
+- Logg från varje specialist
+- Öppna frågor till CEO
+
+### Persona-regler
+
+1. **Läs först:** Börja varje session med att läsa `current-sprint.md`
+2. **Skriv tillbaka:** Logga din analys i din sektion i filen
+3. **Eskalera:** Lägg frågor som kräver prioriteringsbeslut under "Frågor till CEO"
+4. **Ingen kod:** Personas analyserar och föreslår — de skriver aldrig kod
+
+---
+*Last Updated: 2026-02-09*

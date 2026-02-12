@@ -1,16 +1,22 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense, lazy } from "react";
 import { SimpleToolbar } from "./SimpleToolbar";
 import { UnifiedKonvaCanvas } from "./UnifiedKonvaCanvas";
 import { ElevationCanvas } from "./ElevationCanvas";
+import { RoomElevationView } from "./RoomElevationView";
 import { RoomDetailDialog } from "./RoomDetailDialog";
+import { RoomPickerDialog } from "./RoomPickerDialog";
 import { SpacePlannerTopBar } from "./SpacePlannerTopBar";
 import { useFloorMapStore } from "./store";
+import { FloorMapShape } from "./types";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { loadPlansFromDB, createPlanInDB } from "./utils/plans";
-import { Box } from "lucide-react";
+import { Box, Loader2 } from "lucide-react";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { CanvasHint } from "@/components/onboarding/CanvasHint";
+
+// Lazy load the 3D view for code splitting (reduces initial bundle size)
+const ThreeDFloorPlan = lazy(() => import("./3d/ThreeDFloorPlan"));
 
 interface FloorMapEditorProps {
   projectId: string;
@@ -29,6 +35,7 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isRe
     currentPlanId,
     shapes,
     viewMode,
+    selectedShapeIds,
     setCurrentProjectId,
     setPlans,
     setCurrentPlanId,
@@ -43,6 +50,35 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isRe
   const [canRedoState, setCanRedoState] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
   const [roomDialogOpen, setRoomDialogOpen] = useState(false);
+
+  // Room-based elevation view state
+  const [elevationRoom, setElevationRoom] = useState<FloorMapShape | null>(null);
+  const [roomPickerOpen, setRoomPickerOpen] = useState(false);
+
+  // Show room picker when entering elevation mode without a room selected
+  // Auto-select room if one is already selected on the floor plan
+  useEffect(() => {
+    if (viewMode === 'elevation' && !elevationRoom) {
+      // Check if a room is already selected on the floor plan
+      if (selectedShapeIds.length === 1) {
+        const selectedShape = shapes.find(s => s.id === selectedShapeIds[0]);
+        if (selectedShape?.type === 'room') {
+          // Room is selected, use it directly for elevation view
+          setElevationRoom(selectedShape);
+          return;
+        }
+      }
+      // No room selected, show the room picker
+      setRoomPickerOpen(true);
+    }
+  }, [viewMode, elevationRoom, selectedShapeIds, shapes]);
+
+  // Clear elevation room when leaving elevation mode
+  useEffect(() => {
+    if (viewMode !== 'elevation') {
+      setElevationRoom(null);
+    }
+  }, [viewMode]);
 
   // Update undo/redo state from canvas via event (replaces polling)
   useEffect(() => {
@@ -81,6 +117,35 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isRe
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Prevent accidental browser back navigation from swipe gestures
+  // This pushes a "guard" history state - if user swipes back, they stay on the page
+  useEffect(() => {
+    // Only add guard if we're in floor plan mode
+    if (viewMode !== 'floor') return;
+
+    const guardState = { isFloorPlannerGuard: true };
+
+    // Push a guard state to history
+    window.history.pushState(guardState, '');
+
+    const handlePopState = (e: PopStateEvent) => {
+      // If we popped our guard state, push it back
+      if (!e.state?.isFloorPlannerGuard) {
+        window.history.pushState(guardState, '');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      // Clean up: go back to remove our guard state if it's still there
+      if (window.history.state?.isFloorPlannerGuard) {
+        window.history.back();
+      }
+    };
+  }, [viewMode]);
 
   // Initialize project context
   useEffect(() => {
@@ -183,8 +248,8 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isRe
         __html: `
           .canvas-scroll-area, .canvas-scrollable-container {
             scroll-behavior: smooth;
-            touch-action: auto;
-            -webkit-overflow-scrolling: touch;
+            touch-action: none;
+            overscroll-behavior: contain;
             scrollbar-width: thin;
             scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
           }
@@ -235,7 +300,7 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isRe
 
         {/* Main Canvas Area - Switch based on viewMode */}
         {viewMode === 'floor' && (
-          <main className="flex-1 overflow-auto canvas-scroll-area relative">
+          <main className="flex-1 overflow-hidden canvas-scroll-area relative">
             <UnifiedKonvaCanvas
               onRoomCreated={() => {
                 setRoomUpdateTrigger(prev => prev + 1);
@@ -260,17 +325,40 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isRe
 
         {viewMode === 'elevation' && (
           <main className="flex-1 overflow-hidden relative">
-            <ElevationCanvas projectId={projectId} />
+            {/* Use RoomElevationView when a room is selected (proper room-centric view) */}
+            {/* Otherwise fall back to ElevationCanvas (wall-based view) */}
+            {elevationRoom ? (
+              <RoomElevationView
+                room={elevationRoom}
+                projectId={projectId}
+                onClose={() => {
+                  setElevationRoom(null);
+                  useFloorMapStore.getState().setViewMode('floor');
+                }}
+              />
+            ) : (
+              <ElevationCanvas
+                projectId={projectId}
+                onClose={() => {
+                  useFloorMapStore.getState().setViewMode('floor');
+                }}
+              />
+            )}
           </main>
         )}
 
         {viewMode === '3d' && (
-          <main className="flex-1 flex items-center justify-center bg-gray-50">
-            <div className="text-center text-muted-foreground">
-              <Box className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <p className="text-xl font-medium">3D-vy kommer snart</p>
-              <p className="text-sm mt-2">Vi arbetar på att lägga till 3D-visualisering</p>
-            </div>
+          <main className="flex-1 overflow-hidden relative">
+            <Suspense fallback={
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-sky-100 to-sky-50">
+                <div className="text-center">
+                  <Loader2 className="w-12 h-12 mx-auto mb-4 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">{t("floormap.loading3DView")}</p>
+                </div>
+              </div>
+            }>
+              <ThreeDFloorPlan projectId={projectId} />
+            </Suspense>
           </main>
         )}
 
@@ -283,6 +371,24 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isRe
         open={roomDialogOpen}
         onOpenChange={setRoomDialogOpen}
         onRoomUpdated={handleRoomUpdated}
+      />
+
+      {/* Room Picker Dialog for elevation view */}
+      <RoomPickerDialog
+        open={roomPickerOpen}
+        onOpenChange={(open) => {
+          setRoomPickerOpen(open);
+          // If closing without selecting, go back to floor plan
+          if (!open && !elevationRoom) {
+            useFloorMapStore.getState().setViewMode('floor');
+          }
+        }}
+        rooms={shapes.filter(s => s.type === 'room' && s.planId === currentPlanId)}
+        onSelectRoom={(room) => {
+          setElevationRoom(room);
+          setRoomPickerOpen(false);
+          useFloorMapStore.getState().setViewMode('elevation');
+        }}
       />
 
       {/* Save indicator */}

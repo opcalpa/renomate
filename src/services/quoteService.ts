@@ -1,11 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { lockProject, unlockProject } from "./projectLockService";
+import { inviteCustomerAsClient } from "./intakeService";
 
 const ROT_RATE = 0.3;
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   draft: ["sent"],
-  sent: ["accepted", "rejected", "expired"],
+  sent: ["draft", "accepted", "rejected", "expired"],
   accepted: [],
   rejected: [],
   expired: [],
@@ -68,7 +70,11 @@ export async function addQuoteItem(quoteId: string, item: { description: string;
 }
 
 export async function updateQuoteStatus(quoteId: string, newStatus: string) {
-  const { data: quote, error: fetchErr } = await supabase.from("quotes").select("status").eq("id", quoteId).single();
+  const { data: quote, error: fetchErr } = await supabase
+    .from("quotes")
+    .select("status, project_id, intake_request_id, creator_id")
+    .eq("id", quoteId)
+    .single();
   if (fetchErr || !quote) {
     toast.error("Kunde inte hämta offert");
     return null;
@@ -84,6 +90,47 @@ export async function updateQuoteStatus(quoteId: string, newStatus: string) {
     toast.error("Kunde inte uppdatera status");
     return null;
   }
+
+  // Handle project locking based on quote status
+  if (quote.project_id) {
+    try {
+      if (newStatus === "sent") {
+        // Lock project when quote is sent
+        await lockProject(quote.project_id, quoteId);
+      } else if (newStatus === "draft" || newStatus === "accepted" || newStatus === "rejected") {
+        // Unlock project when quote is reverted to draft or finalized
+        await unlockProject(quote.project_id);
+      }
+    } catch (lockError) {
+      console.error("Failed to update project lock status:", lockError);
+      // Don't fail the status update if lock fails, just log it
+    }
+  }
+
+  // When quote is accepted, invite the customer as client (if from intake request)
+  if (newStatus === "accepted" && quote.intake_request_id && quote.project_id) {
+    try {
+      // Fetch intake request to get customer info
+      const { data: intake } = await supabase
+        .from("customer_intake_requests")
+        .select("customer_email, customer_name")
+        .eq("id", quote.intake_request_id)
+        .single();
+
+      if (intake?.customer_email) {
+        await inviteCustomerAsClient(
+          quote.project_id,
+          intake.customer_email,
+          intake.customer_name || intake.customer_email,
+          quote.creator_id
+        );
+      }
+    } catch (inviteError) {
+      console.error("Failed to invite customer as client:", inviteError);
+      // Don't fail the status update if invite fails
+    }
+  }
+
   return data;
 }
 

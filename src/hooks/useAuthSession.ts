@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { analytics } from '@/lib/analytics';
 
 interface AuthSession {
   user: User | null;
@@ -25,6 +26,19 @@ export const useAuthSession = (): AuthSession => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         setLoading(false);
+
+        // Identify user in analytics when they sign in
+        if (event === 'SIGNED_IN' && currentSession?.user) {
+          analytics.identify(currentSession.user.id, {
+            email_domain: currentSession.user.email?.split('@')[1],
+            auth_provider: currentSession.user.app_metadata?.provider,
+          });
+        }
+
+        // Reset analytics on sign out
+        if (event === 'SIGNED_OUT') {
+          analytics.reset();
+        }
       }
     );
 

@@ -155,6 +155,7 @@ export interface SectionProps {
 // Props for identity section (needs area for read-only display)
 export interface IdentitySectionProps extends SectionProps {
   areaSqm?: number;
+  createdAt?: string;
 }
 
 // Props for smart data section (needs area for calculations)

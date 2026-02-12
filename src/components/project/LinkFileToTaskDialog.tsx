@@ -35,6 +35,11 @@ interface TaskOption {
   title: string;
 }
 
+interface RoomOption {
+  id: string;
+  name: string;
+}
+
 export const LinkFileToTaskDialog = ({
   projectId,
   file,
@@ -45,9 +50,11 @@ export const LinkFileToTaskDialog = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const [tasks, setTasks] = useState<TaskOption[]>([]);
+  const [rooms, setRooms] = useState<RoomOption[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<TaskOption[]>([]);
   const [search, setSearch] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState<string>("");
+  const [selectedRoomId, setSelectedRoomId] = useState<string>("");
   const [fileType, setFileType] = useState<string>("invoice");
   const [linking, setLinking] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(false);
@@ -55,7 +62,9 @@ export const LinkFileToTaskDialog = ({
   useEffect(() => {
     if (open) {
       fetchTasks();
+      fetchRooms();
       setSelectedTaskId("");
+      setSelectedRoomId("");
       setFileType("invoice");
       setSearch("");
     }
@@ -87,8 +96,22 @@ export const LinkFileToTaskDialog = ({
     setLoadingTasks(false);
   };
 
+  const fetchRooms = async () => {
+    const { data, error } = await supabase
+      .from("rooms")
+      .select("id, name")
+      .eq("project_id", projectId)
+      .order("name");
+
+    if (error) {
+      console.error("Failed to load rooms:", error);
+    } else {
+      setRooms(data || []);
+    }
+  };
+
   const handleLink = async () => {
-    if (!file || !selectedTaskId) return;
+    if (!file || (!selectedTaskId && !selectedRoomId)) return;
 
     setLinking(true);
     const { data: userData } = await supabase.auth.getUser();
@@ -104,7 +127,8 @@ export const LinkFileToTaskDialog = ({
 
     const { error } = await supabase.from("task_file_links").insert({
       project_id: projectId,
-      task_id: selectedTaskId,
+      task_id: selectedTaskId || null,
+      room_id: selectedRoomId || null,
       file_path: file.path,
       file_name: file.name,
       file_type: fileType,
@@ -124,10 +148,12 @@ export const LinkFileToTaskDialog = ({
       return;
     }
 
-    toast({ title: t("files.fileLinked", "File linked to task") });
+    toast({ title: t("files.fileLinked", "File linked successfully") });
     onOpenChange(false);
     onLinked?.();
   };
+
+  const canLink = selectedTaskId || selectedRoomId;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -135,7 +161,7 @@ export const LinkFileToTaskDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <LinkIcon className="h-5 w-5" />
-            {t("files.linkToTask", "Link to Task")}
+            {t("files.linkFile", "Link File")}
           </DialogTitle>
           <DialogDescription>{file?.name}</DialogDescription>
         </DialogHeader>
@@ -157,15 +183,33 @@ export const LinkFileToTaskDialog = ({
             </Select>
           </div>
 
+          {/* Room picker */}
+          <div className="space-y-2">
+            <Label>{t("files.selectRoom", "Link to Room")}</Label>
+            <Select value={selectedRoomId} onValueChange={setSelectedRoomId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("files.noRoom", "No room")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t("files.noRoom", "No room")}</SelectItem>
+                {rooms.map((room) => (
+                  <SelectItem key={room.id} value={room.id}>
+                    {room.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Task picker */}
           <div className="space-y-2">
-            <Label>{t("files.selectTask", "Select Task")}</Label>
+            <Label>{t("files.selectTask", "Link to Task")}</Label>
             <Input
               placeholder={t("common.search")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <div className="border rounded-md max-h-48 overflow-y-auto">
+            <div className="border rounded-md max-h-40 overflow-y-auto">
               {loadingTasks ? (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -175,28 +219,46 @@ export const LinkFileToTaskDialog = ({
                   {t("tasks.noTasks", "No tasks")}
                 </p>
               ) : (
-                filteredTasks.map((task) => (
+                <>
                   <button
-                    key={task.id}
                     type="button"
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors ${
-                      selectedTaskId === task.id ? "bg-primary/10 font-medium" : ""
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors text-muted-foreground ${
+                      !selectedTaskId ? "bg-primary/10 font-medium text-foreground" : ""
                     }`}
-                    onClick={() => setSelectedTaskId(task.id)}
+                    onClick={() => setSelectedTaskId("")}
                   >
-                    {task.title}
+                    {t("files.noTask", "No task")}
                   </button>
-                ))
+                  {filteredTasks.map((task) => (
+                    <button
+                      key={task.id}
+                      type="button"
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors ${
+                        selectedTaskId === task.id ? "bg-primary/10 font-medium" : ""
+                      }`}
+                      onClick={() => setSelectedTaskId(task.id)}
+                    >
+                      {task.title}
+                    </button>
+                  ))}
+                </>
               )}
             </div>
           </div>
+
+          {/* Help text */}
+          {!canLink && (
+            <p className="text-sm text-muted-foreground">
+              {t("files.selectRoomOrTask", "Select at least one room or task to link the file to.")}
+            </p>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t("common.cancel")}
           </Button>
-          <Button onClick={handleLink} disabled={!selectedTaskId || linking}>
+          <Button onClick={handleLink} disabled={!canLink || linking}>
             {linking ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (

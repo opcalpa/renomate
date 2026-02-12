@@ -31,7 +31,7 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
   const [formData, setFormData] = useState<RoomFormData>(DEFAULT_FORM_VALUES);
   const [saving, setSaving] = useState(false);
 
-  const { updateShape, shapes } = useFloorMapStore();
+  const updateShape = useFloorMapStore((state) => state.updateShape);
 
   // Initialize form data from room or defaults for new room
   useEffect(() => {
@@ -152,8 +152,9 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
           })
           .eq("room_id", room!.id);
 
-        // Update canvas state immediately
-        const roomShape = shapes.find((s) => s.roomId === room!.id && s.type === "room");
+        // Update canvas state immediately - use getState() for fresh shapes
+        const currentShapes = useFloorMapStore.getState().shapes;
+        const roomShape = currentShapes.find((s) => s.roomId === room!.id && s.type === "room");
         if (roomShape) {
           updateShape(roomShape.id, {
             color: formData.color,
@@ -164,6 +165,7 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
 
         toast.success(t('roomForm.roomUpdated', 'Room updated!'));
         onRoomUpdated?.();
+        onClose?.();
       }
     } catch (error) {
       console.error("Error saving room:", error);
@@ -173,7 +175,7 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
     } finally {
       setSaving(false);
     }
-  }, [room, isNewRoom, projectId, formData, shapes, updateShape, onRoomUpdated, onClose, t]);
+  }, [room, isNewRoom, projectId, formData, updateShape, onRoomUpdated, onClose, t]);
 
   // Delete handler
   const handleDelete = useCallback(async () => {

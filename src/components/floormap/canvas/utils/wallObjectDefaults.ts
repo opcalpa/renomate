@@ -77,6 +77,18 @@ export const OBJECT_CATEGORY_DEFAULTS: Record<WallObjectCategory, ObjectCategory
     defaultHeight: 400,      // Variable
     defaultDepth: 50,        // Minimal depth for wall-mounted items
   },
+  electrical_outlet: {
+    elevationBottom: 200,    // Swedish standard outlet height (200mm from floor)
+    defaultWidth: 80,        // Standard outlet width
+    defaultHeight: 80,       // Standard outlet height
+    defaultDepth: 50,        // Flush mount depth
+  },
+  electrical_switch: {
+    elevationBottom: 1000,   // Swedish standard switch height (1000mm from floor)
+    defaultWidth: 80,        // Standard switch width
+    defaultHeight: 80,       // Standard switch height
+    defaultDepth: 50,        // Flush mount depth
+  },
   custom: {
     elevationBottom: 0,      // User-defined
     defaultWidth: 500,       // Default medium size
@@ -117,6 +129,8 @@ export const CATEGORY_LABELS: Record<WallObjectCategory, { sv: string; en: strin
   window: { sv: 'Fönster', en: 'Window' },
   door: { sv: 'Dörr', en: 'Door' },
   decoration: { sv: 'Dekoration', en: 'Decoration' },
+  electrical_outlet: { sv: 'Eluttag', en: 'Electrical Outlet' },
+  electrical_switch: { sv: 'Strömbrytare', en: 'Light Switch' },
   custom: { sv: 'Anpassad', en: 'Custom' },
 };
 
@@ -171,7 +185,72 @@ export function inferCategoryFromSymbolType(symbolType: string | undefined): Wal
     arch_window: 'window',
     door_outward: 'door',
     sliding_door: 'door',
+
+    // Electrical
+    outlet_single: 'electrical_outlet',
+    outlet_double: 'electrical_outlet',
+    outlet_triple: 'electrical_outlet',
+    light_switch: 'electrical_switch',
+    dimmer_switch: 'electrical_switch',
+    arch_outlet: 'electrical_outlet',
+    arch_switch: 'electrical_switch',
   };
 
   return typeMap[symbolType] || 'custom';
+}
+
+/**
+ * Map object library category to WallObjectCategory.
+ * Used when placing objects from the JSON-based object library.
+ */
+export function mapLibraryCategoryToWallCategory(
+  libraryCategory: string,
+  objectCategory?: WallObjectCategory
+): WallObjectCategory {
+  // If object definition specifies a category, use it
+  if (objectCategory) {
+    return objectCategory;
+  }
+
+  // Map library categories to wall object categories
+  const mapping: Record<string, WallObjectCategory> = {
+    'kitchen': 'floor_cabinet',     // Kitchen objects default to floor cabinet
+    'bathroom': 'floor_cabinet',    // Bathroom objects default to floor cabinet
+    'electrical': 'decoration',     // Electrical objects are wall-mounted decorations
+    'furniture': 'custom',          // Furniture can be freestanding
+    'doors': 'door',
+    'windows': 'window',
+    'stairs': 'custom',
+    'other': 'custom',
+  };
+
+  return mapping[libraryCategory] || 'custom';
+}
+
+/**
+ * Determine if an object from the library should attach to walls.
+ * Some objects (like dining tables) are freestanding and don't need wall attachment.
+ */
+export function shouldAttachToWall(
+  libraryCategory: string,
+  wallMountable?: boolean,
+  freestanding?: boolean
+): boolean {
+  // If explicitly defined, use those values
+  if (wallMountable === false) return false;
+  if (freestanding === true && wallMountable !== true) return false;
+
+  // Default behavior by category
+  const defaultAttachable: Record<string, boolean> = {
+    'kitchen': true,      // Kitchen objects should attach to walls
+    'bathroom': true,     // Bathroom fixtures attach to walls
+    'electrical': true,   // Outlets/switches are wall-mounted
+    'furniture': false,   // Most furniture is freestanding
+    'doors': true,        // Doors are in walls
+    'windows': true,      // Windows are in walls
+    'stairs': false,
+    'other': false,
+  };
+
+  return defaultAttachable[libraryCategory] ?? false;
 }

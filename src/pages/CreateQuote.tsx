@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,16 @@ function newItem(): QuoteItem {
 export default function CreateQuote() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuthSession();
+
+  // Read URL params
+  const urlProjectId = searchParams.get("projectId");
+  const shouldPrepopulate = searchParams.get("prepopulate") === "true";
+  const taskIds = searchParams.get("taskIds")?.split(",").filter(Boolean) || [];
+  const materialIds = searchParams.get("materialIds")?.split(",").filter(Boolean) || [];
+  const groupByType = searchParams.get("groupByType") || "grouped";
+  const applyRot = searchParams.get("applyRot") !== "false"; // default true
 
   const [title, setTitle] = useState("");
   const [projectId, setProjectId] = useState<string>("");
@@ -87,6 +96,151 @@ export default function CreateQuote() {
       });
     setUserEmail(user.email);
   }, [user]);
+
+  // Handle URL params for projectId and prepopulation
+  useEffect(() => {
+    if (urlProjectId && !projectId) {
+      setProjectId(urlProjectId);
+    }
+  }, [urlProjectId, projectId]);
+
+  // Pre-populate items from project tasks and materials
+  useEffect(() => {
+    if (!shouldPrepopulate || !urlProjectId) return;
+    if (taskIds.length === 0 && materialIds.length === 0) return;
+
+    const fetchProjectData = async () => {
+      interface TaskWithRoom {
+        id: string;
+        title: string;
+        budget: number | null;
+        room_id: string | null;
+        roomName: string | null;
+      }
+      interface MaterialWithRoom {
+        id: string;
+        name: string;
+        quantity: number | null;
+        unit: string | null;
+        price_per_unit: number | null;
+        room_id: string | null;
+        roomName: string | null;
+      }
+
+      const taskItems: (QuoteItem & { roomName: string | null })[] = [];
+      const materialItems: (QuoteItem & { roomName: string | null })[] = [];
+
+      // Fetch and convert selected tasks to labor items
+      if (taskIds.length > 0) {
+        const { data: tasks } = await supabase
+          .from("tasks")
+          .select("id, title, budget, room_id, rooms(name)")
+          .in("id", taskIds)
+          .order("created_at");
+
+        if (tasks && tasks.length > 0) {
+          for (const task of tasks) {
+            const roomName = (task.rooms as { name: string } | null)?.name || null;
+            taskItems.push({
+              id: crypto.randomUUID(),
+              description: task.title,
+              quantity: 1,
+              unit: "st",
+              unitPrice: task.budget || 0,
+              isRotEligible: applyRot, // ROT only applies to labor
+              roomId: task.room_id || undefined,
+              roomName,
+            });
+          }
+        }
+      }
+
+      // Fetch and convert selected materials
+      if (materialIds.length > 0) {
+        const { data: materials } = await supabase
+          .from("materials")
+          .select("id, name, quantity, unit, price_per_unit, price_total, room_id, rooms(name)")
+          .in("id", materialIds)
+          .order("created_at");
+
+        if (materials && materials.length > 0) {
+          for (const material of materials) {
+            const roomName = (material.rooms as { name: string } | null)?.name || null;
+            materialItems.push({
+              id: crypto.randomUUID(),
+              description: material.name,
+              quantity: material.quantity || 1,
+              unit: material.unit || "st",
+              unitPrice: material.price_per_unit || 0,
+              isRotEligible: false, // ROT never applies to materials
+              roomId: material.room_id || undefined,
+              roomName,
+            });
+          }
+        }
+      }
+
+      // Combine items based on grouping preference
+      let newItems: QuoteItem[];
+
+      if (groupByType === "byRoom") {
+        // Group by room: collect all items by room, then flatten
+        const roomMap = new Map<string, (QuoteItem & { roomName: string | null })[]>();
+        const noRoom: (QuoteItem & { roomName: string | null })[] = [];
+
+        for (const item of [...taskItems, ...materialItems]) {
+          if (item.roomId) {
+            const existing = roomMap.get(item.roomId) || [];
+            existing.push(item);
+            roomMap.set(item.roomId, existing);
+          } else {
+            noRoom.push(item);
+          }
+        }
+
+        // Build items with room headers in description
+        newItems = [];
+        for (const [, roomItems] of roomMap) {
+          const roomName = roomItems[0]?.roomName || t("quotes.noRoom");
+          for (const item of roomItems) {
+            newItems.push({
+              ...item,
+              description: `${item.description} (${roomName})`,
+            });
+          }
+        }
+        // Add items without room at the end
+        for (const item of noRoom) {
+          newItems.push(item);
+        }
+      } else if (groupByType === "grouped") {
+        // Labor first, then materials
+        newItems = [...taskItems, ...materialItems].map((item) => ({
+          ...item,
+          description: item.roomName ? `${item.description} (${item.roomName})` : item.description,
+        }));
+      } else {
+        // Mixed - interleave by creation order
+        const allItems = [];
+        let ti = 0, mi = 0;
+        while (ti < taskItems.length || mi < materialItems.length) {
+          if (ti < taskItems.length) allItems.push(taskItems[ti++]);
+          if (mi < materialItems.length) allItems.push(materialItems[mi++]);
+        }
+        newItems = allItems.map((item) => ({
+          ...item,
+          description: item.roomName ? `${item.description} (${item.roomName})` : item.description,
+        }));
+      }
+
+      if (newItems.length > 0) {
+        setItems(newItems);
+        toast.success(t("quotes.itemsImported", { count: newItems.length }));
+      }
+    };
+
+    fetchProjectData();
+  }, [shouldPrepopulate, urlProjectId, taskIds.join(","), materialIds.join(","), groupByType, applyRot, t]);
 
   const handleChange = useCallback((id: string, updates: Partial<QuoteItem>) => {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...updates } : i)));

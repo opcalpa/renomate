@@ -82,7 +82,7 @@ serve(async (req) => {
           const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
           const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-          const filePath = `projects/${projectId}/floorplan-images/${Date.now()}-pin-${pinId}.${ext}`;
+          const filePath = `projects/${projectId}/Uppladdade filer/${Date.now()}-pin-${pinId}.${ext}`;
           const { error: uploadError } = await supabaseAdmin.storage
             .from("project-files")
             .upload(filePath, arrayBuffer, { contentType });

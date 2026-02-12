@@ -9,6 +9,7 @@ export * from './types';
 
 // Complex shapes with custom handles
 export { WallShape } from './WallShape';
+export { WallGroupOutline } from './WallGroupOutline';
 export { RoomShape } from './RoomShape';
 export { BezierShape } from './BezierShape';
 
@@ -26,3 +27,6 @@ export { ImageShape } from './ImageShape';
 
 // Template group shape (grouped template objects)
 export { TemplateGroupShape } from './TemplateGroupShape';
+
+// Wall snap indicator (visual feedback during drag)
+export { WallSnapIndicator } from './WallSnapIndicator';

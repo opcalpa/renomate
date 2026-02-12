@@ -5,12 +5,157 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Line, Circle, Group, Text as KonvaText } from 'react-konva';
+import { Line, Circle, Group, Text as KonvaText, Shape } from 'react-konva';
 import Konva from 'konva';
 import { useFloorMapStore } from '../store';
 import { WallShapeProps } from './types';
 import { createUnifiedDragHandlers } from '../canvas/utils';
 import { getAdminDefaults } from '../canvas/constants';
+
+/**
+ * Calculate wall rectangle corners from centerline endpoints and thickness
+ * With optional extension at connected endpoints for clean corner joins
+ */
+function getWallRectanglePoints(
+  x1: number, y1: number,
+  x2: number, y2: number,
+  thickness: number,
+  extendStart: boolean = false,
+  extendEnd: boolean = false
+): number[] {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const length = Math.sqrt(dx * dx + dy * dy);
+
+  if (length === 0) return [x1, y1, x1, y1, x1, y1, x1, y1];
+
+  // Unit vector along wall
+  const ux = dx / length;
+  const uy = dy / length;
+
+  // Perpendicular unit vector (pointing "left" of wall direction)
+  const nx = -dy / length;
+  const ny = dx / length;
+
+  // Half thickness offset
+  const halfT = thickness / 2;
+
+  // Extension amount at connected endpoints (extends by full thickness for complete overlap)
+  const extAmount = thickness;
+
+  // Adjust endpoints if connected (extend to create overlap)
+  let ax1 = x1, ay1 = y1, ax2 = x2, ay2 = y2;
+  if (extendStart) {
+    ax1 -= ux * extAmount;
+    ay1 -= uy * extAmount;
+  }
+  if (extendEnd) {
+    ax2 += ux * extAmount;
+    ay2 += uy * extAmount;
+  }
+
+  // Four corners of the wall rectangle
+  // Inner side (room side)
+  const innerX1 = ax1 + nx * halfT;
+  const innerY1 = ay1 + ny * halfT;
+  const innerX2 = ax2 + nx * halfT;
+  const innerY2 = ay2 + ny * halfT;
+
+  // Outer side
+  const outerX1 = ax1 - nx * halfT;
+  const outerY1 = ay1 - ny * halfT;
+  const outerX2 = ax2 - nx * halfT;
+  const outerY2 = ay2 - ny * halfT;
+
+  // Return as flat array for Konva Line (closed polygon)
+  return [innerX1, innerY1, innerX2, innerY2, outerX2, outerY2, outerX1, outerY1];
+}
+
+/**
+ * Get edge stroke points with proper extension at connections
+ * Returns adjusted points for inner/outer edges that extend at corners for clean L-shapes
+ */
+function getClippedEdgePoints(
+  x1: number, y1: number,
+  x2: number, y2: number,
+  thickness: number,
+  startConnected: boolean,
+  endConnected: boolean,
+  connectedThickness: number = 0
+): { inner: number[]; outer: number[] } {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const length = Math.sqrt(dx * dx + dy * dy);
+
+  if (length === 0) return { inner: [x1, y1, x1, y1], outer: [x1, y1, x1, y1] };
+
+  // Unit vector along wall
+  const ux = dx / length;
+  const uy = dy / length;
+
+  // Perpendicular unit vector
+  const nx = -dy / length;
+  const ny = dx / length;
+
+  const halfT = thickness / 2;
+
+  // Extension amount at connections (extend by half thickness to reach corner)
+  const extAmount = connectedThickness > 0 ? connectedThickness / 2 : thickness / 2;
+
+  // Calculate edge endpoints
+  let innerX1 = x1 + nx * halfT;
+  let innerY1 = y1 + ny * halfT;
+  let innerX2 = x2 + nx * halfT;
+  let innerY2 = y2 + ny * halfT;
+
+  let outerX1 = x1 - nx * halfT;
+  let outerY1 = y1 - ny * halfT;
+  let outerX2 = x2 - nx * halfT;
+  let outerY2 = y2 - ny * halfT;
+
+  // EXTEND edges at connections so they meet at corners
+  if (startConnected) {
+    innerX1 -= ux * extAmount;
+    innerY1 -= uy * extAmount;
+    outerX1 -= ux * extAmount;
+    outerY1 -= uy * extAmount;
+  }
+  if (endConnected) {
+    innerX2 += ux * extAmount;
+    innerY2 += uy * extAmount;
+    outerX2 += ux * extAmount;
+    outerY2 += uy * extAmount;
+  }
+
+  return {
+    inner: [innerX1, innerY1, innerX2, innerY2],
+    outer: [outerX1, outerY1, outerX2, outerY2],
+  };
+}
+
+/**
+ * Check if a point is connected to another wall's endpoint
+ */
+function isPointConnected(
+  px: number, py: number,
+  wallId: string,
+  allWalls: Array<{ id: string; coordinates: { x1: number; y1: number; x2: number; y2: number } }>,
+  tolerance: number = 5
+): boolean {
+  for (const wall of allWalls) {
+    if (wall.id === wallId) continue;
+    const coords = wall.coordinates;
+
+    // Check distance to start point
+    const distToStart = Math.sqrt((px - coords.x1) ** 2 + (py - coords.y1) ** 2);
+    if (distToStart < tolerance) return true;
+
+    // Check distance to end point
+    const distToEnd = Math.sqrt((px - coords.x2) ** 2 + (py - coords.y2) ** 2);
+    if (distToEnd < tolerance) return true;
+  }
+  return false;
+}
 
 // Dynamic default based on admin settings
 const getDefaultWallThickness = () => {
@@ -67,9 +212,23 @@ export const WallShape = React.memo<WallShapeProps>(({
   const coords = shape.coordinates as { x1: number; y1: number; x2: number; y2: number };
   const thickness = shape.thicknessMM ? shape.thicknessMM / 10 : getDefaultWallThickness();
 
-  // Don't allow selecting walls when wall tool is active (drawing mode)
-  const isDrawingWalls = activeTool === 'wall';
-  const canSelect = !isDrawingWalls;
+  // Don't allow selecting walls when ANY drawing tool is active
+  const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'room', 'bezier'];
+  const isDrawingMode = drawingTools.includes(activeTool);
+  const canSelect = !isDrawingMode;
+
+  // Get all walls for connection detection (wall cleanup at corners)
+  const allShapes = useFloorMapStore((state) => state.shapes);
+  const otherWalls = allShapes
+    .filter(s => (s.type === 'wall' || s.type === 'line') && s.id !== shape.id && s.planId === shape.planId)
+    .map(s => ({
+      id: s.id,
+      coordinates: s.coordinates as { x1: number; y1: number; x2: number; y2: number }
+    }));
+
+  // Check if start/end points are connected to other walls
+  const startConnected = isPointConnected(coords.x1, coords.y1, shape.id, otherWalls);
+  const endConnected = isPointConnected(coords.x2, coords.y2, shape.id, otherWalls);
 
   // Calculate display coords: Handle transform state (multi-select scaling) OR manual dragging
   let displayCoords = coords;
@@ -175,15 +334,21 @@ export const WallShape = React.memo<WallShapeProps>(({
       } : undefined}
       {...createUnifiedDragHandlers(shape.id)}
     >
+      {/* Invisible hit area for interaction - fill/stroke rendered by WallGroupOutline */}
       <Line
         ref={shapeRef}
         shapeId={shape.id}
-        points={[coords.x1, coords.y1, coords.x2, coords.y2]}
-        stroke={isSelected ? '#3b82f6' : shape.strokeColor || '#2d3748'}
-        strokeWidth={thickness}
-        strokeLineCap="square"
+        points={getWallRectanglePoints(
+          displayCoords.x1, displayCoords.y1,
+          displayCoords.x2, displayCoords.y2,
+          thickness,
+          false,
+          false
+        )}
+        closed={true}
+        fill="transparent"
+        stroke="transparent"
         listening={canSelect}
-        // PERFORMANCE: Faster rendering during pan/zoom
         perfectDrawEnabled={false}
         hitStrokeWidth={Math.max(thickness, 20 / zoom)}
         onMouseEnter={() => setIsHovered(true)}

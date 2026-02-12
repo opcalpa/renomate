@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import MaterialDetailDialog from "@/components/project/MaterialDetailDialog";
 
 interface Material {
   id: string;
@@ -30,17 +31,6 @@ interface Material {
   status: string;
   vendor_name: string | null;
 }
-
-const ALL_STATUSES = [
-  "submitted",
-  "declined",
-  "approved",
-  "billed",
-  "paid",
-  "paused",
-] as const;
-
-const DEFAULT_HIDDEN = new Set(["paid"]);
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -70,9 +60,10 @@ export function RelatedPurchaseOrdersSection({ roomId, projectId }: RelatedPurch
   const { t } = useTranslation();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeStatuses, setActiveStatuses] = useState<Set<string>>(
-    () => new Set(ALL_STATUSES.filter((s) => !DEFAULT_HIDDEN.has(s)))
-  );
+
+  // Material detail dialog state
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   // Purchase Order form state
   const [poDialogOpen, setPoDialogOpen] = useState(false);
@@ -157,22 +148,10 @@ export function RelatedPurchaseOrdersSection({ roomId, projectId }: RelatedPurch
     }
   };
 
-  const toggleStatus = (status: string) => {
-    setActiveStatuses((prev) => {
-      const next = new Set(prev);
-      if (next.has(status)) {
-        next.delete(status);
-      } else {
-        next.add(status);
-      }
-      return next;
-    });
+  const handleMaterialClick = (materialId: string) => {
+    setSelectedMaterialId(materialId);
+    setDetailDialogOpen(true);
   };
-
-  const filtered = useMemo(
-    () => materials.filter((m) => activeStatuses.has(m.status)),
-    [materials, activeStatuses]
-  );
 
   if (loading) {
     return <p className="text-sm text-muted-foreground py-2">{t('rooms.loadingPurchaseOrders')}</p>;
@@ -182,44 +161,29 @@ export function RelatedPurchaseOrdersSection({ roomId, projectId }: RelatedPurch
     <>
       <div className="space-y-3">
         {/* Header with Create button */}
-        <div className="flex items-center justify-between">
-          <div className="flex flex-wrap gap-1.5 flex-1">
-            {ALL_STATUSES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => toggleStatus(s)}
-                className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
-                  activeStatuses.has(s)
-                    ? getStatusColor(s)
-                    : "bg-transparent text-muted-foreground border-dashed border-muted-foreground/40"
-                }`}
-              >
-                {t(`materialStatuses.${s}`)}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center justify-end">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setPoDialogOpen(true)}
-            className="ml-2 shrink-0"
           >
             <Plus className="h-3 w-3 mr-1" />
             {t('common.create')}
           </Button>
         </div>
 
-        {filtered.length === 0 ? (
+        {materials.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2">
-            {materials.length === 0
-              ? t('rooms.noPOsForRoom')
-              : t('rooms.noPOsMatchFilter')}
+            {t('rooms.noPOsForRoom')}
           </p>
         ) : (
           <ul className="space-y-1.5">
-            {filtered.map((m) => (
-              <li key={m.id} className="flex items-center gap-2 text-sm">
+            {materials.map((m) => (
+              <li
+                key={m.id}
+                className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1.5 -mx-2 transition-colors"
+                onClick={() => handleMaterialClick(m.id)}
+              >
                 <Badge variant="outline" className={`text-[10px] shrink-0 ${getStatusColor(m.status)}`}>
                   {t(`materialStatuses.${m.status}`)}
                 </Badge>
@@ -239,6 +203,13 @@ export function RelatedPurchaseOrdersSection({ roomId, projectId }: RelatedPurch
           </ul>
         )}
       </div>
+
+      {/* Material Detail Dialog */}
+      <MaterialDetailDialog
+        materialId={selectedMaterialId}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+      />
 
       {/* Create Purchase Order Dialog */}
       <Dialog open={poDialogOpen} onOpenChange={setPoDialogOpen}>

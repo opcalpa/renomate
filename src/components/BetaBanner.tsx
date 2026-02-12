@@ -1,17 +1,20 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { X, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const DISMISSED_KEY = "beta-banner-dismissed";
+const DISMISSED_KEY = "beta-banner-dismissed-v1";
 
 export function BetaBanner() {
   const { t } = useTranslation();
-  const [isDismissed, setIsDismissed] = useState(true);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
     const dismissed = localStorage.getItem(DISMISSED_KEY);
     setIsDismissed(dismissed === "true");
+    setIsLoaded(true);
   }, []);
 
   const handleDismiss = () => {
@@ -19,26 +22,37 @@ export function BetaBanner() {
     setIsDismissed(true);
   };
 
-  if (isDismissed) {
+  // Don't render until we've checked localStorage (prevents flash)
+  if (!isLoaded || isDismissed) {
     return null;
   }
 
   return (
-    <div className="bg-amber-50 border-b border-amber-200 text-amber-800 text-sm py-2 px-4">
-      <div className="container mx-auto flex items-center justify-between gap-4">
+    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200 text-amber-900 text-sm py-2.5 px-3 sm:px-4">
+      <div className="container mx-auto flex items-center justify-center relative">
         <div className="flex items-center gap-2">
-          <FlaskConical className="h-4 w-4 flex-shrink-0" />
+          <FlaskConical className="h-4 w-4 flex-shrink-0 text-amber-600" />
           <span>
-            <strong>{t("beta.title", "Beta")}</strong>
-            {" — "}
-{t("beta.message", "This is a beta version. Some features may change.")}
+            <strong className="text-amber-700">{t("beta.title", "Public Beta")}</strong>
+            <span className="hidden sm:inline">
+              {" — "}
+              {t("beta.message", "Help us improve!")}
+            </span>
+            {" "}
+            <Link
+              to="/feedback"
+              className="text-amber-700 underline underline-offset-2 hover:text-amber-900 font-medium"
+            >
+              {t("beta.feedbackLink", "Give feedback")}
+            </Link>
           </span>
         </div>
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 text-amber-600 hover:text-amber-800 hover:bg-amber-100 flex-shrink-0"
+          className="absolute right-0 h-7 w-7 text-amber-600 hover:text-amber-800 hover:bg-amber-100/50"
           onClick={handleDismiss}
+          aria-label={t("common.dismiss", "Dismiss")}
         >
           <X className="h-4 w-4" />
         </Button>

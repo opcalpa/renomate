@@ -44,6 +44,8 @@ import {
 } from "@/components/ui/table";
 import { useTranslation } from "react-i18next";
 import { formatCurrency } from "@/lib/currency";
+import { ProjectLockBanner } from "./ProjectLockBanner";
+import { useProjectLock } from "@/hooks/useProjectLock";
 
 interface Material {
   id: string;
@@ -123,6 +125,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   });
 
   const { toast } = useToast();
+  const { lockStatus } = useProjectLock(projectId);
 
   useEffect(() => {
     fetchUserPermissions();
@@ -559,6 +562,8 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
 
   return (
     <div className="space-y-6">
+      <ProjectLockBanner lockStatus={lockStatus} />
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -851,7 +856,13 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
               <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">{t('purchases.noPurchaseOrders')}</h3>
               <p className="text-muted-foreground mb-4">
-                {t('purchases.noPurchaseOrdersDescription')}
+                {t('purchases.noPurchaseOrdersDescription')}</p>
+              <Button onClick={() => setDialogOpen(true)} className="mb-4">
+                <Plus className="h-4 w-4 mr-2" />
+                {t('purchases.addFirstOrder', 'Add first order')}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                {t('purchases.emptyStateTip', 'Tip: Link purchases to tasks to track costs per work item')}
               </p>
             </div>
           ) : (

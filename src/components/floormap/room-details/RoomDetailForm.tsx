@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Home,
   Layers,
@@ -16,16 +17,20 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { CommentsSection } from "@/components/comments/CommentsSection";
+import { VisionSection } from "./sections/VisionSection";
 import { IdentitySection } from "./sections/IdentitySection";
 import { HorizontalSection } from "./sections/HorizontalSection";
 import { VerticalSection } from "./sections/VerticalSection";
 import { TechnicalSection } from "./sections/TechnicalSection";
 import { SmartDataSection } from "./sections/SmartDataSection";
 import { QuickInfoSection } from "./sections/QuickInfoSection";
+import { SpecSummarySection } from "./sections/SpecSummarySection";
 import { CanvasSettingsPopover } from "./CanvasSettingsPopover";
 import { PhotoSection } from "./PhotoSection";
 import { RelatedTasksSection } from "./sections/RelatedTasksSection";
 import { RelatedPurchaseOrdersSection } from "./sections/RelatedPurchaseOrdersSection";
+import { FilledIndicator } from "./components/FilledIndicator";
+import { countFilledFields } from "./utils/countFilledFields";
 import { useTranslation } from "react-i18next";
 import type { RoomFormData, Room } from "./types";
 
@@ -52,6 +57,12 @@ export function RoomDetailForm({
   const areaSqm = room?.dimensions?.area_sqm;
   const perimeterMm = room?.dimensions?.perimeter_mm;
 
+  // Track which accordion sections are open
+  const [openSections, setOpenSections] = useState<string[]>(["tasks"]);
+
+  // Calculate filled field counts for indicators
+  const filledCounts = countFilledFields(formData);
+
   // Status badge helper
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -62,6 +73,18 @@ export function RoomDetailForm({
       default:
         return "outline";
     }
+  };
+
+  // Handle clicking summary items to expand sections
+  const handleExpandSection = (sectionId: string) => {
+    if (!openSections.includes(sectionId)) {
+      setOpenSections([...openSections, sectionId]);
+    }
+    // Scroll to section after a short delay
+    setTimeout(() => {
+      const element = document.querySelector(`[data-section="${sectionId}"]`);
+      element?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
   };
 
   return (
@@ -78,7 +101,7 @@ export function RoomDetailForm({
         </div>
         <div className="flex items-center gap-2 text-sm text-slate-500">
           {areaSqm && <span>{areaSqm.toFixed(1)} m²</span>}
-          {areaSqm && <span className="text-slate-300">•</span>}
+          {areaSqm && <span className="text-slate-300">·</span>}
           <span>
             {(formData.ceiling_height_mm / 1000).toFixed(2)} m{" "}
             {t("rooms.ceilingHeightShort", "h")}
@@ -91,7 +114,31 @@ export function RoomDetailForm({
         </div>
       </div>
 
-      {/* Quick Info - always visible */}
+      {/* 1. Vision/Description - ALWAYS visible and prominent */}
+      <VisionSection formData={formData} updateFormData={updateFormData} />
+
+      {/* 2. Related Tasks - High priority for project managers */}
+      {!isNewRoom && (
+        <div className="border rounded-lg">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <ClipboardList className="h-4 w-4 text-indigo-600" />
+              <span className="font-medium text-sm">
+                {t("rooms.relatedTasks", "Kopplade uppgifter")}
+              </span>
+            </div>
+            <RelatedTasksSection roomId={room!.id} projectId={projectId} />
+          </div>
+        </div>
+      )}
+
+      {/* 3. Specification Summary - Quick overview of what's filled */}
+      <SpecSummarySection
+        formData={formData}
+        onExpandSection={handleExpandSection}
+      />
+
+      {/* 4. Quick Info - Material estimates */}
       <QuickInfoSection
         formData={formData}
         updateFormData={updateFormData}
@@ -99,18 +146,25 @@ export function RoomDetailForm({
         perimeterMm={perimeterMm}
       />
 
-      {/* Accordion sections */}
+      {/* 5. Detailed Accordion sections */}
       <Accordion
         type="multiple"
-        defaultValue={["identity"]}
+        value={openSections}
+        onValueChange={setOpenSections}
         className="w-full"
       >
-        {/* Section 1: Identity */}
-        <AccordionItem value="identity">
+        {/* Section: Identity */}
+        <AccordionItem value="identity" data-section="identity">
           <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-2">
-              <Home className="h-4 w-4 text-blue-600" />
-              <span>{t("rooms.identity", "Identity")}</span>
+            <div className="flex items-center justify-between w-full pr-2">
+              <div className="flex items-center gap-2">
+                <Home className="h-4 w-4 text-blue-600" />
+                <span>{t("rooms.identity", "Identitet")}</span>
+              </div>
+              <FilledIndicator
+                filled={filledCounts.identity.filled}
+                total={filledCounts.identity.total}
+              />
             </div>
           </AccordionTrigger>
           <AccordionContent>
@@ -119,16 +173,23 @@ export function RoomDetailForm({
               updateFormData={updateFormData}
               updateSpec={updateSpec}
               areaSqm={areaSqm}
+              createdAt={room?.created_at}
             />
           </AccordionContent>
         </AccordionItem>
 
-        {/* Section 2: Floor & Ceiling */}
-        <AccordionItem value="floor-ceiling">
+        {/* Section: Floor & Ceiling */}
+        <AccordionItem value="floor-ceiling" data-section="floor-ceiling">
           <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-2">
-              <Layers className="h-4 w-4 text-green-600" />
-              <span>{t("rooms.floorAndCeiling", "Floor & Ceiling")}</span>
+            <div className="flex items-center justify-between w-full pr-2">
+              <div className="flex items-center gap-2">
+                <Layers className="h-4 w-4 text-green-600" />
+                <span>{t("rooms.floorAndCeiling", "Golv & Tak")}</span>
+              </div>
+              <FilledIndicator
+                filled={filledCounts.floorCeiling.filled}
+                total={filledCounts.floorCeiling.total}
+              />
             </div>
           </AccordionTrigger>
           <AccordionContent>
@@ -140,12 +201,18 @@ export function RoomDetailForm({
           </AccordionContent>
         </AccordionItem>
 
-        {/* Section 3: Walls & Joinery */}
-        <AccordionItem value="walls-joinery">
+        {/* Section: Walls & Joinery */}
+        <AccordionItem value="walls-joinery" data-section="walls-joinery">
           <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-2">
-              <Square className="h-4 w-4 text-orange-600" />
-              <span>{t("rooms.wallsAndJoinery", "Walls & Joinery")}</span>
+            <div className="flex items-center justify-between w-full pr-2">
+              <div className="flex items-center gap-2">
+                <Square className="h-4 w-4 text-orange-600" />
+                <span>{t("rooms.wallsAndJoinery", "Väggar & Snickerier")}</span>
+              </div>
+              <FilledIndicator
+                filled={filledCounts.wallsJoinery.filled}
+                total={filledCounts.wallsJoinery.total}
+              />
             </div>
           </AccordionTrigger>
           <AccordionContent>
@@ -157,12 +224,18 @@ export function RoomDetailForm({
           </AccordionContent>
         </AccordionItem>
 
-        {/* Section 4: Electrical & Heating */}
-        <AccordionItem value="electrical-heating">
+        {/* Section: Electrical & Heating */}
+        <AccordionItem value="electrical-heating" data-section="electrical-heating">
           <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-yellow-600" />
-              <span>{t("rooms.electricalAndHeating", "Electrical & Heating")}</span>
+            <div className="flex items-center justify-between w-full pr-2">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-yellow-600" />
+                <span>{t("rooms.electricalAndHeating", "El & Värme")}</span>
+              </div>
+              <FilledIndicator
+                filled={filledCounts.electricalHeating.filled}
+                total={filledCounts.electricalHeating.total}
+              />
             </div>
           </AccordionTrigger>
           <AccordionContent>
@@ -174,12 +247,18 @@ export function RoomDetailForm({
           </AccordionContent>
         </AccordionItem>
 
-        {/* Section 5: Project Data */}
-        <AccordionItem value="project-data">
+        {/* Section: Project Data */}
+        <AccordionItem value="project-data" data-section="project-data">
           <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-purple-600" />
-              <span>{t("rooms.projectData", "Project Data")}</span>
+            <div className="flex items-center justify-between w-full pr-2">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-purple-600" />
+                <span>{t("rooms.projectData", "Projektdata")}</span>
+              </div>
+              <FilledIndicator
+                filled={filledCounts.projectData.filled}
+                total={filledCounts.projectData.total}
+              />
             </div>
           </AccordionTrigger>
           <AccordionContent>
@@ -191,28 +270,13 @@ export function RoomDetailForm({
           </AccordionContent>
         </AccordionItem>
 
-        {/* Tasks Section - only for existing rooms */}
+        {/* Section: Purchase Orders - only for existing rooms */}
         {!isNewRoom && (
-          <AccordionItem value="tasks">
-            <AccordionTrigger className="hover:no-underline">
-              <div className="flex items-center gap-2">
-                <ClipboardList className="h-4 w-4 text-indigo-600" />
-                <span>{t("rooms.relatedTasks", "Related Tasks")}</span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <RelatedTasksSection roomId={room!.id} projectId={projectId} />
-            </AccordionContent>
-          </AccordionItem>
-        )}
-
-        {/* Purchase Orders Section - only for existing rooms */}
-        {!isNewRoom && (
-          <AccordionItem value="purchases">
+          <AccordionItem value="purchases" data-section="purchases">
             <AccordionTrigger className="hover:no-underline">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-4 w-4 text-teal-600" />
-                <span>{t("rooms.relatedPurchaseOrders", "Purchase Orders")}</span>
+                <span>{t("rooms.relatedPurchaseOrders", "Inköpsordrar")}</span>
               </div>
             </AccordionTrigger>
             <AccordionContent>
@@ -221,13 +285,13 @@ export function RoomDetailForm({
           </AccordionItem>
         )}
 
-        {/* Media & Comments Section - only for existing rooms */}
+        {/* Section: Media & Comments - only for existing rooms */}
         {!isNewRoom && (
-          <AccordionItem value="media">
+          <AccordionItem value="media" data-section="media">
             <AccordionTrigger className="hover:no-underline">
               <div className="flex items-center gap-2">
                 <ImageIcon className="h-4 w-4 text-pink-600" />
-                <span>{t("rooms.mediaAndComments", "Media & Comments")}</span>
+                <span>{t("rooms.mediaAndComments", "Media & Kommentarer")}</span>
               </div>
             </AccordionTrigger>
             <AccordionContent>

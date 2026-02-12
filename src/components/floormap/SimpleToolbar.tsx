@@ -35,6 +35,7 @@ import {
   Ruler,
   Frame,
   Grid3X3,
+  Plug,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CanvasSettingsPopover } from "./CanvasSettingsPopover";
@@ -48,7 +49,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { FloorMapShape } from "./types";
 import { updatePlanInDB } from "./utils/plans";
 import { fetchPinterestPin, parsePinterestPinUrl } from "@/services/pinterestOEmbed";
-import { generateWallsFromRoom } from "./utils/roomWalls";
+import { generateWallsFromRoom, generateWallsFromRooms } from "./utils/roomWalls";
 import { getAdminDefaults } from "./canvas/constants";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import {
@@ -107,6 +108,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { ObjectLibraryPanel } from "./objectLibrary/ObjectLibraryPanel";
+import { UnifiedObjectDefinition } from "./objectLibrary/types";
 
 interface ToolItem {
   id: string;
@@ -233,7 +236,7 @@ export const SimpleToolbar = ({
   isDemo,
 }: SimpleToolbarProps) => {
   const { t } = useTranslation();
-  const { activeTool, setActiveTool, viewState, setViewState, selectedShapeIds, addShape, currentPlanId } = useFloorMapStore();
+  const { activeTool, setActiveTool, viewState, setViewState, selectedShapeIds, addShape, currentPlanId, pendingObjectId, setPendingObjectId } = useFloorMapStore();
   const shapes = useFloorMapStore(s => s.shapes);
   const plans = useFloorMapStore(s => s.plans);
   const updatePlan = useFloorMapStore(s => s.updatePlan);
@@ -245,6 +248,7 @@ export const SimpleToolbar = ({
   const [templateGalleryOpen, setTemplateGalleryOpen] = useState(false);
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [objectLibraryOpen, setObjectLibraryOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Pinterest import state
@@ -291,27 +295,30 @@ export const SimpleToolbar = ({
   const handleCreateWallsFromRoom = useCallback(() => {
     if (selectedRooms.length === 0) return;
     const { wallThicknessMM, wallHeightMM } = getAdminDefaults();
-    let totalWallsCreated = 0;
 
-    selectedRooms.forEach(roomShape => {
-      const walls = generateWallsFromRoom(roomShape, uuidv4, {
-        heightMM: wallHeightMM,
-        thicknessMM: wallThicknessMM,
-        planId: currentPlanId || undefined,
-      });
-      walls.forEach(wall => addShape(wall));
-      totalWallsCreated += walls.length;
-    });
+    // Get existing walls to avoid duplicates
+    const existingWalls = shapes.filter(s => s.type === 'wall' || s.type === 'line');
 
-    if (totalWallsCreated > 0) {
+    // Generate walls with automatic deduplication
+    // This prevents duplicate walls where rooms share edges
+    const walls = generateWallsFromRooms(selectedRooms, uuidv4, {
+      heightMM: wallHeightMM,
+      thicknessMM: wallThicknessMM,
+      planId: currentPlanId || undefined,
+    }, existingWalls);
+
+    walls.forEach(wall => addShape(wall));
+
+    if (walls.length > 0) {
       const roomText = selectedRooms.length === 1 ? 'rummet' : `${selectedRooms.length} rum`;
-      toast.success(`${totalWallsCreated} väggar skapade runt ${roomText}`);
+      const dedupNote = selectedRooms.length > 1 ? ' (utan dubbletter)' : '';
+      toast.success(`${walls.length} väggar skapade runt ${roomText}${dedupNote}`);
       // Mark generateWalls step as complete
       if (onboarding.isStepActive("generateWalls")) {
         onboarding.markStepComplete("generateWalls");
       }
     }
-  }, [selectedRooms, currentPlanId, addShape, onboarding]);
+  }, [selectedRooms, shapes, currentPlanId, addShape, onboarding]);
 
   // Listen for context menu events from canvas
   useEffect(() => {
@@ -378,7 +385,7 @@ export const SimpleToolbar = ({
     setIsUploadingImage(true);
 
     try {
-      const filePath = `projects/${projectId}/floorplan-images/${Date.now()}-${file.name}`;
+      const filePath = `projects/${projectId}/Uppladdade filer/${Date.now()}-${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from('project-files')
         .upload(filePath, file);
@@ -530,6 +537,14 @@ export const SimpleToolbar = ({
   const isDrawActive = drawTools.some(t => t.id === activeTool);
   const isStructureActive = structureTools.some(t => t.id === activeTool);
   const isModifyActive = modifyTools.some(t => t.id === activeTool);
+  const isObjectActive = activeTool === 'object';
+
+  // Handle object selection from library
+  const handleSelectObject = useCallback((definition: UnifiedObjectDefinition) => {
+    setPendingObjectId(definition.id);
+    setObjectLibraryOpen(false);
+    toast.success(t('objectLibrary.objectSelected', `${definition.name} vald - klicka på canvas för att placera`));
+  }, [setPendingObjectId, t]);
 
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
@@ -572,6 +587,16 @@ export const SimpleToolbar = ({
         className={cn("w-9 h-9", activeTool === 'room' && "bg-primary text-primary-foreground")}
       >
         <Home className="h-4 w-4" />
+      </Button>
+
+      {/* Measure */}
+      <Button
+        variant={activeTool === 'measure' ? 'default' : 'ghost'}
+        size="icon"
+        onClick={() => setActiveTool('measure')}
+        className={cn("w-9 h-9", activeTool === 'measure' && "bg-red-500 text-white")}
+      >
+        <Ruler className="h-4 w-4" />
       </Button>
 
       {/* Undo */}
@@ -708,6 +733,21 @@ export const SimpleToolbar = ({
         <TooltipContent side="right">Välj (V)</TooltipContent>
       </Tooltip>
 
+      {/* Measure Tool - Always visible for quick access */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={activeTool === 'measure' ? "default" : "ghost"}
+            size="icon"
+            onClick={() => setActiveTool('measure')}
+            className={cn("w-10 h-10", activeTool === 'measure' && "bg-red-500 text-white hover:bg-red-600")}
+          >
+            <Ruler className="h-5 w-5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">{t('floormap.measureDistance', 'Mät avstånd')} (M)</TooltipContent>
+      </Tooltip>
+
       <Separator className="w-8 my-1" />
 
       {/* Import Category */}
@@ -766,6 +806,38 @@ export const SimpleToolbar = ({
         onToggle={() => toggleCategory('modify')}
         activeItemId={activeTool}
       />
+
+      {/* Object Library */}
+      <Popover open={objectLibraryOpen} onOpenChange={setObjectLibraryOpen}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <Button
+                variant={isObjectActive ? "default" : "ghost"}
+                size="icon"
+                className={cn(
+                  "w-10 h-10",
+                  isObjectActive && "bg-primary text-primary-foreground"
+                )}
+              >
+                <Plug className="h-5 w-5" />
+              </Button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="right">{t('objectLibrary.title', 'Objektbibliotek')}</TooltipContent>
+        </Tooltip>
+        <PopoverContent
+          side="right"
+          align="start"
+          className="w-64 h-80 p-0 ml-2"
+        >
+          <ObjectLibraryPanel
+            onSelectObject={handleSelectObject}
+            selectedObjectId={pendingObjectId || undefined}
+            viewMode="floorplan"
+          />
+        </PopoverContent>
+      </Popover>
 
       {/* Templates - Dropdown Menu */}
       <Tooltip>

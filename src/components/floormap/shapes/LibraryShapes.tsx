@@ -2,9 +2,10 @@
  * Library Shape Components
  *
  * Renders library symbols and JSON-based objects from the object library.
+ * Supports wall attachment with IKEA-style floor/elevation sync.
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { Group, Line, Circle, Rect } from 'react-konva';
 import Konva from 'konva';
 import { useFloorMapStore } from '../store';
@@ -12,6 +13,7 @@ import { ShapeComponentProps } from './types';
 import { getSymbolComponent, ArchSymbolType } from '../SymbolLibrary';
 import { getObjectById } from '../ObjectRenderer';
 import { createUnifiedDragHandlers } from '../canvas/utils';
+import { shouldAttachToWall } from '../canvas/utils/wallObjectDefaults';
 
 /**
  * LibrarySymbolShape - Renders professional architectural symbols from SymbolLibrary
@@ -133,6 +135,7 @@ export const LibrarySymbolShape = React.memo<ShapeComponentProps>(({ shape, isSe
 
 /**
  * ObjectLibraryShape - Renders JSON-based objects from ObjectRenderer
+ * Supports wall attachment with automatic re-snap on drag.
  * PERFORMANCE: Memoized to prevent unnecessary re-renders
  */
 export const ObjectLibraryShape = React.memo<ShapeComponentProps>(({ shape, isSelected, onSelect, onTransform, shapeRefsMap }) => {
@@ -140,6 +143,9 @@ export const ObjectLibraryShape = React.memo<ShapeComponentProps>(({ shape, isSe
 
   // Get unified drag handlers for multi-select support
   const dragHandlers = createUnifiedDragHandlers(shape.id);
+
+  // Get store actions for wall snapping
+  const snapShapeToWall = useFloorMapStore((state) => state.snapShapeToWall);
 
   // Store ref in shapeRefsMap for unified multi-select drag
   useEffect(() => {
@@ -171,7 +177,42 @@ export const ObjectLibraryShape = React.memo<ShapeComponentProps>(({ shape, isSe
   // Get scale settings for proper rendering
   const scaleSettings = useFloorMapStore((state) => state.scaleSettings);
 
+  // Check if this object should attach to walls
+  const shouldSnap = shouldAttachToWall(
+    objectDef.category,
+    objectDef.wallMountable,
+    objectDef.freestanding
+  );
+
   const isDraggable = true; // Always draggable
+
+  // Custom drag end handler that re-snaps to walls
+  const handleDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
+    e.cancelBubble = true;
+    const node = e.target;
+    const newX = node.x();
+    const newY = node.y();
+
+    // First update the position
+    onTransform({
+      metadata: {
+        ...shape.metadata,
+        placementX: newX,
+        placementY: newY,
+      }
+    });
+
+    // Then try to re-snap to nearest wall if applicable
+    if (shouldSnap) {
+      // Use setTimeout to allow the position update to complete first
+      setTimeout(() => {
+        snapShapeToWall(shape.id);
+      }, 0);
+    }
+
+    // Call unified drag handler for multi-select support
+    dragHandlers.onDragEnd(e);
+  }, [shape.id, shape.metadata, onTransform, shouldSnap, snapShapeToWall, dragHandlers]);
 
   return (
     <Group
@@ -195,7 +236,7 @@ export const ObjectLibraryShape = React.memo<ShapeComponentProps>(({ shape, isSe
       }}
       onDragStart={dragHandlers.onDragStart}
       onDragMove={dragHandlers.onDragMove}
-      onDragEnd={dragHandlers.onDragEnd}
+      onDragEnd={handleDragEnd}
       onTransformEnd={(e) => {
         e.cancelBubble = true;
         const node = e.target;
@@ -218,6 +259,13 @@ export const ObjectLibraryShape = React.memo<ShapeComponentProps>(({ shape, isSe
         node.scaleX(objectScale * scaleSettings.pixelsPerMm);
         node.scaleY(objectScale * scaleSettings.pixelsPerMm);
         node.rotation(rotation);
+
+        // Re-snap to wall after transform if applicable
+        if (shouldSnap) {
+          setTimeout(() => {
+            snapShapeToWall(shape.id);
+          }, 0);
+        }
       }}
     >
       {/* Render the object using ObjectRenderer */}
@@ -304,12 +352,26 @@ export const ObjectLibraryShape = React.memo<ShapeComponentProps>(({ shape, isSe
           listening={false}
         />
       )}
+
+      {/* Wall attachment indicator - green dot when attached to wall */}
+      {shape.wallRelative && (
+        <Circle
+          x={objectDef.defaultWidth - 30}
+          y={30}
+          radius={20}
+          fill="#10b981"
+          stroke="#ffffff"
+          strokeWidth={4}
+          listening={false}
+        />
+      )}
     </Group>
   );
 }, (prevProps, nextProps) => {
   return (
     prevProps.shape.id === nextProps.shape.id &&
     prevProps.isSelected === nextProps.isSelected &&
+    prevProps.shape.wallRelative?.wallId === nextProps.shape.wallRelative?.wallId &&
     JSON.stringify(prevProps.shape.metadata) === JSON.stringify(nextProps.shape.metadata)
   );
 });

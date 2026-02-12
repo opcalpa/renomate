@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { FloorMapShape, FloorMapPlan, ViewMode, Tool, GridSettings, ViewState, SymbolType, ScaleSettings, ScalePreset, GridPreset, WallRelativePosition, WallObjectCategory } from './types';
+import { FloorMapShape, FloorMapPlan, ViewMode, Tool, GridSettings, ViewState, SymbolType, ScaleSettings, ScalePreset, GridPreset, WallRelativePosition, WallObjectCategory, Position3D, Rotation3D, LineCoordinates } from './types';
 import { Unit, Scale, getDefaultGridInterval } from './utils/formatting';
 import { snapObjectToWall, syncFromElevation, setObjectCategory as setObjectCategoryUtil } from './canvas/utils/viewSync';
+import { wallRelativeToWorld } from './canvas/utils/wallCoordinates';
 
 // Scale presets: 1px = X mm
 const SCALE_PRESETS: Record<ScalePreset, ScaleSettings> = {
@@ -54,7 +55,7 @@ const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   gridInterval: 100, // 10cm default - smooth for furniture, walls snap well
   gridVisible: true,
   snapEnabled: true,
-  showDimensions: true,
+  showDimensions: false, // Off by default - hover tooltip shows dimensions instead
   showAreaLabels: true,
   canvasWidthMeters: 50, // 50m × 50m working area
   canvasHeightMeters: 50,
@@ -97,9 +98,17 @@ interface FloorMapStore {
   viewState: ViewState;
   gridSettings: GridSettings;
   scaleSettings: ScaleSettings;
-  
+  initializedViewForPlanId: string | null; // Track which plan has had view initialized (survives unmount)
+
   // Project Settings (NEW - Centralized workspace configuration)
   projectSettings: ProjectSettings;
+
+  // Wall snap preview (visual feedback during drag)
+  wallSnapPreview: {
+    wallId: string;
+    snapPoint: { x: number; y: number };
+    snapRotation: number;
+  } | null;
   
   // Actions - Plans
   setCurrentProjectId: (id: string | null) => void;
@@ -150,6 +159,7 @@ interface FloorMapStore {
   setScalePreset: (preset: ScalePreset) => void;
   setGridPreset: (preset: GridPreset) => void;
   applyViewSettings: (settings: Partial<ViewState & { mode: ViewMode }>) => void;
+  setInitializedViewForPlanId: (id: string | null) => void;
   
   // Actions - Project Settings (NEW)
   setProjectSettings: (settings: Partial<ProjectSettings>) => void;
@@ -162,7 +172,10 @@ interface FloorMapStore {
   toggleAreaLabels: () => void;
   setCanvasSize: (widthMeters: number, heightMeters: number) => void;
   setCanvasMargin: (marginMeters: number) => void;
-  
+
+  // Actions - Wall Snap Preview
+  setWallSnapPreview: (preview: { wallId: string; snapPoint: { x: number; y: number }; snapRotation: number } | null) => void;
+
   // Actions - Layering
   bringForward: (shapeId: string) => void;
   sendBackward: (shapeId: string) => void;
@@ -202,6 +215,10 @@ interface FloorMapStore {
   ) => void;
   setShapeObjectCategory: (shapeId: string, category: WallObjectCategory) => void;
 
+  // 3D View sync actions (for bidirectional 2D/3D editing)
+  updateObjectFrom3D: (shapeId: string, position3D: Position3D, rotation3D?: Rotation3D) => void;
+  updateObjectFrom2D: (shapeId: string, x: number, y: number, rotation?: number) => void;
+
   // Getters
   getSelectedShape: () => FloorMapShape | null;
   getCurrentPlan: () => FloorMapPlan | null;
@@ -235,6 +252,7 @@ export const useFloorMapStore = create<FloorMapStore>((set, get) => ({
   viewMode: 'floor',
   activeTool: 'select',
   recentTools: ['wall', 'door', 'select'], // Default recent tools
+  initializedViewForPlanId: null, // Track which plan has had its view initialized (survives component unmount)
   viewState: {
     zoom: 1,
     panX: 0,
@@ -254,7 +272,10 @@ export const useFloorMapStore = create<FloorMapStore>((set, get) => ({
   
   // Project Settings (NEW - Centralized configuration)
   projectSettings: DEFAULT_PROJECT_SETTINGS,
-  
+
+  // Wall snap preview (visual feedback during drag)
+  wallSnapPreview: null,
+
   // Plan Actions
   setCurrentProjectId: (id) => set({ currentProjectId: id }),
   
@@ -477,7 +498,9 @@ export const useFloorMapStore = create<FloorMapStore>((set, get) => ({
   setViewState: (state) => set((prev) => ({
     viewState: { ...prev.viewState, ...state },
   })),
-  
+
+  setInitializedViewForPlanId: (id) => set({ initializedViewForPlanId: id }),
+
   setGridSettings: (settings) => set((prev) => ({
     gridSettings: { ...prev.gridSettings, ...settings },
   })),
@@ -637,13 +660,35 @@ export const useFloorMapStore = create<FloorMapStore>((set, get) => ({
     const shape = state.shapes.find(s => s.id === shapeId);
     if (!shape) return state;
 
+    // Merge wall-relative data
+    const newWallRelative: WallRelativePosition = shape.wallRelative
+      ? { ...shape.wallRelative, ...wallRelative }
+      : wallRelative as WallRelativePosition;
+
+    // Find the wall to calculate new world coordinates
+    const wall = state.shapes.find(s => s.id === newWallRelative.wallId);
+
+    // Calculate new world position from wall-relative data (for bidirectional sync)
+    let newMetadata = shape.metadata;
+    if (wall && shape.metadata?.isObjectLibrary) {
+      const worldPos = wallRelativeToWorld(newWallRelative, wall);
+      if (worldPos) {
+        newMetadata = {
+          ...shape.metadata,
+          placementX: worldPos.x - (newWallRelative.width / 2) * (state.scaleSettings?.pixelsPerMm || 0.1),
+          placementY: worldPos.y - (newWallRelative.depth / 2) * (state.scaleSettings?.pixelsPerMm || 0.1),
+          rotation: worldPos.rotation,
+        };
+      }
+    }
+
     const newShapes = state.shapes.map(s => {
       if (s.id === shapeId) {
         return {
           ...s,
-          wallRelative: s.wallRelative
-            ? { ...s.wallRelative, ...wallRelative }
-            : wallRelative as WallRelativePosition,
+          wallRelative: newWallRelative,
+          rotation: newMetadata !== shape.metadata ? (newMetadata as any)?.rotation : s.rotation,
+          metadata: newMetadata,
         };
       }
       return s;
@@ -724,6 +769,136 @@ export const useFloorMapStore = create<FloorMapStore>((set, get) => ({
     const newShapes = state.shapes.map(s => {
       if (s.id === shapeId) {
         return { ...s, ...updates };
+      }
+      return s;
+    });
+
+    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(newShapes)));
+
+    return {
+      shapes: newShapes,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    };
+  }),
+
+  // ============================================================================
+  // 3D VIEW SYNC ACTIONS (Bidirectional 2D/3D Editing)
+  // ============================================================================
+
+  updateObjectFrom3D: (shapeId, position3D, rotation3D) => set((state) => {
+    const shape = state.shapes.find(s => s.id === shapeId);
+    if (!shape) return state;
+
+    // Update position3D
+    const newPosition3D = { ...position3D };
+
+    // If wall-attached, recalculate wallRelative
+    let newWallRelative = shape.wallRelative;
+    if (shape.wallRelative?.wallId) {
+      const wall = state.shapes.find(s => s.id === shape.wallRelative?.wallId);
+      if (wall) {
+        const wallCoords = wall.coordinates as LineCoordinates;
+        if (wallCoords && wallCoords.x1 !== undefined) {
+          // Calculate wall-relative position from world 3D position
+          const dx = wallCoords.x2 - wallCoords.x1;
+          const dy = wallCoords.y2 - wallCoords.y1;
+          const wallLength = Math.sqrt(dx * dx + dy * dy);
+          const wallAngle = Math.atan2(dy, dx);
+
+          // Project 3D position onto wall line
+          // Convert 3D Y (up) back to floor plan coordinates
+          const fpX = position3D.x;
+          const fpY = position3D.y; // In 3D, y is vertical, but we use position3D.y for floor plan Y
+
+          // Calculate distance from wall start along wall direction
+          const relX = fpX - wallCoords.x1;
+          const relY = fpY - wallCoords.y1;
+          const distanceFromWallStart = (relX * dx + relY * dy) / wallLength;
+
+          // Calculate perpendicular offset
+          const perpOffset = (-relX * dy + relY * dx) / wallLength;
+
+          newWallRelative = {
+            ...shape.wallRelative,
+            distanceFromWallStart,
+            perpendicularOffset: perpOffset,
+            elevationBottom: position3D.z,
+          };
+        }
+      }
+    }
+
+    // Update 2D placement metadata for sync
+    const newMetadata = {
+      ...shape.metadata,
+      placementX: position3D.x,
+      placementY: position3D.y,
+      rotation: rotation3D ? rotation3D.y * (180 / Math.PI) : shape.rotation,
+    };
+
+    const newShapes = state.shapes.map(s => {
+      if (s.id === shapeId) {
+        return {
+          ...s,
+          position3D: newPosition3D,
+          rotation3D,
+          wallRelative: newWallRelative,
+          metadata: newMetadata,
+          rotation: rotation3D ? rotation3D.y * (180 / Math.PI) : s.rotation,
+        };
+      }
+      return s;
+    });
+
+    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(newShapes)));
+
+    return {
+      shapes: newShapes,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    };
+  }),
+
+  updateObjectFrom2D: (shapeId, x, y, rotation) => set((state) => {
+    const shape = state.shapes.find(s => s.id === shapeId);
+    if (!shape) return state;
+
+    // Calculate 3D position from 2D coordinates
+    const dims = shape.dimensions3D || { width: 500, height: 500, depth: 500 };
+    const elevation = shape.wallRelative?.elevationBottom || 0;
+
+    const newPosition3D: Position3D = {
+      x,
+      y,
+      z: elevation,
+    };
+
+    const newRotation3D: Rotation3D | undefined = rotation !== undefined ? {
+      x: 0,
+      y: rotation * (Math.PI / 180),
+      z: 0,
+    } : shape.rotation3D;
+
+    // Update metadata
+    const newMetadata = {
+      ...shape.metadata,
+      placementX: x,
+      placementY: y,
+      rotation,
+    };
+
+    const newShapes = state.shapes.map(s => {
+      if (s.id === shapeId) {
+        return {
+          ...s,
+          position3D: newPosition3D,
+          rotation3D: newRotation3D,
+          rotation: rotation ?? s.rotation,
+          metadata: newMetadata,
+        };
       }
       return s;
     });
@@ -849,6 +1024,9 @@ export const useFloorMapStore = create<FloorMapStore>((set, get) => ({
       canvasMarginMeters: marginMeters,
     },
   })),
+
+  // Wall snap preview (visual feedback during drag)
+  setWallSnapPreview: (preview) => set({ wallSnapPreview: preview }),
 
   // ============================================================================
   // LAYERING ACTIONS (Z-Index Management)

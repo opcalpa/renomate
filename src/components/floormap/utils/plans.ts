@@ -233,6 +233,8 @@ export const loadShapesForPlan = async (planId: string): Promise<FloorMapShape[]
         treatmentColor: dbShape.shape_data?.treatmentColor,
         manufacturer: dbShape.shape_data?.manufacturer,
         productCode: dbShape.shape_data?.productCode,
+        // Wall-relative positioning (for elevation objects like outlets, switches)
+        wallRelative: dbShape.shape_data?.wallRelative,
       }));
 
       // Mapped shapes successfully
@@ -338,6 +340,8 @@ export const saveShapesForPlan = async (
           treatmentColor: shape.treatmentColor,
           manufacturer: shape.manufacturer,
           productCode: shape.productCode,
+          // Wall-relative positioning (for elevation objects like outlets, switches)
+          wallRelative: shape.wallRelative,
         },
         room_id: shape.roomId || null,
       }));

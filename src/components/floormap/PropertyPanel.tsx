@@ -62,6 +62,12 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   const [editGroupWidthMm, setEditGroupWidthMm] = useState('0');
   const [editGroupHeightMm, setEditGroupHeightMm] = useState('0');
 
+  // Object dimensions editing state (for unified objects, symbols with wallRelative)
+  const [isEditingObjectDimensions, setIsEditingObjectDimensions] = useState(false);
+  const [editObjectWidthMm, setEditObjectWidthMm] = useState('600');
+  const [editObjectHeightMm, setEditObjectHeightMm] = useState('850');
+  const [editObjectDepthMm, setEditObjectDepthMm] = useState('600');
+
   // Layer actions from store
   const bringForward = useFloorMapStore((state) => state.bringForward);
   const sendBackward = useFloorMapStore((state) => state.sendBackward);
@@ -107,6 +113,64 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   // Check if this is a template group leader
   const isTemplateGroup = shape.isGroupLeader && shape.templateInfo;
   const templateInfo = shape.templateInfo;
+
+  // Check if this is an object with editable dimensions (wallRelative or dimensions3D or unified object)
+  const isEditableObject = !!(
+    shape.wallRelative ||
+    shape.dimensions3D ||
+    (shape.metadata?.isUnifiedObject && shape.metadata?.unifiedObjectId)
+  );
+
+  // Get object dimensions from various sources
+  const objectDimensions = useMemo(() => {
+    if (shape.wallRelative) {
+      return {
+        width: shape.wallRelative.width || 0,
+        height: shape.wallRelative.height || 0,
+        depth: shape.wallRelative.depth || 0,
+        elevationBottom: shape.wallRelative.elevationBottom || 0,
+        hasWallAttachment: true,
+        wallId: shape.wallRelative.wallId,
+      };
+    }
+    if (shape.dimensions3D) {
+      return {
+        width: shape.dimensions3D.width || 0,
+        height: shape.dimensions3D.height || 0,
+        depth: shape.dimensions3D.depth || 0,
+        elevationBottom: 0,
+        hasWallAttachment: false,
+        wallId: null,
+      };
+    }
+    // For unified objects without explicit dimensions, try to get from coordinates
+    const coords = shape.coordinates as Record<string, unknown>;
+    if ('width' in coords && 'height' in coords) {
+      return {
+        width: (coords.width as number) / pixelsPerMm || 0,
+        height: 850, // Default height for kitchen objects
+        depth: (coords.height as number) / pixelsPerMm || 0, // In floorplan, 'height' is depth
+        elevationBottom: 0,
+        hasWallAttachment: false,
+        wallId: null,
+      };
+    }
+    return null;
+  }, [shape.wallRelative, shape.dimensions3D, shape.coordinates, pixelsPerMm]);
+
+  // Get the object type name for display
+  const objectTypeName = useMemo(() => {
+    if (shape.metadata?.unifiedObjectId) {
+      return shape.metadata.unifiedObjectId as string;
+    }
+    if (shape.symbolType) {
+      return shape.symbolType;
+    }
+    if (shape.objectCategory) {
+      return shape.objectCategory;
+    }
+    return 'object';
+  }, [shape.metadata, shape.symbolType, shape.objectCategory]);
 
   // Get all shapes in this group
   const groupShapes = useMemo(() => {
@@ -192,6 +256,18 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
       setEditThicknessMm(String(shape.thicknessMM || 150));
       setEditHeightMm(String(shape.heightMM || 2400));
     }
+
+    // Initialize object dimension values
+    if (shape.wallRelative) {
+      setEditObjectWidthMm(String(Math.round(shape.wallRelative.width || 600)));
+      setEditObjectHeightMm(String(Math.round(shape.wallRelative.height || 850)));
+      setEditObjectDepthMm(String(Math.round(shape.wallRelative.depth || 600)));
+    } else if (shape.dimensions3D) {
+      setEditObjectWidthMm(String(Math.round(shape.dimensions3D.width || 600)));
+      setEditObjectHeightMm(String(Math.round(shape.dimensions3D.height || 850)));
+      setEditObjectDepthMm(String(Math.round(shape.dimensions3D.depth || 600)));
+    }
+    setIsEditingObjectDimensions(false);
 
     // Initialize group dimension values
     if (shape.isGroupLeader && shape.templateInfo) {
@@ -315,14 +391,85 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
         };
       }
       
+      case 'freehand':
+      case 'polygon':
+      case 'symbol': {
+        // Check for unified objects or wall-attached objects
+        if (objectDimensions) {
+          const values = [];
+          values.push({
+            label: t('propertyPanel.width'),
+            value: objectDimensions.width >= 1000
+              ? `${(objectDimensions.width / 1000).toFixed(2)} m`
+              : `${Math.round(objectDimensions.width)} mm`,
+            highlight: true
+          });
+          values.push({
+            label: t('propertyPanel.height'),
+            value: objectDimensions.height >= 1000
+              ? `${(objectDimensions.height / 1000).toFixed(2)} m`
+              : `${Math.round(objectDimensions.height)} mm`,
+            highlight: true
+          });
+          values.push({
+            label: t('propertyPanel.depth'),
+            value: objectDimensions.depth >= 1000
+              ? `${(objectDimensions.depth / 1000).toFixed(2)} m`
+              : `${Math.round(objectDimensions.depth)} mm`
+          });
+          if (objectDimensions.hasWallAttachment) {
+            values.push({
+              label: t('propertyPanel.elevationFromFloor', 'Höjd från golv'),
+              value: `${Math.round(objectDimensions.elevationBottom)} mm`
+            });
+          }
+          return {
+            type: objectTypeName || t('propertyPanel.object'),
+            displayValues: values
+          };
+        }
+        return {
+          type: t('propertyPanel.object'),
+          displayValues: []
+        };
+      }
+
       default:
+        // Check for objects with dimensions in default case too
+        if (objectDimensions) {
+          const values = [];
+          values.push({
+            label: t('propertyPanel.width'),
+            value: objectDimensions.width >= 1000
+              ? `${(objectDimensions.width / 1000).toFixed(2)} m`
+              : `${Math.round(objectDimensions.width)} mm`,
+            highlight: true
+          });
+          values.push({
+            label: t('propertyPanel.height'),
+            value: objectDimensions.height >= 1000
+              ? `${(objectDimensions.height / 1000).toFixed(2)} m`
+              : `${Math.round(objectDimensions.height)} mm`,
+            highlight: true
+          });
+          values.push({
+            label: t('propertyPanel.depth'),
+            value: objectDimensions.depth >= 1000
+              ? `${(objectDimensions.depth / 1000).toFixed(2)} m`
+              : `${Math.round(objectDimensions.depth)} mm`
+          });
+          return {
+            type: objectTypeName || t('propertyPanel.object'),
+            displayValues: values
+          };
+        }
         return {
           type: t('propertyPanel.object'),
           displayValues: []
         };
     }
   };
-  
+
   const { type, displayValues } = getShapeProperties();
   
   const handleSave = () => {
@@ -562,6 +709,95 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
     toast.success(t('propertyPanel.groupDimensionsUpdated', `Group resized (${groupShapes.length} shapes)`));
   };
 
+  // Handle saving object dimensions (for unified objects with wallRelative or dimensions3D)
+  const handleSaveObjectDimensions = () => {
+    const newWidth = parseFloat(editObjectWidthMm);
+    const newHeight = parseFloat(editObjectHeightMm);
+    const newDepth = parseFloat(editObjectDepthMm);
+
+    if (isNaN(newWidth) || newWidth <= 0) {
+      toast.error(t('propertyPanel.invalidWidth', 'Ogiltig bredd'));
+      return;
+    }
+    if (isNaN(newHeight) || newHeight <= 0) {
+      toast.error(t('propertyPanel.invalidHeight', 'Ogiltig höjd'));
+      return;
+    }
+    if (isNaN(newDepth) || newDepth <= 0) {
+      toast.error(t('propertyPanel.invalidDepth', 'Ogiltigt djup'));
+      return;
+    }
+
+    const updates: Partial<FloorMapShape> = {};
+
+    // Update wallRelative if present
+    if (shape.wallRelative) {
+      updates.wallRelative = {
+        ...shape.wallRelative,
+        width: newWidth,
+        height: newHeight,
+        depth: newDepth,
+      };
+    }
+
+    // Update dimensions3D if present
+    if (shape.dimensions3D) {
+      updates.dimensions3D = {
+        width: newWidth,
+        height: newHeight,
+        depth: newDepth,
+      };
+    }
+
+    // Also update the visual coordinates to reflect the new dimensions
+    // For freehand/polygon shapes, scale the points proportionally
+    const coords = shape.coordinates as Record<string, unknown>;
+    if ('points' in coords) {
+      const points = coords.points as Array<{ x: number; y: number }>;
+      if (points && points.length > 0) {
+        // Calculate current bounds
+        const minX = Math.min(...points.map(p => p.x));
+        const maxX = Math.max(...points.map(p => p.x));
+        const minY = Math.min(...points.map(p => p.y));
+        const maxY = Math.max(...points.map(p => p.y));
+        const currentWidth = maxX - minX;
+        const currentDepth = maxY - minY;
+
+        // Calculate scale factors (width in mm -> pixels)
+        const oldWidthMM = shape.wallRelative?.width || shape.dimensions3D?.width || currentWidth / pixelsPerMm;
+        const oldDepthMM = shape.wallRelative?.depth || shape.dimensions3D?.depth || currentDepth / pixelsPerMm;
+        const scaleX = newWidth / oldWidthMM;
+        const scaleY = newDepth / oldDepthMM;
+
+        // Scale points around center
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        const newPoints = points.map(p => ({
+          x: centerX + (p.x - centerX) * scaleX,
+          y: centerY + (p.y - centerY) * scaleY,
+        }));
+
+        updates.coordinates = { points: newPoints };
+      }
+    } else if ('width' in coords && 'height' in coords) {
+      // Symbol coordinates - update width/height directly
+      const oldWidthMM = shape.wallRelative?.width || shape.dimensions3D?.width || (coords.width as number) / pixelsPerMm;
+      const oldDepthMM = shape.wallRelative?.depth || shape.dimensions3D?.depth || (coords.height as number) / pixelsPerMm;
+      const scaleX = newWidth / oldWidthMM;
+      const scaleY = newDepth / oldDepthMM;
+
+      updates.coordinates = {
+        ...coords,
+        width: (coords.width as number) * scaleX,
+        height: (coords.height as number) * scaleY,
+      };
+    }
+
+    onUpdateShape(shape.id, updates);
+    setIsEditingObjectDimensions(false);
+    toast.success(t('propertyPanel.objectDimensionsUpdated', 'Objektmått uppdaterade'));
+  };
+
   return (
     <div
       className="fixed top-0 right-0 h-screen w-full md:w-96 bg-white border-l-0 md:border-l-4 border-blue-500 shadow-2xl z-[100] flex flex-col"
@@ -780,6 +1016,139 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                         <Badge variant="outline" className="text-xs">
                           {templateInfo.category}
                         </Badge>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Object Dimensions Section - for unified objects with wallRelative or dimensions3D */}
+        {isEditableObject && objectDimensions && !isTemplateGroup && (
+          <>
+            <Separator />
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-blue-600" />
+                  <Label className="text-sm font-medium text-gray-700">
+                    {t('propertyPanel.objectDimensions', 'Objektmått')}
+                  </Label>
+                </div>
+                {!isEditingObjectDimensions && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditObjectWidthMm(String(Math.round(objectDimensions.width)));
+                      setEditObjectHeightMm(String(Math.round(objectDimensions.height)));
+                      setEditObjectDepthMm(String(Math.round(objectDimensions.depth)));
+                      setIsEditingObjectDimensions(true);
+                    }}
+                    className="h-7 px-2 text-xs"
+                  >
+                    <Edit2 className="h-3 w-3 mr-1" />
+                    {t('propertyPanel.editDimensions', 'Ändra mått')}
+                  </Button>
+                )}
+              </div>
+
+              <div className="space-y-2 bg-blue-50 rounded-lg p-3 border border-blue-200">
+                {isEditingObjectDimensions ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <Label className="text-xs text-gray-600 mb-1">
+                          {t('propertyPanel.widthMm', 'Bredd (mm)')}
+                        </Label>
+                        <Input
+                          type="number"
+                          step="10"
+                          value={editObjectWidthMm}
+                          onChange={(e) => setEditObjectWidthMm(e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-600 mb-1">
+                          {t('propertyPanel.heightMm', 'Höjd (mm)')}
+                        </Label>
+                        <Input
+                          type="number"
+                          step="10"
+                          value={editObjectHeightMm}
+                          onChange={(e) => setEditObjectHeightMm(e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-600 mb-1">
+                          {t('propertyPanel.depthMm', 'Djup (mm)')}
+                        </Label>
+                        <Input
+                          type="number"
+                          step="10"
+                          value={editObjectDepthMm}
+                          onChange={(e) => setEditObjectDepthMm(e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-blue-700">
+                      {t('propertyPanel.objectDimensionsHint', 'Ändrar bara detta placerade objekt, inte originalmallen')}
+                    </p>
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        onClick={handleSaveObjectDimensions}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700"
+                      >
+                        {t('propertyPanel.applyChanges', 'Spara ändringar')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsEditingObjectDimensions(false)}
+                        className="px-3"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">{t('propertyPanel.width', 'Bredd')}:</span>
+                      <span className="font-semibold text-blue-700">
+                        {objectDimensions.width >= 1000
+                          ? `${(objectDimensions.width / 1000).toFixed(2)} m`
+                          : `${Math.round(objectDimensions.width)} mm`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">{t('propertyPanel.height', 'Höjd')}:</span>
+                      <span className="font-semibold text-blue-700">
+                        {objectDimensions.height >= 1000
+                          ? `${(objectDimensions.height / 1000).toFixed(2)} m`
+                          : `${Math.round(objectDimensions.height)} mm`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">{t('propertyPanel.depth', 'Djup')}:</span>
+                      <span className="font-semibold text-blue-700">
+                        {objectDimensions.depth >= 1000
+                          ? `${(objectDimensions.depth / 1000).toFixed(2)} m`
+                          : `${Math.round(objectDimensions.depth)} mm`}
+                      </span>
+                    </div>
+                    {objectDimensions.hasWallAttachment && (
+                      <div className="flex justify-between items-center pt-2 border-t border-blue-200">
+                        <span className="text-xs text-gray-500">{t('propertyPanel.elevationFromFloor', 'Höjd från golv')}:</span>
+                        <span className="font-semibold text-blue-600">
+                          {Math.round(objectDimensions.elevationBottom)} mm
+                        </span>
                       </div>
                     )}
                   </>

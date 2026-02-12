@@ -14,7 +14,7 @@ export async function fetchAllProjectComments(projectId: string): Promise<FeedCo
     .from("comments")
     .select(`
       id, content, created_at, created_by_user_id, images, task_id,
-      creator:profiles!comments_created_by_user_id_fkey(name, email),
+      creator:profiles(name, email),
       task:tasks!inner(title, project_id)
     `)
     .not("task_id", "is", null)
@@ -28,7 +28,7 @@ export async function fetchAllProjectComments(projectId: string): Promise<FeedCo
     .from("comments")
     .select(`
       id, content, created_at, created_by_user_id, images, material_id,
-      creator:profiles!comments_created_by_user_id_fkey(name, email),
+      creator:profiles(name, email),
       material:materials!inner(name, project_id)
     `)
     .not("material_id", "is", null)
@@ -43,7 +43,7 @@ export async function fetchAllProjectComments(projectId: string): Promise<FeedCo
     .from("comments")
     .select(`
       id, content, created_at, created_by_user_id, images, drawing_object_id,
-      creator:profiles!comments_created_by_user_id_fkey(name, email)
+      creator:profiles(name, email)
     `)
     .not("drawing_object_id", "is", null)
     .order("created_at", { ascending: false });
@@ -77,7 +77,7 @@ export async function fetchAllProjectComments(projectId: string): Promise<FeedCo
     .from("comments")
     .select(`
       id, content, created_at, created_by_user_id, images, project_id,
-      creator:profiles!comments_created_by_user_id_fkey(name, email)
+      creator:profiles(name, email)
     `)
     .eq("project_id", projectId)
     .order("created_at", { ascending: false });

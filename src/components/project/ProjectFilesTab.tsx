@@ -103,6 +103,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
   const [imageRotation, setImageRotation] = useState(0);
   const [documentImportFile, setDocumentImportFile] = useState<ProjectFile | null>(null);
   const [showDocumentUploadSuggestion, setShowDocumentUploadSuggestion] = useState<ProjectFile | null>(null);
+  const [showImageUploadSuggestion, setShowImageUploadSuggestion] = useState<ProjectFile | null>(null);
   const [floorPlanImportFile, setFloorPlanImportFile] = useState<ProjectFile | null>(null);
   const [linkFile, setLinkFile] = useState<ProjectFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -249,6 +250,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
 
     setUploading(true);
     let lastUploadedDocumentFile: ProjectFile | null = null;
+    let lastUploadedImageFile: ProjectFile | null = null;
 
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
@@ -262,17 +264,23 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
 
         if (uploadError) throw uploadError;
 
+        const uploadedFileInfo: ProjectFile = {
+          id: `${timestamp}-${file.name}`,
+          name: file.name,
+          path: filePath,
+          size: file.size,
+          type: file.type,
+          uploaded_at: new Date().toISOString(),
+          uploaded_by: '',
+        };
+
         // Track document files for AI suggestion
         if (isDocumentFile(file.name, file.type)) {
-          lastUploadedDocumentFile = {
-            id: `${timestamp}-${file.name}`,
-            name: file.name,
-            path: filePath,
-            size: file.size,
-            type: file.type,
-            uploaded_at: new Date().toISOString(),
-            uploaded_by: '',
-          };
+          lastUploadedDocumentFile = uploadedFileInfo;
+        }
+        // Track image files for floor plan suggestion
+        else if (file.type.startsWith('image/')) {
+          lastUploadedImageFile = uploadedFileInfo;
         }
       }
 
@@ -287,9 +295,11 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
         fileInputRef.current.value = '';
       }
 
-      // Show AI extraction suggestion for document files
+      // Show AI suggestion - prioritize document over image if both uploaded
       if (lastUploadedDocumentFile) {
         setShowDocumentUploadSuggestion(lastUploadedDocumentFile);
+      } else if (lastUploadedImageFile) {
+        setShowImageUploadSuggestion(lastUploadedImageFile);
       }
     } catch (error: unknown) {
       console.error('Error uploading files:', error);
@@ -481,21 +491,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
               onChange={handleFileSelect}
               className="hidden"
               id="file-upload"
-            />
-            <AIFloorPlanImport 
-              projectId={projectId}
-              onImportComplete={() => {
-                toast({
-                  title: t('files.importDone'),
-                  description: t('files.importDoneDescription'),
-                });
-                // Navigate to Floor Plan tab after short delay
-                setTimeout(() => {
-                  if (onNavigateToFloorPlan) {
-                    onNavigateToFloorPlan();
-                  }
-                }, 500);
-              }}
+              accept="image/*,.pdf,.doc,.docx,.txt"
             />
             <Button
               variant="outline"
@@ -1000,6 +996,38 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
             >
               <Sparkles className="h-4 w-4 mr-2" />
               {t('files.extractWithAI')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Image Upload Floor Plan Suggestion Dialog */}
+      <AlertDialog
+        open={!!showImageUploadSuggestion}
+        onOpenChange={() => setShowImageUploadSuggestion(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Wand2 className="h-5 w-5 text-primary" />
+              {t('files.floorPlanQuestion')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('files.floorPlanDescription', { name: showImageUploadSuggestion?.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('files.noThanks')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (showImageUploadSuggestion) {
+                  setFloorPlanImportFile(showImageUploadSuggestion);
+                }
+                setShowImageUploadSuggestion(null);
+              }}
+            >
+              <Wand2 className="h-4 w-4 mr-2" />
+              {t('files.importToFloorPlan')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

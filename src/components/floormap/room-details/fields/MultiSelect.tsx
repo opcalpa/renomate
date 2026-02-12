@@ -90,8 +90,10 @@ export function MultiSelect({
                     className="mr-1 mb-1"
                   >
                     {option ? getLabel(option) : value}
-                    <button
-                      className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           handleRemove(value, e as unknown as React.MouseEvent);
@@ -101,10 +103,10 @@ export function MultiSelect({
                         e.preventDefault();
                         e.stopPropagation();
                       }}
-                      onClick={(e) => handleRemove(value, e)}
+                      onClick={(e) => handleRemove(value, e as unknown as React.MouseEvent)}
                     >
                       <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                    </button>
+                    </span>
                   </Badge>
                 );
               })

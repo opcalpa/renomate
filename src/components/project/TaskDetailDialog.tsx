@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,8 @@ interface Material {
   name: string;
   quantity: number;
   unit: string;
-  cost: number | null;
+  price_per_unit: number | null;
+  price_total: number | null;
   status: string;
 }
 
@@ -105,7 +106,7 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit, currency }: Task
       // Fetch materials
       const { data: materialsData } = await supabase
         .from("materials")
-        .select("id, name, quantity, unit, cost, status")
+        .select("id, name, quantity, unit, price_per_unit, price_total, status")
         .eq("task_id", taskId);
 
       setMaterials(materialsData || []);
@@ -172,6 +173,9 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit, currency }: Task
               <Pencil className="h-4 w-4" />
             </Button>
           </div>
+          <DialogDescription className="sr-only">
+            {t('taskDetail.taskDetails', 'Task details')}
+          </DialogDescription>
         </DialogHeader>
 
         {loading ? (

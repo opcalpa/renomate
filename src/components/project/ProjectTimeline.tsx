@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Calendar, Loader2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Move, ZoomIn, ZoomOut, RotateCcw, Layers } from "lucide-react";
+import { Calendar, Loader2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Move, ZoomIn, ZoomOut, RotateCcw, Layers, SlidersHorizontal, Info, X } from "lucide-react";
 import { useTimelineGestures } from "@/hooks/useTimelineGestures";
 import { Slider } from "@/components/ui/slider";
 import { format, differenceInDays, parseISO, addDays } from "date-fns";
@@ -91,6 +91,8 @@ const ProjectTimeline = ({
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
   const { toast } = useToast();
   const { t } = useTranslation();
 
@@ -712,141 +714,300 @@ const ProjectTimeline = ({
       </Card>;
   }
   return <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <CardTitle>{projectName || t('projectDetail.timeline')}</CardTitle>
-            <CardDescription>
-              {format(minDate, "MMM d, yyyy")} - {format(maxDate, "MMM d, yyyy")} ({daysVisible} {t('timeline.days', 'days')})
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Group by dropdown */}
-            <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupByOption)}>
-              <SelectTrigger className="w-full sm:w-36">
-                <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder={t('timeline.groupBy', 'Group by')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">{t('timeline.noGrouping', 'No grouping')}</SelectItem>
-                <SelectItem value="status">{t('timeline.groupByStatus', 'Status')}</SelectItem>
-                <SelectItem value="room">{t('timeline.groupByRoom', 'Room')}</SelectItem>
-                <SelectItem value="assignee">{t('timeline.groupByAssignee', 'Assignee')}</SelectItem>
-                <SelectItem value="priority">{t('timeline.groupByPriority', 'Priority')}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="Filter by assignee" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('budget.allAssignees')}</SelectItem>
-                <SelectItem value="unassigned">{t('common.unassigned')}</SelectItem>
-                {teamMembers.map(member => <SelectItem key={member.id} value={member.id}>
-                    {member.name}
-                  </SelectItem>)}
-              </SelectContent>
-            </Select>
-            {/* View preset buttons */}
-            <div className="flex items-center gap-1 border rounded-md p-0.5">
+      <CardHeader className="pb-3">
+        {/* === MOBILE HEADER (compact) === */}
+        <div className="md:hidden space-y-3">
+          {/* Row 1: Title + Filter button */}
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-lg truncate">{projectName || t('projectDetail.timeline')}</CardTitle>
+              <CardDescription className="text-xs">
+                {format(minDate, "d MMM")} - {format(maxDate, "d MMM")} ({daysVisible} {t('timeline.days', 'days')})
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-1">
               <Button
-                variant={daysVisible <= 10 ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setViewPreset('week')}
-                className="h-7 px-2 text-xs"
+                variant={showLegend ? "secondary" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setShowLegend(!showLegend)}
               >
-                {t('timeline.weekly', '1W')}
+                <Info className="h-4 w-4" />
               </Button>
               <Button
-                variant={daysVisible > 10 && daysVisible <= 45 ? "secondary" : "ghost"}
+                variant={mobileFiltersOpen ? "secondary" : "outline"}
                 size="sm"
-                onClick={() => setViewPreset('month')}
-                className="h-7 px-2 text-xs"
+                className="h-8"
+                onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
               >
-                {t('timeline.monthly', '1M')}
-              </Button>
-              <Button
-                variant={daysVisible > 45 && daysVisible <= 120 ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setViewPreset('3months')}
-                className="h-7 px-2 text-xs"
-              >
-                {t('timeline.threeMonths', '3M')}
-              </Button>
-              <Button
-                variant={daysVisible > 120 ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setViewPreset('full')}
-                className="h-7 px-2 text-xs"
-              >
-                {t('timeline.fullProject', 'All')}
+                <SlidersHorizontal className="h-4 w-4 mr-1" />
+                {t('timeline.filters', 'Filter')}
               </Button>
             </div>
-            <Button variant="outline" onClick={handleToday}>
-              {t('timeline.today', 'Today')}
-            </Button>
-            <Button variant="outline" size="icon" onClick={handlePrevious}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" onClick={handleNext}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
           </div>
-        </div>
-        {/* Zoom controls */}
-        <div className="flex items-center gap-2 mt-3 pb-2 border-b">
-          <Button variant="ghost" size="icon" onClick={zoomOut} disabled={daysVisible >= maxDays} className="h-8 w-8" title={t('timeline.showMoreDays', 'Show more days')}>
-            <ZoomOut className="h-4 w-4" />
-          </Button>
-          <span className="text-sm text-muted-foreground min-w-[80px] text-center">
-            {daysVisible} {t('timeline.days', 'days')}
-          </span>
-          <Button variant="ghost" size="icon" onClick={zoomIn} disabled={daysVisible <= minDays} className="h-8 w-8" title={t('timeline.showFewerDays', 'Show fewer days')}>
-            <ZoomIn className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => setViewPreset('month')} className="h-8 w-8" title={t('timeline.resetZoom', 'Reset to 1 month')}>
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-          <span className="text-xs text-muted-foreground ml-2 hidden sm:inline">
-            {t('timeline.gestureHint', 'Pinch to zoom, swipe to pan')}
-          </span>
-        </div>
-        <div className="flex items-center gap-4 text-sm flex-wrap">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-lg bg-emerald-500/90 shadow-sm border border-emerald-600/20" />
-            <span className="text-muted-foreground font-medium">{t('projectDetail.completed')}</span>
+
+          {/* Row 2: Compact navigation + zoom */}
+          <div className="flex items-center justify-between gap-2">
+            {/* View preset pills */}
+            <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
+              {(['week', 'month', '3months', 'full'] as const).map((preset) => {
+                const isActive =
+                  (preset === 'week' && daysVisible <= 10) ||
+                  (preset === 'month' && daysVisible > 10 && daysVisible <= 45) ||
+                  (preset === '3months' && daysVisible > 45 && daysVisible <= 120) ||
+                  (preset === 'full' && daysVisible > 120);
+                const labels = { week: '1V', month: '1M', '3months': '3M', full: t('timeline.fullProject', 'Alla') };
+                return (
+                  <Button
+                    key={preset}
+                    variant={isActive ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewPreset(preset)}
+                    className="h-7 px-2 text-xs"
+                  >
+                    {labels[preset]}
+                  </Button>
+                );
+              })}
+            </div>
+            {/* Navigation */}
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" onClick={handleToday} className="h-7 px-2 text-xs">
+                {t('timeline.today', 'Idag')}
+              </Button>
+              <Button variant="outline" size="icon" onClick={handlePrevious} className="h-7 w-7">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={handleNext} className="h-7 w-7">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-lg bg-blue-500/90 shadow-sm border border-blue-600/20" />
-            <span className="text-muted-foreground font-medium">{t('projectDetail.inProgress')}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-lg bg-slate-400/90 shadow-sm border border-slate-500/20" />
-            <span className="text-muted-foreground font-medium">{t('projectDetail.toDo')}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-lg bg-yellow-500/90 shadow-sm border border-yellow-600/20" />
-            <span className="text-muted-foreground font-medium">{t('statuses.onHold')}</span>
-          </div>
-          <div className="flex items-center gap-2 ml-auto">
-            {projectStartDate && (
-              <Badge variant="outline">Start: {format(parseISO(projectStartDate), "MMM d, yyyy")}</Badge>
-            )}
-            {projectFinishDate && (
-              <Badge variant="outline">Goal: {format(parseISO(projectFinishDate), "MMM d, yyyy")}</Badge>
-            )}
-          </div>
-        </div>
-        {unscheduledCount > 0 && (
-          <div className="mt-3">
-            <Badge variant="secondary" className="text-xs">
+
+          {/* Expandable filters panel */}
+          {mobileFiltersOpen && (
+            <div className="bg-muted/50 rounded-lg p-3 space-y-3 border">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">{t('timeline.filters', 'Filter')}</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setMobileFiltersOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupByOption)}>
+                  <SelectTrigger className="h-9">
+                    <Layers className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                    <SelectValue placeholder={t('timeline.groupBy', 'Gruppering')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('timeline.noGrouping', 'Ingen')}</SelectItem>
+                    <SelectItem value="status">{t('timeline.groupByStatus', 'Status')}</SelectItem>
+                    <SelectItem value="room">{t('timeline.groupByRoom', 'Rum')}</SelectItem>
+                    <SelectItem value="assignee">{t('timeline.groupByAssignee', 'Person')}</SelectItem>
+                    <SelectItem value="priority">{t('timeline.groupByPriority', 'Prioritet')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder={t('budget.allAssignees')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('budget.allAssignees')}</SelectItem>
+                    <SelectItem value="unassigned">{t('common.unassigned')}</SelectItem>
+                    {teamMembers.map(member => (
+                      <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Zoom controls */}
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <Button variant="outline" size="icon" onClick={zoomOut} disabled={daysVisible >= maxDays} className="h-8 w-8">
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground min-w-[70px] text-center">
+                  {daysVisible} {t('timeline.days', 'dagar')}
+                </span>
+                <Button variant="outline" size="icon" onClick={zoomIn} disabled={daysVisible <= minDays} className="h-8 w-8">
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="icon" onClick={() => setViewPreset('month')} className="h-8 w-8">
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Legend (toggle) */}
+          {showLegend && (
+            <div className="flex items-center gap-3 text-xs flex-wrap bg-muted/30 rounded-lg p-2">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded bg-emerald-500" />
+                <span>{t('projectDetail.completed')}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded bg-blue-500" />
+                <span>{t('projectDetail.inProgress')}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded bg-slate-400" />
+                <span>{t('projectDetail.toDo')}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded bg-yellow-500" />
+                <span>{t('statuses.onHold')}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Unscheduled badge */}
+          {unscheduledCount > 0 && (
+            <Badge variant="secondary" className="text-xs w-fit">
               <Calendar className="h-3 w-3 mr-1" />
               {unscheduledCount === 1
-                ? t('timeline.unscheduledTasksSingular', '1 unscheduled task')
-                : t('timeline.unscheduledTasks', '{{count}} unscheduled tasks', { count: unscheduledCount })}
+                ? t('timeline.unscheduledTasksSingular', '1 oschemalagd')
+                : t('timeline.unscheduledTasks', '{{count}} oschemalagda', { count: unscheduledCount })}
             </Badge>
+          )}
+        </div>
+
+        {/* === DESKTOP HEADER (full controls) === */}
+        <div className="hidden md:block">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <CardTitle>{projectName || t('projectDetail.timeline')}</CardTitle>
+              <CardDescription>
+                {format(minDate, "MMM d, yyyy")} - {format(maxDate, "MMM d, yyyy")} ({daysVisible} {t('timeline.days', 'days')})
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Group by dropdown */}
+              <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupByOption)}>
+                <SelectTrigger className="w-36">
+                  <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder={t('timeline.groupBy', 'Group by')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t('timeline.noGrouping', 'No grouping')}</SelectItem>
+                  <SelectItem value="status">{t('timeline.groupByStatus', 'Status')}</SelectItem>
+                  <SelectItem value="room">{t('timeline.groupByRoom', 'Room')}</SelectItem>
+                  <SelectItem value="assignee">{t('timeline.groupByAssignee', 'Assignee')}</SelectItem>
+                  <SelectItem value="priority">{t('timeline.groupByPriority', 'Priority')}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Filter by assignee" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('budget.allAssignees')}</SelectItem>
+                  <SelectItem value="unassigned">{t('common.unassigned')}</SelectItem>
+                  {teamMembers.map(member => <SelectItem key={member.id} value={member.id}>
+                      {member.name}
+                    </SelectItem>)}
+                </SelectContent>
+              </Select>
+              {/* View preset buttons */}
+              <div className="flex items-center gap-1 border rounded-md p-0.5">
+                <Button
+                  variant={daysVisible <= 10 ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewPreset('week')}
+                  className="h-7 px-2 text-xs"
+                >
+                  {t('timeline.weekly', '1W')}
+                </Button>
+                <Button
+                  variant={daysVisible > 10 && daysVisible <= 45 ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewPreset('month')}
+                  className="h-7 px-2 text-xs"
+                >
+                  {t('timeline.monthly', '1M')}
+                </Button>
+                <Button
+                  variant={daysVisible > 45 && daysVisible <= 120 ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewPreset('3months')}
+                  className="h-7 px-2 text-xs"
+                >
+                  {t('timeline.threeMonths', '3M')}
+                </Button>
+                <Button
+                  variant={daysVisible > 120 ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewPreset('full')}
+                  className="h-7 px-2 text-xs"
+                >
+                  {t('timeline.fullProject', 'All')}
+                </Button>
+              </div>
+              <Button variant="outline" onClick={handleToday}>
+                {t('timeline.today', 'Today')}
+              </Button>
+              <Button variant="outline" size="icon" onClick={handlePrevious}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={handleNext}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        )}
+          {/* Zoom controls */}
+          <div className="flex items-center gap-2 mt-3 pb-2 border-b">
+            <Button variant="ghost" size="icon" onClick={zoomOut} disabled={daysVisible >= maxDays} className="h-8 w-8" title={t('timeline.showMoreDays', 'Show more days')}>
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground min-w-[80px] text-center">
+              {daysVisible} {t('timeline.days', 'days')}
+            </span>
+            <Button variant="ghost" size="icon" onClick={zoomIn} disabled={daysVisible <= minDays} className="h-8 w-8" title={t('timeline.showFewerDays', 'Show fewer days')}>
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setViewPreset('month')} className="h-8 w-8" title={t('timeline.resetZoom', 'Reset to 1 month')}>
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+            <span className="text-xs text-muted-foreground ml-2">
+              {t('timeline.gestureHint', 'Pinch to zoom, swipe to pan')}
+            </span>
+          </div>
+          <div className="flex items-center gap-4 text-sm flex-wrap mt-3">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-lg bg-emerald-500/90 shadow-sm border border-emerald-600/20" />
+              <span className="text-muted-foreground font-medium">{t('projectDetail.completed')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-lg bg-blue-500/90 shadow-sm border border-blue-600/20" />
+              <span className="text-muted-foreground font-medium">{t('projectDetail.inProgress')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-lg bg-slate-400/90 shadow-sm border border-slate-500/20" />
+              <span className="text-muted-foreground font-medium">{t('projectDetail.toDo')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-lg bg-yellow-500/90 shadow-sm border border-yellow-600/20" />
+              <span className="text-muted-foreground font-medium">{t('statuses.onHold')}</span>
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              {projectStartDate && (
+                <Badge variant="outline">Start: {format(parseISO(projectStartDate), "MMM d, yyyy")}</Badge>
+              )}
+              {projectFinishDate && (
+                <Badge variant="outline">Goal: {format(parseISO(projectFinishDate), "MMM d, yyyy")}</Badge>
+              )}
+            </div>
+          </div>
+          {unscheduledCount > 0 && (
+            <div className="mt-3">
+              <Badge variant="secondary" className="text-xs">
+                <Calendar className="h-3 w-3 mr-1" />
+                {unscheduledCount === 1
+                  ? t('timeline.unscheduledTasksSingular', '1 unscheduled task')
+                  : t('timeline.unscheduledTasks', '{{count}} unscheduled tasks', { count: unscheduledCount })}
+              </Badge>
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">

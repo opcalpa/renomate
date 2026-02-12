@@ -1,13 +1,22 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Settings2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Settings2, Receipt, FileText, Mail, MessageSquare } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useOverviewData } from "./overview/useOverviewData";
 import { PulseCards } from "./overview/PulseCards";
+import { ProjectQuotesCard } from "./overview/ProjectQuotesCard";
 import { NeedsActionSection } from "./overview/NeedsActionSection";
 import { ActiveTasksSection } from "./overview/ActiveTasksSection";
 import { RecentActivitySection } from "./overview/RecentActivitySection";
+import { RecentPhotos } from "./overview/RecentPhotos";
 import { ProjectSettingsDialog } from "./overview/ProjectSettingsDialog";
+import { QuickReceiptCaptureModal } from "./QuickReceiptCaptureModal";
+import { CreateQuoteDialog } from "./CreateQuoteDialog";
+import { SendCustomerFormDialog } from "./SendCustomerFormDialog";
+import { ProjectLockBanner } from "./ProjectLockBanner";
+import { useProjectLock } from "@/hooks/useProjectLock";
+import { CommentsSection } from "@/components/comments/CommentsSection";
 import type { OverviewProject, OverviewNavigation } from "./overview/types";
 import type { FeedComment } from "./feed/types";
 
@@ -19,6 +28,7 @@ interface OverviewTabProps {
   onNavigateToTasks?: (taskId?: string) => void;
   onNavigateToFeed?: () => void;
   onNavigateToBudget?: () => void;
+  onNavigateToFiles?: () => void;
 }
 
 const OverviewTab = ({
@@ -28,9 +38,14 @@ const OverviewTab = ({
   onNavigateToTasks,
   onNavigateToFeed,
   onNavigateToBudget,
+  onNavigateToFiles,
 }: OverviewTabProps) => {
   const { t } = useTranslation();
+  const { lockStatus } = useProjectLock(project.id);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
+  const [customerFormOpen, setCustomerFormOpen] = useState(false);
 
   const {
     taskStats,
@@ -56,15 +71,43 @@ const OverviewTab = ({
 
   return (
     <div className="space-y-6">
+      <ProjectLockBanner lockStatus={lockStatus} />
+
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">{t("overview.projectOverview")}</h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setSettingsOpen(true)}
-        >
-          <Settings2 className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCustomerFormOpen(true)}
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            {t("overview.customerForm")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setQuoteDialogOpen(true)}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            {t("overview.createQuote")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setReceiptModalOpen(true)}
+          >
+            <Receipt className="h-4 w-4 mr-2" />
+            {t("overview.addPurchase")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings2 className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       <PulseCards
@@ -74,6 +117,37 @@ const OverviewTab = ({
         timelineStats={timelineStats}
         navigation={navigation}
         currency={project.currency}
+      />
+
+      <RecentPhotos
+        projectId={project.id}
+        onViewAll={() => onNavigateToFiles?.()}
+      />
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            {t("overview.projectChat.title", "Project chat")}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {t("overview.projectChat.description", "Write a message to your project team")}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <CommentsSection
+            projectId={project.id}
+            entityId={project.id}
+            entityType="project"
+            chatMode
+          />
+        </CardContent>
+      </Card>
+
+      <ProjectQuotesCard
+        projectId={project.id}
+        currency={project.currency}
+        onCreateQuote={() => setQuoteDialogOpen(true)}
       />
 
       <NeedsActionSection
@@ -98,6 +172,30 @@ const OverviewTab = ({
         onOpenChange={setSettingsOpen}
         project={project}
         onProjectUpdate={handleProjectUpdate}
+      />
+
+      <QuickReceiptCaptureModal
+        projectId={project.id}
+        open={receiptModalOpen}
+        onOpenChange={setReceiptModalOpen}
+        onSuccess={() => {
+          refetch();
+          onNavigateToPurchases?.();
+        }}
+      />
+
+      <CreateQuoteDialog
+        projectId={project.id}
+        open={quoteDialogOpen}
+        onOpenChange={setQuoteDialogOpen}
+      />
+
+      <SendCustomerFormDialog
+        projectId={project.id}
+        projectName={project.name}
+        open={customerFormOpen}
+        onOpenChange={setCustomerFormOpen}
+        onSuccess={() => refetch()}
       />
     </div>
   );

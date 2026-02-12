@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ListChecks } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { getDateLocale } from "@/lib/dateFnsLocale";
 import type { OverviewTask, OverviewNavigation } from "./types";
 
 interface ActiveTasksSectionProps {
@@ -12,7 +13,8 @@ interface ActiveTasksSectionProps {
 }
 
 export function ActiveTasksSection({ tasks, navigation }: ActiveTasksSectionProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = getDateLocale(i18n.language);
 
   return (
     <Card>
@@ -47,7 +49,7 @@ export function ActiveTasksSection({ tasks, navigation }: ActiveTasksSectionProp
                     className="h-1.5 w-16 flex-shrink-0"
                   />
                   <span className="text-xs text-muted-foreground whitespace-nowrap md:w-14 md:text-right">
-                    {task.due_date ? format(parseISO(task.due_date), "MMM d") : ""}
+                    {task.due_date ? format(parseISO(task.due_date), "d MMM", { locale: dateLocale }) : ""}
                   </span>
                 </div>
               </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { analytics, AnalyticsEvents } from "@/lib/analytics";
 import { useProfileLanguage } from "@/hooks/useProfileLanguage";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { AppHeader } from "@/components/AppHeader";
@@ -29,7 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AIProjectImportModal } from "@/components/project/AIProjectImportModal";
 import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
-import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
+import { WelcomeModal, QuickStartChoice } from "@/components/onboarding/WelcomeModal";
 import { WithHotspot } from "@/components/onboarding/Hotspot";
 import { PageLoadingSkeleton } from "@/components/ui/skeleton-screens";
 import { seedDemoProject, isDemoProject, hasDemoProject } from "@/services/demoProjectService";
@@ -130,7 +131,13 @@ const Projects = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setProjects(data || []);
+
+      // Filter out demo projects that don't belong to current user
+      // (system_admins can see all projects via RLS, but shouldn't see other users' demos)
+      const filteredProjects = (data || []).filter(
+        (p) => p.project_type !== "demo_project" || p.owner_id === profile.id
+      );
+      setProjects(filteredProjects);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -176,6 +183,15 @@ const Projects = () => {
 
       if (error) throw error;
 
+      // Track project creation
+      analytics.capture(AnalyticsEvents.PROJECT_CREATED, {
+        has_description: Boolean(newProjectDescription),
+        has_address: Boolean(newProjectAddress),
+        has_budget: Boolean(newProjectBudget),
+        has_start_date: Boolean(newProjectStartDate),
+        project_type: newProjectType || 'none',
+      });
+
       toast({
         title: t('projects.projectCreated'),
         description: t('projects.projectCreatedDescription'),
@@ -211,24 +227,29 @@ const Projects = () => {
     navigate("/auth");
   };
 
-  const handleWelcomeComplete = async (userType: "homeowner" | "contractor") => {
+  const handleWelcomeComplete = async (userType: "homeowner" | "contractor", quickStart?: QuickStartChoice) => {
     setShowWelcomeModal(false);
 
-    // Seed demo project for all user types (both homeowners and contractors need to learn the system)
-    if (profile?.id) {
-      const demoProjectId = await seedDemoProject(profile.id as string);
-      if (demoProjectId) {
-        // Refresh projects to show the demo
-        fetchProjects();
-        toast({
-          title: t("demoProject.badge"),
-          description: t("demoProject.description"),
-        });
-      }
-    }
+    // Refresh projects - fetchProjects() already handles demo seeding
+    await fetchProjects();
 
     // Refresh onboarding state
     onboarding.refresh();
+
+    // Handle quick start choice
+    if (quickStart === "blank") {
+      // Open the create project dialog
+      setDialogOpen(true);
+    } else if (quickStart === "import") {
+      // Open the AI import modal
+      setAiImportOpen(true);
+    } else {
+      // "explore" - just show toast about demo project
+      toast({
+        title: t("demoProject.badge"),
+        description: t("demoProject.description"),
+      });
+    }
   };
 
   const handleDeleteProject = async () => {

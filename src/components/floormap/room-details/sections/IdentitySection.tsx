@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Home, Ruler } from "lucide-react";
+import { Home, Ruler, Calendar } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,11 +20,29 @@ export function IdentitySection({
   formData,
   updateFormData,
   areaSqm,
+  createdAt,
 }: IdentitySectionProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  // Format created date
+  const formattedDate = createdAt
+    ? new Date(createdAt).toLocaleDateString(i18n.language === 'sv' ? 'sv-SE' : 'en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : null;
 
   return (
     <div className="space-y-4">
+      {/* Created date - shown at top for existing rooms */}
+      {formattedDate && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground pb-2 border-b">
+          <Calendar className="h-4 w-4" />
+          <span>{t('rooms.createdOn', 'Skapad')}: {formattedDate}</span>
+        </div>
+      )}
+
       {/* Room name with combobox */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">

@@ -100,8 +100,9 @@ export function CanvasSettingsPopover({
   const handleBringToFront = () => roomShape && bringToFront(roomShape.id);
   const handleSendToBack = () => roomShape && sendToBack(roomShape.id);
 
-  const applyColorSelection = () => {
-    const colorWithOpacity = setOpacityInColor(tempColor, opacity);
+  const applyColorSelection = (colorToApply?: string) => {
+    const baseColor = colorToApply ?? tempColor;
+    const colorWithOpacity = setOpacityInColor(baseColor, opacity);
     onColorChange(colorWithOpacity);
     if (roomShape) {
       updateShape(roomShape.id, {
@@ -136,8 +137,9 @@ export function CanvasSettingsPopover({
                     key={colorOption.hex}
                     type="button"
                     onClick={() => {
-                      setTempColor(setOpacityInColor(colorOption.color, opacity));
-                      applyColorSelection();
+                      const newColor = setOpacityInColor(colorOption.color, opacity);
+                      setTempColor(newColor);
+                      applyColorSelection(colorOption.color);
                     }}
                     className={`
                       w-8 h-8 rounded-full border-2 transition-all

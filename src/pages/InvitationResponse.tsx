@@ -3,9 +3,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle, XCircle, Home } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Home, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 interface PermissionsSnapshot {
   timeline_access?: string;
@@ -42,10 +42,29 @@ interface InvitationDetails {
   permissions_snapshot?: PermissionsSnapshot | null;
 }
 
+const getAccessAbilities = (inv: InvitationDetails, t: (key: string, fallback?: string) => string): string[] => {
+  const abilities: string[] = [];
+  if (inv.overview_access && inv.overview_access !== "none")
+    abilities.push(t("invitation.abilities.viewProgress", "View project progress"));
+  if (inv.files_access && inv.files_access !== "none")
+    abilities.push(t("invitation.abilities.viewPhotos", "See photos and documents"));
+  if (inv.tasks_access === "edit")
+    abilities.push(t("invitation.abilities.manageTasks", "Create and manage tasks"));
+  else if (inv.tasks_access && inv.tasks_access !== "none")
+    abilities.push(t("invitation.abilities.viewTasks", "Follow tasks and progress"));
+  if (inv.budget_access && inv.budget_access !== "none")
+    abilities.push(t("invitation.abilities.viewBudget", "View budget overview"));
+  if (inv.purchases_access && inv.purchases_access !== "none" && inv.purchases_access !== "view")
+    abilities.push(t("invitation.abilities.reportMaterials", "Report materials"));
+  abilities.push(t("invitation.abilities.comment", "Comment and communicate"));
+  return abilities;
+};
+
 const InvitationResponse = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const token = searchParams.get("token");
 
   const [loading, setLoading] = useState(true);
@@ -176,8 +195,7 @@ const InvitationResponse = () => {
           project_id: invitation.project.id,
           shared_with_user_id: profile.id,
           role: invitation.role,
-          role_type: roleType,
-          contractor_category: contractorCategory,
+          contractor_role: contractorCategory,
           timeline_access: perms.timeline_access || invitation.timeline_access || 'view',
           tasks_access: perms.tasks_access || invitation.tasks_access || 'view',
           tasks_scope: perms.tasks_scope || invitation.tasks_scope || 'assigned',
@@ -192,17 +210,6 @@ const InvitationResponse = () => {
 
       if (shareError) throw shareError;
 
-      // Update profile to reflect contractor role if invited as one
-      if (isContractor) {
-        await supabase
-          .from("profiles")
-          .update({
-            role: 'contractor',
-            contractor_category: contractorCategory,
-          })
-          .eq("id", profile.id);
-      }
-
       // Update invitation status
       const { error: updateError } = await supabase
         .from("project_invitations")
@@ -211,15 +218,24 @@ const InvitationResponse = () => {
 
       if (updateError) throw updateError;
 
+      // Flag profile as invited client — skip WelcomeModal and adapt onboarding
+      await supabase
+        .from("profiles")
+        .update({
+          onboarding_welcome_completed: true,
+          onboarding_user_type: "invited_client",
+        })
+        .eq("id", profile.id);
+
       setAccepted(true);
       toast({
-        title: "Invitation accepted!",
-        description: "You now have access to the project.",
+        title: t("invitation.accepted", "Invitation accepted!"),
+        description: t("invitation.acceptedDescription", "You now have access to the project."),
       });
 
-      // Redirect to project after 2 seconds
+      // Redirect to project with welcome flag
       setTimeout(() => {
-        navigate(`/projects/${invitation.project.id}`);
+        navigate(`/projects/${invitation.project.id}?welcome=invited`);
       }, 2000);
     } catch (err: any) {
       console.error("Error accepting invitation:", err);
@@ -313,61 +329,36 @@ const InvitationResponse = () => {
 
   if (!invitation) return null;
 
+  const abilities = getAccessAbilities(invitation, t);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle className="text-2xl">🏠 Project Invitation</CardTitle>
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">
+            {t("invitation.youreInvited", "You're invited!")}
+          </CardTitle>
           <CardDescription>
-            You've been invited to collaborate on a renovation project
+            {t("invitation.invitedToProject", "You've been invited to follow a renovation project")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
+          <div className="text-center">
             <h3 className="text-lg font-semibold">{invitation.project?.name || "Project"}</h3>
-            <div className="text-sm text-muted-foreground flex items-center">
-              Invited as: <Badge className="ml-2">{invitation.role}</Badge>
-            </div>
           </div>
 
           <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-            <h4 className="font-medium">Your Access Permissions</h4>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {invitation.timeline_access && invitation.timeline_access !== 'none' && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Timeline:</span>
-                  <Badge variant="outline">{invitation.timeline_access}</Badge>
-                </div>
-              )}
-              {invitation.tasks_access && invitation.tasks_access !== 'none' && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tasks:</span>
-                  <Badge variant="outline">
-                    {invitation.tasks_access} ({invitation.tasks_scope})
-                  </Badge>
-                </div>
-              )}
-              {invitation.space_planner_access && invitation.space_planner_access !== 'none' && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Space Planner:</span>
-                  <Badge variant="outline">{invitation.space_planner_access}</Badge>
-                </div>
-              )}
-              {invitation.purchases_access && invitation.purchases_access !== 'none' && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Purchase Orders:</span>
-                  <Badge variant="outline">
-                    {invitation.purchases_access} ({invitation.purchases_scope})
-                  </Badge>
-                </div>
-              )}
-              {invitation.overview_access && invitation.overview_access !== 'none' && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Overview:</span>
-                  <Badge variant="outline">{invitation.overview_access}</Badge>
-                </div>
-              )}
-            </div>
+            <p className="text-sm text-muted-foreground">
+              {t("invitation.youCan", "In this project you can:")}
+            </p>
+            <ul className="space-y-2">
+              {abilities.map((ability, i) => (
+                <li key={i} className="flex items-center gap-2 text-sm">
+                  <Check className="h-4 w-4 text-green-500 shrink-0" />
+                  {ability}
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div className="flex gap-3">
@@ -380,12 +371,12 @@ const InvitationResponse = () => {
               {accepting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Accepting...
+                  {t("invitation.accepting", "Accepting...")}
                 </>
               ) : (
                 <>
                   <CheckCircle className="h-4 w-4 mr-2" />
-                  Accept Invitation
+                  {t("invitation.accept", "Accept Invitation")}
                 </>
               )}
             </Button>
@@ -395,13 +386,9 @@ const InvitationResponse = () => {
               size="lg"
               disabled={accepting}
             >
-              Decline
+              {t("invitation.decline", "Decline")}
             </Button>
           </div>
-
-          <p className="text-xs text-muted-foreground text-center">
-            By accepting, you'll gain access to this project with the permissions shown above.
-          </p>
         </CardContent>
       </Card>
     </div>

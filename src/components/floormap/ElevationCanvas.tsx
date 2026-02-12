@@ -8,17 +8,25 @@
  * - Drawing toolbar for elevation-specific objects
  */
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Stage, Layer, Rect, Line, Text as KonvaText, Group, Circle, Transformer } from 'react-konva';
 import Konva from 'konva';
 import { v4 as uuidv4 } from 'uuid';
 import { useFloorMapStore } from './store';
 import { FloorMapShape } from './types';
-import { wallRelativeToElevation } from './canvas/utils/wallCoordinates';
+import { wallRelativeToElevation, getCombinedWallElevationData, CombinedWallElevationData } from './canvas/utils/wallCoordinates';
 import { inferCategoryFromSymbolType } from './canvas/utils/wallObjectDefaults';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, Layers, Save } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, Layers, Save, Eye, Compass, X, Home } from 'lucide-react';
+import { findWallsForRoom, WallDirection, RoomWall, getDirectionLabel } from './utils/roomWalls';
 import { getAdminDefaults } from './canvas/constants';
 import { ElevationToolbar } from './ElevationToolbar';
 import { ElevationShapeDialog } from './ElevationShapeDialog';
@@ -68,6 +76,12 @@ const getSymbolStrokeColor = (category: string): string => {
 
 interface ElevationCanvasProps {
   projectId: string;
+  /** Optional: Room to view elevation for (room-based mode) */
+  room?: FloorMapShape;
+  /** Optional: Initial direction when opening in room-based mode */
+  initialDirection?: 'north' | 'east' | 'south' | 'west';
+  /** Callback when view is closed */
+  onClose?: () => void;
 }
 
 // Find openings (doors/windows) on a wall
@@ -98,6 +112,72 @@ const findOpeningsOnWall = (wall: FloorMapShape, allShapes: FloorMapShape[]): Fl
     );
 
     return distance < 50;
+  });
+};
+
+// Find openings within a room's boundary (for room-based elevation view)
+const findOpeningsInRoom = (
+  room: FloorMapShape,
+  allShapes: FloorMapShape[]
+): FloorMapShape[] => {
+  const roomCoords = room.coordinates as { points?: { x: number; y: number }[] };
+  if (!roomCoords.points || roomCoords.points.length < 3) return [];
+
+  // Helper to check if a point is inside the room polygon
+  const isPointInRoom = (x: number, y: number): boolean => {
+    const polygon = roomCoords.points!;
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].x, yi = polygon[i].y;
+      const xj = polygon[j].x, yj = polygon[j].y;
+      if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  };
+
+  return allShapes.filter(shape => {
+    if (!['door_line', 'window_line', 'sliding_door_line'].includes(shape.type)) return false;
+    if (shape.planId !== room.planId) return false;
+
+    const coords = shape.coordinates as { x1: number; y1: number; x2: number; y2: number };
+    const midX = (coords.x1 + coords.x2) / 2;
+    const midY = (coords.y1 + coords.y2) / 2;
+
+    // Check if the opening's midpoint is on or very close to the room's boundary
+    // We use a tolerance since openings sit on the wall, not inside the room
+    const tolerance = 100; // 100 pixels tolerance
+
+    // Check if midpoint is inside expanded room boundary or on an edge
+    for (let i = 0; i < roomCoords.points!.length; i++) {
+      const p1 = roomCoords.points![i];
+      const p2 = roomCoords.points![(i + 1) % roomCoords.points!.length];
+
+      const edgeDx = p2.x - p1.x;
+      const edgeDy = p2.y - p1.y;
+      const edgeLength = Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy);
+
+      if (edgeLength === 0) continue;
+
+      // Project opening midpoint onto edge
+      const t = Math.max(0, Math.min(1,
+        ((midX - p1.x) * edgeDx + (midY - p1.y) * edgeDy) / (edgeLength * edgeLength)
+      ));
+
+      const closestX = p1.x + t * edgeDx;
+      const closestY = p1.y + t * edgeDy;
+
+      const distance = Math.sqrt(
+        Math.pow(midX - closestX, 2) + Math.pow(midY - closestY, 2)
+      );
+
+      if (distance < tolerance) {
+        return true; // Opening is on this room's boundary
+      }
+    }
+
+    return false;
   });
 };
 
@@ -134,7 +214,12 @@ const getOpeningWidth = (opening: FloorMapShape, pixelsPerMm: number): number =>
   return Math.sqrt(dx * dx + dy * dy) / pixelsPerMm;
 };
 
-export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) => {
+export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({
+  projectId,
+  room: initialRoom,
+  initialDirection = 'north',
+  onClose
+}) => {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -174,6 +259,31 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
   const [zoom, setZoom] = useState(1);
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
+
+  // Room-based mode state
+  const [currentRoom, setCurrentRoom] = useState<FloorMapShape | null>(initialRoom || null);
+  const [currentDirection, setCurrentDirection] = useState<WallDirection>(initialDirection);
+
+  // Room perspective selector - which room to view the wall from (legacy, kept for compatibility)
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+
+  // Get walls for the current room organized by direction
+  const roomWalls = useMemo(() => {
+    if (!currentRoom) return [];
+    return findWallsForRoom(currentRoom, shapes);
+  }, [currentRoom, shapes]);
+
+  // Get the wall(s) for the current direction
+  const wallsForDirection = useMemo(() => {
+    return roomWalls.filter(rw => rw.direction === currentDirection);
+  }, [roomWalls, currentDirection]);
+
+  // In room-based mode, auto-select the first wall for the current direction
+  useEffect(() => {
+    if (currentRoom && wallsForDirection.length > 0 && !selectedWallId) {
+      setSelectedWallId(wallsForDirection[0].wall.id);
+    }
+  }, [currentRoom, wallsForDirection, selectedWallId]);
 
   // Drawing state
   const [isDrawing, setIsDrawing] = useState(false);
@@ -899,8 +1009,25 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
     );
   }
 
+  // Get elevation data - use room-edge-based data in room mode, combined wall data otherwise
+  const isRoomBasedMode = !!currentRoom;
+
+  // Get the current room wall info for room-based mode
+  const currentRoomWall = isRoomBasedMode
+    ? wallsForDirection.find(rw => rw.wall.id === selectedWall?.id)
+    : null;
+
+  // For room-based mode, use room edge length; otherwise use combined wall data
+  const combinedWallData = !isRoomBasedMode
+    ? getCombinedWallElevationData(selectedWall.id, shapes, adminDefaults.wallHeightMM, pixelsPerMm)
+    : null;
+
   // Calculate elevation view dimensions
-  const wallLengthMM = getWallLength(selectedWall, pixelsPerMm);
+  // In room mode: use the room edge length directly (already in pixels, convert to mm)
+  // Otherwise: use combined wall length
+  const wallLengthMM = isRoomBasedMode && currentRoomWall
+    ? currentRoomWall.length / pixelsPerMm  // Room edge length is in pixels
+    : (combinedWallData?.totalLengthMM || getWallLength(selectedWall, pixelsPerMm));
   const wallHeightMM = selectedWall.heightMM || adminDefaults.wallHeightMM;
 
   // Scale to fit in view
@@ -929,8 +1056,51 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
   // Update the ref so callbacks can access current wall geometry
   wallGeometryRef.current = { wallX, wallY, effectiveScale, wallLengthMM, wallHeightMM };
 
-  // Find openings on this wall
-  const openings = findOpeningsOnWall(selectedWall, shapes);
+  // Find openings - in room mode, only show openings on the specific wall edge
+  // In legacy mode, use combined wall data
+  const openings = useMemo(() => {
+    if (isRoomBasedMode && currentRoom && currentRoomWall) {
+      // Filter to openings that are on this specific room edge (direction)
+      const roomOpenings = findOpeningsInRoom(currentRoom, shapes);
+      // Further filter to only openings close to this wall's position
+      const wallCenter = currentRoomWall.center;
+      const wallAngle = currentRoomWall.angle * (Math.PI / 180); // Convert to radians
+      const wallLength = currentRoomWall.length;
+
+      return roomOpenings.filter(opening => {
+        const coords = opening.coordinates as { x1: number; y1: number; x2: number; y2: number };
+        const openingMidX = (coords.x1 + coords.x2) / 2;
+        const openingMidY = (coords.y1 + coords.y2) / 2;
+
+        // Check if opening is aligned with this wall's direction
+        const openingDx = coords.x2 - coords.x1;
+        const openingDy = coords.y2 - coords.y1;
+        const openingAngle = Math.atan2(openingDy, openingDx);
+
+        // Angles should match (same or opposite direction)
+        const angleDiff = Math.abs(wallAngle - openingAngle);
+        const anglesMatch = angleDiff < 0.3 || Math.abs(angleDiff - Math.PI) < 0.3;
+
+        if (!anglesMatch) return false;
+
+        // Check if opening is close to this wall center (in perpendicular direction)
+        const toOpeningX = openingMidX - wallCenter.x;
+        const toOpeningY = openingMidY - wallCenter.y;
+
+        // Project onto perpendicular direction
+        const normalX = -Math.sin(wallAngle);
+        const normalY = Math.cos(wallAngle);
+        const perpDistance = Math.abs(toOpeningX * normalX + toOpeningY * normalY);
+
+        return perpDistance < 100; // 100 pixel tolerance
+      });
+    }
+
+    return combinedWallData?.openings || findOpeningsOnWall(selectedWall, shapes);
+  }, [isRoomBasedMode, currentRoom, currentRoomWall, shapes, combinedWallData, selectedWall]);
+
+  // Combined wall segments for rendering - not used in room-based mode
+  const combinedSegments = isRoomBasedMode ? [] : (combinedWallData?.segments || []);
 
   // Floor and ceiling zones
   const floorHeight = 80 * effectiveScale;
@@ -1517,30 +1687,140 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
       {/* Top navigation bar */}
       <div className="h-12 bg-white border-b flex items-center justify-between px-4 gap-4 z-10">
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={goToPreviousWall}
-            disabled={walls.length <= 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
+          {/* Close button when in room-based mode */}
+          {currentRoom && onClose && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="gap-1"
+            >
+              <X className="h-4 w-4" />
+              <span className="hidden sm:inline">{t('common.close', 'Stäng')}</span>
+            </Button>
+          )}
 
-          <div className="px-3 py-1 bg-gray-100 rounded text-sm font-medium min-w-[200px] text-center">
-            Vägg {selectedWallIndex + 1} av {walls.length}
-            <span className="text-muted-foreground ml-2">
-              ({Math.round(wallLengthMM)}mm × {Math.round(wallHeightMM)}mm)
-            </span>
-          </div>
+          {/* Room-based mode: Show room name and direction selector */}
+          {currentRoom ? (
+            <>
+              <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded">
+                <span
+                  className="w-4 h-4 rounded border"
+                  style={{ backgroundColor: currentRoom.color || 'rgba(59, 130, 246, 0.3)' }}
+                />
+                <span className="text-sm font-medium">
+                  {currentRoom.name || t('common.unnamed', 'Namnlöst rum')}
+                </span>
+              </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={goToNextWall}
-            disabled={walls.length <= 1}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+              {/* Direction selector (N, E, S, W) */}
+              <div className="flex items-center gap-1 ml-2 pl-2 border-l">
+                <Compass className="h-4 w-4 text-muted-foreground mr-1" />
+                {(['north', 'east', 'south', 'west'] as WallDirection[]).map((dir) => {
+                  const dirLabel = dir === 'north' ? 'N' : dir === 'east' ? 'Ö' : dir === 'south' ? 'S' : 'V';
+                  const hasWall = roomWalls.some(rw => rw.direction === dir);
+                  const isActive = currentDirection === dir;
+                  return (
+                    <Button
+                      key={dir}
+                      variant={isActive ? 'default' : 'outline'}
+                      size="sm"
+                      className={`w-8 h-8 p-0 ${!hasWall ? 'opacity-50' : ''}`}
+                      onClick={() => {
+                        setCurrentDirection(dir);
+                        // Select the first wall for this direction
+                        const wallsInDir = roomWalls.filter(rw => rw.direction === dir);
+                        if (wallsInDir.length > 0) {
+                          setSelectedWallId(wallsInDir[0].wall.id);
+                        }
+                      }}
+                      title={`${t(`directions.${dir}`, dir)} ${!hasWall ? '(ingen vägg)' : ''}`}
+                    >
+                      {dirLabel}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              {/* Wall dimensions */}
+              <span className="text-muted-foreground text-sm ml-2">
+                ({Math.round(wallLengthMM)}mm × {Math.round(wallHeightMM)}mm)
+              </span>
+            </>
+          ) : (
+            <>
+              {/* Legacy wall-based mode navigation */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToPreviousWall}
+                disabled={walls.length <= 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+
+              <div className="px-3 py-1 bg-gray-100 rounded text-sm font-medium min-w-[200px] text-center">
+                Vägg {selectedWallIndex + 1} av {walls.length}
+                {combinedWallData && combinedWallData.walls.length > 1 && (
+                  <span className="text-purple-600 ml-1">
+                    (+{combinedWallData.walls.length - 1} segment)
+                  </span>
+                )}
+                <span className="text-muted-foreground ml-2">
+                  ({Math.round(wallLengthMM)}mm × {Math.round(wallHeightMM)}mm)
+                </span>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNextWall}
+                disabled={walls.length <= 1}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+
+              {/* Room perspective selector (legacy) */}
+              {combinedWallData && (combinedWallData.adjacentRooms.left.length > 0 || combinedWallData.adjacentRooms.right.length > 0) && (
+                <div className="flex items-center gap-2 ml-4 pl-4 border-l">
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <Select
+                    value={selectedRoomId || 'all'}
+                    onValueChange={(value) => setSelectedRoomId(value === 'all' ? null : value)}
+                  >
+                    <SelectTrigger className="w-[160px] h-8 text-sm">
+                      <SelectValue placeholder={t('elevation.viewFrom', 'Visa från...')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('elevation.allRooms', 'Alla rum')}</SelectItem>
+                      {combinedWallData.adjacentRooms.left.map((room) => (
+                        <SelectItem key={`left-${room.room.id}`} value={room.room.id}>
+                          <span className="flex items-center gap-2">
+                            <span
+                              className="w-3 h-3 rounded-sm border"
+                              style={{ backgroundColor: room.color }}
+                            />
+                            {room.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                      {combinedWallData.adjacentRooms.right.map((room) => (
+                        <SelectItem key={`right-${room.room.id}`} value={room.room.id}>
+                          <span className="flex items-center gap-2">
+                            <span
+                              className="w-3 h-3 rounded-sm border"
+                              style={{ backgroundColor: room.color }}
+                            />
+                            {room.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -1669,67 +1949,149 @@ export const ElevationCanvas: React.FC<ElevationCanvasProps> = ({ projectId }) =
               align="center"
             />
 
-            {/* Openings (doors/windows) */}
-            {openings.map((opening) => {
-              const position = getOpeningPositionOnWall(opening, selectedWall);
-              const openingWidthMM = getOpeningWidth(opening, pixelsPerMm);
-              const openingWidth = openingWidthMM * effectiveScale;
+            {/* Combined wall segments with openings */}
+            {combinedSegments.length > 0 ? (
+              // Use combined segments data for accurate positioning
+              combinedSegments.map((segment, index) => {
+                if (segment.type === 'wall' || segment.type === 'gap') {
+                  // Render wall segment dividers (subtle dashed line)
+                  if (index > 0 && segment.type === 'wall') {
+                    const segX = wallX + segment.startPositionMM * effectiveScale;
+                    return (
+                      <Line
+                        key={`seg-divider-${index}`}
+                        points={[segX, wallY, segX, wallY + renderedWallHeight]}
+                        stroke="#d1d5db"
+                        strokeWidth={1}
+                        dash={[5, 5]}
+                      />
+                    );
+                  }
+                  return null;
+                }
 
-              const isDoor = opening.type === 'door_line' || opening.type === 'sliding_door_line';
-              const isWindow = opening.type === 'window_line';
+                // Opening (door, window, sliding_door)
+                const openingWidthMM = segment.lengthMM;
+                const openingWidth = openingWidthMM * effectiveScale;
 
-              const openingHeightMM = isDoor ? 2100 : 1200;
-              const sillHeightMM = isWindow ? 900 : 0;
+                const isDoor = segment.type === 'door' || segment.type === 'sliding_door';
+                const isWindow = segment.type === 'window';
 
-              const openingHeight = openingHeightMM * effectiveScale;
-              const sillHeight = sillHeightMM * effectiveScale;
+                const openingHeightMM = segment.heightMM || (isDoor ? 2100 : 1200);
+                const sillHeightMM = segment.elevationBottom || (isWindow ? 900 : 0);
 
-              const openingX = wallX + position * renderedWallWidth - openingWidth / 2;
-              const openingY = wallY + renderedWallHeight - openingHeight - sillHeight - skirtingHeight;
+                const openingHeight = openingHeightMM * effectiveScale;
+                const sillHeight = sillHeightMM * effectiveScale;
 
-              return (
-                <Group key={opening.id}>
-                  <Rect
-                    x={openingX}
-                    y={openingY}
-                    width={openingWidth}
-                    height={openingHeight}
-                    fill={isDoor ? '#f0fdf4' : '#e0f2fe'}
-                    stroke={isDoor ? '#22c55e' : '#3b82f6'}
-                    strokeWidth={2}
-                  />
-                  <KonvaText
-                    x={openingX}
-                    y={openingY + openingHeight / 2 - 8}
-                    width={openingWidth}
-                    text={isDoor ? (opening.type === 'sliding_door_line' ? t('elevation.slidingDoor') : t('elevation.doorLabel')) : t('elevation.windowLabel')}
-                    fontSize={11}
-                    fill={isDoor ? '#166534' : '#1e40af'}
-                    align="center"
-                  />
-                  <KonvaText
-                    x={openingX}
-                    y={openingY + openingHeight / 2 + 4}
-                    width={openingWidth}
-                    text={`${Math.round(openingWidthMM)}mm`}
-                    fontSize={10}
-                    fill="#6b7280"
-                    align="center"
-                  />
-                  {isWindow && sillHeight > 0 && (
+                const openingX = wallX + segment.startPositionMM * effectiveScale;
+                const openingY = wallY + renderedWallHeight - openingHeight - sillHeight - skirtingHeight;
+
+                return (
+                  <Group key={`opening-${index}`}>
                     <Rect
-                      x={openingX - 10}
-                      y={openingY + openingHeight}
-                      width={openingWidth + 20}
-                      height={8}
-                      fill="#f3f4f6"
-                      stroke="#9ca3af"
-                      strokeWidth={1}
+                      x={openingX}
+                      y={openingY}
+                      width={openingWidth}
+                      height={openingHeight}
+                      fill={isDoor ? '#f0fdf4' : '#e0f2fe'}
+                      stroke={isDoor ? '#22c55e' : '#3b82f6'}
+                      strokeWidth={2}
                     />
-                  )}
-                </Group>
-              );
-            })}
+                    <KonvaText
+                      x={openingX}
+                      y={openingY + openingHeight / 2 - 8}
+                      width={openingWidth}
+                      text={isDoor ? (segment.type === 'sliding_door' ? t('elevation.slidingDoor') : t('elevation.doorLabel')) : t('elevation.windowLabel')}
+                      fontSize={11}
+                      fill={isDoor ? '#166534' : '#1e40af'}
+                      align="center"
+                    />
+                    <KonvaText
+                      x={openingX}
+                      y={openingY + openingHeight / 2 + 4}
+                      width={openingWidth}
+                      text={`${Math.round(openingWidthMM)}mm`}
+                      fontSize={10}
+                      fill="#6b7280"
+                      align="center"
+                    />
+                    {isWindow && sillHeight > 0 && (
+                      <Rect
+                        x={openingX - 10}
+                        y={openingY + openingHeight}
+                        width={openingWidth + 20}
+                        height={8}
+                        fill="#f3f4f6"
+                        stroke="#9ca3af"
+                        strokeWidth={1}
+                      />
+                    )}
+                  </Group>
+                );
+              })
+            ) : (
+              // Fallback to legacy openings rendering for single wall
+              openings.map((opening) => {
+                const position = getOpeningPositionOnWall(opening, selectedWall);
+                const openingWidthMM = getOpeningWidth(opening, pixelsPerMm);
+                const openingWidth = openingWidthMM * effectiveScale;
+
+                const isDoor = opening.type === 'door_line' || opening.type === 'sliding_door_line';
+                const isWindow = opening.type === 'window_line';
+
+                const openingHeightMM = isDoor ? 2100 : 1200;
+                const sillHeightMM = isWindow ? 900 : 0;
+
+                const openingHeight = openingHeightMM * effectiveScale;
+                const sillHeight = sillHeightMM * effectiveScale;
+
+                const openingX = wallX + position * renderedWallWidth - openingWidth / 2;
+                const openingY = wallY + renderedWallHeight - openingHeight - sillHeight - skirtingHeight;
+
+                return (
+                  <Group key={opening.id}>
+                    <Rect
+                      x={openingX}
+                      y={openingY}
+                      width={openingWidth}
+                      height={openingHeight}
+                      fill={isDoor ? '#f0fdf4' : '#e0f2fe'}
+                      stroke={isDoor ? '#22c55e' : '#3b82f6'}
+                      strokeWidth={2}
+                    />
+                    <KonvaText
+                      x={openingX}
+                      y={openingY + openingHeight / 2 - 8}
+                      width={openingWidth}
+                      text={isDoor ? (opening.type === 'sliding_door_line' ? t('elevation.slidingDoor') : t('elevation.doorLabel')) : t('elevation.windowLabel')}
+                      fontSize={11}
+                      fill={isDoor ? '#166534' : '#1e40af'}
+                      align="center"
+                    />
+                    <KonvaText
+                      x={openingX}
+                      y={openingY + openingHeight / 2 + 4}
+                      width={openingWidth}
+                      text={`${Math.round(openingWidthMM)}mm`}
+                      fontSize={10}
+                      fill="#6b7280"
+                      align="center"
+                    />
+                    {isWindow && sillHeight > 0 && (
+                      <Rect
+                        x={openingX - 10}
+                        y={openingY + openingHeight}
+                        width={openingWidth + 20}
+                        height={8}
+                        fill="#f3f4f6"
+                        stroke="#9ca3af"
+                        strokeWidth={1}
+                      />
+                    )}
+                  </Group>
+                );
+              })
+            )}
 
             {/* Dimension lines */}
             <Group>

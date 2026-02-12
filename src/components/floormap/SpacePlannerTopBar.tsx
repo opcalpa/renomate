@@ -271,7 +271,20 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, backLabel, 
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {onBack ? (
+      {/* Back button - contextual based on view mode */}
+      {viewMode === 'elevation' ? (
+        // In elevation view: back goes to floor plan
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setViewMode('floor')}
+          className="gap-2 shrink-0"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="hidden sm:inline">{t("common.back", "Tillbaka")}</span>
+        </Button>
+      ) : onBack ? (
+        // In floor plan with onBack callback: use it to go to previous page
         <Button
           variant="ghost"
           size="sm"
@@ -279,15 +292,16 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, backLabel, 
           className="gap-2 shrink-0"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span className="hidden sm:inline">{backLabel ? t(backLabel) : t("Back")}</span>
+          <span className="hidden sm:inline">{t("common.back", "Tillbaka")}</span>
         </Button>
       ) : (
+        // Fallback: link to project overview
         <Link
           to={`/projects/${projectId}`}
           className="inline-flex items-center justify-center gap-2 shrink-0 h-9 px-3 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span className="hidden sm:inline">{backLabel ? t(backLabel) : t("Back")}</span>
+          <span className="hidden sm:inline">{t("common.back", "Tillbaka")}</span>
         </Link>
       )}
       

@@ -286,6 +286,201 @@ export function generateWallsFromRoom(
 }
 
 /**
+ * Check if two wall segments are essentially the same wall (overlap on the same line)
+ * Used for deduplication when generating walls from multiple adjacent rooms
+ */
+function wallsOverlap(
+  wall1: { x1: number; y1: number; x2: number; y2: number },
+  wall2: { x1: number; y1: number; x2: number; y2: number },
+  tolerance: number = 5
+): boolean {
+  // Calculate direction vectors
+  const dx1 = wall1.x2 - wall1.x1;
+  const dy1 = wall1.y2 - wall1.y1;
+  const dx2 = wall2.x2 - wall2.x1;
+  const dy2 = wall2.y2 - wall2.y1;
+
+  const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+  const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+
+  if (len1 === 0 || len2 === 0) return false;
+
+  // Normalize direction vectors
+  const nx1 = dx1 / len1;
+  const ny1 = dy1 / len1;
+  const nx2 = dx2 / len2;
+  const ny2 = dy2 / len2;
+
+  // Check if walls are parallel (same or opposite direction)
+  const dot = nx1 * nx2 + ny1 * ny2;
+  if (Math.abs(Math.abs(dot) - 1) > 0.01) {
+    // Not parallel
+    return false;
+  }
+
+  // Check if wall2 endpoints are close to wall1's line
+  // Distance from point to line segment
+  const distToLine = (px: number, py: number, lx1: number, ly1: number, lx2: number, ly2: number): number => {
+    const ldx = lx2 - lx1;
+    const ldy = ly2 - ly1;
+    const len = Math.sqrt(ldx * ldx + ldy * ldy);
+    if (len === 0) return Math.sqrt((px - lx1) ** 2 + (py - ly1) ** 2);
+
+    // Cross product gives perpendicular distance
+    const cross = Math.abs((px - lx1) * ldy - (py - ly1) * ldx) / len;
+    return cross;
+  };
+
+  // Check if both endpoints of wall2 are close to wall1's infinite line
+  const d1 = distToLine(wall2.x1, wall2.y1, wall1.x1, wall1.y1, wall1.x2, wall1.y2);
+  const d2 = distToLine(wall2.x2, wall2.y2, wall1.x1, wall1.y1, wall1.x2, wall1.y2);
+
+  if (d1 > tolerance || d2 > tolerance) {
+    // wall2 is not on the same line as wall1
+    return false;
+  }
+
+  // Now check if the segments overlap
+  // Project all points onto the line direction
+  const project = (px: number, py: number): number => {
+    return (px - wall1.x1) * nx1 + (py - wall1.y1) * ny1;
+  };
+
+  const t1a = project(wall1.x1, wall1.y1);
+  const t1b = project(wall1.x2, wall1.y2);
+  const t2a = project(wall2.x1, wall2.y1);
+  const t2b = project(wall2.x2, wall2.y2);
+
+  const min1 = Math.min(t1a, t1b);
+  const max1 = Math.max(t1a, t1b);
+  const min2 = Math.min(t2a, t2b);
+  const max2 = Math.max(t2a, t2b);
+
+  // Calculate the actual overlap amount
+  const overlapStart = Math.max(min1, min2);
+  const overlapEnd = Math.min(max1, max2);
+  const overlapAmount = overlapEnd - overlapStart;
+
+  // Walls must overlap by a significant amount (more than just touching at a point)
+  // Use a minimum overlap threshold to distinguish between:
+  // - Walls that share a corner (overlapAmount ≈ 0) -> NOT duplicates
+  // - Walls that truly overlap (overlapAmount > threshold) -> duplicates
+  const minOverlapRequired = 1; // At least 1 unit of actual overlap required
+
+  return overlapAmount > minOverlapRequired;
+}
+
+/**
+ * Generate walls from multiple rooms with automatic deduplication.
+ * When rooms share edges (like adjacent rooms), only one wall is created
+ * instead of overlapping duplicates.
+ *
+ * @param rooms Array of room shapes to generate walls from
+ * @param generateId Function to generate unique IDs (e.g., uuidv4)
+ * @param options Optional configuration for wall properties
+ * @param existingWalls Optional array of existing walls to also deduplicate against
+ * @returns Array of deduplicated wall shapes ready to be added to the store
+ */
+export function generateWallsFromRooms(
+  rooms: FloorMapShape[],
+  generateId: () => string,
+  options?: {
+    heightMM?: number;
+    thicknessMM?: number;
+    planId?: string;
+  },
+  existingWalls?: FloorMapShape[]
+): FloorMapShape[] {
+  const heightMM = options?.heightMM ?? 2400;
+  const thicknessMM = options?.thicknessMM ?? 150;
+  const planId = options?.planId;
+
+  // Collect all potential wall segments from all rooms
+  const allWallCandidates: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
+
+  for (const room of rooms) {
+    if (room.type !== 'room') continue;
+
+    const roomCoords = room.coordinates as PolygonCoordinates;
+    if (!roomCoords.points || roomCoords.points.length < 3) continue;
+
+    for (let i = 0; i < roomCoords.points.length; i++) {
+      const p1 = roomCoords.points[i];
+      const p2 = roomCoords.points[(i + 1) % roomCoords.points.length];
+
+      allWallCandidates.push({
+        x1: p1.x,
+        y1: p1.y,
+        x2: p2.x,
+        y2: p2.y,
+      });
+    }
+  }
+
+  // Also include existing walls for deduplication check
+  const existingWallCoords: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
+  if (existingWalls) {
+    for (const wall of existingWalls) {
+      if (wall.type === 'wall' || wall.type === 'line') {
+        const coords = wall.coordinates as LineCoordinates;
+        existingWallCoords.push({
+          x1: coords.x1,
+          y1: coords.y1,
+          x2: coords.x2,
+          y2: coords.y2,
+        });
+      }
+    }
+  }
+
+  // Deduplicate: keep only walls that don't overlap with already-added walls
+  const uniqueWallCoords: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
+
+  for (const candidate of allWallCandidates) {
+    let isDuplicate = false;
+
+    // Check against already accepted unique walls
+    for (const existing of uniqueWallCoords) {
+      if (wallsOverlap(candidate, existing)) {
+        isDuplicate = true;
+        break;
+      }
+    }
+
+    // Check against pre-existing walls on canvas
+    if (!isDuplicate) {
+      for (const existing of existingWallCoords) {
+        if (wallsOverlap(candidate, existing)) {
+          isDuplicate = true;
+          break;
+        }
+      }
+    }
+
+    if (!isDuplicate) {
+      uniqueWallCoords.push(candidate);
+    }
+  }
+
+  // Create wall shapes from unique coordinates
+  const walls: FloorMapShape[] = uniqueWallCoords.map(coords => ({
+    id: generateId(),
+    type: 'wall' as const,
+    coordinates: {
+      x1: coords.x1,
+      y1: coords.y1,
+      x2: coords.x2,
+      y2: coords.y2,
+    } as LineCoordinates,
+    heightMM,
+    thicknessMM,
+    planId,
+  }));
+
+  return walls;
+}
+
+/**
  * Create room edges as virtual walls if no walls are found
  * This allows elevation view even when walls haven't been drawn
  */
