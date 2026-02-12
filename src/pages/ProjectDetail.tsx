@@ -927,7 +927,7 @@ const ProjectDetail = () => {
             <NoAccessPlaceholder />
           ) : (
             <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
-              <BudgetTab projectId={project.id} currency={project?.currency} />
+              <BudgetTab projectId={project.id} currency={project?.currency} isReadOnly={permissions.budget === "view"} />
             </div>
           )}
         </TabsContent>
@@ -965,11 +965,21 @@ const ProjectDetail = () => {
       {isHeaderVisible && (
         <MobileBottomNav
           activeTab={activeTab}
-          onTabChange={(tab) => {
+          activeSubTab={activeSubTab}
+          onTabChange={(tab, subTab) => {
             setActiveTab(tab);
-            setActiveSubTab(null);
+            setActiveSubTab(subTab ?? null);
           }}
           isTabBlocked={isTabBlocked}
+          userRole={
+            permissions.isOwner
+              ? "owner"
+              : permissions.tasks === "edit" || permissions.spacePlanner === "edit"
+                ? "editor"
+                : permissions.overview !== "none"
+                  ? "client"
+                  : "viewer"
+          }
         />
       )}
     </div>

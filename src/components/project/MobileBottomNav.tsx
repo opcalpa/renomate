@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { LayoutDashboard, PenTool, CheckSquare, ShoppingCart, MoreHorizontal, FolderOpen, PiggyBank, Users, MessageSquare } from "lucide-react";
+import { LayoutDashboard, PenTool, CheckSquare, ShoppingCart, MoreHorizontal, FolderOpen, PiggyBank, Users, MessageSquare, ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 import {
   Sheet,
   SheetContent,
@@ -9,43 +10,105 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 
-interface MobileBottomNavProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-  isTabBlocked: (tab: string) => boolean;
+interface TabConfig {
+  tab: string;
+  icon: React.ElementType;
+  labelKey: string;
+  /** For tabs that should navigate to a different activeTab value */
+  navigateTo?: string;
+  /** Sub-tab to activate when navigating */
+  subTab?: string;
 }
 
-const PRIMARY_TABS = [
+interface MobileBottomNavProps {
+  activeTab: string;
+  activeSubTab?: string | null;
+  onTabChange: (tab: string, subTab?: string | null) => void;
+  isTabBlocked: (tab: string) => boolean;
+  userRole?: "owner" | "editor" | "viewer" | "client";
+}
+
+const STORAGE_KEY = "renomate_show_all_tabs";
+
+const DEFAULT_PRIMARY: TabConfig[] = [
   { tab: "overview", icon: LayoutDashboard, labelKey: "nav.mobileNav.overview" },
   { tab: "spaceplanner", icon: PenTool, labelKey: "nav.mobileNav.plans" },
   { tab: "tasks", icon: CheckSquare, labelKey: "nav.mobileNav.tasks" },
   { tab: "purchases", icon: ShoppingCart, labelKey: "nav.mobileNav.purchases" },
-] as const;
+];
 
-const MORE_TABS = [
+const CLIENT_PRIMARY: TabConfig[] = [
+  { tab: "overview", icon: LayoutDashboard, labelKey: "nav.mobileNav.overview" },
+  { tab: "files", icon: ImageIcon, labelKey: "nav.mobileNav.photos" },
+  { tab: "feed", icon: MessageSquare, labelKey: "nav.mobileNav.chat", navigateTo: "overview", subTab: "feed" },
+  { tab: "budget", icon: PiggyBank, labelKey: "nav.mobileNav.budget" },
+];
+
+const ALL_TABS: TabConfig[] = [
+  { tab: "overview", icon: LayoutDashboard, labelKey: "nav.mobileNav.overview" },
+  { tab: "spaceplanner", icon: PenTool, labelKey: "nav.mobileNav.plans" },
+  { tab: "tasks", icon: CheckSquare, labelKey: "nav.mobileNav.tasks" },
+  { tab: "purchases", icon: ShoppingCart, labelKey: "nav.mobileNav.purchases" },
   { tab: "files", icon: FolderOpen, labelKey: "nav.mobileNav.files" },
   { tab: "budget", icon: PiggyBank, labelKey: "nav.mobileNav.budget" },
   { tab: "team", icon: Users, labelKey: "nav.mobileNav.team" },
   { tab: "feed", icon: MessageSquare, labelKey: "nav.mobileNav.feed" },
-] as const;
+];
 
-export function MobileBottomNav({ activeTab, onTabChange, isTabBlocked }: MobileBottomNavProps) {
+/** Max tabs shown in the bottom bar before overflow goes to "More" */
+const MAX_PRIMARY_TABS = 4;
+
+export function MobileBottomNav({ activeTab, activeSubTab, onTabChange, isTabBlocked, userRole }: MobileBottomNavProps) {
   const { t } = useTranslation();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [showAllTabs, setShowAllTabs] = useState(() => localStorage.getItem(STORAGE_KEY) === "true");
 
-  const isMoreActive = MORE_TABS.some((m) => m.tab === activeTab || (m.tab === "feed" && activeTab === "overview"));
+  const isClientRole = userRole === "client" || userRole === "viewer";
+
+  const toggleShowAll = useCallback((checked: boolean) => {
+    setShowAllTabs(checked);
+    localStorage.setItem(STORAGE_KEY, String(checked));
+  }, []);
+
+  const allPermittedTabs = useMemo(
+    () => ALL_TABS.filter((item) => !isTabBlocked(item.tab)),
+    [isTabBlocked],
+  );
+
+  const primaryTabs = useMemo(() => {
+    if (isClientRole && showAllTabs) {
+      return allPermittedTabs.slice(0, MAX_PRIMARY_TABS);
+    }
+    const tabs = isClientRole ? CLIENT_PRIMARY : DEFAULT_PRIMARY;
+    return tabs.filter((item) => !isTabBlocked(item.tab));
+  }, [isClientRole, showAllTabs, allPermittedTabs, isTabBlocked]);
+
+  const moreTabs = useMemo(() => {
+    const primaryTabIds = new Set(primaryTabs.map((p) => p.tab));
+    return allPermittedTabs.filter((item) => !primaryTabIds.has(item.tab));
+  }, [primaryTabs, allPermittedTabs]);
+
+  const isMoreActive = moreTabs.some(
+    (m) => m.tab === activeTab || (m.tab === "feed" && activeTab === "overview" && activeSubTab === "feed"),
+  );
+
+  const getActiveForTab = (tab: string, configSubTab?: string) => {
+    if (tab === "feed" || configSubTab === "feed") {
+      return activeTab === "overview" && activeSubTab === "feed";
+    }
+    return activeTab === tab;
+  };
 
   return (
     <>
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card md:hidden pb-[env(safe-area-inset-bottom)]">
         <div className="flex justify-around h-16">
-          {PRIMARY_TABS.map(({ tab, icon: Icon, labelKey }) => {
-            if (isTabBlocked(tab)) return null;
-            const active = activeTab === tab;
+          {primaryTabs.map(({ tab, icon: Icon, labelKey, navigateTo, subTab }) => {
+            const active = getActiveForTab(tab, subTab);
             return (
               <button
                 key={tab}
-                onClick={() => onTabChange(tab)}
+                onClick={() => onTabChange(navigateTo || tab, subTab || null)}
                 className={cn(
                   "flex flex-col items-center justify-center gap-0.5 min-h-[48px] min-w-[48px] flex-1",
                   active ? "text-primary" : "text-muted-foreground"
@@ -56,16 +119,18 @@ export function MobileBottomNav({ activeTab, onTabChange, isTabBlocked }: Mobile
               </button>
             );
           })}
-          <button
-            onClick={() => setMoreOpen(true)}
-            className={cn(
-              "flex flex-col items-center justify-center gap-0.5 min-h-[48px] min-w-[48px] flex-1",
-              isMoreActive ? "text-primary" : "text-muted-foreground"
-            )}
-          >
-            <MoreHorizontal className="h-5 w-5" />
-            <span className="text-[10px] font-medium">{t("nav.mobileNav.more")}</span>
-          </button>
+          {moreTabs.length > 0 && (
+            <button
+              onClick={() => setMoreOpen(true)}
+              className={cn(
+                "flex flex-col items-center justify-center gap-0.5 min-h-[48px] min-w-[48px] flex-1",
+                isMoreActive ? "text-primary" : "text-muted-foreground"
+              )}
+            >
+              <MoreHorizontal className="h-5 w-5" />
+              <span className="text-[10px] font-medium">{t("nav.mobileNav.more")}</span>
+            </button>
+          )}
         </div>
       </nav>
 
@@ -74,16 +139,21 @@ export function MobileBottomNav({ activeTab, onTabChange, isTabBlocked }: Mobile
           <SheetHeader className="pb-2">
             <SheetTitle>{t("nav.mobileNav.more")}</SheetTitle>
           </SheetHeader>
+
+          {isClientRole && (
+            <label className="flex items-center justify-between px-4 py-3 border-b cursor-pointer">
+              <span className="text-sm text-muted-foreground">
+                {t("nav.mobileNav.showAllTabs")}
+              </span>
+              <Switch checked={showAllTabs} onCheckedChange={toggleShowAll} />
+            </label>
+          )}
+
           <div className="flex flex-col">
-            {MORE_TABS.map(({ tab, icon: Icon, labelKey }) => {
-              if (isTabBlocked(tab)) return null;
+            {moreTabs.map(({ tab, icon: Icon, labelKey, navigateTo, subTab }) => {
               const handleClick = () => {
                 setMoreOpen(false);
-                if (tab === "feed") {
-                  onTabChange("overview");
-                } else {
-                  onTabChange(tab);
-                }
+                onTabChange(navigateTo || tab, subTab || null);
               };
               return (
                 <button
