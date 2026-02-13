@@ -3,6 +3,7 @@
  * Shows a banner for guest users indicating local storage mode with login CTA
  */
 
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,9 @@ export function GuestBanner({ className, compact = false }: GuestBannerProps) {
   const { storageUsage, refreshStorageUsage } = useGuestMode();
 
   // Refresh storage usage on mount
-  refreshStorageUsage();
+  useEffect(() => {
+    refreshStorageUsage();
+  }, [refreshStorageUsage]);
 
   const isNearLimit = storageUsage.percentage >= 80;
 
