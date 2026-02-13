@@ -155,6 +155,20 @@ export function IntakeWizard({ intakeRequest, onSubmitted }: IntakeWizardProps) 
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {/* Personal greeting from builder */}
+      {intakeRequest.greeting && (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="pt-4 pb-4">
+            <p className="text-sm italic text-foreground/80 whitespace-pre-wrap">
+              "{intakeRequest.greeting}"
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              — {intakeRequest.creator.name || intakeRequest.creator.company_name}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Progress header */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -190,7 +204,7 @@ export function IntakeWizard({ intakeRequest, onSubmitted }: IntakeWizardProps) 
       </Card>
 
       {/* Navigation buttons */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0">
         <Button
           variant="outline"
           onClick={handleBack}

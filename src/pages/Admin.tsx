@@ -100,12 +100,12 @@ const Admin = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div 
             className="flex items-center cursor-pointer" 
-            onClick={() => navigate("/projects")}
+            onClick={() => navigate("/start")}
           >
             <Settings className="h-6 w-6 text-primary mr-2" />
             <h1 className="text-xl font-semibold">{t('admin.title')}</h1>
           </div>
-          <Button variant="outline" onClick={() => navigate("/projects")}>
+          <Button variant="outline" onClick={() => navigate("/start")}>
             {t('admin.backToProjects')}
           </Button>
         </div>

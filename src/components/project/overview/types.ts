@@ -42,6 +42,7 @@ export interface OverviewNavigation {
   onNavigateToPurchases: () => void;
   onNavigateToFeed: () => void;
   onNavigateToBudget: () => void;
+  onOpenSettings: () => void;
 }
 
 export interface OverviewProject {

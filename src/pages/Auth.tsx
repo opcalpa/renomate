@@ -50,7 +50,7 @@ const Auth = () => {
 
       // Auto sign in after signup
       if (data.user) {
-        navigate(redirect || "/projects");
+        navigate(redirect || "/start");
       }
     } catch (error: any) {
       toast({
@@ -89,7 +89,7 @@ const Auth = () => {
 
       // Wait a brief moment for the auth state to propagate
       setTimeout(() => {
-        navigate(redirect || "/projects");
+        navigate(redirect || "/start");
       }, 100);
     } catch (error: any) {
       toast({
@@ -108,7 +108,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/projects`,
+          redirectTo: `${window.location.origin}/start`,
           queryParams: {
             access_type: "offline",
             prompt: "consent",

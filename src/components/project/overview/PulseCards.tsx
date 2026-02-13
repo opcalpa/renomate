@@ -86,7 +86,15 @@ export function PulseCards({
       </Card>
 
       {/* Timeline Card */}
-      <Card>
+      <Card
+        className="cursor-pointer hover:shadow-md transition-shadow"
+        onClick={() => {
+          // If no deadline set, open settings to add one
+          if (timelineStats.daysRemaining === null) {
+            navigation.onOpenSettings();
+          }
+        }}
+      >
         <CardContent className="pt-4 pb-4 px-4">
           <div className="flex items-center gap-2 mb-2">
             <Calendar className={`h-4 w-4 ${getTimelineColor(timelineStats.daysRemaining)}`} />
@@ -111,7 +119,14 @@ export function PulseCards({
       {/* Budget Card */}
       <Card
         className="cursor-pointer hover:shadow-md transition-shadow"
-        onClick={() => navigation.onNavigateToBudget()}
+        onClick={() => {
+          // If no budget set, open settings to add one
+          if (!budgetStats.total) {
+            navigation.onOpenSettings();
+          } else {
+            navigation.onNavigateToBudget();
+          }
+        }}
       >
         <CardContent className="pt-4 pb-4 px-4">
           <div className="flex items-center gap-2 mb-2">

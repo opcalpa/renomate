@@ -147,7 +147,7 @@ export function RoomsStep({ formData, updateFormData, token }: RoomsStepProps) {
       </div>
 
       {/* Room suggestions grid */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         {roomSuggestions.map((room) => {
           const isSelected = selectedRoomNames.has(room.name);
           return (

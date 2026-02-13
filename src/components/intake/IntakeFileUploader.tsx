@@ -179,7 +179,7 @@ export function IntakeFileUploader({
   if (compact) {
     return (
       <div className="space-y-2">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {showCamera && (
             <>
               <input
@@ -277,7 +277,7 @@ export function IntakeFileUploader({
   return (
     <div className="space-y-4">
       {/* Upload buttons */}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         {showCamera && (
           <>
             <input
@@ -339,7 +339,7 @@ export function IntakeFileUploader({
 
       {/* File preview grid */}
       {files.length > 0 ? (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {files.map((url, index) => (
             <div
               key={index}

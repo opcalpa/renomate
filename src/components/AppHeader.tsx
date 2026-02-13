@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, User, Settings, Globe, Lightbulb, MessageSquare, Search, FolderOpen, ChevronDown, MoreHorizontal, Briefcase, FileText, Plus, Download, Users } from "lucide-react";
+import { LogOut, User, Settings, Globe, Lightbulb, MessageSquare, Search, FolderOpen, ChevronDown, MoreHorizontal, Users, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -40,10 +40,10 @@ interface SimpleProject {
   name: string;
 }
 
-interface SavedQuote {
+interface SimpleQuote {
   id: string;
   title: string;
-  status: string;
+  project_name: string | null;
 }
 
 interface AppHeaderProps {
@@ -60,7 +60,7 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children 
   const { i18n, t } = useTranslation();
   const { user } = useAuthSession();
   const [projects, setProjects] = useState<SimpleProject[]>([]);
-  const [savedQuotes, setSavedQuotes] = useState<SavedQuote[]>([]);
+  const [quotes, setQuotes] = useState<SimpleQuote[]>([]);
   const { isProfessional } = useIsProfessional();
 
   const isProjectMode = !!children;
@@ -78,6 +78,8 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children 
 
   useEffect(() => {
     if (!user) return;
+
+    // Fetch projects
     supabase
       .from("projects")
       .select("id, name")
@@ -85,22 +87,21 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children 
       .then(({ data }) => {
         if (data) setProjects(data);
       });
+
+    // Fetch quotes with project names
     supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data: profile }) => {
-        if (!profile) return;
-        supabase
-          .from("quotes")
-          .select("id, title, status")
-          .eq("creator_id", profile.id)
-          .order("created_at", { ascending: false })
-          .limit(20)
-          .then(({ data }) => {
-            if (data) setSavedQuotes(data);
-          });
+      .from("quotes")
+      .select("id, title, project:projects(name)")
+      .order("updated_at", { ascending: false })
+      .limit(10)
+      .then(({ data }) => {
+        if (data) {
+          setQuotes(data.map(q => ({
+            id: q.id,
+            title: q.title,
+            project_name: (q.project as { name: string } | null)?.name || null,
+          })));
+        }
       });
   }, [user]);
 
@@ -152,95 +153,77 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children 
     </>
   );
 
-  const quoteStatusLabel = (status: string) => {
-    if (status === "sent") return t("quotes.shared", "Shared");
-    return t(`quotes.${status}`);
-  };
-
-  const proDropdown = isProfessional ? (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-1.5 text-sm font-medium">
-          <Briefcase className="h-4 w-4" />
-          <span className="hidden sm:inline">Pro</span>
-          <ChevronDown className="h-3 w-3" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64 bg-popover z-[100]">
-        <DropdownMenuLabel>{t('pro.title', 'Pro')}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <FileText className="mr-2 h-4 w-4" />
-            {t('quotes.title')}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-64">
-            <DropdownMenuItem onClick={() => navigate("/quotes/new")} className="cursor-pointer">
-              <Plus className="mr-2 h-4 w-4" />
-              {t('quotes.newQuote')}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-xs">{t('quotes.saved', 'Saved')}</DropdownMenuLabel>
-            {savedQuotes.length === 0 ? (
-              <DropdownMenuItem disabled className="text-muted-foreground text-xs">
-                {t('quotes.noSavedQuotes', 'No saved quotes')}
-              </DropdownMenuItem>
-            ) : (
-              savedQuotes.map((q) => (
-                <DropdownMenuItem
-                  key={q.id}
-                  onClick={() => navigate(`/quotes/${q.id}`)}
-                  className="cursor-pointer flex items-center justify-between"
-                >
-                  <span className="truncate mr-2">{q.title}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${
-                    q.status === "draft" ? "bg-gray-100 text-gray-600" :
-                    q.status === "sent" ? "bg-blue-100 text-blue-600" :
-                    q.status === "accepted" ? "bg-green-100 text-green-600" :
-                    q.status === "rejected" ? "bg-red-100 text-red-600" :
-                    "bg-gray-100 text-gray-600"
-                  }`}>
-                    {quoteStatusLabel(q.status)}
-                  </span>
-                </DropdownMenuItem>
-              ))
-            )}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate("/clients")} className="cursor-pointer">
-          <Users className="mr-2 h-4 w-4" />
-          {t('clients.title')}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  ) : null;
-
   const projectsDropdown = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="gap-1.5 text-sm font-medium">
           <FolderOpen className="h-4 w-4" />
-          <span className="hidden sm:inline">{t('nav.projects')}</span>
+          <span className="hidden sm:inline">{t('nav.start')}</span>
           <ChevronDown className="h-3 w-3" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64 bg-popover z-[100]">
-        <DropdownMenuLabel>{t('nav.projects')}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate("/projects")} className="cursor-pointer font-medium">
-          {t('projects.title')}
+        {/* Min startsida */}
+        <DropdownMenuItem onClick={() => navigate("/start")} className="cursor-pointer font-medium">
+          {t('nav.myStart')}
         </DropdownMenuItem>
-        {projects.length > 0 && <DropdownMenuSeparator />}
-        {projects.map((proj) => (
+
+        {/* Mina Projekt */}
+        {projects.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => navigate("/start#projekt")}
+              className="cursor-pointer text-xs text-muted-foreground uppercase tracking-wide"
+            >
+              {t('nav.myProjects')}
+            </DropdownMenuItem>
+            {projects.map((proj) => (
+              <DropdownMenuItem
+                key={proj.id}
+                onClick={() => navigate(`/projects/${proj.id}`)}
+                className="cursor-pointer pl-4"
+              >
+                <span className="truncate">{proj.name}</span>
+              </DropdownMenuItem>
+            ))}
+          </>
+        )}
+
+        {/* Mina Offerter */}
+        <DropdownMenuSeparator />
+        {quotes.length > 0 ? (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="cursor-pointer">
+              <FileText className="mr-2 h-4 w-4" />
+              <span>{t('nav.myQuotes')}</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-64">
+              {quotes.map((quote) => (
+                <DropdownMenuItem
+                  key={quote.id}
+                  onClick={() => navigate(`/quotes/${quote.id}`)}
+                  className="cursor-pointer flex flex-col items-start"
+                >
+                  <span className="truncate font-medium">{quote.title}</span>
+                  {quote.project_name && (
+                    <span className="text-xs text-muted-foreground truncate">
+                      {quote.project_name}
+                    </span>
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        ) : (
           <DropdownMenuItem
-            key={proj.id}
-            onClick={() => navigate(`/projects/${proj.id}`)}
+            onClick={() => navigate("/start#pipeline")}
             className="cursor-pointer"
           >
-            <span className="truncate">{proj.name}</span>
+            <FileText className="mr-2 h-4 w-4" />
+            <span>{t('nav.myQuotes')}</span>
           </DropdownMenuItem>
-        ))}
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -250,7 +233,7 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children 
       <div className="container mx-auto px-4 py-2 flex items-center gap-2 md:gap-4">
         <div
           className="flex items-center cursor-pointer shrink-0"
-          onClick={() => navigate("/projects")}
+          onClick={() => navigate("/start")}
         >
           <img
             src="/logo.png"
@@ -268,7 +251,6 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children 
           /* Default mode: show projects dropdown + site nav links */
           <div className="flex-1 flex items-center gap-1">
             {projectsDropdown}
-            {proDropdown}
             <div className="hidden md:flex items-center gap-1">
               {siteNavLinks}
             </div>
@@ -287,42 +269,16 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children 
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => navigate("/projects")} className="cursor-pointer">
+                <DropdownMenuItem onClick={() => navigate("/start")} className="cursor-pointer">
                   <FolderOpen className="mr-2 h-4 w-4" />
-                  <span>{t('projects.title')}</span>
+                  <span>{t('nav.myStart')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {isProfessional && (
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <FileText className="mr-2 h-4 w-4" />
-                      {t('quotes.title')}
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="w-64">
-                      <DropdownMenuItem onClick={() => navigate("/quotes/new")} className="cursor-pointer">
-                        <Plus className="mr-2 h-4 w-4" />
-                        {t('quotes.newQuote')}
-                      </DropdownMenuItem>
-                      {savedQuotes.length > 0 && <DropdownMenuSeparator />}
-                      {savedQuotes.map((q) => (
-                        <DropdownMenuItem
-                          key={q.id}
-                          onClick={() => navigate(`/quotes/${q.id}`)}
-                          className="cursor-pointer flex items-center justify-between"
-                        >
-                          <span className="truncate mr-2">{q.title}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${
-                            q.status === "draft" ? "bg-gray-100 text-gray-600" :
-                            q.status === "sent" ? "bg-blue-100 text-blue-600" :
-                            q.status === "accepted" ? "bg-green-100 text-green-600" :
-                            "bg-gray-100 text-gray-600"
-                          }`}>
-                            {quoteStatusLabel(q.status)}
-                          </span>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
+                  <DropdownMenuItem onClick={() => navigate("/clients")} className="cursor-pointer">
+                    <Users className="mr-2 h-4 w-4" />
+                    <span>{t('clients.title')}</span>
+                  </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => navigate("/find-pros")} className="cursor-pointer">
                   <Search className="mr-2 h-4 w-4" />
@@ -351,36 +307,10 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children 
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   {isProfessional && (
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                        <FileText className="mr-2 h-4 w-4" />
-                        {t('quotes.title')}
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="w-64">
-                        <DropdownMenuItem onClick={() => navigate("/quotes/new")} className="cursor-pointer">
-                          <Plus className="mr-2 h-4 w-4" />
-                          {t('quotes.newQuote')}
-                        </DropdownMenuItem>
-                        {savedQuotes.length > 0 && <DropdownMenuSeparator />}
-                        {savedQuotes.map((q) => (
-                          <DropdownMenuItem
-                            key={q.id}
-                            onClick={() => navigate(`/quotes/${q.id}`)}
-                            className="cursor-pointer flex items-center justify-between"
-                          >
-                            <span className="truncate mr-2">{q.title}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${
-                              q.status === "draft" ? "bg-gray-100 text-gray-600" :
-                              q.status === "sent" ? "bg-blue-100 text-blue-600" :
-                              q.status === "accepted" ? "bg-green-100 text-green-600" :
-                              "bg-gray-100 text-gray-600"
-                            }`}>
-                              {quoteStatusLabel(q.status)}
-                            </span>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
+                    <DropdownMenuItem onClick={() => navigate("/clients")} className="cursor-pointer">
+                      <Users className="mr-2 h-4 w-4" />
+                      <span>{t('clients.title')}</span>
+                    </DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={() => navigate("/find-pros")} className="cursor-pointer">
                     <Search className="mr-2 h-4 w-4" />

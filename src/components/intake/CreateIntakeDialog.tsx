@@ -11,13 +11,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Copy, Check, Link2, Send } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, Copy, Check, Link2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import {
   createIntakeRequest,
   getIntakeFormUrl,
   type IntakeRequest,
 } from "@/services/intakeService";
+import { IntakeFormPreview } from "./IntakeFormPreview";
 
 interface CreateIntakeDialogProps {
   open: boolean;
@@ -34,10 +36,12 @@ export function CreateIntakeDialog({
   const [creating, setCreating] = useState(false);
   const [createdRequest, setCreatedRequest] = useState<IntakeRequest | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Optional pre-fill fields
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  const [greeting, setGreeting] = useState("");
 
   const handleCreate = async () => {
     setCreating(true);
@@ -45,6 +49,7 @@ export function CreateIntakeDialog({
       const request = await createIntakeRequest({
         customer_name: customerName.trim() || undefined,
         customer_email: customerEmail.trim() || undefined,
+        greeting: greeting.trim() || undefined,
       });
       setCreatedRequest(request);
       onCreated(request);
@@ -72,6 +77,7 @@ export function CreateIntakeDialog({
       setCreatedRequest(null);
       setCustomerName("");
       setCustomerEmail("");
+      setGreeting("");
       setCopied(false);
     }, 200);
   };
@@ -121,6 +127,34 @@ export function CreateIntakeDialog({
               <p className="text-sm text-muted-foreground">
                 Du kan lämna dessa fält tomma. Kunden fyller i sina uppgifter i formuläret.
               </p>
+
+              {/* Preview link */}
+              <button
+                type="button"
+                onClick={() => setShowPreview(true)}
+                className="flex items-center gap-2 text-sm text-primary hover:underline"
+              >
+                <Eye className="h-4 w-4" />
+                {t("intake.previewForm", "Se hur formuläret ser ut")}
+              </button>
+
+              {/* Personal greeting */}
+              <div className="space-y-2 pt-2">
+                <Label htmlFor="greeting">
+                  {t("intake.greetingLabel", "Personlig hälsning")} ({t("common.optional")})
+                </Label>
+                <Textarea
+                  id="greeting"
+                  value={greeting}
+                  onChange={(e) => setGreeting(e.target.value)}
+                  placeholder={t("intake.greetingPlaceholder", "Hej! Tack för att du är intresserad av våra tjänster. Fyll gärna i formuläret så återkommer jag med en offert.")}
+                  rows={3}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("intake.greetingHint", "Din hälsning visas för kunden när de öppnar formuläret.")}
+                </p>
+              </div>
             </div>
 
             <DialogFooter>
@@ -200,6 +234,9 @@ export function CreateIntakeDialog({
           </>
         )}
       </DialogContent>
+
+      {/* Form Preview Dialog */}
+      <IntakeFormPreview open={showPreview} onOpenChange={setShowPreview} />
     </Dialog>
   );
 }

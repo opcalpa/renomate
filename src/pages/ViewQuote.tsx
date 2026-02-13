@@ -8,7 +8,7 @@ import { updateQuoteStatus, createTasksFromQuote } from "@/services/quoteService
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle, XCircle, Download, Trash2, ArrowLeft } from "lucide-react";
+import { Loader2, CheckCircle, Download, Trash2, ArrowLeft, Pencil, Send, Copy, Check, MessageCircle } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -86,9 +86,10 @@ export default function ViewQuote() {
   const [projectName, setProjectName] = useState("");
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
-  const [showChat, setShowChat] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -174,6 +175,20 @@ export default function ViewQuote() {
       return;
     }
 
+    // Convert lead project to active
+    const { data: project } = await supabase
+      .from("projects")
+      .select("project_type, status")
+      .eq("id", quote.project_id)
+      .single();
+
+    if (project && (project.project_type === "lead" || project.status === "lead")) {
+      await supabase
+        .from("projects")
+        .update({ status: "planning" })
+        .eq("id", quote.project_id);
+    }
+
     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
 
     setQuote({ ...quote, status: "accepted" });
@@ -207,20 +222,36 @@ export default function ViewQuote() {
     setActing(false);
   };
 
-  const handleDecline = async () => {
+  const handleEdit = () => {
+    // Navigate back to edit mode - for now, we could create a duplicate
+    // In a full implementation, we'd have an edit page
+    navigate(`/quotes/new?editQuoteId=${quoteId}&projectId=${quote?.project_id}`);
+  };
+
+  const handleCopyLink = () => {
+    const quoteUrl = `${window.location.origin}/quotes/${quoteId}`;
+    navigator.clipboard.writeText(quoteUrl);
+    setLinkCopied(true);
+    toast.success(t("quotes.linkCopied"));
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const handleSendQuote = async () => {
     if (!quote || !quoteId) return;
-    setActing(true);
+    setSending(true);
 
-    const result = await updateQuoteStatus(quoteId, "rejected");
-    if (!result) {
-      setActing(false);
-      return;
+    try {
+      const result = await updateQuoteStatus(quoteId, "sent");
+      if (result) {
+        setQuote({ ...quote, status: "sent" });
+        toast.success(t("quotes.quoteSent"));
+      }
+    } catch (error) {
+      console.error("Failed to send quote:", error);
+      toast.error(t("common.error"));
+    } finally {
+      setSending(false);
     }
-
-    setQuote({ ...quote, status: "rejected" });
-    setShowChat(true);
-    toast(t("quotes.quoteDeclined"));
-    setActing(false);
   };
 
   if (loading) {
@@ -256,7 +287,7 @@ export default function ViewQuote() {
       toast.error(t("errors.generic"));
     } else {
       toast.success(t("quotes.quoteDeleted"));
-      navigate("/projects");
+      navigate("/start");
     }
     setConfirmDelete(false);
   };
@@ -368,18 +399,16 @@ export default function ViewQuote() {
         onSignOut={handleSignOut}
       />
       <main className="container mx-auto px-4 py-8 max-w-2xl space-y-6">
-        {/* Back to project link */}
-        {returnTo && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
-            onClick={() => navigate(returnTo)}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {t("quotes.backToProject")}
-          </Button>
-        )}
+        {/* Back button - always visible */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
+          onClick={() => navigate(returnTo || "/start")}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {returnTo ? t("quotes.backToProject") : t("quotes.backToStart")}
+        </Button>
 
         {/* Company header */}
         <div className="flex items-center justify-between">
@@ -391,21 +420,9 @@ export default function ViewQuote() {
               {new Date(quote.created_at).toLocaleDateString()}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className={STATUS_COLORS[quote.status] ?? ""}>
-              {t(`quotes.${quote.status}`)}
-            </Badge>
-            {isOwner && (
-              <>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleDownloadPdf}>
-                  <Download className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" className="h-8 w-8 text-destructive" onClick={() => setConfirmDelete(true)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </>
-            )}
-          </div>
+          <Badge className={STATUS_COLORS[quote.status] ?? ""}>
+            {t(`quotes.${quote.status}`)}
+          </Badge>
         </div>
 
         {/* Title + project */}
@@ -415,6 +432,81 @@ export default function ViewQuote() {
             {t("quotes.quoteFor")} {projectName}
           </p>
         </div>
+
+        {/* Quick actions for owner - draft */}
+        {isOwner && quote.status === "draft" && (
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleEdit}
+            >
+              <Pencil className="h-4 w-4 mr-1" />
+              {t("quotes.edit")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPdf}
+            >
+              <Download className="h-4 w-4 mr-1" />
+              PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyLink}
+            >
+              {linkCopied ? (
+                <Check className="h-4 w-4 mr-1 text-green-600" />
+              ) : (
+                <Copy className="h-4 w-4 mr-1" />
+              )}
+              {t("quotes.copyLink")}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSendQuote}
+              disabled={sending}
+            >
+              {sending ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-1" />
+              )}
+              {t("quotes.sendToCustomer")}
+            </Button>
+          </div>
+        )}
+
+        {/* Quick actions for owner - sent */}
+        {isOwner && quote.status === "sent" && (
+          <div className="flex gap-2 items-center flex-wrap">
+            <span className="text-sm text-muted-foreground">
+              {t("quotes.waitingForCustomer")}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyLink}
+            >
+              {linkCopied ? (
+                <Check className="h-4 w-4 mr-1 text-green-600" />
+              ) : (
+                <Copy className="h-4 w-4 mr-1" />
+              )}
+              {t("quotes.copyLink")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPdf}
+            >
+              <Download className="h-4 w-4 mr-1" />
+              PDF
+            </Button>
+          </div>
+        )}
 
         {/* Items table */}
         <div className="border rounded-lg overflow-hidden">
@@ -494,43 +586,72 @@ export default function ViewQuote() {
           </div>
         )}
 
-        {/* Action buttons */}
-        {isSent && (
-          <div className="space-y-2">
+        {/* Delete button for owner */}
+        {isOwner && (quote.status === "draft" || quote.status === "sent") && (
+          <div className="pt-4 border-t">
             <Button
-              className="w-full min-h-[48px] bg-green-600 hover:bg-green-700"
-              onClick={handleAccept}
-              disabled={acting}
+              variant="ghost"
+              className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setConfirmDelete(true)}
             >
-              {acting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <CheckCircle className="h-4 w-4 mr-2" />
-              )}
-              {t("quotes.acceptQuote")}
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full min-h-[48px]"
-              onClick={handleDecline}
-              disabled={acting}
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              {t("quotes.declineQuote")}
+              <Trash2 className="h-4 w-4 mr-2" />
+              {t("quotes.deleteQuote")}
             </Button>
           </div>
         )}
 
-        {/* Chat section */}
-        {(showChat || quote.status === "accepted" || quote.status === "rejected") && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium">{t("quotes.chatAboutQuote")}</h3>
+        {/* Chat section - always visible for sent quotes */}
+        {(isSent || quote.status === "accepted" || quote.status === "rejected") && (
+          <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-primary" />
+              <h3 className="font-medium">
+                {quote.status === "accepted"
+                  ? t("quotes.questionsAfterAccept")
+                  : t("quotes.questionsAboutQuote")}
+              </h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {isOwner
+                ? t("quotes.chatDescriptionOwner")
+                : t("quotes.chatDescriptionCustomer")}
+            </p>
             <CommentsSection
               entityId={quoteId}
               entityType="quote"
               projectId={quote.project_id}
               chatMode
             />
+          </div>
+        )}
+
+        {/* Customer action buttons - only for sent status */}
+        {isSent && !isOwner && (
+          <div className="space-y-3 pt-2">
+            <Button
+              className="w-full min-h-[56px] bg-green-600 hover:bg-green-700 text-lg"
+              onClick={handleAccept}
+              disabled={acting}
+            >
+              {acting ? (
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              ) : (
+                <CheckCircle className="h-5 w-5 mr-2" />
+              )}
+              {t("quotes.acceptQuote")}
+            </Button>
+            <p className="text-xs text-center text-muted-foreground">
+              {t("quotes.acceptHint")}
+            </p>
+          </div>
+        )}
+
+        {/* Accepted confirmation for customer */}
+        {quote.status === "accepted" && !isOwner && (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center space-y-2">
+            <CheckCircle className="h-8 w-8 text-green-600 mx-auto" />
+            <p className="font-medium text-green-800">{t("quotes.youAccepted")}</p>
+            <p className="text-sm text-green-700">{t("quotes.acceptedNextSteps")}</p>
           </div>
         )}
       </main>

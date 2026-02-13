@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings2, Receipt, FileText, Mail, MessageSquare } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Settings2, Receipt, FileText, Mail, MessageSquare, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useOverviewData } from "./overview/useOverviewData";
 import { PulseCards } from "./overview/PulseCards";
@@ -62,6 +68,7 @@ const OverviewTab = ({
     onNavigateToPurchases: () => onNavigateToPurchases?.(),
     onNavigateToFeed: () => onNavigateToFeed?.(),
     onNavigateToBudget: () => onNavigateToBudget?.(),
+    onOpenSettings: () => setSettingsOpen(true),
   };
 
   const handleProjectUpdate = () => {
@@ -76,24 +83,41 @@ const OverviewTab = ({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-semibold">{t("overview.projectOverview")}</h2>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCustomerFormOpen(true)}
-            className="flex-1 sm:flex-none"
-          >
-            <Mail className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">{t("overview.customerForm")}</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setQuoteDialogOpen(true)}
-            className="flex-1 sm:flex-none"
-          >
-            <FileText className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">{t("overview.createQuote")}</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none gap-1">
+                <FileText className="h-4 w-4" />
+                <span className="hidden sm:inline">{t("overview.quoteMenu")}</span>
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64">
+              <DropdownMenuItem
+                onClick={() => setCustomerFormOpen(true)}
+                className="flex flex-col items-start cursor-pointer py-3"
+              >
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  <span className="font-medium">{t("overview.customerForm")}</span>
+                </div>
+                <span className="text-xs text-muted-foreground ml-6">
+                  {t("overview.customerFormHint")}
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setQuoteDialogOpen(true)}
+                className="flex flex-col items-start cursor-pointer py-3"
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  <span className="font-medium">{t("overview.createQuote")}</span>
+                </div>
+                <span className="text-xs text-muted-foreground ml-6">
+                  {t("overview.createQuoteHint")}
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             variant="outline"
             size="sm"

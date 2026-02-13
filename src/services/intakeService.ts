@@ -64,6 +64,9 @@ export interface IntakeRequest {
   project_id: string | null;
   client_id: string | null;
 
+  // Personal greeting from builder
+  greeting: string | null;
+
   // Metadata
   expires_at: string;
   submitted_at: string | null;
@@ -85,6 +88,7 @@ export interface CreateIntakeRequestInput {
   customer_email?: string;
   customer_name?: string;
   project_id?: string; // Link to existing project
+  greeting?: string; // Personal greeting from builder
 }
 
 export interface SubmitIntakeInput {
@@ -135,6 +139,7 @@ export async function createIntakeRequest(
       customer_email: input.customer_email || null,
       customer_name: input.customer_name || null,
       project_id: input.project_id || null,
+      greeting: input.greeting || null,
     })
     .select()
     .single();
@@ -621,6 +626,7 @@ function transformIntakeRequest(data: Record<string, unknown>): IntakeRequest {
     rooms_data: (data.rooms_data as IntakeRoom[]) || [],
     project_id: data.project_id as string | null,
     client_id: data.client_id as string | null,
+    greeting: data.greeting as string | null,
     expires_at: data.expires_at as string,
     submitted_at: data.submitted_at as string | null,
     created_at: data.created_at as string,

@@ -41,7 +41,10 @@ export default function CreateQuote() {
 
   // Read URL params
   const urlProjectId = searchParams.get("projectId");
+  const urlClientId = searchParams.get("clientId");
   const shouldPrepopulate = searchParams.get("prepopulate") === "true";
+  const fromQuickQuote = searchParams.get("fromQuickQuote") === "true";
+  const fromIntake = searchParams.get("fromIntake") === "true";
   const taskIds = searchParams.get("taskIds")?.split(",").filter(Boolean) || [];
   const materialIds = searchParams.get("materialIds")?.split(",").filter(Boolean) || [];
   const groupByType = searchParams.get("groupByType") || "grouped";
@@ -103,6 +106,80 @@ export default function CreateQuote() {
       setProjectId(urlProjectId);
     }
   }, [urlProjectId, projectId]);
+
+  // Handle URL param for clientId
+  useEffect(() => {
+    if (urlClientId && !clientId) {
+      setClientId(urlClientId);
+    }
+  }, [urlClientId, clientId]);
+
+  // Handle AI-generated items from QuickQuote
+  useEffect(() => {
+    if (!fromQuickQuote) return;
+
+    const storedItems = sessionStorage.getItem("quickQuoteItems");
+    if (storedItems) {
+      try {
+        const aiItems = JSON.parse(storedItems);
+        if (Array.isArray(aiItems) && aiItems.length > 0) {
+          const quoteItems: QuoteItem[] = aiItems.map((item: {
+            description: string;
+            quantity: number;
+            unit: string;
+            estimatedPrice: number | null;
+            isLabor: boolean;
+          }) => ({
+            id: crypto.randomUUID(),
+            description: item.description,
+            quantity: item.quantity || 1,
+            unit: item.unit || "st",
+            unitPrice: item.estimatedPrice || 0,
+            isRotEligible: item.isLabor === true, // ROT only for labor
+          }));
+          setItems(quoteItems);
+        }
+      } catch (e) {
+        console.error("Failed to parse quickQuoteItems:", e);
+      }
+      // Clear the stored items after reading
+      sessionStorage.removeItem("quickQuoteItems");
+    }
+  }, [fromQuickQuote]);
+
+  // Handle items from intake conversion
+  useEffect(() => {
+    if (!fromIntake) return;
+
+    const storedItems = sessionStorage.getItem("intakeQuoteItems");
+    if (storedItems) {
+      try {
+        const intakeItems = JSON.parse(storedItems);
+        if (Array.isArray(intakeItems) && intakeItems.length > 0) {
+          const quoteItems: QuoteItem[] = intakeItems.map((item: {
+            description: string;
+            quantity: number;
+            unit: string;
+            estimatedPrice: number | null;
+            isLabor: boolean;
+          }) => ({
+            id: crypto.randomUUID(),
+            description: item.description,
+            quantity: item.quantity || 1,
+            unit: item.unit || "st",
+            unitPrice: item.estimatedPrice || 0,
+            isRotEligible: item.isLabor === true, // Labor items are ROT-eligible
+          }));
+          setItems(quoteItems);
+          toast.success(t("quotes.itemsImported", { count: quoteItems.length }));
+        }
+      } catch (e) {
+        console.error("Failed to parse intakeQuoteItems:", e);
+      }
+      // Clear the stored items after reading
+      sessionStorage.removeItem("intakeQuoteItems");
+    }
+  }, [fromIntake, t]);
 
   // Pre-populate items from project tasks and materials
   useEffect(() => {

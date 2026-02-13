@@ -182,7 +182,37 @@ export function IntakeRequestDetail({
       // 6. Mark intake as converted
       await markIntakeAsConverted(request.id, project.id, clientId);
 
-      // 7. Update local state
+      // 7. Generate quote items from rooms_data
+      const quoteItems: {
+        description: string;
+        quantity: number;
+        unit: string;
+        estimatedPrice: number;
+        isLabor: boolean;
+        roomName: string;
+      }[] = [];
+
+      if (request.rooms_data && request.rooms_data.length > 0) {
+        for (const room of request.rooms_data) {
+          for (const workType of room.work_types) {
+            quoteItems.push({
+              description: `${room.name} - ${t(`intake.workType.${workType}`)}`,
+              quantity: 1,
+              unit: "st",
+              estimatedPrice: 0, // User needs to fill in price
+              isLabor: true, // All work types are labor
+              roomName: room.name,
+            });
+          }
+        }
+      }
+
+      // Store quote items for CreateQuote to pick up
+      if (quoteItems.length > 0) {
+        sessionStorage.setItem("intakeQuoteItems", JSON.stringify(quoteItems));
+      }
+
+      // 8. Update local state
       onUpdated({
         ...request,
         status: "converted",
@@ -194,9 +224,16 @@ export function IntakeRequestDetail({
         description: t("intake.convertedDescription"),
       });
 
-      // 8. Navigate to create quote
+      // 9. Navigate to create quote with prepopulated items
       onOpenChange(false);
-      navigate(`/quotes/new?projectId=${project.id}&intakeId=${request.id}`);
+      const params = new URLSearchParams({ projectId: project.id });
+      if (clientId) {
+        params.set("clientId", clientId);
+      }
+      if (quoteItems.length > 0) {
+        params.set("fromIntake", "true");
+      }
+      navigate(`/quotes/new?${params.toString()}`);
     } catch (error) {
       console.error("Failed to convert intake to quote:", error);
       toast.error(t("common.error"));

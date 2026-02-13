@@ -40,6 +40,8 @@
     "back": "Zurück",
     "skipAndCreate": "Überspringen & erstellen",
     "noDescription": "Keine Beschreibung",
+    "showMore": "mehr anzeigen",
+    "showLess": "weniger anzeigen",
     "types": {
       "kitchenRenovation": "Küchenrenovierung",
       "bathroomRenovation": "Badrenovierung",

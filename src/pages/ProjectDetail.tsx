@@ -8,7 +8,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ChevronDown, FolderOpen, Lock, BookOpen, Loader2, PartyPopper, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, FolderOpen, Lock, BookOpen, Loader2, PartyPopper, X, Zap, FileText, LayoutGrid } from "lucide-react";
 import { isDemoProject, refreshDemoProjectDates } from "@/services/demoProjectService";
 import { ProjectDetailSkeleton } from "@/components/ui/skeleton-screens";
 import { WithHotspot } from "@/components/onboarding/Hotspot";
@@ -92,6 +92,7 @@ const ProjectDetail = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [leadQuoteId, setLeadQuoteId] = useState<string | null>(null);
 
   // Map tab keys to permission keys
   const tabPermissionMap: Record<string, string> = {
@@ -224,6 +225,20 @@ const ProjectDetail = () => {
         refreshDemoProjectDates(profileData.id);
       }
 
+      // For lead projects (status = "lead"), fetch the associated quote
+      if (projectData?.status === "lead") {
+        const { data: quoteData } = await supabase
+          .from("quotes")
+          .select("id")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        if (quoteData) {
+          setLeadQuoteId(quoteData.id);
+        }
+      }
+
       // Fetch all projects for the dropdown
       const { data: allProjects } = await supabase
         .from("projects")
@@ -238,7 +253,7 @@ const ProjectDetail = () => {
         description: error.message,
         variant: "destructive",
       });
-      navigate("/projects");
+      navigate("/start");
     } finally {
       setLoading(false);
     }
@@ -566,6 +581,8 @@ const ProjectDetail = () => {
   };
 
   const isDemo = project ? isDemoProject(project.project_type) : false;
+  // Show lead banner only if status is "lead" (quote not yet accepted)
+  const isLead = project?.status === "lead";
 
   const demoBannerContent = isDemo ? (
     <>
@@ -591,26 +608,52 @@ const ProjectDetail = () => {
           avatarUrl={profile?.avatar_url}
           onSignOut={handleSignOut}
         >
-          {/* Mobile project name */}
-          <span className="text-sm font-medium truncate md:hidden">
-            {project?.name}
-          </span>
+          {/* Mobile: Back button + project name */}
+          <div className="flex items-center gap-2 md:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={() => {
+                // If on a sub-tab, go back to overview first
+                if (activeTab !== "overview") {
+                  setActiveTab("overview");
+                  setActiveSubTab(null);
+                } else {
+                  // Already on overview, go to previous page
+                  navigate(-1);
+                }
+              }}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium truncate">
+              {project?.name}
+            </span>
+          </div>
           {/* Desktop navigation */}
           <div className="hidden md:flex items-center gap-3">
+            {/* Back to start button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2 shrink-0"
+              onClick={() => navigate("/start")}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden lg:inline">{t('projectDetail.backToStart')}</span>
+            </Button>
+            {/* Project switcher dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2 shrink-0">
-                  <FolderOpen className="h-4 w-4" />
-                  <ChevronDown className="h-4 w-4" />
+                <Button variant="outline" size="sm" className="gap-2 shrink-0 max-w-48">
+                  <FolderOpen className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{project?.name}</span>
+                  <ChevronDown className="h-4 w-4 shrink-0" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-64 bg-popover z-[100]">
                 <DropdownMenuLabel>{t('nav.projects')}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/projects")} className="cursor-pointer">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  {t('projectDetail.allProjects')}
-                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {projects.map((proj) => (
                   <DropdownMenuItem
@@ -758,6 +801,41 @@ const ProjectDetail = () => {
             {demoBannerContent}
           </div>
         )}
+        {/* Lead project banner */}
+        {isLead && !isDemo && (
+          <div className="bg-amber-500 text-white px-4 py-2.5 flex flex-col sm:flex-row items-center justify-center gap-2 text-sm">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              <span className="font-medium">{t("projectDetail.leadBanner")}</span>
+              <span className="text-white/80">– {t("projectDetail.leadBannerDescription")}</span>
+            </div>
+            <div className="flex items-center gap-2 mt-2 sm:mt-0 sm:ml-4">
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-7 text-xs bg-white/20 hover:bg-white/30 text-white border-0"
+                onClick={() => {
+                  setActiveTab('spaceplanner');
+                  setActiveSubTab('rooms');
+                }}
+              >
+                <LayoutGrid className="h-3 w-3 mr-1" />
+                {t("projectDetail.leadBannerExpand")}
+              </Button>
+              {leadQuoteId && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 text-xs bg-white/20 hover:bg-white/30 text-white border-0"
+                  onClick={() => navigate(`/quotes/${leadQuoteId}`)}
+                >
+                  <FileText className="h-3 w-3 mr-1" />
+                  {t("projectDetail.leadBannerQuote")}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
         </div>
       )}
 
@@ -765,6 +843,15 @@ const ProjectDetail = () => {
       {!isHeaderVisible && isDemo && (
         <div className="fixed top-14 left-0 right-0 z-[59] bg-primary text-primary-foreground px-4 py-2.5 flex items-center justify-center gap-2 text-sm">
           {demoBannerContent}
+        </div>
+      )}
+
+      {/* Lead banner in floorplan mode */}
+      {!isHeaderVisible && isLead && !isDemo && (
+        <div className="fixed top-14 left-0 right-0 z-[59] bg-amber-500 text-white px-4 py-2.5 flex items-center justify-center gap-2 text-sm">
+          <Zap className="h-4 w-4" />
+          <span className="font-medium">{t("projectDetail.leadBanner")}</span>
+          <span className="text-white/80">– {t("projectDetail.leadBannerDescription")}</span>
         </div>
       )}
 

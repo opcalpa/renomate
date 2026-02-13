@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -10,8 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ChevronRight, ChevronLeft, Users, Sparkles, BookOpen, Wand2, Trash2 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Plus, ChevronRight, ChevronLeft, Users, BookOpen, Trash2, Zap, Upload, FileText, X, Loader2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -28,12 +27,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AIProjectImportModal } from "@/components/project/AIProjectImportModal";
+import { Checkbox } from "@/components/ui/checkbox";
 import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
 import { WelcomeModal, QuickStartChoice } from "@/components/onboarding/WelcomeModal";
 import { WithHotspot } from "@/components/onboarding/Hotspot";
 import { PageLoadingSkeleton } from "@/components/ui/skeleton-screens";
 import { seedDemoProject, isDemoProject, hasDemoProject } from "@/services/demoProjectService";
+import { LeadsPipelineSection } from "@/components/pipeline";
 
 interface Project {
   id: string;
@@ -67,10 +67,14 @@ const Projects = () => {
   const [newProjectBudget, setNewProjectBudget] = useState("");
   const [createStep, setCreateStep] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [aiImportOpen, setAiImportOpen] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [extractingText, setExtractingText] = useState(false);
+  const [useAI, setUseAI] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -222,6 +226,101 @@ const Projects = () => {
     }
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: t("common.error"),
+        description: t("pipeline.quickQuote.fileTooLarge"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadedFile(file);
+    setExtractingText(true);
+
+    try {
+      // For text files, read directly
+      if (file.type === "text/plain") {
+        const text = await file.text();
+        setNewProjectDescription((prev) => prev ? `${prev}\n\n${text}` : text);
+        toast({
+          title: t("pipeline.quickQuote.textExtracted"),
+        });
+      }
+      // For PDFs and images, use edge function
+      else if (file.type === "application/pdf" || file.type.startsWith("image/")) {
+        // Convert file to base64
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(",")[1]);
+          };
+          reader.readAsDataURL(file);
+        });
+
+        const { data, error } = await supabase.functions.invoke("extract-document-text", {
+          body: {
+            fileBase64: base64,
+            mimeType: file.type,
+            fileName: file.name,
+          },
+        });
+
+        if (error) {
+          console.error("Text extraction error:", error);
+          toast({
+            title: t("pipeline.quickQuote.extractionFailed"),
+            variant: "destructive",
+          });
+        } else if (data?.text) {
+          setNewProjectDescription((prev) => prev ? `${prev}\n\n${data.text}` : data.text);
+
+          // Try to suggest a project name from the filename
+          if (!newProjectName.trim()) {
+            const suggestedName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+            setNewProjectName(suggestedName);
+          }
+
+          toast({
+            title: t("pipeline.quickQuote.textExtracted"),
+          });
+        } else {
+          toast({
+            title: t("pipeline.quickQuote.noTextFound"),
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: t("pipeline.quickQuote.unsupportedFileType"),
+          variant: "destructive",
+        });
+        setUploadedFile(null);
+      }
+    } catch (err) {
+      console.error("File processing error:", err);
+      toast({
+        title: t("pipeline.quickQuote.extractionFailed"),
+        variant: "destructive",
+      });
+    } finally {
+      setExtractingText(false);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setUploadedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
@@ -241,8 +340,8 @@ const Projects = () => {
       // Open the create project dialog
       setDialogOpen(true);
     } else if (quickStart === "import") {
-      // Open the AI import modal
-      setAiImportOpen(true);
+      // Open the create project dialog (now includes AI import option)
+      setDialogOpen(true);
     } else {
       // "explore" - just show toast about demo project
       toast({
@@ -310,25 +409,18 @@ const Projects = () => {
           />
         )}
 
+        {/* Pipeline Section - Leads & Quotes */}
+        <section id="pipeline">
+          <LeadsPipelineSection onRefetch={fetchProjects} />
+        </section>
+
+        <section id="projekt" className="scroll-mt-20">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
             <h2 className="text-2xl font-semibold mb-2">{t('projects.title')}</h2>
             <p className="text-muted-foreground">{t('projects.description')}</p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" onClick={() => setAiImportOpen(true)} className="flex-1 sm:flex-none">
-                    <Wand2 className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">{t('aiProjectImport.smartImport', 'Smart Import')}</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs">
-                  <p>{t('aiProjectImport.smartImportTooltip', 'Ladda upp befintlig textfil med renoveringsbeskrivning och vi skapar automatiskt att-göra lista och uppdelade rumsbeskrivningar')}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
             <WithHotspot
               hotspotId="create-project"
               hotspotContent="hotspots.createProject"
@@ -341,7 +433,7 @@ const Projects = () => {
                 <span className="sm:hidden">{t('common.create', 'Skapa')}</span>
               </Button>
             </WithHotspot>
-            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setCreateStep(1); setNewProjectName(""); setNewProjectDescription(""); setNewProjectAddress(""); setNewProjectPostalCode(""); setNewProjectCity(""); setNewProjectType(""); setNewProjectStartDate(""); setNewProjectBudget(""); } }}>
+            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setCreateStep(1); setNewProjectName(""); setNewProjectDescription(""); setNewProjectAddress(""); setNewProjectPostalCode(""); setNewProjectCity(""); setNewProjectType(""); setNewProjectStartDate(""); setNewProjectBudget(""); setUploadedFile(null); setUseAI(true); if (fileInputRef.current) fileInputRef.current.value = ""; } }}>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{t('projects.createProjectTitle')}</DialogTitle>
@@ -352,6 +444,68 @@ const Projects = () => {
               <form onSubmit={handleCreateProject} className="space-y-4">
                 {createStep === 1 ? (
                   <>
+                    {/* AI File Upload Section */}
+                    <div className="space-y-2 p-3 rounded-lg bg-muted/50 border border-dashed border-muted-foreground/30">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Sparkles className="h-4 w-4 text-purple-500" />
+                        {t('projects.aiImportTitle', 'Ladda upp dokument (valfritt)')}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {t('projects.aiImportHint', 'Ladda upp en offertförfrågan, beskrivning eller annat dokument för att fylla i formuläret automatiskt.')}
+                      </p>
+
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".txt,.pdf,image/*"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+
+                      {uploadedFile ? (
+                        <div className="flex items-center gap-2 p-2 rounded-md bg-background text-sm">
+                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="truncate flex-1">{uploadedFile.name}</span>
+                          {extractingText ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={handleRemoveFile}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={extractingText}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          {t('projects.selectFile', 'Välj fil')}
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                          {t('projects.orFillManually', 'eller fyll i manuellt')}
+                        </span>
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="name">{t('projects.projectName')} *</Label>
                       <Input
@@ -513,10 +667,11 @@ const Projects = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => {
               const isDemo = isDemoProject(project.project_type);
+              const isLead = project.project_type === "lead";
               return (
                 <Card
                   key={project.id}
-                  className={`cursor-pointer card-elevated overflow-hidden ${isDemo ? 'ring-2 ring-primary/30' : ''}`}
+                  className={`cursor-pointer card-elevated overflow-hidden ${isDemo ? 'ring-2 ring-primary/30' : ''} ${isLead ? 'ring-2 ring-amber-400/50' : ''}`}
                   onClick={() => navigate(`/projects/${project.id}`)}
                 >
                   {isDemo && (
@@ -526,12 +681,64 @@ const Projects = () => {
                       <span className="text-primary-foreground/70 font-normal">– {t("demoProject.description")}</span>
                     </div>
                   )}
+                  {isLead && !isDemo && (
+                    <div className="bg-amber-500 text-white px-4 py-2 flex items-center gap-2 text-sm font-medium">
+                      <Zap className="h-4 w-4" />
+                      <span>Lead</span>
+                      <span className="text-white/70 font-normal">– {t("projects.leadDescription")}</span>
+                    </div>
+                  )}
                   <CardHeader>
                     <CardTitle>{project.name}</CardTitle>
-                    <CardDescription>
-                      {project.address
-                        ? [project.address, project.city].filter(Boolean).join(", ")
-                        : project.description || t('projects.noDescription')}
+                    <CardDescription className="space-y-1">
+                      {project.address && (
+                        <span className="block">
+                          {[project.address, project.city].filter(Boolean).join(", ")}
+                        </span>
+                      )}
+                      {project.description ? (
+                        <span className="block">
+                          {project.description.length > 150 && !expandedDescriptions.has(project.id) ? (
+                            <>
+                              {project.description.slice(0, 150).trim()}...
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedDescriptions(prev => new Set([...prev, project.id]));
+                                }}
+                                className="inline-flex items-center gap-0.5 ml-1 text-primary hover:underline"
+                              >
+                                {t('projects.showMore')}
+                                <ChevronDown className="h-3 w-3" />
+                              </button>
+                            </>
+                          ) : project.description.length > 150 ? (
+                            <>
+                              {project.description}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedDescriptions(prev => {
+                                    const next = new Set(prev);
+                                    next.delete(project.id);
+                                    return next;
+                                  });
+                                }}
+                                className="inline-flex items-center gap-0.5 ml-1 text-primary hover:underline"
+                              >
+                                {t('projects.showLess')}
+                                <ChevronUp className="h-3 w-3" />
+                              </button>
+                            </>
+                          ) : (
+                            project.description
+                          )}
+                        </span>
+                      ) : !project.address && (
+                        <span className="block text-muted-foreground">{t('projects.noDescription')}</span>
+                      )}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -563,6 +770,7 @@ const Projects = () => {
             })}
           </div>
         )}
+        </section>
       </main>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
@@ -590,12 +798,6 @@ const Projects = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <AIProjectImportModal
-        open={aiImportOpen}
-        onOpenChange={setAiImportOpen}
-        onProjectCreated={(projectId) => navigate(`/projects/${projectId}`)}
-      />
 
       {/* Welcome modal for new users */}
       {profile?.id && (
