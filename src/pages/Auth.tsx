@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +11,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Loader2 } from "lucide-react";
+import { GuestMigrationDialog } from "@/components/guest";
+import { hasGuestProjectsToMigrate } from "@/services/guestMigrationService";
+import { useGuestMode } from "@/hooks/useGuestMode";
 
 const Auth = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -20,10 +25,34 @@ const Auth = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [showResetForm, setShowResetForm] = useState(false);
+  const [showMigrationDialog, setShowMigrationDialog] = useState(false);
+  const [profileIdForMigration, setProfileIdForMigration] = useState<string | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const redirect = searchParams.get("redirect");
+  const { exitGuestMode } = useGuestMode();
+
+  // Check for migration after successful OAuth callback
+  useEffect(() => {
+    const checkForMigration = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && hasGuestProjectsToMigrate()) {
+        // Get profile ID
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", session.user.id)
+          .single();
+
+        if (profile) {
+          setProfileIdForMigration(profile.id);
+          setShowMigrationDialog(true);
+        }
+      }
+    };
+    checkForMigration();
+  }, []);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,18 +73,33 @@ const Auth = () => {
       if (error) throw error;
 
       toast({
-        title: "Account created!",
-        description: "You can now sign in with your credentials.",
+        title: t('auth.accountCreated', 'Account created!'),
+        description: t('auth.accountCreatedDescription', 'You can now sign in with your credentials.'),
       });
 
-      // Auto sign in after signup
+      // Auto sign in after signup - check for migration
       if (data.user) {
+        if (hasGuestProjectsToMigrate()) {
+          // Get profile ID (may need to wait for trigger to create it)
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("user_id", data.user.id)
+            .single();
+
+          if (profile) {
+            setProfileIdForMigration(profile.id);
+            setShowMigrationDialog(true);
+            return;
+          }
+        }
+        exitGuestMode();
         navigate(redirect || "/start");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: t('common.error'),
+        description: (error as Error).message,
         variant: "destructive",
       });
     } finally {
@@ -83,18 +127,35 @@ const Auth = () => {
       }
 
       toast({
-        title: "Welcome back!",
-        description: "You've successfully signed in.",
+        title: t('auth.welcomeBack', 'Welcome back!'),
+        description: t('auth.signInSuccess', "You've successfully signed in."),
       });
 
-      // Wait a brief moment for the auth state to propagate
+      // Check for guest projects to migrate
+      if (hasGuestProjectsToMigrate()) {
+        // Get profile ID
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", data.user.id)
+          .single();
+
+        if (profile) {
+          setProfileIdForMigration(profile.id);
+          setShowMigrationDialog(true);
+          return;
+        }
+      }
+
+      // No migration needed, proceed to redirect
+      exitGuestMode();
       setTimeout(() => {
         navigate(redirect || "/start");
       }, 100);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: t('common.error'),
+        description: (error as Error).message,
         variant: "destructive",
       });
     } finally {
@@ -395,6 +456,19 @@ const Auth = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Guest Migration Dialog */}
+      {profileIdForMigration && (
+        <GuestMigrationDialog
+          open={showMigrationDialog}
+          onOpenChange={setShowMigrationDialog}
+          profileId={profileIdForMigration}
+          onComplete={() => {
+            exitGuestMode();
+            navigate(redirect || "/start");
+          }}
+        />
+      )}
     </div>
   );
 };

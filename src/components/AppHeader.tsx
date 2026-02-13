@@ -50,11 +50,12 @@ interface AppHeaderProps {
   userName?: string;
   userEmail?: string;
   avatarUrl?: string;
-  onSignOut: () => void;
+  onSignOut?: () => void;
   children?: React.ReactNode;
+  isGuest?: boolean;
 }
 
-export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children }: AppHeaderProps) => {
+export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children, isGuest = false }: AppHeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { i18n, t } = useTranslation();
@@ -77,7 +78,8 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children 
   const currentLanguage = LANGUAGES.find(lang => lang.code === i18n.language) || LANGUAGES[0];
 
   useEffect(() => {
-    if (!user) return;
+    // Skip data fetching for guest users
+    if (!user || isGuest) return;
 
     // Fetch projects
     supabase
@@ -103,7 +105,7 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children 
           })));
         }
       });
-  }, [user]);
+  }, [user, isGuest]);
 
   const handleLanguageChange = async (langCode: string) => {
     await i18n.changeLanguage(langCode);
@@ -348,15 +350,19 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children 
                 </p>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer">
-                <User className="mr-2 h-4 w-4" />
-                <span>{t('nav.profile')}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/admin")} className="cursor-pointer">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Admin</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              {!isGuest && (
+                <>
+                  <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>{t('nav.profile')}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/admin")} className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Admin</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <Globe className="mr-2 h-4 w-4" />
@@ -374,10 +380,17 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children 
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onSignOut} className="cursor-pointer text-destructive">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>{t('common.signOut')}</span>
-              </DropdownMenuItem>
+              {isGuest ? (
+                <DropdownMenuItem onClick={() => navigate("/auth")} className="cursor-pointer text-primary">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>{t('common.signIn')}</span>
+                </DropdownMenuItem>
+              ) : onSignOut ? (
+                <DropdownMenuItem onClick={onSignOut} className="cursor-pointer text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>{t('common.signOut')}</span>
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

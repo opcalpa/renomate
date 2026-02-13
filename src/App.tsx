@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { GuestProvider } from "@/contexts/GuestContext";
 import "@/i18n/config";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -51,40 +52,42 @@ const ErrorFallback = () => (
 const App = () => (
   <Sentry.ErrorBoundary fallback={<ErrorFallback />}>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <BetaBanner />
-          <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/start" element={<Projects />} />
-          <Route path="/projects" element={<Navigate to="/start" replace />} />
-          <Route path="/projects/:projectId" element={<ProjectDetail />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/invitation" element={<InvitationResponse />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/pinterest/callback" element={<PinterestCallback />} />
-          <Route path="/tips" element={<Tips />} />
-          <Route path="/feedback" element={<Feedback />} />
-          <Route path="/find-pros" element={<FindProfessionals />} />
-          <Route path="/quotes/new" element={<CreateQuote />} />
-          <Route path="/quotes/:quoteId" element={<ViewQuote />} />
-          <Route path="/clients" element={<ClientRegistry />} />
-          <Route path="/intake/:token" element={<CustomerIntake />} />
-          <Route path="/intake-requests" element={<IntakeRequests />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-      <HelpBot />
-    </TooltipProvider>
-  </QueryClientProvider>
+      <GuestProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <BetaBanner />
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/start" element={<Projects />} />
+              <Route path="/projects" element={<Navigate to="/start" replace />} />
+              <Route path="/projects/:projectId" element={<ProjectDetail />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/invitation" element={<InvitationResponse />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/pinterest/callback" element={<PinterestCallback />} />
+              <Route path="/tips" element={<Tips />} />
+              <Route path="/feedback" element={<Feedback />} />
+              <Route path="/find-pros" element={<FindProfessionals />} />
+              <Route path="/quotes/new" element={<CreateQuote />} />
+              <Route path="/quotes/:quoteId" element={<ViewQuote />} />
+              <Route path="/clients" element={<ClientRegistry />} />
+              <Route path="/intake/:token" element={<CustomerIntake />} />
+              <Route path="/intake-requests" element={<IntakeRequests />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+          <HelpBot />
+        </TooltipProvider>
+      </GuestProvider>
+    </QueryClientProvider>
   </Sentry.ErrorBoundary>
 );
 

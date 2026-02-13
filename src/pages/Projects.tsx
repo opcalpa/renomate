@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { useGuestMode } from "@/hooks/useGuestMode";
 import { analytics, AnalyticsEvents } from "@/lib/analytics";
 import { useProfileLanguage } from "@/hooks/useProfileLanguage";
 import { useOnboarding } from "@/hooks/useOnboarding";
@@ -34,6 +35,14 @@ import { WithHotspot } from "@/components/onboarding/Hotspot";
 import { PageLoadingSkeleton } from "@/components/ui/skeleton-screens";
 import { seedDemoProject, isDemoProject, hasDemoProject } from "@/services/demoProjectService";
 import { LeadsPipelineSection } from "@/components/pipeline";
+import { GuestBanner } from "@/components/guest";
+import {
+  getGuestProjects,
+  saveGuestProject,
+  deleteGuestProject,
+  canCreateGuestProject,
+} from "@/services/guestStorageService";
+import { GUEST_MAX_PROJECTS } from "@/types/guest.types";
 
 interface Project {
   id: string;
@@ -50,6 +59,7 @@ interface Project {
 
 const Projects = () => {
   const { user, signOut, loading: authLoading } = useAuthSession();
+  const { isGuest, refreshStorageUsage } = useGuestMode();
   useProfileLanguage();
   const { t } = useTranslation();
   const onboarding = useOnboarding();
@@ -81,14 +91,41 @@ const Projects = () => {
   useEffect(() => {
     // Don't redirect while auth is still loading
     if (authLoading) return;
-    
-    if (!user) {
+
+    if (!user && !isGuest) {
       navigate("/auth");
+    } else if (isGuest) {
+      // Load guest projects from localStorage
+      fetchGuestProjects();
     } else {
       fetchProfile();
       fetchProjects();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, isGuest]);
+
+  const fetchGuestProjects = () => {
+    try {
+      const guestProjects = getGuestProjects();
+      // Map guest projects to the Project interface
+      setProjects(guestProjects.map((p) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        status: p.status,
+        created_at: p.created_at,
+        address: p.address,
+        postal_code: p.postal_code,
+        city: p.city,
+        project_type: p.project_type,
+        owner_id: null,
+      })));
+      refreshStorageUsage();
+    } catch (error) {
+      console.error("Error loading guest projects:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -158,6 +195,55 @@ const Projects = () => {
     setCreating(true);
 
     try {
+      // Guest mode: save to localStorage
+      if (isGuest) {
+        if (!canCreateGuestProject()) {
+          toast({
+            title: t('common.error'),
+            description: t('guest.projectLimit', 'Guest mode is limited to {{max}} projects.', { max: GUEST_MAX_PROJECTS }),
+            variant: "destructive",
+          });
+          setCreating(false);
+          return;
+        }
+
+        const guestProject = saveGuestProject({
+          name: newProjectName,
+          description: newProjectDescription || null,
+          status: "active",
+          address: newProjectAddress || null,
+          postal_code: newProjectPostalCode || null,
+          city: newProjectCity || null,
+          project_type: newProjectType || null,
+          start_date: newProjectStartDate || null,
+          total_budget: newProjectBudget ? Number(newProjectBudget) : null,
+        });
+
+        if (!guestProject) {
+          throw new Error("Failed to save guest project");
+        }
+
+        toast({
+          title: t('projects.projectCreated'),
+          description: t('projects.projectCreatedDescription'),
+        });
+
+        setDialogOpen(false);
+        setCreateStep(1);
+        setNewProjectName("");
+        setNewProjectDescription("");
+        setNewProjectAddress("");
+        setNewProjectPostalCode("");
+        setNewProjectCity("");
+        setNewProjectType("");
+        setNewProjectStartDate("");
+        setNewProjectBudget("");
+        refreshStorageUsage();
+        navigate(`/projects/${guestProject.id}`);
+        return;
+      }
+
+      // Authenticated mode: save to Supabase
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
@@ -215,10 +301,10 @@ const Projects = () => {
       setNewProjectStartDate("");
       setNewProjectBudget("");
       navigate(`/projects/${data.id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: (error as Error).message,
         variant: "destructive",
       });
     } finally {
@@ -355,6 +441,21 @@ const Projects = () => {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
+      // Guest mode: delete from localStorage
+      if (isGuest) {
+        const success = deleteGuestProject(deleteTarget.id);
+        if (!success) throw new Error("Failed to delete project");
+
+        toast({
+          title: t("projects.deleteSuccess"),
+          description: t("projects.deleteSuccessDescription", { name: deleteTarget.name }),
+        });
+        setDeleteTarget(null);
+        fetchGuestProjects();
+        return;
+      }
+
+      // Authenticated mode: delete from Supabase
       const { error } = await supabase
         .from("projects")
         .delete()
@@ -389,14 +490,21 @@ const Projects = () => {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader
-        userName={profile?.name}
-        userEmail={profile?.email || user?.email}
-        avatarUrl={profile?.avatar_url}
-        onSignOut={handleSignOut}
+        userName={isGuest ? t('guest.guestUser', 'Guest') : profile?.name}
+        userEmail={isGuest ? t('guest.localMode', 'Local mode') : (profile?.email || user?.email)}
+        avatarUrl={isGuest ? undefined : profile?.avatar_url}
+        onSignOut={isGuest ? undefined : handleSignOut}
+        isGuest={isGuest}
       />
 
+      {/* Guest mode banner - sticky below header */}
+      {isGuest && <GuestBanner compact />}
+
       <main className="container mx-auto px-4 py-8">
-        {!onboarding.loading && !onboarding.isDismissed && !onboarding.isComplete && onboarding.steps.length > 0 && (
+        {/* Full guest banner at top of content */}
+        {isGuest && <GuestBanner className="mb-6" />}
+
+        {!isGuest && !onboarding.loading && !onboarding.isDismissed && !onboarding.isComplete && onboarding.steps.length > 0 && (
           <OnboardingChecklist
             steps={onboarding.steps}
             completedCount={onboarding.completedCount}
@@ -409,10 +517,12 @@ const Projects = () => {
           />
         )}
 
-        {/* Pipeline Section - Leads & Quotes */}
-        <section id="pipeline">
-          <LeadsPipelineSection onRefetch={fetchProjects} />
-        </section>
+        {/* Pipeline Section - Leads & Quotes (hidden in guest mode) */}
+        {!isGuest && (
+          <section id="pipeline">
+            <LeadsPipelineSection onRefetch={fetchProjects} />
+          </section>
+        )}
 
         <section id="projekt" className="scroll-mt-20">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
@@ -750,7 +860,8 @@ const Projects = () => {
                           {new Date(project.created_at).toLocaleDateString()}
                         </span>
                       </div>
-                      {profileId && project.owner_id === profileId && !isDemo && (
+                      {/* Show delete button for guest projects or owned projects */}
+                      {(isGuest || (profileId && project.owner_id === profileId)) && !isDemo && (
                         <Button
                           variant="ghost"
                           size="icon"

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { useGuestMode } from "@/hooks/useGuestMode";
 import { useProfileLanguage } from "@/hooks/useProfileLanguage";
 import { useProjectPermissions } from "@/hooks/useProjectPermissions";
 import { AppHeader } from "@/components/AppHeader";
@@ -40,6 +41,19 @@ import { RoomDetailDialog } from "@/components/floormap/RoomDetailDialog";
 import { useFloorMapStore } from "@/components/floormap/store";
 import { FloorMapShape } from "@/components/floormap/types";
 import { v4 as uuidv4 } from "uuid";
+import { GuestBanner } from "@/components/guest";
+import {
+  getGuestProject,
+  getGuestRooms,
+  getGuestTasks,
+  saveGuestRoom,
+  updateGuestRoom,
+  deleteGuestRoom as deleteGuestRoomStorage,
+  saveGuestTask,
+  updateGuestTask,
+  deleteGuestTask,
+} from "@/services/guestStorageService";
+import type { GuestRoom, GuestTask } from "@/types/guest.types";
 
 interface Project {
   id: string;
@@ -68,6 +82,7 @@ const NoAccessPlaceholder = () => {
 const ProjectDetail = () => {
   const { projectId } = useParams();
   const { user, signOut, loading: authLoading } = useAuthSession();
+  const { isGuest, refreshStorageUsage } = useGuestMode();
   useProfileLanguage();
   const { t } = useTranslation();
 
@@ -185,12 +200,65 @@ const ProjectDetail = () => {
     // Don't redirect while auth is still loading
     if (authLoading) return;
 
-    if (!user) {
+    if (!user && !isGuest) {
       navigate("/auth");
+    } else if (isGuest) {
+      loadGuestData();
     } else {
       loadData();
     }
-  }, [user, projectId, authLoading]);
+  }, [user, projectId, authLoading, isGuest]);
+
+  const loadGuestData = () => {
+    if (!projectId) return;
+    try {
+      const guestProject = getGuestProject(projectId);
+      if (!guestProject) {
+        toast({
+          title: t('common.error'),
+          description: t('projects.notFound', 'Project not found'),
+          variant: "destructive",
+        });
+        navigate("/start");
+        return;
+      }
+
+      setProject({
+        id: guestProject.id,
+        name: guestProject.name,
+        description: guestProject.description,
+        status: guestProject.status,
+        total_budget: guestProject.total_budget || null,
+        spent_amount: null,
+        start_date: guestProject.start_date || null,
+        finish_goal_date: null,
+        project_type: guestProject.project_type,
+        currency: 'SEK',
+      });
+
+      // Load guest rooms
+      const guestRooms = getGuestRooms(projectId);
+      setRoomsData(guestRooms.map((r) => ({
+        id: r.id,
+        project_id: r.project_id,
+        name: r.name,
+        room_type: r.room_type,
+        status: r.status,
+        area_sqm: r.area_sqm,
+        floor_number: r.floor_number,
+        notes: r.notes,
+        created_at: r.created_at,
+      })));
+
+      setRoomsLoading(false);
+      refreshStorageUsage();
+    } catch (error) {
+      console.error("Error loading guest project:", error);
+      navigate("/start");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Hide main header when in Floor Plan edit mode
   // SpacePlannerTopBar will be the only visible header (industry standard UX)
@@ -293,6 +361,22 @@ const ProjectDetail = () => {
   };
 
   const loadRoomsData = async () => {
+    // Guest mode: load from localStorage
+    if (isGuest && projectId) {
+      const guestRooms = getGuestRooms(projectId);
+      return guestRooms.map((r) => ({
+        id: r.id,
+        project_id: r.project_id,
+        name: r.name,
+        room_type: r.room_type,
+        status: r.status,
+        area_sqm: r.area_sqm,
+        floor_number: r.floor_number,
+        notes: r.notes,
+        created_at: r.created_at,
+      }));
+    }
+
     try {
       const { data, error } = await supabase
         .from("rooms")
@@ -353,6 +437,22 @@ const ProjectDetail = () => {
     }
 
     try {
+      // Guest mode: delete from localStorage
+      if (isGuest && projectId) {
+        const success = deleteGuestRoomStorage(projectId, roomId);
+        if (!success) throw new Error("Failed to delete room");
+
+        toast({
+          title: t('projectDetail.roomDeleted'),
+          description: t('projectDetail.roomDeletedDescription', { name: room.name }),
+        });
+
+        setRoomsData(prev => prev.filter(r => r.id !== roomId));
+        refreshStorageUsage();
+        return;
+      }
+
+      // Authenticated mode: delete from Supabase
       const { error } = await supabase
         .from("rooms")
         .delete()
@@ -369,11 +469,11 @@ const ProjectDetail = () => {
       setRoomsData(prev => prev.filter(r => r.id !== roomId));
       setRoomsLoading(false);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting room:", error);
       toast({
         title: t('common.error'),
-        description: error.message || t('projectDetail.failedToDeleteRoom'),
+        description: (error as Error).message || t('projectDetail.failedToDeleteRoom'),
         variant: "destructive",
       });
     }
@@ -599,14 +699,18 @@ const ProjectDetail = () => {
 
   return (
     <div className={cn("min-h-screen bg-background flex flex-col md:pb-0", isHeaderVisible ? "pb-20" : "pb-0")}>
+      {/* Guest mode banner - sticky below header */}
+      {isGuest && isHeaderVisible && <GuestBanner compact />}
+
       {/* Unified Header - Hidden in Floor Plan edit mode */}
       {isHeaderVisible && (
         <div className="sticky top-0 z-50">
         <AppHeader
-          userName={profile?.name}
-          userEmail={profile?.email || user?.email}
-          avatarUrl={profile?.avatar_url}
-          onSignOut={handleSignOut}
+          userName={isGuest ? t('guest.guestUser', 'Guest') : profile?.name}
+          userEmail={isGuest ? t('guest.localMode', 'Local mode') : (profile?.email || user?.email)}
+          avatarUrl={isGuest ? undefined : profile?.avatar_url}
+          onSignOut={isGuest ? undefined : handleSignOut}
+          isGuest={isGuest}
         >
           {/* Mobile: Back button + project name */}
           <div className="flex items-center gap-2 md:hidden">
@@ -1020,8 +1124,19 @@ const ProjectDetail = () => {
         </TabsContent>
 
         <TabsContent value="team" className="m-0 pb-8">
-          {isTabBlocked("team") ? (
-            <NoAccessPlaceholder />
+          {isTabBlocked("team") || isGuest ? (
+            isGuest ? (
+              <div className="container mx-auto px-4 py-16 flex flex-col items-center justify-center text-center">
+                <Lock className="h-12 w-12 text-muted-foreground mb-4" />
+                <h2 className="text-xl font-semibold mb-2">{t('guest.featureDisabled', 'This feature requires an account')}</h2>
+                <p className="text-muted-foreground mb-4">{t('guest.teamFeatureDescription', 'Sign in to invite team members and collaborate on your project.')}</p>
+                <Button onClick={() => navigate("/auth")}>
+                  {t('common.signIn')}
+                </Button>
+              </div>
+            ) : (
+              <NoAccessPlaceholder />
+            )
           ) : (
             <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
               <TeamManagement projectId={project.id} isOwner={permissions.isOwner} />

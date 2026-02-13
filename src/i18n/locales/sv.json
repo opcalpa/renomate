@@ -61,12 +61,36 @@
     "add": "Lägg till",
     "success": "Lyckades",
     "error": "Ett fel uppstod",
-    "dismiss": "Stäng"
+    "dismiss": "Stäng",
+    "selectAll": "Välj alla"
   },
   "beta": {
     "title": "Publik beta",
     "message": "Hjälp oss bli bättre!",
     "feedbackLink": "Ge feedback"
+  },
+  "guest": {
+    "tryWithoutAccount": "Skapa test",
+    "guestUser": "Gäst",
+    "localMode": "Lokalt läge",
+    "localStorageTitle": "Gästläge",
+    "banner": "Ditt projekt sparas lokalt. Logga in för att spara permanent.",
+    "bannerAction": "Logga in",
+    "storageUsage": "{{used}} av {{limit}} använt",
+    "limitWarning": "Du närmar dig lagringsgränsen. Logga in för mer utrymme.",
+    "projectLimit": "Gästläge är begränsat till {{max}} projekt.",
+    "featureDisabled": "Denna funktion kräver ett konto",
+    "teamFeatureDescription": "Logga in för att bjuda in teammedlemmar och samarbeta kring ditt projekt.",
+    "migrationTitle": "Migrera dina projekt",
+    "migrationDescription": "Du har projekt sparade lokalt. Vill du flytta dem till ditt konto?",
+    "migrateAll": "Migrera alla",
+    "migrateSelected": "Migrera valda ({{count}})",
+    "skip": "Hoppa över",
+    "migrating": "Migrerar...",
+    "migrationSuccess": "Projekt migrerade",
+    "migrationSuccessDescription": "{{count}} projekt har sparats till ditt konto.",
+    "migrationPartial": "Vissa projekt migrerade",
+    "migrationPartialDescription": "{{count}} projekt migrerades. Vissa fel uppstod."
   },
   "nav": {
     "home": "Hem",
@@ -96,8 +120,8 @@
     }
   },
   "landing": {
-    "heroTitle": "Ta kontroll över din",
-    "heroSubtitle": "Renoveringsprojekt",
+    "heroTitle": "Ta kontroll över",
+    "heroSubtitle": "din renovering",
     "heroDescription": "En mobilanpassad plattform som hjälper husägare att hantera renoveringsprojekt, samarbeta med entreprenörer och spåra varje detalj från start till mål.",
     "getStarted": "Kom igång",
     "learnMore": "Läs mer",
@@ -125,7 +149,10 @@
     "signingIn": "Loggar in...",
     "signingUp": "Registrerar...",
     "signInSuccess": "Välkommen tillbaka!",
-    "signUpSuccess": "Kontot har skapats!"
+    "signUpSuccess": "Kontot har skapats!",
+    "welcomeBack": "Välkommen tillbaka!",
+    "accountCreated": "Konto skapat!",
+    "accountCreatedDescription": "Du kan nu logga in med dina uppgifter."
   },
   "projects": {
     "title": "Mina projekt",

@@ -61,12 +61,36 @@
     "add": "Add",
     "success": "Success",
     "error": "An error occurred",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "selectAll": "Select all"
   },
   "beta": {
     "title": "Public Beta",
     "message": "Help us improve!",
     "feedbackLink": "Give feedback"
+  },
+  "guest": {
+    "tryWithoutAccount": "Create test",
+    "guestUser": "Guest",
+    "localMode": "Local mode",
+    "localStorageTitle": "Guest Mode",
+    "banner": "Your project is saved locally. Sign in to save permanently.",
+    "bannerAction": "Sign in",
+    "storageUsage": "{{used}} of {{limit}} used",
+    "limitWarning": "You're approaching the storage limit. Sign in for more space.",
+    "projectLimit": "Guest mode is limited to {{max}} projects.",
+    "featureDisabled": "This feature requires an account",
+    "teamFeatureDescription": "Sign in to invite team members and collaborate on your project.",
+    "migrationTitle": "Migrate your projects",
+    "migrationDescription": "You have projects saved locally. Would you like to move them to your account?",
+    "migrateAll": "Migrate all",
+    "migrateSelected": "Migrate selected ({{count}})",
+    "skip": "Skip",
+    "migrating": "Migrating...",
+    "migrationSuccess": "Projects migrated successfully",
+    "migrationSuccessDescription": "{{count}} project(s) have been saved to your account.",
+    "migrationPartial": "Some projects migrated",
+    "migrationPartialDescription": "{{count}} project(s) were migrated. Some errors occurred."
   },
   "nav": {
     "home": "Home",
@@ -125,7 +149,10 @@
     "signingIn": "Signing in...",
     "signingUp": "Signing up...",
     "signInSuccess": "Welcome back!",
-    "signUpSuccess": "Account created successfully!"
+    "signUpSuccess": "Account created successfully!",
+    "welcomeBack": "Welcome back!",
+    "accountCreated": "Account created!",
+    "accountCreatedDescription": "You can now sign in with your credentials."
   },
   "projects": {
     "title": "My Projects",
