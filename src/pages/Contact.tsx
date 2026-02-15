@@ -1,17 +1,41 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Mail, MessageSquare } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Footer from "@/components/Footer";
+import { useToast } from "@/hooks/use-toast";
 
 const Contact = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Add contact form submission logic here
+    setSending(true);
+
+    // Create mailto link with form data
+    const mailtoLink = `mailto:hello@renomate.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
+      `From: ${name} (${email})\n\n${message}`
+    )}`;
+
+    window.location.href = mailtoLink;
+
+    // Show confirmation
+    setTimeout(() => {
+      setSending(false);
+      toast({
+        title: "Email client opened",
+        description: "Please send the email from your email application.",
+      });
+    }, 500);
   };
 
   return (
@@ -37,35 +61,37 @@ const Contact = () => {
             </p>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-2 mb-12">
-            <div className="bg-card p-6 rounded-lg border">
-              <Mail className="h-8 w-8 text-primary mb-4" />
-              <h3 className="font-semibold mb-2">Email Us</h3>
-              <p className="text-sm text-muted-foreground">
-                support@renomate.app
-              </p>
-            </div>
-            <div className="bg-card p-6 rounded-lg border">
-              <MessageSquare className="h-8 w-8 text-primary mb-4" />
-              <h3 className="font-semibold mb-2">Support</h3>
-              <p className="text-sm text-muted-foreground">
-                Available Monday - Friday, 9am - 5pm EST
-              </p>
-            </div>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-6 bg-card p-8 rounded-lg border">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" placeholder="Your name" required />
+              <Input
+                id="name"
+                placeholder="Your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="your@email.com" required />
+              <Input
+                id="email"
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="subject">Subject</Label>
-              <Input id="subject" placeholder="What's this about?" required />
+              <Input
+                id="subject"
+                placeholder="What's this about?"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="message">Message</Label>
@@ -73,11 +99,20 @@ const Contact = () => {
                 id="message"
                 placeholder="Tell us more..."
                 rows={6}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
                 required
               />
             </div>
-            <Button type="submit" className="w-full">
-              Send Message
+            <Button type="submit" className="w-full" disabled={sending}>
+              {sending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Opening...
+                </>
+              ) : (
+                "Send Message"
+              )}
             </Button>
           </form>
         </div>
