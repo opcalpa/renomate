@@ -5,12 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Users, Calendar, ArrowRight, Play } from "lucide-react";
 import Footer from "@/components/Footer";
-import { useGuestMode } from "@/hooks/useGuestMode";
 
 const Index = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { enterGuestMode, isGuest } = useGuestMode();
 
   useEffect(() => {
     checkAuth();
@@ -20,15 +18,7 @@ const Index = () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       navigate("/start");
-    } else if (isGuest) {
-      // If already in guest mode, redirect to start
-      navigate("/start");
     }
-  };
-
-  const handleTryWithoutAccount = () => {
-    enterGuestMode();
-    navigate("/start");
   };
 
   return (
@@ -61,9 +51,9 @@ const Index = () => {
               {t('landing.getStarted')}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button size="lg" variant="outline" className="text-lg px-8" onClick={handleTryWithoutAccount}>
+            <Button size="lg" variant="outline" className="text-lg px-8" onClick={() => navigate("/auth")}>
               <Play className="mr-2 h-5 w-5" />
-              {t('guest.tryWithoutAccount', 'Create test')}
+              {t('landing.demoProject', 'Demo project')}
             </Button>
           </div>
         </section>

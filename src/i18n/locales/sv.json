@@ -134,7 +134,8 @@
     "ctaTitle": "Redo att starta din renovering?",
     "ctaDescription": "Anslut dig till husägare som tar kontroll över sina renoveringsprojekt",
     "createAccount": "Skapa gratis konto",
-    "footer": "Byggt med omsorg för husägare."
+    "footer": "Byggt med omsorg för husägare.",
+    "demoProject": "Demo projekt"
   },
   "auth": {
     "signInTitle": "Välkommen tillbaka",

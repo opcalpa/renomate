@@ -134,7 +134,8 @@
     "ctaTitle": "Ready to start your renovation?",
     "ctaDescription": "Join homeowners who are taking control of their renovation projects",
     "createAccount": "Create Free Account",
-    "footer": "Built with care for homeowners."
+    "footer": "Built with care for homeowners.",
+    "demoProject": "Demo project"
   },
   "auth": {
     "signInTitle": "Welcome Back",
