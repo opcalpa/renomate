@@ -72,7 +72,9 @@
   "guest": {
     "tryWithoutAccount": "Skapa test",
     "guestUser": "Gäst",
+    "visitor": "Besökare",
     "localMode": "Lokalt läge",
+    "publicDemo": "Publik demo",
     "localStorageTitle": "Gästläge",
     "banner": "Ditt projekt sparas lokalt. Logga in för att spara permanent.",
     "bannerAction": "Logga in",

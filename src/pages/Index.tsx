@@ -5,13 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Users, Calendar, ArrowRight, Play } from "lucide-react";
 import Footer from "@/components/Footer";
-import { useGuestMode } from "@/hooks/useGuestMode";
-import { seedGuestDemoProject, getGuestDemoProjectId } from "@/services/guestDemoService";
+import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
 
 const Index = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { enterGuestMode, isGuest } = useGuestMode();
 
   useEffect(() => {
     checkAuth();
@@ -25,14 +23,8 @@ const Index = () => {
   };
 
   const handleDemoProject = () => {
-    // Enter guest mode if not already
-    if (!isGuest) {
-      enterGuestMode();
-    }
-    // Seed demo project and get its ID
-    const demoProjectId = seedGuestDemoProject();
-    // Navigate directly to the demo project
-    navigate(`/projects/${demoProjectId}`);
+    // Navigate directly to the public demo project (accessible without login)
+    navigate(`/projects/${PUBLIC_DEMO_PROJECT_ID}`);
   };
 
   return (

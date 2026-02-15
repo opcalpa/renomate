@@ -72,7 +72,9 @@
   "guest": {
     "tryWithoutAccount": "Create test",
     "guestUser": "Guest",
+    "visitor": "Visitor",
     "localMode": "Local mode",
+    "publicDemo": "Public demo",
     "localStorageTitle": "Guest Mode",
     "banner": "Your project is saved locally. Sign in to save permanently.",
     "bannerAction": "Sign in",

@@ -46,10 +46,10 @@ export async function seedDemoProject(ownerId: string): Promise<string | null> {
 }
 
 /**
- * Check if a project is a demo project
+ * Check if a project is a demo project (includes both user-specific and public demos)
  */
 export function isDemoProject(projectType: string | null | undefined): boolean {
-  return projectType === DEMO_PROJECT_MARKER;
+  return projectType === DEMO_PROJECT_MARKER || projectType === 'public_demo';
 }
 
 /**

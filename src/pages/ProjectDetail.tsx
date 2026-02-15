@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { useProfileLanguage } from "@/hooks/useProfileLanguage";
+import { PUBLIC_DEMO_PROJECT_ID, PUBLIC_DEMO_PROJECT_TYPE } from "@/constants/publicDemo";
 import { useProjectPermissions } from "@/hooks/useProjectPermissions";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -196,18 +197,24 @@ const ProjectDetail = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Check if this is the public demo project (accessible without login)
+  const isPublicDemo = projectId === PUBLIC_DEMO_PROJECT_ID;
+
   useEffect(() => {
     // Don't redirect while auth is still loading
     if (authLoading) return;
 
-    if (!user && !isGuest) {
+    // Public demo is accessible to everyone
+    if (isPublicDemo) {
+      loadPublicDemoData();
+    } else if (!user && !isGuest) {
       navigate("/auth");
     } else if (isGuest) {
       loadGuestData();
     } else {
       loadData();
     }
-  }, [user, projectId, authLoading, isGuest]);
+  }, [user, projectId, authLoading, isGuest, isPublicDemo]);
 
   const loadGuestData = () => {
     if (!projectId) return;
@@ -255,6 +262,60 @@ const ProjectDetail = () => {
     } catch (error) {
       console.error("Error loading guest project:", error);
       navigate("/start");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadPublicDemoData = async () => {
+    if (!projectId) return;
+    try {
+      // Fetch public demo project (RLS allows anonymous access to public_demo projects)
+      const { data: projectData, error: projectError } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("id", projectId)
+        .eq("project_type", PUBLIC_DEMO_PROJECT_TYPE)
+        .single();
+
+      if (projectError || !projectData) {
+        console.error("Error loading public demo:", projectError);
+        navigate("/");
+        return;
+      }
+
+      setProject(projectData);
+
+      // Fetch rooms for the public demo
+      const { data: roomsResult } = await supabase
+        .from("rooms")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
+
+      setRoomsData(roomsResult || []);
+      setRoomsLoading(false);
+
+      // If user is logged in, also fetch their profile for the header
+      if (user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+        setProfile(profileData);
+
+        // Fetch all user's projects for the dropdown
+        const { data: allProjects } = await supabase
+          .from("projects")
+          .select("*")
+          .eq("owner_id", profileData?.id)
+          .order("created_at", { ascending: false });
+        setProjects(allProjects || []);
+      }
+    } catch (error) {
+      console.error("Error loading public demo:", error);
+      navigate("/");
     } finally {
       setLoading(false);
     }
@@ -362,7 +423,7 @@ const ProjectDetail = () => {
 
   const loadRoomsData = async () => {
     // Guest mode: load from localStorage
-    if (isGuest && projectId) {
+    if (isGuest && projectId && !isPublicDemo) {
       const guestRooms = getGuestRooms(projectId);
       return guestRooms.map((r) => ({
         id: r.id,
@@ -699,18 +760,18 @@ const ProjectDetail = () => {
 
   return (
     <div className={cn("min-h-screen bg-background flex flex-col md:pb-0", isHeaderVisible ? "pb-20" : "pb-0")}>
-      {/* Guest mode banner - sticky below header */}
-      {isGuest && isHeaderVisible && <GuestBanner compact />}
+      {/* Guest mode banner - sticky below header (not shown for public demo) */}
+      {isGuest && isHeaderVisible && !isPublicDemo && <GuestBanner compact />}
 
       {/* Unified Header - Hidden in Floor Plan edit mode */}
       {isHeaderVisible && (
         <div className="sticky top-0 z-50">
         <AppHeader
-          userName={isGuest ? t('guest.guestUser', 'Guest') : profile?.name}
-          userEmail={isGuest ? t('guest.localMode', 'Local mode') : (profile?.email || user?.email)}
-          avatarUrl={isGuest ? undefined : profile?.avatar_url}
-          onSignOut={isGuest ? undefined : handleSignOut}
-          isGuest={isGuest}
+          userName={isPublicDemo && !user ? t('guest.visitor', 'Visitor') : isGuest ? t('guest.guestUser', 'Guest') : profile?.name}
+          userEmail={isPublicDemo && !user ? t('guest.publicDemo', 'Public demo') : isGuest ? t('guest.localMode', 'Local mode') : (profile?.email || user?.email)}
+          avatarUrl={(!user || isGuest) ? undefined : profile?.avatar_url}
+          onSignOut={(!user || isGuest) ? undefined : handleSignOut}
+          isGuest={isGuest || (isPublicDemo && !user)}
         >
           {/* Mobile: Back button + project name */}
           <div className="flex items-center gap-2 md:hidden">

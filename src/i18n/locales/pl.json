@@ -71,7 +71,9 @@
   "guest": {
     "tryWithoutAccount": "Utwórz test",
     "guestUser": "Gość",
+    "visitor": "Odwiedzający",
     "localMode": "Tryb lokalny",
+    "publicDemo": "Publiczne demo",
     "localStorageTitle": "Tryb gościa",
     "banner": "Twój projekt jest zapisany lokalnie. Zaloguj się, aby zapisać na stałe.",
     "bannerAction": "Zaloguj się",
