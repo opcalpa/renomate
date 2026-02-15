@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { isDemoProject } from "@/services/demoProjectService";
+import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
 
 export interface ProjectPermissions {
   isOwner: boolean;
@@ -75,6 +76,13 @@ export function useProjectPermissions(projectId: string | undefined): ProjectPer
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Handle public demo project for anonymous users
+    if (!user && projectId === PUBLIC_DEMO_PROJECT_ID) {
+      setPerms(DEMO_VIEW_ONLY);
+      setLoading(false);
+      return;
+    }
+
     if (!user || !projectId) {
       setLoading(false);
       return;

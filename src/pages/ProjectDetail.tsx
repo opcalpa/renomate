@@ -83,7 +83,11 @@ const NoAccessPlaceholder = () => {
 const ProjectDetail = () => {
   const { projectId } = useParams();
   const { user, signOut, loading: authLoading } = useAuthSession();
-  const { isGuest, refreshStorageUsage } = useGuestMode();
+  const { isGuest: isGuestFromContext, refreshStorageUsage } = useGuestMode();
+
+  // For the public demo, we ignore guest mode completely
+  const isPublicDemoProjectProject = projectId === PUBLIC_DEMO_PROJECT_ID;
+  const isGuest = isPublicDemoProjectProject ? false : isGuestFromContext;
   useProfileLanguage();
   const { t } = useTranslation();
 
@@ -197,15 +201,12 @@ const ProjectDetail = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check if this is the public demo project (accessible without login)
-  const isPublicDemo = projectId === PUBLIC_DEMO_PROJECT_ID;
-
   useEffect(() => {
     // Don't redirect while auth is still loading
     if (authLoading) return;
 
     // Public demo is accessible to everyone
-    if (isPublicDemo) {
+    if (isPublicDemoProjectProject) {
       loadPublicDemoData();
     } else if (!user && !isGuest) {
       navigate("/auth");
@@ -214,7 +215,7 @@ const ProjectDetail = () => {
     } else {
       loadData();
     }
-  }, [user, projectId, authLoading, isGuest, isPublicDemo]);
+  }, [user, projectId, authLoading, isGuest, isPublicDemoProjectProject]);
 
   const loadGuestData = () => {
     if (!projectId) return;
@@ -423,7 +424,7 @@ const ProjectDetail = () => {
 
   const loadRoomsData = async () => {
     // Guest mode: load from localStorage
-    if (isGuest && projectId && !isPublicDemo) {
+    if (isGuest && projectId && !isPublicDemoProject) {
       const guestRooms = getGuestRooms(projectId);
       return guestRooms.map((r) => ({
         id: r.id,
@@ -761,17 +762,17 @@ const ProjectDetail = () => {
   return (
     <div className={cn("min-h-screen bg-background flex flex-col md:pb-0", isHeaderVisible ? "pb-20" : "pb-0")}>
       {/* Guest mode banner - sticky below header (not shown for public demo) */}
-      {isGuest && isHeaderVisible && !isPublicDemo && <GuestBanner compact />}
+      {isGuest && isHeaderVisible && !isPublicDemoProject && <GuestBanner compact />}
 
       {/* Unified Header - Hidden in Floor Plan edit mode */}
       {isHeaderVisible && (
         <div className="sticky top-0 z-50">
         <AppHeader
-          userName={isPublicDemo && !user ? t('guest.visitor', 'Visitor') : isGuest ? t('guest.guestUser', 'Guest') : profile?.name}
-          userEmail={isPublicDemo && !user ? t('guest.publicDemo', 'Public demo') : isGuest ? t('guest.localMode', 'Local mode') : (profile?.email || user?.email)}
+          userName={isPublicDemoProject && !user ? t('guest.visitor', 'Visitor') : isGuest ? t('guest.guestUser', 'Guest') : profile?.name}
+          userEmail={isPublicDemoProject && !user ? t('guest.publicDemo', 'Public demo') : isGuest ? t('guest.localMode', 'Local mode') : (profile?.email || user?.email)}
           avatarUrl={(!user || isGuest) ? undefined : profile?.avatar_url}
           onSignOut={(!user || isGuest) ? undefined : handleSignOut}
-          isGuest={isGuest || (isPublicDemo && !user)}
+          isGuest={isGuest || (isPublicDemoProject && !user)}
         >
           {/* Mobile: Back button + project name */}
           <div className="flex items-center gap-2 md:hidden">
