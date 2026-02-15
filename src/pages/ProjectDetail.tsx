@@ -86,8 +86,8 @@ const ProjectDetail = () => {
   const { isGuest: isGuestFromContext, refreshStorageUsage } = useGuestMode();
 
   // For the public demo, we ignore guest mode completely
-  const isPublicDemoProjectProject = projectId === PUBLIC_DEMO_PROJECT_ID;
-  const isGuest = isPublicDemoProjectProject ? false : isGuestFromContext;
+  const isPublicDemoProject = projectId === PUBLIC_DEMO_PROJECT_ID;
+  const isGuest = isPublicDemoProject ? false : isGuestFromContext;
   useProfileLanguage();
   const { t } = useTranslation();
 
@@ -206,7 +206,7 @@ const ProjectDetail = () => {
     if (authLoading) return;
 
     // Public demo is accessible to everyone
-    if (isPublicDemoProjectProject) {
+    if (isPublicDemoProject) {
       loadPublicDemoData();
     } else if (!user && !isGuest) {
       navigate("/auth");
@@ -215,7 +215,7 @@ const ProjectDetail = () => {
     } else {
       loadData();
     }
-  }, [user, projectId, authLoading, isGuest, isPublicDemoProjectProject]);
+  }, [user, projectId, authLoading, isGuest, isPublicDemoProject]);
 
   const loadGuestData = () => {
     if (!projectId) return;
