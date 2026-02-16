@@ -324,6 +324,7 @@ export const WallShape = React.memo<WallShapeProps>(({
       name={shape.id}
       shapeId={shape.id}
       draggable={isDraggable}
+      listening={canSelect}
       onClick={canSelect ? (e) => {
         e.cancelBubble = true;
         onSelect(e);
@@ -332,7 +333,7 @@ export const WallShape = React.memo<WallShapeProps>(({
         e.cancelBubble = true;
         onSelect(e);
       } : undefined}
-      {...createUnifiedDragHandlers(shape.id)}
+      {...(canSelect ? createUnifiedDragHandlers(shape.id) : {})}
     >
       {/* Invisible hit area for interaction - fill/stroke rendered by WallGroupOutline */}
       <Line
