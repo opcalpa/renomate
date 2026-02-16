@@ -63,7 +63,27 @@ function pointToSegment(
 }
 
 /**
+ * Calculate the angle of a line in radians
+ */
+function lineAngle(coords: LineCoords): number {
+  return Math.atan2(coords.y2 - coords.y1, coords.x2 - coords.x1);
+}
+
+/**
+ * Check if two angles are similar (parallel or anti-parallel)
+ * Returns a score from 0 (perpendicular) to 1 (parallel)
+ */
+function angleAlignment(angle1: number, angle2: number): number {
+  // Normalize angle difference to [0, PI]
+  let diff = Math.abs(angle1 - angle2);
+  while (diff > Math.PI) diff -= Math.PI;
+  // Convert to alignment score: 0 at PI/2 (perpendicular), 1 at 0 or PI (parallel)
+  return Math.abs(Math.cos(diff));
+}
+
+/**
  * Find the nearest wall to an opening's midpoint within a threshold.
+ * Prefers walls that are aligned with the opening's direction.
  * Returns the wall shape and projection parameter, or null.
  */
 export function findNearestWall(
@@ -72,13 +92,28 @@ export function findNearestWall(
   threshold: number
 ): { wall: FloorMapShape; t: number } | null {
   const mid = midpoint(openingCoords);
-  let best: { wall: FloorMapShape; t: number; distance: number } | null = null;
+  const openingAngle = lineAngle(openingCoords);
+
+  let best: { wall: FloorMapShape; t: number; distance: number; score: number } | null = null;
 
   for (const wall of walls) {
     const wc = getLineCoords(wall);
     const { distance, t } = pointToSegment(mid.x, mid.y, wc.x1, wc.y1, wc.x2, wc.y2);
-    if (distance <= threshold && (!best || distance < best.distance)) {
-      best = { wall, t, distance };
+
+    if (distance > threshold) continue;
+
+    // Calculate alignment between opening and wall
+    const wallAngle = lineAngle(wc);
+    const alignment = angleAlignment(openingAngle, wallAngle);
+
+    // Score combines distance and alignment
+    // Lower is better - heavily penalize misaligned walls
+    // alignment: 1 = parallel (good), 0 = perpendicular (bad)
+    const alignmentPenalty = (1 - alignment) * threshold * 2; // Perpendicular walls get +2x threshold penalty
+    const score = distance + alignmentPenalty;
+
+    if (!best || score < best.score) {
+      best = { wall, t, distance, score };
     }
   }
 
@@ -157,7 +192,7 @@ export function splitWall(
   return segments;
 }
 
-const OPENING_TYPES = new Set(['door_line', 'window_line', 'sliding_door_line']);
+const OPENING_TYPES = new Set(['door_line', 'window_line', 'sliding_door_line', 'opening_line']);
 
 export function isOpeningType(type: string): boolean {
   return OPENING_TYPES.has(type);
