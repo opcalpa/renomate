@@ -49,6 +49,7 @@ import {
   WindowLineShape,
   DoorLineShape,
   SlidingDoorLineShape,
+  OpeningLineShape,
   ImageShape,
   TemplateGroupShape,
 } from './shapes';
@@ -753,7 +754,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     const container = stageRef.current?.container();
     if (!container) return;
 
-    const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'room', 'bezier', 'measure'];
+    const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'opening_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'room', 'bezier', 'measure'];
 
     if (drawingTools.includes(activeTool)) {
       container.style.cursor = 'crosshair';
@@ -3218,7 +3219,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     // Snap to grid if enabled - uses user's grid interval setting
     // Freehand tool is NEVER snapped - always free drawing
     // Line-based tools (wall, window, door, sliding door) use wall snapping
-    const forWalls = activeTool === 'wall' || activeTool === 'window_line' || activeTool === 'door_line' || activeTool === 'sliding_door_line';
+    const forWalls = activeTool === 'wall' || activeTool === 'window_line' || activeTool === 'door_line' || activeTool === 'sliding_door_line' || activeTool === 'opening_line';
     const shouldSnap = activeTool !== 'freehand' && projectSettings.snapEnabled;
     const currentSnapSize = getSnapSize(viewState.zoom, scaleSettings.pixelsPerMm, forWalls, projectSettings.gridInterval);
     pos = snapToGrid(pos, currentSnapSize, shouldSnap);
@@ -3259,7 +3260,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     }
 
     // LINE-BASED OPENING TOOLS - Click to start, click again to end (like walls)
-    if ((activeTool === 'window_line' || activeTool === 'door_line' || activeTool === 'sliding_door_line') && !isDrawing) {
+    if ((activeTool === 'window_line' || activeTool === 'door_line' || activeTool === 'sliding_door_line' || activeTool === 'opening_line') && !isDrawing) {
       setIsDrawing(true);
       addDrawingPoint(pos);
       return;
@@ -3356,7 +3357,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     // Snap to grid if enabled - uses user's grid interval setting
     // Freehand tool is NEVER snapped - always free drawing
     // Line-based tools (wall, window, door, sliding door) use wall snapping
-    const forWalls = activeTool === 'wall' || activeTool === 'window_line' || activeTool === 'door_line' || activeTool === 'sliding_door_line';
+    const forWalls = activeTool === 'wall' || activeTool === 'window_line' || activeTool === 'door_line' || activeTool === 'sliding_door_line' || activeTool === 'opening_line';
     const shouldSnap = activeTool !== 'freehand' && projectSettings.snapEnabled;
     const currentSnapSize = getSnapSize(viewState.zoom, scaleSettings.pixelsPerMm, forWalls, projectSettings.gridInterval);
     const snappedPos = snapToGrid(pos, currentSnapSize, shouldSnap);
@@ -3383,7 +3384,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     }
 
     // Drawing mode - add points (for wall, freehand, and line-based openings)
-    if (isDrawing && (activeTool === 'wall' || activeTool === 'freehand' || activeTool === 'window_line' || activeTool === 'door_line' || activeTool === 'sliding_door_line')) {
+    if (isDrawing && (activeTool === 'wall' || activeTool === 'freehand' || activeTool === 'window_line' || activeTool === 'door_line' || activeTool === 'sliding_door_line' || activeTool === 'opening_line')) {
       // Freehand uses raw pos (no snap), walls and line tools use snapped pos
       const drawPos = activeTool === 'freehand' ? pos : snappedPos;
       addDrawingPoint(drawPos);
@@ -3936,11 +3937,38 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         toast.success('Skjutdörr skapad');
       }
 
+      // OPENING LINE (wall opening/gap)
+      if (activeTool === 'opening_line' && currentDrawingPoints.length >= 1) {
+        const defaultOpeningWidthMM = 900; // 90cm default opening width
+        const defaultOpeningWidthPx = defaultOpeningWidthMM * scaleSettings.pixelsPerMm;
+
+        let finalEnd = end;
+        if (length < minLength) {
+          // Single click - use default horizontal opening (converted to pixels)
+          finalEnd = { x: start.x + defaultOpeningWidthPx, y: start.y };
+        }
+
+        newShape = {
+          id: uuidv4(),
+          planId: currentPlanId,
+          type: 'opening_line',
+          coordinates: {
+            x1: start.x,
+            y1: start.y,
+            x2: finalEnd.x,
+            y2: finalEnd.y,
+          },
+          strokeColor: '#f97316', // Orange for openings
+          thicknessMM: 50, // Frame thickness
+        };
+        toast.success('Väggöppning skapad');
+      }
+
       if (newShape) {
         addShape(newShape);
 
-        // Auto-snap openings (doors, windows) to walls and break the wall
-        const openingTypes = ['door_line', 'window_line', 'sliding_door_line'];
+        // Auto-snap openings (doors, windows, openings) to walls and break the wall
+        const openingTypes = ['door_line', 'window_line', 'sliding_door_line', 'opening_line'];
         if (openingTypes.includes(newShape.type)) {
           const openingCoords = newShape.coordinates as { x1: number; y1: number; x2: number; y2: number };
           const walls = shapes.filter(
@@ -4143,7 +4171,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     const currentSelectedIds = useFloorMapStore.getState().selectedShapeIds;
 
     // Line-based shape types that can be batch-synced
-    const lineTypes = ['wall', 'line', 'window_line', 'door_line', 'sliding_door_line'];
+    const lineTypes = ['wall', 'line', 'window_line', 'door_line', 'sliding_door_line', 'opening_line'];
 
     // Get all selected wall/line shapes except the source (which was already updated)
     const otherSelectedWalls = currentShapes.filter(
@@ -5337,6 +5365,11 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             if (shape.type === 'sliding_door_line') {
               const handleBatchLength = (newLengthMM: number) => handleBatchWallLengthChange(shape.id, newLengthMM);
               return (<SlidingDoorLineShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} onBatchLengthChange={handleBatchLength} />);
+            }
+
+            if (shape.type === 'opening_line') {
+              const handleBatchLength = (newLengthMM: number) => handleBatchWallLengthChange(shape.id, newLengthMM);
+              return (<OpeningLineShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} onBatchLengthChange={handleBatchLength} />);
             }
 
             // Background image shapes

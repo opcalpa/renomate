@@ -309,7 +309,7 @@ export const FONT_SIZE_PRESETS: Record<FontSizePreset, number> = {
 };
 
 export type ViewMode = 'floor' | 'elevation' | '3d';
-export type Tool = 'select' | 'freehand' | 'wall' | 'room' | 'eraser' | 'rectangle' | 'circle' | 'triangle' | 'polygon' | 'symbol' | 'object' | 'measure' | 'text' | 'pan' | 'door' | 'opening' | 'scissors' | 'glue' | 'bezier' | 'window_line' | 'door_line' | 'sliding_door_line';
+export type Tool = 'select' | 'freehand' | 'wall' | 'room' | 'eraser' | 'rectangle' | 'circle' | 'triangle' | 'polygon' | 'symbol' | 'object' | 'measure' | 'text' | 'pan' | 'door' | 'opening' | 'scissors' | 'glue' | 'bezier' | 'window_line' | 'door_line' | 'sliding_door_line' | 'opening_line';
 export type Unit = 'mm' | 'cm' | 'm' | 'inch';
 
 export interface GridSettings {

@@ -19,8 +19,8 @@ export { RectangleShape, CircleShape, TextShape, FreehandShape } from './BasicSh
 // Library shapes
 export { LibrarySymbolShape, ObjectLibraryShape } from './LibraryShapes';
 
-// Line-based opening shapes (window, door, sliding door)
-export { WindowLineShape, DoorLineShape, SlidingDoorLineShape } from './OpeningShapes';
+// Line-based opening shapes (window, door, sliding door, opening)
+export { WindowLineShape, DoorLineShape, SlidingDoorLineShape, OpeningLineShape } from './OpeningShapes';
 
 // Background image shape
 export { ImageShape } from './ImageShape';

@@ -102,6 +102,15 @@ const SlidingDoorLineIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const OpeningLineIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Two perpendicular marks at the ends with dashed line between */}
+    <line x1="6" y1="8" x2="6" y2="16" strokeWidth="2" />
+    <line x1="18" y1="8" x2="18" y2="16" strokeWidth="2" />
+    <line x1="6" y1="12" x2="18" y2="12" strokeWidth="1" strokeDasharray="2,2" />
+  </svg>
+);
+
 import { useFloorMapStore } from "./store";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -521,6 +530,7 @@ export const SimpleToolbar = ({
     { id: 'window_line', icon: WindowLineIcon, label: 'Fönster', onClick: () => setActiveTool('window_line') },
     { id: 'door_line', icon: DoorLineIcon, label: 'Dörr', onClick: () => setActiveTool('door_line') },
     { id: 'sliding_door_line', icon: SlidingDoorLineIcon, label: 'Skjutdörr', onClick: () => setActiveTool('sliding_door_line') },
+    { id: 'opening_line', icon: OpeningLineIcon, label: 'Väggöppning', onClick: () => setActiveTool('opening_line') },
     { id: 'outer_wall', icon: OuterWallIcon, label: 'Yttervägg (300mm)', onClick: () => handleWallConstruction('outer_wall') },
     { id: 'square2x2', icon: Square, label: 'Fyrkant 2x2m', onClick: () => handleWallConstruction('square2x2') },
     { id: 'triangle', icon: Triangle, label: 'Triangel', onClick: () => handleWallConstruction('triangle') },

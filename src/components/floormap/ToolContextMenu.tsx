@@ -43,6 +43,14 @@ const DoorLineIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const OpeningLineIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="6" y1="8" x2="6" y2="16" strokeWidth="2" />
+    <line x1="18" y1="8" x2="18" y2="16" strokeWidth="2" />
+    <line x1="6" y1="12" x2="18" y2="12" strokeWidth="1" strokeDasharray="2,2" />
+  </svg>
+);
+
 // Pinterest Logo SVG
 const PinterestLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -101,6 +109,7 @@ const getToolIcon = (tool: Tool): IconComponent => {
     case 'window_line': return WindowLineIcon;
     case 'door_line': return DoorLineIcon;
     case 'sliding_door_line': return DoorLineIcon;
+    case 'opening_line': return OpeningLineIcon;
     default: return MousePointer2;
   }
 };
@@ -121,6 +130,7 @@ const getToolName = (tool: Tool): string => {
     case 'window_line': return 'Fönster';
     case 'door_line': return 'Dörr';
     case 'sliding_door_line': return 'Skjutdörr';
+    case 'opening_line': return 'Väggöppning';
     default: return tool;
   }
 };
