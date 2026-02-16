@@ -11,7 +11,8 @@
  */
 
 import React, { useMemo } from 'react';
-import { Line, Group } from 'react-konva';
+import { Shape, Group } from 'react-konva';
+import Konva from 'konva';
 import { FloorMapShape } from '../types';
 import polygonClipping, { Polygon, MultiPolygon } from 'polygon-clipping';
 
@@ -136,22 +137,25 @@ function unionWallGroup(group: WallData[]): MultiPolygon {
 }
 
 /**
- * Convert MultiPolygon to Konva Line points
+ * Polygon data structure for rendering with holes support
  */
-function multiPolygonToPoints(multiPoly: MultiPolygon): number[][] {
-  const result: number[][] = [];
+interface PolygonWithHoles {
+  outer: [number, number][];
+  holes: [number, number][][];
+}
+
+/**
+ * Convert MultiPolygon to polygon data with holes
+ */
+function multiPolygonToPolygonsWithHoles(multiPoly: MultiPolygon): PolygonWithHoles[] {
+  const result: PolygonWithHoles[] = [];
 
   for (const polygon of multiPoly) {
-    // First ring is the outer boundary
     if (polygon.length > 0) {
-      const outerRing = polygon[0];
-      const points: number[] = [];
-      for (const [x, y] of outerRing) {
-        points.push(x, y);
-      }
-      result.push(points);
+      const outer = polygon[0];
+      const holes = polygon.slice(1); // All rings after the first are holes
+      result.push({ outer, holes });
     }
-    // Additional rings would be holes (we don't render them separately for now)
   }
 
   return result;
@@ -190,7 +194,7 @@ export const WallGroupOutline: React.FC<WallGroupOutlineProps> = ({
   // Compute unified polygons for each group
   const unifiedGroups = useMemo(() => {
     return groups.map(group => ({
-      multiPolygon: unionWallGroup(group),
+      polygons: multiPolygonToPolygonsWithHoles(unionWallGroup(group)),
       isSelected: group.some(w => w.isSelected),
     }));
   }, [groups]);
@@ -200,18 +204,42 @@ export const WallGroupOutline: React.FC<WallGroupOutlineProps> = ({
   return (
     <Group listening={false}>
       {unifiedGroups.map((groupData, groupIndex) => {
-        const pointsArrays = multiPolygonToPoints(groupData.multiPolygon);
         const isSelected = groupData.isSelected;
         const fillColor = isSelected ? '#dbeafe' : '#f3f4f6';
         const strokeColor = isSelected ? '#3b82f6' : '#374151';
 
         return (
           <Group key={`wall-group-${groupIndex}`}>
-            {pointsArrays.map((points, polyIndex) => (
-              <Line
+            {groupData.polygons.map((polygon, polyIndex) => (
+              <Shape
                 key={`wall-poly-${groupIndex}-${polyIndex}`}
-                points={points}
-                closed={true}
+                sceneFunc={(context: Konva.Context, shape: Konva.Shape) => {
+                  context.beginPath();
+
+                  // Draw outer ring (counter-clockwise = fill area)
+                  const outer = polygon.outer;
+                  if (outer.length > 0) {
+                    context.moveTo(outer[0][0], outer[0][1]);
+                    for (let i = 1; i < outer.length; i++) {
+                      context.lineTo(outer[i][0], outer[i][1]);
+                    }
+                    context.closePath();
+                  }
+
+                  // Draw holes (clockwise = cut out area)
+                  // Using evenodd fill rule, inner paths become holes
+                  for (const hole of polygon.holes) {
+                    if (hole.length > 0) {
+                      context.moveTo(hole[0][0], hole[0][1]);
+                      for (let i = 1; i < hole.length; i++) {
+                        context.lineTo(hole[i][0], hole[i][1]);
+                      }
+                      context.closePath();
+                    }
+                  }
+
+                  context.fillStrokeShape(shape);
+                }}
                 fill={fillColor}
                 stroke={strokeColor}
                 strokeWidth={strokeWidth}

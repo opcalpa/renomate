@@ -5349,6 +5349,35 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           })()}
           </Group>
 
+          {/* Selected room vertex handles - rendered ABOVE walls for easier editing */}
+          {/* This is a separate pass that only renders handles for selected rooms */}
+          <Group listening={!isReadOnly && activeTool !== 'measure'}>
+            {(() => {
+              const rooms = currentShapes.filter(s => s.type === 'room');
+              const selectedRooms = rooms.filter(room => selectedShapeIds.includes(room.id));
+
+              return selectedRooms.map(shape => {
+                const handleTransform = isReadOnly ? (() => {}) : (updates: Partial<FloorMapShape>) => handleShapeTransform(shape.id, updates);
+                return (
+                  <RoomShape
+                    key={`handles-${shape.id}`}
+                    shape={shape}
+                    isSelected={true}
+                    onSelect={() => {}}
+                    onDoubleClick={() => {}}
+                    onTransform={handleTransform}
+                    shapeRefsMap={shapeRefs.current}
+                    viewState={viewState}
+                    scaleSettings={scaleSettings}
+                    projectSettings={projectSettings}
+                    snapSize={100 * scaleSettings.pixelsPerMm}
+                    isReadOnly={isReadOnly}
+                    renderHandlesOnly={true}
+                  />
+                );
+              });
+            })()}
+          </Group>
 
           {/* Transformer removed - shapes handle their own selection visual (blue stroke) */}
           {/* Multi-select dragging handled by unified drag system */}

@@ -72,6 +72,11 @@ export interface RoomShapeProps extends ShapeWithViewProps {
   snapSize: number;
   isReadOnly?: boolean;
   isHighlighted?: boolean;
+  /**
+   * When true, only render the vertex handles (no fill, stroke, or labels).
+   * Used for rendering handles above walls in a separate layer.
+   */
+  renderHandlesOnly?: boolean;
 }
 
 /**
