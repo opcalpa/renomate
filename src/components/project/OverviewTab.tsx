@@ -14,7 +14,7 @@ import { PulseCards } from "./overview/PulseCards";
 import { ProjectQuotesCard } from "./overview/ProjectQuotesCard";
 import { NeedsActionSection } from "./overview/NeedsActionSection";
 import { ActiveTasksSection } from "./overview/ActiveTasksSection";
-import { RecentActivitySection } from "./overview/RecentActivitySection";
+import { OverviewFeedSection } from "./overview/OverviewFeedSection";
 import { RecentPhotos } from "./overview/RecentPhotos";
 import { ProjectSettingsDialog } from "./overview/ProjectSettingsDialog";
 import { QuickReceiptCaptureModal } from "./QuickReceiptCaptureModal";
@@ -28,6 +28,7 @@ import type { FeedComment } from "./feed/types";
 
 interface OverviewTabProps {
   project: OverviewProject;
+  userType?: string | null;
   onProjectUpdate?: () => void;
   onNavigateToEntity?: (comment: FeedComment) => void;
   onNavigateToPurchases?: () => void;
@@ -39,7 +40,9 @@ interface OverviewTabProps {
 
 const OverviewTab = ({
   project,
+  userType,
   onProjectUpdate,
+  onNavigateToEntity,
   onNavigateToPurchases,
   onNavigateToTasks,
   onNavigateToFeed,
@@ -48,6 +51,7 @@ const OverviewTab = ({
 }: OverviewTabProps) => {
   const { t } = useTranslation();
   const { lockStatus } = useProjectLock(project.id);
+  const isHomeowner = userType === "homeowner";
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
@@ -83,41 +87,44 @@ const OverviewTab = ({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-semibold">{t("overview.projectOverview")}</h2>
         <div className="flex items-center gap-2 flex-wrap">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="flex-1 sm:flex-none gap-1">
-                <FileText className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("overview.quoteMenu")}</span>
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-64">
-              <DropdownMenuItem
-                onClick={() => setCustomerFormOpen(true)}
-                className="flex flex-col items-start cursor-pointer py-3"
-              >
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  <span className="font-medium">{t("overview.customerForm")}</span>
-                </div>
-                <span className="text-xs text-muted-foreground ml-6">
-                  {t("overview.customerFormHint")}
-                </span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setQuoteDialogOpen(true)}
-                className="flex flex-col items-start cursor-pointer py-3"
-              >
-                <div className="flex items-center gap-2">
+          {/* Quote dropdown - only for contractors, not homeowners */}
+          {!isHomeowner && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="flex-1 sm:flex-none gap-1">
                   <FileText className="h-4 w-4" />
-                  <span className="font-medium">{t("overview.createQuote")}</span>
-                </div>
-                <span className="text-xs text-muted-foreground ml-6">
-                  {t("overview.createQuoteHint")}
-                </span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  <span className="hidden sm:inline">{t("overview.quoteMenu")}</span>
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-64">
+                <DropdownMenuItem
+                  onClick={() => setCustomerFormOpen(true)}
+                  className="flex flex-col items-start cursor-pointer py-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    <span className="font-medium">{t("overview.customerForm")}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground ml-6">
+                    {t("overview.customerFormHint")}
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setQuoteDialogOpen(true)}
+                  className="flex flex-col items-start cursor-pointer py-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    <span className="font-medium">{t("overview.createQuote")}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground ml-6">
+                    {t("overview.createQuoteHint")}
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -171,11 +178,14 @@ const OverviewTab = ({
         </CardContent>
       </Card>
 
-      <ProjectQuotesCard
-        projectId={project.id}
-        currency={project.currency}
-        onCreateQuote={() => setQuoteDialogOpen(true)}
-      />
+      {/* Quotes card - only for contractors, not homeowners */}
+      {!isHomeowner && (
+        <ProjectQuotesCard
+          projectId={project.id}
+          currency={project.currency}
+          onCreateQuote={() => setQuoteDialogOpen(true)}
+        />
+      )}
 
       <NeedsActionSection
         taskStats={taskStats}
@@ -189,9 +199,10 @@ const OverviewTab = ({
         navigation={navigation}
       />
 
-      <RecentActivitySection
-        activities={recentActivities}
+      <OverviewFeedSection
+        projectId={project.id}
         navigation={navigation}
+        onNavigateToEntity={onNavigateToEntity}
       />
 
       <ProjectSettingsDialog

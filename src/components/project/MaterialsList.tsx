@@ -122,15 +122,31 @@ const MaterialsList = ({ taskId, currency }: MaterialsListProps) => {
           status,
           exclude_from_budget,
           created_at,
-          created_by_user_id,
-          creator:profiles!materials_created_by_user_id_fkey(name)
+          created_by_user_id
         `)
         .eq("task_id", taskId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      setMaterials(materialsData || []);
+      // Fetch creator names separately to avoid FK relationship issues
+      const materialsWithCreators = await Promise.all((materialsData || []).map(async (material) => {
+        let creatorName = null;
+        if (material.created_by_user_id) {
+          const { data: creator } = await supabase
+            .from("profiles")
+            .select("name")
+            .eq("id", material.created_by_user_id)
+            .single();
+          creatorName = creator?.name;
+        }
+        return {
+          ...material,
+          creator: creatorName ? { name: creatorName } : null,
+        };
+      }));
+
+      setMaterials(materialsWithCreators);
     } catch (error: any) {
       toast({
         title: "Error",

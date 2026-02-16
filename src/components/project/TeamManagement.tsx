@@ -34,6 +34,7 @@ import {
   ClipboardList,
   User,
   Eye,
+  Crown,
 } from "lucide-react";
 import { z } from "zod";
 import { FeatureAccessEditor } from "./team/FeatureAccessEditor";
@@ -80,6 +81,13 @@ interface Invitation {
   teams_access?: string;
   budget_access?: string;
   files_access?: string;
+}
+
+interface ProjectOwner {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
 }
 
 interface TeamManagementProps {
@@ -216,6 +224,7 @@ function detectTemplate(access: FeatureAccess): string {
 }
 
 const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
+  const [projectOwner, setProjectOwner] = useState<ProjectOwner | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -261,10 +270,33 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
 
   const fetchTeamData = async () => {
     try {
+      // Fetch project owner
+      const { data: projectData, error: projectError } = await supabase
+        .from("projects")
+        .select("owner_id, profiles:owner_id ( id, name, email, phone )")
+        .eq("id", projectId)
+        .single();
+
+      console.log("[Team] projectData:", projectData, "error:", projectError);
+
+      if (projectError) throw projectError;
+
+      if (projectData?.profiles) {
+        const ownerProfile = projectData.profiles as unknown as ProjectOwner;
+        setProjectOwner({
+          id: ownerProfile.id,
+          name: ownerProfile.name || "Unknown",
+          email: ownerProfile.email || "",
+          phone: ownerProfile.phone || null,
+        });
+      }
+
+      // Fetch team members (shares)
       const { data: sharesData, error: sharesError } = await supabase
         .from("project_shares")
         .select(
           `id, role, role_type, contractor_category, phone, company, notes,
+          display_name, display_email,
           timeline_access, tasks_access, tasks_scope, space_planner_access,
           purchases_access, purchases_scope, overview_access, teams_access,
           budget_access, files_access,
@@ -272,16 +304,21 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
         )
         .eq("project_id", projectId);
 
+      console.log("[Team] sharesData:", sharesData, "error:", sharesError);
+
       if (sharesError) throw sharesError;
 
       const teamMembers: TeamMember[] =
         (sharesData as unknown as Array<Record<string, unknown>>)?.map(
           (share) => {
             const profiles = share.profiles as Record<string, string> | null;
+            // Use display_name/display_email if set, otherwise fall back to profiles
+            const displayName = share.display_name as string | null;
+            const displayEmail = share.display_email as string | null;
             return {
               id: share.id as string,
-              user_name: profiles?.name || "Unknown",
-              user_email: profiles?.email || "",
+              user_name: displayName || profiles?.name || "Unknown",
+              user_email: displayEmail || profiles?.email || "",
               role: share.role as string,
               role_type: share.role_type as TeamMember["role_type"],
               contractor_category: share.contractor_category as string | null,
@@ -302,6 +339,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
           }
         ) || [];
 
+      console.log("[Team] teamMembers mapped:", teamMembers);
       setMembers(teamMembers);
 
       if (isOwner) {
@@ -692,6 +730,34 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
           </Dialog>
         )}
       </div>
+
+      {/* Project Owner */}
+      {projectOwner && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("roles.projectOwner", "Projektägare")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-3 p-3 border border-border rounded-lg bg-primary/5">
+              <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-medium shrink-0">
+                <Crown className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{projectOwner.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{projectOwner.email}</p>
+                {projectOwner.phone && (
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    {projectOwner.phone}
+                  </p>
+                )}
+              </div>
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                {t("roles.roleTemplates.client", "Hemägare")}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Team Members — Card Layout */}
       {members.length > 0 && (

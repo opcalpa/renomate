@@ -323,7 +323,7 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, backLabel, 
       </div>
 
       {/* Plan Selector */}
-      <div className="ml-1 md:ml-4">
+      <div className="ml-1 md:ml-4 flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="gap-1 md:gap-2">
@@ -419,6 +419,20 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, backLabel, 
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Separator */}
+        <div className="h-5 w-px bg-border mx-2" />
+
+        {/* Room Description Link */}
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = `/projects/${projectId}?tab=spaceplanner&subtab=rooms`;
+          }}
+          className="text-sm font-medium text-primary hover:text-primary/80 hover:underline transition-colors whitespace-nowrap cursor-pointer"
+        >
+          {t('floormap.roomDescription', 'Rumsbeskrivning')}
+        </button>
       </div>
 
       <div className="ml-auto flex items-center gap-2">

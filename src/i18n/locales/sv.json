@@ -296,7 +296,7 @@
   "projectDetail": {
     "overview": "Översikt",
     "overviewDesc": "Projektsammanfattning och status",
-    "rooms": "Rum",
+    "rooms": "Rumsbeskrivning",
     "roomsDesc": "Hantera och konfigurera rum",
     "floorPlan": "Ritning",
     "floorPlanDesc": "Designa och planera din planlösning",
@@ -514,6 +514,7 @@
     "unnamed": "Namnlöst rum",
     "ceilingHeightShort": "h",
     "relatedTasks": "Kopplade uppgifter",
+    "relatedPurchases": "Kopplade inköp",
     "relatedPurchaseOrders": "Inköpsordrar",
     "visionTitle": "Vad vill du göra i detta rum?",
     "visionPlaceholder": "Beskriv vad du vill göra i detta rum. T.ex. \"Totalrenovering med nytt kök, vit stil med mässingsdetaljer. Vill ha öppen planlösning mot vardagsrummet.\"",
@@ -546,10 +547,14 @@
     "passwordChangedDescription": "Ditt lösenord har uppdaterats.",
     "passwordsDoNotMatch": "Lösenorden matchar inte",
     "passwordTooShort": "Lösenordet måste vara minst 6 tecken",
-    "professionalProfile": "Professionell Profil",
-    "professionalProfileDescription": "Aktivera detta för att synas i marknadsplatsen och hittas av hemägare och projektledare",
-    "enableProfessional": "Aktivera Professionell Profil",
-    "enableProfessionalDescription": "Visa ditt företag i marknadsplatsen så att kunder kan hitta dig",
+    "accountType": "Kontotyp",
+    "accountTypeDescription": "Vad du valde vid registreringen. Påverkar vilka funktioner som visas.",
+    "homeownerShort": "Planerar renovering",
+    "contractorShort": "Utför arbeten",
+    "professionalProfile": "Sökbar i Hitta Proffs",
+    "professionalProfileDescription": "Styr om ditt företag visas i sökningen 'Hitta Proffs' där hemägare och projektledare letar hantverkare",
+    "enableProfessional": "Visa mig i Hitta Proffs",
+    "enableProfessionalDescription": "När aktiverat kan kunder hitta dig via söksidan. Kräver företagsuppgifter nedan.",
     "companyName": "Företagsnamn",
     "companyNamePlaceholder": "t.ex. Bygg & Renovering AB",
     "professionalCategory": "Yrkeskategori",
@@ -663,6 +668,7 @@
   "roles": {
     "title": "Team & Inbjudningar",
     "description": "Hantera projektteammedlemmar och inbjudningar",
+    "projectOwner": "Projektägare",
     "inviteButton": "Bjud in medlem",
     "inviteTitle": "Bjud in teammedlem",
     "inviteDescription": "Bjud in en entreprenör eller samarbetspartner till detta projekt",
@@ -694,6 +700,7 @@
       "electrician": "Elektriker",
       "plumber": "Rörmokare",
       "carpenter": "Snickare",
+      "flooring": "Golvläggare",
       "designer": "Designer",
       "architect": "Arkitekt",
       "general_contractor": "Generalentreprenör",
@@ -877,6 +884,7 @@
     "newConstruction": "Nyproduktion"
   },
   "floormap": {
+    "roomDescription": "Rumsbeskrivning",
     "loading3DView": "Laddar 3D-vy...",
     "3dView": "3D-vy",
     "3dViewHelp": "Dra för att rotera | Scrolla för att zooma vid markör | Högerdra för panorering",
@@ -1953,7 +1961,9 @@
     "commentsCount": "{{count}} kommentarer",
     "commentCount": "1 kommentar",
     "mentionPlaceholder": "Skriv för att söka...",
-    "noMentionResults": "Inga teammedlemmar hittades"
+    "noMentionResults": "Inga teammedlemmar hittades",
+    "noActivity": "Ingen aktivitet ännu",
+    "viewFullFeed": "Gå till fullständigt flöde"
   },
   "activity": {
     "created": "skapade",

@@ -8,6 +8,8 @@ import {
   Image as ImageIcon,
   ClipboardList,
   ShoppingCart,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   Accordion,
@@ -59,6 +61,10 @@ export function RoomDetailForm({
 
   // Track which accordion sections are open
   const [openSections, setOpenSections] = useState<string[]>(["tasks"]);
+
+  // Track collapsible sections for tasks and purchases
+  const [tasksExpanded, setTasksExpanded] = useState(true);
+  const [purchasesExpanded, setPurchasesExpanded] = useState(true);
 
   // Calculate filled field counts for indicators
   const filledCounts = countFilledFields(formData);
@@ -120,25 +126,66 @@ export function RoomDetailForm({
       {/* 2. Related Tasks - High priority for project managers */}
       {!isNewRoom && (
         <div className="border rounded-lg">
-          <div className="p-4">
-            <div className="flex items-center gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setTasksExpanded(!tasksExpanded)}
+            className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors rounded-t-lg"
+          >
+            <div className="flex items-center gap-2">
               <ClipboardList className="h-4 w-4 text-indigo-600" />
               <span className="font-medium text-sm">
                 {t("rooms.relatedTasks", "Kopplade uppgifter")}
               </span>
             </div>
-            <RelatedTasksSection roomId={room!.id} projectId={projectId} />
-          </div>
+            {tasksExpanded ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+          </button>
+          {tasksExpanded && (
+            <div className="px-4 pb-4">
+              <RelatedTasksSection roomId={room!.id} projectId={projectId} />
+            </div>
+          )}
         </div>
       )}
 
-      {/* 3. Specification Summary - Quick overview of what's filled */}
+      {/* 3. Related Purchases - Right after tasks for consistency */}
+      {!isNewRoom && (
+        <div className="border rounded-lg">
+          <button
+            type="button"
+            onClick={() => setPurchasesExpanded(!purchasesExpanded)}
+            className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors rounded-t-lg"
+          >
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4 text-teal-600" />
+              <span className="font-medium text-sm">
+                {t("rooms.relatedPurchases", "Kopplade inköp")}
+              </span>
+            </div>
+            {purchasesExpanded ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+          </button>
+          {purchasesExpanded && (
+            <div className="px-4 pb-4">
+              <RelatedPurchaseOrdersSection roomId={room!.id} projectId={projectId} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 4. Specification Summary - Quick overview of what's filled */}
       <SpecSummarySection
         formData={formData}
         onExpandSection={handleExpandSection}
       />
 
-      {/* 4. Quick Info - Material estimates */}
+      {/* 5. Quick Info - Material estimates */}
       <QuickInfoSection
         formData={formData}
         updateFormData={updateFormData}
@@ -146,7 +193,7 @@ export function RoomDetailForm({
         perimeterMm={perimeterMm}
       />
 
-      {/* 5. Detailed Accordion sections */}
+      {/* 6. Detailed Accordion sections */}
       <Accordion
         type="multiple"
         value={openSections}
@@ -269,21 +316,6 @@ export function RoomDetailForm({
             />
           </AccordionContent>
         </AccordionItem>
-
-        {/* Section: Purchase Orders - only for existing rooms */}
-        {!isNewRoom && (
-          <AccordionItem value="purchases" data-section="purchases">
-            <AccordionTrigger className="hover:no-underline">
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4 text-teal-600" />
-                <span>{t("rooms.relatedPurchaseOrders", "Inköpsordrar")}</span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <RelatedPurchaseOrdersSection roomId={room!.id} projectId={projectId} />
-            </AccordionContent>
-          </AccordionItem>
-        )}
 
         {/* Section: Media & Comments - only for existing rooms */}
         {!isNewRoom && (

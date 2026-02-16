@@ -84,14 +84,28 @@ const MaterialDetailDialog = ({
         .select(`
           *,
           room:rooms(name),
-          task:tasks(title),
-          creator:profiles!materials_created_by_user_id_fkey(name)
+          task:tasks(title)
         `)
         .eq("id", materialId)
         .single();
 
       if (error) throw error;
-      setMaterial(data);
+
+      // Fetch creator name separately to avoid FK relationship issues
+      let creatorName = null;
+      if (data?.created_by_user_id) {
+        const { data: creator } = await supabase
+          .from("profiles")
+          .select("name")
+          .eq("id", data.created_by_user_id)
+          .single();
+        creatorName = creator?.name;
+      }
+
+      setMaterial({
+        ...data,
+        creator: creatorName ? { name: creatorName } : null,
+      });
     } catch (error) {
       console.error("Error fetching material details:", error);
     } finally {

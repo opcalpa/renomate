@@ -296,7 +296,7 @@
   "projectDetail": {
     "overview": "Overview",
     "overviewDesc": "Project summary and status",
-    "rooms": "Rooms",
+    "rooms": "Room Description",
     "roomsDesc": "Manage and configure rooms",
     "floorPlan": "Floor Plan",
     "floorPlanDesc": "Design and plan your floor layout",
@@ -513,6 +513,7 @@
     "unnamed": "Unnamed room",
     "ceilingHeightShort": "h",
     "relatedTasks": "Related Tasks",
+    "relatedPurchases": "Related Purchases",
     "relatedPurchaseOrders": "Purchase Orders",
     "visionTitle": "What do you want to do in this room?",
     "visionPlaceholder": "Describe what you want to achieve in this room. The more detail you provide, the better tradespeople can understand and deliver your vision...",
@@ -574,10 +575,14 @@
     "passwordChangedDescription": "Your password has been updated successfully.",
     "passwordsDoNotMatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 6 characters",
-    "professionalProfile": "Professional Profile",
-    "professionalProfileDescription": "Enable this to appear in the marketplace and be found by homeowners and project managers",
-    "enableProfessional": "Activate Professional Profile",
-    "enableProfessionalDescription": "Show your business in the marketplace so clients can find you",
+    "accountType": "Account Type",
+    "accountTypeDescription": "What you selected during registration. Affects which features are shown.",
+    "homeownerShort": "Planning renovation",
+    "contractorShort": "Performing work",
+    "professionalProfile": "Find Professionals Listing",
+    "professionalProfileDescription": "Controls whether your business appears in the 'Find Professionals' search where homeowners look for contractors",
+    "enableProfessional": "Show me in Find Professionals",
+    "enableProfessionalDescription": "When enabled, clients can find you via the search page. Requires business details below.",
     "companyName": "Company Name",
     "companyNamePlaceholder": "e.g. Bygg & Renovering AB",
     "professionalCategory": "Professional Category",
@@ -665,6 +670,7 @@
   "roles": {
     "title": "Team & Invitations",
     "description": "Manage project team members and invitations",
+    "projectOwner": "Project Owner",
     "inviteButton": "Invite Member",
     "inviteTitle": "Invite Team Member",
     "inviteDescription": "Invite a contractor or collaborator to this project",
@@ -696,6 +702,7 @@
       "electrician": "Electrician",
       "plumber": "Plumber",
       "carpenter": "Carpenter",
+      "flooring": "Flooring Specialist",
       "designer": "Designer",
       "architect": "Architect",
       "general_contractor": "General Contractor",
@@ -1279,6 +1286,7 @@
     "newConstruction": "New Construction"
   },
   "floormap": {
+    "roomDescription": "Room Description",
     "loading3DView": "Loading 3D view...",
     "3dView": "3D View",
     "3dViewHelp": "Drag to rotate | Scroll to zoom at cursor | Right-drag to pan",
@@ -1955,7 +1963,9 @@
     "commentsCount": "{{count}} comments",
     "commentCount": "1 comment",
     "mentionPlaceholder": "Type to search...",
-    "noMentionResults": "No team members found"
+    "noMentionResults": "No team members found",
+    "noActivity": "No activity yet",
+    "viewFullFeed": "Go to full feed"
   },
   "activity": {
     "created": "created",

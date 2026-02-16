@@ -145,15 +145,23 @@ const ProjectDetail = () => {
   });
   const [openEntityId, setOpenEntityId] = useState<string | null>(() => searchParams.get("entityId"));
 
-  // Sync ?tab= and ?entityId= search params (handles navigation from notifications, etc.)
+  // Sync ?tab=, ?subtab=, and ?entityId= search params (handles navigation from notifications, etc.)
   useEffect(() => {
     const tabParam = searchParams.get("tab");
+    const subtabParam = searchParams.get("subtab");
     const entityParam = searchParams.get("entityId");
     const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "team", "feed"];
-    if (tabParam && validTabs.includes(tabParam) && tabParam !== activeTab) {
-      setActiveTab(tabParam);
-      setOpenEntityId(entityParam);
-      setSearchParams({}, { replace: true });
+
+    if (tabParam && validTabs.includes(tabParam)) {
+      if (tabParam !== activeTab || subtabParam) {
+        setActiveTab(tabParam);
+        // Handle subtab navigation (e.g., spaceplanner + rooms)
+        if (subtabParam) {
+          setActiveSubTab(subtabParam);
+        }
+        setOpenEntityId(entityParam);
+        setSearchParams({}, { replace: true });
+      }
     } else if (entityParam) {
       setOpenEntityId(entityParam);
       setSearchParams({}, { replace: true });
@@ -1054,6 +1062,7 @@ const ProjectDetail = () => {
               )}
               <OverviewTab
                 project={project}
+                userType={profile?.onboarding_user_type}
                 onProjectUpdate={loadData}
                 onNavigateToEntity={handleFeedNavigate}
                 onNavigateToPurchases={() => {

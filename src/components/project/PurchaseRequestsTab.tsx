@@ -46,6 +46,7 @@ import { useTranslation } from "react-i18next";
 import { formatCurrency } from "@/lib/currency";
 import { ProjectLockBanner } from "./ProjectLockBanner";
 import { useProjectLock } from "@/hooks/useProjectLock";
+import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
 
 interface Material {
   id: string;
@@ -313,23 +314,42 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         .from("materials")
         .select(`
           *,
-          creator:profiles!materials_created_by_user_id_fkey(name),
-          assigned_to:profiles!materials_assigned_to_user_id_fkey(name),
           task:tasks(title),
           room:rooms(name)
         `)
         .eq("project_id", projectId);
 
       // Filter at DB level when scope is 'assigned' and user is not owner
-      if (!isProjectOwner && userPurchasesScope === 'assigned' && currentProfileId) {
-        query = query.or(`created_by_user_id.eq.${currentProfileId},assigned_to_user_id.eq.${currentProfileId}`);
+      // Skip this filter for public demo project - everyone should see all demo materials
+      const isPublicDemo = projectId === PUBLIC_DEMO_PROJECT_ID;
+      if (!isPublicDemo && !isProjectOwner && userPurchasesScope === 'assigned' && currentProfileId) {
+        query = query.eq("created_by_user_id", currentProfileId);
       }
 
       const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      setMaterials(data || []);
+      // Fetch creator names separately to avoid FK relationship issues
+      const materialsWithNames = await Promise.all((data || []).map(async (material) => {
+        let creatorName = null;
+
+        if (material.created_by_user_id) {
+          const { data: creator } = await supabase
+            .from("profiles")
+            .select("name")
+            .eq("id", material.created_by_user_id)
+            .single();
+          creatorName = creator?.name;
+        }
+
+        return {
+          ...material,
+          creator: creatorName ? { name: creatorName } : null,
+        };
+      }));
+
+      setMaterials(materialsWithNames);
     } catch (error: unknown) {
       toast({
         title: t('common.error'),
