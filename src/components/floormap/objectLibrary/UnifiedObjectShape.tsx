@@ -98,7 +98,7 @@ export const UnifiedObjectShape: React.FC<UnifiedObjectShapeProps> = ({
 
   // Get active tool to disable selection during drawing
   const activeTool = useFloorMapStore((state) => state.activeTool);
-  const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'room', 'bezier'];
+  const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'opening_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'room', 'bezier'];
   const isDrawingMode = drawingTools.includes(activeTool);
   const canSelect = !isDrawingMode;
 

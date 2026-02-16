@@ -213,7 +213,7 @@ export const WallShape = React.memo<WallShapeProps>(({
   const thickness = shape.thicknessMM ? shape.thicknessMM / 10 : getDefaultWallThickness();
 
   // Don't allow selecting walls when ANY drawing tool is active
-  const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'room', 'bezier'];
+  const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'opening_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'room', 'bezier'];
   const isDrawingMode = drawingTools.includes(activeTool);
   const canSelect = !isDrawingMode;
 

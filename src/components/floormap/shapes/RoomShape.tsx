@@ -228,7 +228,7 @@ export const RoomShape = React.memo<RoomShapeProps>(({
 
   // Get active tool to disable selection during drawing
   const activeTool = useFloorMapStore((state) => state.activeTool);
-  const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'room', 'bezier'];
+  const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'opening_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'room', 'bezier'];
   const isDrawingMode = drawingTools.includes(activeTool);
 
   const groupRef = useRef<Konva.Group>(null);
