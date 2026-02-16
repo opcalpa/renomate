@@ -301,7 +301,7 @@
     "floorPlan": "Ritning",
     "floorPlanDesc": "Designa och planera din planlösning",
     "feedDesc": "Kommentarer och aktivitetsflöde",
-    "spacePlanner": "Ritning",
+    "spacePlanner": "Yta",
     "tasks": "Uppgifter",
     "timeline": "Projekttidslinje",
     "timelineDays": "dagar",
@@ -640,7 +640,7 @@
     "profileNotFound": "Profil hittades inte"
   },
   "spacePlanner": {
-    "title": "Ritning",
+    "title": "Yta",
     "description": "Designa din planlösning och skapa rum",
     "gettingStarted": "Kom igång med planlösningen",
     "quickTips": "Snabbtips:",

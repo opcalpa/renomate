@@ -301,7 +301,7 @@
     "floorPlan": "Floor Plan",
     "floorPlanDesc": "Design and plan your floor layout",
     "feedDesc": "Comments and activity feed",
-    "spacePlanner": "Drawing",
+    "spacePlanner": "Area",
     "tasks": "Tasks",
     "timeline": "Project Timeline",
     "timelineDays": "days",
@@ -528,7 +528,7 @@
     "walls": "Walls"
   },
   "spacePlanner": {
-    "title": "Drawing",
+    "title": "Area",
     "description": "Design your floor plan and create rooms",
     "gettingStarted": "Getting Started with Space Planner",
     "quickTips": "Quick Tips:",
