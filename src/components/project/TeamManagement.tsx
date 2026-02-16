@@ -277,8 +277,6 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
         .eq("id", projectId)
         .single();
 
-      console.log("[Team] projectData:", projectData, "error:", projectError);
-
       if (projectError) throw projectError;
 
       if (projectData?.profiles) {
@@ -303,8 +301,6 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
           profiles:shared_with_user_id ( name, email )`
         )
         .eq("project_id", projectId);
-
-      console.log("[Team] sharesData:", sharesData, "error:", sharesError);
 
       if (sharesError) throw sharesError;
 
@@ -339,7 +335,6 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
           }
         ) || [];
 
-      console.log("[Team] teamMembers mapped:", teamMembers);
       setMembers(teamMembers);
 
       if (isOwner) {
