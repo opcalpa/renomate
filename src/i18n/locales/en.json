@@ -154,7 +154,9 @@
     "floorPlannerTitle": "Interactive Floor Planner",
     "floorPlannerDesc": "Draw rooms and plan your renovation visually",
     "timelineTitle": "Gantt Timeline",
-    "timelineDesc": "Track progress and manage deadlines"
+    "timelineDesc": "Track progress and manage deadlines",
+    "overviewTitle": "Project Overview",
+    "overviewDesc": "See everything at a glance"
   },
   "auth": {
     "signInTitle": "Welcome Back",

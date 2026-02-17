@@ -82,8 +82,8 @@ const Index = () => {
             <div className="order-2 relative">
               <div className="relative rounded-xl overflow-hidden shadow-2xl border border-border bg-card">
                 <img
-                  src="/screenshots/Overview.png"
-                  alt="Renomate project overview"
+                  src="/screenshots/Timeline.png"
+                  alt="Renomate project timeline"
                   className="w-full h-auto object-contain"
                   loading="eager"
                 />
@@ -165,17 +165,17 @@ const Index = () => {
                 <p className="text-white/80 text-sm">{t('landing.floorPlannerDesc', 'Draw rooms and plan your renovation visually')}</p>
               </div>
             </div>
-            {/* Timeline */}
+            {/* Overview */}
             <div className="relative rounded-xl overflow-hidden shadow-lg border border-border bg-card">
               <img
-                src="/screenshots/Timeline.png"
-                alt="Project timeline"
+                src="/screenshots/Overview.png"
+                alt="Project overview"
                 className="w-full h-auto object-contain"
                 loading="lazy"
               />
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-                <h3 className="text-white font-semibold">{t('landing.timelineTitle', 'Gantt Timeline')}</h3>
-                <p className="text-white/80 text-sm">{t('landing.timelineDesc', 'Track progress and manage deadlines')}</p>
+                <h3 className="text-white font-semibold">{t('landing.overviewTitle', 'Project Overview')}</h3>
+                <p className="text-white/80 text-sm">{t('landing.overviewDesc', 'See everything at a glance')}</p>
               </div>
             </div>
           </div>

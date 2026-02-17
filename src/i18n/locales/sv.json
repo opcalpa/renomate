@@ -154,7 +154,9 @@
     "floorPlannerTitle": "Interaktiv planritning",
     "floorPlannerDesc": "Rita rum och planera din renovering visuellt",
     "timelineTitle": "Gantt-tidslinje",
-    "timelineDesc": "Följ framstegen och hantera deadlines"
+    "timelineDesc": "Följ framstegen och hantera deadlines",
+    "overviewTitle": "Projektöversikt",
+    "overviewDesc": "Se allt på ett ställe"
   },
   "auth": {
     "signInTitle": "Välkommen tillbaka",
