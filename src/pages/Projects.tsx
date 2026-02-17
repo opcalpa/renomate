@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ChevronRight, ChevronLeft, Users, BookOpen, Trash2, Zap, Upload, FileText, X, Loader2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, ChevronRight, ChevronLeft, Users, BookOpen, Trash2, Zap, Upload, FileText, X, Loader2, Sparkles, ChevronDown, ChevronUp, MessageSquare, File } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -31,9 +31,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
 import { WelcomeModal, QuickStartChoice } from "@/components/onboarding/WelcomeModal";
+import { GuidedSetupWizard } from "@/components/onboarding/GuidedSetupWizard";
 import { WithHotspot } from "@/components/onboarding/Hotspot";
 import { PageLoadingSkeleton } from "@/components/ui/skeleton-screens";
-import { seedDemoProject, isDemoProject, hasDemoProject } from "@/services/demoProjectService";
+import { isDemoProject } from "@/services/demoProjectService";
 import { LeadsPipelineSection } from "@/components/pipeline";
 import { GuestBanner } from "@/components/guest";
 import {
@@ -76,12 +77,14 @@ const Projects = () => {
   const [newProjectStartDate, setNewProjectStartDate] = useState("");
   const [newProjectBudget, setNewProjectBudget] = useState("");
   const [createStep, setCreateStep] = useState(1);
+  const [createMethod, setCreateMethod] = useState<"choose" | "upload" | "manual">("choose");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [extractingText, setExtractingText] = useState(false);
   const [useAI, setUseAI] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showGuidedSetup, setShowGuidedSetup] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
@@ -158,14 +161,9 @@ const Projects = () => {
 
       if (!profile) return;
 
-      // Auto-seed demo project for users who don't have one
-      const hasDemo = await hasDemoProject(profile.id);
-      if (!hasDemo) {
-        await seedDemoProject(profile.id);
-      }
-
       // Fetch both owned projects and shared projects
       // RLS will handle access control, so we don't need to filter by owner_id
+      // The public_demo project is visible to everyone (shared demo)
       const { data, error } = await supabase
         .from("projects")
         .select("*")
@@ -173,12 +171,9 @@ const Projects = () => {
 
       if (error) throw error;
 
-      // Filter out demo projects that don't belong to current user
-      // (system_admins can see all projects via RLS, but shouldn't see other users' demos)
-      const filteredProjects = (data || []).filter(
-        (p) => p.project_type !== "demo_project" || p.owner_id === profile.id
-      );
-      setProjects(filteredProjects);
+      // No filtering needed - RLS handles access control
+      // public_demo is shown to all users as the shared demo
+      setProjects(data || []);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -422,7 +417,10 @@ const Projects = () => {
     onboarding.refresh();
 
     // Handle quick start choice
-    if (quickStart === "blank") {
+    if (quickStart === "guided") {
+      // Open the guided setup wizard
+      setShowGuidedSetup(true);
+    } else if (quickStart === "blank") {
       // Open the create project dialog
       setDialogOpen(true);
     } else if (quickStart === "import") {
@@ -500,7 +498,7 @@ const Projects = () => {
       {/* Guest mode banner - sticky below header */}
       {isGuest && <GuestBanner compact />}
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Full guest banner at top of content */}
         {isGuest && <GuestBanner className="mb-6" />}
 
@@ -517,10 +515,13 @@ const Projects = () => {
           />
         )}
 
-        {/* Pipeline Section - Leads & Quotes (hidden in guest mode) */}
+        {/* Pipeline Section - Leads & Quotes (hidden in guest mode and for homeowners) */}
         {!isGuest && (
           <section id="pipeline">
-            <LeadsPipelineSection onRefetch={fetchProjects} />
+            <LeadsPipelineSection
+              onRefetch={fetchProjects}
+              userType={profile?.onboarding_user_type as string | null}
+            />
           </section>
         )}
 
@@ -543,78 +544,148 @@ const Projects = () => {
                 <span className="sm:hidden">{t('common.create', 'Skapa')}</span>
               </Button>
             </WithHotspot>
-            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setCreateStep(1); setNewProjectName(""); setNewProjectDescription(""); setNewProjectAddress(""); setNewProjectPostalCode(""); setNewProjectCity(""); setNewProjectType(""); setNewProjectStartDate(""); setNewProjectBudget(""); setUploadedFile(null); setUseAI(true); if (fileInputRef.current) fileInputRef.current.value = ""; } }}>
-            <DialogContent>
+            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setCreateStep(1); setCreateMethod("choose"); setNewProjectName(""); setNewProjectDescription(""); setNewProjectAddress(""); setNewProjectPostalCode(""); setNewProjectCity(""); setNewProjectType(""); setNewProjectStartDate(""); setNewProjectBudget(""); setUploadedFile(null); setUseAI(true); if (fileInputRef.current) fileInputRef.current.value = ""; } }}>
+            <DialogContent className={createMethod === "choose" ? "sm:max-w-lg" : undefined}>
               <DialogHeader>
                 <DialogTitle>{t('projects.createProjectTitle')}</DialogTitle>
                 <DialogDescription>
-                  {t('projects.createProjectDescription')}
+                  {createMethod === "choose"
+                    ? t('projects.chooseMethodDescription', 'Choose how you want to create your project')
+                    : t('projects.createProjectDescription')}
                 </DialogDescription>
               </DialogHeader>
+
+              {/* Step 0: Choose creation method */}
+              {createMethod === "choose" && (
+                <div className="flex flex-col gap-3 py-2">
+                  {/* Upload document option */}
+                  <button
+                    type="button"
+                    onClick={() => setCreateMethod("upload")}
+                    className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98] border-border"
+                  >
+                    <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-base">{t('projects.methodUpload', 'Upload description')}</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {t('projects.methodUploadDesc', 'Let AI extract project details from a document')}
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Guided questionnaire option */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDialogOpen(false);
+                      // Delay opening the guided setup to let the first dialog fully close
+                      // This prevents aria-hidden focus conflicts between dialogs
+                      setTimeout(() => setShowGuidedSetup(true), 150);
+                    }}
+                    className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98] border-border"
+                  >
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <MessageSquare className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-base">{t('projects.methodGuided', 'Answer questionnaire')}</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {t('projects.methodGuidedDesc', 'Select rooms and work types to auto-create tasks')}
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Manual option */}
+                  <button
+                    type="button"
+                    onClick={() => setCreateMethod("manual")}
+                    className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98] border-border"
+                  >
+                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                      <File className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-base">{t('projects.methodManual', 'Create manually')}</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {t('projects.methodManualDesc', 'Start from scratch and fill in details yourself')}
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              )}
+
+              {/* Form for upload or manual method */}
+              {createMethod !== "choose" && (
               <form onSubmit={handleCreateProject} className="space-y-4">
                 {createStep === 1 ? (
                   <>
-                    {/* AI File Upload Section */}
-                    <div className="space-y-2 p-3 rounded-lg bg-muted/50 border border-dashed border-muted-foreground/30">
-                      <div className="flex items-center gap-2 text-sm font-medium">
-                        <Sparkles className="h-4 w-4 text-purple-500" />
-                        {t('projects.aiImportTitle', 'Ladda upp dokument (valfritt)')}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {t('projects.aiImportHint', 'Ladda upp en offertförfrågan, beskrivning eller annat dokument för att fylla i formuläret automatiskt.')}
-                      </p>
+                    {/* AI File Upload Section - only show for upload method */}
+                    {createMethod === "upload" && (
+                      <>
+                        <div className="space-y-2 p-3 rounded-lg bg-muted/50 border border-dashed border-muted-foreground/30">
+                          <div className="flex items-center gap-2 text-sm font-medium">
+                            <Sparkles className="h-4 w-4 text-purple-500" />
+                            {t('projects.aiImportTitle', 'Upload document')}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {t('projects.aiImportHint', 'Upload a quote request, description, or other document to auto-fill the form.')}
+                          </p>
 
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".txt,.pdf,image/*"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".txt,.pdf,image/*"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                          />
 
-                      {uploadedFile ? (
-                        <div className="flex items-center gap-2 p-2 rounded-md bg-background text-sm">
-                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="truncate flex-1">{uploadedFile.name}</span>
-                          {extractingText ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          {uploadedFile ? (
+                            <div className="flex items-center gap-2 p-2 rounded-md bg-background text-sm">
+                              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="truncate flex-1">{uploadedFile.name}</span>
+                              {extractingText ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={handleRemoveFile}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
                           ) : (
                             <Button
                               type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={handleRemoveFile}
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={extractingText}
                             >
-                              <X className="h-3 w-3" />
+                              <Upload className="h-4 w-4 mr-2" />
+                              {t('projects.selectFile', 'Select file')}
                             </Button>
                           )}
                         </div>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={extractingText}
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          {t('projects.selectFile', 'Välj fil')}
-                        </Button>
-                      )}
-                    </div>
 
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">
-                          {t('projects.orFillManually', 'eller fyll i manuellt')}
-                        </span>
-                      </div>
-                    </div>
+                        <div className="relative">
+                          <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                          </div>
+                          <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-background px-2 text-muted-foreground">
+                              {t('projects.thenFillDetails', 'then fill in details')}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
 
                     <div className="space-y-2">
                       <Label htmlFor="name">{t('projects.projectName')} *</Label>
@@ -668,6 +739,14 @@ const Projects = () => {
                     <div className="flex gap-2">
                       <Button
                         type="button"
+                        variant="outline"
+                        onClick={() => setCreateMethod("choose")}
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        {t('projects.back')}
+                      </Button>
+                      <Button
+                        type="button"
                         className="flex-1"
                         onClick={() => setCreateStep(2)}
                         disabled={!newProjectName.trim()}
@@ -677,8 +756,7 @@ const Projects = () => {
                       </Button>
                       <Button
                         type="submit"
-                        variant="outline"
-                        className="flex-1"
+                        variant="ghost"
                         disabled={creating || !newProjectName.trim()}
                       >
                         {creating ? t('projects.creating') : t('projects.skipAndCreate')}
@@ -738,6 +816,7 @@ const Projects = () => {
                   </>
                 )}
               </form>
+              )}
             </DialogContent>
           </Dialog>
           </div>
@@ -918,6 +997,29 @@ const Projects = () => {
           onComplete={handleWelcomeComplete}
         />
       )}
+
+      {/* Guided Setup Wizard */}
+      <Dialog open={showGuidedSetup} onOpenChange={setShowGuidedSetup}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t("guidedSetup.title")}</DialogTitle>
+            <DialogDescription>
+              {t("guidedSetup.titleDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          {profile?.id && (
+            <GuidedSetupWizard
+              userType={(profile?.onboarding_user_type as "homeowner" | "contractor") || "homeowner"}
+              profileId={profile.id as string}
+              onComplete={(projectId) => {
+                setShowGuidedSetup(false);
+                navigate(`/projects/${projectId}`);
+              }}
+              onCancel={() => setShowGuidedSetup(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

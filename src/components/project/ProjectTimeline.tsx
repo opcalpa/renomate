@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import TaskSidePanel from "./TaskSidePanel";
+import { TaskEditDialog } from "./TaskEditDialog";
 interface Task {
   id: string;
   title: string;
@@ -64,6 +64,7 @@ interface ProjectTimelineProps {
   onTaskClick?: (taskId: string) => void;
   onNavigateToRoom?: (roomId: string) => void;
   currency?: string | null;
+  isDemo?: boolean;
 }
 const ProjectTimeline = ({
   projectId,
@@ -72,7 +73,8 @@ const ProjectTimeline = ({
   projectFinishDate,
   onTaskClick,
   onNavigateToRoom,
-  currency
+  currency,
+  isDemo = false
 }: ProjectTimelineProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [unscheduledCount, setUnscheduledCount] = useState(0);
@@ -124,6 +126,28 @@ const ProjectTimeline = ({
     fetchTeamMembers();
     fetchRooms();
   }, [projectId]);
+
+  // Auto-set view to 'full' for demo projects once tasks are loaded
+  useEffect(() => {
+    if (isDemo && !loading && tasks.length > 0) {
+      // Calculate full project span and set view
+      const dates: Date[] = [];
+      if (projectStartDate) dates.push(parseISO(projectStartDate));
+      if (projectFinishDate) dates.push(parseISO(projectFinishDate));
+      tasks.forEach(task => {
+        if (task.start_date) dates.push(parseISO(task.start_date));
+        if (task.finish_date) dates.push(parseISO(task.finish_date));
+      });
+      if (dates.length >= 2) {
+        const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+        const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+        const span = differenceInDays(maxDate, minDate) + 14; // Add padding
+        setDaysVisible(Math.min(span, maxDays));
+        setCenterDate(addDays(minDate, Math.floor(span / 2)));
+      }
+    }
+  }, [isDemo, loading, tasks, projectStartDate, projectFinishDate, maxDays, setDaysVisible, setCenterDate]);
+
   const fetchTasks = async () => {
     try {
       const {
@@ -1096,7 +1120,7 @@ const ProjectTimeline = ({
                           </div>
                           {/* Spacer rows for tasks (when not collapsed) */}
                           {!group.isCollapsed && group.tasks.map((task) => (
-                            <div key={task.id} className="h-11 border-b border-border/10 flex items-center px-3">
+                            <div key={task.id} className="h-12 border-b border-border/10 flex items-center px-3">
                               <span className="text-xs text-muted-foreground truncate">{task.title}</span>
                             </div>
                           ))}
@@ -1162,12 +1186,12 @@ const ProjectTimeline = ({
                         {!group.isCollapsed && group.tasks.map((task) => {
                           const { left, width } = getTaskPosition(task, minDate, totalDays);
                           return (
-                            <div key={task.id} className="relative h-11 py-0.5">
+                            <div key={task.id} className="relative h-12 py-0.5">
                               {/* Task bar - compact design */}
                               <HoverCard openDelay={300}>
                                 <HoverCardTrigger asChild>
                                   <div
-                                    className={`task-bar absolute h-10 rounded-lg ${getStatusColor(task.status)} shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer overflow-hidden group border border-white/20`}
+                                    className={`task-bar absolute h-11 rounded-lg ${getStatusColor(task.status)} shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer overflow-hidden group border border-white/20`}
                                     style={{ left: `${left}%`, width: `${width}%`, minWidth: '50px' }}
                                     onClick={() => handleTaskClick(task)}
                                   >
@@ -1190,10 +1214,10 @@ const ProjectTimeline = ({
                                       />
                                     )}
 
-                                    {/* Task content - single row with title and progress */}
-                                    <div className="h-full flex items-center justify-between px-2 py-1 relative z-10 gap-2">
-                                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                                        <span className="text-xs font-semibold text-white drop-shadow truncate">{task.title}</span>
+                                    {/* Task content - allows 2 lines of text */}
+                                    <div className="h-full flex items-center justify-between px-2 py-0.5 relative z-10 gap-1">
+                                      <div className="flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
+                                        <span className="text-xs font-semibold text-white drop-shadow line-clamp-2 leading-tight">{task.title}</span>
                                         <div
                                           draggable
                                           onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, task); }}
@@ -1204,8 +1228,9 @@ const ProjectTimeline = ({
                                           <Move className="h-3 w-3 text-white/70 opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
                                         </div>
                                       </div>
-                                      {task.progress > 0 && (
-                                        <div className="flex-shrink-0 bg-black/20 px-1.5 py-0.5 rounded">
+                                      {/* Progress badge - hidden on mobile for cleaner look */}
+                                    {task.progress > 0 && (
+                                        <div className="hidden md:flex flex-shrink-0 bg-black/20 px-1.5 py-0.5 rounded">
                                           <span className="text-[10px] font-bold text-white">{task.progress}%</span>
                                         </div>
                                       )}
@@ -1420,17 +1445,16 @@ const ProjectTimeline = ({
         </DialogContent>
       </Dialog>
 
-      {/* Task Side Panel */}
-      <TaskSidePanel
+      {/* Task Edit Dialog */}
+      <TaskEditDialog
         taskId={selectedTaskId}
         projectId={projectId}
         open={sidePanelOpen}
         onOpenChange={setSidePanelOpen}
-        onTaskUpdated={() => {
+        onSaved={() => {
           fetchTasks();
           fetchDependencies();
         }}
-        onNavigateToRoom={onNavigateToRoom}
         currency={currency}
       />
     </Card>;

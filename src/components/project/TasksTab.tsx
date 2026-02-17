@@ -31,6 +31,7 @@ import { Separator } from "@/components/ui/separator";
 import ProjectTimeline from "./ProjectTimeline";
 import { ProjectLockBanner } from "./ProjectLockBanner";
 import { useProjectLock } from "@/hooks/useProjectLock";
+import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
 
 interface ChecklistItem {
   id: string;
@@ -145,10 +146,11 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
   // Timeline visibility
   const [timelineOpen, setTimelineOpen] = useState(true);
   
-  // Column order for Kanban view
+  // Column order for Kanban view (filter out legacy 'done' status which is merged into 'completed')
   const [columnOrder, setColumnOrder] = useState<string[]>(() => {
     const saved = localStorage.getItem(`kanban-column-order-${projectId}`);
-    return saved ? JSON.parse(saved) : ['planned', 'to_do', 'in_progress', 'waiting', 'completed', 'cancelled'];
+    const order = saved ? JSON.parse(saved) : ['planned', 'to_do', 'in_progress', 'waiting', 'completed', 'cancelled'];
+    return order.filter((s: string) => s !== 'done');
   });
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   
@@ -651,9 +653,13 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
     }
   };
 
-  // Filter tasks based on selected filters
+  // Filter tasks based on selected filters (merge 'done' into 'completed' for filtering)
   const filteredTasks = tasks.filter(task => {
-    if (filterStatuses.size > 0 && !filterStatuses.has(task.status)) return false;
+    if (filterStatuses.size > 0) {
+      const statusMatches = filterStatuses.has(task.status) ||
+        (task.status === 'done' && filterStatuses.has('completed'));
+      if (!statusMatches) return false;
+    }
     if (filterAssignees.size > 0) {
       const val = task.assigned_to_stakeholder_id || "unassigned";
       if (!filterAssignees.has(val)) return false;
@@ -703,28 +709,29 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
   };
 
   // Group tasks by status (supporting both old and new status values)
-  // Note: 'done' is a legacy status that maps to 'completed'
-  const statusOrder = ['planned', 'to_do', 'in_progress', 'waiting', 'completed', 'done', 'cancelled'] as const;
+  // Note: 'done' is a legacy status that should be merged into 'completed'
+  const statusOrder = ['planned', 'to_do', 'in_progress', 'waiting', 'completed', 'cancelled'] as const;
   const statusLabels: Record<string, string> = {
     planned: t('statuses.planned', 'Planned'),
     to_do: t('statuses.toDo'),
     in_progress: t('statuses.inProgress'),
     waiting: t('statuses.waiting', 'Waiting'),
     completed: t('statuses.completed'),
-    done: t('statuses.completed'), // Legacy status, same as completed
     cancelled: t('statuses.cancelled', 'Cancelled'),
   };
-  
-  // Group tasks by status and find any unknown statuses
+
+  // Group tasks by status, merging legacy 'done' status into 'completed'
   const groupedTasks = statusOrder.reduce((acc, status) => {
-    const tasksForStatus = filteredTasks.filter(t => t.status === status);
+    const tasksForStatus = filteredTasks.filter(t =>
+      t.status === status || (status === 'completed' && t.status === 'done')
+    );
     acc[status] = tasksForStatus;
     return acc;
   }, {} as Record<string, Task[]>);
 
-  // Find tasks with unknown statuses
-  const knownStatuses = [...statusOrder];
-  const unknownStatusTasks = filteredTasks.filter(t => !knownStatuses.includes(t.status as any));
+  // Find tasks with unknown statuses ('done' is known but merged into 'completed')
+  const knownStatuses = [...statusOrder, 'done'] as string[];
+  const unknownStatusTasks = filteredTasks.filter(t => !knownStatuses.includes(t.status));
 
   // Add unknown status tasks to a catch-all column
   const allStatusesWithUnknown = [...statusOrder];
@@ -748,8 +755,10 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
     return member?.name;
   };
 
-  // Calculate counts for filter options
-  const getStatusCount = (status: string) => tasks.filter(t => t.status === status).length;
+  // Calculate counts for filter options (merge 'done' into 'completed' count)
+  const getStatusCount = (status: string) => tasks.filter(t =>
+    t.status === status || (status === 'completed' && t.status === 'done')
+  ).length;
 
   const getAssigneeCount = (assigneeId: string) => {
     if (assigneeId === "unassigned") return tasks.filter(t => !t.assigned_to_stakeholder_id).length;
@@ -1002,7 +1011,7 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
           <CollapsibleContent className="mb-6">
             <Card>
               <CardContent className="p-0">
-                <ProjectTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} />
+                <ProjectTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} />
               </CardContent>
             </Card>
           </CollapsibleContent>

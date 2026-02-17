@@ -10,7 +10,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ChevronDown, FolderOpen, Lock, BookOpen, Loader2, PartyPopper, X, Zap, FileText, LayoutGrid } from "lucide-react";
+import { ArrowLeft, ChevronDown, FolderOpen, Lock, BookOpen, Loader2, PartyPopper, X, Zap, FileText, LayoutGrid, MoreHorizontal } from "lucide-react";
 import { isDemoProject, refreshDemoProjectDates } from "@/services/demoProjectService";
 import { ProjectDetailSkeleton } from "@/components/ui/skeleton-screens";
 import { WithHotspot } from "@/components/onboarding/Hotspot";
@@ -357,9 +357,10 @@ const ProjectDetail = () => {
       if (projectError) throw projectError;
       setProject(projectData);
 
-      // If this is a demo project, refresh task dates to be relative to today
+      // If this is a personal demo project (not the shared public_demo), refresh task dates
       // This ensures the timeline always shows relevant example data
-      if (isDemoProject(projectData?.project_type) && profileData?.id) {
+      // Note: We don't refresh public_demo dates - that's a shared project managed by admins
+      if (projectData?.project_type === 'demo_project' && profileData?.id) {
         refreshDemoProjectDates(profileData.id);
       }
 
@@ -840,7 +841,8 @@ const ProjectDetail = () => {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-4 lg:space-x-6">
+              {/* Primary tabs - always visible */}
               <HoverTabMenu
                 trigger={
                   <div className={cn(
@@ -912,60 +914,104 @@ const ProjectDetail = () => {
                 activeValue={activeTab === "tasks" ? "tasks" : undefined}
               />
 
-              <HoverTabMenu
-                trigger={
-                  <div className={cn(
-                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
-                    activeTab === "purchases" ? "border border-primary text-primary" : "border border-transparent",
-                    isTabBlocked("purchases") && "opacity-40 pointer-events-none cursor-default"
-                  )}>
-                    {t('projectDetail.purchases')}
-                  </div>
-                }
-                items={menuConfigs.purchases}
-                onSelect={(value) => handleMenuSelect('purchases', value)}
-                onMainClick={() => handleMenuSelect('purchases', 'purchases')}
-                activeValue={activeTab === "purchases" ? activeSubTab || "purchases" : undefined}
-              />
-
-              <HoverTabMenu
-                trigger={
-                  <div className={cn(
-                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
-                    activeTab === "budget" ? "border border-primary text-primary" : "border border-transparent",
-                    isTabBlocked("budget") && "opacity-40 pointer-events-none cursor-default"
-                  )}>
-                    {t('common.budget')}
-                  </div>
-                }
-                items={menuConfigs.budget}
-                onSelect={(value) => handleMenuSelect('budget', value)}
-                onMainClick={() => handleMenuSelect('budget', 'budget')}
-                activeValue={activeTab === "budget" ? "budget" : undefined}
-              />
-
-              <WithHotspot
-                hotspotId="invite-team"
-                hotspotContent="hotspots.inviteTeam"
-                hotspotPosition="top-right"
-                showOnce={true}
-              >
+              {/* Secondary tabs - visible on large screens, hidden on medium */}
+              <div className="hidden xl:contents">
                 <HoverTabMenu
                   trigger={
                     <div className={cn(
                       "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
-                      activeTab === "team" ? "border border-primary text-primary" : "border border-transparent",
-                      isTabBlocked("team") && "opacity-40 pointer-events-none cursor-default"
+                      activeTab === "purchases" ? "border border-primary text-primary" : "border border-transparent",
+                      isTabBlocked("purchases") && "opacity-40 pointer-events-none cursor-default"
                     )}>
-                      {t('projectDetail.team')}
+                      {t('projectDetail.purchases')}
                     </div>
                   }
-                  items={menuConfigs.team}
-                  onSelect={(value) => handleMenuSelect('team', value)}
-                  onMainClick={() => handleMenuSelect('team', 'team')}
-                  activeValue={activeTab === "team" ? activeSubTab || "team" : undefined}
+                  items={menuConfigs.purchases}
+                  onSelect={(value) => handleMenuSelect('purchases', value)}
+                  onMainClick={() => handleMenuSelect('purchases', 'purchases')}
+                  activeValue={activeTab === "purchases" ? activeSubTab || "purchases" : undefined}
                 />
-              </WithHotspot>
+
+                <HoverTabMenu
+                  trigger={
+                    <div className={cn(
+                      "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
+                      activeTab === "budget" ? "border border-primary text-primary" : "border border-transparent",
+                      isTabBlocked("budget") && "opacity-40 pointer-events-none cursor-default"
+                    )}>
+                      {t('common.budget')}
+                    </div>
+                  }
+                  items={menuConfigs.budget}
+                  onSelect={(value) => handleMenuSelect('budget', value)}
+                  onMainClick={() => handleMenuSelect('budget', 'budget')}
+                  activeValue={activeTab === "budget" ? "budget" : undefined}
+                />
+
+                <WithHotspot
+                  hotspotId="invite-team"
+                  hotspotContent="hotspots.inviteTeam"
+                  hotspotPosition="top-right"
+                  showOnce={true}
+                >
+                  <HoverTabMenu
+                    trigger={
+                      <div className={cn(
+                        "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
+                        activeTab === "team" ? "border border-primary text-primary" : "border border-transparent",
+                        isTabBlocked("team") && "opacity-40 pointer-events-none cursor-default"
+                      )}>
+                        {t('projectDetail.team')}
+                      </div>
+                    }
+                    items={menuConfigs.team}
+                    onSelect={(value) => handleMenuSelect('team', value)}
+                    onMainClick={() => handleMenuSelect('team', 'team')}
+                    activeValue={activeTab === "team" ? activeSubTab || "team" : undefined}
+                  />
+                </WithHotspot>
+              </div>
+
+              {/* Overflow menu - visible on medium screens, hidden on large */}
+              <div className="xl:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "px-2 py-1.5 h-auto",
+                        (activeTab === "purchases" || activeTab === "budget" || activeTab === "team") && "border border-primary text-primary"
+                      )}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem
+                      onClick={() => handleMenuSelect('purchases', 'purchases')}
+                      className={cn("cursor-pointer", activeTab === "purchases" && "bg-accent")}
+                      disabled={isTabBlocked("purchases")}
+                    >
+                      {t('projectDetail.purchases')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleMenuSelect('budget', 'budget')}
+                      className={cn("cursor-pointer", activeTab === "budget" && "bg-accent")}
+                      disabled={isTabBlocked("budget")}
+                    >
+                      {t('common.budget')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleMenuSelect('team', 'team')}
+                      className={cn("cursor-pointer", activeTab === "team" && "bg-accent")}
+                      disabled={isTabBlocked("team")}
+                    >
+                      {t('projectDetail.team')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
         </AppHeader>
@@ -1065,9 +1111,10 @@ const ProjectDetail = () => {
                 userType={profile?.onboarding_user_type}
                 onProjectUpdate={loadData}
                 onNavigateToEntity={handleFeedNavigate}
-                onNavigateToPurchases={() => {
+                onNavigateToPurchases={(materialId?: string) => {
                   setActiveTab('purchases');
                   setActiveSubTab(null);
+                  if (materialId) setOpenEntityId(materialId);
                 }}
                 onNavigateToTasks={(taskId?: string) => {
                   setActiveTab('tasks');
@@ -1086,6 +1133,7 @@ const ProjectDetail = () => {
                   setActiveTab('files');
                   setActiveSubTab(null);
                 }}
+                onNavigateToRoom={handleNavigateToRoomById}
               />
             </div>
           )}
@@ -1144,6 +1192,7 @@ const ProjectDetail = () => {
             <ProjectFilesTab
               projectId={project.id}
               projectName={project.name}
+              canEdit={permissions.files === "edit"}
               onNavigateToFloorPlan={() => {
                 // Save current tab before navigating to floor planner
                 setPreviousTab({ tab: activeTab, subTab: activeSubTab, label: getTabLabelKey(activeTab) });
@@ -1189,7 +1238,11 @@ const ProjectDetail = () => {
             <NoAccessPlaceholder />
           ) : (
             <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
-              <BudgetTab projectId={project.id} currency={project?.currency} isReadOnly={permissions.budget === "view"} />
+              <BudgetTab
+                projectId={project.id}
+                currency={project?.currency}
+                isReadOnly={permissions.budget === "view"}
+              />
             </div>
           )}
         </TabsContent>
