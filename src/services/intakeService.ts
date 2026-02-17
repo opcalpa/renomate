@@ -303,6 +303,145 @@ export async function submitIntakeRequest(
 }
 
 // =============================================================================
+// GUIDED SETUP (self-service project creation)
+// =============================================================================
+
+/**
+ * Create a project directly from guided setup (self-service mode)
+ * This creates a project, rooms, and tasks without going through intake_request
+ *
+ * Task creation strategy:
+ * - Common work types: ONE task per work type, room_id = null, rooms listed in description
+ * - Room-specific work types: ONE task per work type per room, room_id = the room's id
+ */
+export async function createProjectFromGuidedSetup(
+  input: {
+    projectName: string;
+    address?: string;
+    postalCode?: string;
+    city?: string;
+    commonWorkTypes?: WorkType[];
+    rooms: IntakeRoom[];
+  },
+  creatorProfileId: string
+): Promise<{ projectId: string }> {
+  // 1. Create project
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .insert({
+      name: input.projectName,
+      owner_id: creatorProfileId,
+      address: input.address || null,
+      postal_code: input.postalCode || null,
+      city: input.city || null,
+      status: "planning",
+    })
+    .select("id")
+    .single();
+
+  if (projectError || !project) {
+    console.error("Failed to create project:", projectError);
+    throw new Error(projectError?.message || "Failed to create project");
+  }
+
+  // 2. Create rooms from guided setup data
+  const roomMapping = await createRoomsFromIntake(project.id, input.rooms);
+
+  // 3. Create common work tasks (ONE task per work type, applies to all rooms)
+  const roomNames = input.rooms.map(r => r.name);
+  if (input.commonWorkTypes && input.commonWorkTypes.length > 0) {
+    await createCommonWorkTasks(
+      project.id,
+      input.commonWorkTypes,
+      roomNames,
+      creatorProfileId
+    );
+  }
+
+  // 4. Create room-specific tasks (extra work beyond common work)
+  await createRoomSpecificTasks(project.id, input.rooms, roomMapping, creatorProfileId);
+
+  // 5. Mark onboarding step as complete
+  await supabase
+    .from("profiles")
+    .update({ onboarding_created_project: true })
+    .eq("id", creatorProfileId);
+
+  return { projectId: project.id };
+}
+
+/**
+ * Create ONE task per common work type (applies to whole apartment)
+ * These tasks have room_id = null but list rooms in the description
+ */
+async function createCommonWorkTasks(
+  projectId: string,
+  workTypes: WorkType[],
+  roomNames: string[],
+  creatorProfileId: string
+): Promise<void> {
+  const roomsText = roomNames.length > 0
+    ? `Rum: ${roomNames.join(", ")}`
+    : "";
+
+  for (const workType of workTypes) {
+    const { error } = await supabase.from("tasks").insert({
+      project_id: projectId,
+      room_id: null, // Not linked to specific room - applies to all
+      title: getWorkTypeLabel(workType),
+      description: roomsText,
+      status: "planned",
+      priority: "medium",
+      cost_center: workTypeToCostCenter(workType),
+      created_by_user_id: creatorProfileId,
+    });
+
+    if (error) {
+      console.error("Failed to create common work task:", error);
+    }
+  }
+}
+
+/**
+ * Create tasks for room-specific extra work
+ * These tasks have room_id set to the specific room
+ */
+async function createRoomSpecificTasks(
+  projectId: string,
+  rooms: IntakeRoom[],
+  roomMapping: Array<{ intakeRoomId: string; dbRoomId: string }>,
+  creatorProfileId: string
+): Promise<void> {
+  const roomIdMap = new Map(roomMapping.map((r) => [r.intakeRoomId, r.dbRoomId]));
+
+  for (const room of rooms) {
+    // Only create tasks for room-specific work_types (not common work)
+    if (room.work_types.length === 0) continue;
+
+    const dbRoomId = roomIdMap.get(room.id);
+
+    for (const workType of room.work_types) {
+      const taskTitle = `${getWorkTypeLabel(workType)} - ${room.name}`;
+
+      const { error } = await supabase.from("tasks").insert({
+        project_id: projectId,
+        room_id: dbRoomId || null,
+        title: taskTitle,
+        description: room.description,
+        status: "planned",
+        priority: room.priority === "high" ? "high" : room.priority === "low" ? "low" : "medium",
+        cost_center: workTypeToCostCenter(workType),
+        created_by_user_id: creatorProfileId,
+      });
+
+      if (error) {
+        console.error("Failed to create room-specific task:", error);
+      }
+    }
+  }
+}
+
+// =============================================================================
 // CONVERSION FUNCTIONS
 // =============================================================================
 
