@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ChevronDown, FolderOpen, Lock, BookOpen, Loader2, PartyPopper, X, Zap, FileText, LayoutGrid, MoreHorizontal } from "lucide-react";
 import { isDemoProject, refreshDemoProjectDates } from "@/services/demoProjectService";
+import { normalizeStatus, STATUS_META } from "@/lib/projectStatus";
 import { ProjectDetailSkeleton } from "@/components/ui/skeleton-screens";
 import { WithHotspot } from "@/components/onboarding/Hotspot";
 import { cn } from "@/lib/utils";
@@ -752,8 +753,8 @@ const ProjectDetail = () => {
   };
 
   const isDemo = project ? isDemoProject(project.project_type) : false;
-  // Show lead banner only if status is "lead" (quote not yet accepted)
-  const isLead = project?.status === "lead";
+  const projectStatus = normalizeStatus(project?.status);
+  const statusMeta = STATUS_META[projectStatus];
 
   const demoBannerContent = isDemo ? (
     <>
@@ -1021,39 +1022,13 @@ const ProjectDetail = () => {
             {demoBannerContent}
           </div>
         )}
-        {/* Lead project banner */}
-        {isLead && !isDemo && (
-          <div className="bg-amber-500 text-white px-4 py-2.5 flex flex-col sm:flex-row items-center justify-center gap-2 text-sm">
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              <span className="font-medium">{t("projectDetail.leadBanner")}</span>
-              <span className="text-white/80">– {t("projectDetail.leadBannerDescription")}</span>
-            </div>
-            <div className="flex items-center gap-2 mt-2 sm:mt-0 sm:ml-4">
-              <Button
-                size="sm"
-                variant="secondary"
-                className="h-7 text-xs bg-white/20 hover:bg-white/30 text-white border-0"
-                onClick={() => {
-                  setActiveTab('spaceplanner');
-                  setActiveSubTab('rooms');
-                }}
-              >
-                <LayoutGrid className="h-3 w-3 mr-1" />
-                {t("projectDetail.leadBannerExpand")}
-              </Button>
-              {leadQuoteId && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="h-7 text-xs bg-white/20 hover:bg-white/30 text-white border-0"
-                  onClick={() => navigate(`/quotes/${leadQuoteId}`)}
-                >
-                  <FileText className="h-3 w-3 mr-1" />
-                  {t("projectDetail.leadBannerQuote")}
-                </Button>
-              )}
-            </div>
+        {/* Project status badge strip */}
+        {!isDemo && projectStatus !== "active" && (
+          <div className="px-4 py-1.5 flex items-center justify-center gap-2 text-sm bg-muted/50 border-b">
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusMeta.color}`}>
+              {t(statusMeta.labelKey)}
+            </span>
+            <span className="text-muted-foreground text-xs">{t(statusMeta.descriptionKey)}</span>
           </div>
         )}
         </div>
@@ -1066,12 +1041,13 @@ const ProjectDetail = () => {
         </div>
       )}
 
-      {/* Lead banner in floorplan mode */}
-      {!isHeaderVisible && isLead && !isDemo && (
-        <div className="fixed top-14 left-0 right-0 z-[59] bg-amber-500 text-white px-4 py-2.5 flex items-center justify-center gap-2 text-sm">
-          <Zap className="h-4 w-4" />
-          <span className="font-medium">{t("projectDetail.leadBanner")}</span>
-          <span className="text-white/80">– {t("projectDetail.leadBannerDescription")}</span>
+      {/* Status badge in floorplan mode */}
+      {!isHeaderVisible && !isDemo && projectStatus !== "active" && (
+        <div className="fixed top-14 left-0 right-0 z-[59] bg-muted/90 backdrop-blur-sm border-b px-4 py-1.5 flex items-center justify-center gap-2 text-sm">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusMeta.color}`}>
+            {t(statusMeta.labelKey)}
+          </span>
+          <span className="text-muted-foreground text-xs">{t(statusMeta.descriptionKey)}</span>
         </div>
       )}
 

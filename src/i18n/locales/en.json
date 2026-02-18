@@ -3106,5 +3106,38 @@
       "unsupportedFileType": "File type not supported",
       "fileTooLarge": "File is too large (max 10MB)"
     }
+  },
+  "projectStatus": {
+    "planning": "Planning",
+    "planningDesc": "Setting up rooms and tasks",
+    "quoteCreated": "Quote ready",
+    "quoteCreatedDesc": "Quote created, ready to send",
+    "quoteSent": "Quote sent",
+    "quoteSentDesc": "Waiting for customer response",
+    "active": "In progress",
+    "activeDesc": "Work is underway",
+    "onHold": "On hold",
+    "onHoldDesc": "Project paused",
+    "completed": "Completed",
+    "completedDesc": "Project finished",
+    "cancelled": "Cancelled",
+    "cancelledDesc": "Project cancelled",
+    "changeStatus": "Change status",
+    "currentPhase": "Current phase",
+    "cta": {
+      "planningMessage": "Add tasks to define the scope of work.",
+      "addTasks": "Add tasks",
+      "generateQuote": "Generate quote",
+      "quoteCreatedMessage": "Your quote is ready. Review and send to customer.",
+      "sendToCustomer": "Send to customer",
+      "editQuote": "Edit quote",
+      "quoteSentMessage": "Quote sent. Waiting for customer response.",
+      "viewQuote": "View quote",
+      "sendReminder": "Send reminder",
+      "activeMessage": "Project is active. Track progress and manage tasks.",
+      "viewTasks": "View tasks",
+      "completedMessage": "Project completed. Export or archive.",
+      "exportProject": "Export project"
+    }
   }
 }

@@ -106,7 +106,7 @@ export function QuickQuoteDialog({ open, onOpenChange }: QuickQuoteDialogProps) 
           owner_id: profile.id,
           address: address.trim() || null,
           project_type: "lead",
-          status: "lead",
+          status: "planning",
         })
         .select()
         .single();

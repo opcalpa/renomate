@@ -3104,5 +3104,38 @@
       "unsupportedFileType": "Filtypen stöds inte",
       "fileTooLarge": "Filen är för stor (max 10MB)"
     }
+  },
+  "projectStatus": {
+    "planning": "Planering",
+    "planningDesc": "Lägger upp rum och uppgifter",
+    "quoteCreated": "Offert klar",
+    "quoteCreatedDesc": "Offert skapad, redo att skicka",
+    "quoteSent": "Offert skickad",
+    "quoteSentDesc": "Väntar på kundens svar",
+    "active": "Pågående",
+    "activeDesc": "Arbete pågår",
+    "onHold": "Pausat",
+    "onHoldDesc": "Projektet är pausat",
+    "completed": "Avslutat",
+    "completedDesc": "Projektet är klart",
+    "cancelled": "Avbrutet",
+    "cancelledDesc": "Projektet är avbrutet",
+    "changeStatus": "Ändra status",
+    "currentPhase": "Aktuell fas",
+    "cta": {
+      "planningMessage": "Lägg till uppgifter för att definiera arbetets omfattning.",
+      "addTasks": "Lägg till uppgifter",
+      "generateQuote": "Skapa offert",
+      "quoteCreatedMessage": "Din offert är redo. Granska och skicka till kund.",
+      "sendToCustomer": "Skicka till kund",
+      "editQuote": "Redigera offert",
+      "quoteSentMessage": "Offert skickad. Väntar på kundens svar.",
+      "viewQuote": "Visa offert",
+      "sendReminder": "Skicka påminnelse",
+      "activeMessage": "Projektet är aktivt. Följ framsteg och hantera uppgifter.",
+      "viewTasks": "Visa uppgifter",
+      "completedMessage": "Projektet är klart. Exportera eller arkivera.",
+      "exportProject": "Exportera projekt"
+    }
   }
 }

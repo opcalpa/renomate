@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings2, Receipt, FileText, Mail, MessageSquare, ChevronDown } from "lucide-react";
+import { Settings2, Receipt, FileText, Mail, MessageSquare, ChevronDown, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useOverviewData } from "./overview/useOverviewData";
 import { PulseCards } from "./overview/PulseCards";
@@ -23,6 +23,7 @@ import { SendCustomerFormDialog } from "./SendCustomerFormDialog";
 import { ProjectLockBanner } from "./ProjectLockBanner";
 import { useProjectLock } from "@/hooks/useProjectLock";
 import { CommentsSection } from "@/components/comments/CommentsSection";
+import { ProjectStatusCTA } from "./overview/ProjectStatusCTA";
 import type { OverviewProject, OverviewNavigation } from "./overview/types";
 import type { FeedComment } from "./feed/types";
 
@@ -85,6 +86,18 @@ const OverviewTab = ({
   return (
     <div className="space-y-6">
       <ProjectLockBanner lockStatus={lockStatus} />
+
+      {/* Status-driven CTA — guides the contractor to the next action */}
+      {!isHomeowner && (
+        <ProjectStatusCTA
+          status={project.status}
+          taskCount={taskStats.total}
+          currency={project.currency}
+          onNavigateToTasks={() => onNavigateToTasks?.()}
+          onCreateQuote={() => setQuoteDialogOpen(true)}
+          onViewQuote={() => setQuoteDialogOpen(true)}
+        />
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-semibold">{t("overview.projectOverview")}</h2>

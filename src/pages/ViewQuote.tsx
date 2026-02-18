@@ -182,10 +182,10 @@ export default function ViewQuote() {
       .eq("id", quote.project_id)
       .single();
 
-    if (project && (project.project_type === "lead" || project.status === "lead")) {
+    if (project) {
       await supabase
         .from("projects")
-        .update({ status: "planning" })
+        .update({ status: "active" })
         .eq("id", quote.project_id);
     }
 

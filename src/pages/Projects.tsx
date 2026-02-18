@@ -35,6 +35,7 @@ import { GuidedSetupWizard } from "@/components/onboarding/GuidedSetupWizard";
 import { WithHotspot } from "@/components/onboarding/Hotspot";
 import { PageLoadingSkeleton } from "@/components/ui/skeleton-screens";
 import { isDemoProject } from "@/services/demoProjectService";
+import { normalizeStatus, STATUS_META } from "@/lib/projectStatus";
 import { LeadsPipelineSection } from "@/components/pipeline";
 import { GuestBanner } from "@/components/guest";
 import {
@@ -205,7 +206,7 @@ const Projects = () => {
         const guestProject = saveGuestProject({
           name: newProjectName,
           description: newProjectDescription || null,
-          status: "active",
+          status: "planning",
           address: newProjectAddress || null,
           postal_code: newProjectPostalCode || null,
           city: newProjectCity || null,
@@ -856,11 +857,12 @@ const Projects = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => {
               const isDemo = isDemoProject(project.project_type);
-              const isLead = project.project_type === "lead";
+              const projectStatus = normalizeStatus(project.status);
+              const statusMeta = STATUS_META[projectStatus];
               return (
                 <Card
                   key={project.id}
-                  className={`cursor-pointer card-elevated overflow-hidden ${isDemo ? 'ring-2 ring-primary/30' : ''} ${isLead ? 'ring-2 ring-amber-400/50' : ''}`}
+                  className={`cursor-pointer card-elevated overflow-hidden ${isDemo ? 'ring-2 ring-primary/30' : ''}`}
                   onClick={() => navigate(`/projects/${project.id}`)}
                 >
                   {isDemo && (
@@ -868,13 +870,6 @@ const Projects = () => {
                       <BookOpen className="h-4 w-4" />
                       <span>Demo</span>
                       <span className="text-primary-foreground/70 font-normal">– {t("demoProject.description")}</span>
-                    </div>
-                  )}
-                  {isLead && !isDemo && (
-                    <div className="bg-amber-500 text-white px-4 py-2 flex items-center gap-2 text-sm font-medium">
-                      <Zap className="h-4 w-4" />
-                      <span>Lead</span>
-                      <span className="text-white/70 font-normal">– {t("projects.leadDescription")}</span>
                     </div>
                   )}
                   <CardHeader>
@@ -932,9 +927,11 @@ const Projects = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <span className="capitalize">{project.status}</span>
-                        <span className="mx-2">•</span>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusMeta.color}`}>
+                          {t(statusMeta.labelKey)}
+                        </span>
+                        <span>•</span>
                         <span>
                           {new Date(project.created_at).toLocaleDateString()}
                         </span>
