@@ -1482,7 +1482,7 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
         </Dialog>
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] h-[90vh] flex flex-col p-0">
+          <DialogContent className="max-w-4xl max-h-[90vh] h-[90vh] flex flex-col p-0">
             <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-2">
               <DialogTitle>{t('tasks.editTask')}</DialogTitle>
               <DialogDescription>
