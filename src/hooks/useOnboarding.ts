@@ -4,6 +4,8 @@ import { triggerConfetti } from "@/lib/confetti";
 
 export type StepKey =
   | "project"
+  | "reviewRooms"
+  | "inviteTeam"
   | "enterCanvas"
   | "drawRoom"
   | "generateWalls"
@@ -80,35 +82,26 @@ function getStepsConfig(userType: string | null): StepConfig[] {
         hotspotId: "create-project",
       },
       {
+        key: "reviewRooms",
+        dbField: "onboarding_reviewed_rooms",
+        labelKey: "onboarding.steps.reviewRooms.label",
+        instructionKey: "onboarding.steps.reviewRooms.instruction",
+      },
+      {
+        key: "inviteTeam",
+        dbField: "onboarding_invited_team",
+        labelKey: "onboarding.steps.inviteTeam.label",
+        instructionKey: "onboarding.steps.inviteTeam.instruction",
+        hotspotId: "invite-team",
+        optional: true,
+      },
+      {
         key: "enterCanvas",
         dbField: "onboarding_entered_canvas",
         labelKey: "onboarding.steps.enterCanvas.label",
         instructionKey: "onboarding.steps.enterCanvas.instruction",
         hotspotId: "canvas-tab",
-      },
-      {
-        key: "drawRoom",
-        dbField: "onboarding_drawn_room",
-        labelKey: "onboarding.steps.drawRoom.label",
-        instructionKey: "onboarding.steps.drawRoom.instruction",
-        hotspotId: "room-tool",
-        canvasHintKey: "onboarding.steps.drawRoom.canvasHint",
-      },
-      {
-        key: "generateWalls",
-        dbField: "onboarding_generated_walls",
-        labelKey: "onboarding.steps.generateWalls.label",
-        instructionKey: "onboarding.steps.generateWalls.instruction",
-        hotspotId: "generate-walls",
-        canvasHintKey: "onboarding.steps.generateWalls.canvasHint",
         optional: true,
-      },
-      {
-        key: "taskWithRoom",
-        dbField: "onboarding_created_task_room",
-        labelKey: "onboarding.steps.taskWithRoom.label",
-        instructionKey: "onboarding.steps.taskWithRoom.instruction",
-        hotspotId: "create-task",
       },
     ];
   }
@@ -150,6 +143,8 @@ function getStepsConfig(userType: string | null): StepConfig[] {
 const STEP_DB_FIELDS: Record<StepKey, string> = {
   profile: "onboarding_completed_profile",
   project: "onboarding_created_project",
+  reviewRooms: "onboarding_reviewed_rooms",
+  inviteTeam: "onboarding_invited_team",
   enterCanvas: "onboarding_entered_canvas",
   drawRoom: "onboarding_drawn_room",
   generateWalls: "onboarding_generated_walls",
@@ -236,6 +231,8 @@ export function useOnboarding(): OnboardingState {
       // Build completion map
       const completionMap: Record<StepKey, boolean> = {
         project: hasProject || (profile.onboarding_created_project ?? false),
+        reviewRooms: (profile as Record<string, unknown>).onboarding_reviewed_rooms as boolean ?? false,
+        inviteTeam: (profile as Record<string, unknown>).onboarding_invited_team as boolean ?? false,
         enterCanvas: profile.onboarding_entered_canvas ?? false,
         drawRoom: hasRoom || (profile.onboarding_drawn_room ?? false),
         generateWalls: profile.onboarding_generated_walls ?? false,

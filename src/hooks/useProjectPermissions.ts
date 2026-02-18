@@ -32,12 +32,13 @@ const ALL_EDIT: Omit<ProjectPermissions, "loading"> = {
   spacePlanner: "edit",
   purchases: "edit",
   purchasesScope: "all",
-  budget: "view",
+  budget: "edit",
   files: "edit",
   teams: "invite",
 };
 
 // View-only permissions for demo project (non-admin users)
+// Note: budget is "edit" to showcase full features in demo
 const DEMO_VIEW_ONLY: Omit<ProjectPermissions, "loading"> = {
   isOwner: false,
   isSystemAdmin: false,
@@ -49,7 +50,7 @@ const DEMO_VIEW_ONLY: Omit<ProjectPermissions, "loading"> = {
   spacePlanner: "view",
   purchases: "view",
   purchasesScope: "all",
-  budget: "view",
+  budget: "edit",
   files: "view",
   teams: "none",
 };
@@ -119,23 +120,21 @@ export function useProjectPermissions(projectId: string | undefined): ProjectPer
 
       const isDemo = isDemoProject(project.project_type);
 
-      // Demo project: only system admin can edit, others get view-only
-      if (isDemo) {
-        if (isAdmin) {
-          setPerms({ ...ALL_EDIT, isSystemAdmin: true, isDemoProject: true });
-        } else {
-          setPerms(DEMO_VIEW_ONLY);
-        }
+      // System admin gets full access everywhere
+      if (isAdmin) {
+        setPerms({ ...ALL_EDIT, isSystemAdmin: true, isDemoProject: isDemo });
         setLoading(false);
         return;
       }
 
+      // Owner gets full access
       if (project.owner_id === profile.id) {
-        setPerms({ ...ALL_EDIT, isSystemAdmin: isAdmin });
+        setPerms({ ...ALL_EDIT, isSystemAdmin: false, isDemoProject: isDemo });
         setLoading(false);
         return;
       }
 
+      // Check for project_shares (works for both demo and regular projects)
       const { data: share } = await supabase
         .from("project_shares")
         .select("overview_access, timeline_access, tasks_access, tasks_scope, space_planner_access, purchases_access, purchases_scope, budget_access, files_access, teams_access")
@@ -145,11 +144,12 @@ export function useProjectPermissions(projectId: string | undefined): ProjectPer
 
       if (cancelled) return;
 
-      if (!share) {
-        setPerms(ALL_NONE);
-      } else {
+      if (share) {
+        // User is invited - use their share permissions
         setPerms({
           isOwner: false,
+          isSystemAdmin: false,
+          isDemoProject: isDemo,
           overview: share.overview_access || "none",
           timeline: share.timeline_access || "none",
           tasks: share.tasks_access || "none",
@@ -161,6 +161,12 @@ export function useProjectPermissions(projectId: string | undefined): ProjectPer
           files: share.files_access || "none",
           teams: share.teams_access || "none",
         });
+      } else if (isDemo) {
+        // Demo project without invite - view only
+        setPerms(DEMO_VIEW_ONLY);
+      } else {
+        // Regular project without invite - no access
+        setPerms(ALL_NONE);
       }
 
       setLoading(false);

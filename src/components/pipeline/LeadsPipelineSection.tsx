@@ -14,9 +14,16 @@ import type { IntakeRequest } from "@/services/intakeService";
 
 interface LeadsPipelineSectionProps {
   onRefetch?: () => void;
+  userType?: string | null;
 }
 
-export function LeadsPipelineSection({ onRefetch }: LeadsPipelineSectionProps) {
+export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSectionProps) {
+  // Hide pipeline for homeowners - they receive quotes, not create them
+  // Full homeowner view will be implemented in a future phase
+  if (userType === "homeowner") {
+    return null;
+  }
+
   const { t } = useTranslation();
   const { data, intakeRequests, quotes, refetch } = useLeadsPipelineData();
 

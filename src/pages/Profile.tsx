@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Loader2, Save, BadgeCheck, Eye, ShieldCheck, Plus, X, Download } from "lucide-react";
+import { Loader2, Save, BadgeCheck, Eye, ShieldCheck, Plus, X, Download, Home, Wrench } from "lucide-react";
 import { downloadUserDataAsJson } from "@/services/dataExportService";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CERTIFICATION_PRESETS } from "@/lib/professionalCertifications";
@@ -71,6 +71,9 @@ const Profile = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  // User type from onboarding
+  const [userType, setUserType] = useState<"homeowner" | "contractor" | null>(null);
+
   // Professional profile fields
   const [isProfessional, setIsProfessional] = useState(false);
   const [companyName, setCompanyName] = useState("");
@@ -113,6 +116,7 @@ const Profile = () => {
       setName(data.name || "");
       setPhone(data.phone || "");
       setLanguagePreference(data.language_preference || "en");
+      setUserType(data.onboarding_user_type || null);
       setIsProfessional(data.is_professional || false);
       setCompanyName(data.company_name || "");
       setContractorCategory(data.contractor_category || "");
@@ -174,6 +178,7 @@ const Profile = () => {
         name,
         phone,
         language_preference: languagePreference,
+        onboarding_user_type: userType,
         is_professional: isProfessional,
         company_name: isProfessional ? companyName : null,
         contractor_category: isProfessional ? contractorCategory : null,
@@ -389,6 +394,58 @@ const Profile = () => {
                     </SelectContent>
                   </Select>
                 </div>
+            </CardContent>
+          </Card>
+
+          {/* Account Type */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('profile.accountType')}</CardTitle>
+              <CardDescription>
+                {t('profile.accountTypeDescription')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setUserType("homeowner")}
+                  className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${
+                    userType === "homeowner"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                    userType === "homeowner" ? "bg-primary/10" : "bg-muted"
+                  }`}>
+                    <Home className={`h-5 w-5 ${userType === "homeowner" ? "text-primary" : "text-muted-foreground"}`} />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-sm">{t('welcome.homeowner')}</p>
+                    <p className="text-xs text-muted-foreground">{t('profile.homeownerShort')}</p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUserType("contractor")}
+                  className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${
+                    userType === "contractor"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                    userType === "contractor" ? "bg-primary/10" : "bg-muted"
+                  }`}>
+                    <Wrench className={`h-5 w-5 ${userType === "contractor" ? "text-primary" : "text-muted-foreground"}`} />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-sm">{t('welcome.contractor')}</p>
+                    <p className="text-xs text-muted-foreground">{t('profile.contractorShort')}</p>
+                  </div>
+                </button>
+              </div>
             </CardContent>
           </Card>
 

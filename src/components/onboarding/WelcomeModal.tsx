@@ -10,12 +10,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Home, Wrench, Loader2, ArrowLeft, ChevronDown, Plus, FileText, Compass } from "lucide-react";
+import { Home, Wrench, Loader2, ArrowLeft, ChevronDown, Plus, FileText, Eye, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type UserType = "homeowner" | "contractor";
 type Step = "language" | "userType" | "getStarted";
-export type QuickStartChoice = "blank" | "import" | "explore";
+export type QuickStartChoice = "guided" | "import" | "blank" | "explore";
 
 // Primary languages shown by default (most common in Nordic construction)
 const PRIMARY_LANGUAGES = [
@@ -92,11 +92,14 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
 
     setSaving(true);
     try {
-      // Save user type but don't mark onboarding as complete yet
+      // Save user type and auto-enable professional listing for contractors
       const { error } = await supabase
         .from("profiles")
         .update({
           onboarding_user_type: selectedType,
+          // Auto-enable "Find Professionals" listing for contractors
+          // They can disable it later in profile settings if they don't want to be searchable
+          ...(selectedType === "contractor" ? { is_professional: true } : {}),
         })
         .eq("id", profileId);
 
@@ -314,23 +317,28 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
             </DialogHeader>
 
             <div className="flex flex-col gap-3 py-4">
-              {/* Create blank project */}
+              {/* Guided setup - RECOMMENDED */}
               <button
-                onClick={() => handleQuickStartChoice("blank")}
+                onClick={() => handleQuickStartChoice("guided")}
                 disabled={saving}
                 className={cn(
-                  "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                  "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left relative",
                   "hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98]",
-                  "border-border"
+                  "border-primary/30 bg-primary/5"
                 )}
               >
+                <div className="absolute -top-2 right-3">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary text-primary-foreground">
+                    {t("welcome.recommended", "Recommended")}
+                  </span>
+                </div>
                 <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Plus className="h-6 w-6 text-primary" />
+                  <MessageSquare className="h-6 w-6 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium text-base">{t("welcome.createBlankProject", "Create new project")}</p>
+                  <p className="font-medium text-base">{t("welcome.guidedSetup", "Guide me step by step")}</p>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    {t("welcome.createBlankProjectDesc", "Start fresh and add rooms & tasks manually")}
+                    {t("welcome.guidedSetupDesc", "Answer a few questions about your renovation")}
                   </p>
                 </div>
               </button>
@@ -349,9 +357,30 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
                   <FileText className="h-6 w-6 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium text-base">{t("welcome.importFromDocument", "Import from document")}</p>
+                  <p className="font-medium text-base">{t("welcome.importDocument", "I have a document")}</p>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    {t("welcome.importFromDocumentDesc", "Upload a PDF or text file and let AI create rooms & tasks")}
+                    {t("welcome.importDocumentDesc", "Upload a quote or description for AI extraction")}
+                  </p>
+                </div>
+              </button>
+
+              {/* Create blank project */}
+              <button
+                onClick={() => handleQuickStartChoice("blank")}
+                disabled={saving}
+                className={cn(
+                  "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                  "hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98]",
+                  "border-border"
+                )}
+              >
+                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                  <Plus className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-base">{t("welcome.blankProject", "Empty project")}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {t("welcome.blankProjectDesc", "Start from scratch manually")}
                   </p>
                 </div>
               </button>
@@ -367,12 +396,12 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
                 )}
               >
                 <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                  <Compass className="h-6 w-6 text-muted-foreground" />
+                  <Eye className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium text-base">{t("welcome.exploreFirst", "Explore first")}</p>
+                  <p className="font-medium text-base">{t("welcome.exploreDemo", "Explore first")}</p>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    {t("welcome.exploreFirstDesc", "Check out the example project to learn how it works")}
+                    {t("welcome.exploreDemoDesc", "See how it works with a demo project")}
                   </p>
                 </div>
               </button>
