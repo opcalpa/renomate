@@ -4,7 +4,6 @@ import {
   Layers,
   Square,
   Zap,
-  BarChart3,
   Image as ImageIcon,
   ClipboardList,
   ShoppingCart,
@@ -20,11 +19,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { VisionSection } from "./sections/VisionSection";
+import { InternalNotesSection } from "./sections/InternalNotesSection";
 import { IdentitySection } from "./sections/IdentitySection";
 import { HorizontalSection } from "./sections/HorizontalSection";
 import { VerticalSection } from "./sections/VerticalSection";
 import { TechnicalSection } from "./sections/TechnicalSection";
-import { SmartDataSection } from "./sections/SmartDataSection";
 import { QuickInfoSection } from "./sections/QuickInfoSection";
 import { SpecSummarySection } from "./sections/SpecSummarySection";
 import { CanvasSettingsPopover } from "./CanvasSettingsPopover";
@@ -120,10 +119,32 @@ export function RoomDetailForm({
         </div>
       </div>
 
-      {/* 1. Vision/Description - ALWAYS visible and prominent */}
+      {/* 1. Client requirements - ALWAYS visible and prominent */}
       <VisionSection formData={formData} updateFormData={updateFormData} />
 
-      {/* 2. Related Tasks - High priority for project managers */}
+      {/* 2. Specification Summary - Quick overview of what's been specified */}
+      <SpecSummarySection
+        formData={formData}
+        onExpandSection={handleExpandSection}
+      />
+
+      {/* 3. Photos - Visual documentation for the room */}
+      {!isNewRoom && (
+        <div className="border rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <ImageIcon className="h-4 w-4 text-pink-600" />
+            <span className="font-medium text-sm">
+              {t("rooms.photos", "Foton")}
+            </span>
+          </div>
+          <PhotoSection roomId={room!.id} />
+        </div>
+      )}
+
+      {/* 4. Internal notes - For builders/project managers */}
+      <InternalNotesSection formData={formData} updateFormData={updateFormData} />
+
+      {/* 5. Related Tasks - High priority for project managers */}
       {!isNewRoom && (
         <div className="border rounded-lg">
           <button
@@ -151,7 +172,7 @@ export function RoomDetailForm({
         </div>
       )}
 
-      {/* 3. Related Purchases - Right after tasks for consistency */}
+      {/* 6. Related Purchases - Right after tasks for consistency */}
       {!isNewRoom && (
         <div className="border rounded-lg">
           <button
@@ -179,13 +200,7 @@ export function RoomDetailForm({
         </div>
       )}
 
-      {/* 4. Specification Summary - Quick overview of what's filled */}
-      <SpecSummarySection
-        formData={formData}
-        onExpandSection={handleExpandSection}
-      />
-
-      {/* 5. Quick Info - Material estimates */}
+      {/* 7. Material estimates - Auto-calculated values */}
       <QuickInfoSection
         formData={formData}
         updateFormData={updateFormData}
@@ -193,7 +208,7 @@ export function RoomDetailForm({
         perimeterMm={perimeterMm}
       />
 
-      {/* 6. Detailed Accordion sections */}
+      {/* 8. Detailed Accordion sections */}
       <Accordion
         type="multiple"
         value={openSections}
@@ -294,50 +309,18 @@ export function RoomDetailForm({
           </AccordionContent>
         </AccordionItem>
 
-        {/* Section: Project Data */}
-        <AccordionItem value="project-data" data-section="project-data">
-          <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center justify-between w-full pr-2">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-purple-600" />
-                <span>{t("rooms.projectData", "Projektdata")}</span>
-              </div>
-              <FilledIndicator
-                filled={filledCounts.projectData.filled}
-                total={filledCounts.projectData.total}
-              />
-            </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <SmartDataSection
-              formData={formData}
-              updateFormData={updateFormData}
-              updateSpec={updateSpec}
-            />
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* Section: Media & Comments - only for existing rooms */}
-        {!isNewRoom && (
-          <AccordionItem value="media" data-section="media">
-            <AccordionTrigger className="hover:no-underline">
-              <div className="flex items-center gap-2">
-                <ImageIcon className="h-4 w-4 text-pink-600" />
-                <span>{t("rooms.mediaAndComments", "Media & Kommentarer")}</span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <PhotoSection roomId={room!.id} />
-              <div className="border-t my-4" />
-              <CommentsSection
-                entityId={room!.id}
-                entityType="room"
-                projectId={projectId}
-              />
-            </AccordionContent>
-          </AccordionItem>
-        )}
       </Accordion>
+
+      {/* 9. Comments Section - Standalone at bottom for discussion */}
+      {!isNewRoom && (
+        <div className="border rounded-lg p-4">
+          <CommentsSection
+            entityId={room!.id}
+            entityType="room"
+            projectId={projectId}
+          />
+        </div>
+      )}
     </div>
   );
 }

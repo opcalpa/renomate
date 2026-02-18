@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Home, Ruler, Calendar } from "lucide-react";
+import { Home, Ruler, Calendar, AlertTriangle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,6 +13,7 @@ import { ComboboxFretext } from "../fields/ComboboxFretext";
 import {
   ROOM_NAME_SUGGESTION_KEYS,
   ROOM_STATUS_OPTIONS,
+  PRIORITY_OPTIONS,
 } from "../constants";
 import type { IdentitySectionProps } from "../types";
 
@@ -59,24 +60,50 @@ export function IdentitySection({
         />
       </div>
 
-      {/* Status */}
-      <div className="space-y-2">
-        <Label htmlFor="room-status">{t('rooms.status')}</Label>
-        <Select
-          value={formData.status}
-          onValueChange={(value) => updateFormData({ status: value })}
-        >
-          <SelectTrigger id="room-status">
-            <SelectValue placeholder={t('identitySection.selectStatus')} />
-          </SelectTrigger>
-          <SelectContent>
-            {ROOM_STATUS_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {t(option.labelKey)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Status and Priority side by side */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Status */}
+        <div className="space-y-2">
+          <Label htmlFor="room-status">{t('rooms.status')}</Label>
+          <Select
+            value={formData.status}
+            onValueChange={(value) => updateFormData({ status: value })}
+          >
+            <SelectTrigger id="room-status">
+              <SelectValue placeholder={t('identitySection.selectStatus')} />
+            </SelectTrigger>
+            <SelectContent>
+              {ROOM_STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {t(option.labelKey)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Priority */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-gray-600" />
+            <Label htmlFor="room-priority">{t("rooms.priority")}</Label>
+          </div>
+          <Select
+            value={formData.priority}
+            onValueChange={(value) => updateFormData({ priority: value })}
+          >
+            <SelectTrigger id="room-priority">
+              <SelectValue placeholder={t("rooms.selectPriority", "Välj prioritet")} />
+            </SelectTrigger>
+            <SelectContent>
+              {PRIORITY_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {t(option.labelKey)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Area (read-only) */}

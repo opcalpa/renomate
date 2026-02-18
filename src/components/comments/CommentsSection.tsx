@@ -15,6 +15,7 @@ interface Comment {
   content: string;
   created_at: string;
   created_by_user_id: string;
+  author_display_name?: string;
   creator: {
     name: string;
     email: string;
@@ -148,7 +149,10 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
 
     for (const image of selectedImages) {
       const fileName = `${Date.now()}-${image.name}`;
-      const filePath = `comment-images/${fileName}`;
+      // Use projects/{projectId}/comment-images/ path for RLS policy compatibility
+      const filePath = projectId
+        ? `projects/${projectId}/comment-images/${fileName}`
+        : `comment-images/${fileName}`;
 
       const { data, error } = await supabase.storage
         .from('project-files')
@@ -300,6 +304,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
           images,
           created_at,
           created_by_user_id,
+          author_display_name,
           creator:profiles(name, email),
           mentions:comment_mentions(
             mentioned_user_id,
@@ -546,7 +551,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
                       }`}
                     >
                       {!isOwn && (
-                        <p className="text-xs font-medium mb-0.5 opacity-70">{comment.creator?.name}</p>
+                        <p className="text-xs font-medium mb-0.5 opacity-70">{comment.author_display_name || comment.creator?.name}</p>
                       )}
                       <p className="whitespace-pre-wrap break-words">
                         {getTranslatedContent(comment.id, comment.content)}
@@ -700,12 +705,12 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
             <div key={comment.id} className="flex gap-3 group">
               <Avatar className="h-8 w-8 flex-shrink-0">
                 <AvatarFallback className="text-xs">
-                  {comment.creator?.name?.charAt(0) || '?'}
+                  {(comment.author_display_name || comment.creator?.name)?.charAt(0) || '?'}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{comment.creator?.name}</span>
+                  <span className="text-sm font-medium">{comment.author_display_name || comment.creator?.name}</span>
                   <span className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(comment.created_at), {
                       addSuffix: true,
@@ -810,8 +815,8 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1">
             <input
               ref={fileInputRef}
               type="file"
@@ -849,14 +854,12 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
               <Camera className="h-3 w-3 mr-1" />
               {t('comments.addImage')}
             </Button>
-            <span className="text-xs text-muted-foreground">
-              {t('comments.cmdEnterToPost')}
-            </span>
           </div>
           <Button
             onClick={handlePostComment}
             disabled={posting || !newComment.trim()}
             size="sm"
+            title={t('comments.cmdEnterToPost')}
           >
             {posting ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />

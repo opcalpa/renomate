@@ -20,14 +20,15 @@ export function countFilledFields(formData: RoomFormData) {
     return { filled, total: keys.length };
   };
 
-  // Identity section: name, status, ceiling_height_mm (area is readonly)
+  // Identity section: name, status, priority, ceiling_height_mm (area is readonly)
   const identity = {
     filled: [
       formData.name,
       formData.status,
+      formData.priority && formData.priority !== "medium" ? formData.priority : null,
       formData.ceiling_height_mm,
     ].filter((v) => v !== undefined && v !== null && v !== "").length,
-    total: 3,
+    total: 4,
   };
 
   // Floor & Ceiling section
@@ -66,20 +67,11 @@ export function countFilledFields(formData: RoomFormData) {
     total: electricalFields.total + heatingFields.total,
   };
 
-  // Project data section: priority, links
-  const projectData = {
-    filled: [formData.priority, formData.links].filter(
-      (v) => v !== undefined && v !== null && v !== "" && v !== "medium"
-    ).length,
-    total: 2,
-  };
-
   return {
     identity,
     floorCeiling,
     wallsJoinery,
     electricalHeating,
-    projectData,
   };
 }
 
