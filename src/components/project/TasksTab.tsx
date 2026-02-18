@@ -87,6 +87,7 @@ interface TaskDependency {
 interface TasksTabProps {
   projectId: string;
   projectName?: string;
+  projectStatus?: string | null;
   tasksScope?: 'all' | 'assigned';
   openEntityId?: string | null;
   onEntityOpened?: () => void;
@@ -95,8 +96,9 @@ interface TasksTabProps {
   currency?: string | null;
 }
 
-const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, onEntityOpened, onNavigateToRoom, showTimeline = true, currency }: TasksTabProps) => {
+const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', openEntityId, onEntityOpened, onNavigateToRoom, showTimeline = true, currency }: TasksTabProps) => {
   const { t } = useTranslation();
+  const isPlanning = projectStatus === "planning";
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -1510,11 +1512,13 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
                     rows={3}
                   />
                 </div>
+                {/* Status, Priority, Assignee — hidden in planning phase */}
+                {!isPlanning && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-task-status">{t('tasks.status')}</Label>
-                    <Select 
-                      value={editingTask.status} 
+                    <Select
+                      value={editingTask.status}
                       onValueChange={(value) => setEditingTask({ ...editingTask, status: value })}
                     >
                       <SelectTrigger>
@@ -1532,8 +1536,8 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="edit-task-priority">{t('tasks.priority')}</Label>
-                    <Select 
-                      value={editingTask.priority} 
+                    <Select
+                      value={editingTask.priority}
                       onValueChange={(value) => setEditingTask({ ...editingTask, priority: value })}
                     >
                       <SelectTrigger>
@@ -1550,10 +1554,10 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
                     <Label htmlFor="edit-task-assignee">{t('tasks.assignTo')}</Label>
                     <Select
                       value={editingTask.assigned_to_stakeholder_id || "unassigned"}
-                      onValueChange={(value) => 
-                        setEditingTask({ 
-                          ...editingTask, 
-                          assigned_to_stakeholder_id: value === "unassigned" ? null : value 
+                      onValueChange={(value) =>
+                        setEditingTask({
+                          ...editingTask,
+                          assigned_to_stakeholder_id: value === "unassigned" ? null : value
                         })
                       }
                     >
@@ -1571,6 +1575,10 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
                     </Select>
                   </div>
                 </div>
+                )}
+                {/* Progress, Dates — hidden in planning phase */}
+                {!isPlanning && (
+                <>
                 <div className="space-y-2">
                   <Label htmlFor="edit-task-progress">{t('tasks.progress')}: {editingTask.progress}%</Label>
                   <Slider
@@ -1601,6 +1609,8 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
                     />
                   </div>
                 </div>
+                </>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="edit-task-room">{t('tasks.room')}</Label>
                   <div className="flex gap-2">
@@ -1642,7 +1652,7 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
                     )}
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className={`grid gap-4 ${isPlanning ? 'grid-cols-1' : 'grid-cols-3'}`}>
                   <div className="space-y-2">
                     <Label htmlFor="edit-task-budget">{t('tasks.budget')}</Label>
                     <Input
@@ -1654,6 +1664,8 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
                       onChange={(e) => setEditingTask({ ...editingTask, budget: e.target.value ? parseFloat(e.target.value) : null })}
                     />
                   </div>
+                  {!isPlanning && (
+                  <>
                   <div className="space-y-2">
                     <Label htmlFor="edit-task-ordered">{t('tasks.ordered')}</Label>
                     <Input
@@ -1676,8 +1688,10 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
                       onChange={(e) => setEditingTask({ ...editingTask, paid_amount: e.target.value ? parseFloat(e.target.value) : null })}
                     />
                   </div>
+                  </>
+                  )}
                 </div>
-                {editingTask.budget && (
+                {editingTask.budget && !isPlanning && (
                   <>
                     <div className="space-y-2">
                       <Label htmlFor="edit-task-payment-status">{t('tasks.paymentStatus')}</Label>
@@ -1704,6 +1718,9 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
                     </div>
                   </>
                 )}
+                {/* Advanced sections — hidden in planning phase */}
+                {!isPlanning && (
+                <>
                 <div className="space-y-2">
                   <Label>{t('tasks.costCentersMultiple')}</Label>
                   <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
@@ -2063,6 +2080,8 @@ const TasksTab = ({ projectId, projectName, tasksScope = 'all', openEntityId, on
                 {/* Comments */}
                 <Separator className="my-4" />
                 <CommentsSection taskId={editingTask.id} projectId={projectId} />
+                </>
+                )}
 
                 {/* Save Button at Bottom of Input Fields */}
                 <div className="pt-6 pb-4">

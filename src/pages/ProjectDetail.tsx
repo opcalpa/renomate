@@ -1188,6 +1188,7 @@ const ProjectDetail = () => {
               <TasksTab
                 projectId={project.id}
                 projectName={project.name}
+                projectStatus={project.status}
                 tasksScope={permissions.tasksScope as 'all' | 'assigned'}
                 openEntityId={activeTab === "tasks" ? openEntityId : null}
                 onEntityOpened={() => setOpenEntityId(null)}
