@@ -7,6 +7,7 @@
 DO $$
 DECLARE
   v_public_demo_id UUID := '00000000-0000-0000-0000-000000000001';
+  v_system_user_id UUID := '00000000-0000-0000-0000-000000000099'; -- Fixed ID for system user
   v_system_admin_profile_id UUID;
   v_room_ids UUID[] := ARRAY[]::UUID[];
   v_task_ids UUID[] := ARRAY[]::UUID[];
@@ -21,10 +22,46 @@ BEGIN
   WHERE u.email = 'carl.palmquist@gmail.com'
   LIMIT 1;
 
-  -- If no system admin found, use a fallback (the project will still work)
+  -- If no system admin found, create a system profile for demo ownership
   IF v_system_admin_profile_id IS NULL THEN
-    -- Create a placeholder profile ID (will be updated when admin logs in)
-    v_system_admin_profile_id := gen_random_uuid();
+    -- First check if system profile already exists
+    SELECT id INTO v_system_admin_profile_id FROM profiles WHERE user_id = v_system_user_id;
+
+    IF v_system_admin_profile_id IS NULL THEN
+      -- Create a special system user in auth.users first (minimal fields)
+      INSERT INTO auth.users (id, instance_id, aud, role, email, raw_app_meta_data, raw_user_meta_data, is_super_admin, created_at, updated_at, confirmation_token, email_change, email_change_token_new, recovery_token)
+      VALUES (
+        v_system_user_id,
+        '00000000-0000-0000-0000-000000000000',
+        'authenticated',
+        'authenticated',
+        'system@renomate.demo',
+        '{"provider":"email","providers":["email"]}'::jsonb,
+        '{"name":"Renomate Demo"}'::jsonb,
+        false,
+        now(),
+        now(),
+        '',
+        '',
+        '',
+        ''
+      )
+      ON CONFLICT (id) DO NOTHING;
+
+      -- Create the system profile
+      INSERT INTO profiles (id, user_id, name, email, role)
+      VALUES (
+        gen_random_uuid(),
+        v_system_user_id,
+        'Renomate Demo',
+        'system@renomate.demo',
+        'homeowner'
+      )
+      ON CONFLICT (user_id) DO NOTHING;
+
+      -- Get the profile ID
+      SELECT id INTO v_system_admin_profile_id FROM profiles WHERE user_id = v_system_user_id;
+    END IF;
   END IF;
 
   -- Disable activity triggers

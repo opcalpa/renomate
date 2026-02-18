@@ -13,3 +13,14 @@ ADD COLUMN IF NOT EXISTS purchases_access TEXT DEFAULT 'view',
 ADD COLUMN IF NOT EXISTS purchases_scope TEXT DEFAULT 'assigned',
 ADD COLUMN IF NOT EXISTS overview_access TEXT DEFAULT 'view',
 ADD COLUMN IF NOT EXISTS teams_access TEXT DEFAULT 'none';
+
+-- Also add granular permission columns to project_shares
+ALTER TABLE public.project_shares
+ADD COLUMN IF NOT EXISTS timeline_access TEXT DEFAULT 'view',
+ADD COLUMN IF NOT EXISTS tasks_access TEXT DEFAULT 'view',
+ADD COLUMN IF NOT EXISTS tasks_scope TEXT DEFAULT 'assigned',
+ADD COLUMN IF NOT EXISTS space_planner_access TEXT DEFAULT 'view',
+ADD COLUMN IF NOT EXISTS purchases_access TEXT DEFAULT 'view',
+ADD COLUMN IF NOT EXISTS purchases_scope TEXT DEFAULT 'assigned',
+ADD COLUMN IF NOT EXISTS overview_access TEXT DEFAULT 'view',
+ADD COLUMN IF NOT EXISTS teams_access TEXT DEFAULT 'none';
