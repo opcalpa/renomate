@@ -1,55 +1,75 @@
-# Sprint 2026-W07 (10-16 feb)
+# Sprint 2026-W08 (17-23 feb)
 
 ## Kontext
 
 - **Aktiva användare:** ~50 beta-testare
 - **Största feedback:** "Svårt att komma igång", "Appen känns komplex"
-- **Nyligen lanserat:** Mobile bottom nav, HelpBot med quick prompts, Tips-sida
-- **Teknisk status:** Inga kritiska buggar kända
+- **Nyligen lanserat:** Mobile bottom nav, HelpBot, Tips-sida, Landing page med screenshots, GuidedSetupWizard
+- **Teknisk status:** Inga kritiska buggar kända. Canvas växer ohållbart (5784 rader).
 
 ## Mål denna sprint
 
-Fokus: **Activation** — hjälp nya användare nå värde snabbare
+Fokus: **Teknisk hälsa** — efter verifiering visade det sig att UX-problemen redan var lösta. Nu fokuserar vi på teknikskuld som blockerar framtida utveckling.
 
-## CEO-beslut (2026-02-09, uppdaterad)
+## CEO-beslut (2026-02-17, VERIFIERAD)
 
-**Kontext:** Fyra specialister har loggat 20 kritiska fynd. Med begränsade resurser (1 utvecklare + AI) och 50 beta-testare fokuserar vi på: (1) stoppa säkerhetsläcka, (2) lösa största användarfeedback.
+**Kontext:** Grundlig kodverifiering genomförd. Specialist-rapporternas problem från 9-12 feb var till stor del REDAN LÖSTA. Prioriteringslistan nedan baseras på faktiskt nuläge, inte gamla rapporter.
 
-| Prio | Område | Ansvarig | Status | Insats | Varför nu |
-|------|--------|----------|--------|--------|-----------|
-| **1** | Guidad onboarding efter signup | UX | Ej påbörjad | Medium | Största användarfeedback: "Svårt att komma igång". Activation före retention. |
-| 2 | Tomma tillstånd med CTAs (Tasks, Purchases, Budget) | UX | Ej påbörjad | Liten | 1 dag/vy, hög effekt. Kompletterar onboarding. |
-| 3 | Breadcrumbs / kontextnavigering | UX | Ej påbörjad | Liten | Hjälper användare orientera sig. |
+### Verifierat: Redan implementerat ✅
 
-**AVSKRIVET:** Pinterest-säkerhet — INTE en risk. Appen använder oEmbed (publikt API utan nyckel), inte OAuth. Filen `pinterest.ts` är död kod som aldrig anropas.
+Följande var felaktigt listade som "att göra" men är redan klara:
+
+| Område | Bevis i kod |
+|--------|-------------|
+| Demo-banner | `ProjectDetail.tsx:758-762` |
+| Separerad onboarding för inbjudna | `invited_client` user type, `useOnboarding.ts:57-73` |
+| Välkomst-banner för inbjudna | `ProjectDetail.tsx:1091-1107` |
+| GuidedSetupWizard integration | `Projects.tsx:1001-1019` |
+| Empty states (Tasks, Purchases) | `TasksTab.tsx:2085-2098`, `PurchaseRequestsTab.tsx:915-924` |
+| Mobil-anpassad WelcomeModal | `grid-cols-2 sm:grid-cols-4`, touch targets |
+| Canvas-steg döljs på mobil | `CANVAS_DEPENDENT_STEPS` filtreras |
+| Offert → Tasks konvertering | `createTasksFromQuote()` körs vid godkännande |
+| Pinterest säkerhet | Använder oEmbed, OAuth-koden är inte aktiv |
+
+### Prioritetslista (VERIFIERAD)
+
+| Prio | Område | Status | Insats | Varför nu |
+|------|--------|--------|--------|-----------|
+| **1** | **UnifiedKonvaCanvas refaktorering** | 5784 rader (↑892 sedan rapport) | STOR | Blockerar underhåll. 10x över 500-radersgräns. |
+| **2** | **History-prestanda (immer.js)** | 21 JSON.parse/stringify | Medium | O(n) per edit. Lagg vid >500 shapes. |
+| **3** | **Aktivera OfflineIndicator** | Komponent finns, renderas aldrig | Liten | Snabb vinst, visar offline-status |
+| **4** | **Terminologi-pass sv.json** | Ej verifierat | Liten | Byggsvenska saknas enligt Platschef |
 
 ### Parkerat
 
 | Område | Väntar på | Varför parkerat |
 |--------|-----------|-----------------|
-| **Fullt offline-stöd** | Aktiva fältanvändare (>10 st) | 2-3 veckors arbete. Ingen av 50 testare har specifikt klagat på offline. Vi måste först bevisa att folk tar sig förbi onboarding. |
-| **Offline read-only (light)** | Sprint 2 (v.8-9) | Bra kompromiss från Platschefen. 3-5 dagars insats. Kommer direkt efter onboarding. |
-| **UnifiedKonvaCanvas-refaktorering** | Löpande | 4892 rader, 10x över gräns. Viktigt men blockerar inte användare. Arbeta inkrementellt 30min/dag. |
-| **Canvas snapping + live-mått** | >100 Canvas-användare | Arkitektens förslag korrekt, men 5+ dagars arbete för få användare. |
-| **Elevation-förbättringar** | Fler Canvas-användare | Låg användning idag. |
-| **Fliktomstrukturering (7→4)** | Kvalitativ user research | Stor insats (1 vecka), osäker effekt. Behöver intervjua användare först. |
-| **History-prestanda (immer.js)** | Projekt med >500 shapes | 8-12h insats. Ingen har rapporterat lagg ännu. |
-| **DB-index** | Prestandaproblem observeras | 2-4h insats. Ingen synlig långsamhet. |
-| **Betalningsintegration** | 100+ aktiva användare | Pre-revenue, för tidigt. |
+| **Fullt offline-stöd** | >10 aktiva fältanvändare | 2-3 veckors arbete. 0/50 har klagat specifikt. |
+| **Canvas snapping + live-mått** | >100 Canvas-användare | Stor insats för få användare. |
+| **Fliktomstrukturering (7→4)** | Kvalitativ user research | Stor insats, osäker effekt. |
+| **Betalningsintegration** | Activation >50%, Retention >40% | Pre-revenue. |
+| **Snabborder FAB** | Fler fältanvändare | Platschefens förslag, men ingen har efterfrågat. |
 
-### Svar till Platschefen
+### Godkända beslut
 
-**Fråga:** Ska offline-stöd prioriteras före onboarding?
+- **Stripe:** Godkänt som primär betalplattform för framtiden.
+- **Pinterest:** AVSKRIVET — oEmbed används, OAuth-kod är död.
+- **Offert → Projekt:** REDAN KLART — `createTasksFromQuote()` finns.
 
-**Svar:** Nej, men "offline read-only" är nästa sprint.
+### Lärdomar
 
-**Motivering:**
-1. 0/50 testare har klagat specifikt på offline
-2. 50/50 testare träffar onboarding — det är där vi tappar folk
-3. Vi kan inte mäta värdet av fältfunktioner om ingen tar sig förbi "vad gör jag nu?"
-4. Pinterest-säkerheten är en tickande bomb som måste fixas oavsett
+**VIKTIGT:** Innan nästa prioritering MÅSTE kodverifiering göras. Specialist-rapporter beskriver problem vid skrivtillfället, men kod utvecklas kontinuerligt. Verifiera alltid nuläge mot faktisk kod.
 
-**Kompromiss:** Offline read-only (casha ritningar + uppgiftslista) kommer i sprint 2 om onboarding-metrikerna förbättras. Det ger 80% av värdet med 20% av insatsen.
+### Mätetal
+
+| Metrik | Uppskattat nu | Mål denna sprint |
+|--------|---------------|------------------|
+| Signup → Första projekt (mobil) | ~30% | 50% |
+| Signup → Första projekt (desktop) | ~50% | 70% |
+| Onboarding completion rate | ~15% | 40% |
+| Demo-projekt öppnat | ~40% | 60% |
+
+**North Star:** Teknisk hälsa — minska canvas till <1500 rader innan nya features.
 
 ---
 
@@ -1160,17 +1180,29 @@ Denna checklista används för att mäta om produkten är redo för varje steg i
 
    **CEO-svar (2026-02-09):** JA. Gör hotfixen NU (5 min: dölj Pinterest-knappar i UI). Bygg sedan Edge Function denna vecka. Ta bort VITE_PINTEREST_CLIENT_SECRET från frontend.
 
+   **Uppdatering (2026-02-09):** AVSKRIVET — Pinterest använder oEmbed (publikt API utan nyckel), inte OAuth. Filen `pinterest.ts` är död kod som aldrig anropas. Ingen säkerhetsrisk.
+
+3. **CRO + CM (2026-02-12):** Strategisk retention page ("Discover"-flik) — viktig långsiktigt för att hålla användare engagerade mellan projektuppgifter. API-integrationsmöjligheter kartlagda (Boverket, SMHI, Pinterest, eventuellt Hemnet/Booli via partnerskap). **Rekommendation:** Parkera till Sprint 4+ (efter activation >50%, retention >40%). Om vi vill börja nu: minimal MVP med RSS + Tips + väder = 1 vecka. **Beslut önskas:** Parkera eller påbörja minimal version?
+
+   **CEO-svar (2026-02-17):** PARKERA till Sprint 4+. Fokus på activation först. Retention-features är meningslösa om folk aldrig kommer förbi onboarding.
+
+4. **CTO + CRO (2026-02-13):** Monetiseringsaktivering planerad — fullständig teknisk och kommersiell roadmap skapad nedan. **Rekommendation:** Börja Fas 0 (juridisk grund) och Fas 1 (databasschema) nu även om lansering är Sprint 8+. Stripe rekommenderas framför Klarna/Swish för SaaS-prenumerationer. **Beslut önskas:** Godkänn Stripe som primär betalplattform + påbörja Fas 0-1?
+
+   **CEO-svar (2026-02-17):** JA, Stripe godkänt som primär betalplattform. Påbörja Fas 0 (juridisk grund) i bakgrunden, men ingen aktiv utveckling förrän activation >50%.
+
 ### Öppna frågor
 
-1. **CRO + CM (2026-02-12):** Strategisk retention page ("Discover"-flik) — viktig långsiktigt för att hålla användare engagerade mellan projektuppgifter. API-integrationsmöjligheter kartlagda (Boverket, SMHI, Pinterest, eventuellt Hemnet/Booli via partnerskap). **Rekommendation:** Parkera till Sprint 4+ (efter activation >50%, retention >40%). Om vi vill börja nu: minimal MVP med RSS + Tips + väder = 1 vecka. **Beslut önskas:** Parkera eller påbörja minimal version?
+*Inga öppna frågor just nu. Alla har besvarats 2026-02-17.*
 
 ---
 
-## Nästa sprint-kandidater (Sprint 2, v.8-9)
+## Nästa sprint-kandidater (Sprint 3, v.9-10)
 
 | # | Område | Insats | Förutsättning |
 |---|--------|--------|---------------|
 | 1 | Offline read-only (casha ritningar + uppgifter) | 3-5 dagar | Onboarding klar |
+| 2 | Inbjuden hemägare — full anpassad vy | 5 dagar | Minimal separation klar |
+| 3 | Offert → Projekt konvertering | 3-5 dagar | Fler firmaägare |
 | 2 | Snabborder FAB (flytande knapp för materialrapport) | 3-5 dagar | - |
 | 3 | Breadcrumbs + kontextnavigering | 1-2 dagar | - |
 | 4 | Terminologi-pass (byggsvenska i sv.json) | 1 dag | - |
@@ -1989,3 +2021,426 @@ export const getPersonalizedFeed = async (user: User) => {
 **Prioritet:** Parkerad (Sprint 4+)
 **Förslag:** Logga API-listan som framtida roadmap. Börja med Tier 1 (myndighets-RSS) som "free wins" när activation är löst.
 **Insats:** Minimal nu (logga plan), 1 vecka för MVP senare
+
+---
+
+## MONETISERINGSPLAN — CTO + CRO GEMENSAM ANALYS (2026-02-13)
+
+### Bakgrund
+
+CEO vill planera för monetiseringsaktivering: teknisk implementation, triggers, compliance, paywall-design och värdeleverans efter betalning.
+
+### Revenue Readiness Check
+
+```
+Nuvarande:  STEG 1 (ACTIVATION) — pågående
+Monetarisering kräver: STEG 2 (RETENTION) med >40% weekly + STEG 3 triggers
+Estimerad timing: Sprint 8-10 (v.11-15)
+```
+
+**CRO-regel:** Monetarisera ALDRIG före retention är bevisad. Men infrastrukturen kan byggas parallellt.
+
+---
+
+## 1. BETALPLATTFORM — JÄMFÖRELSE
+
+### Rekommendation: **Stripe** (primär) + Swish/Klarna (komplement)
+
+| Kriterium | Stripe | Klarna | Swish | Autogiro |
+|-----------|--------|--------|-------|----------|
+| **SaaS-prenumerationer** | ✅ Inbyggt | ⚠️ Begränsat | ⚠️ Nytt (2024+) | ✅ Fungerar |
+| **Internationellt** | ✅ 135+ länder | ⚠️ Främst Norden/EU | ❌ Endast Sverige | ❌ Endast Sverige |
+| **Supabase-integration** | ✅ Officiell guide + webhooks | ❌ Manuellt | ❌ Manuellt | ❌ Manuellt |
+| **VAT/Moms-hantering** | ✅ Stripe Tax (automatisk) | ⚠️ Manuellt | ❌ Ej relevant | ❌ Manuellt |
+| **Checkout UX** | ✅ Hosted + Elements | ✅ Smooth | ✅ BankID | ⚠️ Formulär |
+| **Avgift (Sverige)** | 1.5% + 1.80 kr | 2.99% | 2 kr/tx | ~1 kr/tx |
+| **Prövotid/Trial** | ✅ Inbyggt | ❌ | ❌ | ❌ |
+| **Webhook-driven** | ✅ Full support | ⚠️ Begränsat | ❌ Polling | ❌ Polling |
+
+### Stripe-fördelar för Renomate
+
+1. **Supabase-redo** — Officiell guide, färdiga schemas, webhook-hantering via Edge Functions
+2. **Internationell expansion** — Samma integration fungerar i NO, DK, FI, DACH
+3. **Automatisk moms** — Stripe Tax hanterar EU VAT, OSS, reverse charge
+4. **Subscription billing** — Trials, uppgraderingar, nedgraderingar, proration inbyggt
+5. **Customer Portal** — Användare hanterar betalmetod själv (mindre support)
+
+### Svenska komplement (Fas 2)
+
+- **Swish** för one-time (receipts, add-ons) — svensk användare förväntar sig det
+- **Klarna** för BNPL om vi har större engångsprodukter
+
+---
+
+## 2. JURIDISK & COMPLIANCE CHECKLISTA
+
+### Fas 0: Innan första kronan (Sprint 6-7)
+
+| Krav | Status | Åtgärd | Ansvarig |
+|------|--------|--------|----------|
+| **Företagsform** | ? | Verifiera att AB är registrerat | CEO |
+| **F-skattsedel** | ? | Krävs för att fakturera | CEO |
+| **Momsregistrering** | ? | Obligatoriskt vid >30k/år | CEO/Revisor |
+| **Stripe-konto** | ❌ | Skapa + verifiera (tar 2-5 dagar) | CTO |
+| **Användarvillkor** | ❌ | Skriv + juridisk granskning | CEO + Jurist |
+| **Integritetspolicy** | ⚠️ Finns | Uppdatera med betaldata | CEO |
+| **Cookiepolicy** | ? | GDPR-krav för Stripe.js | CTO |
+
+### EU VAT-regler (B2C SaaS)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                      EU VAT FÖR SAAS                                │
+├─────────────────────────────────────────────────────────────────────┤
+│ Total B2C-försäljning < €10,000/år (alla EU-länder):               │
+│   → Svensk moms (25%) på allt                                       │
+│   → Ingen OSS-registrering krävs                                    │
+├─────────────────────────────────────────────────────────────────────┤
+│ Total B2C-försäljning > €10,000/år:                                 │
+│   → Moms i kundens land (varierar 17-27%)                          │
+│   → OSS-registrering via Skatteverket                              │
+│   → Stripe Tax hanterar automatiskt                                │
+├─────────────────────────────────────────────────────────────────────┤
+│ B2B-försäljning (företagskunder):                                   │
+│   → Reverse charge (0% moms, kund redovisar)                       │
+│   → Kräver kundens VAT-nummer                                       │
+│   → Stripe validerar VAT-nummer automatiskt                        │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Källa:** [Stripe EU Tax Guide](https://docs.stripe.com/tax/supported-countries/european-union)
+
+### GDPR för betaldata
+
+| Data | Lagringstid | Legal grund | Var lagras |
+|------|-------------|-------------|------------|
+| Betalhistorik | 7 år | Bokföringslagen | Stripe + DB |
+| Kortuppgifter | Aldrig hos oss | - | Endast Stripe (PCI DSS) |
+| Stripe Customer ID | Tills konto raderas | Avtal | profiles.stripe_customer_id |
+| Fakturor | 7 år | Bokföringslagen | Stripe + backup |
+
+---
+
+## 3. TEKNISK IMPLEMENTATION
+
+### Databasschema (nya tabeller)
+
+```sql
+-- Fas 1: Lägg till i profiles
+ALTER TABLE profiles ADD COLUMN stripe_customer_id TEXT UNIQUE;
+ALTER TABLE profiles ADD COLUMN subscription_tier TEXT DEFAULT 'free'
+  CHECK (subscription_tier IN ('free', 'pro', 'business'));
+ALTER TABLE profiles ADD COLUMN subscription_status TEXT DEFAULT 'inactive'
+  CHECK (subscription_status IN ('inactive', 'trialing', 'active', 'past_due', 'canceled'));
+ALTER TABLE profiles ADD COLUMN subscription_period_end TIMESTAMPTZ;
+
+-- Fas 1: Produkter och priser (synkas från Stripe via webhook)
+CREATE TABLE public.stripe_products (
+  id TEXT PRIMARY KEY,  -- Stripe product ID
+  name TEXT NOT NULL,
+  description TEXT,
+  active BOOLEAN DEFAULT true,
+  metadata JSONB,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.stripe_prices (
+  id TEXT PRIMARY KEY,  -- Stripe price ID
+  product_id TEXT REFERENCES stripe_products(id),
+  currency TEXT NOT NULL,
+  unit_amount INTEGER,  -- i ören/cents
+  interval TEXT,  -- 'month' | 'year'
+  interval_count INTEGER DEFAULT 1,
+  active BOOLEAN DEFAULT true,
+  metadata JSONB,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Fas 2: Prenumerationshistorik
+CREATE TABLE public.subscriptions (
+  id TEXT PRIMARY KEY,  -- Stripe subscription ID
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  price_id TEXT REFERENCES stripe_prices(id),
+  status TEXT NOT NULL,
+  current_period_start TIMESTAMPTZ,
+  current_period_end TIMESTAMPTZ,
+  cancel_at TIMESTAMPTZ,
+  canceled_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS för säkerhet
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own subscriptions" ON subscriptions
+  FOR SELECT USING (user_id = auth.uid());
+```
+
+### Supabase Edge Functions
+
+```
+supabase/functions/
+├── stripe-webhooks/        # Tar emot Stripe events
+│   └── index.ts
+├── create-checkout/        # Skapar Checkout Session
+│   └── index.ts
+├── create-portal-session/  # Stripe Customer Portal
+│   └── index.ts
+└── check-subscription/     # Verifierar access (intern)
+    └── index.ts
+```
+
+### Webhook-flöde
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────────────┐
+│   Stripe    │───►│ Edge Func   │───►│ Supabase Database   │
+│  (webhook)  │    │ (verify +   │    │                     │
+│             │    │  process)   │    │ - Update profiles   │
+└─────────────┘    └─────────────┘    │ - Update subscr.    │
+                         │            │ - Log event         │
+                         ▼            └─────────────────────┘
+                   ┌─────────────┐
+                   │ Supabase    │
+                   │ Realtime    │───► UI uppdateras live
+                   └─────────────┘
+```
+
+### Viktiga Stripe Events att hantera
+
+| Event | Åtgärd |
+|-------|--------|
+| `customer.subscription.created` | Skapa subscription-rad, uppdatera profile.tier |
+| `customer.subscription.updated` | Uppdatera status, period_end |
+| `customer.subscription.deleted` | Sätt tier='free', status='canceled' |
+| `invoice.paid` | Logga betalning, förläng access |
+| `invoice.payment_failed` | Sätt status='past_due', skicka email |
+| `customer.created` | Spara stripe_customer_id i profiles |
+
+---
+
+## 4. PAYWALL & FEATURE GATING
+
+### Tier-definition (CRO-godkänd)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                           PRICING TIERS                              │
+├─────────────────┬─────────────────┬─────────────────────────────────┤
+│ FREE            │ PRO (495 kr/mån)│ BUSINESS (995 kr/mån)           │
+│                 │ (4 950 kr/år)   │ (9 950 kr/år)                   │
+├─────────────────┼─────────────────┼─────────────────────────────────┤
+│ 1 projekt       │ 10 projekt      │ Obegränsat                      │
+│ 2 teammedlemmar │ 15 teammedlemmar│ Obegränsat                      │
+│ Grundritning    │ Avancerad canvas│ Alla canvas-features            │
+│ Uppgifter       │ Budget-spårning │ API-access                      │
+│ Foton           │ Timeline/Gantt  │ PDF/DWG-export                  │
+│ Kommentarer     │ Offline read    │ Anpassad branding               │
+│                 │ AI-import       │ Prioriterad support             │
+│                 │ 14 dagars trial │ SSO (kommande)                  │
+├─────────────────┴─────────────────┴─────────────────────────────────┤
+│ ★ Alla planer: Obegränsat med inbjudna viewers (husägare/kunder)   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Feature Gate Implementation
+
+```typescript
+// src/hooks/useSubscription.ts
+export function useSubscription() {
+  const { data: profile } = useProfile();
+
+  const tier = profile?.subscription_tier || 'free';
+  const isActive = profile?.subscription_status === 'active'
+                || profile?.subscription_status === 'trialing';
+
+  const limits = {
+    free: { projects: 1, teamMembers: 2, features: ['basic'] },
+    pro: { projects: 10, teamMembers: 15, features: ['budget', 'timeline', 'ai', 'offline'] },
+    business: { projects: Infinity, teamMembers: Infinity, features: ['all'] }
+  };
+
+  const can = (feature: string) => {
+    if (!isActive && tier !== 'free') return false;
+    return limits[tier].features.includes(feature) || limits[tier].features.includes('all');
+  };
+
+  const canCreateProject = (currentCount: number) => currentCount < limits[tier].projects;
+  const canInviteTeam = (currentCount: number) => currentCount < limits[tier].teamMembers;
+
+  return { tier, isActive, can, canCreateProject, canInviteTeam, limits: limits[tier] };
+}
+```
+
+### Paywall UI Triggers
+
+| Trigger | Var | Beteende |
+|---------|-----|----------|
+| Skapa 2:a projekt | Projects.tsx | Visa upgrade modal |
+| Bjud in 3:e teammedlem | TeamManagement.tsx | Visa upgrade modal |
+| Öppna Budget | BudgetTab.tsx | Visa "Pro feature" overlay |
+| AI-import | AIFloorPlanImport.tsx | Visa "Pro feature" med preview |
+| Export PDF | SpacePlannerTopBar.tsx | Visa upgrade prompt |
+| After 14-day trial | Global check | Visa "Trial ended" modal |
+
+### Upgrade Modal Design
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  ✨ Uppgradera till Pro                                    [X]      │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Du försöker använda "Budget-spårning" som är en Pro-funktion.      │
+│                                                                      │
+│  Med Pro får du:                                                     │
+│  ✓ Budget-spårning med diagram och prognoser                        │
+│  ✓ Timeline/Gantt-vy                                                 │
+│  ✓ AI-import av planlösningar                                        │
+│  ✓ Upp till 10 projekt och 15 teammedlemmar                          │
+│                                                                      │
+│  ┌─────────────────┐  ┌─────────────────┐                            │
+│  │  495 kr/mån     │  │  4 950 kr/år    │                            │
+│  │                 │  │  SPARA 17%      │                            │
+│  │  [Välj månad]   │  │  [Välj år ★]    │                            │
+│  └─────────────────┘  └─────────────────┘                            │
+│                                                                      │
+│  🔒 Säker betalning via Stripe                                       │
+│  📧 Faktura skickas automatiskt                                      │
+│  ↩️ Avsluta när som helst                                            │
+│                                                                      │
+│              [ Starta 14 dagars kostnadsfri provperiod ]             │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 5. IMPLEMENTATION ROADMAP
+
+### Fas 0: Legal & Förberedelse (Sprint 6, ~1 vecka)
+
+| # | Uppgift | Ansvarig | Status |
+|---|---------|----------|--------|
+| 1 | Verifiera F-skatt + momsregistrering | CEO | ❌ |
+| 2 | Skapa Stripe-konto + verifiera | CTO | ❌ |
+| 3 | Uppdatera Integritetspolicy (betaldata) | CEO | ❌ |
+| 4 | Skriv/uppdatera Användarvillkor | CEO + Jurist | ❌ |
+| 5 | Cookie-consent för Stripe.js | CTO | ❌ |
+
+### Fas 1: Infrastruktur (Sprint 7, ~1 vecka)
+
+| # | Uppgift | Insats | Beroende |
+|---|---------|--------|----------|
+| 1 | DB-migration (profiles + stripe tables) | 2h | - |
+| 2 | Edge Function: stripe-webhooks | 4h | Stripe-konto |
+| 3 | Edge Function: create-checkout | 2h | 1 |
+| 4 | Edge Function: create-portal-session | 2h | 1 |
+| 5 | useSubscription hook | 2h | 1 |
+| 6 | Stripe produkt/pris-setup | 1h | Stripe-konto |
+
+### Fas 2: UI & UX (Sprint 8, ~1 vecka)
+
+| # | Uppgift | Insats |
+|---|---------|--------|
+| 1 | Pricing-sida (/pricing) | 4h |
+| 2 | Upgrade modal (reusable) | 4h |
+| 3 | Feature gates (Budget, Timeline, AI) | 4h |
+| 4 | Profile → Subscription-sektion | 2h |
+| 5 | Success/Cancel-sidor | 2h |
+
+### Fas 3: Test & Lansering (Sprint 9)
+
+| # | Uppgift | Insats |
+|---|---------|--------|
+| 1 | Stripe test-läge E2E | 4h |
+| 2 | Webhook-testning (alla events) | 4h |
+| 3 | UAT med beta-testare (5-10 st) | 1v |
+| 4 | Production Stripe-konfiguration | 2h |
+| 5 | Soft-launch (invitation only) | - |
+
+### Fas 4: Optimering (Sprint 10+)
+
+- A/B-test prissättning
+- Churn-analys + win-back flows
+- Annual billing incentives
+- Swish/Klarna som komplement
+- Upgrade prompts baserat på usage
+
+---
+
+## 6. MÄTVÄRDEN (CRO)
+
+### Pre-launch (mät nu)
+
+| Metrik | Nuläge | Mål före monetarisering |
+|--------|--------|-------------------------|
+| Activation rate | ~30% | >50% |
+| Weekly retention | ? | >40% |
+| Projects per user | ~1 | >1.5 |
+| Features used | ? | >3 per projekt |
+
+### Post-launch
+
+| Metrik | Mål mån 1 | Mål mån 3 | Mål mån 6 |
+|--------|-----------|-----------|-----------|
+| Trial starts | 50 | 200 | 500 |
+| Trial → Paid | 20% | 30% | 40% |
+| MRR | 10 000 kr | 50 000 kr | 150 000 kr |
+| Churn | <10% | <7% | <5% |
+
+---
+
+## 7. RISKER & MITIGERING
+
+| Risk | Sannolikhet | Konsekvens | Mitigering |
+|------|-------------|------------|------------|
+| Stripe-verifiering tar tid | Medium | Fördröjning 1-2v | Starta nu |
+| Webhook missar events | Låg | Fel subscription status | Retry-logik + manuell override |
+| VAT-fel | Medium | Skattefel | Använd Stripe Tax |
+| Feature gate bypass | Låg | Gratis-användare får Pro | RLS + server-side check |
+| Låg konvertering | Hög | Ingen revenue | Trial + freemium fungerar, iterera |
+
+---
+
+## 8. SAMMANFATTNING
+
+### CTO-rekommendation
+
+```
+✅ Stripe som primär plattform (bäst för SaaS, Supabase-redo)
+✅ Börja Fas 0-1 nu (juridik + schema) även om lansering är Sprint 8+
+✅ Webhooks via Edge Functions (ej polling)
+✅ Feature gates via useSubscription hook + RLS
+⚠️ Verifiera momsregistrering innan lansering
+⚠️ Testfas minst 2 veckor med riktiga testare
+```
+
+### CRO-rekommendation
+
+```
+✅ Prissättning: 495/995 kr/mån är rimligt för svenska SME
+✅ Trial: 14 dagar, kräver kort (högre konvertering)
+✅ Freemium: 1 projekt, 2 team — ger viral spridning
+✅ Viewers alltid gratis — det är tillväxtmotorn
+⚠️ Monetarisera INTE före retention >40%
+⚠️ Soft-launch till befintliga beta-testare först
+```
+
+### Nästa steg (om CEO godkänner)
+
+1. ✅ CEO: Bekräfta F-skatt + momsregistrering
+2. ✅ CTO: Skapa Stripe-konto + starta verifiering
+3. ✅ CEO: Beställ juridisk granskning av Användarvillkor
+4. ✅ CTO: Implementera DB-migration (kan göras nu, kostar inget)
+
+---
+
+**Prioritet:** Hög (infrastruktur kan byggas parallellt med activation-arbete)
+**Total insats:** ~4 veckor (sprida över Sprint 6-9)
+**Estimerad lansering:** Sprint 9-10 (v.13-15, mars-april 2026)
+
+**Källor:**
+- [Stripe EU Tax](https://docs.stripe.com/tax/supported-countries/european-union)
+- [Supabase Stripe Webhooks](https://supabase.com/docs/guides/functions/examples/stripe-webhooks)
+- [Stripe Sweden Payments](https://stripe.com/resources/more/accepting-online-payments-in-sweden)
+- [Skatteverket Moms](https://skatteverket.se/foretag/moms/)

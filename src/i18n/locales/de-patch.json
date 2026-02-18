@@ -185,10 +185,10 @@
     "notPlacedOnCanvas": "Nicht auf Zeichenfläche platziert"
   },
   "profile": {
-    "professionalProfile": "Professionelles Profil",
-    "professionalProfileDescription": "Aktivieren Sie dies, um im Marktplatz zu erscheinen und von Bauherren und Projektmanagern gefunden zu werden",
-    "enableProfessional": "Professionelles Profil aktivieren",
-    "enableProfessionalDescription": "Zeigen Sie Ihr Unternehmen im Marktplatz, damit Kunden Sie finden können",
+    "professionalProfile": "Profis finden – Eintrag",
+    "professionalProfileDescription": "Steuert, ob Ihr Unternehmen in der 'Profis finden'-Suche erscheint, wo Bauherren nach Handwerkern suchen",
+    "enableProfessional": "In Profis finden anzeigen",
+    "enableProfessionalDescription": "Wenn aktiviert, können Kunden Sie über die Suchseite finden. Erfordert Firmendaten unten.",
     "companyName": "Firmenname",
     "companyNamePlaceholder": "z.B. Bau & Renovierung GmbH",
     "professionalCategory": "Fachkategorie",
