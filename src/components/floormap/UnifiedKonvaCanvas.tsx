@@ -13,7 +13,7 @@ import { PropertyPanel } from './PropertyPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { saveShapesForPlan, loadShapesForPlan } from './utils/plans';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Minimap } from './Minimap';
@@ -26,7 +26,34 @@ import { useTranslation } from 'react-i18next';
 
 // Canvas module imports
 import { MIN_ZOOM, MAX_ZOOM, getAdminDefaults } from './canvas/constants';
-import { throttle, createUnifiedDragHandlers, calculateFitToContent } from './canvas/utils';
+import {
+  throttle,
+  createUnifiedDragHandlers,
+  calculateFitToContent,
+  // Scale utilities
+  getActiveGridLevels,
+  getScaleRepresentation,
+  formatDimension,
+  // Snap utilities
+  getSnapSize,
+  snapToGrid,
+  snapDelta,
+  // Shape connection utilities
+  findConnectedShapes,
+  findNearestWallEndpoint,
+  areWallsConnected,
+  getConnectedWalls,
+} from './canvas/utils';
+import { Grid } from './canvas/Grid';
+import { CommentBadgesLayer } from './canvas/CommentBadgesLayer';
+import { MeasurementOverlay } from './canvas/MeasurementOverlay';
+import { SelectionPreviewOverlay } from './canvas/SelectionPreviewOverlay';
+import { MultiSelectionBoundsOverlay } from './canvas/MultiSelectionBounds';
+import { GhostPreviewOverlay } from './canvas/GhostPreviewOverlay';
+import { TextInputDialog, useTextDialog } from './canvas/TextInputDialog';
+import { useCanvasNavigation } from './hooks/useCanvasNavigation';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { cloneShapes, copyShapesToClipboard, PASTE_OFFSET } from './utils/shapeClipboard';
 import { generateWallsFromRoom, generateWallsFromRooms } from './utils/roomWalls';
 import { findNearestWallForPoint, getWallGeometry, wallRelativeToWorld } from './canvas/utils/wallCoordinates';
 import { findNearestWall, projectOntoWall, splitWall } from './utils/wallSnap';
@@ -68,453 +95,11 @@ const getDefaultWallThickness = () => {
   return wallThicknessMM / 10; // Convert mm to pixels at scale
 };
 
-// Helper to format dimension in mm/cm/m
-const formatDim = (value: number): string => {
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(2)}m`;
-  } else if (value >= 10) {
-    return `${(value / 10).toFixed(1)}cm`;
-  }
-  return `${Math.round(value)}mm`;
-};
+// Alias for backward compatibility (used throughout the file)
+const formatDim = formatDimension;
 
-// Helper function to find connected shapes (auto-grouping)
-// Uses generous tolerance to catch shapes that visually connect at grid points/nodes
-const findConnectedWalls = (startWallId: string, allShapes: FloorMapShape[], zoomLevel: number = 1): string[] => {
-  // GENEROUS tolerance - catches shapes connected at grid points
-  // Using 150mm (15cm) as base - typical grid snap precision
-  const baseTolerance = 150; // Increased from 50 to catch grid-snapped connections
-  const tolerance = baseTolerance / Math.max(0.3, zoomLevel); // Even more generous at low zoom
-  
-  const visited = new Set<string>();
-  const connectedIds: string[] = [];
-  
-  const startShape = allShapes.find(s => s.id === startWallId);
-  if (!startShape) {
-    return [startWallId];
-  }
-  
-  // Helper to get connection points for any shape type
-  const getConnectionPoints = (shape: FloorMapShape): { x: number; y: number }[] => {
-    const coords = shape.coordinates as any;
-    const points: { x: number; y: number }[] = [];
-    
-    if (shape.type === 'wall' || shape.type === 'line') {
-      // Line endpoints
-      points.push({ x: coords.x1, y: coords.y1 });
-      points.push({ x: coords.x2, y: coords.y2 });
-    } else if (shape.type === 'rectangle') {
-      // Rectangle corners
-      points.push({ x: coords.left, y: coords.top });
-      points.push({ x: coords.left + coords.width, y: coords.top });
-      points.push({ x: coords.left, y: coords.top + coords.height });
-      points.push({ x: coords.left + coords.width, y: coords.top + coords.height });
-    } else if (shape.type === 'circle') {
-      // Circle center (can connect to other shapes at center)
-      points.push({ x: coords.cx, y: coords.cy });
-    } else if (shape.type === 'room' || shape.type === 'polygon' || shape.type === 'freehand') {
-      // All polygon vertices
-      if (coords.points && Array.isArray(coords.points)) {
-        coords.points.forEach((p: any) => {
-          points.push({ x: p.x, y: p.y });
-        });
-      }
-    } else if (shape.type === 'text') {
-      // Text position
-      points.push({ x: coords.x, y: coords.y });
-    } else if (shape.type === 'symbol' || shape.type === 'object') {
-      // Symbol/object position
-      points.push({ x: coords.x || 0, y: coords.y || 0 });
-    } else if (shape.type === 'bezier') {
-      // Bezier start, control, end points
-      points.push({ x: coords.start.x, y: coords.start.y });
-      points.push({ x: coords.control.x, y: coords.control.y });
-      points.push({ x: coords.end.x, y: coords.end.y });
-    } else if (shape.type === 'image') {
-      // Image corners
-      points.push({ x: coords.x, y: coords.y });
-      points.push({ x: coords.x + (coords.width || 0), y: coords.y });
-      points.push({ x: coords.x, y: coords.y + (coords.height || 0) });
-      points.push({ x: coords.x + (coords.width || 0), y: coords.y + (coords.height || 0) });
-    }
-
-    return points;
-  };
-  
-  const toVisit = [startWallId];
-  
-  while (toVisit.length > 0) {
-    const currentId = toVisit.pop()!;
-    if (visited.has(currentId)) continue;
-    
-    visited.add(currentId);
-    connectedIds.push(currentId);
-    
-    const currentShape = allShapes.find(s => s.id === currentId);
-    if (!currentShape) continue;
-    
-    const currentEndpoints = getConnectionPoints(currentShape);
-    
-    // Find all shapes that share a connection point with current shape
-    for (const shape of allShapes) {
-      if (visited.has(shape.id)) continue;
-      
-      const endpoints = getConnectionPoints(shape);
-      
-      // Check if any endpoint of this shape matches any endpoint of current shape
-      let isConnected = false;
-      for (const ep1 of currentEndpoints) {
-        for (const ep2 of endpoints) {
-          const dist = Math.sqrt(Math.pow(ep1.x - ep2.x, 2) + Math.pow(ep1.y - ep2.y, 2));
-          if (dist <= tolerance) {
-            toVisit.push(shape.id);
-            isConnected = true;
-            break;
-          }
-        }
-        if (isConnected) break;
-      }
-    }
-  }
-  
-  return connectedIds;
-};
-
-// Helper function to find nearest wall endpoint for magnetic snap
-const findNearestWallEndpoint = (
-  point: { x: number; y: number },
-  allShapes: FloorMapShape[],
-  excludeShapeId?: string,
-  zoomLevel: number = 1
-): { x: number; y: number } | null => {
-  // Magnetic snap radius - generous to make it easy to connect
-  const snapRadius = 80 / Math.max(0.5, zoomLevel);
-  
-  let nearestPoint: { x: number; y: number } | null = null;
-  let nearestDist = snapRadius;
-  
-  for (const shape of allShapes) {
-    if (shape.id === excludeShapeId) continue;
-    if (shape.type !== 'wall' && shape.type !== 'line') continue;
-    
-    const coords = shape.coordinates as any;
-    const endpoints = [
-      { x: coords.x1, y: coords.y1 },
-      { x: coords.x2, y: coords.y2 }
-    ];
-    
-    for (const ep of endpoints) {
-      const dist = Math.sqrt(Math.pow(point.x - ep.x, 2) + Math.pow(point.y - ep.y, 2));
-      if (dist < nearestDist) {
-        nearestDist = dist;
-        nearestPoint = ep;
-      }
-    }
-  }
-  
-  return nearestPoint;
-};
-
-// ============================================================================
-// SCALE CONVERSION HELPERS (from old canvas)
-// ============================================================================
-
-const getPixelsPerMm = (pixelsPerMm: number) => pixelsPerMm;
-const getPixelsPerCm = (pixelsPerMm: number) => pixelsPerMm * 10;
-const getPixelsPerMeter = (pixelsPerMm: number) => pixelsPerMm * 1000;
-
-// Simplified grid levels for practical floor plan work
-// Range: 5m (overview) → 10cm (detailed work) - NO sub-10cm grids
-const getGridLevels = (pixelsPerMm: number) => {
-  const pixelsPerMeter = getPixelsPerMeter(pixelsPerMm);
-  const pixelsPerCm = getPixelsPerCm(pixelsPerMm);
-
-  // IMPORTANT: Grid levels that appear together must be exact multiples
-  // 5m/1m=5 ✓, 1m/50cm=2 ✓, 50cm/10cm=5 ✓
-  return {
-    // Major grids - building/apartment overview
-    METER_5: { size: pixelsPerMeter * 5, color: "#606060", lineWidth: 2, label: "5m", opacity: 0.9 },
-    METER_1: { size: pixelsPerMeter, color: "#808080", lineWidth: 1.5, label: "1m", opacity: 0.7 },
-
-    // Working grids - standard architectural precision
-    CM_50: { size: pixelsPerCm * 50, color: "#a0a0a0", lineWidth: 1, label: "50cm", opacity: 0.5 },
-    CM_10: { size: pixelsPerCm * 10, color: "#c8c8c8", lineWidth: 0.6, label: "10cm", opacity: 0.35 },
-  };
-};
-
-// Simplified zoom-based grid system for practical floor plan work
-// All paired levels are exact multiples to prevent misaligned lines:
-// 5m/1m=5, 1m/50cm=2, 50cm/10cm=5
-const getActiveGridLevels = (zoomLevel: number, pixelsPerMm: number) => {
-  const GRID_LEVELS = getGridLevels(pixelsPerMm);
-  const levels = [];
-
-  // Level 1: Extreme zoom out - building overview (5m only)
-  if (zoomLevel < 0.5) {
-    levels.push(GRID_LEVELS.METER_5);
-  }
-  // Level 2: Zoomed out - floor plan overview (5m + 1m, ratio 5:1)
-  else if (zoomLevel < 1.0) {
-    levels.push(GRID_LEVELS.METER_5, GRID_LEVELS.METER_1);
-  }
-  // Level 3: Standard working view - room layout (1m + 50cm, ratio 2:1)
-  else if (zoomLevel < 2.0) {
-    levels.push(GRID_LEVELS.METER_1, GRID_LEVELS.CM_50);
-  }
-  // Level 4+: Detailed view - precise work (50cm + 10cm, ratio 5:1)
-  else {
-    levels.push(GRID_LEVELS.CM_50, GRID_LEVELS.CM_10);
-  }
-
-  return levels;
-};
-
-// Snap size using USER SETTINGS - respects projectSettings.gridInterval
-// Only overrides if zoom is too low for the user's chosen grid (prevents frustrating micro-movements)
-const getSnapSize = (zoomLevel: number, pixelsPerMm: number, forWalls: boolean = false, userGridInterval?: number): number => {
-  const pixelsPerCm = pixelsPerMm * 10;
-
-  // Get minimum practical snap size based on zoom level
-  // (prevents snapping in 1cm increments when zoomed out to see entire floor)
-  let minSnapMm: number;
-  if (zoomLevel < 0.5) {
-    minSnapMm = 1000; // At extreme zoom out, don't snap finer than 1m
-  } else if (zoomLevel < 1.0) {
-    minSnapMm = 500;  // At overview, don't snap finer than 50cm
-  } else if (zoomLevel < 2.0) {
-    minSnapMm = 250;  // At normal view, don't snap finer than 25cm
-  } else {
-    minSnapMm = 50;   // At detail view, allow snap as fine as 5cm
-  }
-
-  // Use user's setting, but enforce minimum based on zoom
-  const effectiveSnapMm = userGridInterval
-    ? Math.max(userGridInterval, minSnapMm)
-    : minSnapMm;
-
-  // Convert mm to pixels
-  return effectiveSnapMm * pixelsPerMm;
-};
-
-// Get practical scale representation for architectural work
-// Optimized for the simplified zoom range (0.3x - 5x)
-const getScaleRepresentation = (zoom: number, pixelsPerMm: number): string => {
-  // Calculate actual scale based on zoom and pixelsPerMm
-  // Standard screen DPI is ~96, so 1 screen mm ≈ 3.78 pixels
-  const screenPixelsPerMm = 3.78;
-  const actualScale = (pixelsPerMm * zoom) / screenPixelsPerMm;
-  
-  // Convert to standard architectural scales (simplified for practical range)
-  if (actualScale >= 0.35) return "1:20"; // Maximum detail (zoom 5x)
-  else if (actualScale >= 0.18) return "1:50"; // Detail work (zoom 2-3x)
-  else if (actualScale >= 0.09) return "1:100"; // Standard view (zoom 1x)
-  else if (actualScale >= 0.045) return "1:200"; // Overview (zoom 0.5x)
-  else return "1:400"; // Maximum overview (zoom 0.3x)
-};
-
-// Helper function to snap point to grid
-const snapToGrid = (point: { x: number; y: number }, snapSize: number, enabled: boolean): { x: number; y: number } => {
-  if (!enabled) return point;
-  return {
-    x: Math.round(point.x / snapSize) * snapSize,
-    y: Math.round(point.y / snapSize) * snapSize,
-  };
-};
-
-// Helper function to snap delta (movement) to grid - for dragging objects
-const snapDelta = (delta: { x: number; y: number }, snapSize: number, enabled: boolean): { x: number; y: number } => {
-  if (!enabled) return delta;
-  return {
-    x: Math.round(delta / snapSize) * snapSize,
-    y: Math.round(delta / snapSize) * snapSize,
-  };
-};
-
-// Helper function to check if two walls are connected (share an endpoint)
-const areWallsConnected = (wall1: FloorMapShape, wall2: FloorMapShape): boolean => {
-  if ((wall1.type !== 'wall' && wall1.type !== 'line') || (wall2.type !== 'wall' && wall2.type !== 'line')) {
-    return false;
-  }
-
-  const coords1 = wall1.coordinates as any;
-  const coords2 = wall2.coordinates as any;
-
-  // Get endpoints directly (no rounding - use raw coordinates)
-  const w1Start = { x: coords1.x1, y: coords1.y1 };
-  const w1End = { x: coords1.x2, y: coords1.y2 };
-  const w2Start = { x: coords2.x1, y: coords2.y1 };
-  const w2End = { x: coords2.x2, y: coords2.y2 };
-
-  const distance = (p1: { x: number; y: number }, p2: { x: number; y: number }) =>
-    Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
-
-  const d1 = distance(w1Start, w2Start);
-  const d2 = distance(w1Start, w2End);
-  const d3 = distance(w1End, w2Start);
-  const d4 = distance(w1End, w2End);
-
-  const minDist = Math.min(d1, d2, d3, d4);
-
-  // Large tolerance: 50 canvas units (~50cm at 1:100 scale)
-  // This should catch walls that visually appear connected
-  const tolerance = 50;
-
-  return minDist < tolerance;
-};
-
-// Helper function to find all walls connected to a given wall (flood-fill/BFS)
-const getConnectedWalls = (startWallId: string, allShapes: FloorMapShape[]): string[] => {
-  const walls = allShapes.filter(s => s.type === 'wall' || s.type === 'line');
-  const startWall = walls.find(w => w.id === startWallId);
-
-  if (!startWall) return [startWallId];
-
-  const connectedIds = new Set<string>([startWallId]);
-  const queue = [startWall];
-
-  while (queue.length > 0) {
-    const currentWall = queue.shift()!;
-
-    // Find all walls connected to current wall
-    for (const wall of walls) {
-      if (!connectedIds.has(wall.id) && areWallsConnected(currentWall, wall)) {
-        connectedIds.add(wall.id);
-        queue.push(wall);
-      }
-    }
-  }
-
-  return Array.from(connectedIds);
-};
-
-
-// Shape components are now in ./shapes/ directory
-// See: WallShape, RoomShape, RectangleShape, CircleShape, TextShape, FreehandShape,
-//      LibrarySymbolShape, ObjectLibraryShape
-
-// ============================================================================
-// MULTI-LEVEL GRID COMPONENT (from old canvas)
-// ============================================================================
-
-interface GridProps {
-  viewState: { zoom: number; panX: number; panY: number };
-  scaleSettings: { pixelsPerMm: number };
-  projectSettings: { 
-    gridVisible?: boolean;
-    canvasWidthMeters: number;
-    canvasHeightMeters: number;
-  };
-}
-
-const Grid: React.FC<GridProps> = ({ viewState, scaleSettings, projectSettings }) => {
-  // Don't render if grid is hidden
-  if (projectSettings.gridVisible === false) {
-    return null;
-  }
-
-  const { zoom, panX, panY } = viewState;
-  const { pixelsPerMm } = scaleSettings;
-  const { canvasWidthMeters, canvasHeightMeters } = projectSettings;
-  
-  const activeGrids = getActiveGridLevels(zoom, pixelsPerMm);
-  const lines: JSX.Element[] = [];
-  
-  // Calculate viewport dimensions (visible area on screen)
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  
-  // Transform viewport to world coordinates (account for pan and zoom)
-  // World coords = (screen coords - pan) / zoom
-  const worldLeft = (-panX) / zoom;
-  const worldTop = (-panY) / zoom;
-  const worldRight = (viewportWidth - panX) / zoom;
-  const worldBottom = (viewportHeight - panY) / zoom;
-  
-  // Extend grid beyond viewport for smooth panning
-  const padding = Math.max(viewportWidth, viewportHeight) / zoom;
-  const extendedLeft = worldLeft - padding;
-  const extendedTop = worldTop - padding;
-  const extendedRight = worldRight + padding;
-  const extendedBottom = worldBottom + padding;
-  
-  // Draw gridlines across ENTIRE visible area + padding
-  // IMPORTANT: Use integer-based loop to avoid floating-point accumulation errors
-  activeGrids.forEach((gridLevel, levelIndex) => {
-    const gridSize = gridLevel.size;
-
-    // Calculate grid line indices (integers) to avoid floating-point errors
-    const startXIndex = Math.floor(extendedLeft / gridSize);
-    const endXIndex = Math.ceil(extendedRight / gridSize);
-    const startYIndex = Math.floor(extendedTop / gridSize);
-    const endYIndex = Math.ceil(extendedBottom / gridSize);
-
-    // Vertical lines - use integer index and multiply to get position
-    // Round to avoid sub-pixel rendering artifacts at high zoom
-    for (let i = startXIndex; i <= endXIndex; i++) {
-      const x = Math.round(i * gridSize * 100) / 100; // Round to 2 decimals for precision
-      lines.push(
-        <Line
-          key={`${levelIndex}-v-${i}`}
-          points={[x, extendedTop, x, extendedBottom]}
-          stroke={gridLevel.color}
-          strokeWidth={Math.max(0.5, gridLevel.lineWidth / zoom)}
-          opacity={gridLevel.opacity}
-          listening={false}
-          perfectDrawEnabled={false}
-        />
-      );
-    }
-
-    // Horizontal lines - use integer index and multiply to get position
-    // Round to avoid sub-pixel rendering artifacts at high zoom
-    for (let j = startYIndex; j <= endYIndex; j++) {
-      const y = Math.round(j * gridSize * 100) / 100; // Round to 2 decimals for precision
-      lines.push(
-        <Line
-          key={`${levelIndex}-h-${j}`}
-          points={[extendedLeft, y, extendedRight, y]}
-          stroke={gridLevel.color}
-          strokeWidth={Math.max(0.5, gridLevel.lineWidth / zoom)}
-          opacity={gridLevel.opacity}
-          listening={false}
-          perfectDrawEnabled={false}
-        />
-      );
-    }
-  });
-  
-  // Canvas working area starting at (0,0) - no margins
-  const canvasWidthPx = canvasWidthMeters * 1000 * pixelsPerMm;
-  const canvasHeightPx = canvasHeightMeters * 1000 * pixelsPerMm;
-
-  return (
-    <>
-      {/* White background for canvas working area */}
-      <Rect
-        x={0}
-        y={0}
-        width={canvasWidthPx}
-        height={canvasHeightPx}
-        fill="#ffffff"
-        listening={false}
-      />
-
-      {/* Gridlines - extend infinitely across visible viewport */}
-      {lines}
-
-      {/* Canvas boundary - subtle border */}
-      <Rect
-        x={0}
-        y={0}
-        width={canvasWidthPx}
-        height={canvasHeightPx}
-        stroke="#e5e7eb"
-        strokeWidth={1 / zoom}
-        listening={false}
-      />
-    </>
-  );
-};
+// Alias for backward compatibility (findConnectedWalls → findConnectedShapes)
+const findConnectedWalls = findConnectedShapes;
 
 // ============================================================================
 // MAIN CANVAS COMPONENT
@@ -545,14 +130,10 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   
   // Navigation state
   const [isPanning, setIsPanning] = useState(false);
-  const [isSpacePressed, setIsSpacePressed] = useState(false);
-  const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
+  // Note: isSpacePressed and isShiftPressed are managed by useKeyboardShortcuts hook
   
-  // Touch/pinch zoom state
-  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
-  const [lastTouchCenter, setLastTouchCenter] = useState<{ x: number; y: number } | null>(null);
-  const touchPanStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  // Touch/pinch zoom state (managed by useCanvasNavigation hook - see below)
   
   // Double-click handling state (simplified like old canvas)
   // Use refs for synchronous access in rapid click sequences
@@ -612,16 +193,8 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   // Template group individual shape selection (double-click to select single shape in group)
   const [selectedGroupIndividualId, setSelectedGroupIndividualId] = useState<string | null>(null);
 
-  // Text input dialog state
-  const [isTextDialogOpen, setIsTextDialogOpen] = useState(false);
-  const [textInputValue, setTextInputValue] = useState('');
-  const [pendingTextPosition, setPendingTextPosition] = useState<{ x: number; y: number; width?: number; height?: number } | null>(null);
-  const [textIsBold, setTextIsBold] = useState(false);
-  const [textIsItalic, setTextIsItalic] = useState(false);
-  const [textFontSize, setTextFontSize] = useState(16);
-  const [textRotation, setTextRotation] = useState<0 | 90 | 180 | 270>(0);
-  const [textHasBackground, setTextHasBackground] = useState(false);
-  const [editingTextShapeId, setEditingTextShapeId] = useState<string | null>(null); // Track which text is being edited
+  // Text input dialog (using extracted hook)
+  const textDialog = useTextDialog();
 
   // Context menu state (right-click)
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
@@ -748,6 +321,25 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const sendBackward = useFloorMapStore((state) => state.sendBackward);
   const bringToFront = useFloorMapStore((state) => state.bringToFront);
   const sendToBack = useFloorMapStore((state) => state.sendToBack);
+
+  // Canvas navigation hook (wheel zoom, touch pinch-zoom, panning)
+  const {
+    lastTouchDistance,
+    lastTouchCenter,
+    setLastTouchDistance,
+    setLastTouchCenter,
+    touchPanStartRef,
+    constrainPan,
+    handleWheel,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+  } = useCanvasNavigation({
+    stageRef,
+    canvasWidthMeters: projectSettings.canvasWidthMeters,
+    canvasHeightMeters: projectSettings.canvasHeightMeters,
+    pixelsPerMm: scaleSettings.pixelsPerMm,
+  });
 
   // Set cursor style based on active tool
   useEffect(() => {
@@ -925,135 +517,10 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     };
   }, [currentShapes]);
 
-  // Calculate bounding box for multi-selection visual indicator
-  const multiSelectionBounds = useMemo(() => {
-    if (selectedShapeIds.length < 2) return null;
-
-    const selectedShapes = currentShapes.filter(s => selectedShapeIds.includes(s.id));
-    if (selectedShapes.length < 2) return null;
-
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-
-    selectedShapes.forEach(shape => {
-      const coords = shape.coordinates as any;
-
-      if (shape.type === 'wall' || shape.type === 'line') {
-        minX = Math.min(minX, coords.x1, coords.x2);
-        maxX = Math.max(maxX, coords.x1, coords.x2);
-        minY = Math.min(minY, coords.y1, coords.y2);
-        maxY = Math.max(maxY, coords.y1, coords.y2);
-      } else if (shape.type === 'rectangle' || shape.type === 'door' || shape.type === 'opening') {
-        minX = Math.min(minX, coords.left);
-        maxX = Math.max(maxX, coords.left + (coords.width || 0));
-        minY = Math.min(minY, coords.top);
-        maxY = Math.max(maxY, coords.top + (coords.height || 0));
-      } else if (shape.type === 'circle') {
-        minX = Math.min(minX, coords.cx - coords.radius);
-        maxX = Math.max(maxX, coords.cx + coords.radius);
-        minY = Math.min(minY, coords.cy - coords.radius);
-        maxY = Math.max(maxY, coords.cy + coords.radius);
-      } else if (shape.type === 'room' || shape.type === 'polygon' || shape.type === 'freehand') {
-        if (coords.points) {
-          coords.points.forEach((p: { x: number; y: number }) => {
-            minX = Math.min(minX, p.x);
-            maxX = Math.max(maxX, p.x);
-            minY = Math.min(minY, p.y);
-            maxY = Math.max(maxY, p.y);
-          });
-        }
-      } else if (shape.type === 'symbol' || shape.type === 'text') {
-        minX = Math.min(minX, coords.x);
-        maxX = Math.max(maxX, coords.x + (coords.width || 100));
-        minY = Math.min(minY, coords.y);
-        maxY = Math.max(maxY, coords.y + (coords.height || 100));
-      } else if (shape.type === 'image') {
-        minX = Math.min(minX, coords.x);
-        maxX = Math.max(maxX, coords.x + (coords.width || 0));
-        minY = Math.min(minY, coords.y);
-        maxY = Math.max(maxY, coords.y + (coords.height || 0));
-      }
-    });
-
-    if (minX === Infinity) return null;
-
-    // Add padding (100mm = 10cm)
-    const padding = 100;
-    return {
-      x: minX - padding,
-      y: minY - padding,
-      width: maxX - minX + padding * 2,
-      height: maxY - minY + padding * 2,
-      count: selectedShapes.length,
-    };
-  }, [currentShapes, selectedShapeIds]);
-
-  // Handle text dialog submit (create or edit)
-  const handleTextSubmit = useCallback(() => {
-    if (textInputValue.trim()) {
-      if (editingTextShapeId) {
-        // Edit existing text shape
-        updateShape(editingTextShapeId, {
-          text: textInputValue,
-          textStyle: {
-            isBold: textIsBold,
-            isItalic: textIsItalic,
-          },
-          fontSize: textFontSize,
-          textRotation: textRotation,
-          hasBackground: textHasBackground,
-        });
-        toast.success('Text uppdaterad');
-      } else if (pendingTextPosition && currentPlanId) {
-        // Create new text shape
-        const newShape: FloorMapShape = {
-          id: uuidv4(),
-          planId: currentPlanId,
-          type: 'text',
-          coordinates: {
-            x: pendingTextPosition.x,
-            y: pendingTextPosition.y,
-            width: pendingTextPosition.width,
-            height: pendingTextPosition.height,
-          },
-          text: textInputValue,
-          textStyle: {
-            isBold: textIsBold,
-            isItalic: textIsItalic,
-          },
-          fontSize: textFontSize,
-          textRotation: textRotation,
-          hasBackground: textHasBackground,
-        };
-        addShape(newShape);
-        toast.success('Text tillagd');
-      }
-    }
-    // Reset all text dialog states
-    setIsTextDialogOpen(false);
-    setTextInputValue('');
-    setPendingTextPosition(null);
-    setTextIsBold(false);
-    setTextIsItalic(false);
-    setTextFontSize(16);
-    setTextRotation(0);
-    setTextHasBackground(false);
-    setEditingTextShapeId(null);
-  }, [textInputValue, pendingTextPosition, currentPlanId, addShape, updateShape, editingTextShapeId, textIsBold, textIsItalic, textFontSize, textRotation, textHasBackground]);
-
-  // Handle double-click to edit existing text
+  // Handle double-click to edit existing text (using extracted hook)
   const handleTextEdit = useCallback((shape: FloorMapShape) => {
-    if (shape.type !== 'text') return;
-
-    // Populate dialog with existing values
-    setTextInputValue(shape.text || '');
-    setTextIsBold(shape.textStyle?.isBold || false);
-    setTextIsItalic(shape.textStyle?.isItalic || false);
-    setTextFontSize(shape.fontSize || 16);
-    setTextRotation((shape.textRotation || 0) as 0 | 90 | 180 | 270);
-    setTextHasBackground(shape.hasBackground || false);
-    setEditingTextShapeId(shape.id);
-    setIsTextDialogOpen(true);
-  }, []);
+    textDialog.openForEdit(shape);
+  }, [textDialog]);
   
   // Manual save function (exposed to toolbar)
   const handleManualSave = useCallback(async () => {
@@ -1304,494 +771,36 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     }
   }, [activeTool]);
   
-  // Refs to avoid stale closures in keyboard handlers
-  const undoRef = useRef(undo);
-  const redoRef = useRef(redo);
-  const canUndoRef = useRef(canUndo);
-  const canRedoRef = useRef(canRedo);
-  const addShapeRef = useRef(addShape);
-  const updateShapeRef = useRef(updateShape);
-  const deleteShapeRef = useRef(deleteShape);
-  const deleteShapesRef = useRef(deleteShapes);
-  const setSelectedShapeIdRef = useRef(setSelectedShapeId);
-  const setSelectedShapeIdsRef = useRef(setSelectedShapeIds);
-  const selectedShapeIdRef = useRef(selectedShapeId);
-  const selectedShapeIdsRef = useRef(selectedShapeIds);
-  const currentShapesRef = useRef(currentShapes);
-  const clipboardRef = useRef(clipboard);
-  const currentPlanIdRef = useRef(currentPlanId);
-  const setActiveToolRef = useRef(setActiveTool);
-  // CAD numeric input refs (for keyboard handler access)
-  const isDrawingRef = useRef(isDrawing);
-  const currentDrawingPointsRef = useRef(currentDrawingPoints);
-  const activeToolRef = useRef(activeTool);
-  const numericInputRef = useRef(numericInput);
-  const confirmWallWithLengthRef = useRef<((lengthMM: number) => void) | null>(null);
-  
-  // Update refs whenever values change
-  useEffect(() => {
-    undoRef.current = undo;
-    redoRef.current = redo;
-    canUndoRef.current = canUndo;
-    canRedoRef.current = canRedo;
-    addShapeRef.current = addShape;
-    updateShapeRef.current = updateShape;
-    deleteShapeRef.current = deleteShape;
-    deleteShapesRef.current = deleteShapes;
-    setSelectedShapeIdRef.current = setSelectedShapeId;
-    setSelectedShapeIdsRef.current = setSelectedShapeIds;
-    selectedShapeIdRef.current = selectedShapeId;
-    selectedShapeIdsRef.current = selectedShapeIds;
-    currentShapesRef.current = currentShapes;
-    clipboardRef.current = clipboard;
-    currentPlanIdRef.current = currentPlanId;
-    setActiveToolRef.current = setActiveTool;
-    // CAD numeric input refs
-    isDrawingRef.current = isDrawing;
-    currentDrawingPointsRef.current = currentDrawingPoints;
-    activeToolRef.current = activeTool;
-    numericInputRef.current = numericInput;
-  }, [undo, redo, canUndo, canRedo, addShape, updateShape, deleteShape, deleteShapes, setSelectedShapeId, setSelectedShapeIds, selectedShapeId, selectedShapeIds, currentShapes, clipboard, currentPlanId, setActiveTool, isDrawing, currentDrawingPoints, activeTool, numericInput]);
-  
-  // Keyboard handlers for spacebar panning, delete, undo/redo
-  useEffect(() => {
-    // Detect OS for proper modifier key
-    const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-    // Keyboard handler registered
-    
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Check if typing in input
-      const target = e.target as HTMLElement;
-      const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable;
-      
-      // Use Cmd on Mac, Ctrl on Windows - simplified logic
-      const modKey = isMac ? e.metaKey : e.ctrlKey;
-      
-      // Only check modifier + key combinations (not just modifiers alone)
-      if (modKey && e.key !== 'Meta' && e.key !== 'Control' && e.key !== 'Shift' && e.key !== 'Alt') {
-        // Keyboard shortcut detected
-      }
-      
-      if (e.code === 'Space' && !e.repeat && !isTyping) {
-        e.preventDefault();
-        setIsSpacePressed(true);
-      }
-      
-      // Shift key - enable rotation snapping (45° increments)
-      if (e.key === 'Shift' && !e.repeat && !isTyping) {
-        setIsShiftPressed(true);
-      }
-
-      // CAD-style numeric input during wall drawing
-      // Allows typing exact length in mm and pressing Enter to create wall
-      // Uses refs to get current values (keyboard handler has [] deps)
-      const isWallDrawingActive = isDrawingRef.current && activeToolRef.current === 'wall' && currentDrawingPointsRef.current.length > 0;
-
-      if (isWallDrawingActive && !isTyping) {
-        // Digit keys (0-9) - add to numeric input
-        if (/^[0-9]$/.test(e.key)) {
-          e.preventDefault();
-          setNumericInput(prev => prev + e.key);
-          setShowNumericInput(true);
-          return;
-        }
-
-        // Backspace - remove last digit from numeric input (not delete shape)
-        if (e.key === 'Backspace' && numericInputRef.current.length > 0) {
-          e.preventDefault();
-          setNumericInput(prev => prev.slice(0, -1));
-          if (numericInputRef.current.length === 1) {
-            setShowNumericInput(false);
-          }
-          return;
-        }
-
-        // Enter - confirm wall with typed length
-        if (e.key === 'Enter' && numericInputRef.current.length > 0) {
-          e.preventDefault();
-          if (confirmWallWithLengthRef.current) {
-            confirmWallWithLengthRef.current(parseFloat(numericInputRef.current));
-          }
-          return;
-        }
-      }
-
-      // Escape key - cancel operation and return to select tool
-      if (e.key === 'Escape' && !isTyping) {
-        e.preventDefault();
-
-        // Clear CAD numeric input
-        setNumericInput('');
-        setShowNumericInput(false);
-
-        // Cancel any active drawing operations
-        setLastWallEndPoint(null);
-        setIsDrawing(false);
-        setCurrentDrawingPoints([]);
-
-        // Clear ghost preview and pending library objects
-        setGhostPreview(null);
-        const { setPendingObjectId, setPendingLibrarySymbol } = useFloorMapStore.getState();
-        setPendingObjectId(null);
-        setPendingLibrarySymbol(null);
-
-        // Return to select tool (basic pointer functionality)
-        setActiveToolRef.current('select');
-
-        toast.info('Återgick till markör-verktyget');
-      }
-
-      // Delete key (disabled in read-only mode)
-      // Note: When drawing wall with numeric input, Backspace is handled above
-      if ((e.key === 'Delete' || e.key === 'Backspace') && !isTyping && !isReadOnly && !isWallDrawingActive) {
-        e.preventDefault();
-        if (selectedShapeIdsRef.current.length > 0) {
-          deleteShapesRef.current(selectedShapeIdsRef.current);
-        } else if (selectedShapeIdRef.current) {
-          deleteShapeRef.current(selectedShapeIdRef.current);
-        }
-      }
-      
-      // Undo: Cmd+Z (Mac) or Ctrl+Z (Windows) - without shift
-      const isZKey = e.key.toLowerCase() === 'z' || e.code === 'KeyZ';
-      
-      if (isZKey && !isTyping) {
-        // Z-key pressed
-      }
-      
-      if (modKey && isZKey && !e.shiftKey && !isTyping) {
-        e.preventDefault();
-        if (canUndoRef.current()) {
-          undoRef.current();
-          toast.success('Ångrad');
-        } else {
-          toast.info('Inget att ångra');
-        }
-      }
-      
-      // Redo: Cmd+Shift+Z (Mac) or Ctrl+Y (Windows)
-      if (!isTyping && modKey) {
-        const isYKey = e.key.toLowerCase() === 'y' || e.code === 'KeyY';
-        const isRedoKey = (isMac && e.shiftKey && isZKey) || (!isMac && isYKey);
-        
-        // Redo key detection handled below
-        
-        if (isRedoKey) {
-          e.preventDefault();
-          if (canRedoRef.current()) {
-            redoRef.current();
-            toast.success('Gjort om');
-          } else {
-            toast.info('Inget att göra om');
-          }
-        }
-      }
-      
-      // Select All: Cmd+A (Mac) or Ctrl+A (Windows)
-      if (modKey && e.key.toLowerCase() === 'a' && !isTyping) {
-        e.preventDefault();
-        const allIds = currentShapesRef.current.map(s => s.id);
-        // setSelectedShapeIds already sets selectedShapeId to first item
-        setSelectedShapeIdsRef.current(allIds);
-        if (allIds.length > 0) {
-          toast.success(`${allIds.length} objekt markerade`);
-        }
-      }
-      
-      // Copy: Cmd+C (Mac) or Ctrl+C (Windows)
-      if (modKey && e.key.toLowerCase() === 'c' && !isTyping) {
-        e.preventDefault();
-        if (selectedShapeIdsRef.current.length > 0 || selectedShapeIdRef.current) {
-          const shapesToCopy = selectedShapeIdsRef.current.length > 0 
-            ? currentShapesRef.current.filter(s => selectedShapeIdsRef.current.includes(s.id))
-            : selectedShapeIdRef.current 
-              ? currentShapesRef.current.filter(s => s.id === selectedShapeIdRef.current)
-              : [];
-          
-          if (shapesToCopy.length > 0) {
-            setClipboard(shapesToCopy);
-            toast.success(`${shapesToCopy.length} objekt kopierade`);
-          }
-        }
-      }
-      
-      // Paste: Cmd+V (Mac) or Ctrl+V (Windows)
-      if (modKey && e.key.toLowerCase() === 'v' && !isTyping) {
-        e.preventDefault();
-        if (clipboardRef.current.length > 0 && currentPlanIdRef.current) {
-          // Paste with offset
-          const PASTE_OFFSET = 20; // pixels
-          const newShapes: FloorMapShape[] = clipboardRef.current.map(shape => {
-            const newId = uuidv4();
-            const newShape = { ...shape, id: newId, planId: currentPlanIdRef.current! };
-            
-            // Apply offset based on shape type
-            if (shape.type === 'wall' || shape.type === 'line') {
-              const coords = shape.coordinates as any;
-              newShape.coordinates = {
-                ...coords,
-                x1: coords.x1 + PASTE_OFFSET,
-                y1: coords.y1 + PASTE_OFFSET,
-                x2: coords.x2 + PASTE_OFFSET,
-                y2: coords.y2 + PASTE_OFFSET,
-              };
-            } else if (shape.type === 'room' || shape.type === 'freehand' || shape.type === 'polygon') {
-              const coords = shape.coordinates as any;
-              newShape.coordinates = {
-                points: coords.points.map((p: {x: number, y: number}) => ({
-                  x: p.x + PASTE_OFFSET,
-                  y: p.y + PASTE_OFFSET
-                }))
-              };
-            } else if (shape.type === 'rectangle' || shape.type === 'door' || shape.type === 'opening') {
-              const coords = shape.coordinates as any;
-              newShape.coordinates = {
-                ...coords,
-                left: (coords.left || coords.x || 0) + PASTE_OFFSET,
-                top: (coords.top || coords.y || 0) + PASTE_OFFSET,
-              };
-            } else if (shape.type === 'circle') {
-              const coords = shape.coordinates as any;
-              newShape.coordinates = {
-                ...coords,
-                cx: (coords.cx || coords.x || 0) + PASTE_OFFSET,
-                cy: (coords.cy || coords.y || 0) + PASTE_OFFSET,
-              };
-            } else if (shape.type === 'text') {
-              const coords = shape.coordinates as any;
-              newShape.coordinates = {
-                ...coords,
-                x: coords.x + PASTE_OFFSET,
-                y: coords.y + PASTE_OFFSET,
-              };
-            } else if (shape.type === 'bezier') {
-              const coords = shape.coordinates as any;
-              newShape.coordinates = {
-                start: { x: coords.start.x + PASTE_OFFSET, y: coords.start.y + PASTE_OFFSET },
-                control: { x: coords.control.x + PASTE_OFFSET, y: coords.control.y + PASTE_OFFSET },
-                end: { x: coords.end.x + PASTE_OFFSET, y: coords.end.y + PASTE_OFFSET },
-              };
-            } else if (shape.type === 'image') {
-              const coords = shape.coordinates as any;
-              newShape.coordinates = {
-                ...coords,
-                x: coords.x + PASTE_OFFSET,
-                y: coords.y + PASTE_OFFSET,
-              };
-            }
-
-            return newShape;
-          });
-
-          // Add all new shapes
-          newShapes.forEach(shape => addShapeRef.current(shape));
-          
-          // Select the pasted shapes
-          setSelectedShapeIdsRef.current(newShapes.map(s => s.id));
-          toast.success(`${newShapes.length} objekt inklistrade`);
-        }
-      }
-      
-      // Duplicate: Cmd+D (Mac) or Ctrl+D (Windows)
-      if (modKey && e.key.toLowerCase() === 'd' && !isTyping) {
-        e.preventDefault();
-        if ((selectedShapeIdsRef.current.length > 0 || selectedShapeIdRef.current) && currentPlanIdRef.current) {
-          const shapesToDuplicate = selectedShapeIdsRef.current.length > 0 
-            ? currentShapesRef.current.filter(s => selectedShapeIdsRef.current.includes(s.id))
-            : selectedShapeIdRef.current 
-              ? currentShapesRef.current.filter(s => s.id === selectedShapeIdRef.current)
-              : [];
-          
-          if (shapesToDuplicate.length > 0) {
-            const DUPLICATE_OFFSET = 20;
-            const newShapes: FloorMapShape[] = shapesToDuplicate.map(shape => {
-              const newId = uuidv4();
-              const newShape = { ...shape, id: newId, planId: currentPlanIdRef.current! };
-              
-              // Apply offset (same logic as paste)
-              if (shape.type === 'wall' || shape.type === 'line') {
-                const coords = shape.coordinates as any;
-                newShape.coordinates = {
-                  ...coords,
-                  x1: coords.x1 + DUPLICATE_OFFSET,
-                  y1: coords.y1 + DUPLICATE_OFFSET,
-                  x2: coords.x2 + DUPLICATE_OFFSET,
-                  y2: coords.y2 + DUPLICATE_OFFSET,
-                };
-              } else if (shape.type === 'room' || shape.type === 'freehand' || shape.type === 'polygon') {
-                const coords = shape.coordinates as any;
-                newShape.coordinates = {
-                  points: coords.points.map((p: {x: number, y: number}) => ({
-                    x: p.x + DUPLICATE_OFFSET,
-                    y: p.y + DUPLICATE_OFFSET
-                  }))
-                };
-              } else if (shape.type === 'rectangle' || shape.type === 'door' || shape.type === 'opening') {
-                const coords = shape.coordinates as any;
-                newShape.coordinates = {
-                  ...coords,
-                  left: (coords.left || coords.x || 0) + DUPLICATE_OFFSET,
-                  top: (coords.top || coords.y || 0) + DUPLICATE_OFFSET,
-                };
-              } else if (shape.type === 'circle') {
-                const coords = shape.coordinates as any;
-                newShape.coordinates = {
-                  ...coords,
-                  cx: (coords.cx || coords.x || 0) + DUPLICATE_OFFSET,
-                  cy: (coords.cy || coords.y || 0) + DUPLICATE_OFFSET,
-                };
-              } else if (shape.type === 'text') {
-                const coords = shape.coordinates as any;
-                newShape.coordinates = {
-                  ...coords,
-                  x: coords.x + DUPLICATE_OFFSET,
-                  y: coords.y + DUPLICATE_OFFSET,
-                };
-              } else if (shape.type === 'bezier') {
-                const coords = shape.coordinates as any;
-                newShape.coordinates = {
-                  start: { x: coords.start.x + DUPLICATE_OFFSET, y: coords.start.y + DUPLICATE_OFFSET },
-                  control: { x: coords.control.x + DUPLICATE_OFFSET, y: coords.control.y + DUPLICATE_OFFSET },
-                  end: { x: coords.end.x + DUPLICATE_OFFSET, y: coords.end.y + DUPLICATE_OFFSET },
-                };
-              } else if (shape.type === 'image') {
-                const coords = shape.coordinates as any;
-                newShape.coordinates = {
-                  ...coords,
-                  x: coords.x + DUPLICATE_OFFSET,
-                  y: coords.y + DUPLICATE_OFFSET,
-                };
-              }
-
-              return newShape;
-            });
-
-            // Add all duplicated shapes
-            newShapes.forEach(shape => addShapeRef.current(shape));
-            
-            // Select the duplicated shapes
-            setSelectedShapeIdsRef.current(newShapes.map(s => s.id));
-            toast.success(`${newShapes.length} objekt duplicerade`);
-          }
-        }
-      }
-      
-      // Save: Cmd+S (Mac) or Ctrl+S (Windows)
-      if (modKey && e.key.toLowerCase() === 's' && !isTyping) {
-        e.preventDefault();
-        // Save shortcut triggered
-        if ((window as any).__canvasSave) {
-          (window as any).__canvasSave();
-        }
-      }
-
-      // ===== TOOL SHORTCUTS (single keys without modifiers) =====
-      if (!modKey && !e.shiftKey && !isTyping) {
-        const key = e.key.toLowerCase();
-
-        // V - Select tool
-        if (key === 'v') {
-          e.preventDefault();
-          setActiveToolRef.current('select');
-        }
-        // P - Freehand/Pen tool
-        else if (key === 'p') {
-          e.preventDefault();
-          setActiveToolRef.current('freehand');
-        }
-        // C - Circle tool
-        else if (key === 'c') {
-          e.preventDefault();
-          setActiveToolRef.current('circle');
-        }
-        // R - Rectangle tool
-        else if (key === 'r') {
-          e.preventDefault();
-          setActiveToolRef.current('rectangle');
-        }
-        // B - Bezier curve tool
-        else if (key === 'b') {
-          e.preventDefault();
-          setActiveToolRef.current('bezier');
-        }
-        // W - Wall tool
-        else if (key === 'w') {
-          e.preventDefault();
-          setActiveToolRef.current('wall');
-        }
-        // T - Text tool
-        else if (key === 't') {
-          e.preventDefault();
-          setActiveToolRef.current('text');
-        }
-        // E - Eraser tool
-        else if (key === 'e') {
-          e.preventDefault();
-          setActiveToolRef.current('eraser');
-        }
-        // M - Measure/Ruler tool
-        else if (key === 'm') {
-          e.preventDefault();
-          setActiveToolRef.current('measure');
-        }
-        // ] - Bring Forward
-        else if (key === ']') {
-          e.preventDefault();
-          const store = useFloorMapStore.getState();
-          if (store.selectedShapeIds.length > 0) {
-            store.selectedShapeIds.forEach(id => store.bringForward(id));
-            toast.success('Flyttat framåt');
-          }
-        }
-        // [ - Send Backward
-        else if (key === '[') {
-          e.preventDefault();
-          const store = useFloorMapStore.getState();
-          if (store.selectedShapeIds.length > 0) {
-            store.selectedShapeIds.forEach(id => store.sendBackward(id));
-            toast.success('Flyttat bakåt');
-          }
-        }
-      }
-
-      // Cmd/Ctrl + ] - Bring to Front
-      if (modKey && e.key === ']' && !isTyping) {
-        e.preventDefault();
-        const store = useFloorMapStore.getState();
-        if (store.selectedShapeIds.length > 0) {
-          store.selectedShapeIds.forEach(id => store.bringToFront(id));
-          toast.success('Flyttat längst fram');
-        }
-      }
-
-      // Cmd/Ctrl + [ - Send to Back
-      if (modKey && e.key === '[' && !isTyping) {
-        e.preventDefault();
-        const store = useFloorMapStore.getState();
-        if (store.selectedShapeIds.length > 0) {
-          store.selectedShapeIds.forEach(id => store.sendToBack(id));
-          toast.success('Flyttat längst bak');
-        }
-      }
-    };
-    
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        setIsSpacePressed(false);
-      }
-      if (e.key === 'Shift') {
-        setIsShiftPressed(false);
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, []); // Empty deps - all values via refs
+  // Keyboard shortcuts hook (handles all keyboard interactions)
+  const { isSpacePressed, isShiftPressed, confirmWallWithLengthRef } = useKeyboardShortcuts({
+    isReadOnly: isReadOnly ?? false,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    addShape,
+    deleteShape,
+    deleteShapes,
+    setSelectedShapeId,
+    setSelectedShapeIds,
+    selectedShapeId,
+    selectedShapeIds,
+    currentShapes,
+    clipboard,
+    setClipboard,
+    currentPlanId,
+    setActiveTool,
+    isDrawing,
+    setIsDrawing,
+    currentDrawingPoints,
+    setCurrentDrawingPoints,
+    activeTool,
+    numericInput,
+    setNumericInput,
+    setShowNumericInput,
+    setLastWallEndPoint,
+    setGhostPreview,
+  });
   
   // Handle shape click - SIMPLIFIED double-click detection (like old canvas)
   const handleShapeClick = useCallback(async (shapeId: string, shapeType: string, evt?: KonvaEventObject<MouseEvent>) => {
@@ -2139,36 +1148,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       lastClickedShapeIdRef.current = shapeId;
     }
   }, [activeTool, deleteShape, addShape, viewState, gridSettings, scaleSettings, currentShapes, saveRoomToDB, setSelectedShapeId, setSelectedShapeIds, selectedShapeIds, setSelectedRoomForDetail, setIsRoomDetailOpen, setPropertyPanelShape, setShowPropertyPanel]);
-  
-  // Helper function to constrain pan within canvas bounds
-  const constrainPan = useCallback((panX: number, panY: number, zoom: number): { panX: number; panY: number } => {
-    const canvasWidthPx = projectSettings.canvasWidthMeters * 1000 * scaleSettings.pixelsPerMm;
-    const canvasHeightPx = projectSettings.canvasHeightMeters * 1000 * scaleSettings.pixelsPerMm;
-    
-    const stageWidth = window.innerWidth;
-    const stageHeight = window.innerHeight;
-    
-    const scaledCanvasWidth = canvasWidthPx * zoom;
-    const scaledCanvasHeight = canvasHeightPx * zoom;
-    
-    // Calculate bounds - canvas edges should not come inside viewport
-    const minPanX = stageWidth - scaledCanvasWidth;
-    const maxPanX = 0;
-    const minPanY = stageHeight - scaledCanvasHeight;
-    const maxPanY = 0;
-    
-    // If canvas is smaller than viewport, center it
-    const constrainedPanX = scaledCanvasWidth < stageWidth 
-      ? (stageWidth - scaledCanvasWidth) / 2 
-      : Math.max(minPanX, Math.min(maxPanX, panX));
-    
-    const constrainedPanY = scaledCanvasHeight < stageHeight 
-      ? (stageHeight - scaledCanvasHeight) / 2 
-      : Math.max(minPanY, Math.min(maxPanY, panY));
-    
-    return { panX: constrainedPanX, panY: constrainedPanY };
-  }, [projectSettings.canvasWidthMeters, projectSettings.canvasHeightMeters, scaleSettings.pixelsPerMm]);
-  
+
   // Apply constraints to initial viewport once constrainPan is ready
   useEffect(() => {
     if (viewState.zoom === 1 && viewState.panX === 0 && viewState.panY === 0) {
@@ -2178,176 +1158,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       }
     }
   }, [constrainPan, viewState, setViewState]);
-  
-  // Handle mouse wheel - zoom with Ctrl/Cmd, pan with two-finger scroll
-  const handleWheel = useCallback((e: KonvaEventObject<WheelEvent>) => {
-    e.evt.preventDefault(); // Prevent default scroll behavior
-    
-    const stage = stageRef.current;
-    if (!stage) return;
-    
-    // Zoom with Ctrl/Cmd + scroll
-    if (e.evt.ctrlKey || e.evt.metaKey) {
-      const pointer = stage.getPointerPosition();
-      if (!pointer) return;
-      
-      const zoomFactor = e.evt.deltaY > 0 ? 0.9 : 1.1;
-      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, viewState.zoom * zoomFactor));
-      
-      const mousePointTo = {
-        x: (pointer.x - viewState.panX) / viewState.zoom,
-        y: (pointer.y - viewState.panY) / viewState.zoom,
-      };
-      
-      const unconstrained = {
-        panX: pointer.x - mousePointTo.x * newZoom,
-        panY: pointer.y - mousePointTo.y * newZoom,
-      };
-      
-      // Constrain pan to canvas bounds
-      const constrained = constrainPan(unconstrained.panX, unconstrained.panY, newZoom);
-      
-      setViewState({
-        zoom: newZoom,
-        ...constrained,
-      });
-    } else {
-      // Two-finger scroll (panning) - smooth and responsive in all directions
-      const scrollSpeed = 1.2;
-      
-      const unconstrained = {
-        panX: viewState.panX - e.evt.deltaX * scrollSpeed,
-        panY: viewState.panY - e.evt.deltaY * scrollSpeed,
-      };
-      
-      // Constrain pan to canvas bounds
-      const constrained = constrainPan(unconstrained.panX, unconstrained.panY, viewState.zoom);
-      
-      setViewState({
-        ...constrained,
-      });
-    }
-  }, [viewState, setViewState, constrainPan]);
-  
-  // Helper function to calculate distance between two touch points
-  const getTouchDistance = (touch1: Touch, touch2: Touch): number => {
-    const dx = touch1.clientX - touch2.clientX;
-    const dy = touch1.clientY - touch2.clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  };
-  
-  // Helper function to get center point between two touches
-  const getTouchCenter = (touch1: Touch, touch2: Touch): { x: number; y: number } => {
-    return {
-      x: (touch1.clientX + touch2.clientX) / 2,
-      y: (touch1.clientY + touch2.clientY) / 2,
-    };
-  };
-  
-  // Handle touch start (for pinch zoom and single-finger pan)
-  const handleTouchStart = useCallback((e: KonvaEventObject<TouchEvent>) => {
-    const touches = e.evt.touches;
 
-    // Two-finger touch = prepare for pinch zoom
-    if (touches.length === 2) {
-      e.evt.preventDefault(); // Prevent browser zoom
-      touchPanStartRef.current = null; // Cancel single-finger pan
-
-      const distance = getTouchDistance(touches[0], touches[1]);
-      const center = getTouchCenter(touches[0], touches[1]);
-
-      setLastTouchDistance(distance);
-      setLastTouchCenter(center);
-    }
-
-    // Single-finger touch on empty canvas = pan
-    if (touches.length === 1) {
-      const target = e.target;
-      const isEmptyCanvas = target === target.getStage();
-      const { activeTool } = useFloorMapStore.getState();
-
-      if (isEmptyCanvas && activeTool === 'select') {
-        const { panX, panY } = useFloorMapStore.getState().viewState;
-        touchPanStartRef.current = {
-          x: touches[0].clientX,
-          y: touches[0].clientY,
-          panX,
-          panY,
-        };
-      }
-    }
-  }, []);
-  
-  // Handle touch move (pinch zoom and single-finger pan)
-  const handleTouchMove = useCallback((e: KonvaEventObject<TouchEvent>) => {
-    const touches = e.evt.touches;
-    const stage = stageRef.current;
-    if (!stage) return;
-
-    // Single-finger pan
-    if (touches.length === 1 && touchPanStartRef.current) {
-      e.evt.preventDefault();
-      const dx = touches[0].clientX - touchPanStartRef.current.x;
-      const dy = touches[0].clientY - touchPanStartRef.current.y;
-      const newPanX = touchPanStartRef.current.panX + dx;
-      const newPanY = touchPanStartRef.current.panY + dy;
-      const constrained = constrainPan(newPanX, newPanY, viewState.zoom);
-      setViewState(constrained);
-      return;
-    }
-
-    // Two-finger pinch zoom
-    if (touches.length === 2 && lastTouchDistance && lastTouchCenter) {
-      e.evt.preventDefault(); // Prevent browser zoom
-      
-      const currentDistance = getTouchDistance(touches[0], touches[1]);
-      const currentCenter = getTouchCenter(touches[0], touches[1]);
-      
-      // Calculate zoom change based on distance change
-      const scale = currentDistance / lastTouchDistance;
-      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, viewState.zoom * scale));
-      
-      // Zoom towards the pinch center point
-      const mousePointTo = {
-        x: (lastTouchCenter.x - viewState.panX) / viewState.zoom,
-        y: (lastTouchCenter.y - viewState.panY) / viewState.zoom,
-      };
-      
-      const unconstrained = {
-        panX: lastTouchCenter.x - mousePointTo.x * newZoom,
-        panY: lastTouchCenter.y - mousePointTo.y * newZoom,
-      };
-      
-      // Constrain pan to canvas bounds
-      const constrained = constrainPan(unconstrained.panX, unconstrained.panY, newZoom);
-      
-      setViewState({
-        zoom: newZoom,
-        ...constrained,
-      });
-      
-      // Update for next frame
-      setLastTouchDistance(currentDistance);
-      setLastTouchCenter(currentCenter);
-    }
-  }, [viewState, lastTouchDistance, lastTouchCenter, setViewState, constrainPan]);
-  
-  // Handle touch end (cleanup)
-  const handleTouchEnd = useCallback((e: KonvaEventObject<TouchEvent>) => {
-    const touches = e.evt.touches;
-
-    // Reset single-finger pan
-    if (touches.length === 0) {
-      touchPanStartRef.current = null;
-    }
-
-    // Reset pinch zoom state when fingers are lifted
-    if (touches.length < 2) {
-      setLastTouchDistance(null);
-      setLastTouchCenter(null);
-    }
-  }, []);
-  
   // Handle mouse down
   const handleMouseDown = useCallback((e: KonvaEventObject<MouseEvent>) => {
     const stage = stageRef.current;
@@ -3677,14 +2488,13 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         const boxWidth = width >= minSize ? width : 200;
         const boxHeight = height >= minSize ? height : 50;
 
-        // Set pending position and open dialog
-        setPendingTextPosition({
+        // Open text dialog with position
+        textDialog.openForCreate({
           x: minX,
           y: minY,
           width: boxWidth,
           height: boxHeight,
         });
-        setIsTextDialogOpen(true);
         setSelectionBox(null);
         return;
       }
@@ -4233,141 +3043,13 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       onContextMenu={handleContextMenu}
     >
       {/* Text Input Dialog */}
-      <Dialog open={isTextDialogOpen} onOpenChange={(open) => {
-        setIsTextDialogOpen(open);
-        if (!open) {
-          // Reset all states when dialog closes
-          setTextInputValue('');
-          setPendingTextPosition(null);
-          setTextIsBold(false);
-          setTextIsItalic(false);
-          setTextFontSize(16);
-          setTextRotation(0);
-          setTextHasBackground(false);
-          setEditingTextShapeId(null);
-        }
-      }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingTextShapeId ? 'Redigera text' : 'Lägg till text'}</DialogTitle>
-            <DialogDescription>
-              {editingTextShapeId
-                ? 'Ändra textinnehåll och stil.'
-                : 'Skriv text och välj stil för att placera på ritningen.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {/* Text content */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Text</label>
-              <Input
-                value={textInputValue}
-                onChange={(e) => setTextInputValue(e.target.value)}
-                placeholder="Skriv din text här..."
-                autoFocus
-              />
-            </div>
-
-            {/* Font size */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Storlek</label>
-              <div className="flex gap-2">
-                {[
-                  { label: 'S', value: 12 },
-                  { label: 'M', value: 16 },
-                  { label: 'L', value: 24 },
-                  { label: 'XL', value: 36 },
-                ].map((preset) => (
-                  <button
-                    key={preset.value}
-                    type="button"
-                    onClick={() => setTextFontSize(preset.value)}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      textFontSize === preset.value
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted hover:bg-muted/80'
-                    }`}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Style options */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Stil</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setTextIsBold(!textIsBold)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-bold transition-colors ${
-                    textIsBold
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted hover:bg-muted/80'
-                  }`}
-                >
-                  B
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTextIsItalic(!textIsItalic)}
-                  className={`px-3 py-1.5 rounded-md text-sm italic transition-colors ${
-                    textIsItalic
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted hover:bg-muted/80'
-                  }`}
-                >
-                  I
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTextHasBackground(!textHasBackground)}
-                  className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                    textHasBackground
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted hover:bg-muted/80'
-                  }`}
-                  title="Bakgrund"
-                >
-                  ▢
-                </button>
-              </div>
-            </div>
-
-            {/* Rotation */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Rotation</label>
-              <div className="flex gap-2">
-                {([0, 90, 180, 270] as const).map((angle) => (
-                  <button
-                    key={angle}
-                    type="button"
-                    onClick={() => setTextRotation(angle)}
-                    className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                      textRotation === angle
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted hover:bg-muted/80'
-                    }`}
-                  >
-                    {angle}°
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Submit button */}
-            <button
-              type="button"
-              onClick={handleTextSubmit}
-              disabled={!textInputValue.trim()}
-              className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {editingTextShapeId ? 'Spara' : 'Lägg till'}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <TextInputDialog
+        state={textDialog.state}
+        onStateChange={textDialog.updateState}
+        onSubmit={addShape}
+        onUpdate={updateShape}
+        currentPlanId={currentPlanId}
+      />
       
       {/* Name Room Dialog */}
       <NameRoomDialog
@@ -4567,387 +3249,37 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           )}
 
           {/* Ghost preview for stamp placement mode (library objects/symbols) */}
-          {ghostPreview && (pendingLibrarySymbol || pendingObjectId) && (() => {
-            // Render actual symbol/object as ghost with reduced opacity
-            if (pendingLibrarySymbol) {
-              const SymbolComponent = getSymbolComponent(pendingLibrarySymbol as ArchSymbolType);
-              if (SymbolComponent) {
-                const symbolMeta = SYMBOL_METADATA.find(s => s.type === pendingLibrarySymbol);
-                const defaultSize = symbolMeta?.defaultSize || 600;
-                const symbolScale = (defaultSize / 1000) * scaleSettings.pixelsPerMm;
-                return (
-                  <Group
-                    x={ghostPreview.x}
-                    y={ghostPreview.y}
-                    rotation={ghostPreview.rotation}
-                    opacity={0.6}
-                    listening={false}
-                  >
-                    <SymbolComponent
-                      width={100 * symbolScale}
-                      height={100 * symbolScale}
-                      strokeWidth={1.5 / viewState.zoom}
-                      stroke={ghostPreview.nearWall ? '#10b981' : '#3b82f6'}
-                      fill="transparent"
-                    />
-                    {/* Snap indicator when near wall */}
-                    {ghostPreview.nearWall && (
-                      <Circle
-                        x={0}
-                        y={0}
-                        radius={8 / viewState.zoom}
-                        fill="#10b981"
-                        opacity={0.8}
-                      />
-                    )}
-                  </Group>
-                );
-              }
-            }
-            if (pendingObjectId) {
-              // First check for unified object (new SVG-based library)
-              const unifiedDef = getUnifiedObjectById(pendingObjectId);
-              if (unifiedDef) {
-                const objectScale = scaleSettings.pixelsPerMm;
-                const width = unifiedDef.dimensions.width * objectScale;
-                const height = unifiedDef.dimensions.depth * objectScale;
-                const symbol = unifiedDef.floorPlanSymbol;
-                const [, , vbWidth, vbHeight] = symbol.viewBox.split(' ').map(Number);
-                const scaleX = width / vbWidth;
-                const scaleY = height / vbHeight;
+          <GhostPreviewOverlay
+            ghostPreview={ghostPreview}
+            pendingLibrarySymbol={pendingLibrarySymbol}
+            pendingObjectId={pendingObjectId}
+            zoom={viewState.zoom}
+            pixelsPerMm={scaleSettings.pixelsPerMm}
+          />
 
-                return (
-                  <Group
-                    x={ghostPreview.x}
-                    y={ghostPreview.y}
-                    rotation={ghostPreview.rotation}
-                    opacity={0.6}
-                    listening={false}
-                  >
-                    {/* Selection box */}
-                    <Rect
-                      x={-width / 2}
-                      y={-height / 2}
-                      width={width}
-                      height={height}
-                      stroke={ghostPreview.nearWall ? '#10b981' : '#3b82f6'}
-                      strokeWidth={2 / viewState.zoom}
-                      dash={[6 / viewState.zoom, 3 / viewState.zoom]}
-                      fill={ghostPreview.nearWall ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)'}
-                    />
-                    {/* SVG Symbol */}
-                    <Group x={-width / 2} y={-height / 2}>
-                      {symbol.paths.map((path, index) => (
-                        <Path
-                          key={index}
-                          data={path.d}
-                          fill={path.fill || 'none'}
-                          stroke={ghostPreview.nearWall ? '#10b981' : (path.stroke || '#3b82f6')}
-                          strokeWidth={(path.strokeWidth || 2) * Math.min(scaleX, scaleY)}
-                          scaleX={scaleX}
-                          scaleY={scaleY}
-                        />
-                      ))}
-                    </Group>
-                    {/* Object name label */}
-                    <KonvaText
-                      x={-width / 2}
-                      y={-height / 2 - 20 / viewState.zoom}
-                      text={unifiedDef.name}
-                      fontSize={12 / viewState.zoom}
-                      fill={ghostPreview.nearWall ? '#10b981' : '#3b82f6'}
-                    />
-                    {/* Snap indicator when near wall */}
-                    {ghostPreview.nearWall && (
-                      <Circle
-                        x={0}
-                        y={0}
-                        radius={8 / viewState.zoom}
-                        fill="#10b981"
-                        opacity={0.8}
-                      />
-                    )}
-                  </Group>
-                );
-              }
-
-              // Fall back to legacy object library
-              const objectDef = getObjectById(pendingObjectId);
-              if (objectDef) {
-                const objectScale = scaleSettings.pixelsPerMm;
-                // Render a placeholder rectangle for the object ghost
-                // Use defaultWidth/defaultHeight (the correct property names)
-                const width = (objectDef.defaultWidth || 600) * objectScale;
-                const height = (objectDef.defaultHeight || 600) * objectScale;
-                return (
-                  <Group
-                    x={ghostPreview.x}
-                    y={ghostPreview.y}
-                    rotation={ghostPreview.rotation}
-                    opacity={0.6}
-                    listening={false}
-                  >
-                    <Rect
-                      x={-width / 2}
-                      y={-height / 2}
-                      width={width}
-                      height={height}
-                      stroke={ghostPreview.nearWall ? '#10b981' : '#3b82f6'}
-                      strokeWidth={2 / viewState.zoom}
-                      dash={[6 / viewState.zoom, 3 / viewState.zoom]}
-                      fill={ghostPreview.nearWall ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)'}
-                    />
-                    {/* Object name label */}
-                    <KonvaText
-                      x={-width / 2}
-                      y={-height / 2 - 20 / viewState.zoom}
-                      text={objectDef.name}
-                      fontSize={12 / viewState.zoom}
-                      fill={ghostPreview.nearWall ? '#10b981' : '#3b82f6'}
-                    />
-                    {/* Snap indicator when near wall */}
-                    {ghostPreview.nearWall && (
-                      <Circle
-                        x={0}
-                        y={0}
-                        radius={8 / viewState.zoom}
-                        fill="#10b981"
-                        opacity={0.8}
-                      />
-                    )}
-                  </Group>
-                );
-              }
-            }
-            return null;
-          })()}
-
-          {/* Box selection/room preview - blue dashed rectangle */}
-          {isBoxSelecting && selectionBox && activeTool !== 'bezier' && activeTool !== 'circle' && (
-            <Rect
-              x={Math.min(selectionBox.start.x, selectionBox.end.x)}
-              y={Math.min(selectionBox.start.y, selectionBox.end.y)}
-              width={Math.abs(selectionBox.end.x - selectionBox.start.x)}
-              height={Math.abs(selectionBox.end.y - selectionBox.start.y)}
-              stroke={activeTool === 'room' || activeTool === 'rectangle' ? '#10b981' : '#3b82f6'}
-              fill={activeTool === 'room' ? 'rgba(16, 185, 129, 0.1)' : activeTool === 'rectangle' ? 'rgba(16, 185, 129, 0.1)' : undefined}
-              strokeWidth={2 / viewState.zoom}
-              dash={[4 / viewState.zoom, 2 / viewState.zoom]}
-              listening={false}
-            />
-          )}
-
-          {/* Circle preview */}
-          {isBoxSelecting && selectionBox && activeTool === 'circle' && (
-            <Circle
-              x={(selectionBox.start.x + selectionBox.end.x) / 2}
-              y={(selectionBox.start.y + selectionBox.end.y) / 2}
-              radius={Math.max(
-                Math.abs(selectionBox.end.x - selectionBox.start.x),
-                Math.abs(selectionBox.end.y - selectionBox.start.y)
-              ) / 2}
-              stroke="#3b82f6"
-              fill="rgba(147, 197, 253, 0.2)"
-              strokeWidth={2 / viewState.zoom}
-              dash={[4 / viewState.zoom, 2 / viewState.zoom]}
-              listening={false}
-            />
-          )}
-
-          {/* Bezier curve preview */}
-          {isBoxSelecting && selectionBox && activeTool === 'bezier' && (() => {
-            const start = selectionBox.start;
-            const end = selectionBox.end;
-            const dx = end.x - start.x;
-            const dy = end.y - start.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            if (distance < 10) return null;
-
-            // Calculate control point preview
-            const midX = (start.x + end.x) / 2;
-            const midY = (start.y + end.y) / 2;
-            const perpX = -dy;
-            const perpY = dx;
-            const perpLength = Math.sqrt(perpX * perpX + perpY * perpY);
-            const curveAmount = distance * 0.3;
-            const controlX = midX + (perpX / perpLength) * curveAmount;
-            const controlY = midY + (perpY / perpLength) * curveAmount;
-
-            const pathData = `M ${start.x} ${start.y} Q ${controlX} ${controlY} ${end.x} ${end.y}`;
-
-            return (
-              <Group listening={false}>
-                <Path
-                  data={pathData}
-                  stroke="#8b5cf6"
-                  strokeWidth={2 / viewState.zoom}
-                  dash={[4 / viewState.zoom, 2 / viewState.zoom]}
-                  fill="transparent"
-                />
-                {/* Show control point indicator */}
-                <Circle
-                  x={controlX}
-                  y={controlY}
-                  radius={4 / viewState.zoom}
-                  fill="#8b5cf6"
-                  opacity={0.5}
-                />
-                {/* Start point */}
-                <Circle
-                  x={start.x}
-                  y={start.y}
-                  radius={3 / viewState.zoom}
-                  fill="white"
-                  stroke="#8b5cf6"
-                  strokeWidth={1 / viewState.zoom}
-                />
-                {/* End point */}
-                <Circle
-                  x={end.x}
-                  y={end.y}
-                  radius={3 / viewState.zoom}
-                  fill="white"
-                  stroke="#8b5cf6"
-                  strokeWidth={1 / viewState.zoom}
-                />
-              </Group>
-            );
-          })()}
+          {/* Selection/creation preview (box, circle, bezier) */}
+          <SelectionPreviewOverlay
+            isBoxSelecting={isBoxSelecting}
+            selectionBox={selectionBox}
+            activeTool={activeTool}
+            zoom={viewState.zoom}
+          />
 
           {/* Measurement line - for ruler/measure tool */}
-          {measureStart && measureEnd && (() => {
-            // Use world coordinates directly - Stage already handles zoom/pan transform
-            const x1 = measureStart.x;
-            const y1 = measureStart.y;
-            const x2 = measureEnd.x;
-            const y2 = measureEnd.y;
-
-            const dx = x2 - x1;
-            const dy = y2 - y1;
-            // Convert pixel distance to mm using pixelsPerMm
-            const distancePixels = Math.sqrt(dx * dx + dy * dy);
-            const distanceMm = distancePixels / scaleSettings.pixelsPerMm;
-
-            const midX = (x1 + x2) / 2;
-            const midY = (y1 + y2) / 2;
-
-            // Only show if there's a meaningful distance
-            if (distancePixels < 5) return null;
-
-            // Scale-independent sizes (divide by zoom to keep constant screen size)
-            const strokeWidth = 2 / viewState.zoom;
-            const markerSize = 6 / viewState.zoom;
-            const circleRadius = 4 / viewState.zoom;
-            const labelWidth = 90 / viewState.zoom;
-            const labelHeight = 24 / viewState.zoom;
-            const fontSize = 14 / viewState.zoom;
-            const dashSize = [8 / viewState.zoom, 4 / viewState.zoom];
-
-            return (
-              <Group listening={false}>
-                {/* Main measurement line */}
-                <Line
-                  points={[x1, y1, x2, y2]}
-                  stroke="#ef4444"
-                  strokeWidth={strokeWidth}
-                  dash={dashSize}
-                />
-                {/* Start point */}
-                <Circle x={x1} y={y1} radius={circleRadius} fill="#ef4444" />
-                {/* End point */}
-                <Circle x={x2} y={y2} radius={circleRadius} fill="#ef4444" />
-                {/* X markers at endpoints */}
-                <Line
-                  points={[x1 - markerSize, y1 - markerSize, x1 + markerSize, y1 + markerSize]}
-                  stroke="#ef4444"
-                  strokeWidth={strokeWidth}
-                />
-                <Line
-                  points={[x1 - markerSize, y1 + markerSize, x1 + markerSize, y1 - markerSize]}
-                  stroke="#ef4444"
-                  strokeWidth={strokeWidth}
-                />
-                <Line
-                  points={[x2 - markerSize, y2 - markerSize, x2 + markerSize, y2 + markerSize]}
-                  stroke="#ef4444"
-                  strokeWidth={strokeWidth}
-                />
-                <Line
-                  points={[x2 - markerSize, y2 + markerSize, x2 + markerSize, y2 - markerSize]}
-                  stroke="#ef4444"
-                  strokeWidth={strokeWidth}
-                />
-                {/* Distance label with background */}
-                <Rect
-                  x={midX - labelWidth / 2}
-                  y={midY - labelHeight - 4 / viewState.zoom}
-                  width={labelWidth}
-                  height={labelHeight}
-                  fill="white"
-                  stroke="#ef4444"
-                  strokeWidth={strokeWidth / 2}
-                  cornerRadius={4 / viewState.zoom}
-                />
-                <KonvaText
-                  x={midX - labelWidth / 2}
-                  y={midY - labelHeight}
-                  width={labelWidth}
-                  text={formatDim(distanceMm)}
-                  fontSize={fontSize}
-                  fill="#ef4444"
-                  align="center"
-                  fontStyle="bold"
-                />
-                {/* Angle indicator */}
-                <KonvaText
-                  x={midX - 25 / viewState.zoom}
-                  y={midY + 4 / viewState.zoom}
-                  text={`${(Math.atan2(dy, dx) * 180 / Math.PI).toFixed(1)}°`}
-                  fontSize={10 / viewState.zoom}
-                  fill="#9ca3af"
-                />
-              </Group>
-            );
-          })()}
+          <MeasurementOverlay
+            measureStart={measureStart}
+            measureEnd={measureEnd}
+            zoom={viewState.zoom}
+            pixelsPerMm={scaleSettings.pixelsPerMm}
+          />
 
           {/* Multi-selection bounding box - visual indicator for group selection */}
-          {multiSelectionBounds && !isBoxSelecting && (
-            <Group listening={false}>
-              <Rect
-                x={multiSelectionBounds.x}
-                y={multiSelectionBounds.y}
-                width={multiSelectionBounds.width}
-                height={multiSelectionBounds.height}
-                stroke="#3b82f6"
-                strokeWidth={2 / viewState.zoom}
-                dash={[8 / viewState.zoom, 4 / viewState.zoom]}
-                fill="rgba(59, 130, 246, 0.03)"
-                cornerRadius={4 / viewState.zoom}
-              />
-              {/* Selection count badge */}
-              <Group
-                x={multiSelectionBounds.x + multiSelectionBounds.width - 30 / viewState.zoom}
-                y={multiSelectionBounds.y - 12 / viewState.zoom}
-              >
-                <Rect
-                  width={30 / viewState.zoom}
-                  height={20 / viewState.zoom}
-                  fill="#3b82f6"
-                  cornerRadius={4 / viewState.zoom}
-                />
-                <KonvaText
-                  text={String(multiSelectionBounds.count)}
-                  fontSize={12 / viewState.zoom}
-                  fill="white"
-                  width={30 / viewState.zoom}
-                  height={20 / viewState.zoom}
-                  align="center"
-                  verticalAlign="middle"
-                />
-              </Group>
-            </Group>
-          )}
+          <MultiSelectionBoundsOverlay
+            selectedShapeIds={selectedShapeIds}
+            currentShapes={currentShapes}
+            isBoxSelecting={isBoxSelecting}
+            zoom={viewState.zoom}
+          />
 
           {/* Template Groups - rendered as unified transformable units */}
           <Group listening={!isReadOnly && activeTool !== 'measure'}>
@@ -5416,155 +3748,15 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           {/* Multi-select dragging handled by unified drag system */}
 
           {/* Comment indicators - blue badges on shapes with comments */}
-          <Group>
-            {currentShapes.map((shape) => {
-              const count = commentCounts[shape.id];
-              if (!count || count === 0) return null;
-              if (!shape.coordinates) return null;
-
-              const isResolved = resolvedStatus[shape.id];
-
-              // Calculate position based on shape type
-              let indicatorX: number | null = null;
-              let indicatorY: number | null = null;
-
-              try {
-                if (shape.type === 'room') {
-                  const coords = shape.coordinates as { points?: { x: number; y: number }[] };
-                  if (coords.points && coords.points.length > 0) {
-                    const xs = coords.points.map(p => p.x);
-                    const ys = coords.points.map(p => p.y);
-                    indicatorX = Math.max(...xs);
-                    indicatorY = Math.min(...ys);
-                  }
-                } else if (shape.type === 'wall' || shape.type === 'line') {
-                  const coords = shape.coordinates as { x1?: number; y1?: number; x2?: number; y2?: number };
-                  if (coords.x1 != null && coords.x2 != null && coords.y1 != null && coords.y2 != null) {
-                    indicatorX = Math.max(coords.x1, coords.x2);
-                    indicatorY = Math.min(coords.y1, coords.y2);
-                  }
-                } else if (shape.type === 'rectangle') {
-                  const coords = shape.coordinates as { left?: number; x?: number; top?: number; y?: number; width?: number };
-                  const x = coords.left ?? coords.x ?? 0;
-                  const y = coords.top ?? coords.y ?? 0;
-                  const width = coords.width ?? 100;
-                  indicatorX = x + width;
-                  indicatorY = y;
-                } else if (shape.type === 'circle') {
-                  const coords = shape.coordinates as { cx?: number; x?: number; cy?: number; y?: number; radius?: number };
-                  const cx = coords.cx ?? coords.x ?? 0;
-                  const cy = coords.cy ?? coords.y ?? 0;
-                  const r = coords.radius ?? 50;
-                  indicatorX = cx + r * 0.7;
-                  indicatorY = cy - r * 0.7;
-                } else if (shape.type === 'text') {
-                  const coords = shape.coordinates as { x?: number; y?: number };
-                  indicatorX = (coords.x ?? 0) + 50;
-                  indicatorY = (coords.y ?? 0) - 10;
-                } else if (shape.type === 'freehand' || shape.type === 'polygon') {
-                  // Handle unified objects (SVG-based library objects with wallRelative)
-                  if (shape.metadata?.isUnifiedObject && shape.metadata?.unifiedObjectId) {
-                    const unifiedDef = getUnifiedObjectById(shape.metadata.unifiedObjectId as string);
-                    const scale = (shape.metadata.scale as number) || 1;
-                    let posX = (shape.metadata.placementX as number) || 0;
-                    let posY = (shape.metadata.placementY as number) || 0;
-
-                    // If object has wallRelative data, calculate position from wall
-                    if (shape.wallRelative?.wallId) {
-                      const wall = shapes.find(s => s.id === shape.wallRelative?.wallId);
-                      if (wall) {
-                        const wallCoords = wall.coordinates as { x1: number; y1: number; x2: number; y2: number };
-                        if (wallCoords && typeof wallCoords.x1 === 'number') {
-                          const dx = wallCoords.x2 - wallCoords.x1;
-                          const dy = wallCoords.y2 - wallCoords.y1;
-                          const wallLengthPx = Math.sqrt(dx * dx + dy * dy);
-                          const unitX = dx / wallLengthPx;
-                          const unitY = dy / wallLengthPx;
-                          const normalX = -unitY;
-                          const normalY = unitX;
-                          const distAlongPx = (shape.wallRelative.distanceFromWallStart + shape.wallRelative.width / 2) * scaleSettings.pixelsPerMm;
-                          const perpOffsetPx = (shape.wallRelative.perpendicularOffset + shape.wallRelative.depth / 2) * scaleSettings.pixelsPerMm;
-                          posX = wallCoords.x1 + distAlongPx * unitX + perpOffsetPx * normalX;
-                          posY = wallCoords.y1 + distAlongPx * unitY + perpOffsetPx * normalY;
-                        }
-                      }
-                    }
-
-                    // Position badge at top-right of the object
-                    const width = unifiedDef ? unifiedDef.dimensions.width * scaleSettings.pixelsPerMm * scale : 40;
-                    indicatorX = posX + width / 2;
-                    indicatorY = posY - width / 2;
-                  } else {
-                    // Standard freehand/polygon with points
-                    const coords = shape.coordinates as { points?: { x: number; y: number }[] };
-                    if (coords.points && coords.points.length > 0) {
-                      const xs = coords.points.map(p => p.x);
-                      const ys = coords.points.map(p => p.y);
-                      indicatorX = Math.max(...xs);
-                      indicatorY = Math.min(...ys);
-                    }
-                  }
-                }
-              } catch {
-                return null; // Skip if calculation fails
-              }
-
-              // Skip if position couldn't be calculated
-              if (indicatorX == null || indicatorY == null || !isFinite(indicatorX) || !isFinite(indicatorY)) {
-                return null;
-              }
-
-              const badgeSize = 18 / viewState.zoom;
-              const fontSize = 10 / viewState.zoom;
-
-              return (
-                <Group
-                  key={`comment-${shape.id}`}
-                  x={indicatorX}
-                  y={indicatorY - badgeSize / 2}
-                  onClick={(e) => {
-                    e.cancelBubble = true;
-                    const stage = e.target.getStage();
-                    if (stage) {
-                      const containerRect = stage.container().getBoundingClientRect();
-                      const pointer = stage.getPointerPosition();
-                      if (pointer) {
-                        handleOpenComments(shape.id, containerRect.left + pointer.x, containerRect.top + pointer.y);
-                      }
-                    }
-                  }}
-                  onMouseEnter={(e) => {
-                    const container = e.target.getStage()?.container();
-                    if (container) container.style.cursor = 'pointer';
-                  }}
-                  onMouseLeave={(e) => {
-                    const container = e.target.getStage()?.container();
-                    if (container) container.style.cursor = 'default';
-                  }}
-                >
-                  <Rect
-                    x={0}
-                    y={0}
-                    width={badgeSize}
-                    height={badgeSize}
-                    fill={isResolved ? '#22c55e' : '#3b82f6'}
-                    cornerRadius={badgeSize / 2}
-                    shadowColor="#000"
-                    shadowBlur={3 / viewState.zoom}
-                    shadowOpacity={0.3}
-                  />
-                  <KonvaText
-                    x={isResolved ? badgeSize * 0.2 : (count > 9 ? badgeSize * 0.15 : badgeSize * 0.35)}
-                    y={isResolved ? badgeSize * 0.15 : badgeSize * 0.2}
-                    text={isResolved ? '✓' : (count > 9 ? '9+' : String(count))}
-                    fontSize={isResolved ? fontSize * 1.1 : fontSize}
-                    fontStyle="bold"
-                    fill="white"
-                  />
-                </Group>
-              );
-            })}
-          </Group>
+          <CommentBadgesLayer
+            shapes={currentShapes}
+            allShapes={shapes}
+            commentCounts={commentCounts}
+            resolvedStatus={resolvedStatus}
+            viewState={viewState}
+            scaleSettings={scaleSettings}
+            onBadgeClick={handleOpenComments}
+          />
         </Layer>
       </Stage>
 

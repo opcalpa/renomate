@@ -7,6 +7,34 @@
 export { throttle } from './throttle';
 export { createUnifiedDragHandlers, clearDragState } from './dragSystem';
 
+// Scale conversion helpers
+export {
+  getPixelsPerMm,
+  getPixelsPerCm,
+  getPixelsPerMeter,
+  getGridLevels,
+  getActiveGridLevels,
+  getScaleRepresentation,
+  formatDimension,
+} from './scale';
+
+export type { GridLevel } from './scale';
+
+// Grid snapping helpers
+export {
+  getSnapSize,
+  snapToGrid,
+  snapDelta,
+} from './snap';
+
+// Shape connection helpers (auto-grouping, magnetic snap)
+export {
+  findConnectedShapes,
+  findNearestWallEndpoint,
+  areWallsConnected,
+  getConnectedWalls,
+} from './shapeConnections';
+
 // Wall-relative coordinate system utilities
 export {
   getWallGeometry,
