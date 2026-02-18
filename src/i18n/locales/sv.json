@@ -3105,6 +3105,20 @@
       "fileTooLarge": "Filen är för stor (max 10MB)"
     }
   },
+  "planningTasks": {
+    "title": "Arbetsomfattning",
+    "description": "Definiera uppgifter att inkludera i din offert",
+    "empty": "Inga uppgifter än",
+    "emptyHint": "Lägg till arbetsmoment som ska ingå i offerten",
+    "addFirst": "Lägg till första uppgiften",
+    "addTask": "Lägg till uppgift",
+    "taskName": "Uppgift",
+    "room": "Rum",
+    "budget": "Budget",
+    "priced": "prissatta",
+    "noBudget": "–",
+    "taskPlaceholder": "t.ex. Riva badrum"
+  },
   "projectStatus": {
     "planning": "Planering",
     "planningDesc": "Lägger upp rum och uppgifter",

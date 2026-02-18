@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings2, Receipt, FileText, Mail, MessageSquare, ChevronDown, ArrowRight } from "lucide-react";
+import { Settings2, Receipt, FileText, Mail, MessageSquare, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useOverviewData } from "./overview/useOverviewData";
 import { PulseCards } from "./overview/PulseCards";
@@ -24,6 +24,8 @@ import { ProjectLockBanner } from "./ProjectLockBanner";
 import { useProjectLock } from "@/hooks/useProjectLock";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { ProjectStatusCTA } from "./overview/ProjectStatusCTA";
+import { PlanningTaskList } from "./overview/PlanningTaskList";
+import { normalizeStatus } from "@/lib/projectStatus";
 import type { OverviewProject, OverviewNavigation } from "./overview/types";
 import type { FeedComment } from "./feed/types";
 
@@ -55,6 +57,8 @@ const OverviewTab = ({
   const { t } = useTranslation();
   const { lockStatus } = useProjectLock(project.id);
   const isHomeowner = userType === "homeowner";
+  const projectStatus = normalizeStatus(project.status);
+  const isPlanning = projectStatus === "planning";
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
@@ -66,7 +70,6 @@ const OverviewTab = ({
     orderStats,
     timelineStats,
     inProgressTasks,
-    recentActivities,
     refetch,
   } = useOverviewData(project);
 
@@ -83,12 +86,64 @@ const OverviewTab = ({
     refetch();
   };
 
+  // ----- Planning phase: focused scope-builder view -----
+  if (isPlanning && !isHomeowner) {
+    return (
+      <div className="space-y-6">
+        <ProjectLockBanner lockStatus={lockStatus} />
+
+        <ProjectStatusCTA
+          status={project.status}
+          taskCount={taskStats.total}
+          currency={project.currency}
+          onNavigateToTasks={() => onNavigateToTasks?.()}
+          onCreateQuote={() => setQuoteDialogOpen(true)}
+          onViewQuote={() => setQuoteDialogOpen(true)}
+        />
+
+        <PlanningTaskList
+          projectId={project.id}
+          currency={project.currency}
+          onNavigateToTasks={(taskId) => onNavigateToTasks?.(taskId)}
+          onCreateQuote={() => setQuoteDialogOpen(true)}
+        />
+
+        {/* Minimal settings access */}
+        <div className="flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings2 className="h-4 w-4 mr-1" />
+            {t("overview.advancedSettings", "Settings")}
+          </Button>
+        </div>
+
+        {/* Dialogs */}
+        <ProjectSettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          project={project}
+          onProjectUpdate={handleProjectUpdate}
+        />
+        <CreateQuoteDialog
+          projectId={project.id}
+          open={quoteDialogOpen}
+          onOpenChange={setQuoteDialogOpen}
+        />
+      </div>
+    );
+  }
+
+  // ----- Active / other phases: full dashboard view -----
   return (
     <div className="space-y-6">
       <ProjectLockBanner lockStatus={lockStatus} />
 
-      {/* Status-driven CTA — guides the contractor to the next action */}
-      {!isHomeowner && (
+      {/* Status CTA for non-active statuses */}
+      {!isHomeowner && projectStatus !== "active" && (
         <ProjectStatusCTA
           status={project.status}
           taskCount={taskStats.total}

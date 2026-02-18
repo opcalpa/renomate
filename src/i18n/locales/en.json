@@ -3107,6 +3107,20 @@
       "fileTooLarge": "File is too large (max 10MB)"
     }
   },
+  "planningTasks": {
+    "title": "Scope of work",
+    "description": "Define tasks to include in your quote",
+    "empty": "No tasks yet",
+    "emptyHint": "Add the work items that will make up your quote",
+    "addFirst": "Add first task",
+    "addTask": "Add task",
+    "taskName": "Task",
+    "room": "Room",
+    "budget": "Budget",
+    "priced": "priced",
+    "noBudget": "–",
+    "taskPlaceholder": "e.g. Demolish bathroom"
+  },
   "projectStatus": {
     "planning": "Planning",
     "planningDesc": "Setting up rooms and tasks",
