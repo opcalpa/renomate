@@ -12,6 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -21,15 +23,34 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Camera, Upload, Loader2, Sparkles, X, AlertCircle } from "lucide-react";
-import { analyzeReceipt, generateReceiptFilename, type ReceiptAnalysisResult } from "@/services/receiptAnalysisService";
+import {
+  Camera,
+  Upload,
+  Loader2,
+  Sparkles,
+  X,
+  AlertCircle,
+  Receipt,
+  FileText,
+  Link2,
+} from "lucide-react";
+import {
+  analyzeDocument,
+  generateDocumentFilename,
+  type DocumentAnalysisResult,
+} from "@/services/receiptAnalysisService";
 import { DatePicker } from "@/components/ui/date-picker";
+import {
+  SearchableEntityPicker,
+  type SelectedEntity,
+} from "@/components/shared/SearchableEntityPicker";
 
 interface QuickReceiptCaptureModalProps {
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  currency?: string | null;
 }
 
 // Check if file is an image (including HEIC/HEIF)
@@ -82,7 +103,12 @@ const convertHeicToJpeg = async (file: File): Promise<File> => {
 };
 
 // Image compression utility
-const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.8): Promise<File> => {
+const compressImage = (
+  file: File,
+  maxWidth = 1200,
+  maxHeight = 1200,
+  quality = 0.8
+): Promise<File> => {
   return new Promise((resolve) => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -107,7 +133,13 @@ const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 
       canvas.toBlob(
         (blob) => {
           if (blob) {
-            resolve(new File([blob], file.name.replace(/\.(heic|heif)$/i, ".jpg"), { type: "image/jpeg", lastModified: Date.now() }));
+            resolve(
+              new File(
+                [blob],
+                file.name.replace(/\.(heic|heif)$/i, ".jpg"),
+                { type: "image/jpeg", lastModified: Date.now() }
+              )
+            );
           } else {
             resolve(file);
           }
@@ -142,11 +174,14 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
+type LinkOption = "new" | "link";
+
 export function QuickReceiptCaptureModal({
   projectId,
   open,
   onOpenChange,
   onSuccess,
+  currency,
 }: QuickReceiptCaptureModalProps) {
   const { t } = useTranslation();
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -158,7 +193,8 @@ export function QuickReceiptCaptureModal({
 
   // Analysis state
   const [analyzing, setAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<ReceiptAnalysisResult | null>(null);
+  const [analysisResult, setAnalysisResult] =
+    useState<DocumentAnalysisResult | null>(null);
   const [analysisError, setAnalysisError] = useState(false);
 
   // Form state
@@ -167,18 +203,27 @@ export function QuickReceiptCaptureModal({
   const [vatAmount, setVatAmount] = useState("");
   const [purchaseDate, setPurchaseDate] = useState<Date | undefined>(undefined);
   const [roomId, setRoomId] = useState<string>("none");
-  const [taskId, setTaskId] = useState<string>("none");
+
+  // Invoice-specific fields
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [ocrNumber, setOcrNumber] = useState("");
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+
+  // Linking state
+  const [linkOption, setLinkOption] = useState<LinkOption>("new");
+  const [linkedEntity, setLinkedEntity] = useState<SelectedEntity | null>(null);
 
   // Data state
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
-  const [tasks, setTasks] = useState<{ id: string; title: string }[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // Fetch rooms and tasks when modal opens
+  // Derived state
+  const documentType = analysisResult?.document_type || "receipt";
+
+  // Fetch rooms when modal opens
   useEffect(() => {
     if (open) {
       fetchRooms();
-      fetchTasks();
     }
   }, [open, projectId]);
 
@@ -200,7 +245,11 @@ export function QuickReceiptCaptureModal({
     setVatAmount("");
     setPurchaseDate(undefined);
     setRoomId("none");
-    setTaskId("none");
+    setInvoiceNumber("");
+    setOcrNumber("");
+    setDueDate(undefined);
+    setLinkOption("new");
+    setLinkedEntity(null);
   };
 
   const fetchRooms = async () => {
@@ -212,16 +261,9 @@ export function QuickReceiptCaptureModal({
     setRooms(data || []);
   };
 
-  const fetchTasks = async () => {
-    const { data } = await supabase
-      .from("tasks")
-      .select("id, title")
-      .eq("project_id", projectId)
-      .order("title");
-    setTasks(data || []);
-  };
-
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -268,6 +310,11 @@ export function QuickReceiptCaptureModal({
     setTotalAmount("");
     setVatAmount("");
     setPurchaseDate(undefined);
+    setInvoiceNumber("");
+    setOcrNumber("");
+    setDueDate(undefined);
+    setLinkOption("new");
+    setLinkedEntity(null);
   };
 
   const handleAnalyze = async () => {
@@ -278,7 +325,7 @@ export function QuickReceiptCaptureModal({
 
     try {
       const base64 = await fileToBase64(selectedFile);
-      const result = await analyzeReceipt(base64);
+      const result = await analyzeDocument(base64);
 
       setAnalysisResult(result);
 
@@ -290,20 +337,29 @@ export function QuickReceiptCaptureModal({
         setPurchaseDate(new Date(result.purchase_date));
       }
 
-      // Track successful receipt analysis
+      // Invoice-specific fields
+      if (result.invoice_number) setInvoiceNumber(result.invoice_number);
+      if (result.ocr_number) setOcrNumber(result.ocr_number);
+      if (result.due_date) {
+        setDueDate(new Date(result.due_date));
+      }
+
+      // Track successful document analysis
       analytics.capture(AnalyticsEvents.RECEIPT_ANALYZED, {
+        document_type: result.document_type,
         has_vendor: Boolean(result.vendor_name),
         has_amount: Boolean(result.total_amount),
         has_vat: Boolean(result.vat_amount),
         has_date: Boolean(result.purchase_date),
+        has_invoice_number: Boolean(result.invoice_number),
         confidence: result.confidence,
       });
 
-      toast.success(t("receipt.analysisComplete"));
+      toast.success(t("document.analysisComplete"));
     } catch (error) {
-      console.error("Receipt analysis failed:", error);
+      console.error("Document analysis failed:", error);
       setAnalysisError(true);
-      toast.error(t("receipt.analysisError"));
+      toast.error(t("document.analysisError"));
     } finally {
       setAnalyzing(false);
     }
@@ -319,7 +375,9 @@ export function QuickReceiptCaptureModal({
 
     try {
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
       const { data: profile } = await supabase
@@ -330,70 +388,149 @@ export function QuickReceiptCaptureModal({
 
       if (!profile) throw new Error("Profile not found");
 
-      // 1. Create material/purchase order
       const amount = parseFloat(totalAmount) || 0;
-      const vat = parseFloat(vatAmount) || null;
-
-      const { data: material, error: materialError } = await supabase
-        .from("materials")
-        .insert({
-          project_id: projectId,
-          name: `${t("receipt.receiptPurchase")} - ${vendorName}`,
-          vendor_name: vendorName,
-          price_per_unit: amount,
-          quantity: 1,
-          unit: "st",
-          status: "submitted",
-          created_by_user_id: profile.id,
-          room_id: roomId !== "none" ? roomId : null,
-          task_id: taskId !== "none" ? taskId : null,
-        })
-        .select("id")
-        .single();
-
-      if (materialError) throw materialError;
-
-      // 2. Upload receipt image to Kvitton folder
       const dateStr = purchaseDate
         ? purchaseDate.toISOString().split("T")[0]
         : new Date().toISOString().split("T")[0];
-      const filename = generateReceiptFilename(vendorName, dateStr, amount);
-      const storagePath = `projects/${projectId}/Kvitton/${filename}`;
 
+      // Generate filename
+      const filename = generateDocumentFilename(
+        documentType,
+        vendorName,
+        dateStr,
+        amount,
+        invoiceNumber
+      );
+
+      // Determine storage folder based on document type
+      const folder = documentType === "invoice" ? "Fakturor" : "Kvitton";
+      const storagePath = `projects/${projectId}/${folder}/${filename}`;
+
+      let entityId: string | null = null;
+      let entityType: "task" | "material" = "material";
+
+      if (linkOption === "link" && linkedEntity) {
+        // Link to existing entity
+        entityId = linkedEntity.id;
+        entityType = linkedEntity.type;
+      } else if (linkOption === "new") {
+        if (documentType === "invoice") {
+          // Create new task for invoice
+          const { data: task, error: taskError } = await supabase
+            .from("tasks")
+            .insert({
+              project_id: projectId,
+              title: `${t("document.typeInvoice")} - ${vendorName}`,
+              description: `${t("document.invoiceNumber")}: ${invoiceNumber || "-"}\n${t("document.ocrNumber")}: ${ocrNumber || "-"}`,
+              status: "to_do",
+              priority: "medium",
+              budget: amount,
+              room_id: roomId !== "none" ? roomId : null,
+              invoice_number: invoiceNumber || null,
+              ocr_number: ocrNumber || null,
+              invoice_due_date: dueDate
+                ? dueDate.toISOString().split("T")[0]
+                : null,
+            })
+            .select("id")
+            .single();
+
+          if (taskError) throw taskError;
+          entityId = task.id;
+          entityType = "task";
+        } else {
+          // Create new material for receipt
+          const { data: material, error: materialError } = await supabase
+            .from("materials")
+            .insert({
+              project_id: projectId,
+              name: `${t("receipt.receiptPurchase")} - ${vendorName}`,
+              vendor_name: vendorName,
+              price_per_unit: amount,
+              quantity: 1,
+              unit: "st",
+              status: "submitted",
+              created_by_user_id: profile.id,
+              room_id: roomId !== "none" ? roomId : null,
+            })
+            .select("id")
+            .single();
+
+          if (materialError) throw materialError;
+          entityId = material.id;
+          entityType = "material";
+        }
+      }
+
+      // Upload document image
       const { error: uploadError } = await supabase.storage
         .from("project-files")
         .upload(storagePath, selectedFile, { upsert: true });
 
       if (uploadError) {
         console.error("Upload error:", uploadError);
-        // Don't fail the whole operation if upload fails
         toast.error(t("receipt.uploadError"));
-      } else {
-        // 3. Get public URL and create photo record
-        const { data: { publicUrl } } = supabase.storage
-          .from("project-files")
-          .getPublicUrl(storagePath);
+      } else if (entityId) {
+        // Create task_file_links record
+        const linkData: Record<string, unknown> = {
+          project_id: projectId,
+          file_path: storagePath,
+          file_name: filename,
+          file_type: documentType,
+          file_size: selectedFile.size,
+          mime_type: selectedFile.type,
+          linked_by_user_id: profile.id,
+        };
+
+        if (entityType === "task") {
+          linkData.task_id = entityId;
+        } else {
+          linkData.material_id = entityId;
+        }
+
+        if (roomId !== "none") {
+          linkData.room_id = roomId;
+        }
+
+        await supabase.from("task_file_links").insert(linkData);
+
+        // Also create photo record for visual display
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("project-files").getPublicUrl(storagePath);
 
         await supabase.from("photos").insert({
-          linked_to_type: "material",
-          linked_to_id: material.id,
+          linked_to_type: entityType,
+          linked_to_id: entityId,
           url: publicUrl,
           caption: filename,
           uploaded_by_user_id: profile.id,
         });
       }
 
-      // Track receipt saved
+      // Track document saved
       analytics.capture(AnalyticsEvents.RECEIPT_CAPTURED, {
-        has_room: Boolean(selectedRoomId),
-        has_task: Boolean(selectedTaskId),
-        amount: parseFloat(totalAmount) || 0,
+        document_type: documentType,
+        link_option: linkOption,
+        has_room: roomId !== "none",
+        amount,
         was_ai_analyzed: Boolean(analysisResult),
       });
 
-      toast.success(t("receipt.success"), {
-        description: t("receipt.successDescription"),
-      });
+      // Show success message
+      if (linkOption === "link") {
+        toast.success(t("document.documentLinked"), {
+          description: t("document.documentLinkedDescription"),
+        });
+      } else if (documentType === "invoice") {
+        toast.success(t("document.invoiceCreated"), {
+          description: t("document.invoiceCreatedDescription"),
+        });
+      } else {
+        toast.success(t("document.receiptCreated"), {
+          description: t("document.receiptCreatedDescription"),
+        });
+      }
 
       onSuccess?.();
       onOpenChange(false);
@@ -410,14 +547,16 @@ export function QuickReceiptCaptureModal({
     setPreviewUrl(null);
     setAnalysisResult(null);
     setAnalysisError(false);
+    setLinkOption("new");
+    setLinkedEntity(null);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>{t("receipt.title")}</DialogTitle>
-          <DialogDescription>{t("receipt.description")}</DialogDescription>
+          <DialogTitle>{t("document.title")}</DialogTitle>
+          <DialogDescription>{t("document.description")}</DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 py-4">
@@ -466,8 +605,8 @@ export function QuickReceiptCaptureModal({
               <div className="relative">
                 <img
                   src={previewUrl}
-                  alt="Receipt preview"
-                  className="w-full max-h-48 object-contain rounded-lg border"
+                  alt="Document preview"
+                  className="w-full max-h-40 object-contain rounded-lg border"
                 />
                 <button
                   onClick={clearImage}
@@ -487,12 +626,12 @@ export function QuickReceiptCaptureModal({
                   {analyzing ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      {t("receipt.analyzing")}
+                      {t("document.analyzing")}
                     </>
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4" />
-                      {t("receipt.analyzeReceipt")}
+                      {t("document.analyzeDocument")}
                     </>
                   )}
                 </Button>
@@ -502,13 +641,82 @@ export function QuickReceiptCaptureModal({
               {analysisError && (
                 <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>{t("receipt.analysisError")}</span>
+                  <span>{t("document.analysisError")}</span>
+                </div>
+              )}
+
+              {/* Document type indicator */}
+              {analysisResult && (
+                <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                  {documentType === "invoice" ? (
+                    <FileText className="h-5 w-5 text-blue-600" />
+                  ) : (
+                    <Receipt className="h-5 w-5 text-emerald-600" />
+                  )}
+                  <span className="text-sm font-medium">
+                    {t("document.detectedType")}:
+                  </span>
+                  <Badge
+                    variant={
+                      documentType === "invoice" ? "default" : "secondary"
+                    }
+                  >
+                    {documentType === "invoice"
+                      ? t("document.typeInvoice")
+                      : t("document.typeReceipt")}
+                  </Badge>
                 </div>
               )}
 
               {/* Form fields - show after analysis or if user wants to fill manually */}
               {(analysisResult || analysisError) && (
                 <div className="space-y-4">
+                  {/* Link option selection */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">
+                      {t("document.chooseAction")}
+                    </Label>
+                    <RadioGroup
+                      value={linkOption}
+                      onValueChange={(v) => {
+                        setLinkOption(v as LinkOption);
+                        if (v === "new") setLinkedEntity(null);
+                      }}
+                      className="flex flex-col gap-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="new" id="new" />
+                        <Label htmlFor="new" className="cursor-pointer">
+                          {documentType === "invoice"
+                            ? t("document.createNewTask")
+                            : t("document.createNewPurchase")}
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="link" id="link" />
+                        <Label
+                          htmlFor="link"
+                          className="cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Link2 className="h-4 w-4" />
+                          {t("document.linkToExisting")}
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {/* Entity picker for linking */}
+                  {linkOption === "link" && (
+                    <SearchableEntityPicker
+                      projectId={projectId}
+                      documentType={documentType}
+                      currency={currency}
+                      selectedEntity={linkedEntity}
+                      onSelect={setLinkedEntity}
+                    />
+                  )}
+
+                  {/* Common fields */}
                   <div className="space-y-2">
                     <Label>{t("receipt.vendor")} *</Label>
                     <Input
@@ -551,39 +759,60 @@ export function QuickReceiptCaptureModal({
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>{t("receipt.linkToRoom")}</Label>
-                    <Select value={roomId} onValueChange={setRoomId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t("receipt.selectRoom")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{t("receipt.noRoom")}</SelectItem>
-                        {rooms.map((room) => (
-                          <SelectItem key={room.id} value={room.id}>
-                            {room.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Invoice-specific fields */}
+                  {documentType === "invoice" && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label>{t("document.invoiceNumber")}</Label>
+                          <Input
+                            value={invoiceNumber}
+                            onChange={(e) => setInvoiceNumber(e.target.value)}
+                            placeholder="12345"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{t("document.ocrNumber")}</Label>
+                          <Input
+                            value={ocrNumber}
+                            onChange={(e) => setOcrNumber(e.target.value)}
+                            placeholder="1234567890"
+                          />
+                        </div>
+                      </div>
 
-                  <div className="space-y-2">
-                    <Label>{t("receipt.linkToTask")}</Label>
-                    <Select value={taskId} onValueChange={setTaskId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t("receipt.selectTask")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{t("receipt.noTask")}</SelectItem>
-                        {tasks.map((task) => (
-                          <SelectItem key={task.id} value={task.id}>
-                            {task.title}
+                      <div className="space-y-2">
+                        <Label>{t("document.dueDate")}</Label>
+                        <DatePicker
+                          date={dueDate}
+                          onDateChange={setDueDate}
+                          placeholder={t("receipt.selectDate")}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Room selection - only for new entities */}
+                  {linkOption === "new" && (
+                    <div className="space-y-2">
+                      <Label>{t("receipt.linkToRoom")}</Label>
+                      <Select value={roomId} onValueChange={setRoomId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t("receipt.selectRoom")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            {t("receipt.noRoom")}
                           </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                          {rooms.map((room) => (
+                            <SelectItem key={room.id} value={room.id}>
+                              {room.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -595,7 +824,11 @@ export function QuickReceiptCaptureModal({
           <div className="flex-shrink-0 pt-4 border-t">
             <Button
               onClick={handleSave}
-              disabled={saving || !vendorName.trim()}
+              disabled={
+                saving ||
+                !vendorName.trim() ||
+                (linkOption === "link" && !linkedEntity)
+              }
               className="w-full"
             >
               {saving ? (
@@ -603,8 +836,10 @@ export function QuickReceiptCaptureModal({
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   {t("receipt.saving")}
                 </>
+              ) : documentType === "invoice" ? (
+                t("document.saveInvoice")
               ) : (
-                t("receipt.save")
+                t("document.saveReceipt")
               )}
             </Button>
           </div>
@@ -613,3 +848,6 @@ export function QuickReceiptCaptureModal({
     </Dialog>
   );
 }
+
+// Export alias for backwards compatibility
+export { QuickReceiptCaptureModal as DocumentCaptureModal };

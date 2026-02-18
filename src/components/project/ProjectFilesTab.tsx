@@ -83,11 +83,12 @@ interface Folder {
 interface ProjectFilesTabProps {
   projectId: string;
   projectName: string;
+  canEdit?: boolean;
   onNavigateToFloorPlan?: () => void;
   onUseAsBackground?: (imageUrl: string, fileName: string) => void;
 }
 
-const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseAsBackground }: ProjectFilesTabProps) => {
+const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToFloorPlan, onUseAsBackground }: ProjectFilesTabProps) => {
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentFolder, setCurrentFolder] = useState<string>('');
@@ -483,44 +484,46 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              onChange={handleFileSelect}
-              className="hidden"
-              id="file-upload"
-              accept="image/*,.pdf,.doc,.docx,.txt"
-            />
-            <Button
-              variant="outline"
-              onClick={() => setShowNewFolderDialog(true)}
-              size="sm"
-              className="flex-1 sm:flex-none"
-            >
-              <FolderPlus className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">{t('files.newFolder')}</span>
-            </Button>
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              size="sm"
-              className="flex-1 sm:flex-none"
-            >
-              {uploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
-                  <span className="hidden sm:inline">{t('files.uploading')}</span>
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">{t('files.uploadFiles')}</span>
-                </>
-              )}
-            </Button>
-          </div>
+          {canEdit && (
+            <div className="flex gap-2">
+              <Input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+                id="file-upload"
+                accept="image/*,.pdf,.doc,.docx,.txt"
+              />
+              <Button
+                variant="outline"
+                onClick={() => setShowNewFolderDialog(true)}
+                size="sm"
+                className="flex-1 sm:flex-none"
+              >
+                <FolderPlus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">{t('files.newFolder')}</span>
+              </Button>
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                size="sm"
+                className="flex-1 sm:flex-none"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                    <span className="hidden sm:inline">{t('files.uploading')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">{t('files.uploadFiles')}</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Breadcrumbs */}
@@ -568,22 +571,24 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
               <div className="text-center py-12">
                 <FolderOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground mb-4">{t('files.noFilesOrFolders')}</p>
-                <div className="flex gap-2 justify-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowNewFolderDialog(true)}
-                  >
-                    <FolderPlus className="h-4 w-4 mr-2" />
-                    {t('files.createFolder')}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {t('files.uploadFile')}
-                  </Button>
-                </div>
+                {canEdit && (
+                  <div className="flex gap-2 justify-center">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowNewFolderDialog(true)}
+                    >
+                      <FolderPlus className="h-4 w-4 mr-2" />
+                      {t('files.createFolder')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      {t('files.uploadFile')}
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
@@ -688,14 +693,16 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                               <Layers className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setLinkFile(file)}
-                            title={t('files.linkToTask')}
-                          >
-                            <Link className="h-4 w-4" />
-                          </Button>
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setLinkFile(file)}
+                              title={t('files.linkToTask')}
+                            >
+                              <Link className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -712,14 +719,16 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
                           >
                             <Download className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setFileToDelete(file)}
-                            title={t('common.delete')}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setFileToDelete(file)}
+                              title={t('common.delete')}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -844,6 +853,7 @@ const ProjectFilesTab = ({ projectId, projectName, onNavigateToFloorPlan, onUseA
       {/* Image Preview Dialog with Zoom */}
       <Dialog open={!!previewFile} onOpenChange={closePreview}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] p-0">
+          <DialogTitle className="sr-only">{previewFile?.name || t('files.imagePreview')}</DialogTitle>
           <div className="relative h-full">
             {/* Header with controls */}
             <div className="absolute top-0 left-0 right-0 z-10 bg-background/95 backdrop-blur border-b p-4">

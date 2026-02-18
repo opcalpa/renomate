@@ -31,11 +31,12 @@ interface OverviewTabProps {
   userType?: string | null;
   onProjectUpdate?: () => void;
   onNavigateToEntity?: (comment: FeedComment) => void;
-  onNavigateToPurchases?: () => void;
+  onNavigateToPurchases?: (materialId?: string) => void;
   onNavigateToTasks?: (taskId?: string) => void;
   onNavigateToFeed?: () => void;
   onNavigateToBudget?: () => void;
   onNavigateToFiles?: () => void;
+  onNavigateToRoom?: (roomId: string) => void;
 }
 
 const OverviewTab = ({
@@ -48,6 +49,7 @@ const OverviewTab = ({
   onNavigateToFeed,
   onNavigateToBudget,
   onNavigateToFiles,
+  onNavigateToRoom,
 }: OverviewTabProps) => {
   const { t } = useTranslation();
   const { lockStatus } = useProjectLock(project.id);
@@ -156,6 +158,10 @@ const OverviewTab = ({
       <RecentPhotos
         projectId={project.id}
         onViewAll={() => onNavigateToFiles?.()}
+        onNavigateToRoom={onNavigateToRoom}
+        onNavigateToTask={(taskId) => onNavigateToTasks?.(taskId)}
+        onNavigateToMaterial={(materialId) => onNavigateToPurchases?.(materialId)}
+        onNavigateToFiles={onNavigateToFiles}
       />
 
       <Card>

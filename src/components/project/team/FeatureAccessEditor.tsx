@@ -13,7 +13,7 @@ export interface FeatureAccess {
   purchasesScope: "all" | "assigned";
   overview: "none" | "view" | "edit";
   teams: "none" | "view" | "invite";
-  budget: "none" | "view";
+  budget: "none" | "view" | "edit";
   files: "none" | "view" | "upload" | "edit";
 }
 
@@ -80,7 +80,7 @@ const FEATURES: FeatureConfig[] = [
   },
   { key: "overview", labelKey: "roles.featureOverview", options: ["none", "view", "edit"] },
   { key: "teams", labelKey: "roles.featureTeamManagement", options: ["none", "view", "invite"] },
-  { key: "budget", labelKey: "roles.featureBudget", options: ["none", "view"] },
+  { key: "budget", labelKey: "roles.featureBudget", options: ["none", "view", "edit"] },
   { key: "files", labelKey: "roles.featureFiles", options: ["none", "view", "upload", "edit"] },
 ];
 

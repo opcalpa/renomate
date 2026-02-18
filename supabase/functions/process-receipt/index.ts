@@ -12,38 +12,72 @@ interface LineItem {
   total: number;
 }
 
-interface ReceiptAnalysisResult {
+interface DocumentAnalysisResult {
+  document_type: "receipt" | "invoice";
   vendor_name: string;
   total_amount: number;
   vat_amount: number | null;
   purchase_date: string | null;
+  due_date: string | null;
+  invoice_number: string | null;
+  ocr_number: string | null;
   line_items: LineItem[];
   confidence: number;
 }
 
 function buildSystemPrompt(): string {
-  return `You are an expert at analyzing receipts and extracting structured data.
+  return `You are an expert at analyzing financial documents (receipts and invoices) and extracting structured data.
 
-Your task is to analyze the receipt image and extract key information.
+Your task is to analyze the document image and extract key information.
 
-IMPORTANT INSTRUCTIONS:
-1. Extract the vendor/store name from the receipt header
-2. Find the total amount (look for "TOTAL", "SUMMA", "ATT BETALA", etc.)
-3. Find the VAT/moms amount if visible (look for "MOMS", "VAT", "25%", etc.)
-4. Find the purchase date (look for date patterns like YYYY-MM-DD, DD/MM/YYYY, etc.)
-5. Extract individual line items if clearly visible
+STEP 1: DETERMINE DOCUMENT TYPE
+First, determine if this is a RECEIPT or an INVOICE:
 
-For Swedish receipts:
+RECEIPT indicators:
+- Kassakvitto, kvitto
+- Payment already made (shows change given, card payment confirmation)
+- "TOTAL", "SUMMA", "ATT BETALA" with immediate payment
+- Typically shorter, from retail stores
+- No invoice number or due date
+
+INVOICE indicators:
+- "Faktura", "Invoice", "Fakturanummer"
+- Payment due in the future ("Förfallodatum", "Due date", "Att betala senast")
+- OCR-nummer, Betalningsreferens
+- Bankgiro, Plusgiro payment details
+- Company header with organization number
+
+STEP 2: EXTRACT INFORMATION
+
+For BOTH document types:
+- vendor_name: Company/store name
+- total_amount: Final amount to pay
+- vat_amount: VAT/moms if visible
+- purchase_date: Document date (YYYY-MM-DD)
+- line_items: Individual items if visible
+
+For INVOICES only (leave null for receipts):
+- due_date: Payment due date (YYYY-MM-DD)
+- invoice_number: Fakturanummer
+- ocr_number: OCR/payment reference
+
+For Swedish documents:
 - "SUMMA" or "ATT BETALA" = total amount
 - "MOMS" = VAT
-- "st" = pieces, "kg" = kilograms
+- "Förfallodatum" or "Förfaller" = due date
+- "Fakturanummer" or "Fakturanr" = invoice number
+- "OCR" or "Betalningsreferens" = ocr_number
 
 RETURN FORMAT:
 {
-  "vendor_name": "Store name",
+  "document_type": "receipt" or "invoice",
+  "vendor_name": "Company name",
   "total_amount": 123.45,
   "vat_amount": 24.69,
   "purchase_date": "2026-02-10",
+  "due_date": "2026-03-10",
+  "invoice_number": "12345",
+  "ocr_number": "1234567890",
   "line_items": [
     {"description": "Item name", "quantity": 1, "unit_price": 99.00, "total": 99.00}
   ],
@@ -51,16 +85,18 @@ RETURN FORMAT:
 }
 
 RULES:
+- document_type MUST be either "receipt" or "invoice"
 - total_amount MUST be a number (not a string)
 - vat_amount can be null if not visible
 - purchase_date should be in ISO format (YYYY-MM-DD) or null if not found
+- due_date, invoice_number, ocr_number should be null for receipts
 - line_items can be an empty array if items are unclear
-- confidence is a number between 0 and 1 indicating how confident you are in the extraction
+- confidence is a number between 0 and 1 indicating how confident you are
 
 Return ONLY valid JSON, no explanations.`;
 }
 
-async function analyzeReceipt(base64Image: string): Promise<ReceiptAnalysisResult> {
+async function analyzeDocument(base64Image: string): Promise<DocumentAnalysisResult> {
   const apiKey = Deno.env.get('OPENAI_API_KEY');
 
   if (!apiKey) {
@@ -94,7 +130,7 @@ async function analyzeReceipt(base64Image: string): Promise<ReceiptAnalysisResul
             },
             {
               type: 'text',
-              text: 'Analyze this receipt. Extract the vendor name, total amount, VAT, date, and line items. Return structured JSON.',
+              text: 'Analyze this document. First determine if it is a receipt or invoice, then extract all relevant information. Return structured JSON.',
             },
           ],
         },
@@ -138,11 +174,15 @@ async function analyzeReceipt(base64Image: string): Promise<ReceiptAnalysisResul
     const result = JSON.parse(jsonText);
 
     // Validate and normalize the result
-    const normalizedResult: ReceiptAnalysisResult = {
+    const normalizedResult: DocumentAnalysisResult = {
+      document_type: result.document_type === 'invoice' ? 'invoice' : 'receipt',
       vendor_name: result.vendor_name || '',
       total_amount: typeof result.total_amount === 'number' ? result.total_amount : parseFloat(result.total_amount) || 0,
       vat_amount: result.vat_amount != null ? (typeof result.vat_amount === 'number' ? result.vat_amount : parseFloat(result.vat_amount)) : null,
       purchase_date: result.purchase_date || null,
+      due_date: result.due_date || null,
+      invoice_number: result.invoice_number || null,
+      ocr_number: result.ocr_number || null,
       line_items: Array.isArray(result.line_items) ? result.line_items.map((item: Partial<LineItem>) => ({
         description: item.description || '',
         quantity: typeof item.quantity === 'number' ? item.quantity : parseFloat(String(item.quantity)) || 1,
@@ -152,7 +192,7 @@ async function analyzeReceipt(base64Image: string): Promise<ReceiptAnalysisResul
       confidence: typeof result.confidence === 'number' ? result.confidence : 0.5,
     };
 
-    console.log('Parsed receipt result:', JSON.stringify(normalizedResult, null, 2));
+    console.log('Parsed document result:', JSON.stringify(normalizedResult, null, 2));
 
     return normalizedResult;
   } catch (parseError) {
@@ -161,10 +201,14 @@ async function analyzeReceipt(base64Image: string): Promise<ReceiptAnalysisResul
 
     // Return empty result instead of throwing
     return {
+      document_type: 'receipt',
       vendor_name: '',
       total_amount: 0,
       vat_amount: null,
       purchase_date: null,
+      due_date: null,
+      invoice_number: null,
+      ocr_number: null,
       line_items: [],
       confidence: 0,
     };
@@ -184,23 +228,27 @@ serve(async (req) => {
       throw new Error('image is required');
     }
 
-    console.log('Processing receipt, image length:', image.length, 'chars');
+    console.log('Processing document, image length:', image.length, 'chars');
 
-    const result = await analyzeReceipt(image);
+    const result = await analyzeDocument(image);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
   } catch (error) {
-    console.error('Error processing receipt:', error);
+    console.error('Error processing document:', error);
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : 'Unknown error',
+        document_type: 'receipt',
         vendor_name: '',
         total_amount: 0,
         vat_amount: null,
         purchase_date: null,
+        due_date: null,
+        invoice_number: null,
+        ocr_number: null,
         line_items: [],
         confidence: 0,
       }),

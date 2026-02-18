@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, GripVertical, ExternalLink, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Save, FolderOpen, Trash2, Plus, Rows3 } from "lucide-react";
+import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Save, FolderOpen, Trash2, Plus, Rows3, Paperclip, Copy } from "lucide-react";
+import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
+import { BudgetChartsSection } from "./BudgetChartsSection";
+import { TaskEditDialog } from "./TaskEditDialog";
+import { MaterialEditDialog } from "./MaterialEditDialog";
 import {
   Select,
   SelectContent,
@@ -25,13 +29,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
@@ -57,40 +54,11 @@ interface BudgetRow {
   costCenter?: string;
   startDate?: string;
   finishDate?: string;
+  hasAttachment: boolean;
+  attachmentCount: number;
 }
 
-interface TaskDetail {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: string;
-  progress: number;
-  budget: number | null;
-  payment_status: string | null;
-  paid_amount: number | null;
-  cost_center: string | null;
-  start_date: string | null;
-  finish_date: string | null;
-  due_date: string | null;
-}
-
-interface MaterialDetail {
-  id: string;
-  name: string;
-  description: string | null;
-  quantity: number;
-  unit: string;
-  price_per_unit: number | null;
-  price_total: number | null;
-  vendor_name: string | null;
-  vendor_link: string | null;
-  status: string;
-  exclude_from_budget: boolean;
-  created_at: string;
-}
-
-type ColumnKey = "name" | "type" | "budget" | "ordered" | "paid" | "remaining" | "room" | "assignee" | "costCenter" | "startDate" | "finishDate" | "status";
+type ColumnKey = "name" | "type" | "budget" | "ordered" | "paid" | "remaining" | "room" | "assignee" | "costCenter" | "startDate" | "finishDate" | "attachment" | "status";
 
 interface ColumnDef {
   key: ColumnKey;
@@ -99,7 +67,7 @@ interface ColumnDef {
   extra?: boolean;
 }
 
-const EXTRA_COLUMN_KEYS: ColumnKey[] = ["room", "assignee", "costCenter", "startDate", "finishDate"];
+const EXTRA_COLUMN_KEYS: ColumnKey[] = ["room", "assignee", "costCenter", "startDate", "finishDate", "attachment"];
 
 interface BudgetTabProps {
   projectId: string;
@@ -157,6 +125,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
   const [filterCostCenter, setFilterCostCenter] = useState("all");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterFinishDate, setFilterFinishDate] = useState("");
+  const [filterAttachment, setFilterAttachment] = useState<"all" | "has" | "missing">("all");
 
   // Collapsible columns
   const [visibleExtras, setVisibleExtras] = useState<Set<ColumnKey>>(new Set());
@@ -174,6 +143,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
     { key: "costCenter", label: t('budget.costCenter'), extra: true },
     { key: "startDate", label: t('common.startDate'), extra: true },
     { key: "finishDate", label: t('common.finishDate'), extra: true },
+    { key: "attachment", label: t('common.attachment'), extra: true },
     { key: "status", label: t('common.status') },
   ], [t]);
 
@@ -233,12 +203,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
   const [editingCell, setEditingCell] = useState<{ rowId: string; col: string } | null>(null);
   const [editValue, setEditValue] = useState("");
 
-  // Detail dialog
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailRow, setDetailRow] = useState<BudgetRow | null>(null);
-  const [taskDetail, setTaskDetail] = useState<TaskDetail | null>(null);
-  const [materialDetail, setMaterialDetail] = useState<MaterialDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  // Edit dialogs
+  const [editTaskId, setEditTaskId] = useState<string | null>(null);
+  const [editMaterialId, setEditMaterialId] = useState<string | null>(null);
 
   // Saved views
   const [savedViews, setSavedViews] = useState<SavedView[]>(() => loadSavedViews(projectId));
@@ -246,6 +213,16 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
   const [saveViewOpen, setSaveViewOpen] = useState(false);
   const [loadViewOpen, setLoadViewOpen] = useState(false);
   const [compactRows, setCompactRows] = useState(true);
+
+  // Inline add row
+  const [isAddingRow, setIsAddingRow] = useState(false);
+  const [newRowType, setNewRowType] = useState<"task" | "material">("task");
+  const [newRowName, setNewRowName] = useState("");
+  const [newRowBudget, setNewRowBudget] = useState("");
+  const [newRowRoomId, setNewRowRoomId] = useState("");
+  const [addingRowLoading, setAddingRowLoading] = useState(false);
+  const [allRooms, setAllRooms] = useState<{ id: string; name: string }[]>([]);
+  const newRowNameRef = useRef<HTMLInputElement>(null);
 
   const handleSaveView = () => {
     const name = saveViewName.trim();
@@ -317,12 +294,11 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
 
   const fetchData = useCallback(async () => {
     try {
-      const [tasksRes, materialsRes, extraRes, projectRes] = await Promise.all([
+      const [tasksRes, materialsRes, extraRes, projectRes, taskDocsRes, materialDocsRes] = await Promise.all([
         supabase
           .from("tasks")
           .select("id, title, budget, ordered_amount, payment_status, paid_amount, room_id, cost_center, start_date, finish_date")
-          .eq("project_id", projectId)
-          .gt("budget", 0),
+          .eq("project_id", projectId),
         supabase
           .from("materials")
           .select("id, name, price_total, ordered_amount, paid_amount, status, room_id")
@@ -338,6 +314,16 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
           .select("total_budget")
           .eq("id", projectId)
           .single(),
+        supabase
+          .from("task_file_links")
+          .select("task_id")
+          .eq("project_id", projectId)
+          .not("task_id", "is", null),
+        supabase
+          .from("task_file_links")
+          .select("material_id")
+          .eq("project_id", projectId)
+          .not("material_id", "is", null),
       ]);
 
       if (tasksRes.error) throw tasksRes.error;
@@ -348,6 +334,25 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
       setExtraTotal(
         (extraRes.data || []).reduce((sum, m) => sum + (m.price_total || 0), 0)
       );
+
+      // Build document count maps (handle gracefully if columns don't exist yet)
+      const taskDocCounts = new Map<string, number>();
+      if (!taskDocsRes.error) {
+        (taskDocsRes.data || []).forEach((d) => {
+          if (d.task_id) {
+            taskDocCounts.set(d.task_id, (taskDocCounts.get(d.task_id) || 0) + 1);
+          }
+        });
+      }
+
+      const materialDocCounts = new Map<string, number>();
+      if (!materialDocsRes.error) {
+        (materialDocsRes.data || []).forEach((d) => {
+          if (d.material_id) {
+            materialDocCounts.set(d.material_id, (materialDocCounts.get(d.material_id) || 0) + 1);
+          }
+        });
+      }
 
       // Collect unique room_ids and contractor_ids to resolve names
       const roomIds = new Set<string>();
@@ -371,34 +376,44 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
         }
       }
 
-      const taskRows: BudgetRow[] = (tasksRes.data || []).map((t) => ({
-        id: t.id,
-        name: t.title,
-        type: "task" as const,
-        budget: t.budget ?? 0,
-        ordered: t.ordered_amount ?? 0,
-        paid: t.paid_amount ?? 0,
-        status: t.payment_status || "not_paid",
-        room: t.room_id ? roomMap.get(t.room_id) : undefined,
-        roomId: t.room_id ?? undefined,
-        assignee: undefined,
-        assigneeId: undefined,
-        costCenter: t.cost_center ?? undefined,
-        startDate: t.start_date ?? undefined,
-        finishDate: t.finish_date ?? undefined,
-      }));
+      const taskRows: BudgetRow[] = (tasksRes.data || []).map((t) => {
+        const attachmentCount = taskDocCounts.get(t.id) || 0;
+        return {
+          id: t.id,
+          name: t.title,
+          type: "task" as const,
+          budget: t.budget ?? 0,
+          ordered: t.ordered_amount ?? 0,
+          paid: t.paid_amount ?? 0,
+          status: t.payment_status || "not_paid",
+          room: t.room_id ? roomMap.get(t.room_id) : undefined,
+          roomId: t.room_id ?? undefined,
+          assignee: undefined,
+          assigneeId: undefined,
+          costCenter: t.cost_center ?? undefined,
+          startDate: t.start_date ?? undefined,
+          finishDate: t.finish_date ?? undefined,
+          hasAttachment: attachmentCount > 0,
+          attachmentCount,
+        };
+      });
 
-      const materialRows: BudgetRow[] = (materialsRes.data || []).map((m) => ({
-        id: m.id,
-        name: m.name,
-        type: "material" as const,
-        budget: m.price_total ?? 0,
-        ordered: m.ordered_amount ?? 0,
-        paid: m.paid_amount ?? 0,
-        status: m.status || "new",
-        room: m.room_id ? roomMap.get(m.room_id) : undefined,
-        roomId: m.room_id ?? undefined,
-      }));
+      const materialRows: BudgetRow[] = (materialsRes.data || []).map((m) => {
+        const attachmentCount = materialDocCounts.get(m.id) || 0;
+        return {
+          id: m.id,
+          name: m.name,
+          type: "material" as const,
+          budget: m.price_total ?? 0,
+          ordered: m.ordered_amount ?? 0,
+          paid: m.paid_amount ?? 0,
+          status: m.status || "new",
+          room: m.room_id ? roomMap.get(m.room_id) : undefined,
+          roomId: m.room_id ?? undefined,
+          hasAttachment: attachmentCount > 0,
+          attachmentCount,
+        };
+      });
 
       setRows([...taskRows, ...materialRows]);
     } catch (error: unknown) {
@@ -412,6 +427,212 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fetch all rooms for the inline add dropdown
+  const fetchRooms = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("rooms")
+        .select("id, name")
+        .eq("project_id", projectId)
+        .order("name");
+      if (error) throw error;
+      setAllRooms(data || []);
+    } catch (error: unknown) {
+      console.error("Failed to fetch rooms:", error);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    fetchRooms();
+  }, [fetchRooms]);
+
+  // Focus name input when adding row
+  useEffect(() => {
+    if (isAddingRow && newRowNameRef.current) {
+      newRowNameRef.current.focus();
+    }
+  }, [isAddingRow]);
+
+  // Inline add row handlers
+  const handleStartAddRow = () => {
+    setIsAddingRow(true);
+    setNewRowType("task");
+    setNewRowName("");
+    setNewRowBudget("");
+    setNewRowRoomId("");
+  };
+
+  const handleCancelAddRow = () => {
+    setIsAddingRow(false);
+    setNewRowName("");
+    setNewRowBudget("");
+    setNewRowRoomId("");
+  };
+
+  const handleSaveNewRow = async () => {
+    if (!newRowName.trim()) {
+      toast({ title: t('common.error'), description: t('budget.nameRequired'), variant: "destructive" });
+      return;
+    }
+
+    const budgetValue = parseFloat(newRowBudget) || 0;
+    setAddingRowLoading(true);
+
+    try {
+      // Get current user's profile for created_by_user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      let profileId: string | null = null;
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+        profileId = profile?.id || null;
+      }
+
+      if (newRowType === "task") {
+        const { error } = await supabase.from("tasks").insert({
+          project_id: projectId,
+          title: newRowName.trim(),
+          budget: budgetValue,
+          room_id: newRowRoomId || null,
+          status: "to_do",
+          priority: "medium",
+          payment_status: "not_paid",
+          created_by_user_id: profileId,
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("materials").insert({
+          project_id: projectId,
+          name: newRowName.trim(),
+          price_total: budgetValue,
+          room_id: newRowRoomId || null,
+          status: "submitted",
+          exclude_from_budget: false,
+          quantity: 1,
+          unit: "st",
+          created_by_user_id: profileId,
+        });
+        if (error) throw error;
+      }
+
+      toast({ title: t('common.success'), description: t('budget.rowAdded') });
+      handleCancelAddRow();
+      await fetchData();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t('budget.failedToAddRow');
+      toast({ title: t('common.error'), description: msg, variant: "destructive" });
+    } finally {
+      setAddingRowLoading(false);
+    }
+  };
+
+  const handleNewRowKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !addingRowLoading) {
+      e.preventDefault();
+      handleSaveNewRow();
+    } else if (e.key === "Escape") {
+      handleCancelAddRow();
+    }
+  };
+
+  // --- Row actions: Duplicate & Delete ---
+
+  const handleDuplicateRow = async (row: BudgetRow) => {
+    try {
+      // Get current user's profile
+      const { data: { user } } = await supabase.auth.getUser();
+      let profileId: string | null = null;
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+        profileId = profile?.id || null;
+      }
+
+      if (row.type === "task") {
+        // Fetch full task data to duplicate
+        const { data: task, error: fetchError } = await supabase
+          .from("tasks")
+          .select("title, budget, room_id, status, priority, payment_status, cost_center, description")
+          .eq("id", row.id)
+          .single();
+        if (fetchError) throw fetchError;
+
+        const { error } = await supabase.from("tasks").insert({
+          project_id: projectId,
+          title: `${task.title} (${t('budget.copy')})`,
+          budget: task.budget,
+          room_id: task.room_id,
+          status: task.status,
+          priority: task.priority,
+          payment_status: "not_paid",
+          cost_center: task.cost_center,
+          description: task.description,
+          created_by_user_id: profileId,
+        });
+        if (error) throw error;
+      } else {
+        // Fetch full material data to duplicate
+        const { data: material, error: fetchError } = await supabase
+          .from("materials")
+          .select("name, price_total, room_id, status, quantity, unit, vendor_name, vendor_link, description, exclude_from_budget")
+          .eq("id", row.id)
+          .single();
+        if (fetchError) throw fetchError;
+
+        const { error } = await supabase.from("materials").insert({
+          project_id: projectId,
+          name: `${material.name} (${t('budget.copy')})`,
+          price_total: material.price_total,
+          room_id: material.room_id,
+          status: "submitted",
+          quantity: material.quantity,
+          unit: material.unit,
+          vendor_name: material.vendor_name,
+          vendor_link: material.vendor_link,
+          description: material.description,
+          exclude_from_budget: material.exclude_from_budget,
+          created_by_user_id: profileId,
+        });
+        if (error) throw error;
+      }
+
+      toast({ title: t('common.success'), description: t('budget.rowDuplicated') });
+      await fetchData();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t('budget.failedToDuplicate');
+      toast({ title: t('common.error'), description: msg, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteRow = async (row: BudgetRow) => {
+    // Simple confirmation
+    if (!window.confirm(t('budget.confirmDelete', { name: row.name }))) {
+      return;
+    }
+
+    try {
+      if (row.type === "task") {
+        const { error } = await supabase.from("tasks").delete().eq("id", row.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("materials").delete().eq("id", row.id);
+        if (error) throw error;
+      }
+
+      toast({ title: t('common.success'), description: t('budget.rowDeleted') });
+      await fetchData();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t('budget.failedToDelete');
+      toast({ title: t('common.error'), description: msg, variant: "destructive" });
+    }
+  };
 
   // --- Distinct filter options ---
 
@@ -520,38 +741,13 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
     dragOverCol.current = null;
   };
 
-  // --- Detail dialog ---
+  // --- Open edit dialog ---
 
-  const openDetail = async (row: BudgetRow) => {
-    setDetailRow(row);
-    setTaskDetail(null);
-    setMaterialDetail(null);
-    setDetailOpen(true);
-    setDetailLoading(true);
-
-    try {
-      if (row.type === "task") {
-        const { data, error } = await supabase
-          .from("tasks")
-          .select("id, title, description, status, priority, progress, budget, payment_status, paid_amount, cost_center, start_date, finish_date, due_date")
-          .eq("id", row.id)
-          .single();
-        if (error) throw error;
-        setTaskDetail(data);
-      } else {
-        const { data, error } = await supabase
-          .from("materials")
-          .select("id, name, description, quantity, unit, price_per_unit, price_total, vendor_name, vendor_link, status, exclude_from_budget, created_at")
-          .eq("id", row.id)
-          .single();
-        if (error) throw error;
-        setMaterialDetail(data);
-      }
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : t('budget.failedToLoadDetails');
-      toast({ title: t('common.error'), description: msg, variant: "destructive" });
-    } finally {
-      setDetailLoading(false);
+  const openDetail = (row: BudgetRow) => {
+    if (row.type === "task") {
+      setEditTaskId(row.id);
+    } else {
+      setEditMaterialId(row.id);
     }
   };
 
@@ -573,7 +769,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
 
   // --- Filtering & Sorting ---
 
-  const hasAdvancedFilter = filterRoom !== "all" || filterAssignee !== "all" || filterCostCenter !== "all" || filterStartDate !== "" || filterFinishDate !== "";
+  const hasAdvancedFilter = filterRoom !== "all" || filterAssignee !== "all" || filterCostCenter !== "all" || filterStartDate !== "" || filterFinishDate !== "" || filterAttachment !== "all";
 
   const filtered = rows.filter((r) => {
     if (filterType !== "all" && r.type !== filterType) return false;
@@ -584,6 +780,8 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
     if (filterCostCenter !== "all" && r.costCenter !== filterCostCenter) return false;
     if (filterStartDate && (!r.startDate || r.startDate < filterStartDate)) return false;
     if (filterFinishDate && (!r.finishDate || r.finishDate > filterFinishDate)) return false;
+    if (filterAttachment === "has" && !r.hasAttachment) return false;
+    if (filterAttachment === "missing" && r.hasAttachment) return false;
     return true;
   });
 
@@ -644,6 +842,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
     setFilterCostCenter("all");
     setFilterStartDate("");
     setFilterFinishDate("");
+    setFilterAttachment("all");
   };
 
   const formatDate = (dateStr?: string) => {
@@ -725,6 +924,8 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
         return <span className="text-sm">{formatDate(row.startDate)}</span>;
       case "finishDate":
         return <span className="text-sm">{formatDate(row.finishDate)}</span>;
+      case "attachment":
+        return <AttachmentIndicator hasAttachment={row.hasAttachment} count={row.attachmentCount} />;
       case "status":
         return (
           <Select
@@ -1136,6 +1337,24 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
               onChange={(e) => setFilterFinishDate(e.target.value)}
             />
           </div>
+          <div className="w-[160px]">
+            <Label className="text-sm mb-1.5 block">{t('budget.filterAttachment')}</Label>
+            <Select value={filterAttachment} onValueChange={(v) => setFilterAttachment(v as "all" | "has" | "missing")}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('budget.allAttachments')}</SelectItem>
+                <SelectItem value="has">
+                  <span className="flex items-center gap-1.5">
+                    <Paperclip className="h-3 w-3" />
+                    {t('budget.hasAttachment')}
+                  </span>
+                </SelectItem>
+                <SelectItem value="missing">{t('budget.missingAttachment')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       )}
 
@@ -1175,12 +1394,14 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
                   </span>
                 </TableHead>
               ))}
+              {/* Actions column header */}
+              <TableHead className={`w-20${compactRows ? " py-1 text-xs h-8" : ""}`} />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 ? (
+            {filtered.length === 0 && !isAddingRow ? (
               <TableRow>
-                <TableCell colSpan={visibleColumns.length} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={visibleColumns.length + 1} className="text-center py-8 text-muted-foreground">
                   {t('budget.noBudgetItems')}
                 </TableCell>
               </TableRow>
@@ -1199,8 +1420,139 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
                       {renderCell(col, row)}
                     </TableCell>
                   ))}
+                  {/* Row Actions */}
+                  <TableCell className={`${compactRows ? "py-0.5 px-1" : "px-2"}`} onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={compactRows ? "h-6 w-6" : "h-8 w-8"}
+                        onClick={() => handleDuplicateRow(row)}
+                        title={t('budget.duplicate')}
+                      >
+                        <Copy className={compactRows ? "h-3 w-3" : "h-4 w-4"} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`${compactRows ? "h-6 w-6" : "h-8 w-8"} text-muted-foreground hover:text-destructive`}
+                        onClick={() => handleDeleteRow(row)}
+                        title={t('budget.deleteRow')}
+                      >
+                        <Trash2 className={compactRows ? "h-3 w-3" : "h-4 w-4"} />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))
+            )}
+
+            {/* Inline Add Row */}
+            {isAddingRow ? (
+              <TableRow className={`bg-primary/5 border-primary/20${compactRows ? " h-8" : ""}`}>
+                {visibleColumns.map((col) => (
+                  <TableCell
+                    key={col.key}
+                    className={`${col.align === "right" ? "text-right" : ""}${compactRows ? " py-0.5 px-2 text-xs" : " py-1"}`}
+                  >
+                    {col.key === "name" ? (
+                      <Input
+                        ref={newRowNameRef}
+                        type="text"
+                        placeholder={t('budget.enterName')}
+                        className={`${compactRows ? "h-6 text-xs" : "h-8"} w-full min-w-[120px]`}
+                        value={newRowName}
+                        onChange={(e) => setNewRowName(e.target.value)}
+                        onKeyDown={handleNewRowKeyDown}
+                        disabled={addingRowLoading}
+                      />
+                    ) : col.key === "type" ? (
+                      <Select
+                        value={newRowType}
+                        onValueChange={(v) => setNewRowType(v as "task" | "material")}
+                        disabled={addingRowLoading}
+                      >
+                        <SelectTrigger className={`${compactRows ? "h-6 text-xs" : "h-8"} w-[100px]`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="task">{t('budget.task')}</SelectItem>
+                          <SelectItem value="material">{t('budget.material')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : col.key === "budget" ? (
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        className={`${compactRows ? "h-6 text-xs" : "h-8"} w-24 text-right`}
+                        value={newRowBudget}
+                        onChange={(e) => setNewRowBudget(e.target.value)}
+                        onKeyDown={handleNewRowKeyDown}
+                        disabled={addingRowLoading}
+                      />
+                    ) : col.key === "room" ? (
+                      <Select
+                        value={newRowRoomId || "none"}
+                        onValueChange={(v) => setNewRowRoomId(v === "none" ? "" : v)}
+                        disabled={addingRowLoading}
+                      >
+                        <SelectTrigger className={`${compactRows ? "h-6 text-xs" : "h-8"} w-[120px]`}>
+                          <SelectValue placeholder={t('budget.selectRoom')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{t('budget.noRoom')}</SelectItem>
+                          {allRooms.map((room) => (
+                            <SelectItem key={room.id} value={room.id}>
+                              {room.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : col.key === "status" ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          className={compactRows ? "h-6 text-xs px-2" : "h-8"}
+                          onClick={handleSaveNewRow}
+                          disabled={addingRowLoading || !newRowName.trim()}
+                        >
+                          {addingRowLoading ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            t('common.save')
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className={compactRows ? "h-6 text-xs px-2" : "h-8"}
+                          onClick={handleCancelAddRow}
+                          disabled={addingRowLoading}
+                        >
+                          {t('common.cancel')}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </TableCell>
+                ))}
+                {/* Empty cell for actions column */}
+                <TableCell />
+              </TableRow>
+            ) : (
+              <TableRow
+                className={`hover:bg-muted/50 cursor-pointer${compactRows ? " h-8" : ""}`}
+                onClick={handleStartAddRow}
+              >
+                <TableCell
+                  colSpan={visibleColumns.length + 1}
+                  className={`text-muted-foreground${compactRows ? " py-0.5 px-2 text-xs" : ""}`}
+                >
+                  <span className="inline-flex items-center gap-1.5 text-sm">
+                    <Plus className="h-4 w-4" />
+                    {t('budget.addRow')}
+                  </span>
+                </TableCell>
+              </TableRow>
             )}
           </TableBody>
           {filtered.length > 0 && (
@@ -1214,164 +1566,37 @@ const BudgetTab = ({ projectId, currency, isReadOnly }: BudgetTabProps) => {
                     {renderFooterCell(col)}
                   </TableCell>
                 ))}
+                <TableCell />
               </TableRow>
             </TableFooter>
           )}
         </Table>
       </div>
 
-      {/* Detail Dialog */}
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0">
-          <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-2">
-            <DialogTitle>
-              {detailRow?.type === "task" ? t('budget.taskDetails') : t('budget.purchaseOrderDetails')}
-            </DialogTitle>
-            <DialogDescription>
-              {detailRow?.name}
-            </DialogDescription>
-          </DialogHeader>
+      {/* Budget Charts Section */}
+      <BudgetChartsSection rows={rows} currency={currency} />
 
-          <div className="flex-1 overflow-y-auto px-6 pb-6">
-            {detailLoading ? (
-              <div className="flex items-center justify-center h-40">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : detailRow?.type === "task" && taskDetail ? (
-              <TaskDetailView task={taskDetail} currency={currency} />
-            ) : detailRow?.type === "material" && materialDetail ? (
-              <MaterialDetailView material={materialDetail} currency={currency} />
-            ) : (
-              <p className="text-muted-foreground py-8 text-center">{t('budget.noData')}</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Task Edit Dialog */}
+      <TaskEditDialog
+        taskId={editTaskId}
+        projectId={projectId}
+        open={editTaskId !== null}
+        onOpenChange={(open) => !open && setEditTaskId(null)}
+        onSaved={fetchData}
+        currency={currency}
+      />
+
+      {/* Material Edit Dialog */}
+      <MaterialEditDialog
+        materialId={editMaterialId}
+        projectId={projectId}
+        open={editMaterialId !== null}
+        onOpenChange={(open) => !open && setEditMaterialId(null)}
+        onSaved={fetchData}
+        currency={currency}
+      />
     </div>
   );
 };
-
-// --- Detail sub-components ---
-
-function DetailField({ label, value }: { label: string; value: React.ReactNode }) {
-  if (value === null || value === undefined || value === "") return null;
-  return (
-    <div className="space-y-1">
-      <div className="text-sm text-muted-foreground">{label}</div>
-      <div className="text-sm font-medium">{value}</div>
-    </div>
-  );
-}
-
-function TaskDetailView({ task, currency }: { task: TaskDetail; currency?: string | null }) {
-  const { t } = useTranslation();
-
-  const statusLabel = (s: string) => {
-    const map: Record<string, string> = {
-      to_do: t('taskStatuses.toDo'),
-      in_progress: t('taskStatuses.inProgress'),
-      completed: t('taskStatuses.completed'),
-      not_paid: t('paymentStatuses.notPaid'),
-      billed: t('materialStatuses.billed'),
-      partially_paid: t('paymentStatuses.partiallyPaid'),
-      paid: t('materialStatuses.paid'),
-    };
-    return map[s] || s;
-  };
-
-  const priorityLabel = (p: string) => {
-    const map: Record<string, string> = {
-      low: t('priorities.low'),
-      medium: t('priorities.medium'),
-      high: t('priorities.high'),
-    };
-    return map[p] || p;
-  };
-
-  return (
-    <div className="space-y-4">
-      <DetailField label={t('budget.detailTitle')} value={task.title} />
-      <DetailField label={t('budget.detailDescription')} value={task.description} />
-
-      <Separator />
-
-      <div className="grid grid-cols-2 gap-4">
-        <DetailField label={t('common.status')} value={<Badge variant="outline">{statusLabel(task.status)}</Badge>} />
-        <DetailField label={t('budget.detailPriority')} value={<Badge variant="outline">{priorityLabel(task.priority)}</Badge>} />
-      </div>
-
-      <DetailField label={t('budget.detailProgress')} value={`${task.progress}%`} />
-
-      <Separator />
-
-      <div className="grid grid-cols-2 gap-4">
-        <DetailField label={t('common.budget')} value={task.budget != null ? formatCurrency(task.budget, currency) : undefined} />
-        <DetailField label={t('budget.detailPaidAmount')} value={task.paid_amount != null ? formatCurrency(task.paid_amount, currency) : undefined} />
-      </div>
-      <DetailField label={t('budget.detailPaymentStatus')} value={task.payment_status ? <Badge variant="outline">{statusLabel(task.payment_status)}</Badge> : undefined} />
-      <DetailField label={t('budget.costCenter')} value={task.cost_center} />
-
-      <Separator />
-
-      <div className="grid grid-cols-2 gap-4">
-        <DetailField label={t('common.startDate')} value={task.start_date ? new Date(task.start_date).toLocaleDateString("sv-SE") : undefined} />
-        <DetailField label={t('common.finishDate')} value={task.finish_date ? new Date(task.finish_date).toLocaleDateString("sv-SE") : undefined} />
-      </div>
-      <DetailField label={t('budget.detailDueDate')} value={task.due_date ? new Date(task.due_date).toLocaleDateString("sv-SE") : undefined} />
-    </div>
-  );
-}
-
-function MaterialDetailView({ material, currency }: { material: MaterialDetail; currency?: string | null }) {
-  const { t } = useTranslation();
-
-  const statusLabel = (s: string) => {
-    const map: Record<string, string> = {
-      submitted: t('materialStatuses.submitted'),
-      declined: t('materialStatuses.declined'),
-      approved: t('materialStatuses.approved'),
-      billed: t('materialStatuses.billed'),
-      paid: t('materialStatuses.paid'),
-      paused: t('materialStatuses.paused'),
-    };
-    return map[s] || s;
-  };
-
-  return (
-    <div className="space-y-4">
-      <DetailField label={t('budget.detailName')} value={material.name} />
-      <DetailField label={t('budget.detailDescription')} value={material.description} />
-
-      <Separator />
-
-      <div className="grid grid-cols-2 gap-4">
-        <DetailField label={t('budget.detailQuantity')} value={`${material.quantity} ${material.unit}`} />
-        <DetailField label={t('budget.detailPricePerUnit')} value={material.price_per_unit != null ? formatCurrency(material.price_per_unit, currency) : undefined} />
-      </div>
-      <DetailField label={t('budget.detailPriceTotal')} value={material.price_total != null ? formatCurrency(material.price_total, currency) : undefined} />
-
-      <Separator />
-
-      <DetailField label={t('common.status')} value={<Badge variant="outline">{statusLabel(material.status)}</Badge>} />
-      <DetailField label={t('budget.detailVendor')} value={material.vendor_name} />
-      {material.vendor_link && (
-        <DetailField
-          label={t('budget.detailVendorLink')}
-          value={
-            <a href={material.vendor_link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
-              {material.vendor_link}
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          }
-        />
-      )}
-
-      <Separator />
-
-      <DetailField label={t('budget.detailExcludeFromBudget')} value={material.exclude_from_budget ? t('common.yes') : t('common.no')} />
-      <DetailField label={t('budget.detailCreated')} value={new Date(material.created_at).toLocaleDateString("sv-SE")} />
-    </div>
-  );
-}
 
 export default BudgetTab;

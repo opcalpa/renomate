@@ -11,8 +11,10 @@ import {
   Pencil,
   ExternalLink,
   Filter,
-  X
+  X,
+  Paperclip,
 } from "lucide-react";
+import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -79,6 +81,8 @@ interface Material {
   room?: {
     name: string;
   };
+  hasAttachment?: boolean;
+  attachmentCount?: number;
 }
 
 interface PurchaseRequestsTabProps {
@@ -109,6 +113,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   // Filter state
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [filterCreatedBy, setFilterCreatedBy] = useState<string | null>(null);
+  const [filterAttachment, setFilterAttachment] = useState<"all" | "has" | "missing">("all");
   const [showFilters, setShowFilters] = useState(false);
 
   const [newMaterial, setNewMaterial] = useState({
@@ -326,28 +331,58 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         query = query.eq("created_by_user_id", currentProfileId);
       }
 
-      const { data, error } = await query.order("created_at", { ascending: false });
+      const [materialsRes, docsRes] = await Promise.all([
+        query.order("created_at", { ascending: false }),
+        supabase
+          .from("task_file_links")
+          .select("material_id")
+          .eq("project_id", projectId)
+          .not("material_id", "is", null),
+      ]);
 
-      if (error) throw error;
+      if (materialsRes.error) throw materialsRes.error;
 
-      // Fetch creator names separately to avoid FK relationship issues
-      const materialsWithNames = await Promise.all((data || []).map(async (material) => {
-        let creatorName = null;
+      // Build document count map (handle gracefully if material_id column doesn't exist yet)
+      const docCounts = new Map<string, number>();
+      if (!docsRes.error) {
+        (docsRes.data || []).forEach((d) => {
+          if (d.material_id) {
+            docCounts.set(d.material_id, (docCounts.get(d.material_id) || 0) + 1);
+          }
+        });
+      }
 
-        if (material.created_by_user_id) {
-          const { data: creator } = await supabase
-            .from("profiles")
-            .select("name")
-            .eq("id", material.created_by_user_id)
-            .single();
-          creatorName = creator?.name;
-        }
+      // Batch fetch all creator profiles in one query (avoid N+1)
+      const creatorIds = [...new Set(
+        (materialsRes.data || [])
+          .map(m => m.created_by_user_id)
+          .filter((id): id is string => id !== null)
+      )];
 
+      const creatorMap = new Map<string, string>();
+      if (creatorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, name")
+          .in("id", creatorIds);
+
+        (profiles || []).forEach(p => {
+          if (p.name) creatorMap.set(p.id, p.name);
+        });
+      }
+
+      const materialsWithNames = (materialsRes.data || []).map((material) => {
+        const creatorName = material.created_by_user_id
+          ? creatorMap.get(material.created_by_user_id)
+          : null;
+        const attachmentCount = docCounts.get(material.id) || 0;
         return {
           ...material,
           creator: creatorName ? { name: creatorName } : null,
+          hasAttachment: attachmentCount > 0,
+          attachmentCount,
         };
-      }));
+      });
 
       setMaterials(materialsWithNames);
     } catch (error: unknown) {
@@ -529,6 +564,8 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   const filteredMaterials = materials.filter((material) => {
     if (filterStatus && material.status !== filterStatus) return false;
     if (filterCreatedBy && material.created_by_user_id !== filterCreatedBy) return false;
+    if (filterAttachment === "has" && !material.hasAttachment) return false;
+    if (filterAttachment === "missing" && material.hasAttachment) return false;
     return true;
   });
 
@@ -566,9 +603,10 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   const clearFilters = () => {
     setFilterStatus(null);
     setFilterCreatedBy(null);
+    setFilterAttachment("all");
   };
 
-  const hasActiveFilters = filterStatus !== null || filterCreatedBy !== null;
+  const hasActiveFilters = filterStatus !== null || filterCreatedBy !== null || filterAttachment !== "all";
 
   if (loading) {
     return (
@@ -900,7 +938,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                     {t('purchases.filters', 'Filter')}
                     {hasActiveFilters && (
                       <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                        {(filterStatus ? 1 : 0) + (filterCreatedBy ? 1 : 0)}
+                        {(filterStatus ? 1 : 0) + (filterCreatedBy ? 1 : 0) + (filterAttachment !== "all" ? 1 : 0)}
                       </Badge>
                     )}
                   </Button>
@@ -957,6 +995,24 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                         </Select>
                       </div>
                     )}
+
+                    {/* Attachment Filter */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">{t('budget.filterAttachment')}</Label>
+                      <Select
+                        value={filterAttachment}
+                        onValueChange={(value) => setFilterAttachment(value as "all" | "has" | "missing")}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">{t('common.all')}</SelectItem>
+                          <SelectItem value="has">{t('budget.hasAttachment')}</SelectItem>
+                          <SelectItem value="missing">{t('budget.missingAttachment')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 )}
 
@@ -977,6 +1033,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                   <TableRow>
                     <TableHead>{t('common.status')}</TableHead>
                     <TableHead>{t('purchases.materialName')}</TableHead>
+                    <TableHead className="w-10"><Paperclip className="h-4 w-4" /></TableHead>
                     <TableHead>{t('common.quantity')}</TableHead>
                     <TableHead>{t('purchases.pricePerUnit')}</TableHead>
                     <TableHead>{t('purchases.priceTotal')}</TableHead>
@@ -1026,6 +1083,9 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                         </Select>
                       </TableCell>
                       <TableCell className="font-medium">{material.name}</TableCell>
+                      <TableCell>
+                        <AttachmentIndicator hasAttachment={material.hasAttachment || false} count={material.attachmentCount} />
+                      </TableCell>
                       <TableCell>
                         {material.quantity} {material.unit}
                       </TableCell>
