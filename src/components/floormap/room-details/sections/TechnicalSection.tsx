@@ -1,13 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Zap, Thermometer } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ComboboxSelect } from "../fields/ComboboxSelect";
 import { MultiSelect } from "../fields/MultiSelect";
 import {
   ELECTRICAL_SERIES_OPTIONS,
@@ -38,23 +32,15 @@ export function TechnicalSection({
           {/* Electrical series */}
           <div className="space-y-2">
             <Label htmlFor="electrical-series">{t('rooms.series')}</Label>
-            <Select
+            <ComboboxSelect
+              id="electrical-series"
+              options={ELECTRICAL_SERIES_OPTIONS}
               value={electricalSpec?.series || ""}
-              onValueChange={(value) =>
+              onChange={(value) =>
                 updateSpec("electrical_spec", { ...electricalSpec, series: value })
               }
-            >
-              <SelectTrigger id="electrical-series">
-                <SelectValue placeholder={t('rooms.selectSeries')} />
-              </SelectTrigger>
-              <SelectContent>
-                {ELECTRICAL_SERIES_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {t(option.labelKey)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder={t('rooms.selectSeries')}
+            />
           </div>
 
           {/* Outlet/switch types (multi-select) */}
@@ -99,23 +85,15 @@ export function TechnicalSection({
           {/* Heating type */}
           <div className="space-y-2">
             <Label htmlFor="heating-type">{t('rooms.heatingType')}</Label>
-            <Select
+            <ComboboxSelect
+              id="heating-type"
+              options={HEATING_TYPE_OPTIONS}
               value={heatingSpec?.type || ""}
-              onValueChange={(value) =>
+              onChange={(value) =>
                 updateSpec("heating_spec", { ...heatingSpec, type: value })
               }
-            >
-              <SelectTrigger id="heating-type">
-                <SelectValue placeholder={t('rooms.selectHeatingType')} />
-              </SelectTrigger>
-              <SelectContent>
-                {HEATING_TYPE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {t(option.labelKey)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder={t('rooms.selectHeatingType')}
+            />
           </div>
         </div>
       </div>

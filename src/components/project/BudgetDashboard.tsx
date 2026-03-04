@@ -93,6 +93,8 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount, currency }: Budg
           id,
           title,
           budget,
+          is_ata,
+          parent_task_id,
           created_at,
           updated_at
         `)
@@ -103,7 +105,6 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount, currency }: Budg
       if (tasksError) throw tasksError;
 
       // Get all purchase orders (exclude_from_budget = false)
-      // This matches how spentAmount is calculated in OverviewTab
       const { data: materialsData, error: materialsError } = await supabase
         .from("materials")
         .select(`
@@ -112,6 +113,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount, currency }: Budg
           price_total,
           status,
           exclude_from_budget,
+          task_id,
           created_at,
           updated_at
         `)
@@ -120,15 +122,23 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount, currency }: Budg
 
       if (materialsError) throw materialsError;
 
-      // Combine and format data
-      const taskPayments = (tasksData || []).map((task) => ({
-        id: task.id,
-        type: "task",
-        name: task.title,
-        amount: task.budget,
-        date: task.updated_at,
-        created_at: task.created_at,
-      }));
+      // Build set of tasks that have linked purchase materials
+      const taskIdsWithMaterials = new Set(
+        (materialsData || []).filter(m => m.task_id).map(m => m.task_id)
+      );
+
+      // Only show tasks WITHOUT linked materials in the payments list
+      // (tasks WITH linked materials are represented by their actual material entries)
+      const taskPayments = (tasksData || [])
+        .filter(task => !task.is_ata && !task.parent_task_id && !taskIdsWithMaterials.has(task.id))
+        .map((task) => ({
+          id: task.id,
+          type: "task",
+          name: task.title,
+          amount: task.budget,
+          date: task.updated_at,
+          created_at: task.created_at,
+        }));
 
       const materialPayments = (materialsData || []).map((material) => ({
         id: material.id,
@@ -345,11 +355,18 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount, currency }: Budg
 
   const fetchPurchaseRequestData = async () => {
     try {
-      // Get all materials (purchase orders) for this project
-      const { data: materialsData, error: materialsError } = await supabase
-        .from("materials")
-        .select("price_total, status, exclude_from_budget")
-        .eq("project_id", projectId);
+      // Get all materials (purchase orders) and tasks for this project
+      const [{ data: materialsData, error: materialsError }, { data: ataTasksData }] = await Promise.all([
+        supabase
+          .from("materials")
+          .select("price_total, status, exclude_from_budget")
+          .eq("project_id", projectId),
+        supabase
+          .from("tasks")
+          .select("budget, is_ata")
+          .eq("project_id", projectId)
+          .eq("is_ata", true),
+      ]);
 
       if (materialsError) throw materialsError;
 
@@ -360,23 +377,31 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount, currency }: Budg
       let ongoing = 0;
       let ongoingCnt = 0;
 
-      materialsData?.forEach((material: any) => {
-        const cost = material.price_total || 0;
-        
-        // Separate ongoing costs (exclude_from_budget = true)
-        if (material.exclude_from_budget) {
+      materialsData?.forEach((material: unknown) => {
+        const mat = material as { price_total: number | null; status: string; exclude_from_budget: boolean };
+        const cost = mat.price_total || 0;
+
+        // Separate ÄTA costs (exclude_from_budget = true)
+        if (mat.exclude_from_budget) {
           ongoing += cost;
           ongoingCnt++;
           return;
         }
-        
+
         // Regular budget items
-        if (material.status === "new") {
+        if (mat.status === "new") {
           pending += cost;
           pendingCnt++;
-        } else if (material.status === "done") {
+        } else if (mat.status === "done") {
           approved += cost;
         }
+      });
+
+      // Add ÄTA tasks to ongoing costs
+      (ataTasksData || []).forEach((task: unknown) => {
+        const t = task as { budget: number | null; is_ata: boolean };
+        ongoing += t.budget || 0;
+        ongoingCnt++;
       });
 
       setPendingTotal(pending);

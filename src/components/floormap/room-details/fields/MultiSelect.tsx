@@ -45,8 +45,17 @@ export function MultiSelect({
 }: MultiSelectProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [inputValue, setInputValue] = useState("");
 
   const getLabel = (option: Option) => option.labelKey ? t(option.labelKey) : (option.label || option.value);
+
+  // Merge predefined options with any custom values already selected
+  const allOptions: Option[] = [
+    ...options,
+    ...selected
+      .filter((v) => !options.some((o) => o.value === v))
+      .map((v) => ({ value: v, label: v })),
+  ];
 
   const handleToggle = (value: string) => {
     if (selected.includes(value)) {
@@ -61,9 +70,13 @@ export function MultiSelect({
     onChange(selected.filter((v) => v !== value));
   };
 
-  const selectedLabels = selected
-    .map((v) => { const o = options.find((o) => o.value === v); return o ? getLabel(o) : undefined; })
-    .filter(Boolean);
+  const handleAddCustom = () => {
+    const trimmed = inputValue.trim();
+    if (trimmed && !selected.includes(trimmed)) {
+      onChange([...selected, trimmed]);
+    }
+    setInputValue("");
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -82,7 +95,7 @@ export function MultiSelect({
               <span className="text-muted-foreground">{placeholder}</span>
             ) : (
               selected.map((value) => {
-                const option = options.find((o) => o.value === value);
+                const option = allOptions.find((o) => o.value === value);
                 return (
                   <Badge
                     key={value}
@@ -116,31 +129,68 @@ export function MultiSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={inputValue}
+            onValueChange={setInputValue}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && inputValue.trim()) {
+                e.preventDefault();
+                handleAddCustom();
+              }
+            }}
+          />
           <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.value}
-                  onSelect={() => handleToggle(option.value)}
-                >
-                  <div
-                    className={cn(
-                      "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                      selected.includes(option.value)
-                        ? "bg-primary text-primary-foreground"
-                        : "opacity-50 [&_svg]:invisible"
-                    )}
-                  >
-                    <Check className="h-4 w-4" />
-                  </div>
-                  {getLabel(option)}
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {(() => {
+              const filtered = allOptions.filter((opt) =>
+                getLabel(opt).toLowerCase().includes(inputValue.toLowerCase())
+              );
+              const showCustom = inputValue.trim() && !allOptions.some(
+                (o) => getLabel(o).toLowerCase() === inputValue.trim().toLowerCase() || o.value === inputValue.trim()
+              );
+              return (
+                <>
+                  {filtered.length === 0 && !showCustom && (
+                    <CommandEmpty>{emptyText}</CommandEmpty>
+                  )}
+                  {filtered.length > 0 && (
+                    <CommandGroup>
+                      {filtered.map((option) => (
+                        <CommandItem
+                          key={option.value}
+                          value={option.value}
+                          onSelect={() => handleToggle(option.value)}
+                        >
+                          <div
+                            className={cn(
+                              "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                              selected.includes(option.value)
+                                ? "bg-primary text-primary-foreground"
+                                : "opacity-50 [&_svg]:invisible"
+                            )}
+                          >
+                            <Check className="h-4 w-4" />
+                          </div>
+                          {getLabel(option)}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+                  {showCustom && (
+                    <CommandGroup>
+                      <CommandItem
+                        value={`__custom__${inputValue.trim()}`}
+                        onSelect={handleAddCustom}
+                      >
+                        <span className="text-primary mr-2">+</span>
+                        {t("common.use", "Use")} &quot;{inputValue.trim()}&quot;
+                      </CommandItem>
+                    </CommandGroup>
+                  )}
+                </>
+              );
+            })()}
           </CommandList>
         </Command>
       </PopoverContent>

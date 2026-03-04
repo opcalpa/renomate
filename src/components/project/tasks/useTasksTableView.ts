@@ -1,0 +1,211 @@
+import { useState, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  TaskColumnKey,
+  TaskColumnDef,
+  TaskSavedView,
+  EXTRA_COLUMN_KEYS,
+  DEFAULT_VISIBLE_EXTRAS,
+} from "./tasksTableTypes";
+
+const VIEWS_STORAGE_KEY = (projectId: string) =>
+  `tasks-table-views-${projectId}`;
+
+function loadSavedViews(projectId: string): TaskSavedView[] {
+  try {
+    const raw = localStorage.getItem(VIEWS_STORAGE_KEY(projectId));
+    if (!raw) return [];
+    return JSON.parse(raw) as TaskSavedView[];
+  } catch {
+    return [];
+  }
+}
+
+function persistSavedViews(projectId: string, views: TaskSavedView[]) {
+  localStorage.setItem(VIEWS_STORAGE_KEY(projectId), JSON.stringify(views));
+}
+
+export function useTasksTableView(projectId: string) {
+  const { t } = useTranslation();
+
+  const ALL_COLUMNS: TaskColumnDef[] = useMemo(
+    () => [
+      { key: "title", label: t("tasks.taskTitle"), width: "w-[300px]", editType: "none" },
+      { key: "status", label: t("tasks.status"), width: "w-[130px]", editType: "select" },
+      { key: "priority", label: t("tasks.priority"), width: "w-[100px]", editType: "select" },
+      { key: "assignee", label: t("tasks.assignee"), width: "w-[150px]", extra: true, editType: "select", dbField: "assigned_to_stakeholder_id" },
+      { key: "room", label: t("tasks.room"), width: "w-[120px]", extra: true, editType: "select", dbField: "room_id" },
+      { key: "startDate", label: t("tasks.startDate"), width: "w-[140px]", extra: true, editType: "date", dbField: "start_date" },
+      { key: "finishDate", label: t("tasks.finishDate"), width: "w-[140px]", extra: true, editType: "date", dbField: "finish_date" },
+      { key: "dueDate", label: t("tasksTable.dueDate"), width: "w-[140px]", extra: true, editType: "date", dbField: "due_date" },
+      { key: "progress", label: t("tasks.progress"), width: "w-[120px]", extra: true, editType: "progress" },
+      { key: "budget", label: t("tasks.budget"), width: "w-[120px]", align: "right", extra: true, editType: "numeric" },
+      { key: "orderedAmount", label: t("tasksTable.orderedAmount"), width: "w-[120px]", align: "right", extra: true, editType: "numeric", dbField: "ordered_amount" },
+      { key: "paidAmount", label: t("tasksTable.paidAmount"), width: "w-[120px]", align: "right", extra: true, editType: "numeric", dbField: "paid_amount" },
+      { key: "paymentStatus", label: t("tasksTable.paymentStatus"), width: "w-[140px]", extra: true, editType: "select", dbField: "payment_status" },
+      { key: "costCenter", label: t("tasks.costCenter"), width: "w-[140px]", extra: true, editType: "select", dbField: "cost_center" },
+      { key: "estimatedHours", label: t("tasksTable.estimatedHours"), width: "w-[110px]", align: "right", extra: true, editType: "numeric", dbField: "estimated_hours" },
+      { key: "hourlyRate", label: t("tasksTable.hourlyRate"), width: "w-[110px]", align: "right", extra: true, editType: "numeric", dbField: "hourly_rate" },
+      { key: "subcontractorCost", label: t("tasksTable.subcontractorCost"), width: "w-[130px]", align: "right", extra: true, editType: "numeric", dbField: "subcontractor_cost" },
+      { key: "materialEstimate", label: t("tasksTable.materialEstimate"), width: "w-[130px]", align: "right", extra: true, editType: "numeric", dbField: "material_estimate" },
+      { key: "markupPercent", label: t("tasksTable.markupPercent"), width: "w-[110px]", align: "right", extra: true, editType: "numeric", dbField: "markup_percent" },
+      { key: "actions", label: t("common.actions"), width: "w-[60px]", editType: "none" },
+    ],
+    [t]
+  );
+
+  const [columns, setColumns] = useState<TaskColumnDef[]>(ALL_COLUMNS);
+  const [visibleExtras, setVisibleExtras] = useState<Set<TaskColumnKey>>(
+    () => new Set(DEFAULT_VISIBLE_EXTRAS)
+  );
+
+  const visibleColumns = useMemo(
+    () => columns.filter((c) => !c.extra || visibleExtras.has(c.key)),
+    [columns, visibleExtras]
+  );
+
+  const toggleExtraColumn = useCallback((key: TaskColumnKey) => {
+    setVisibleExtras((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  // Sort state
+  const [sortKey, setSortKey] = useState<TaskColumnKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const handleSort = useCallback(
+    (key: TaskColumnKey) => {
+      if (sortKey === key) {
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      } else {
+        setSortKey(key);
+        setSortDir("asc");
+      }
+    },
+    [sortKey]
+  );
+
+  // Drag reorder
+  const [dragColIdx, setDragColIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  const handleDragStart = useCallback((idx: number) => {
+    setDragColIdx(idx);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    setDragOverIdx(idx);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setDragColIdx(null);
+    setDragOverIdx(null);
+  }, []);
+
+  const handleDrop = useCallback(() => {
+    if (dragColIdx === null || dragOverIdx === null || dragColIdx === dragOverIdx) {
+      setDragColIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+    // Map visible indices → column keys to fix hidden-column index bug
+    const fromKey = visibleColumns[dragColIdx]?.key;
+    const toKey = visibleColumns[dragOverIdx]?.key;
+    if (!fromKey || !toKey) return;
+
+    setColumns((prev) => {
+      const reordered = [...prev];
+      const fromIdx = reordered.findIndex((c) => c.key === fromKey);
+      const toIdx = reordered.findIndex((c) => c.key === toKey);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      const [moved] = reordered.splice(fromIdx, 1);
+      reordered.splice(toIdx, 0, moved);
+      return reordered;
+    });
+    setDragColIdx(null);
+    setDragOverIdx(null);
+  }, [dragColIdx, dragOverIdx, visibleColumns]);
+
+  // Compact rows
+  const [compactRows, setCompactRows] = useState(false);
+
+  // Saved views
+  const [savedViews, setSavedViews] = useState<TaskSavedView[]>(() =>
+    loadSavedViews(projectId)
+  );
+
+  const saveView = useCallback(
+    (name: string) => {
+      const newView: TaskSavedView = {
+        id: crypto.randomUUID(),
+        name,
+        columnOrder: columns.map((c) => c.key),
+        visibleExtras: Array.from(visibleExtras),
+        sortKey,
+        sortDir,
+        compactRows,
+      };
+      const updated = [...savedViews, newView];
+      setSavedViews(updated);
+      persistSavedViews(projectId, updated);
+      return newView;
+    },
+    [columns, visibleExtras, sortKey, sortDir, compactRows, savedViews, projectId]
+  );
+
+  const loadView = useCallback(
+    (view: TaskSavedView) => {
+      const orderedColumns = view.columnOrder
+        .map((key) => ALL_COLUMNS.find((c) => c.key === key))
+        .filter((c): c is TaskColumnDef => c !== undefined);
+      for (const col of ALL_COLUMNS) {
+        if (!orderedColumns.some((c) => c.key === col.key)) {
+          orderedColumns.push(col);
+        }
+      }
+      setColumns(orderedColumns);
+      setVisibleExtras(new Set(view.visibleExtras));
+      setSortKey(view.sortKey);
+      setSortDir(view.sortDir);
+      setCompactRows(view.compactRows ?? false);
+    },
+    [ALL_COLUMNS]
+  );
+
+  const deleteView = useCallback(
+    (viewId: string) => {
+      const updated = savedViews.filter((v) => v.id !== viewId);
+      setSavedViews(updated);
+      persistSavedViews(projectId, updated);
+    },
+    [savedViews, projectId]
+  );
+
+  return {
+    ALL_COLUMNS,
+    columns,
+    visibleColumns,
+    visibleExtras,
+    toggleExtraColumn,
+    sortKey,
+    sortDir,
+    handleSort,
+    handleDragStart,
+    handleDragOver,
+    handleDrop,
+    handleDragEnd,
+    dragColIdx,
+    dragOverIdx,
+    compactRows,
+    setCompactRows,
+    savedViews,
+    saveView,
+    loadView,
+    deleteView,
+  };
+}

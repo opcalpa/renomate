@@ -21,17 +21,17 @@ export function ProjectLockBanner({ lockStatus, className }: ProjectLockBannerPr
     <Alert variant="default" className={className}>
       <Lock className="h-4 w-4" />
       <AlertTitle className="flex items-center gap-2">
-        {t("project.lockedForQuote")}
+        {t("projectDetail.lockedForQuote")}
       </AlertTitle>
       <AlertDescription className="mt-2">
         <p className="text-sm text-muted-foreground mb-3">
-          {t("project.lockedDescription")}
+          {t("projectDetail.lockedDescription")}
         </p>
         {lockStatus.quote && (
           <Button variant="outline" size="sm" asChild className="gap-2">
             <Link to={`/quotes/${lockStatus.quote.id}`}>
               <FileText className="h-4 w-4" />
-              {t("project.viewQuote")}: {lockStatus.quote.title}
+              {t("projectDetail.viewQuote")}: {lockStatus.quote.title}
               <ExternalLink className="h-3 w-3 ml-1" />
             </Link>
           </Button>

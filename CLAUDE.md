@@ -212,6 +212,27 @@ src/i18n/locales/
 - [ ] New i18n keys added to `en.json` and `sv.json`
 - [ ] `npm run test:e2e` passes after major changes
 
+## Pending Migrations & Deploy Steps
+
+**MANDATORY RULE:** Whenever you create new migration files, modify database schemas, or make changes that require remote actions (Supabase migrations, `git push`, edge function deploys, etc.), you MUST:
+
+1. **Immediately tell the user** what needs to be run, with exact commands
+2. **List every pending migration file** with its full path and a one-line summary of what it does
+3. **Provide the exact CLI commands** to apply them (e.g. `supabase db push`, `supabase functions deploy`)
+4. **Repeat this reminder** at the end of any session or commit where unapplied migrations exist
+
+Example format:
+```
+### Pending migrations (not yet applied to remote):
+1. `supabase/migrations/20260219110000_add_task_cost_estimation_fields.sql`
+   — Adds 6 cost columns to tasks table
+
+### Commands to apply:
+supabase db push
+```
+
+This prevents the situation where code references columns/tables that don't exist on the remote database.
+
 ---
 
 ## Persona System

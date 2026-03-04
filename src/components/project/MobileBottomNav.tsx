@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { LayoutDashboard, PenTool, CheckSquare, ShoppingCart, MoreHorizontal, FolderOpen, PiggyBank, Users, MessageSquare, ImageIcon } from "lucide-react";
+import { LayoutDashboard, PenTool, CheckSquare, ShoppingCart, MoreHorizontal, FolderOpen, PiggyBank, Users, ImageIcon, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -32,27 +32,27 @@ const STORAGE_KEY = "renomate_show_all_tabs";
 
 const DEFAULT_PRIMARY: TabConfig[] = [
   { tab: "overview", icon: LayoutDashboard, labelKey: "nav.mobileNav.overview" },
-  { tab: "spaceplanner", icon: PenTool, labelKey: "nav.mobileNav.plans" },
   { tab: "tasks", icon: CheckSquare, labelKey: "nav.mobileNav.tasks" },
-  { tab: "purchases", icon: ShoppingCart, labelKey: "nav.mobileNav.purchases" },
+  { tab: "chat", icon: MessageSquare, labelKey: "nav.mobileNav.chat" },
+  { tab: "budget", icon: PiggyBank, labelKey: "nav.mobileNav.budget" },
 ];
 
 const CLIENT_PRIMARY: TabConfig[] = [
-  { tab: "overview", icon: LayoutDashboard, labelKey: "nav.mobileNav.overview" },
+  { tab: "customer", icon: LayoutDashboard, labelKey: "nav.mobileNav.customerView" },
+  { tab: "chat", icon: MessageSquare, labelKey: "nav.mobileNav.chat" },
   { tab: "files", icon: ImageIcon, labelKey: "nav.mobileNav.photos" },
-  { tab: "feed", icon: MessageSquare, labelKey: "nav.mobileNav.chat", navigateTo: "overview", subTab: "feed" },
-  { tab: "budget", icon: PiggyBank, labelKey: "nav.mobileNav.budget" },
 ];
 
 const ALL_TABS: TabConfig[] = [
+  { tab: "customer", icon: LayoutDashboard, labelKey: "nav.mobileNav.customerView" },
   { tab: "overview", icon: LayoutDashboard, labelKey: "nav.mobileNav.overview" },
-  { tab: "spaceplanner", icon: PenTool, labelKey: "nav.mobileNav.plans" },
+  { tab: "chat", icon: MessageSquare, labelKey: "nav.mobileNav.chat" },
   { tab: "tasks", icon: CheckSquare, labelKey: "nav.mobileNav.tasks" },
   { tab: "purchases", icon: ShoppingCart, labelKey: "nav.mobileNav.purchases" },
-  { tab: "files", icon: FolderOpen, labelKey: "nav.mobileNav.files" },
   { tab: "budget", icon: PiggyBank, labelKey: "nav.mobileNav.budget" },
+  { tab: "spaceplanner", icon: PenTool, labelKey: "nav.mobileNav.plans" },
+  { tab: "files", icon: FolderOpen, labelKey: "nav.mobileNav.files" },
   { tab: "team", icon: Users, labelKey: "nav.mobileNav.team" },
-  { tab: "feed", icon: MessageSquare, labelKey: "nav.mobileNav.feed" },
 ];
 
 /** Max tabs shown in the bottom bar before overflow goes to "More" */
@@ -63,7 +63,7 @@ export function MobileBottomNav({ activeTab, activeSubTab, onTabChange, isTabBlo
   const [moreOpen, setMoreOpen] = useState(false);
   const [showAllTabs, setShowAllTabs] = useState(() => localStorage.getItem(STORAGE_KEY) === "true");
 
-  const isClientRole = userRole === "client" || userRole === "viewer";
+  const isClientRole = userRole === "client";
 
   const toggleShowAll = useCallback((checked: boolean) => {
     setShowAllTabs(checked);
@@ -89,13 +89,10 @@ export function MobileBottomNav({ activeTab, activeSubTab, onTabChange, isTabBlo
   }, [primaryTabs, allPermittedTabs]);
 
   const isMoreActive = moreTabs.some(
-    (m) => m.tab === activeTab || (m.tab === "feed" && activeTab === "overview" && activeSubTab === "feed"),
+    (m) => m.tab === activeTab,
   );
 
-  const getActiveForTab = (tab: string, configSubTab?: string) => {
-    if (tab === "feed" || configSubTab === "feed") {
-      return activeTab === "overview" && activeSubTab === "feed";
-    }
+  const getActiveForTab = (tab: string) => {
     return activeTab === tab;
   };
 
@@ -104,7 +101,7 @@ export function MobileBottomNav({ activeTab, activeSubTab, onTabChange, isTabBlo
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card md:hidden pb-[env(safe-area-inset-bottom)]">
         <div className="flex justify-around h-16">
           {primaryTabs.map(({ tab, icon: Icon, labelKey, navigateTo, subTab }) => {
-            const active = getActiveForTab(tab, subTab);
+            const active = getActiveForTab(tab);
             return (
               <button
                 key={tab}

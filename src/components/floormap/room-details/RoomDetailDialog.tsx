@@ -21,6 +21,7 @@ export function RoomDetailDialog({
   onRoomUpdated,
   isCreateMode = false,
   onViewElevation,
+  showPinterest,
 }: RoomDetailDialogProps) {
   const { t } = useTranslation();
   const {
@@ -61,7 +62,7 @@ export function RoomDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl lg:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <div className="flex items-center gap-2">
             {isNewRoom ? (
@@ -85,6 +86,7 @@ export function RoomDetailDialog({
             formData={formData}
             updateFormData={updateFormData}
             updateSpec={updateSpec}
+            showPinterest={showPinterest}
           />
         </div>
 

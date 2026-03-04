@@ -1,28 +1,69 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { LeadsPipelineData, IntakeRequestSummary, QuoteSummary } from "@/components/pipeline/types";
+import type { LeadsPipelineData, IntakeRequestSummary, QuoteSummary, ProjectBucket } from "@/components/pipeline/types";
 
 interface UseLeadsPipelineDataResult {
   data: LeadsPipelineData;
   intakeRequests: IntakeRequestSummary[];
-  quotes: QuoteSummary[];
+  projectBuckets: Map<ProjectBucket, QuoteSummary[]>;
   refetch: () => Promise<void>;
+}
+
+const STATUS_PRIORITY: Record<string, number> = {
+  accepted: 3,
+  sent: 2,
+  draft: 1,
+};
+
+function getBestStatus(quotes: QuoteSummary[]): ProjectBucket | null {
+  let best: ProjectBucket | null = null;
+  let bestPriority = 0;
+  for (const q of quotes) {
+    const p = STATUS_PRIORITY[q.status] || 0;
+    if (p > bestPriority) {
+      bestPriority = p;
+      best = q.status as ProjectBucket;
+    }
+  }
+  return best;
+}
+
+function getRepresentativeAmounts(quotes: QuoteSummary[], bucket: ProjectBucket): { totalAmount: number; totalAfterRot: number } {
+  if (bucket === "accepted") {
+    const accepted = quotes.filter((q) => q.status === "accepted");
+    return {
+      totalAmount: accepted.reduce((sum, q) => sum + (q.total_amount || 0), 0),
+      totalAfterRot: accepted.reduce((sum, q) => sum + (q.total_after_rot || q.total_amount || 0), 0),
+    };
+  }
+  // For draft/sent: latest quote with that status
+  const matching = quotes
+    .filter((q) => q.status === bucket)
+    .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime());
+  if (matching.length === 0) return { totalAmount: 0, totalAfterRot: 0 };
+  return {
+    totalAmount: matching[0].total_amount || 0,
+    totalAfterRot: matching[0].total_after_rot || matching[0].total_amount || 0,
+  };
 }
 
 export function useLeadsPipelineData(): UseLeadsPipelineDataResult {
   const [data, setData] = useState<LeadsPipelineData>({
     intakeRequests: { total: 0, pending: 0, submitted: 0, unlinked: 0 },
-    quotes: { total: 0, draft: 0, sent: 0, accepted: 0, rejected: 0, acceptedTotal: 0 },
+    projectQuotes: {
+      draft: { count: 0, totalAmount: 0, totalAfterRot: 0 },
+      sent: { count: 0, totalAmount: 0, totalAfterRot: 0 },
+      accepted: { count: 0, totalAmount: 0, totalAfterRot: 0 },
+    },
     loading: true,
   });
   const [intakeRequests, setIntakeRequests] = useState<IntakeRequestSummary[]>([]);
-  const [quotes, setQuotes] = useState<QuoteSummary[]>([]);
+  const [projectBuckets, setProjectBuckets] = useState<Map<ProjectBucket, QuoteSummary[]>>(new Map());
 
   const fetchData = useCallback(async () => {
     setData((prev) => ({ ...prev, loading: true }));
 
     try {
-      // Fetch intake requests and quotes in parallel
       const [intakeRes, quotesRes] = await Promise.all([
         supabase
           .from("customer_intake_requests")
@@ -45,14 +86,11 @@ export function useLeadsPipelineData(): UseLeadsPipelineDataResult {
       const intakeData = intakeRes.data || [];
       const quotesData = quotesRes.data || [];
 
-      // Get project names for intake requests that have project_id
+      // Get project names
       const intakeProjectIds = intakeData
         .filter((i) => i.project_id)
         .map((i) => i.project_id as string);
-
-      // Get project names for quotes
       const quoteProjectIds = quotesData.map((q) => q.project_id);
-
       const allProjectIds = [...new Set([...intakeProjectIds, ...quoteProjectIds])];
 
       let projectNames: Map<string, string> = new Map();
@@ -75,17 +113,47 @@ export function useLeadsPipelineData(): UseLeadsPipelineDataResult {
         unlinked: intakeData.filter((i) => !i.project_id && i.status !== "cancelled" && i.status !== "converted").length,
       };
 
-      // Aggregate quote stats
-      const quoteStats = {
-        total: quotesData.length,
-        draft: quotesData.filter((q) => q.status === "draft").length,
-        sent: quotesData.filter((q) => q.status === "sent").length,
-        accepted: quotesData.filter((q) => q.status === "accepted").length,
-        rejected: quotesData.filter((q) => q.status === "rejected").length,
-        acceptedTotal: quotesData
-          .filter((q) => q.status === "accepted")
-          .reduce((sum, q) => sum + (q.total_after_rot || q.total_amount || 0), 0),
+      // Enrich quotes with project names
+      const enrichedQuotes: QuoteSummary[] = quotesData.map((q) => ({
+        ...q,
+        project_name: projectNames.get(q.project_id) || null,
+      }));
+
+      // Group quotes by project_id
+      const projectGroups = new Map<string, QuoteSummary[]>();
+      for (const q of enrichedQuotes) {
+        // Skip rejected/expired quotes for bucket determination
+        if (q.status === "rejected" || q.status === "expired") continue;
+        const group = projectGroups.get(q.project_id) || [];
+        group.push(q);
+        projectGroups.set(q.project_id, group);
+      }
+
+      // Determine bucket per project and aggregate
+      const buckets = new Map<ProjectBucket, QuoteSummary[]>([
+        ["draft", []],
+        ["sent", []],
+        ["accepted", []],
+      ]);
+      const stats = {
+        draft: { count: 0, totalAmount: 0, totalAfterRot: 0 },
+        sent: { count: 0, totalAmount: 0, totalAfterRot: 0 },
+        accepted: { count: 0, totalAmount: 0, totalAfterRot: 0 },
       };
+
+      for (const [, projectQuotes] of projectGroups) {
+        const bucket = getBestStatus(projectQuotes);
+        if (!bucket) continue;
+
+        const amounts = getRepresentativeAmounts(projectQuotes, bucket);
+        stats[bucket].count += 1;
+        stats[bucket].totalAmount += amounts.totalAmount;
+        stats[bucket].totalAfterRot += amounts.totalAfterRot;
+
+        // Only add quotes matching the bucket status for dialog display
+        const matchingQuotes = projectQuotes.filter((q) => q.status === bucket);
+        buckets.get(bucket)!.push(...matchingQuotes);
+      }
 
       // Enrich intake requests with project names
       const enrichedIntakes: IntakeRequestSummary[] = intakeData.map((i) => ({
@@ -93,17 +161,11 @@ export function useLeadsPipelineData(): UseLeadsPipelineDataResult {
         project_name: i.project_id ? projectNames.get(i.project_id) || null : null,
       }));
 
-      // Enrich quotes with project names
-      const enrichedQuotes: QuoteSummary[] = quotesData.map((q) => ({
-        ...q,
-        project_name: projectNames.get(q.project_id) || null,
-      }));
-
       setIntakeRequests(enrichedIntakes);
-      setQuotes(enrichedQuotes);
+      setProjectBuckets(buckets);
       setData({
         intakeRequests: intakeStats,
-        quotes: quoteStats,
+        projectQuotes: stats,
         loading: false,
       });
     } catch (error) {
@@ -116,5 +178,5 @@ export function useLeadsPipelineData(): UseLeadsPipelineDataResult {
     fetchData();
   }, [fetchData]);
 
-  return { data, intakeRequests, quotes, refetch: fetchData };
+  return { data, intakeRequests, projectBuckets, refetch: fetchData };
 }

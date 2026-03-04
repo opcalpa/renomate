@@ -8,9 +8,10 @@ import { PUBLIC_DEMO_PROJECT_ID, PUBLIC_DEMO_PROJECT_TYPE } from "@/constants/pu
 import { useProjectPermissions } from "@/hooks/useProjectPermissions";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ChevronDown, FolderOpen, Lock, BookOpen, Loader2, PartyPopper, X, Zap, FileText, LayoutGrid, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, ChevronDown, FolderOpen, Lock, BookOpen, Loader2, MessageSquare, PartyPopper, X, Zap, FileText, LayoutGrid, MoreHorizontal } from "lucide-react";
 import { isDemoProject, refreshDemoProjectDates } from "@/services/demoProjectService";
 import { normalizeStatus, STATUS_META } from "@/lib/projectStatus";
 import { ProjectDetailSkeleton } from "@/components/ui/skeleton-screens";
@@ -26,6 +27,9 @@ import PurchaseRequestsTab from "@/components/project/PurchaseRequestsTab";
 import BudgetTab from "@/components/project/BudgetTab";
 import ProjectFeedTab from "@/components/project/ProjectFeedTab";
 import ProjectFilesTab from "@/components/project/ProjectFilesTab";
+import CustomerViewTab from "@/components/project/CustomerViewTab";
+import { CommentsSection } from "@/components/comments/CommentsSection";
+import { UnifiedTableTab } from "@/components/project/unified-table";
 import type { FeedComment } from "@/components/project/feed/types";
 import { getContextType } from "@/components/project/feed/utils";
 import { MobileBottomNav } from "@/components/project/MobileBottomNav";
@@ -33,8 +37,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { HoverTabMenu } from "@/components/ui/HoverTabMenu";
@@ -68,6 +70,7 @@ interface Project {
   finish_goal_date: string | null;
   project_type?: string | null;
   currency?: string | null;
+  address?: string | null;
 }
 
 const NoAccessPlaceholder = () => {
@@ -94,13 +97,10 @@ const ProjectDetail = () => {
 
   // Menu configurations for hover dropdowns
   const menuConfigs = {
-    overview: [
-      { label: t('projectDetail.overview'), value: "overview", description: t('projectDetail.overviewDesc', 'Project summary and status') },
-      { label: t('nav.mobileNav.feed'), value: "feed", description: t('projectDetail.feedDesc', 'Comments and activity feed') },
-    ],
+    overview: [],
     spaceplanner: [
-      { label: t('projectDetail.floorPlan', 'Floor Plan'), value: "floorplan", description: t('projectDetail.floorPlanDesc', 'Design and plan your floor layout') },
       { label: t('projectDetail.rooms', 'Rooms'), value: "rooms", description: t('projectDetail.roomsDesc', 'Manage and configure rooms') },
+      { label: t('projectDetail.floorPlan', 'Floor Plan'), value: "floorplan", description: t('projectDetail.floorPlanDesc', 'Design and plan your floor layout') },
     ],
     files: [],
     tasks: [],
@@ -111,7 +111,6 @@ const ProjectDetail = () => {
   const permissions = useProjectPermissions(projectId);
   const [profile, setProfile] = useState<any>(null);
   const [project, setProject] = useState<Project | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [leadQuoteId, setLeadQuoteId] = useState<string | null>(null);
 
@@ -124,7 +123,10 @@ const ProjectDetail = () => {
     tasks: (permissions.tasks !== 'none' || permissions.timeline !== 'none') ? 'view' : 'none',
     purchases: permissions.purchases,
     budget: permissions.budget,
+    table: permissions.budget,
     team: permissions.teams,
+    customer: permissions.customerView || "none",
+    chat: "view",
   };
 
   const isTabBlocked = (tab: string) => tabPermissionMap[tab] === "none";
@@ -141,17 +143,21 @@ const ProjectDetail = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     const tabParam = searchParams.get("tab");
-    const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "team", "feed"];
+    const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "table", "team", "customer", "chat"];
     return tabParam && validTabs.includes(tabParam) ? tabParam : "overview";
   });
   const [openEntityId, setOpenEntityId] = useState<string | null>(() => searchParams.get("entityId"));
 
-  // Sync ?tab=, ?subtab=, and ?entityId= search params (handles navigation from notifications, etc.)
+  // Pending scroll anchor (e.g. "chat" → scroll to #project-chat after tab renders)
+  const [pendingSection, setPendingSection] = useState<string | null>(null);
+
+  // Sync ?tab=, ?subtab=, ?section=, and ?entityId= search params (handles navigation from notifications, etc.)
   useEffect(() => {
     const tabParam = searchParams.get("tab");
     const subtabParam = searchParams.get("subtab");
+    const sectionParam = searchParams.get("section");
     const entityParam = searchParams.get("entityId");
-    const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "team", "feed"];
+    const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "table", "team", "customer", "chat"];
 
     if (tabParam && validTabs.includes(tabParam)) {
       if (tabParam !== activeTab || subtabParam) {
@@ -161,6 +167,7 @@ const ProjectDetail = () => {
           setActiveSubTab(subtabParam);
         }
         setOpenEntityId(entityParam);
+        if (sectionParam) setPendingSection(sectionParam);
         setSearchParams({}, { replace: true });
       }
     } else if (entityParam) {
@@ -168,6 +175,37 @@ const ProjectDetail = () => {
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, activeTab, setSearchParams]);
+
+  // Client in quote phase → redirect to quote (they can only see the quote until accepted)
+  const isQuotePhase = ["planning", "quote_created", "quote_sent"].includes(project?.status ?? "");
+  useEffect(() => {
+    if (!permissions.loading && permissions.isClient && isQuotePhase && leadQuoteId) {
+      navigate(`/quotes/${leadQuoteId}`, { replace: true });
+    }
+  }, [permissions.loading, permissions.isClient, isQuotePhase, leadQuoteId]);
+
+  // Client on active project → redirect blocked tabs to customer tab (preserve pendingSection)
+  useEffect(() => {
+    if (!permissions.loading && permissions.isClient && !isQuotePhase) {
+      if (!searchParams.get("tab") || isTabBlocked(activeTab)) {
+        setActiveTab("customer");
+      }
+    }
+  }, [permissions.loading, permissions.isClient, isQuotePhase, activeTab]);
+
+  // Scroll to anchor element after tab switch (e.g. section=chat → #project-chat)
+  useEffect(() => {
+    if (!pendingSection) return;
+    const anchorId = pendingSection === "chat" ? "project-chat" : pendingSection;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(anchorId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setPendingSection(null);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [pendingSection, activeTab]);
 
   const [activeSubTab, setActiveSubTab] = useState<string | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
@@ -177,6 +215,7 @@ const ProjectDetail = () => {
   const getTabLabelKey = (tab: string): string => {
     const map: Record<string, string> = {
       overview: 'nav.mobileNav.overview',
+      customer: 'nav.mobileNav.customerView',
       tasks: 'nav.mobileNav.tasks',
       purchases: 'nav.mobileNav.purchases',
       files: 'nav.mobileNav.files',
@@ -315,13 +354,6 @@ const ProjectDetail = () => {
           .single();
         setProfile(profileData);
 
-        // Fetch all user's projects for the dropdown
-        const { data: allProjects } = await supabase
-          .from("projects")
-          .select("*")
-          .eq("owner_id", profileData?.id)
-          .order("created_at", { ascending: false });
-        setProjects(allProjects || []);
       }
     } catch (error) {
       console.error("Error loading public demo:", error);
@@ -334,7 +366,7 @@ const ProjectDetail = () => {
   // Hide main header when in Floor Plan edit mode
   // SpacePlannerTopBar will be the only visible header (industry standard UX)
   useEffect(() => {
-    if (activeTab === "spaceplanner" && (!activeSubTab || activeSubTab === "floorplan")) {
+    if (activeTab === "spaceplanner" && activeSubTab === "floorplan") {
       setIsHeaderVisible(false);
     } else {
       setIsHeaderVisible(true);
@@ -365,28 +397,21 @@ const ProjectDetail = () => {
         refreshDemoProjectDates(profileData.id);
       }
 
-      // For lead projects (status = "lead"), fetch the associated quote
-      if (projectData?.status === "lead") {
+      // For projects in quote phase, fetch the associated quote
+      const quotePhases = ["planning", "quote_created", "quote_sent"];
+      if (quotePhases.includes(projectData?.status)) {
         const { data: quoteData } = await supabase
           .from("quotes")
           .select("id")
           .eq("project_id", projectId)
           .order("created_at", { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
         if (quoteData) {
           setLeadQuoteId(quoteData.id);
         }
       }
 
-      // Fetch all projects for the dropdown
-      const { data: allProjects } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("owner_id", profileData?.id)
-        .order("created_at", { ascending: false });
-
-      setProjects(allProjects || []);
     } catch (error: any) {
       toast({
         title: t('common.error'),
@@ -564,7 +589,7 @@ const ProjectDetail = () => {
 
   // Handle menu item selection
   const handleMenuSelect = (menuId: string, itemValue: string) => {
-    if (menuId !== "overview" && isTabBlocked(menuId)) return;
+    if (menuId !== "customer" && isTabBlocked(menuId)) return;
     if (isSubTabBlocked(menuId, itemValue)) return;
 
     // Save current tab before navigating to floor planner (for Back button)
@@ -588,7 +613,7 @@ const ProjectDetail = () => {
       if (menuConfigs.spaceplanner.find(item => item.value === itemValue)) {
         setActiveSubTab(itemValue);
       } else {
-        setActiveSubTab('floorplan');
+        setActiveSubTab('rooms');
       }
     } else if (menuId === 'tasks') {
       setActiveSubTab(null);
@@ -819,36 +844,37 @@ const ProjectDetail = () => {
               <ArrowLeft className="h-4 w-4" />
               <span className="hidden lg:inline">{t('projectDetail.backToStart')}</span>
             </Button>
-            {/* Project switcher dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 shrink-0 max-w-48">
-                  <FolderOpen className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{project?.name}</span>
-                  <ChevronDown className="h-4 w-4 shrink-0" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-64 bg-popover z-[100]">
-                <DropdownMenuLabel>{t('nav.projects')}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {projects.map((proj) => (
-                  <DropdownMenuItem
-                    key={proj.id}
-                    onClick={() => navigate(`/projects/${proj.id}`)}
-                    className={`cursor-pointer ${proj.id === projectId ? "bg-accent" : ""}`}
-                  >
-                    <span className="truncate">{proj.name}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
             <div className="flex items-center space-x-4 lg:space-x-6">
-              {/* Primary tabs - always visible */}
+              {/* Client-only: Kundvy tab */}
+              {(permissions.customerView || "none") !== "none" && (
+                <div
+                  className={cn(
+                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    activeTab === "customer" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => handleMenuSelect('customer', 'customer')}
+                >
+                  {t("customerView.tabTitle")}
+                </div>
+              )}
+              {/* Chat tab */}
+              <div
+                className={cn(
+                  "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                  activeTab === "chat" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => handleMenuSelect('chat', 'chat')}
+              >
+                {t("projectDetail.chat", "Chat")}
+              </div>
+              {/* Primary tabs */}
+              {/* 1. Översikt */}
               <HoverTabMenu
                 trigger={
                   <div className={cn(
-                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
-                    activeTab === "overview" ? "border border-primary text-primary" : "border border-transparent"
+                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    activeTab === "overview" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    isTabBlocked("overview") && "opacity-40 pointer-events-none cursor-default"
                   )}>
                     {t("projectDetail.overview")}
                   </div>
@@ -859,51 +885,12 @@ const ProjectDetail = () => {
                 activeValue={activeTab === "overview" ? activeSubTab || "overview" : undefined}
               />
 
-              <WithHotspot
-                hotspotId="canvas-tab"
-                hotspotContent="hotspots.canvas"
-                hotspotPosition="top-right"
-                showOnce={true}
-              >
-                <HoverTabMenu
-                  trigger={
-                    <div className={cn(
-                      "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
-                      activeTab === "spaceplanner" ? "border border-primary text-primary" : "border border-transparent",
-                      isTabBlocked("spaceplanner") && "opacity-40 pointer-events-none cursor-default"
-                    )}>
-                      {t('projectDetail.spacePlanner')}
-                    </div>
-                  }
-                  items={menuConfigs.spaceplanner}
-                  onSelect={(value) => handleMenuSelect('spaceplanner', value)}
-                  onMainClick={() => handleMenuSelect('spaceplanner', 'floorplan')}
-                  activeValue={activeTab === "spaceplanner" ? activeSubTab || "floorplan" : undefined}
-                />
-              </WithHotspot>
-
+              {/* 2. Uppgifter */}
               <HoverTabMenu
                 trigger={
                   <div className={cn(
-                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border flex items-center gap-1.5",
-                    activeTab === "files" ? "border border-primary text-primary" : "border border-transparent",
-                    isTabBlocked("files") && "opacity-40 pointer-events-none cursor-default"
-                  )}>
-                    <FolderOpen className="h-4 w-4" />
-                    {t('projectDetail.files')}
-                  </div>
-                }
-                items={menuConfigs.files}
-                onSelect={(value) => handleMenuSelect('files', value)}
-                onMainClick={() => handleMenuSelect('files', 'files')}
-                activeValue={activeTab === "files" ? "files" : undefined}
-              />
-
-              <HoverTabMenu
-                trigger={
-                  <div className={cn(
-                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
-                    activeTab === "tasks" ? "border border-primary text-primary" : "border border-transparent",
+                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    activeTab === "tasks" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
                     isTabBlocked("tasks") && "opacity-40 pointer-events-none cursor-default"
                   )}>
                     {t("projectDetail.tasks")}
@@ -915,40 +902,84 @@ const ProjectDetail = () => {
                 activeValue={activeTab === "tasks" ? "tasks" : undefined}
               />
 
+              {/* 3. Inköp */}
+              <HoverTabMenu
+                trigger={
+                  <div className={cn(
+                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    activeTab === "purchases" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    isTabBlocked("purchases") && "opacity-40 pointer-events-none cursor-default"
+                  )}>
+                    {t('projectDetail.purchases')}
+                  </div>
+                }
+                items={menuConfigs.purchases}
+                onSelect={(value) => handleMenuSelect('purchases', value)}
+                onMainClick={() => handleMenuSelect('purchases', 'purchases')}
+                activeValue={activeTab === "purchases" ? activeSubTab || "purchases" : undefined}
+              />
+
+              {/* 4. Budget */}
+              <HoverTabMenu
+                trigger={
+                  <div className={cn(
+                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    activeTab === "budget" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    isTabBlocked("budget") && "opacity-40 pointer-events-none cursor-default"
+                  )}>
+                    {t('common.budget')}
+                  </div>
+                }
+                items={menuConfigs.budget}
+                onSelect={(value) => handleMenuSelect('budget', value)}
+                onMainClick={() => handleMenuSelect('budget', 'budget')}
+                activeValue={activeTab === "budget" ? "budget" : undefined}
+              />
+
               {/* Secondary tabs - visible on large screens, hidden on medium */}
               <div className="hidden xl:contents">
+                {/* 5. Yta */}
+                <WithHotspot
+                  hotspotId="canvas-tab"
+                  hotspotContent="hotspots.canvas"
+                  hotspotPosition="top-right"
+                  showOnce={true}
+                >
+                  <HoverTabMenu
+                    trigger={
+                      <div className={cn(
+                        "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                        activeTab === "spaceplanner" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                        isTabBlocked("spaceplanner") && "opacity-40 pointer-events-none cursor-default"
+                      )}>
+                        {t('projectDetail.spacePlanner')}
+                      </div>
+                    }
+                    items={menuConfigs.spaceplanner}
+                    onSelect={(value) => handleMenuSelect('spaceplanner', value)}
+                    onMainClick={() => handleMenuSelect('spaceplanner', 'rooms')}
+                    activeValue={activeTab === "spaceplanner" ? activeSubTab || "rooms" : undefined}
+                  />
+                </WithHotspot>
+
+                {/* 6. Filer */}
                 <HoverTabMenu
                   trigger={
                     <div className={cn(
-                      "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
-                      activeTab === "purchases" ? "border border-primary text-primary" : "border border-transparent",
-                      isTabBlocked("purchases") && "opacity-40 pointer-events-none cursor-default"
+                      "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                      activeTab === "files" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                      isTabBlocked("files") && "opacity-40 pointer-events-none cursor-default"
                     )}>
-                      {t('projectDetail.purchases')}
+                      {t('projectDetail.files')}
                     </div>
                   }
-                  items={menuConfigs.purchases}
-                  onSelect={(value) => handleMenuSelect('purchases', value)}
-                  onMainClick={() => handleMenuSelect('purchases', 'purchases')}
-                  activeValue={activeTab === "purchases" ? activeSubTab || "purchases" : undefined}
+                  items={menuConfigs.files}
+                  onSelect={(value) => handleMenuSelect('files', value)}
+                  onMainClick={() => handleMenuSelect('files', 'files')}
+                  activeValue={activeTab === "files" ? "files" : undefined}
                 />
 
-                <HoverTabMenu
-                  trigger={
-                    <div className={cn(
-                      "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
-                      activeTab === "budget" ? "border border-primary text-primary" : "border border-transparent",
-                      isTabBlocked("budget") && "opacity-40 pointer-events-none cursor-default"
-                    )}>
-                      {t('common.budget')}
-                    </div>
-                  }
-                  items={menuConfigs.budget}
-                  onSelect={(value) => handleMenuSelect('budget', value)}
-                  onMainClick={() => handleMenuSelect('budget', 'budget')}
-                  activeValue={activeTab === "budget" ? "budget" : undefined}
-                />
-
+                {/* 7. Team */}
                 <WithHotspot
                   hotspotId="invite-team"
                   hotspotContent="hotspots.inviteTeam"
@@ -958,8 +989,8 @@ const ProjectDetail = () => {
                   <HoverTabMenu
                     trigger={
                       <div className={cn(
-                        "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors rounded-md hover:border hover:border-border",
-                        activeTab === "team" ? "border border-primary text-primary" : "border border-transparent",
+                        "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                        activeTab === "team" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
                         isTabBlocked("team") && "opacity-40 pointer-events-none cursor-default"
                       )}>
                         {t('projectDetail.team')}
@@ -982,7 +1013,7 @@ const ProjectDetail = () => {
                       size="sm"
                       className={cn(
                         "px-2 py-1.5 h-auto",
-                        (activeTab === "purchases" || activeTab === "budget" || activeTab === "team") && "border border-primary text-primary"
+                        (activeTab === "spaceplanner" || activeTab === "files" || activeTab === "team") && "text-foreground border-b-2 border-foreground"
                       )}
                     >
                       <MoreHorizontal className="h-4 w-4" />
@@ -990,18 +1021,18 @@ const ProjectDetail = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem
-                      onClick={() => handleMenuSelect('purchases', 'purchases')}
-                      className={cn("cursor-pointer", activeTab === "purchases" && "bg-accent")}
-                      disabled={isTabBlocked("purchases")}
+                      onClick={() => handleMenuSelect('spaceplanner', 'floorplan')}
+                      className={cn("cursor-pointer", activeTab === "spaceplanner" && "bg-accent")}
+                      disabled={isTabBlocked("spaceplanner")}
                     >
-                      {t('projectDetail.purchases')}
+                      {t('projectDetail.spacePlanner')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => handleMenuSelect('budget', 'budget')}
-                      className={cn("cursor-pointer", activeTab === "budget" && "bg-accent")}
-                      disabled={isTabBlocked("budget")}
+                      onClick={() => handleMenuSelect('files', 'files')}
+                      className={cn("cursor-pointer", activeTab === "files" && "bg-accent")}
+                      disabled={isTabBlocked("files")}
                     >
-                      {t('common.budget')}
+                      {t('projectDetail.files')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleMenuSelect('team', 'team')}
@@ -1009,6 +1040,14 @@ const ProjectDetail = () => {
                       disabled={isTabBlocked("team")}
                     >
                       {t('projectDetail.team')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleMenuSelect('table', 'table')}
+                      className={cn("cursor-pointer", activeTab === "table" && "bg-accent")}
+                      disabled={isTabBlocked("table")}
+                    >
+                      {t('unifiedTable.tabTitle')}
+                      <Badge variant="outline" className="ml-1 text-[10px]">Sandbox</Badge>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -1054,11 +1093,7 @@ const ProjectDetail = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col">
 
         <TabsContent value="overview" className="m-0 pb-8">
-          {isTabBlocked("overview") ? (
-            <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
-              <ProjectFeedTab projectId={project.id} onNavigateToEntity={handleFeedNavigate} restrictToUserId={profile?.id} />
-            </div>
-          ) : activeSubTab === 'feed' ? (
+          {isTabBlocked("overview") ? null : activeSubTab === 'feed' ? (
             <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
               <ProjectFeedTab projectId={project.id} onNavigateToEntity={handleFeedNavigate} />
             </div>
@@ -1120,7 +1155,7 @@ const ProjectDetail = () => {
             <NoAccessPlaceholder />
           ) : (
             <>
-              {(!activeSubTab || activeSubTab === 'floorplan') && (
+              {activeSubTab === 'floorplan' && (
                 <SpacePlannerTab
                   projectId={project.id}
                   projectName={project.name}
@@ -1133,9 +1168,10 @@ const ProjectDetail = () => {
                   isReadOnly={permissions.spacePlanner === 'view'}
                   isDemo={isDemo}
                   highlightedRoomIds={contractorRoomIds}
+                  showPinterest={profile?.onboarding_user_type === "homeowner"}
                 />
               )}
-              {activeSubTab === 'rooms' && (
+              {(!activeSubTab || activeSubTab === 'rooms') && (
                 <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
                   <h2 className="text-2xl font-bold mb-4">{t('projectDetail.roomManagement')}</h2>
                   <p className="text-muted-foreground mb-6">{t('projectDetail.roomManagementDescription')}</p>
@@ -1219,9 +1255,59 @@ const ProjectDetail = () => {
                 projectId={project.id}
                 currency={project?.currency}
                 isReadOnly={permissions.budget === "view"}
+                userType={profile?.onboarding_user_type}
               />
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="table" className="m-0 pb-8">
+          {isTabBlocked("table") ? (
+            <NoAccessPlaceholder />
+          ) : (
+            <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
+              <UnifiedTableTab
+                projectId={project.id}
+                currency={project?.currency}
+                isReadOnly={permissions.budget === "view"}
+                userType={profile?.onboarding_user_type}
+              />
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="customer" className="m-0 pb-8">
+          {isTabBlocked("customer") ? (
+            <NoAccessPlaceholder />
+          ) : (
+            <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
+              <CustomerViewTab
+                projectId={project.id}
+                projectName={project.name}
+                projectStartDate={project.start_date}
+                projectFinishDate={project.finish_goal_date}
+                currency={project.currency}
+              />
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="chat" className="m-0 pb-8">
+          <div className="container mx-auto px-3 md:px-4 py-4 md:py-8 max-w-2xl">
+            <div className="space-y-2 mb-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                {t("projectDetail.chat", "Chat")}
+              </h2>
+              <p className="text-sm text-muted-foreground">{t("projectDetail.chatDescription", "Messages between you and the project team")}</p>
+            </div>
+            <CommentsSection
+              projectId={project.id}
+              entityId={project.id}
+              entityType="project"
+              chatMode
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="team" className="m-0 pb-8">
@@ -1253,6 +1339,7 @@ const ProjectDetail = () => {
         open={showRoomDialog}
         onOpenChange={setShowRoomDialog}
         onRoomUpdated={handleRoomUpdated}
+        showPinterest={profile?.onboarding_user_type === "homeowner"}
       />
 
       {/* Create Room Dialog */}
@@ -1263,6 +1350,7 @@ const ProjectDetail = () => {
         onOpenChange={setShowCreateRoomDialog}
         onRoomUpdated={handleRoomCreated}
         isCreateMode={true}
+        showPinterest={profile?.onboarding_user_type === "homeowner"}
       />
 
       {isHeaderVisible && (
@@ -1277,10 +1365,10 @@ const ProjectDetail = () => {
           userRole={
             permissions.isOwner
               ? "owner"
-              : permissions.tasks === "edit" || permissions.spacePlanner === "edit"
-                ? "editor"
-                : permissions.overview !== "none"
-                  ? "client"
+              : permissions.isClient
+                ? "client"
+                : permissions.tasks === "edit" || permissions.spacePlanner === "edit"
+                  ? "editor"
                   : "viewer"
           }
         />

@@ -1,11 +1,11 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Trash2, MessageSquare, Camera, X, Languages, Lock } from "lucide-react";
+import { Loader2, Send, Trash2, MessageSquare, Camera, X, Languages, Lock, Reply, ChevronDown } from "lucide-react";
 import { useCommentTranslation } from "@/hooks/useCommentTranslation";
 import { formatDistanceToNow } from "date-fns";
 import { getDateLocale } from "@/lib/dateFnsLocale";
@@ -16,6 +16,7 @@ interface Comment {
   created_at: string;
   created_by_user_id: string;
   author_display_name?: string;
+  parent_comment_id?: string | null;
   creator: {
     name: string;
     email: string;
@@ -48,6 +49,8 @@ interface CommentsSectionProps {
   projectId?: string;
   chatMode?: boolean;
 }
+
+const COLLAPSED_REPLY_THRESHOLD = 2;
 
 // Compress image function
 const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.8): Promise<File> => {
@@ -108,8 +111,50 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
   const [mentionSearch, setMentionSearch] = useState("");
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { translationsEnabled, translating, toggleTranslations, getTranslatedContent, targetLang } = useCommentTranslation();
+
+  // Group comments into top-level and replies
+  const { topLevelComments, repliesByParent } = useMemo(() => {
+    const topLevel: Comment[] = [];
+    const replies: Record<string, Comment[]> = {};
+
+    for (const comment of comments) {
+      if (comment.parent_comment_id) {
+        if (!replies[comment.parent_comment_id]) {
+          replies[comment.parent_comment_id] = [];
+        }
+        replies[comment.parent_comment_id].push(comment);
+      } else {
+        topLevel.push(comment);
+      }
+    }
+
+    return { topLevelComments: topLevel, repliesByParent: replies };
+  }, [comments]);
+
+  const toggleThread = (parentId: string) => {
+    setExpandedThreads(prev => {
+      const next = new Set(prev);
+      if (next.has(parentId)) {
+        next.delete(parentId);
+      } else {
+        next.add(parentId);
+      }
+      return next;
+    });
+  };
+
+  const handleReply = (comment: Comment) => {
+    setReplyingTo(comment);
+    textareaRef.current?.focus();
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+  };
 
   // Handle image selection
   const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,7 +199,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
         ? `projects/${projectId}/comment-images/${fileName}`
         : `comment-images/${fileName}`;
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('project-files')
         .upload(filePath, image);
 
@@ -182,7 +227,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
 
   useEffect(() => {
     const abortController = new AbortController();
-    
+
     fetchCurrentUser();
     fetchComments(abortController.signal);
     fetchTeamMembers();
@@ -236,7 +281,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
     if (!projectId) return;
     try {
       const members: TeamMember[] = [];
-      
+
       // Get project owner - use maybeSingle to avoid 406 errors
       const { data: project, error: projectError } = await supabase
         .from("projects")
@@ -247,7 +292,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
       if (projectError) {
         console.warn("Could not fetch project owner:", projectError);
       }
-      
+
       // Fetch owner profile separately
       if (project?.owner_id) {
         const { data: ownerProfile } = await supabase
@@ -255,7 +300,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
           .select("id, name, email")
           .eq("id", project.owner_id)
           .maybeSingle();
-          
+
         if (ownerProfile) {
           members.push({
             id: ownerProfile.id,
@@ -276,13 +321,14 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
 
       if (sharesData) {
         const existingIds = new Set(members.map(m => m.id));
-        sharesData.forEach((share: any) => {
-          if (share.profiles && !existingIds.has(share.profiles.id)) {
-            existingIds.add(share.profiles.id);
+        sharesData.forEach((share: unknown) => {
+          const s = share as { profiles: { id: string; name: string; email: string } | null };
+          if (s.profiles && !existingIds.has(s.profiles.id)) {
+            existingIds.add(s.profiles.id);
             members.push({
-              id: share.profiles.id,
-              name: share.profiles.name,
-              email: share.profiles.email,
+              id: s.profiles.id,
+              name: s.profiles.name,
+              email: s.profiles.email,
             });
           }
         });
@@ -294,7 +340,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
     }
   };
 
-  const fetchComments = async () => {
+  const fetchComments = async (_signal?: AbortSignal) => {
     try {
       const query = supabase
         .from("comments")
@@ -305,6 +351,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
           created_at,
           created_by_user_id,
           author_display_name,
+          parent_comment_id,
           creator:profiles(name, email),
           mentions:comment_mentions(
             mentioned_user_id,
@@ -327,8 +374,9 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
 
       if (error) throw error;
       setComments(data || []);
-    } catch (error: any) {
-      console.error("Error fetching comments:", error);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error("Error fetching comments:", msg);
       toast({
         title: t('errors.generic'),
         description: t('comments.loadError'),
@@ -348,7 +396,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
     // Check if user is typing @mention
     const textBeforeCursor = value.slice(0, cursor);
     const lastAtSymbol = textBeforeCursor.lastIndexOf('@');
-    
+
     if (lastAtSymbol !== -1) {
       const textAfterAt = textBeforeCursor.slice(lastAtSymbol + 1);
       // If no space after @ and we're still at the cursor position
@@ -358,7 +406,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
         return;
       }
     }
-    
+
     setShowMentions(false);
   };
 
@@ -366,12 +414,12 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
     const textBeforeCursor = newComment.slice(0, cursorPosition);
     const textAfterCursor = newComment.slice(cursorPosition);
     const lastAtSymbol = textBeforeCursor.lastIndexOf('@');
-    
-    const newText = 
-      newComment.slice(0, lastAtSymbol) + 
-      `@${member.name} ` + 
+
+    const newText =
+      newComment.slice(0, lastAtSymbol) +
+      `@${member.name} ` +
       textAfterCursor;
-    
+
     setNewComment(newText);
     setShowMentions(false);
     textareaRef.current?.focus();
@@ -384,7 +432,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
 
     while ((match = mentionRegex.exec(text)) !== null) {
       const mentionedName = match[1].trim();
-      const member = teamMembers.find(m => 
+      const member = teamMembers.find(m =>
         m.name.toLowerCase() === mentionedName.toLowerCase()
       );
       if (member) {
@@ -418,11 +466,15 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
       }
 
       // Create comment
-      const commentData: any = {
+      const commentData: Record<string, unknown> = {
         content: newComment.trim(),
         created_by_user_id: profile.id,
         images: uploadedImages.length > 0 ? uploadedImages : null,
       };
+
+      if (replyingTo) {
+        commentData.parent_comment_id = replyingTo.id;
+      }
 
       if (taskId) {
         commentData.task_id = taskId;
@@ -433,6 +485,10 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
       } else if (entityId) {
         commentData.entity_id = entityId;
         commentData.entity_type = entityType;
+      }
+
+      if (projectId) {
+        commentData.project_id = projectId;
       }
 
       const { data: comment, error: commentError } = await supabase
@@ -461,6 +517,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
       }
 
       setNewComment("");
+      setReplyingTo(null);
       // Clear selected images
       selectedImages.forEach((_, index) => {
         URL.revokeObjectURL(imagePreviews[index]);
@@ -473,10 +530,11 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
         title: chatMode ? t('messaging.messageSent') : t('comments.commentPosted'),
         description: chatMode ? t('messaging.messageSentDescription') : t('comments.commentPostedDescription'),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : undefined;
       toast({
         title: t('errors.generic'),
-        description: error.message || t('comments.postError'),
+        description: msg || t('comments.postError'),
         variant: "destructive",
       });
     } finally {
@@ -501,10 +559,11 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
       });
 
       fetchComments();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : undefined;
       toast({
         title: t('errors.generic'),
-        description: error.message || t('comments.deleteError'),
+        description: msg || t('comments.deleteError'),
         variant: "destructive",
       });
     }
@@ -522,7 +581,105 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
     );
   }
 
+  // Shared reply banner component
+  const replyBanner = replyingTo && (
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/60 rounded-md text-xs border-l-2 border-primary">
+      <Reply className="h-3 w-3 text-muted-foreground shrink-0" />
+      <span className="text-muted-foreground truncate">
+        {chatMode
+          ? t('messaging.replyingTo', { name: replyingTo.author_display_name || replyingTo.creator?.name })
+          : t('comments.replyingTo', { name: replyingTo.author_display_name || replyingTo.creator?.name })}
+        {': '}
+        <span className="italic">{replyingTo.content.slice(0, 60)}{replyingTo.content.length > 60 ? '...' : ''}</span>
+      </span>
+      <button
+        type="button"
+        className="ml-auto text-muted-foreground hover:text-foreground shrink-0"
+        onClick={cancelReply}
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </div>
+  );
+
   if (chatMode) {
+    // Render a single chat bubble with optional reply indicator
+    const renderChatBubble = (comment: Comment, isReply = false) => {
+      const isOwn = comment.created_by_user_id === currentUserId;
+      const parentComment = isReply && comment.parent_comment_id
+        ? comments.find(c => c.id === comment.parent_comment_id)
+        : null;
+
+      return (
+        <div
+          key={comment.id}
+          className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group ${isReply ? 'ml-8' : ''}`}
+        >
+          <div className={`max-w-[80%] space-y-1 ${isOwn ? 'items-end' : 'items-start'}`}>
+            {/* Reply indicator */}
+            {isReply && parentComment && (
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Reply className="h-2.5 w-2.5" />
+                <span>{parentComment.author_display_name || parentComment.creator?.name}</span>
+              </div>
+            )}
+            <div
+              className={`rounded-2xl px-3.5 py-2 text-sm ${
+                isOwn
+                  ? 'bg-primary text-primary-foreground rounded-br-md'
+                  : 'bg-muted rounded-bl-md'
+              } ${isReply ? 'border-l-2 border-primary/30' : ''}`}
+            >
+              {!isOwn && (
+                <p className="text-xs font-medium mb-0.5 opacity-70">{comment.author_display_name || comment.creator?.name}</p>
+              )}
+              <p className="whitespace-pre-wrap break-words">
+                {getTranslatedContent(comment.id, comment.content)}
+              </p>
+            </div>
+            {/* Images */}
+            {comment.images && comment.images.length > 0 && (
+              <div className={`flex flex-wrap gap-1.5 ${isOwn ? 'justify-end' : ''}`}>
+                {comment.images.map((image) => (
+                  <img
+                    key={image.id}
+                    src={image.url}
+                    alt={image.filename}
+                    className="max-w-28 max-h-28 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => window.open(image.url, '_blank')}
+                  />
+                ))}
+              </div>
+            )}
+            <div className={`flex items-center gap-2 ${isOwn ? 'justify-end' : ''}`}>
+              <span className="text-[10px] text-muted-foreground">
+                {formatDistanceToNow(new Date(comment.created_at), {
+                  addSuffix: true,
+                  locale: getDateLocale(i18n.language),
+                })}
+              </span>
+              <button
+                type="button"
+                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary text-[10px]"
+                onClick={() => handleReply(comment)}
+              >
+                {t('messaging.reply', 'Reply')}
+              </button>
+              {isOwn && (
+                <button
+                  type="button"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                  onClick={() => handleDeleteComment(comment.id)}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
     return (
       <div className="space-y-3">
         {/* Private notice */}
@@ -538,62 +695,38 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
               {t('messaging.noMessages')}
             </p>
           ) : (
-            comments.map((comment) => {
-              const isOwn = comment.created_by_user_id === currentUserId;
+            topLevelComments.map((comment) => {
+              const replies = repliesByParent[comment.id] || [];
+              const hasCollapsedReplies = replies.length > COLLAPSED_REPLY_THRESHOLD;
+              const isExpanded = expandedThreads.has(comment.id);
+              const visibleReplies = hasCollapsedReplies && !isExpanded
+                ? replies.slice(-COLLAPSED_REPLY_THRESHOLD)
+                : replies;
+              const hiddenCount = replies.length - COLLAPSED_REPLY_THRESHOLD;
+
               return (
-                <div key={comment.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group`}>
-                  <div className={`max-w-[80%] space-y-1 ${isOwn ? 'items-end' : 'items-start'}`}>
-                    <div
-                      className={`rounded-2xl px-3.5 py-2 text-sm ${
-                        isOwn
-                          ? 'bg-primary text-primary-foreground rounded-br-md'
-                          : 'bg-muted rounded-bl-md'
-                      }`}
+                <div key={comment.id}>
+                  {renderChatBubble(comment)}
+                  {/* Show expand button for collapsed replies */}
+                  {hasCollapsedReplies && !isExpanded && (
+                    <button
+                      type="button"
+                      className="ml-8 mt-1 flex items-center gap-1 text-[10px] text-primary hover:underline"
+                      onClick={() => toggleThread(comment.id)}
                     >
-                      {!isOwn && (
-                        <p className="text-xs font-medium mb-0.5 opacity-70">{comment.author_display_name || comment.creator?.name}</p>
-                      )}
-                      <p className="whitespace-pre-wrap break-words">
-                        {getTranslatedContent(comment.id, comment.content)}
-                      </p>
-                    </div>
-                    {/* Images */}
-                    {comment.images && comment.images.length > 0 && (
-                      <div className={`flex flex-wrap gap-1.5 ${isOwn ? 'justify-end' : ''}`}>
-                        {comment.images.map((image) => (
-                          <img
-                            key={image.id}
-                            src={image.url}
-                            alt={image.filename}
-                            className="max-w-28 max-h-28 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                            onClick={() => window.open(image.url, '_blank')}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    <div className={`flex items-center gap-2 ${isOwn ? 'justify-end' : ''}`}>
-                      <span className="text-[10px] text-muted-foreground">
-                        {formatDistanceToNow(new Date(comment.created_at), {
-                          addSuffix: true,
-                          locale: getDateLocale(i18n.language),
-                        })}
-                      </span>
-                      {isOwn && (
-                        <button
-                          type="button"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDeleteComment(comment.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                      <ChevronDown className="h-3 w-3" />
+                      {t('messaging.showReplies', { count: hiddenCount })}
+                    </button>
+                  )}
+                  {visibleReplies.map((reply) => renderChatBubble(reply, true))}
                 </div>
               );
             })
           )}
         </div>
+
+        {/* Reply banner */}
+        {replyBanner}
 
         {/* Image previews */}
         {imagePreviews.length > 0 && (
@@ -618,54 +751,169 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
         )}
 
         {/* Message input */}
-        <div className="flex items-end gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleImageSelect}
-            className="hidden"
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 shrink-0"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Camera className="h-4 w-4" />
-          </Button>
-          <Textarea
-            ref={textareaRef}
-            placeholder={t('messaging.placeholder')}
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            className="flex-1 min-h-[40px] max-h-24 text-sm resize-none rounded-2xl"
-            rows={1}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                handlePostComment();
-              }
-            }}
-          />
-          <Button
-            onClick={handlePostComment}
-            disabled={posting || !newComment.trim()}
-            size="icon"
-            className="h-9 w-9 shrink-0 rounded-full"
-          >
-            {posting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
+        <div className="relative">
+          {showMentions && filteredMembers.length > 0 && (
+            <div className="absolute bottom-full mb-1 w-full bg-popover border rounded-md shadow-lg max-h-40 overflow-y-auto z-10">
+              {filteredMembers.map((member) => (
+                <button
+                  key={member.id}
+                  className="w-full px-3 py-2 text-left hover:bg-accent text-sm flex items-center gap-2"
+                  onClick={() => insertMention(member)}
+                >
+                  <Avatar className="h-6 w-6">
+                    <AvatarFallback className="text-xs">
+                      {member.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span>{member.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex items-end gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Camera className="h-4 w-4" />
+            </Button>
+            <Textarea
+              ref={textareaRef}
+              placeholder={t('messaging.placeholder')}
+              value={newComment}
+              onChange={handleTextChange}
+              className="flex-1 min-h-[40px] max-h-24 text-sm resize-none rounded-2xl"
+              rows={1}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape' && replyingTo) {
+                  e.preventDefault();
+                  cancelReply();
+                } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  handlePostComment();
+                }
+              }}
+            />
+            <Button
+              onClick={handlePostComment}
+              disabled={posting || !newComment.trim()}
+              size="icon"
+              className="h-9 w-9 shrink-0 rounded-full"
+            >
+              {posting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
+
+  // Render a single comment in non-chat mode
+  const renderComment = (comment: Comment, isReply = false) => {
+    const replies = repliesByParent[comment.id] || [];
+    const hasCollapsedReplies = replies.length > COLLAPSED_REPLY_THRESHOLD;
+    const isExpanded = expandedThreads.has(comment.id);
+    const visibleReplies = hasCollapsedReplies && !isExpanded
+      ? replies.slice(-COLLAPSED_REPLY_THRESHOLD)
+      : replies;
+    const hiddenCount = replies.length - COLLAPSED_REPLY_THRESHOLD;
+
+    return (
+      <div key={comment.id}>
+        <div className={`flex gap-3 group ${isReply ? 'ml-8 border-l-2 border-muted pl-3' : ''}`}>
+          <Avatar className="h-8 w-8 flex-shrink-0">
+            <AvatarFallback className="text-xs">
+              {(comment.author_display_name || comment.creator?.name)?.charAt(0) || '?'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">{comment.author_display_name || comment.creator?.name}</span>
+              <span className="text-xs text-muted-foreground">
+                {formatDistanceToNow(new Date(comment.created_at), {
+                  addSuffix: true,
+                  locale: getDateLocale(i18n.language)
+                })}
+              </span>
+            </div>
+            <p className="text-sm whitespace-pre-wrap break-words">
+              {getTranslatedContent(comment.id, comment.content)}
+            </p>
+
+            {/* Comment images */}
+            {comment.images && comment.images.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {comment.images.map((image) => (
+                  <div key={image.id} className="relative group">
+                    <img
+                      src={image.url}
+                      alt={image.filename}
+                      className="max-w-32 max-h-32 object-cover rounded border cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => window.open(image.url, '_blank')}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2 text-xs"
+                onClick={() => handleReply(comment)}
+              >
+                <Reply className="h-3 w-3 mr-1" />
+                {t('comments.reply', 'Reply')}
+              </Button>
+              {comment.created_by_user_id === currentUserId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2"
+                  onClick={() => handleDeleteComment(comment.id)}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  {t('comments.deleteButton')}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Thread replies */}
+        {!isReply && replies.length > 0 && (
+          <div className="mt-2 space-y-3">
+            {hasCollapsedReplies && !isExpanded && (
+              <button
+                type="button"
+                className="ml-8 flex items-center gap-1 text-xs text-primary hover:underline"
+                onClick={() => toggleThread(comment.id)}
+              >
+                <ChevronDown className="h-3 w-3" />
+                {t('comments.showReplies', { count: hiddenCount })}
+              </button>
+            )}
+            {visibleReplies.map((reply) => renderComment(reply, true))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -701,58 +949,12 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
             {t('comments.noComments')}
           </p>
         ) : (
-          comments.map((comment) => (
-            <div key={comment.id} className="flex gap-3 group">
-              <Avatar className="h-8 w-8 flex-shrink-0">
-                <AvatarFallback className="text-xs">
-                  {(comment.author_display_name || comment.creator?.name)?.charAt(0) || '?'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{comment.author_display_name || comment.creator?.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(comment.created_at), {
-                      addSuffix: true,
-                      locale: getDateLocale(i18n.language)
-                    })}
-                  </span>
-                </div>
-                <p className="text-sm whitespace-pre-wrap break-words">
-                  {getTranslatedContent(comment.id, comment.content)}
-                </p>
-
-                {/* Comment images */}
-                {comment.images && comment.images.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {comment.images.map((image) => (
-                      <div key={image.id} className="relative group">
-                        <img
-                          src={image.url}
-                          alt={image.filename}
-                          className="max-w-32 max-h-32 object-cover rounded border cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => window.open(image.url, '_blank')}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {comment.created_by_user_id === currentUserId && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2"
-                    onClick={() => handleDeleteComment(comment.id)}
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    {t('comments.deleteButton')}
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))
+          topLevelComments.map((comment) => renderComment(comment))
         )}
       </div>
+
+      {/* Reply banner */}
+      {replyBanner}
 
       {/* New comment input */}
       <div className="space-y-2 relative">
@@ -763,7 +965,10 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
           onChange={handleTextChange}
           className="w-full min-h-20 text-base resize-none"
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            if (e.key === 'Escape' && replyingTo) {
+              e.preventDefault();
+              cancelReply();
+            } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
               e.preventDefault();
               handlePostComment();
             }

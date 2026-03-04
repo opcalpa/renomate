@@ -20,15 +20,18 @@ export function countFilledFields(formData: RoomFormData) {
     return { filled, total: keys.length };
   };
 
-  // Identity section: name, status, priority, ceiling_height_mm (area is readonly)
+  // Identity section: name, status, priority, ceiling_height_mm, area, width, depth
   const identity = {
     filled: [
       formData.name,
       formData.status,
       formData.priority && formData.priority !== "medium" ? formData.priority : null,
       formData.ceiling_height_mm,
-    ].filter((v) => v !== undefined && v !== null && v !== "").length,
-    total: 4,
+      formData.area_sqm,
+      formData.width_mm,
+      formData.depth_mm,
+    ].filter((v) => v !== undefined && v !== null && v !== "" && v !== 0).length,
+    total: 7,
   };
 
   // Floor & Ceiling section

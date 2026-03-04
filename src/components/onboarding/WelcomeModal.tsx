@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Home, Wrench, Loader2, ArrowLeft, ChevronDown, Plus, FileText, Eye, MessageSquare } from "lucide-react";
+import { Home, Wrench, Loader2, ArrowLeft, ChevronDown, FileText, Eye, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type UserType = "homeowner" | "contractor";
@@ -364,27 +364,6 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
                 </div>
               </button>
 
-              {/* Create blank project */}
-              <button
-                onClick={() => handleQuickStartChoice("blank")}
-                disabled={saving}
-                className={cn(
-                  "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
-                  "hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98]",
-                  "border-border"
-                )}
-              >
-                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                  <Plus className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-base">{t("welcome.blankProject", "Empty project")}</p>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    {t("welcome.blankProjectDesc", "Start from scratch manually")}
-                  </p>
-                </div>
-              </button>
-
               {/* Explore first */}
               <button
                 onClick={() => handleQuickStartChoice("explore")}
@@ -405,6 +384,17 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
                   </p>
                 </div>
               </button>
+
+              {/* De-emphasized blank option */}
+              <div className="text-center pt-1">
+                <button
+                  onClick={() => handleQuickStartChoice("blank")}
+                  disabled={saving}
+                  className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors"
+                >
+                  {t("welcome.blankProjectLink", "or start with an empty project")}
+                </button>
+              </div>
             </div>
 
             {saving && (

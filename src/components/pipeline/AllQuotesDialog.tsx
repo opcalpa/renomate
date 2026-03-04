@@ -29,6 +29,7 @@ interface AllQuotesDialogProps {
   quotes: QuoteSummary[];
   acceptedTotal: number;
   currency?: string | null;
+  title?: string;
 }
 
 const statusConfig: Record<
@@ -68,6 +69,7 @@ export function AllQuotesDialog({
   quotes,
   acceptedTotal,
   currency,
+  title,
 }: AllQuotesDialogProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -88,7 +90,7 @@ export function AllQuotesDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            {t("pipeline.allQuotes")}
+            {title || t("pipeline.allQuotes")}
           </DialogTitle>
         </DialogHeader>
 

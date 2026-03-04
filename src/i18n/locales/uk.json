@@ -644,6 +644,7 @@
     "featureTeamManagement": "Управління командою",
     "featureBudget": "Бюджет",
     "featureFiles": "Файли",
+    "featureCustomerView": "Вигляд клієнта",
     "accessNone": "Немає",
     "accessView": "Перегляд",
     "accessEdit": "Редагування",
@@ -1579,7 +1580,8 @@
     "mentionedYou": "згадав вас",
     "newTask": "Нове завдання призначено",
     "newPurchaseOrder": "Нове замовлення на закупівлю",
-    "inProject": "у {{project}}"
+    "inProject": "у {{project}}",
+    "quoteAccepted": "Кошторис прийнято!"
   },
   "elevationShapeDialog": {
     "wallLabel": "Стіна",
@@ -1740,7 +1742,9 @@
     "groupByStatus": "Статус",
     "groupByRoom": "Кімната",
     "groupByAssignee": "Виконавець",
-    "groupByPriority": "Пріоритет"
+    "groupByPriority": "Пріоритет",
+    "dependenciesCascaded": "Також переміщено {{count}} залежних завдань",
+    "weekShort": "Т"
   },
   "canvas": {
     "settings": "Налаштування креслення",
@@ -2330,6 +2334,10 @@
     "shared": "Надіслано",
     "noSavedQuotes": "Немає збережених кошторисів",
     "recipient": "Одержувач",
+    "previewHint": "Так виглядає кошторис для клієнта",
+    "quoteLabel": "Кошторис",
+    "projectLabel": "Проєкт",
+    "quoteNumberLabel": "№ кошторису",
     "selectRecipient": "Виберіть одержувача",
     "createNewClient": "Створити нового...",
     "freeTextPlaceholder": "Додаткові примітки, умови або положення...",
@@ -2700,5 +2708,26 @@
     "attachments": "Прикріпити файли",
     "attachmentsDescription": "Завантажте плани, сертифікати, фото або інші документи",
     "uploadedRoomPhotos": "Завантажені фото кімнат"
+  },
+  "unifiedTable": {
+    "linkedPurchases": "{{count}} закупівель",
+    "linkedPurchases_one": "{{count}} закупівля"
+  },
+  "invoices": {
+    "previewHint": "Так рахунок виглядає для клієнта",
+    "invoiceLabel": "Рахунок",
+    "projectLabel": "Проєкт",
+    "invoiceNumberLabel": "№ рахунку",
+    "recipient": "Отримувач",
+    "bankAccountNumber": "Номер рахунку"
+  },
+  "profile": {
+    "bankgiro": "Bankgiro",
+    "bankAccountNumber": "Номер рахунку",
+    "bankgiroHint": "Автоматично заповнюється в нових рахунках",
+    "defaultPaymentTerms": "Стандартні умови оплати",
+    "defaultPaymentTermsHint": "Автоматично заповнюється в нових рахунках",
+    "paymentFieldsHint": "Bankgiro та номер рахунку автоматично заповнюються в нових рахунках",
+    "days": "днів"
   }
 }

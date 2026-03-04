@@ -1,16 +1,13 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Mail, FileText, CheckCircle, Zap } from "lucide-react";
+import { Mail, FileEdit, Send, CheckCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { useLeadsPipelineData } from "@/hooks/useLeadsPipelineData";
 import { AllIntakeRequestsDialog } from "./AllIntakeRequestsDialog";
 import { AllQuotesDialog } from "./AllQuotesDialog";
-import { QuickQuoteDialog } from "./QuickQuoteDialog";
-import { CreateIntakeDialog } from "@/components/intake/CreateIntakeDialog";
-import type { IntakeRequest } from "@/services/intakeService";
+import type { ProjectBucket } from "./types";
 
 interface LeadsPipelineSectionProps {
   onRefetch?: () => void;
@@ -19,170 +16,150 @@ interface LeadsPipelineSectionProps {
 
 export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSectionProps) {
   // Hide pipeline for homeowners - they receive quotes, not create them
-  // Full homeowner view will be implemented in a future phase
   if (userType === "homeowner") {
     return null;
   }
 
   const { t } = useTranslation();
-  const { data, intakeRequests, quotes, refetch } = useLeadsPipelineData();
+  const { data, intakeRequests, projectBuckets } = useLeadsPipelineData();
 
   // Dialog states
   const [intakesDialogOpen, setIntakesDialogOpen] = useState(false);
-  const [quotesDialogOpen, setQuotesDialogOpen] = useState(false);
-  const [createIntakeOpen, setCreateIntakeOpen] = useState(false);
-  const [quickQuoteOpen, setQuickQuoteOpen] = useState(false);
-
-  const handleIntakeCreated = (_request: IntakeRequest) => {
-    refetch();
-    if (onRefetch) onRefetch();
-  };
+  const [activeBucketDialog, setActiveBucketDialog] = useState<ProjectBucket | null>(null);
 
   const handleCreateProjectFromIntake = (intakeId: string) => {
-    // Navigate to create project with intake data
-    // This could be enhanced to auto-create project from intake
     window.location.href = `/intake-requests/${intakeId}?action=create-project`;
   };
 
   if (data.loading) {
     return (
       <div className="mb-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <Skeleton className="h-8 w-40" />
-          <div className="flex gap-2">
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-36" />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-        </div>
+        <Skeleton className="h-[88px] w-full rounded-xl" />
       </div>
     );
   }
 
+  const { projectQuotes } = data;
+  const hasIntakes = data.intakeRequests.total > 0;
+  const hasDrafts = projectQuotes.draft.count > 0;
+  const hasSent = projectQuotes.sent.count > 0;
+  const hasAccepted = projectQuotes.accepted.count > 0;
+
+  // Hide pipeline entirely if no data
+  if (!hasIntakes && !hasDrafts && !hasSent && !hasAccepted) {
+    return null;
+  }
+
+  const dialogQuotes = activeBucketDialog ? (projectBuckets.get(activeBucketDialog) || []) : [];
+  const dialogAcceptedTotal = activeBucketDialog === "accepted" ? projectQuotes.accepted.totalAmount : 0;
+
+  const bucketTitles: Record<ProjectBucket, string> = {
+    draft: t("pipeline.drafts"),
+    sent: t("pipeline.sentQuotes"),
+    accepted: t("pipeline.accepted"),
+  };
+
   return (
     <div className="mb-8">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-        <h2 className="text-2xl font-semibold">
-          {t("pipeline.myQuotes")}
-        </h2>
-        <div className="flex gap-2">
-          {/* Quick Quote - Primary action */}
-          <Button
-            onClick={() => setQuickQuoteOpen(true)}
-            className="flex-1 sm:flex-none"
-          >
-            <Zap className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">{t("pipeline.quickQuote.button")}</span>
-            <span className="sm:hidden">{t("pipeline.quickQuote.buttonShort")}</span>
-          </Button>
-          {/* Send customer form */}
-          <Button
-            variant="outline"
-            onClick={() => setCreateIntakeOpen(true)}
-            className="flex-1 sm:flex-none"
-          >
-            <Mail className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">{t("pipeline.sendCustomerForm")}</span>
-            <span className="sm:hidden">{t("intake.sendForm")}</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Pipeline Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Intake Requests Card */}
-        <Card
-          className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setIntakesDialogOpen(true)}
-        >
-          <CardContent className="pt-4 pb-4 px-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Mail className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-muted-foreground">
-                {t("pipeline.intakeRequests")}
-              </span>
-            </div>
-            <p className="text-2xl font-bold">{data.intakeRequests.total}</p>
-            {data.intakeRequests.total > 0 && (
-              <div className="text-sm text-muted-foreground mt-1 space-y-0.5">
-                {data.intakeRequests.pending > 0 && (
-                  <p>
-                    {data.intakeRequests.pending} {t("pipeline.awaitingResponse")}
-                  </p>
-                )}
-                {data.intakeRequests.submitted > 0 && (
-                  <p>
-                    {data.intakeRequests.submitted} {t("pipeline.needsAction")}
-                  </p>
-                )}
-                {data.intakeRequests.unlinked > 0 && (
-                  <p>
-                    {data.intakeRequests.unlinked} {t("pipeline.unlinked")}
-                  </p>
-                )}
-              </div>
+      <Card>
+        <CardContent className="pt-4 pb-4 px-4">
+          <div className="flex items-stretch divide-x">
+            {/* Förfrågningar */}
+            {hasIntakes && (
+              <button
+                onClick={() => setIntakesDialogOpen(true)}
+                className="flex-1 text-left px-3 first:pl-0 last:pr-0 hover:bg-accent/50 rounded-l transition-colors"
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Mail className="h-3.5 w-3.5 text-blue-600" />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {t("pipeline.intakeRequests")}
+                  </span>
+                </div>
+                <p className="text-lg font-bold">{data.intakeRequests.total}</p>
+                <div className="text-xs text-muted-foreground mt-0.5 space-y-0.5">
+                  {data.intakeRequests.pending > 0 && (
+                    <p>
+                      {data.intakeRequests.pending} {t("pipeline.awaitingResponse")}
+                    </p>
+                  )}
+                  {data.intakeRequests.submitted > 0 && (
+                    <p>
+                      {data.intakeRequests.submitted} {t("pipeline.needsAction")}
+                    </p>
+                  )}
+                </div>
+              </button>
             )}
-          </CardContent>
-        </Card>
 
-        {/* Quotes Card */}
-        <Card
-          className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setQuotesDialogOpen(true)}
-        >
-          <CardContent className="pt-4 pb-4 px-4">
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="h-4 w-4 text-amber-600" />
-              <span className="text-sm font-medium text-muted-foreground">
-                {t("pipeline.quotes")}
-              </span>
-            </div>
-            <p className="text-2xl font-bold">{data.quotes.total}</p>
-            {data.quotes.total > 0 && (
-              <div className="text-sm text-muted-foreground mt-1 space-y-0.5">
-                {data.quotes.draft > 0 && (
-                  <p>
-                    {data.quotes.draft} {t("pipeline.draft")}
-                  </p>
+            {/* Utkast */}
+            {hasDrafts && (
+              <button
+                onClick={() => setActiveBucketDialog("draft")}
+                className="flex-1 text-left px-3 first:pl-0 last:pr-0 hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <FileEdit className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {t("pipeline.drafts")}
+                  </span>
+                </div>
+                <p className="text-lg font-bold">{projectQuotes.draft.count}</p>
+                {projectQuotes.draft.totalAmount > 0 && (
+                  <div className="text-xs text-muted-foreground mt-0.5 space-y-0.5">
+                    <p>{t("planningTasks.estimatedBudget", "Estimated budget")}: <span className="font-medium text-foreground">{formatCurrency(projectQuotes.draft.totalAmount)}</span></p>
+                    <p>{t("planningTasks.estimatedProfit", "Est. profit")}: <span className="font-medium text-green-600">{formatCurrency(projectQuotes.draft.totalAfterRot)}</span></p>
+                  </div>
                 )}
-                {data.quotes.sent > 0 && (
-                  <p>
-                    {data.quotes.sent} {t("pipeline.sent")}
-                  </p>
-                )}
-                {data.quotes.accepted > 0 && (
-                  <p>
-                    {data.quotes.accepted} {t("pipeline.accepted").toLowerCase()}
-                  </p>
-                )}
-              </div>
+              </button>
             )}
-          </CardContent>
-        </Card>
 
-        {/* Accepted Summary Card */}
-        <Card>
-          <CardContent className="pt-4 pb-4 px-4">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-muted-foreground">
-                {t("pipeline.accepted")}
-              </span>
-            </div>
-            <p className="text-2xl font-bold">{data.quotes.accepted}</p>
-            {data.quotes.acceptedTotal > 0 && (
-              <p className="text-sm text-green-600 font-medium mt-1">
-                {formatCurrency(data.quotes.acceptedTotal)}
-              </p>
+            {/* Skickade */}
+            {hasSent && (
+              <button
+                onClick={() => setActiveBucketDialog("sent")}
+                className="flex-1 text-left px-3 first:pl-0 last:pr-0 hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Send className="h-3.5 w-3.5 text-blue-600" />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {t("pipeline.sentQuotes")}
+                  </span>
+                </div>
+                <p className="text-lg font-bold">{projectQuotes.sent.count}</p>
+                {projectQuotes.sent.totalAmount > 0 && (
+                  <div className="text-xs text-muted-foreground mt-0.5 space-y-0.5">
+                    <p>{t("planningTasks.estimatedBudget", "Estimated budget")}: <span className="font-medium text-foreground">{formatCurrency(projectQuotes.sent.totalAmount)}</span></p>
+                    <p>{t("planningTasks.estimatedProfit", "Est. profit")}: <span className="font-medium text-green-600">{formatCurrency(projectQuotes.sent.totalAfterRot)}</span></p>
+                  </div>
+                )}
+              </button>
             )}
-          </CardContent>
-        </Card>
-      </div>
+
+            {/* Godkända */}
+            {hasAccepted && (
+              <button
+                onClick={() => setActiveBucketDialog("accepted")}
+                className="flex-1 text-left px-3 first:pl-0 last:pr-0 hover:bg-accent/50 rounded-r transition-colors"
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {t("pipeline.accepted")}
+                  </span>
+                </div>
+                <p className="text-lg font-bold">{projectQuotes.accepted.count}</p>
+                {projectQuotes.accepted.totalAmount > 0 && (
+                  <div className="text-xs text-muted-foreground mt-0.5 space-y-0.5">
+                    <p>{t("planningTasks.estimatedBudget", "Estimated budget")}: <span className="font-medium text-foreground">{formatCurrency(projectQuotes.accepted.totalAmount)}</span></p>
+                    <p>{t("planningTasks.estimatedProfit", "Est. profit")}: <span className="font-medium text-green-600">{formatCurrency(projectQuotes.accepted.totalAfterRot)}</span></p>
+                  </div>
+                )}
+              </button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Dialogs */}
       <AllIntakeRequestsDialog
@@ -193,27 +170,11 @@ export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSecti
       />
 
       <AllQuotesDialog
-        open={quotesDialogOpen}
-        onOpenChange={setQuotesDialogOpen}
-        quotes={quotes}
-        acceptedTotal={data.quotes.acceptedTotal}
-      />
-
-      <CreateIntakeDialog
-        open={createIntakeOpen}
-        onOpenChange={setCreateIntakeOpen}
-        onCreated={handleIntakeCreated}
-      />
-
-      <QuickQuoteDialog
-        open={quickQuoteOpen}
-        onOpenChange={(open) => {
-          setQuickQuoteOpen(open);
-          if (!open) {
-            refetch();
-            if (onRefetch) onRefetch();
-          }
-        }}
+        open={activeBucketDialog !== null}
+        onOpenChange={(open) => { if (!open) setActiveBucketDialog(null); }}
+        quotes={dialogQuotes}
+        acceptedTotal={dialogAcceptedTotal}
+        title={activeBucketDialog ? bucketTitles[activeBucketDialog] : undefined}
       />
     </div>
   );

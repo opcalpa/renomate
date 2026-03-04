@@ -10,10 +10,11 @@ interface SpacePlannerTabProps {
   isReadOnly?: boolean;
   isDemo?: boolean;
   highlightedRoomIds?: string[];
+  showPinterest?: boolean;
 }
 
-const SpacePlannerTab = ({ projectId, projectName, onBack, backLabel, isReadOnly, isDemo, highlightedRoomIds }: SpacePlannerTabProps) => {
-  return <FloorMapEditor projectId={projectId} projectName={projectName} onBack={onBack} backLabel={backLabel} isReadOnly={isReadOnly} isDemo={isDemo} highlightedRoomIds={highlightedRoomIds} />;
+const SpacePlannerTab = ({ projectId, projectName, onBack, backLabel, isReadOnly, isDemo, highlightedRoomIds, showPinterest }: SpacePlannerTabProps) => {
+  return <FloorMapEditor projectId={projectId} projectName={projectName} onBack={onBack} backLabel={backLabel} isReadOnly={isReadOnly} isDemo={isDemo} highlightedRoomIds={highlightedRoomIds} showPinterest={showPinterest} />;
 };
 
 export default SpacePlannerTab;

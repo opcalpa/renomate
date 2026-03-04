@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, MessageSquare, AtSign, CheckSquare, Package, CheckCheck } from "lucide-react";
+import { Bell, MessageSquare, AtSign, CheckSquare, Package, CheckCheck, PartyPopper, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { useNotifications, NotificationItem } from "@/hooks/useNotifications";
@@ -28,6 +28,10 @@ function NotificationIcon({ type }: { type: NotificationItem["type"] }) {
       return <CheckSquare className={cn(cls, "text-orange-500")} />;
     case "material":
       return <Package className={cn(cls, "text-purple-500")} />;
+    case "quote_accepted":
+      return <PartyPopper className={cn(cls, "text-green-600")} />;
+    case "quote_rejected":
+      return <XCircle className={cn(cls, "text-red-500")} />;
   }
 }
 
@@ -42,6 +46,10 @@ function notificationLabel(item: NotificationItem, t: (key: string, fallback?: s
       return `${t("notifications.newTask", "New task assigned")}`;
     case "material":
       return `${t("notifications.newPurchaseOrder", "New purchase order")}`;
+    case "quote_accepted":
+      return `${t("notifications.quoteAccepted", "Quote accepted!")} — ${item.title}`;
+    case "quote_rejected":
+      return `${t("notifications.quoteRejected", "Quote declined")} — ${item.title}`;
   }
 }
 
@@ -73,14 +81,21 @@ export function NotificationBell() {
   const handleItemClick = (item: NotificationItem) => {
     markOneRead(item.id);
     setOpen(false);
+    // Quote comments → navigate directly to quote page
+    if (item.entityType === "quote" && item.entityId) {
+      navigate(`/quotes/${item.entityId}`);
+      return;
+    }
     const base = `/projects/${item.projectId}`;
     const entityParam = item.entityId ? `&entityId=${item.entityId}` : "";
     if (item.entityType === "task") {
       navigate(`${base}?tab=tasks${entityParam}`);
     } else if (item.entityType === "material") {
       navigate(`${base}?tab=purchases${entityParam}`);
+    } else if (item.entityType === "project" && (item.type === "comment" || item.type === "mention")) {
+      navigate(`${base}?tab=chat`);
     } else if (item.type === "comment" || item.type === "mention") {
-      navigate(`${base}?tab=feed`);
+      navigate(`${base}?tab=overview&subtab=feed`);
     } else {
       navigate(`${base}?tab=overview`);
     }

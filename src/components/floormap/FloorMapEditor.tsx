@@ -26,9 +26,10 @@ interface FloorMapEditorProps {
   isReadOnly?: boolean;
   isDemo?: boolean;
   highlightedRoomIds?: string[];
+  showPinterest?: boolean;
 }
 
-export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isReadOnly, isDemo, highlightedRoomIds }: FloorMapEditorProps) => {
+export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isReadOnly, isDemo, highlightedRoomIds, showPinterest }: FloorMapEditorProps) => {
   const { t } = useTranslation();
   const {
     plans,
@@ -295,6 +296,7 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isRe
             canUndo={canUndoState}
             canRedo={canRedoState}
             isDemo={isDemo}
+            showPinterest={showPinterest}
           />
         )}
 
@@ -311,6 +313,7 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isRe
               }}
               isReadOnly={isReadOnly}
               highlightedRoomIds={highlightedRoomIds}
+              showPinterest={showPinterest}
             />
             {/* Onboarding canvas hint */}
             {!isReadOnly && !canvasHintDismissed && !onboarding.isDismissed && onboarding.currentStep?.canvasHintKey && (

@@ -4,57 +4,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Home, Plus, Search, Trash2, MapPin, Calendar, X, ArrowUpDown, LayoutGrid, Table as TableIcon, Settings2 } from "lucide-react";
+import { Loader2, Home, Plus, Search, Trash2, MapPin, Calendar, X, ArrowUpDown, LayoutGrid, Table as TableIcon, Settings2, Save, FolderOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useTranslation } from "react-i18next";
+import { RoomsTableView } from "./rooms-table/RoomsTableView";
+import { FIELD_DEFINITIONS, DEFAULT_VISIBLE_FIELDS, loadSavedViews, persistSavedViews } from "./rooms-table/types";
+import type { Room, FieldKey, RoomSavedView } from "./rooms-table/types";
 
 type SortOption = 'name_asc' | 'name_desc' | 'area_desc' | 'area_asc' | 'created_desc' | 'created_asc';
 type ViewMode = 'cards' | 'table';
-type FieldKey = 'area' | 'perimeter' | 'status' | 'floorMaterial' | 'wallColor' | 'ceilingHeight' | 'priority' | 'created';
 
 const SORT_STORAGE_KEY = 'renomate_rooms_sort';
 const VIEW_MODE_STORAGE_KEY = 'renomate_rooms_view_mode';
 const VISIBLE_FIELDS_STORAGE_KEY = 'renomate_rooms_visible_fields';
-
-const DEFAULT_VISIBLE_FIELDS: FieldKey[] = ['area', 'status', 'created'];
-
-interface FloorSpec {
-  material?: string;
-  specification?: string;
-}
-
-interface WallSpec {
-  main_color?: string;
-  treatments?: string[];
-}
-
-interface Room {
-  id: string;
-  project_id: string;
-  name: string;
-  description: string | null;
-  status?: string | null;
-  priority?: string | null;
-  ceiling_height_mm?: number | null;
-  floor_spec?: FloorSpec | null;
-  wall_spec?: WallSpec | null;
-  dimensions: {
-    area_sqm?: number;
-    width_mm?: number;
-    height_mm?: number;
-    perimeter_mm?: number;
-  } | null;
-  floor_plan_position: {
-    points?: { x: number; y: number }[];
-  } | null;
-  created_at: string;
-  updated_at: string;
-}
 
 interface RoomsListProps {
   projectId: string;
@@ -65,21 +31,10 @@ interface RoomsListProps {
   onRoomDeleted?: () => void;
   onNavigateToRoom?: (room: Room) => void;
   onPlaceRoom?: (room: Room) => void;
+  onRoomUpdated?: () => void;
 }
 
-// Field definitions for visibility toggle
-const FIELD_DEFINITIONS: { key: FieldKey; labelKey: string }[] = [
-  { key: 'area', labelKey: 'rooms.area' },
-  { key: 'perimeter', labelKey: 'rooms.perimeter' },
-  { key: 'status', labelKey: 'common.status' },
-  { key: 'floorMaterial', labelKey: 'rooms.floorMaterial' },
-  { key: 'wallColor', labelKey: 'rooms.wallColor' },
-  { key: 'ceilingHeight', labelKey: 'rooms.ceilingHeight' },
-  { key: 'priority', labelKey: 'rooms.priority' },
-  { key: 'created', labelKey: 'rooms.createdOn' },
-];
-
-export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddRoom, onDeleteRoom, onNavigateToRoom, onPlaceRoom }: RoomsListProps) => {
+export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddRoom, onDeleteRoom, onNavigateToRoom, onPlaceRoom, onRoomUpdated }: RoomsListProps) => {
   const { t, i18n } = useTranslation();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(!externalRooms);
@@ -87,7 +42,6 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
   const [selectedRoomIds, setSelectedRoomIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Sort option with localStorage
   const [sortOption, setSortOption] = useState<SortOption>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(SORT_STORAGE_KEY);
@@ -98,25 +52,20 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
     return 'created_desc';
   });
 
-  // View mode with localStorage (default to cards)
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-      if (saved === 'table' || saved === 'cards') {
-        return saved;
-      }
+      if (saved === 'table' || saved === 'cards') return saved;
     }
     return 'cards';
   });
 
-  // Visible fields with localStorage
   const [visibleFields, setVisibleFields] = useState<Set<FieldKey>>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(VISIBLE_FIELDS_STORAGE_KEY);
       if (saved) {
         try {
-          const parsed = JSON.parse(saved) as FieldKey[];
-          return new Set(parsed);
+          return new Set(JSON.parse(saved) as FieldKey[]);
         } catch {
           // Invalid JSON, use defaults
         }
@@ -125,7 +74,12 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
     return new Set(DEFAULT_VISIBLE_FIELDS);
   });
 
-  // Check if we're on desktop (for table view availability)
+  // Saved views
+  const [savedViews, setSavedViews] = useState<RoomSavedView[]>(() => loadSavedViews(projectId));
+  const [saveViewName, setSaveViewName] = useState("");
+  const [saveViewOpen, setSaveViewOpen] = useState(false);
+  const [loadViewOpen, setLoadViewOpen] = useState(false);
+
   const [isDesktop, setIsDesktop] = useState(false);
   useEffect(() => {
     const checkDesktop = () => setIsDesktop(window.innerWidth >= 768);
@@ -134,21 +88,18 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
     return () => window.removeEventListener('resize', checkDesktop);
   }, []);
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString(i18n.language === 'sv' ? 'sv-SE' : 'en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     });
-  };
+  }, [i18n.language]);
 
-  // Check if a room is placed on canvas
   const isRoomPlacedOnCanvas = (room: Room): boolean => {
     return !!(room.floor_plan_position?.points && room.floor_plan_position.points.length > 0);
   };
 
-  // Use external rooms if provided, otherwise fetch locally
   useEffect(() => {
     if (externalRooms) {
       setRooms(externalRooms);
@@ -166,9 +117,7 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
         .select("*")
         .eq("project_id", projectId)
         .order("created_at", { ascending: false });
-
       if (error) throw error;
-
       setRooms(data || []);
     } catch (error: unknown) {
       console.error("Error fetching rooms:", error);
@@ -176,19 +125,16 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
     }
   };
 
-  // Handle sort change with localStorage persistence
   const handleSortChange = useCallback((value: SortOption) => {
     setSortOption(value);
     localStorage.setItem(SORT_STORAGE_KEY, value);
   }, []);
 
-  // Handle view mode change with localStorage persistence
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
     localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
   }, []);
 
-  // Handle field visibility toggle with localStorage persistence
   const toggleFieldVisibility = useCallback((field: FieldKey) => {
     setVisibleFields(prev => {
       const next = new Set(prev);
@@ -202,43 +148,67 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
     });
   }, []);
 
-  // Filter and sort rooms
+  const handleSaveView = useCallback(() => {
+    const name = saveViewName.trim();
+    if (!name) return;
+    const newView: RoomSavedView = {
+      id: crypto.randomUUID(),
+      name,
+      visibleFields: Array.from(visibleFields),
+      sortOption,
+      viewMode,
+    };
+    const updated = [...savedViews, newView];
+    setSavedViews(updated);
+    persistSavedViews(projectId, updated);
+    setSaveViewName("");
+    setSaveViewOpen(false);
+    toast.success(t('rooms.viewSaved', 'Vy sparad'), {
+      description: t('rooms.viewSavedDescription', { name }),
+    });
+  }, [saveViewName, visibleFields, sortOption, viewMode, savedViews, projectId, t]);
+
+  const handleLoadView = useCallback((view: RoomSavedView) => {
+    setVisibleFields(new Set(view.visibleFields));
+    setSortOption(view.sortOption as SortOption);
+    setViewMode(view.viewMode);
+    localStorage.setItem(VISIBLE_FIELDS_STORAGE_KEY, JSON.stringify(view.visibleFields));
+    localStorage.setItem(SORT_STORAGE_KEY, view.sortOption);
+    localStorage.setItem(VIEW_MODE_STORAGE_KEY, view.viewMode);
+    setLoadViewOpen(false);
+    toast.success(t('rooms.viewLoaded', 'Vy laddad'), {
+      description: t('rooms.viewLoadedDescription', { name: view.name }),
+    });
+  }, [t]);
+
+  const handleDeleteView = useCallback((viewId: string) => {
+    const updated = savedViews.filter(v => v.id !== viewId);
+    setSavedViews(updated);
+    persistSavedViews(projectId, updated);
+  }, [savedViews, projectId]);
+
   const filteredRooms = useMemo(() => {
     const filtered = rooms.filter(room =>
       room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       room.description?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-
     return [...filtered].sort((a, b) => {
       switch (sortOption) {
-        case 'name_asc':
-          return a.name.localeCompare(b.name, i18n.language);
-        case 'name_desc':
-          return b.name.localeCompare(a.name, i18n.language);
-        case 'area_desc':
-          return (b.dimensions?.area_sqm ?? 0) - (a.dimensions?.area_sqm ?? 0);
-        case 'area_asc':
-          return (a.dimensions?.area_sqm ?? 0) - (b.dimensions?.area_sqm ?? 0);
-        case 'created_desc':
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case 'created_asc':
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        default:
-          return 0;
+        case 'name_asc': return a.name.localeCompare(b.name, i18n.language);
+        case 'name_desc': return b.name.localeCompare(a.name, i18n.language);
+        case 'area_desc': return (b.dimensions?.area_sqm ?? 0) - (a.dimensions?.area_sqm ?? 0);
+        case 'area_asc': return (a.dimensions?.area_sqm ?? 0) - (b.dimensions?.area_sqm ?? 0);
+        case 'created_desc': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'created_asc': return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        default: return 0;
       }
     });
   }, [rooms, searchTerm, sortOption, i18n.language]);
 
-  // Selection handlers
-  const toggleRoomSelection = useCallback((roomId: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
+  const toggleRoomSelection = useCallback((roomId: string) => {
     setSelectedRoomIds(prev => {
       const next = new Set(prev);
-      if (next.has(roomId)) {
-        next.delete(roomId);
-      } else {
-        next.add(roomId);
-      }
+      if (next.has(roomId)) { next.delete(roomId); } else { next.add(roomId); }
       return next;
     });
   }, []);
@@ -254,21 +224,18 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
   const isAllSelected = filteredRooms.length > 0 && filteredRooms.every(r => selectedRoomIds.has(r.id));
   const isSomeSelected = selectedRoomIds.size > 0;
 
-  // Bulk delete handler
+  const handleOptimisticUpdate = useCallback((roomId: string, updates: Partial<Room>) => {
+    setRooms(prev => prev.map(r => r.id === roomId ? { ...r, ...updates } : r));
+  }, []);
+
   const handleBulkDelete = useCallback(async () => {
     if (selectedRoomIds.size === 0) return;
-
     const count = selectedRoomIds.size;
-    const confirmMessage = t('rooms.confirmBulkDelete', { count });
-
-    if (!window.confirm(confirmMessage)) return;
-
+    if (!window.confirm(t('rooms.confirmBulkDelete', { count }))) return;
     setIsDeleting(true);
     try {
       for (const roomId of selectedRoomIds) {
-        if (onDeleteRoom) {
-          onDeleteRoom(roomId);
-        }
+        onDeleteRoom?.(roomId);
       }
       clearSelection();
       toast.success(t('rooms.bulkDeleteSuccess', { count }));
@@ -280,7 +247,6 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
     }
   }, [selectedRoomIds, onDeleteRoom, clearSelection, t]);
 
-  // Get status label
   const getStatusLabel = (status: string | null | undefined) => {
     if (!status) return '—';
     const statusMap: Record<string, string> = {
@@ -291,7 +257,6 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
     return statusMap[status] || status;
   };
 
-  // Get priority label
   const getPriorityLabel = (priority: string | null | undefined) => {
     if (!priority) return '—';
     const priorityMap: Record<string, string> = {
@@ -302,7 +267,6 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
     return priorityMap[priority] || priority;
   };
 
-  // Render field value for cards
   const renderFieldValue = (room: Room, field: FieldKey): React.ReactNode => {
     switch (field) {
       case 'area':
@@ -310,6 +274,20 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
           <span className="text-sm">
             <span className="text-muted-foreground">{t('rooms.area')}:</span>{' '}
             <span className="font-medium text-blue-600">{room.dimensions.area_sqm.toFixed(2)} m²</span>
+          </span>
+        ) : null;
+      case 'width':
+        return room.dimensions?.width_mm ? (
+          <span className="text-sm">
+            <span className="text-muted-foreground">{t('rooms.width')}:</span>{' '}
+            <span className="font-medium">{room.dimensions.width_mm} mm</span>
+          </span>
+        ) : null;
+      case 'depth':
+        return room.dimensions?.height_mm ? (
+          <span className="text-sm">
+            <span className="text-muted-foreground">{t('rooms.depth')}:</span>{' '}
+            <span className="font-medium">{room.dimensions.height_mm} mm</span>
           </span>
         ) : null;
       case 'perimeter':
@@ -321,9 +299,7 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
         ) : null;
       case 'status':
         return room.status ? (
-          <Badge variant="outline" className="text-xs">
-            {getStatusLabel(room.status)}
-          </Badge>
+          <Badge variant="outline" className="text-xs">{getStatusLabel(room.status)}</Badge>
         ) : null;
       case 'floorMaterial':
         return room.floor_spec?.material ? (
@@ -360,32 +336,38 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
             {formatDate(room.created_at)}
           </span>
         ) : null;
+      case 'description':
+        return room.description ? (
+          <span className="text-sm">
+            <span className="text-muted-foreground">{t('rooms.customerWishes')}:</span>{' '}
+            <span className="font-medium line-clamp-1">{room.description}</span>
+          </span>
+        ) : null;
+      case 'notes':
+        return room.notes ? (
+          <span className="text-sm">
+            <span className="text-muted-foreground">{t('rooms.internalNotes')}:</span>{' '}
+            <span className="font-medium line-clamp-1">{room.notes}</span>
+          </span>
+        ) : null;
+      case 'trimColor':
+        return room.trim_color ? (
+          <span className="text-sm">
+            <span className="text-muted-foreground">{t('rooms.trimColor')}:</span>{' '}
+            <span className="font-medium">{room.trim_color}</span>
+          </span>
+        ) : null;
+      case 'ceilingColor': {
+        const color = room.ceiling_color || (room.ceiling_spec as { color?: string } | null)?.color;
+        return color ? (
+          <span className="text-sm">
+            <span className="text-muted-foreground">{t('rooms.ceilingColor')}:</span>{' '}
+            <span className="font-medium">{color}</span>
+          </span>
+        ) : null;
+      }
       default:
         return null;
-    }
-  };
-
-  // Get table cell value
-  const getTableCellValue = (room: Room, field: FieldKey): string => {
-    switch (field) {
-      case 'area':
-        return room.dimensions?.area_sqm ? `${room.dimensions.area_sqm.toFixed(2)} m²` : '—';
-      case 'perimeter':
-        return room.dimensions?.perimeter_mm ? `${(room.dimensions.perimeter_mm / 1000).toFixed(2)} m` : '—';
-      case 'status':
-        return getStatusLabel(room.status);
-      case 'floorMaterial':
-        return room.floor_spec?.material || '—';
-      case 'wallColor':
-        return room.wall_spec?.main_color || '—';
-      case 'ceilingHeight':
-        return room.ceiling_height_mm ? `${(room.ceiling_height_mm / 1000).toFixed(2)} m` : '—';
-      case 'priority':
-        return getPriorityLabel(room.priority);
-      case 'created':
-        return room.created_at ? formatDate(room.created_at) : '—';
-      default:
-        return '—';
     }
   };
 
@@ -405,7 +387,11 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Home className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-semibold">{t('rooms.title', 'Rum')}</h2>
+          <h2 className="text-xl font-semibold">
+            {isDesktop && viewMode === 'table'
+              ? t('rooms.tableTitle', 'Rumstabell')
+              : t('rooms.title', 'Rum')}
+          </h2>
           <Badge variant="secondary">{rooms.length}</Badge>
         </div>
         {onAddRoom && (
@@ -423,11 +409,7 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
             <Checkbox
               checked={isAllSelected}
               onCheckedChange={(checked) => {
-                if (checked) {
-                  selectAllFiltered();
-                } else {
-                  clearSelection();
-                }
+                if (checked) { selectAllFiltered(); } else { clearSelection(); }
               }}
             />
             <span className="text-sm font-medium text-blue-800">
@@ -436,32 +418,19 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
           </div>
           <div className="flex items-center gap-2">
             {onDeleteRoom && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBulkDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4 mr-2" />
-                )}
+              <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={isDeleting}>
+                {isDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
                 {t('rooms.deleteSelected', 'Ta bort')}
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearSelection}
-            >
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
               <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
       )}
 
-      {/* Search, Sort, View Toggle, and Fields Settings */}
+      {/* Search, Sort, View Toggle, Fields Settings */}
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -489,7 +458,6 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
           </SelectContent>
         </Select>
 
-        {/* View mode toggle - only on desktop */}
         {isDesktop && (
           <div className="flex border rounded-md">
             <Button
@@ -511,7 +479,6 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
           </div>
         )}
 
-        {/* Fields visibility toggle */}
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="gap-1">
@@ -534,9 +501,73 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
             </div>
           </PopoverContent>
         </Popover>
+
+        {/* Save View */}
+        <Popover open={saveViewOpen} onOpenChange={setSaveViewOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1">
+              <Save className="h-4 w-4" />
+              <span className="hidden sm:inline">{t('rooms.saveView', 'Spara vy')}</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64" align="end">
+            <div className="space-y-3">
+              <p className="text-sm font-medium">{t('rooms.saveCurrentView', 'Spara aktuell vy')}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('rooms.saveViewDescription', 'Sparar synliga fält, sortering och visningsläge.')}
+              </p>
+              <Input
+                placeholder={t('rooms.viewName', 'Vyns namn...')}
+                value={saveViewName}
+                onChange={(e) => setSaveViewName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSaveView(); }}
+              />
+              <Button size="sm" className="w-full" disabled={!saveViewName.trim()} onClick={handleSaveView}>
+                <Plus className="h-3 w-3 mr-1" />
+                {t('common.save')}
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Load View */}
+        {savedViews.length > 0 && (
+          <Popover open={loadViewOpen} onOpenChange={setLoadViewOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1">
+                <FolderOpen className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('rooms.loadView', 'Ladda vy')}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64" align="end">
+              <div className="space-y-2">
+                <p className="text-sm font-medium mb-2">{t('rooms.savedViews', 'Sparade vyer')}</p>
+                {savedViews.map((view) => (
+                  <div key={view.id} className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      className="flex-1 text-left text-sm px-2 py-1.5 rounded hover:bg-muted truncate"
+                      onClick={() => handleLoadView(view)}
+                    >
+                      {view.name}
+                    </button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500"
+                      onClick={() => handleDeleteView(view.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
 
-      {/* Rooms List - Card or Table View */}
+      {/* Rooms List */}
       {filteredRooms.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center">
@@ -552,114 +583,21 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
           </CardContent>
         </Card>
       ) : isDesktop && viewMode === 'table' ? (
-        /* Table View - Desktop only */
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10"></TableHead>
-                <TableHead>{t('rooms.roomName', 'Namn')}</TableHead>
-                {visibleFieldsArray.map(field => (
-                  <TableHead key={field}>
-                    {t(FIELD_DEFINITIONS.find(f => f.key === field)?.labelKey || field)}
-                  </TableHead>
-                ))}
-                <TableHead className="w-24 text-right">{t('common.actions', 'Åtgärder')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRooms.map((room) => (
-                <TableRow
-                  key={room.id}
-                  className={`cursor-pointer hover:bg-muted/50 ${selectedRoomIds.has(room.id) ? 'bg-blue-50' : ''}`}
-                  onClick={() => onRoomClick(room)}
-                >
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                      checked={selectedRoomIds.has(room.id)}
-                      onCheckedChange={() => toggleRoomSelection(room.id)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <span className="font-medium">{room.name}</span>
-                      {room.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                          {room.description}
-                        </p>
-                      )}
-                    </div>
-                  </TableCell>
-                  {visibleFieldsArray.map(field => (
-                    <TableCell key={field} className="text-sm">
-                      {field === 'status' && room.status ? (
-                        <Badge variant="outline" className="text-xs">
-                          {getStatusLabel(room.status)}
-                        </Badge>
-                      ) : (
-                        getTableCellValue(room, field)
-                      )}
-                    </TableCell>
-                  ))}
-                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={isRoomPlacedOnCanvas(room)
-                                ? "text-green-600 hover:text-green-700 hover:bg-green-50"
-                                : "text-gray-400 hover:text-amber-600 hover:bg-amber-50"
-                              }
-                              onClick={() => {
-                                if (isRoomPlacedOnCanvas(room)) {
-                                  onNavigateToRoom?.(room);
-                                } else {
-                                  onPlaceRoom?.(room);
-                                }
-                              }}
-                            >
-                              <MapPin className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {isRoomPlacedOnCanvas(room)
-                              ? t('rooms.showOnFloorPlan', 'Visa på ritning')
-                              : t('rooms.placeOnFloorPlan', 'Placera på ritning')
-                            }
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      {onDeleteRoom && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => onDeleteRoom(room.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {t('common.delete', 'Ta bort')}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <RoomsTableView
+          rooms={filteredRooms}
+          visibleFields={visibleFieldsArray}
+          fieldDefinitions={FIELD_DEFINITIONS}
+          selectedRoomIds={selectedRoomIds}
+          onRoomClick={onRoomClick}
+          onToggleSelection={toggleRoomSelection}
+          onDeleteRoom={onDeleteRoom}
+          onNavigateToRoom={onNavigateToRoom}
+          onPlaceRoom={onPlaceRoom}
+          onRoomUpdated={onRoomUpdated}
+          onOptimisticUpdate={handleOptimisticUpdate}
+          formatDate={formatDate}
+        />
       ) : (
-        /* Card View - Default and mobile */
         <div className="space-y-2">
           {filteredRooms.map((room) => (
             <Card
@@ -669,7 +607,6 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3 flex-1">
-                    {/* Selection checkbox */}
                     <div className="pt-1">
                       <Checkbox
                         checked={selectedRoomIds.has(room.id)}
@@ -677,17 +614,11 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
                         onClick={(e) => e.stopPropagation()}
                       />
                     </div>
-                    <div
-                      className="flex-1 cursor-pointer"
-                      onClick={() => onRoomClick(room)}
-                    >
+                    <div className="flex-1 cursor-pointer" onClick={() => onRoomClick(room)}>
                       <h3 className="font-medium text-lg">{room.name}</h3>
                       {room.description && (
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                          {room.description}
-                        </p>
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{room.description}</p>
                       )}
-                      {/* Dynamic fields based on visibility settings */}
                       <div className="flex flex-wrap items-center gap-3 mt-3">
                         {visibleFieldsArray.map(field => {
                           const value = renderFieldValue(room, field);
@@ -697,7 +628,6 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
                     </div>
                   </div>
                   <div className="flex items-center gap-1 ml-2">
-                    {/* Map Pin Icon - Shows placement status */}
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -723,13 +653,10 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
                         <TooltipContent>
                           {isRoomPlacedOnCanvas(room)
                             ? t('rooms.showOnFloorPlan', 'Visa på ritning')
-                            : t('rooms.placeOnFloorPlan', 'Placera på ritning')
-                          }
+                            : t('rooms.placeOnFloorPlan', 'Placera på ritning')}
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-
-                    {/* Delete Button */}
                     {onDeleteRoom && (
                       <TooltipProvider>
                         <Tooltip>
@@ -746,9 +673,7 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>
-                            {t('common.delete', 'Ta bort')}
-                          </TooltipContent>
+                          <TooltipContent>{t('common.delete', 'Ta bort')}</TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     )}

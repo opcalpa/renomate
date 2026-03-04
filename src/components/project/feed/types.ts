@@ -44,14 +44,24 @@ export interface ActivityLogItem {
   actor: { name: string; email: string } | null;
 }
 
+export interface PhotoFeedItem {
+  id: string;
+  url: string;
+  caption?: string | null;
+  createdAt: string;
+  source: "project" | "room" | "task" | "material" | "comment" | "file";
+  sourceName?: string;
+}
+
 export interface UnifiedFeedItem {
-  type: "comment" | "activity";
+  type: "comment" | "activity" | "photo";
   created_at: string;
   comment?: FeedComment;
   activity?: ActivityLogItem;
+  photo?: PhotoFeedItem;
 }
 
-export type FeedFilterMode = "all" | "comments" | "activity";
+export type FeedFilterMode = "all" | "comments" | "activity" | "photos";
 
 export interface FeedThreadGroup {
   key: string;

@@ -29,6 +29,8 @@ interface InvitationDetails {
     id: string;
     name: string;
   };
+  related_quote_id?: string | null;
+  related_invoice_id?: string | null;
   timeline_access?: string;
   tasks_access?: string;
   tasks_scope?: string;
@@ -93,6 +95,8 @@ const InvitationResponse = () => {
           role,
           status,
           project_id,
+          related_quote_id,
+          related_invoice_id,
           timeline_access,
           tasks_access,
           tasks_scope,
@@ -183,30 +187,50 @@ const InvitationResponse = () => {
       }
 
       const isContractor = contractorRole && contractorRole !== 'other';
-      const roleType = isContractor ? 'contractor' : 'other';
+      const roleType = invitation.role === "client" ? "client" : (isContractor ? 'contractor' : 'other');
       const contractorCategory = isContractor ? contractorRole : null;
 
       // Use permissions_snapshot if available, fallback to individual columns
       const perms = invitation.permissions_snapshot || {};
 
-      const { error: shareError } = await supabase
+      const isClientInvite = invitation.role === "client";
+
+      const sharePayload = {
+        role: invitation.role,
+        role_type: roleType,
+        contractor_role: contractorCategory,
+        timeline_access: perms.timeline_access || invitation.timeline_access || 'view',
+        tasks_access: isClientInvite ? (perms.tasks_access || 'none') : (perms.tasks_access || invitation.tasks_access || 'view'),
+        tasks_scope: perms.tasks_scope || invitation.tasks_scope || 'assigned',
+        space_planner_access: isClientInvite ? (perms.space_planner_access || 'none') : (perms.space_planner_access || invitation.space_planner_access || 'view'),
+        purchases_access: isClientInvite ? (perms.purchases_access || 'none') : (perms.purchases_access || invitation.purchases_access || 'view'),
+        purchases_scope: perms.purchases_scope || invitation.purchases_scope || 'assigned',
+        overview_access: isClientInvite ? (perms.overview_access || 'none') : (perms.overview_access || invitation.overview_access || 'view'),
+        teams_access: perms.teams_access || invitation.teams_access || 'none',
+        budget_access: perms.budget_access || invitation.budget_access || (isClientInvite ? 'view' : 'none'),
+        files_access: perms.files_access || invitation.files_access || 'none',
+      };
+
+      // Check if share already exists (re-invited user)
+      const { data: existingShare } = await supabase
         .from("project_shares")
-        .insert({
-          project_id: invitation.project.id,
-          shared_with_user_id: profile.id,
-          role: invitation.role,
-          contractor_role: contractorCategory,
-          timeline_access: perms.timeline_access || invitation.timeline_access || 'view',
-          tasks_access: perms.tasks_access || invitation.tasks_access || 'view',
-          tasks_scope: perms.tasks_scope || invitation.tasks_scope || 'assigned',
-          space_planner_access: perms.space_planner_access || invitation.space_planner_access || 'view',
-          purchases_access: perms.purchases_access || invitation.purchases_access || 'view',
-          purchases_scope: perms.purchases_scope || invitation.purchases_scope || 'assigned',
-          overview_access: perms.overview_access || invitation.overview_access || 'view',
-          teams_access: perms.teams_access || invitation.teams_access || 'none',
-          budget_access: perms.budget_access || invitation.budget_access || 'none',
-          files_access: perms.files_access || invitation.files_access || 'none',
-        });
+        .select("id")
+        .eq("project_id", invitation.project.id)
+        .eq("shared_with_user_id", profile.id)
+        .maybeSingle();
+
+      const { error: shareError } = existingShare
+        ? await supabase
+            .from("project_shares")
+            .update(sharePayload)
+            .eq("id", existingShare.id)
+        : await supabase
+            .from("project_shares")
+            .insert({
+              project_id: invitation.project.id,
+              shared_with_user_id: profile.id,
+              ...sharePayload,
+            });
 
       if (shareError) throw shareError;
 
@@ -233,9 +257,14 @@ const InvitationResponse = () => {
         description: t("invitation.acceptedDescription", "You now have access to the project."),
       });
 
-      // Redirect to project with welcome flag
+      // Redirect to quote, invoice, or project
+      const redirectTarget = invitation.related_quote_id
+        ? `/quotes/${invitation.related_quote_id}?returnTo=/projects/${invitation.project.id}`
+        : invitation.related_invoice_id
+          ? `/invoices/${invitation.related_invoice_id}?returnTo=/projects/${invitation.project.id}`
+          : `/projects/${invitation.project.id}?welcome=invited`;
       setTimeout(() => {
-        navigate(`/projects/${invitation.project.id}?welcome=invited`);
+        navigate(redirectTarget);
       }, 2000);
     } catch (err: any) {
       console.error("Error accepting invitation:", err);

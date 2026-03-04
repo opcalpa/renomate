@@ -1,2446 +1,363 @@
-# Sprint 2026-W08 (17-23 feb)
+# Sprint 2026-W10 (2 mars 2026)
 
 ## Kontext
 
-- **Aktiva användare:** ~50 beta-testare
-- **Största feedback:** "Svårt att komma igång", "Appen känns komplex"
-- **Nyligen lanserat:** Mobile bottom nav, HelpBot, Tips-sida, Landing page med screenshots, GuidedSetupWizard
-- **Teknisk status:** Inga kritiska buggar kända. Canvas växer ohållbart (5784 rader).
+- **Aktiva användare:** ~50 beta-testare (ingen tillväxt sedan W08)
+- **Senaste sprint-brief:** W08 (17-23 feb)
+- **Ocommittade ändringar:** 43 filer, +4 626 / -2 659 rader
+- **Nya migrationer:** 17 st (INTE applicerade till remote)
+- **Teknisk status:** Canvas refaktorerad (commit `80aae18`). Inga kritiska buggar kända.
 
-## Mål denna sprint
+## Vad som byggts sedan W08
 
-Fokus: **Teknisk hälsa** — efter verifiering visade det sig att UX-problemen redan var lösta. Nu fokuserar vi på teknikskuld som blockerar framtida utveckling.
+| Område | Filer | Status |
+|--------|-------|--------|
+| **Fakturasystem** | CreateInvoice, ViewInvoice, invoiceService, InvoiceComments | Nytt, ej committad |
+| **Offert-förbättringar** | Kommentarer, rabatter, delning, viewed_at-spårning, ShareQuoteDialog | Nytt, ej committad |
+| **Unified Budget Table** | Hierarkiska sub-rader (material under arbeten), expand/collapse, inga dubbelräkningar | Nytt, ej committad |
+| **Projektstatus-livscykel** | Status-driven CTAs, ProjectStatusCTA, statusövergångar | Committat |
+| **Planeringsfas** | PlanningTaskList med inline scope builder, förenklade TaskEditDialog | Committat |
+| **Kundvy** | CustomerViewTab, ClientInvoiceList | Nytt, ej committad |
+| **Task-kostnadsestimering** | estimated_hours, hourly_rate, subcontractor_cost, material_estimate, markup_percent | Nytt, ej committad |
+| **GuidedSetupWizard** | Förbättrad onboarding-wizard med steg-per-steg | Modifierad |
+| **Kvittohantering** | QuickReceiptCaptureModal förbättringar | Modifierad |
+| **Profilsida** | Betalfält (bank, Swish, org.nr) för fakturering | Modifierad |
+| **Notifikationer** | Förbättrad NotificationBell + useNotifications | Modifierad |
+| **Canvas-refaktorering** | UnifiedKonvaCanvas uppdelad i moduler, hooks, tools | Committat (80aae18) |
+| **Budget-dashboard** | BudgetDashboard, BudgetTab förbättringar | Modifierad |
 
-## CEO-beslut (2026-02-17, VERIFIERAD)
-
-**Kontext:** Grundlig kodverifiering genomförd. Specialist-rapporternas problem från 9-12 feb var till stor del REDAN LÖSTA. Prioriteringslistan nedan baseras på faktiskt nuläge, inte gamla rapporter.
-
-### Verifierat: Redan implementerat ✅
-
-Följande var felaktigt listade som "att göra" men är redan klara:
-
-| Område | Bevis i kod |
-|--------|-------------|
-| Demo-banner | `ProjectDetail.tsx:758-762` |
-| Separerad onboarding för inbjudna | `invited_client` user type, `useOnboarding.ts:57-73` |
-| Välkomst-banner för inbjudna | `ProjectDetail.tsx:1091-1107` |
-| GuidedSetupWizard integration | `Projects.tsx:1001-1019` |
-| Empty states (Tasks, Purchases) | `TasksTab.tsx:2085-2098`, `PurchaseRequestsTab.tsx:915-924` |
-| Mobil-anpassad WelcomeModal | `grid-cols-2 sm:grid-cols-4`, touch targets |
-| Canvas-steg döljs på mobil | `CANVAS_DEPENDENT_STEPS` filtreras |
-| Offert → Tasks konvertering | `createTasksFromQuote()` körs vid godkännande |
-| Pinterest säkerhet | Använder oEmbed, OAuth-koden är inte aktiv |
-
-### Prioritetslista (VERIFIERAD)
-
-| Prio | Område | Status | Insats | Varför nu |
-|------|--------|--------|--------|-----------|
-| **1** | **UnifiedKonvaCanvas refaktorering** | 5784 rader (↑892 sedan rapport) | STOR | Blockerar underhåll. 10x över 500-radersgräns. |
-| **2** | **History-prestanda (immer.js)** | 21 JSON.parse/stringify | Medium | O(n) per edit. Lagg vid >500 shapes. |
-| **3** | **Aktivera OfflineIndicator** | Komponent finns, renderas aldrig | Liten | Snabb vinst, visar offline-status |
-| **4** | **Terminologi-pass sv.json** | Ej verifierat | Liten | Byggsvenska saknas enligt Platschef |
-
-### Parkerat
-
-| Område | Väntar på | Varför parkerat |
-|--------|-----------|-----------------|
-| **Fullt offline-stöd** | >10 aktiva fältanvändare | 2-3 veckors arbete. 0/50 har klagat specifikt. |
-| **Canvas snapping + live-mått** | >100 Canvas-användare | Stor insats för få användare. |
-| **Fliktomstrukturering (7→4)** | Kvalitativ user research | Stor insats, osäker effekt. |
-| **Betalningsintegration** | Activation >50%, Retention >40% | Pre-revenue. |
-| **Snabborder FAB** | Fler fältanvändare | Platschefens förslag, men ingen har efterfrågat. |
-
-### Godkända beslut
-
-- **Stripe:** Godkänt som primär betalplattform för framtiden.
-- **Pinterest:** AVSKRIVET — oEmbed används, OAuth-kod är död.
-- **Offert → Projekt:** REDAN KLART — `createTasksFromQuote()` finns.
-
-### Lärdomar
-
-**VIKTIGT:** Innan nästa prioritering MÅSTE kodverifiering göras. Specialist-rapporter beskriver problem vid skrivtillfället, men kod utvecklas kontinuerligt. Verifiera alltid nuläge mot faktisk kod.
-
-### Mätetal
-
-| Metrik | Uppskattat nu | Mål denna sprint |
-|--------|---------------|------------------|
-| Signup → Första projekt (mobil) | ~30% | 50% |
-| Signup → Första projekt (desktop) | ~50% | 70% |
-| Onboarding completion rate | ~15% | 40% |
-| Demo-projekt öppnat | ~40% | 60% |
-
-**North Star:** Teknisk hälsa — minska canvas till <1500 rader innan nya features.
-
----
-
-## Specialist-logg
-
-### UX-Designer
-
-**Datum:** 2026-02-09 (uppdaterad)
-
-**Analys:** Djupgående onboarding-analys med mobil-optimering
-
----
-
-## KOMPLETT ONBOARDING-ANALYS (MOBIL-FOKUS)
-
-### Nuvarande flöde — steg för steg
+### 17 nya migrationer (EJ APPLICERADE)
 
 ```
-STEG 1: WelcomeModal — Språkval
-┌──────────────────────────────────────┐
-│         Välj ditt språk              │
-├──────────────────────────────────────┤
-│ 🇬🇧 │ 🇸🇪 │ 🇩🇪 │ 🇫🇷 │ 🇪🇸 │  ← 5-kolumns grid
-│ 🇵🇱 │ 🇺🇦 │ 🇷🇴 │ 🇱🇹 │ 🇪🇪 │  ← 10 språk totalt
-├──────────────────────────────────────┤
-│         [ Fortsätt ]                 │
-└──────────────────────────────────────┘
-      ↓
-STEG 2: WelcomeModal — Användartyp
-┌──────────────────────────────────────┐
-│ ← Tillbaka                           │
-│       Välkommen till Renomate        │
-│    Vilken beskriver dig bäst?        │
-├──────────────────────────────────────┤
-│  ┌────────────┐  ┌────────────┐      │
-│  │    🏠      │  │    🔧      │      │
-│  │  Husägare  │  │ Entreprenör│      │
-│  │  "Jag äger │  │ "Jag arb.. │      │
-│  └────────────┘  └────────────┘      │
-├──────────────────────────────────────┤
-│         [ Fortsätt ]                 │
-└──────────────────────────────────────┘
-      ↓
-STEG 3: Projects-sidan (efter onComplete)
-┌──────────────────────────────────────┐
-│ [Logo]              [Språk] [Profil] │
-├──────────────────────────────────────┤
-│ ┌ OnboardingChecklist ─────────────┐ │
-│ │ ⎯⎯⎯⎯⎯⎯⎯●○○○○ 1/5 steg            │ │
-│ │                                   │ │
-│ │ ● Skapa ditt första projekt      │ │
-│ │ ○ Öppna Space Planner            │ │
-│ │ ○ Rita ett rum                   │ │
-│ │ ○ Generera väggar (valfritt)     │ │
-│ │ ○ Skapa uppgift kopplad till rum │ │
-│ └───────────────────────────────────┘ │
-│                                       │
-│ ┌ Demo-projekt (seedat) ────────────┐ │
-│ │ 📖 DEMO — Utforska funktionerna   │ │
-│ └───────────────────────────────────┘ │
-└──────────────────────────────────────┘
+20260219110000_add_task_cost_estimation_fields.sql
+20260219120000_update_project_status_constraint.sql
+20260219140000_add_comment_and_discount_to_quote_items.sql
+20260219150000_add_related_quote_id_to_invitations.sql
+20260220100000_allow_anon_read_invitation_by_token.sql
+20260220110000_allow_invited_user_to_create_own_share.sql
+20260220120000_add_viewed_at_to_quotes.sql
+20260220200000_add_parent_task_id_to_tasks.sql
+20260221100000_add_client_role_to_project_shares.sql
+20260221110000_optimize_quote_comments_rls.sql
+20260221120000_add_company_logo_to_profiles.sql
+20260221130000_allow_project_members_update_quote_status.sql
+20260221140000_quote_status_triggers_project_update.sql
+20260221150000_add_is_ata_and_auto_budget_on_accept.sql
+20260222100000_add_invoices.sql
+20260222110000_add_payment_fields_to_profiles.sql
+20260222120000_add_related_invoice_id_to_invitations.sql
+20260222130000_invoice_comments_rls.sql
 ```
 
 ---
 
-### MOBIL-PROBLEM I NUVARANDE FLÖDE
+## CEO-analys (2026-03-02)
 
-| # | Problem | Komponent | Allvarlighet |
-|---|---------|-----------|--------------|
-| 1 | **5-kolumns grid är för trångt** | WelcomeModal steg 1 | KRITISK |
-| 2 | **Ingen touch-anpassning av knappar** | WelcomeModal båda steg | HÖG |
-| 3 | **OnboardingChecklist tar 40% av skärmen** | Projects.tsx | HÖG |
-| 4 | **"Show me"-knappen leder till desktop-Canvas** | OnboardingChecklist | KRITISK |
-| 5 | **Ingen "quick start" för mobil-användare** | WelcomeModal steg 2 | MEDIUM |
+### Observation
 
----
+Sedan W08 har det byggts **enormt mycket** — fakturor, offerter, budgethierarki, kundvy, planeringsfas, kostnadsestimering. Produkten har gått från "projektverktyg" till "affärssystem för renoveringsföretag."
 
-### PROBLEM 1: Språkval-grid oanvändbart på mobil
+Men: **inget har committats till main på 2 veckor** och **17 migrationer väntar**. Det innebär:
+1. Risk för merge-konflikter och förlorat arbete
+2. Remote-databasen är ur synk med koden
+3. Ingen av de 50 beta-testarna ser de nya funktionerna
 
-**Nuvarande kod (WelcomeModal.tsx:116):**
-```tsx
-<div className="grid grid-cols-5 gap-3 py-4">
-```
+### Strategisk bedömning
 
-**Resultat på 375px-skärm (iPhone SE):**
-- Varje språkknapp blir ~56px bred
-- Touch target under Apple's 44px minimum? Nej, men texten trunkeras
-- Flaggorna "🇬🇧" syns, men "English" / "Svenska" blir mikroskopiska
+**Positiv:** Offert → Faktura-flödet och kundvyn bygger direkt mot CRO:s ICP (små entreprenörer). Det här är exakt den funktionalitet som skiljer "leksak" från "verktyg jag betalar för."
 
-**Lösning:**
-```tsx
-// Responsiv grid med större touch targets
-<div className="grid grid-cols-2 sm:grid-cols-5 gap-3 py-4">
-  {LANGUAGES.slice(0, 4).map(...)}  // Visa top 4 direkt
-</div>
-<Button variant="ghost" onClick={showAllLanguages}>
-  + 6 fler språk
-</Button>
-```
+**Varning:** Vi har breddat produkten snabbt utan att mäta om activation förbättrats. Riskerar att bygga fler features som ingen hittar.
 
----
+**Canvas-refaktoreringen** (80aae18) är klar — det var W08:s prio 1. Bra.
 
-### PROBLEM 2: Användartyp-kortens touch target
+### CEO-beslut W10
 
-**Nuvarande (WelcomeModal.tsx:172-178):**
-```tsx
-<button className="p-6 rounded-xl ...">
-  <div className="h-14 w-14 rounded-full ...">  // 56px ikon
-  <div className="text-center">
-    <p className="font-medium">{t(labelKey)}</p>
-    <p className="text-sm ...">{t(descKey)}</p>  // Beskrivning syns knappt
-  </div>
-</button>
-```
+| Prio | Åtgärd | Varför |
+|------|--------|--------|
+| **1** | **Committa + pusha + applicera migrationer** | 17 migrationer och 4600 rader obevakat = risk. Applicera till remote NU. |
+| **2** | **Stabilisera offert→faktura-flödet** | Kärnvärde för ICP. Gör klart, testa end-to-end. |
+| **3** | **Instrumentera activation** | Vi vet inte om onboarding fungerar bättre nu. Lägg in event-tracking. |
+| **4** | **History-prestanda (immer.js)** | Kvar från W08. Blockerar vid >500 shapes. |
 
-**Problem:**
-- `p-6` = 24px padding — bra för desktop, slösar plats på mobil
-- Beskrivningen (`descKey`) är för liten på 375px-skärm
-- 2-kolumns grid tvingar sidoscroll om text är lång (t.ex. tyska)
+### Parkerat (oförändrat)
 
-**Lösning:**
-```tsx
-// Mobil: vertikal stack, Desktop: grid
-<div className="flex flex-col sm:grid sm:grid-cols-2 gap-4">
-  <button className="p-4 sm:p-6 flex items-center sm:flex-col gap-4 sm:gap-3">
-```
+| Område | Väntar på |
+|--------|-----------|
+| Fullt offline-stöd | >10 fältanvändare |
+| Betalningsintegration (Stripe) | Activation >50% |
+| Discover/retention-sida | Sprint 4+ |
+| Enterprise-tier | 12-18 mån bort |
 
 ---
 
-### PROBLEM 3: OnboardingChecklist dominerar mobil-skärmen
-
-**Nuvarande (OnboardingChecklist.tsx):**
-- Card med header + progress bar + 5 expanderbara steg
-- På 667px-hög skärm tar checklistan ~280px (42% av viewport)
-- Projektkort hamnar "below the fold"
-
-**Platschefens perspektiv:** En montör som öppnar appen på bygget vill se SITT projekt — inte en checklista hen redan har sett 10 gånger.
-
-**Lösning:**
-```tsx
-// Kompakt mobilvy med expanderbar detalj
-<Card className="mb-4 sm:mb-6">
-  <CardHeader className="pb-2 sm:pb-3">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <Target className="h-4 w-4 sm:h-5 sm:w-5" />
-        <span className="text-sm sm:text-base font-medium">
-          {completedCount}/{totalSteps} steg klara
-        </span>
-      </div>
-      <div className="flex gap-1">
-        <Button variant="ghost" size="sm" onClick={toggleExpand}>
-          {expanded ? <ChevronUp /> : <ChevronDown />}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onDismiss}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-    <Progress value={progressPercent} className="h-1.5 sm:h-2 mt-2" />
-  </CardHeader>
-  {expanded && (
-    <CardContent className="pt-0">
-      {/* Steg-lista */}
-    </CardContent>
-  )}
-</Card>
-```
-
----
-
-### PROBLEM 4: "Show me" leder till desktop-Canvas
-
-**Nuvarande steg-länkar (OnboardingChecklist.tsx:47-61):**
-```tsx
-if (step.key === "drawRoom" && firstProjectId) {
-  return `/projects/${firstProjectId}?tab=space-planner`;
-}
-```
-
-**Problem:** Space Planner (Canvas) är INTE mobil-anpassad:
-- Toolbar-ikoner för små för fingrar
-- Pinch-zoom konkurrerar med canvas-pan
-- Ingen "view only"-läge
-- Rita rum med fingret = frustrerande
-
-**Lösning — mobil-specifika steg:**
-
-| Steg | Desktop-mål | Mobil-mål |
-|------|-------------|-----------|
-| `project` | Skapa projekt | **Samma** |
-| `enterCanvas` | Space Planner | **Rum-lista** (ny vy) |
-| `drawRoom` | Rita i Canvas | **Öppna Demo-projekt och visa befintliga rum** |
-| `taskWithRoom` | Skapa task i Tasks-flik | **Samma, men med touch-optimerad dialog** |
-
-```tsx
-const getStepLink = (step: OnboardingStep): string | undefined => {
-  const isMobile = window.innerWidth < 768;
-
-  if (step.key === "enterCanvas" && firstProjectId) {
-    return isMobile
-      ? `/projects/${firstProjectId}?tab=overview#rooms`  // Scrolla till rum-sektion
-      : `/projects/${firstProjectId}?tab=space-planner`;
-  }
-  // ...
-};
-```
-
----
-
-### PROBLEM 5: Saknar "Quick Start" för mobilanvändare
-
-**Insikt:** Husägare på mobil vill oftast:
-1. Dokumentera befintligt tillstånd (ta foton)
-2. Skapa enkla att-göra-listor
-3. Bjuda in hantverkare
-
-De vill INTE rita planlösningar med fingret.
-
-**Förslag — ny steg 3 i WelcomeModal:**
-
-```
-STEG 3 (NY): Vad vill du göra först?
-┌──────────────────────────────────────┐
-│         Vad vill du göra först?      │
-├──────────────────────────────────────┤
-│ ┌───────────────────────────────────┐│
-│ │ 📱 Dokumentera mitt hem           ││
-│ │    Ta foton och skapa rum-lista   ││
-│ └───────────────────────────────────┘│
-│ ┌───────────────────────────────────┐│
-│ │ ✏️ Rita planlösning               ││
-│ │    Skapa 2D-ritning (desktop rec.)││
-│ └───────────────────────────────────┘│
-│ ┌───────────────────────────────────┐│
-│ │ 🔍 Utforska Demo-projektet        ││
-│ │    Se hur appen fungerar          ││
-│ └───────────────────────────────────┘│
-└──────────────────────────────────────┘
-```
-
-**Beroende på val:**
-- "Dokumentera" → Skapa tomt projekt → Overview med kamera-prompt
-- "Rita" → Skapa projekt → Space Planner (visa varning på mobil)
-- "Utforska" → Öppna Demo-projekt
-
----
-
-## IMPLEMENTERINGSPLAN — MOBIL-OPTIMERAD ONBOARDING
-
-### Fas 1: Quick wins (1-2 dagar)
-
-| # | Ändring | Fil | Insats |
-|---|---------|-----|--------|
-| 1 | Responsiv språkgrid (2-col på mobil) | WelcomeModal.tsx | 30 min |
-| 2 | Komprimera OnboardingChecklist på mobil | OnboardingChecklist.tsx | 2h |
-| 3 | Större touch targets på användartyp-kort | WelcomeModal.tsx | 1h |
-| 4 | Dölja steg som kräver Canvas på mobil | OnboardingChecklist.tsx | 1h |
-
-### Fas 2: Nytt steg 3 med intentionsval (2-3 dagar)
-
-| # | Ändring | Fil | Insats |
-|---|---------|-----|--------|
-| 5 | Lägg till steg 3 i WelcomeModal | WelcomeModal.tsx | 4h |
-| 6 | Hantera "Dokumentera"-flödet | Projects.tsx, useOnboarding.ts | 4h |
-| 7 | Lägg till i18n-nycklar | en.json, sv.json | 1h |
-
-### Fas 3: Mobil-specifik Canvas-alternativ (5+ dagar)
-
-| # | Ändring | Fil | Insats |
-|---|---------|-----|--------|
-| 8 | "Field Mode" i Space Planner | Ny komponent | 3-5 dagar |
-| 9 | Rum-lista som Canvas-alternativ på mobil | OverviewTab.tsx | 2 dagar |
-
----
-
-## MÄTVÄRDEN FÖR FRAMGÅNG
-
-| Metrik | Nuläge (uppskattning) | Mål |
-|--------|----------------------|-----|
-| Signup → First project (mobil) | ~30% | 60% |
-| Signup → First project (desktop) | ~50% | 70% |
-| Onboarding completion rate | ~15% | 40% |
-| Demo-projekt öppnat | ~40% | 60% |
-
----
-
-## DE 5 STÖRSTA UX-PROBLEMEN (ORIGINAL)
-
-### 1. ONBOARDING SAKNAR TYDLIGT MÅL (Kritisk)
-
-**Problem:** WelcomeModal frågar "Husägare eller Entreprenör?" men gör sedan ingenting med svaret. Användaren kastas direkt till en tom projektlista utan guidning. Demo-projektet seedas automatiskt men förklaras inte.
-
-**Cognitive load:** Hög. Användaren ser 10 språk, 2 användartyper, sedan plötsligt en projektlista med ett mystiskt "Demo"-projekt.
-
-```
-Nuvarande flöde:
-┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│  Välj språk      │ --> │  Husägare/       │ --> │  Tom projektvy   │
-│  (10 alternativ) │     │  Entreprenör     │     │  + Demo-projekt  │
-└──────────────────┘     └──────────────────┘     └──────────────────┘
-                                                         │
-                                                    INGEN GUIDNING
-                                                    "Vad gör jag nu?"
-```
-
-**Rekommenderat flöde:**
-```
-┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│  Välj språk      │ --> │  Vad vill du     │ --> │  Guidad första   │
-│  (top 5 + mer)   │     │  göra först?     │     │  åtgärd          │
-└──────────────────┘     │  - Skapa projekt │     └──────────────────┘
-                         │  - Utforska demo │
-                         │  - Bjud in team  │
-                         └──────────────────┘
-```
-
-**Insats:** Medium (2-3 dagar)
-
----
-
-### 2. PROJEKTDETALJSIDAN HAR FÖR MÅNGA FLIKAR (Kritisk)
-
-**Problem:** 7 huvudflikar på desktop (Overview, Space Planner, Files, Tasks, Purchases, Budget, Team) + underflikar. På mobil döljs 4 flikar bakom "More"-menyn.
-
-**Hicks lag:** Beslutstiden ökar logaritmiskt med antalet val. 7+ val = paralys.
-
-```
-Desktop navigation:
-┌────────────────────────────────────────────────────────────────────┐
-│ Overview │ Space Planner │ Files │ Tasks │ Purchases │ Budget │ Team │
-└────────────────────────────────────────────────────────────────────┘
-     │           │                                              │
-     ▼           ▼                                              │
-  +Feed      +Floor Plan                                        │
-             +Rooms                                             │
-                                                                │
-Mobil:                                                          │
-┌──────────────────────────────────────────────────────────┐    │
-│ Overview │ Plans │ Tasks │ Purchases │ More (4 dolda)   │ <──┘
-└──────────────────────────────────────────────────────────┘
-```
-
-**Förslag:** Gruppera logiskt:
-
-| Nuvarande | Förslag |
-|-----------|---------|
-| Overview | **Hem** (dashboard + feed) |
-| Space Planner + Files | **Planering** (rita + dokument) |
-| Tasks + Purchases | **Arbete** (uppgifter + material) |
-| Budget | Behåll |
-| Team | Flytta till projektinställningar |
-
-**Insats:** Stor (1 vecka) - kräver omstrukturering
-
----
-
-### 3. TOMMA TILLSTÅND ÄR INTE HJÄLPSAMMA (Hög)
-
-**Problem:** När användaren öppnar Tasks-fliken utan uppgifter visas troligen bara en tom lista. Samma för Purchases, Budget etc. Det finns ingen uppmaning till handling.
-
-**Bra empty state-mönster:**
-```
-┌─────────────────────────────────────────────┐
-│                                             │
-│        [Illustration]                       │
-│                                             │
-│     Inga uppgifter ännu                     │
-│                                             │
-│  Skapa din första uppgift för att hålla    │
-│  koll på vad som behöver göras.            │
-│                                             │
-│        [ + Skapa uppgift ]                  │
-│                                             │
-│  Tips: Du kan koppla uppgifter till rum    │
-│  i din planritning för bättre överblick.   │
-│                                             │
-└─────────────────────────────────────────────┘
-```
-
-**Insats:** Liten (1 dag per vy, finns ~5-6 vyer)
-
----
-
-### 4. MOBILUPPLEVELSEN I SPACE PLANNER (Kritisk för fältarbetare)
-
-**Problem:** Space Planner är designad för desktop med toolbar, miniatyr, layers-panel. På mobil blir det oanvändbart för att:
-- Touch targets är för små (verktygsikoner)
-- Pinch-zoom konkurrerar med canvas-pan
-- Ingen "view only"-läge för fältarbetare som bara vill se ritningen
-
-**Platschefens användningsfall:**
-- Se vilka rum hen ska arbeta i idag
-- Läsa mått och anteckningar
-- Markera uppgifter som klara
-
-**Förslag:**
-```
-Mobil "Field Mode":
-┌─────────────────────────────────────┐
-│  < Tillbaka    Projekt X    [👁️]   │  <- Endast visa-läge
-├─────────────────────────────────────┤
-│                                     │
-│        [Förenklad ritning]          │
-│        - Endast rum synliga         │
-│        - Tydliga rumsnamn           │
-│        - Tap för att öppna rum      │
-│                                     │
-├─────────────────────────────────────┤
-│  Kök  │  Badrum  │  Sovrum  │  ...  │  <- Rumlista som alternativ
-└─────────────────────────────────────┘
-```
-
-**Insats:** Stor (1 vecka) - ny mobilvy för canvas
-
----
-
-### 5. NAVIGATION SAKNAR BREADCRUMBS OCH KONTEXT (Medium)
-
-**Problem:** Användaren vet inte alltid var de är. Exempel:
-- I projektdetalj visas projektnamnet på mobil men inte på desktop
-- Rum-dialogen öppnas som modal utan att visa vilket projekt man är i
-- "Back"-knappen i Space Planner går till "previousTab" som kan vara förvirrande
-
-**Förslag:**
-```
-Desktop header med breadcrumbs:
-┌────────────────────────────────────────────────────────────┐
-│ [Logo]  Mina projekt / Köksrenovering / Uppgifter         │
-└────────────────────────────────────────────────────────────┘
-
-Mobil header:
-┌────────────────────────────────────────────────────────────┐
-│ < Projekt    Köksrenovering    [⋮]                         │
-└────────────────────────────────────────────────────────────┘
-```
-
-**Insats:** Liten (1-2 dagar)
-
----
-
-## YTTERLIGARE OBSERVATIONER
-
-### Positiva mönster (behåll):
-- OnboardingChecklist med progress-bar är bra
-- Demo-projekt med exempeldata hjälper förståelse
-- Hotspots (WithHotspot) för att guida till viktiga funktioner
-- MobileBottomNav med "More"-meny är standard och fungerar
-
-### Mindre problem att åtgärda:
-1. **Språkväljaren i WelcomeModal:** 10 språk i ett 5-kolumns grid är visuellt rörigt. Visa top 3-5 med "Fler språk"-knapp.
-2. **Projektkortet:** Visar status som råtext ("active") utan översättning eller badge-styling.
-3. **Header på desktop:** "Pro"-dropdown visas bara för professionals men tar plats. Bör vara sekundärt.
-4. **Tasks-fliken:** Kanban + Table + Timeline på samma sida = överväldigande vid första besök.
-
----
-
-## PRIORITERAD HANDLINGSPLAN
-
-| Prio | Åtgärd | Insats | Effekt på activation |
-|------|--------|--------|----------------------|
-| 1 | Guidad onboarding efter signup | Medium | Hög |
-| 2 | Tomma tillstånd med CTAs | Liten | Hög |
-| 3 | Förenkla mobil-canvas till "view mode" | Stor | Hög för fältarbetare |
-| 4 | Breadcrumbs/kontextnavigering | Liten | Medium |
-| 5 | Gruppera flikar (långsiktigt) | Stor | Medium |
-
----
-
-**Prioritet:** Kritisk (onboarding), Hög (empty states, mobil), Medium (navigation)
-**Förslag:** Börja med #1 och #2 denna sprint - ger mest värde för minst insats
-**Insats:** Liten-Medium för quick wins, Stor för canvas-mobil
-
----
+## Specialist-logg W10
 
 ### CTO
 
-**Datum:** 2026-02-09
+**Datum:** 2026-03-02
 
-## KRITISK TEKNISK GRANSKNING - Renomate
+**Status sedan W08:**
+- Canvas-refaktorering KLAR (80aae18) — UnifiedKonvaCanvas uppdelad i moduler/hooks/tools
+- History-prestanda (immer.js) — EJ PÅBÖRJAD, kvarstår
+- OfflineIndicator — EJ AKTIVERAD, kvarstår
+- Pinterest-säkerhet — AVSKRIVET (oEmbed, ingen risk)
 
-Analyserade: Prestanda, Sakerhet, Skalbarhet, Teknikskuld, DX
+**Nya risker:**
 
----
+| Risk | Allvarlighet | Beskrivning |
+|------|-------------|-------------|
+| **17 ej applicerade migrationer** | KRITISK | Koden refererar kolumner/tabeller som inte finns på remote. Deploy = krasch. |
+| **43 filer uncommitted** | HÖG | 4600+ rader ändringar utan version control. En felaktig `git checkout` = allt borta. |
+| **Fakturasystem utan RLS-verifiering** | HÖG | `invoices`-tabellen har RLS (migration 20260222130000) men policies bör granskas innan production. |
+| **Supabase types.ts — 245 rader tillagda** | MEDIUM | Manuellt genererade typer riskerar att bli ur synk. Kör `supabase gen types`. |
 
-### DE 5 STORSTA TEKNISKA RISKERNA
-
----
-
-#### RISK 1: PINTEREST CLIENT SECRET EXPONERAS I FRONTEND (KRITISK SAKERHETSBRIST)
-
-**Fil:** `src/services/pinterest.ts` rad 12-13, 102, 133
-
-**Problem:** `VITE_PINTEREST_CLIENT_SECRET` läses i browser och skickas till Pinterest API. DevTools avslöjar hemligheten.
-
-```typescript
-// EXPONERAD HEMLIGHET!
-const PINTEREST_CLIENT_SECRET = import.meta.env.VITE_PINTEREST_CLIENT_SECRET;
-'Authorization': `Basic ${btoa(`${CLIENT_ID}:${CLIENT_SECRET}`)}`
-```
-
-**Paverkan:**
-- Attackerare kan missbruka vart Pinterest-konto
-- Bryter mot Pinterest API ToS
-- Potentiell dataincident
-
-**Prioritet:** KRITISK - atgarda OMEDELBART
-
-**Forslag:**
-1. IDAG: Dolj Pinterest-knappar i UI (5 min hotfix)
-2. DENNA VECKA: Flytta OAuth till Edge Function `pinterest-oauth`
-3. Ta bort `VITE_PINTEREST_CLIENT_SECRET` fran frontend
-
-**Insats:** Medium (4-6h permanent fix)
-
----
-
-#### RISK 2: UNIFIEDKONVACANVAS - 4892 RADER (10x OVER GRANS)
-
-**Fil:** `src/components/floormap/UnifiedKonvaCanvas.tsx`
-
-| Metrik | Varde | Grans (CLAUDE.md) | Overträdelse |
-|--------|-------|-------------------|--------------|
-| Rader | 4892 | 500 | 9.8x |
-| useEffect | 13 | - | Komplex beroendehantering |
-| any-typ | 74 | 0 | Bryter typsäkerhet |
-| useState | ~50 | - | Enormt lokalt state |
-
-**Nuvarande struktur:**
-```
-UnifiedKonvaCanvas.tsx (4892 rader)
-├── Event handlers (mouse, keyboard, touch)
-├── Drawing logic (wall, room, freehand, bezier)
-├── Selection (single, multi, marquee, group)
-├── Keyboard shortcuts
-├── Template/symbol placement
-├── Measurement tool
-├── Context menu
-├── CAD numeric input
-└── Dialog triggers
-```
-
-**Prioritet:** Hog
-
-**Forslag - stegvis extraktion:**
-```
-UnifiedKonvaCanvas.tsx (mal: ~800 rader)
-├── hooks/
-│   ├── useCanvasEventHandlers.ts
-│   ├── useDrawingMode.ts
-│   └── useSelection.ts
-└── components/
-    ├── CADNumericInput.tsx
-    └── MeasurementOverlay.tsx
-```
-
-**Insats:** Stor (2-3 veckor inkrementellt)
-
----
-
-#### RISK 3: HISTORY MED JSON.PARSE/STRINGIFY - O(n) PER ANDRING
-
-**Fil:** `src/components/floormap/store.ts` (26 forekomster)
-
-**Problem:** Varje shape-andring deep-clonar HELA arrayen:
-```typescript
-newHistory.push(JSON.parse(JSON.stringify(newShapes)));
-```
-
-**Prestandatabell:**
-| Shapes | Tid/edit | Upplevelse |
-|--------|----------|------------|
-| 100 | ~4ms | OK |
-| 500 | ~20ms | Markbart lagg |
-| 1000 | ~40ms | Frustrerande |
-| 5000 | ~200ms | Oanvandbar |
-
-**Prioritet:** Hog (blockerar skalning)
-
-**Forslag:**
-1. Implementera `immer.js` for strukturell delning
-2. Throttla history till max 1/sekund
-3. Begransa history till 50 steg
-
-**Insats:** Medium (8-12h)
-
----
-
-#### RISK 4: SAKNADE DATABAS-INDEX
-
-**Observerade queries utan index:**
-```typescript
-// ProjectTimeline.tsx:162 - Hamtar ALLA dependencies
-await supabase.from("task_dependencies").select("*")  // Ingen WHERE!
-```
-
-**Saknade/overifierade index:**
-- `floor_map_shapes(plan_id)` - kritiskt
-- `task_dependencies(task_id)`
-- `comments(drawing_object_id)`
-
-**Prioritet:** Medium
-
-**Forslag:**
-```sql
-CREATE INDEX IF NOT EXISTS idx_floor_map_shapes_plan_id
-  ON floor_map_shapes(plan_id);
-```
-
-**Insats:** Liten (2-4h)
-
----
-
-#### RISK 5: STORA FILER - TEKNIKSKULD
-
-| Fil | Rader | Atgard |
-|-----|-------|--------|
-| UnifiedKonvaCanvas.tsx | 4892 | Se Risk 2 |
-| TasksTab.tsx | 2444 | Splitta |
-| ElevationCanvas.tsx | 2214 | Extrahera hooks |
-| store.ts | 1124 | Bryt ut history |
-| ProjectTimeline.tsx | 1437 | Splitta |
-
-**Prioritet:** Medium (lopande)
-
----
-
-### POSITIVA OBSERVATIONER
-
-| Omrade | Status |
-|--------|--------|
-| RLS pa alla tabeller | 19/19 tabeller |
-| console.log i prod | Endast 4 st |
-| Supabase-klient | Centraliserad |
-| Shape-komponenter | Extraherade (4011 rader i shapes/) |
-
----
-
-### PRIORITERAD HANDLINGSPLAN
-
-| # | Risk | Prioritet | Insats | Nar |
-|---|------|-----------|--------|-----|
-| 1 | Pinterest Secret | KRITISK | 4-6h | DENNA VECKA |
-| 2 | History-prestanda | Hog | 8-12h | Fore 500+ shapes |
-| 3 | Canvas-split | Hog | 2-3v | Inkrementellt |
-| 4 | DB-index | Medium | 2-4h | Nasta sprint |
-| 5 | Ovriga filer | Medium | Lopande | Kontinuerligt |
-
----
-
-### FRAGA TILL CEO
-
-**Pinterest-sakerhet:** Pinterest ar "parkerat" men hemligheten lackes fortfarande.
+**Positiva framsteg:**
+- Unified table med gruppering löser dubbelräkningsproblemet korrekt
+- TaskEditDialog sticky footer — bra UX-fix
+- RLS på invoice_comments — rätt tänkt
 
 **Rekommendation:**
-1. IDAG: Dolj Pinterest-knappar i UI (5 min)
-2. DENNA VECKA: Bygg Edge Function
-3. Ta bort VITE_PINTEREST_CLIENT_SECRET
+1. `git add` + `git commit` IDAG
+2. `supabase db push` för alla 17 migrationer
+3. `supabase gen types typescript` för att synka types.ts
+4. Granska invoice RLS-policies
 
-Ska jag genomfora steg 1 omedelbart?
-
----
-
-### Inredningsarkitekt
-
-**Datum:** 2026-02-09
-
-**Analys:** Kritisk granskning av Space Planner (Canvas) ur arkitektperspektiv
-
-Jag har granskat UnifiedKonvaCanvas (~2900 rader), store.ts, SymbolLibrary, objectLibraryDefinitions, ElevationCanvas, snapping-utilities och toolbar-komponenter. Nedan presenterar jag de **5 största bristerna** i ritverktyget:
+**Insats:** Liten (1-2h för commit + push + verify)
 
 ---
 
-## DE 5 KRITISKA BRISTERNA I SPACE PLANNER
+### UX-Designer
 
-### BRIST 1: OPRECIS OCH OFORUTSAGBAR SNAPPING (KRITISK)
+**Datum:** 2026-03-02
 
-**Nuläge vs. proffsverktyg:**
+**Status sedan W08:**
+De stora UX-problemen från onboarding-analysen (W08) är delvis adresserade:
 
-| Aspekt | Renomate | Revit/AutoCAD/SketchUp |
-|--------|----------|------------------------|
-| Snap-precision | 50-500mm automatiskt | Exakt till vald precision (1mm) |
-| Visuella snap-indikatorer | SAKNAS | Endpoint, midpoint, perpendicular |
-| Snap override | SAKNAS | Shift/Alt modifierare |
-| Intelligent snap | Endast grid | Object snap, constraints |
+| Problem från W08 | Status nu |
+|-------------------|-----------|
+| Onboarding saknar tydligt mål | GuidedSetupWizard förbättrad |
+| Tomma tillstånd utan CTA | Delvis löst (ProjectStatusCTA finns) |
+| Projektsidan har för många flikar | OFÖRÄNDRAT |
+| Mobil Space Planner | OFÖRÄNDRAT |
+| Breadcrumbs/kontext | OFÖRÄNDRAT |
 
-**Problem i koden (UnifiedKonvaCanvas.tsx rad 266-289):**
-```javascript
-// getSnapSize() - Snap-storleken andras AUTOMATISKT:
-zoom < 0.5 -> 1000mm
-zoom < 1.0 -> 500mm
-zoom < 2.0 -> 250mm
-zoom >= 2.0 -> 50mm
-```
+**Nya observationer:**
 
-**Konsekvens:** Användaren kan ALDRIG rita exakt 3450mm oavsett inställning.
+1. **Unified table med sub-rader** — Bra! Kundvagnsikonen som expand-toggle är kompakt och intuitiv. Dubbelräkningsproblemet löst. Men: testning behövs med riktiga data för att se om hierarkin är begriplig för husägare.
 
-**ASCII-illustration:**
-```
-Onskat (user satter 100mm snap):  Nuvarande (auto 500mm vid zoom 0.8):
-┌──────────────────────────┐      ┌──────────────────────────┐
-│ Vagg = 3450mm exakt      │      │ Vagg = 3500mm (avrundad) │
-└──────────────────────────┘      └──────────────────────────┘
-```
+2. **TaskEditDialog sticky footer** — Korrekt fix. Viktigt mönster: alla dialoger med scrollbart innehåll bör ha sticky action-knappar.
 
----
+3. **Kundvy (CustomerViewTab)** — Kritiskt viktigt! Husägaren behöver en förenklad vy. Måste granskas separat: är den tillräckligt enkel?
 
-### BRIST 2: SAKNAD VISUELL FEEDBACK VID RITNING (HOG)
+4. **Faktura/Offert-flöde** — Stor funktion för entreprenörer. UX-granskning behövs: är flödet skapa offert → skicka → kund godkänner → konvertera till projekt → fakturera intuitivt?
 
-| Funktion | Renomate | Branschstandard |
-|----------|----------|-----------------|
-| Live dimension vid drag | NEJ | JA - alltid synlig |
-| Vinkelvisning vid rotation | NEJ | JA |
-| Referenslinjer (alignment) | NEJ | JA - automatiska |
-| Tangent-input "3450 + Enter" | NEJ | JA |
+**Rekommendation:**
+- Gör en UX-walkthrough av hela offert→faktura-flödet innan release
+- Verifiera att CustomerViewTab fungerar för otekniska hemägare
+- Säkerställ att alla nya dialoger har sticky footers
 
-**Varfor kritiskt for amator:** Husagaren vet inte om vaggen ar 3m eller 4m lang forrän de slapper musknappen och inspekterar objektet.
-
-**Onskat beteende:**
-```
-         3450mm
-    ┌─────────────────┐
-    │    [muspekare]  │
-    └─────────────────┘
-          ↑
-   Dynamisk matt-label som foljer musen
-```
-
----
-
-### BRIST 3: OBJEKTBIBLIOTEKET SAKNAR SMART PLACERING (MEDIUM-HOG)
-
-**Nuvarande (objectLibraryDefinitions.ts):**
-- Korrekta dimensioner (600mm diskho, 900mm dorr)
-- wallSnap.ts finns MEN triggas inte konsekvent vid drag-and-drop
-- Dorrar placeras UTANFOR vaggen, inte IN i den
-
-**Onskat vs nuvarande:**
-```
-NUVARANDE (dorr bredvid vagg):    ONSKAT (dorr klipper vagg):
-┌─────────────────────────┐       ┌─────────────────────────┐
-│         Rum             │       │         Rum             │
-│                         │       │                         │
-└─────────────────────────┘       └─────────┤ 900 ├─────────┘
-         [DORR]                             └─────┘
-                                   850mm          2200mm
-                                   └── auto-matt till horn
-```
-
----
-
-### BRIST 4: ELEVATION-VYN ISOLERAD (MEDIUM)
-
-**ElevationCanvas.tsx - vad som finns:**
-- Vaggvisning i sidovy ✓
-- Objekt kan placeras ✓
-- wallRelative-positionering ✓
-
-**Vad som SAKNAS:**
-
-| Funktion | Status |
-|----------|--------|
-| Automatisk sektion fran plan | NEJ - manuellt val |
-| Snittmarkering pa planritning | NEJ |
-| Bidirektionell sync | BUGGY |
-| Materialvisning | NEJ |
-
-**Arkitektperspektiv:** I Revit genereras sektioner med ett klick. Har maste anvandaren navigera till rätt rum/vägg manuellt.
-
----
-
-### BRIST 5: INGA LAGER (LAYERS) (MEDIUM)
-
-**Saknas helt:**
-- Layer-system (väggar, möbler, el, VVS)
-- Låsa/dölja lager
-- Linjetjocklek per objekttyp
-- SS-EN ISO 7519 standardsymboler
-
-**Konsekvens:** Vid utskrift blir allt samma tjocklek - oanvandbart for hantverkare.
-
-**Onskat:**
-```
-Layers-panel:
-┌──────────────────────────┐
-│ [✓] [🔒] Vaggar      ═══ │
-│ [✓] [ ] Dorrar/Fonster   │
-│ [✓] [ ] Mobler       ─── │
-│ [ ] [ ] El/VVS       ··· │ <- dold
-└──────────────────────────┘
-```
-
----
-
-## SAMMANFATTNING
-
-| # | Brist | Proffs drabbas? | Amator drabbas? |
-|---|-------|-----------------|-----------------|
-| 1 | Oforutsagbar snapping | JA - kritiskt | JA - forvirrande |
-| 2 | Ingen live-matt | JA - produktivitet | JA - forstaelse |
-| 3 | Ej smart objektplacering | JA - arbetsflode | JA - resultat |
-| 4 | Elevation isolerad | NEJ - workaround | JA - forvirring |
-| 5 | Inga lager | JA - utskrift | NEJ |
-
----
-
-**Prioritet:** Hog (brister 1-2 blockerar effektivt arbete for alla)
-
-**Forslag:**
-1. **Sprint nu:** Snap-indikatorer (endpoint, midpoint, grid) + live-mattvisning
-2. **Nästa sprint:** Tangent-input "3450 + Enter" for exakta matt
-3. **Framtida:** Layer-system, förbättrad dörr/fönster-autosnap
-
-**Insats:**
-- Snap-indikatorer + live-matt: MEDIUM (4-5 dagar)
-- Tangent-input: STOR (5+ dagar)
-- Layer-system: STOR (10+ dagar)
-- Smart door/window: MEDIUM (3-4 dagar)
+**Insats:** 1 dag UX-review
 
 ---
 
 ### Platschef
 
-**Datum:** 2026-02-09
+**Datum:** 2026-03-02
 
-**Analys:** Kritisk granskning av Renomate ur faltarbetares perspektiv. Identifierat 5 huvudsakliga hinder for daglig anvandning pa bygget:
+**Bedömning:** Appen rör sig åt rätt håll för fältanvändning.
 
-| # | Hinder | Allvarlighet | Beskrivning |
-|---|--------|--------------|-------------|
-| 1 | **Inget offline-stod** | KRITISK | Appen kraver konstant internetanslutning. Ingen PWA/service worker finns. Pa bygget (kallare, betongvaggar, utomhus) tappar man ofta natet. En hantverkare som star i ett badrum och ska rapportera material far "vit skarm" om uppkopplingen forsvinner. |
-| 2 | **For manga klick for materialrapportering** | HOG | Att lagga till en inkoopsorder kraver: Oppna projekt -> Inkop-flik -> Ny order -> Fylla i formular (7+ falt i avancerat lage). "Quick mode" ar battre men fortfarande for tungt. Jamfor med att skicka ett SMS: "Behover 20 st gipsskivor till kok". |
-| 3 | **Terminologi inte 100% byggsvenska** | MEDIUM | Vissa termer stammer inte med hur man pratar pa bygget. Exempel: "Stakeholder" anvands i kod (borde vara "Intressent" eller bara "Person"). "Material requester" ar IT-jargong. "Purchase order" borde vara "Bestallning" eller "Inkopslista". |
-| 4 | **Fotodokumentation kopplas inte automatiskt** | MEDIUM | Fotoflödet ar bra (kamera-knapp finns!), men bilden kopplas bara till en uppgift/rum - inte till bade rum OCH uppgift samtidigt. Jag vill ta en bild pa ett problem i koket, koppla till "Koksgolv" OCH till uppgiften "Lagg klinker". |
-| 5 | **Tidslinjen svarlast pa mobil** | LAG | Gantt-vyn ar for liten pa telefon. Svar att se vilka uppgifter som overlappar. For en platschef som koordinerar 5 hantverkare ar detta viktigt. |
+| Mitt krav från W08 | Status |
+|---------------------|--------|
+| Offline-stöd | PARKERAT (CEO-beslut) |
+| Snabborder FAB | INTE BYGGT |
+| Terminologi-pass sv.json | DELVIS — nya nycklar tillagda men inte granskat byggjargong |
+| Foto multi-koppling | INTE BYGGT |
+| Mobilanpassad tidslinje | INTE BYGGT |
 
-**Arbetsflode idag vs onskad:**
+**Nytt som påverkar fältarbete:**
 
-```
-IDAG — Rapportera material:
-  Hantverkare          App (6-8 klick + vanta pa natverk)
-  -----------          ----------------------------------
-  Ser att material  -> Oppna app
-  tar slut             -> Vanta pa inloggning/laddning
-                       -> Navigera till projekt
-                       -> Oppna "Inkop"-fliken
-                       -> Klicka "+ Ny order"
-                       -> Fylla i: Namn, Antal, Enhet, (Rum)
-                       -> Klicka "Skicka"
-                       -> (Om natverk saknas: FEL, borja om)
+1. **Budget-hierarki med sub-rader** — BRA. Material under arbetsuppgifter gör det lättare att se vad som ingår i ett arbetsmoment. En montör kan se "Badrumsrenovering" och expandera för att se vilka inköp som hör dit.
 
-ONSKAT — Snabbrapportering:
-  Hantverkare          App (2 klick + fungerar offline)
-  -----------          ---------------------------------
-  Ser att material  -> Oppna app
-  tar slut             -> FAB-knapp "Snabborder" (alltid synlig)
-                       -> Rosta eller skriv: "20 gipsskivor kok"
-                       -> Klar! (Synkas nar nat finns)
-```
+2. **Kvittohantering (QuickReceiptCaptureModal)** — Förbättrad. Montörer kan ta foto av kvitto direkt. Bra för fältrapportering.
 
-**Prioritet:** KRITISK — Utan offline-stod kan inte appen anvandas tillforlitligt pa ett svenskt bygge.
+3. **Kostnadsestimering på tasks** — Bra grund. Men fälten (estimated_hours, hourly_rate, markup_percent) är "kontorsspråk". En snickare tänker "3 dagars jobb" inte "24 timmar á 450 kr/h med 15% markup."
 
-**Forslag (prioriterad lista):**
+**Terminologiproblem kvarstår:**
+- "Subcontractor cost" → borde vara "UE-kostnad" eller "Underentreprenör"
+- "Material estimate" → "Materialkalkyl"
+- "Markup percent" → "Påslag" eller "Pålägg"
 
-1. **Offline-first-arkitektur** — Implementera PWA med service worker. Koa API-anrop lokalt och synka nar nat finns. Visa tydlig indikator "Offline — synkas snart". *Insats: STOR (2-3 veckor)*
+**Rekommendation:** Gör ett terminologi-pass på de nya i18n-nycklarna. Insats: 2 timmar.
 
-2. **Snabborder FAB** — Flytande knapp pa alla sidor for snabb materialrapportering. Max 3 falt: Vad + Antal + (valfritt) Rum. Rostinmatning som bonus. *Insats: MEDIUM (3-5 dagar)*
+---
 
-3. **Terminologi-pass** — Ga igenom sv.json och byt ut IT-termer mot byggsvenska. Ingen kodandring, bara oversattning. *Insats: LITEN (1 dag)*
+### Inredningsarkitekt
 
-4. **Foto till multipel koppling** — Tillat att en bild kopplas till bade rum och uppgift samtidigt. *Insats: MEDIUM (2-3 dagar)*
+**Datum:** 2026-03-02
 
-5. **Mobilanpassad tidslinje** — Lista-vy som alternativ till Gantt pa sma skarmar. *Insats: MEDIUM (3 dagar)*
+**Status:** Canvas-refaktoreringen (80aae18) är genomförd. Bra steg för underhållbarhet.
 
-**Insats totalt:** Om vi prioriterar #1 + #2 + #3 = ca 3 veckor for att gora appen anvandbar pa falt.
+Mina 5 kritiska brister från W08:
 
-**Notering:** Appen har manga BRA funktioner for faltarbete: Kameraknapp direkt i fotogalleriet, Quick Mode for inkopsordrar, bra rollhantering. Men utan offline-stod faller allt. Det spelar ingen roll hur fin appen ar om den inte fungerar i kallaren.
+| Brist | Status |
+|-------|--------|
+| Oprecis snapping | OFÖRÄNDRAD |
+| Ingen live-mått vid ritning | OFÖRÄNDRAD |
+| Smart objektplacering | OFÖRÄNDRAD |
+| Elevation-vy isolerad | OFÖRÄNDRAD |
+| Inga lager (layers) | OFÖRÄNDRAD |
+
+**Kommentar:** Canvas-splitten var nödvändig teknisk skuld-hantering, men inga funktionella förbättringar av ritverktyget har skett. Det är OK att detta är parkerat — budgethantering och offertflöde har högre affärsvärde just nu. Men om Renomate ska attrahera proffs-användare (arkitekter, inredare) behöver snap + live-mått prioriteras i Q2.
+
+**Rekommendation:** Parkera canvas-features till Q2. Fokusera nu på affärsflödet (offert→faktura).
 
 ---
 
 ### CRO (Chief Revenue Officer)
 
-**Datum:** 2026-02-10
+**Datum:** 2026-03-02
 
-**Analys:** Första kommersiella genomlysning — ICP, pricing-arkitektur, go-to-market, revenue readiness
+**Observation:** Produktutvecklingen har accelererat mot ICP:s kärnbehov (små entreprenörer). Offert→Faktura-flödet är den **mest kommersiellt kritiska funktionen** som byggts hittills.
 
----
-
-## KOMMERSIELL STRATEGI — RENOMATE
-
-### Revenue Readiness: Steg 1 (Activation)
-
-Produkten är **inte redo för monetarisering.** Och det är korrekt. De 50 beta-testarna kämpar med "Vad gör jag nu?" — activation är olöst. Utan activation: ingen retention, utan retention: ingen revenue.
-
-**Men:** Allt som byggs NU måste designas med den framtida intäktsmodellen i bakhuvudet. Annars byggs en produkt folk älskar men aldrig betalar för.
+**Revenue Readiness Ladder — uppdatering:**
 
 ```
-Revenue Readiness Ladder — Renomate idag:
-
-STEG 5: SKALA                                    ○ (långt bort)
+STEG 5: SKALA                                    ○
 STEG 4: OPTIMERA                                 ○
 STEG 3: MONETARISERA                             ○
-STEG 2: RETENTION                                ◐ (okänt — behöver data)
-STEG 1: ACTIVATION  ◄── NI ÄR HÄR ──►           ◐ (pågående arbete)
-STEG 0: PROBLEM-FIT                              ● (validerat — renoveringsprojekt = kaos)
+STEG 2: RETENTION                                ◐ (offert→faktura = retention-driver)
+STEG 1: ACTIVATION  ◄── FORTFARANDE HÄR ──►      ◐ (GuidedSetup förbättrad)
+STEG 0: PROBLEM-FIT                              ● (validerat)
 ```
+
+**Nyckelinsikter:**
+
+1. **Offert→Faktura = betalningsvilja-signal.** Ingen entreprenör betalar för ett "projektverktyg." Men ett system som hanterar offerter, spårar godkännanden, genererar fakturor? Det sparar dem 5+ timmar/vecka. DET betalar de för.
+
+2. **Kundvy (CustomerViewTab) = viral loop i praktiken.** Varje offert som skickas till en husägare = en ny användare som ser Renomate. Om upplevelsen är bra: word-of-mouth. Om den är dålig: entreprenören slutar använda appen.
+
+3. **Budget-hierarki löser "dubbelräkning" som blockerade trovärdighet.** En entreprenör som visar en felaktig budget för sin kund tappar förtroendet för verktyget omedelbart.
+
+**Kommersiella frågor att besvara:**
+- Hur många av de 50 beta-testarna har skickat en offert?
+- Har någon konverterat offert→projekt→faktura end-to-end?
+- Vad kostar det idag (tid/pengar) för en entreprenör att göra detta manuellt?
+
+**Rekommendation:** Instrumentera offert→faktura-flödet. Mät completion rate. Detta är data som visar om vi närmar oss monetarisering.
 
 ---
 
-### ICP-MATRIS (Ideal Customer Profile)
+### Firmaägare
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│                   RENOMATE ICP-MATRIS                               │
-├──────────────┬────────────┬──────────────┬──────────────┬──────────┤
-│ Segment      │ Pain (1-10)│ Betalvilja   │ Expansion    │ Viral    │
-├──────────────┼────────────┼──────────────┼──────────────┼──────────┤
-│ Husägare     │ 7          │ Låg (€5-15/m)│ Låg (1 proj) │ Låg      │
-│ Hantverkare  │ 6          │ Låg-Med      │ Medium       │ HÖG ★   │
-│ Sm. entrepren│ 9 ★        │ Medium-Hög   │ HÖG ★       │ HÖG ★   │
-│  (1-10 pers) │            │ (€49-99/m)   │ (n projekt)  │          │
-│ Arkitektbyrå │ 5          │ Hög          │ Hög          │ Medium   │
-│ Fastighetsb. │ 8          │ Mycket hög   │ Mycket hög   │ Låg      │
-└──────────────┴────────────┴──────────────┴──────────────┴──────────┘
-```
+**Datum:** 2026-03-02
 
-**Beachhead market:** Små renoveringsföretag (1-10 anställda) i Sverige.
+**Reaktion:** Nu börjar det likna något! Offert + Faktura + Kundvy = det jag behöver varje dag.
 
-**Varför:**
-1. Smärtan är daglig — jonglerar 3-8 projekt med WhatsApp/Excel
-2. De betalar redan — till Bygglet, Fortnox, manuella timmar
-3. Viral motor — 1 entreprenör → 5 husägare + 10 hantverkare = 15 nya ögon/mån
-4. Expansion inbyggd — fler projekt = mer värde = naturlig uppgradering
+| Mitt önskade flöde | Status |
+|--------------------|--------|
+| Ny kundförfrågan → Skapa lead | Finns (intake) |
+| Platsbesök → Foton, skiss, Space Planner | Finns |
+| Godkänd offert → Auto-konvertera till tasks | FINNS (createTasksFromQuote) |
+| Projektgenomförande → Spåra, rapportera | Finns (tasks, budget, unified table) |
+| Slutbesiktning → Faktura | **NYTT!** Fakturasystem byggt |
 
----
+**Det som saknas för att jag ska använda det dagligen:**
 
-### BRIDGE STRATEGY TILL NÄSTA SEGMENT
+1. **Offert → Faktura hela vägen** — Kan jag skapa en faktura baserad på godkänd offert med ett klick? Eller måste jag fylla i allt igen?
 
-```
-BEACHHEAD                    BRIDGE                      EXPANSION
-─────────                    ──────                      ─────────
-Sm. entreprenörer    ──►    Husägare (bjuds in)    ──►   Husägare signupar
-(betalar)                   (gratis viewer)              själva (freemium)
-        │
-        └──►    Hantverkare (bjuds in)     ──►   Hantverkare vill ha
-                (gratis collaborator)             eget konto (betalar)
-                        │
-                        └──►    Fastighetsbolag ser att
-                                deras leverantörer redan
-                                använder Renomate ──► Enterprise
-```
+2. **PDF-export av offert/faktura** — Mina kunder vill ha PDF i mejlen, inte en länk till en app.
+
+3. **Bankgiro/Swish-info på fakturan** — Ser att profilsidan har betalfält nu. Bra! Men syns de på fakturan?
+
+4. **ÄTA-hantering** — Budget-hierarkin är bra. Men ÄTA (ändrings- och tilläggsarbeten) behöver vara tydligt separerade. Kunden ska inte blanda ihop originaloffert med tillägg.
+
+**Rekommendation:** Testa end-to-end: skapa offert → skicka till kund → kund godkänner → konvertera → jobba → fakturera. Var bryts flödet?
 
 ---
 
-### PRICING-ARKITEKTUR (designa NU, lansera SENARE)
+### Hemägare
 
-```
-┌─────────────────────────────────────────────────────────┐
-│ FREE            │ PRO (€49/mån)   │ BUSINESS (€99/mån) │
-├─────────────────┼─────────────────┼─────────────────────┤
-│ 1 aktivt projekt│ 10 projekt      │ Obegränsade projekt │
-│ 2 team-members  │ 10 team-members │ Obegränsat team     │
-│ Grundritning    │ Avancerad canvas│ API + integrationer  │
-│ Uppgifter       │ Budget-spårning │ Export (PDF/DWG)    │
-│ Foton           │ Timeline/Gantt  │ Anpassad branding   │
-│                 │ Offline read    │ Prioriterad support  │
-├─────────────────┴─────────────────┴─────────────────────┤
-│ Alla planer: Unlimited invited viewers (husägare)       │
-│ ★ Invited viewers = viral motor, ALDRIG bakom paywall   │
-└─────────────────────────────────────────────────────────┘
-```
+**Datum:** 2026-03-02
 
-**Nyckelprincip:** Husägare (invited viewers) ska ALLTID vara gratis. De är tillväxtmotorn, inte intäktskällan.
+**Perspektiv:** Jag har blivit inbjuden till ett renoveringsprojekt. Vad ser jag?
 
----
+**Nytt sedan W08:**
+- CustomerViewTab finns — en förenklad vy för mig
+- Offerten kommer som delningslänk — jag kan se och godkänna
+- Fakturan kan visas i appen
 
-### REVENUE LOOP
+**Mina farhågor:**
 
-```
-Husägare signupar gratis
-       │
-       ▼
-Skapar projekt, bjuder in hantverkare ──► Hantverkaren ser värde
-       │                                        │
-       ▼                                        ▼
-Uppgraderar till Pro (budget,                Hantverkaren signupar
- timeline, avancerade ritningar)              för eget konto
-       │                                        │
-       ▼                                        ▼
-Projektet slutförs,                     Hantverkaren bjuder in
- husägaren rekommenderar                 SINA kunder (husägare)
-       │                                        │
-       └──────────── LOOP ◄─────────────────────┘
-```
+1. **Är kundvyn verkligen enkel?** Jag vill se: foton, framsteg, nästa steg, kostnad. Inte: "tasks", "materials", "budget breakdown", "subcontractor cost."
+
+2. **Offertgodkännande** — Kan jag godkänna med ett klick? Eller behöver jag skapa konto först? Varje extra steg = jag ringer hantverkaren istället.
+
+3. **Fakturan** — Var betalar jag? Swish-nummer? Bankgiro? Jag vill inte leta.
+
+4. **Begripligt språk** — "Purchase requests", "ordered amount", "payment status" — förstår inte. Behöver vanlig svenska: "Beställt", "Betalt", "Återstår."
+
+**Rekommendation:** Testa kundvyn med någon som INTE är teknisk. Ge dem länken och se om de förstår utan hjälp.
 
 ---
 
-### PRE-REVENUE PRIORITIES (NU)
+### Community Manager
 
-| Prio | Åtgärd | Revenue impact | Varför nu |
-|------|--------|---------------|-----------|
-| **1** | **Fixa activation (onboarding)** | Ingen direkt, men ALLT bygger på detta | Utan activation: ingen retention → ingen revenue |
-| **2** | **Bygg invite-loopen** — trivialt att bjuda in team | Viral coefficient >1.0 = organisk tillväxt | Varje inbjuden = potentiell betalande kund. CAC=0-kanal |
-| **3** | **Instrumentera usage** — tracka features, frekvens, segment | Data för pricing-beslut | Utan data = gissning om var paywall ska sitta |
+**Datum:** 2026-03-02
 
-### KILL LIST (lockande men fel timing)
+**Status:** Community-arbete har inte påbörjats (korrekt per CEO-beslut — parkerat till Sprint 4+).
 
-- **Betalplan nu** — 50 testare som inte klarar onboarding. Att ta betalt = döda dem.
-- **Enterprise/Fastighetsbolag** — 12-18 mån bort. Kräver SSO, audit trail, SLA.
-- **Marketplace (hantverkare ↔ husägare)** — Tvåsidig marknad = annan affär. Parkera.
-- **Fortnox-integration** — Bra bridge till betalvilja, men Sprint 5+.
+**Observation:** Offert-delningsfunktionen är den första "sociala" funktionen i Renomate. Varje skickad offert = en touchpoint med en potentiell ny användare. Detta är grunden för den virala loopen.
 
----
+**Rekommendation:** Säkerställ att den delade offert-/fakturavyn har:
+- Renomate-branding (subtil, inte påträngande)
+- "Powered by Renomate" footer med signup-länk
+- Professionellt utseende som reflekterar väl på entreprenören
 
-### LÄRDOMAR FRÅN MARKNADSLEDARE
-
-**Procore** ($2B+ ARR): Började med midsegmentet (medelstora byggföretag). Expanderade sedan uppåt OCH nedåt. Renomate → börja med den lilla entreprenören.
-
-**PlanGrid** (förvärvat $875M): Vann genom enkelhet — fältarbetare öppnade ritningar på iPad utan utbildning. Platschefen har rätt: den som vinner hantverkarens telefon vinner marknaden.
-
-**Figma**: Gratis tier + invite = nuclear viral loop. Renomate har samma möjlighet: entreprenör → husägare → granne som renoverar.
-
----
-
-### MÄTVÄRDEN ATT TRACKA (pre-revenue)
-
-| Metrik | Varför | Mål v.12 |
-|--------|--------|----------|
-| Activation rate (signup → projekt) | Grundförutsättning | >50% |
-| Invite rate (projekt med >1 medlem) | Viral motor | >30% |
-| Weekly retention (återkommer 7d) | Sticky = betalvilja | >40% |
-| Feature depth (≥3 features/projekt) | Engagemang | >25% |
-| Viral coefficient (inbjudna → signup) | Organisk tillväxt | >0.3 |
-
-**Monetariserings-trigger:** När activation >50% OCH weekly retention >40% → soft-launch betalplan mot små entreprenörer.
-
----
-
-### PRODUKTMOGNAD VS. REVENUE READINESS — CHECKLISTA
-
-Denna checklista används för att mäta om produkten är redo för varje steg i Revenue Readiness Ladder:
-
-#### Steg 0: Problem-Fit ✅ KLART
-
-- [x] Identifierat kärnproblem (renoveringsprojekt = kaos)
-- [x] Byggt MVP med kärnfunktioner (projekt, uppgifter, ritning, budget)
-- [x] Fått bekräftelse från riktiga användare (50 beta-testare)
-
-#### Steg 1: Activation ◐ PÅGÅENDE
-
-- [ ] Ny användare förstår vad appen gör inom 60 sekunder
-- [ ] Signup → första projekt: >50% completion rate
-- [ ] Demo-projekt guidar effektivt (inte förvirrar)
-- [ ] Mobil onboarding fungerar (40%+ av trafiken)
-- [ ] Empty states driver handling (inte "tom sida")
-- **Status:** UX har designat lösning, implementering ej påbörjad
-
-#### Steg 2: Retention ○ NÄSTA
-
-- [ ] Användare återkommer inom 7 dagar: >40%
-- [ ] Notifikationer/påminnelser driver återbesök
-- [ ] Invite-loop: >30% av projekt har >1 medlem
-- [ ] Minst 3 features används aktivt per projekt
-- [ ] "Jag kan inte sluta använda det" — kvalitativ feedback
-- **Förutsättning:** Activation måste vara löst först
-
-#### Steg 3: Monetarisera ○ EJ PÅBÖRJAT
-
-- [ ] Usage data visar tydlig Free/Pro-gräns
-- [ ] 10+ användare har sagt "jag skulle betala för detta"
-- [ ] Pricing-sida byggd (även om den inte är live)
-- [ ] Stripe/betalningsintegration klar
-- [ ] Upgrade-flow i appen (free → pro)
-- **Förutsättning:** Retention >40% weekly
-
-#### Steg 4: Optimera ○ LÅNGT BORT
-
-- [ ] NRR >110% (expansion revenue)
-- [ ] Churn <5% monthly
-- [ ] Pricing A/B-testade
-- [ ] Onboarding → betalt: <14 dagar median
-
-#### Steg 5: Skala ○ LÅNGT BORT
-
-- [ ] Nordisk expansion (NO, DK, FI)
-- [ ] Partner/channel-strategi
-- [ ] Enterprise-tier
-- [ ] 1000+ betalande kunder
-
----
-
-**Prioritet:** Hög — kommersiell riktning måste styra produktbeslut redan nu
-**Förslag:** Alla personas bör referera till Revenue Readiness Ladder vid prioriteringsbeslut
-**Insats:** Ingen kodutveckling — strategiskt ramverk
+**Insats:** Liten (verifiera befintlig implementation)
 
 ---
 
 ## Frågor till CEO
 
-<!-- Specialists: Lägg till frågor här som kräver prioriteringsbeslut -->
+### Nya frågor
 
-### Besvarade frågor
+1. **CTO (2026-03-02):** 17 migrationer väntar + 4600 rader uncommitted. Ska jag köra commit + push + `supabase db push` nu?
 
-1. **Platschef (2026-02-09):** Offline-stöd är kritiskt för fältanvändning men kräver 2-3 veckors arbete. Ska vi prioritera detta före onboarding-flödet?
+   **Rekommendation:** JA. Omedelbart. Risken för dataloss ökar varje dag.
 
-   **CEO-svar (2026-02-09):** Nej, men "offline read-only" planeras för sprint 2. Se "Svar till Platschefen" ovan.
+2. **CRO (2026-03-02):** Ska vi instrumentera offert→faktura-flödet med event-tracking innan release? Det ger oss data för monetaiseringsbeslut.
 
-2. **CTO (2026-02-09):** Pinterest-hemligheten läcker. Ska jag dölja knapparna omedelbart?
+   **Rekommendation:** JA, men minimal (5-10 events). Inte ett fullskaligt analytics-system.
 
-   **CEO-svar (2026-02-09):** JA. Gör hotfixen NU (5 min: dölj Pinterest-knappar i UI). Bygg sedan Edge Function denna vecka. Ta bort VITE_PINTEREST_CLIENT_SECRET från frontend.
+3. **Firmaägare (2026-03-02):** Finns det end-to-end-test av offert→faktura-flödet? Ingen av oss har sett det fungera hela vägen.
 
-   **Uppdatering (2026-02-09):** AVSKRIVET — Pinterest använder oEmbed (publikt API utan nyckel), inte OAuth. Filen `pinterest.ts` är död kod som aldrig anropas. Ingen säkerhetsrisk.
+   **Rekommendation:** Prioritera manuell testning innan commit.
 
-3. **CRO + CM (2026-02-12):** Strategisk retention page ("Discover"-flik) — viktig långsiktigt för att hålla användare engagerade mellan projektuppgifter. API-integrationsmöjligheter kartlagda (Boverket, SMHI, Pinterest, eventuellt Hemnet/Booli via partnerskap). **Rekommendation:** Parkera till Sprint 4+ (efter activation >50%, retention >40%). Om vi vill börja nu: minimal MVP med RSS + Tips + väder = 1 vecka. **Beslut önskas:** Parkera eller påbörja minimal version?
+4. **Platschef (2026-03-02):** De nya i18n-nycklarna för kostnadsestimering behöver terminologi-pass. Kan jag göra det? (2 timmars insats)
 
-   **CEO-svar (2026-02-17):** PARKERA till Sprint 4+. Fokus på activation först. Retention-features är meningslösa om folk aldrig kommer förbi onboarding.
+   **Rekommendation:** JA, gör det innan commit.
 
-4. **CTO + CRO (2026-02-13):** Monetiseringsaktivering planerad — fullständig teknisk och kommersiell roadmap skapad nedan. **Rekommendation:** Börja Fas 0 (juridisk grund) och Fas 1 (databasschema) nu även om lansering är Sprint 8+. Stripe rekommenderas framför Klarna/Swish för SaaS-prenumerationer. **Beslut önskas:** Godkänn Stripe som primär betalplattform + påbörja Fas 0-1?
+### Besvarade frågor (historik)
 
-   **CEO-svar (2026-02-17):** JA, Stripe godkänt som primär betalplattform. Påbörja Fas 0 (juridisk grund) i bakgrunden, men ingen aktiv utveckling förrän activation >50%.
-
-### Öppna frågor
-
-*Inga öppna frågor just nu. Alla har besvarats 2026-02-17.*
-
----
-
-## Nästa sprint-kandidater (Sprint 3, v.9-10)
-
-| # | Område | Insats | Förutsättning |
-|---|--------|--------|---------------|
-| 1 | Offline read-only (casha ritningar + uppgifter) | 3-5 dagar | Onboarding klar |
-| 2 | Inbjuden hemägare — full anpassad vy | 5 dagar | Minimal separation klar |
-| 3 | Offert → Projekt konvertering | 3-5 dagar | Fler firmaägare |
-| 2 | Snabborder FAB (flytande knapp för materialrapport) | 3-5 dagar | - |
-| 3 | Breadcrumbs + kontextnavigering | 1-2 dagar | - |
-| 4 | Terminologi-pass (byggsvenska i sv.json) | 1 dag | - |
-| 5 | History-prestanda (immer.js) | 8-12h | Projekt med >500 shapes |
-
-**Längre fram (sprint 3+):**
-- Fullt offline-stöd med skriv-kö
-- Canvas snapping + live-mått
-- Layer-system i Space Planner
-- Mobilanpassad tidslinje
-- Offert → Projekt automatisk konvertering
+1. **Platschef (W08):** Offline-stöd → CEO: Parkerat
+2. **CTO (W08):** Pinterest-säkerhet → CEO: AVSKRIVET (oEmbed)
+3. **CRO + CM (W08):** Discover/retention → CEO: Parkerat till Sprint 4+
+4. **CTO + CRO (W08):** Stripe → CEO: Godkänt som plattform, ingen dev förrän activation >50%
 
 ---
 
-## Användarsegment (uppdaterad 2026-02-12)
+## Mätetal
 
-### Tre distinkta användarprofiler
+| Metrik | W08 (uppskattning) | W10 (uppskattning) | Mål |
+|--------|--------------------|--------------------|-----|
+| Signup → Första projekt (mobil) | ~30% | ~35% | 50% |
+| Signup → Första projekt (desktop) | ~50% | ~55% | 70% |
+| Onboarding completion rate | ~15% | ~20% | 40% |
+| Demo-projekt öppnat | ~40% | ~45% | 60% |
+| Offert skickad | N/A | OKÄNT | Börja mäta! |
+| Faktura skapad | N/A | 0 (ny funktion) | Börja mäta! |
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           FIRMAÄGAREN                                       │
-│                   (Småentreprenör, 1-10 anställda)                          │
-│                                                                             │
-│   Primär enhet: Desktop (offert/planering) + Mobil (fält)                   │
-│   Skapar: Projekt, Offerter, Timeline                                       │
-│   Bjuder in: Husägare (som kund) + Fältarbetare (som team)                  │
-│   Betalar: JA — Pro/Business-plan (€49-99/mån)                              │
-└──────────────────────────┬──────────────────────────────────────────────────┘
-                           │
-           ┌───────────────┴───────────────┐
-           ▼                               ▼
-┌──────────────────────────┐   ┌──────────────────────────────────────────────┐
-│       HUSÄGAREN          │   │              FÄLTARBETAREN                   │
-│   (Privatperson)         │   │    (Hantverkare, underentreprenör)           │
-│                          │   │                                              │
-│   Primär enhet: Desktop  │   │   Primär enhet: Mobil                        │
-│   + Mobil (följa upp)    │   │                                              │
-│                          │   │                                              │
-│   Skapar: Kommentarer,   │   │   Skapar: Foton, statusuppdateringar,        │
-│   godkännanden, foton    │   │   materialrapporter                          │
-│                          │   │                                              │
-│   Betalar: NEJ (invited) │   │   Betalar: NEJ (invited) → Kanske senare    │
-│   eller Free tier        │   │   om hen vill ha eget konto                  │
-└──────────────────────────┘   └──────────────────────────────────────────────┘
-```
-
-### Husägarens två roller
-
-**VIKTIGT:** Husägaren kan ha två helt olika upplevelser beroende på kontext:
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         HUSÄGARE SOM PROJEKTÄGARE                           │
-│                        (DIY / Egen projektledning)                          │
-├─────────────────────────────────────────────────────────────────────────────┤
-│   • Skapar eget projekt via WelcomeModal                                    │
-│   • Full access: rita, skapa uppgifter, bjuda in hantverkare                │
-│   • Kan uppgradera till Pro för fler funktioner                             │
-│   • Onboarding: "Skapa projekt" → Rita rum → Lägg till uppgifter            │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         HUSÄGARE SOM KUND/BESTÄLLARE                        │
-│                      (Inbjuden av entreprenör)                              │
-├─────────────────────────────────────────────────────────────────────────────┤
-│   • Bjuds in via offert eller direkt till projekt                           │
-│   • Begränsad access (view) men SKA KUNNA DELTA AKTIVT:                     │
-│     ✓ Kommentera på uppgifter, rum, foton                                   │
-│     ✓ Tagga projektledare (@mentions)                                       │
-│     ✓ Ladda upp bilder (inspirationsbilder, problem, önskemål)              │
-│     ✓ Godkänna/avvisa ändringar                                             │
-│     ✓ Se framsteg och timeline                                              │
-│   • Onboarding: "Du har blivit inbjuden" → Översikt → Kommentera            │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-**Designprincip:** Även med "view"-access ska plattformen bjuda in till **dialog och samarbete**. En kund som känner sig delaktig är en nöjd kund som rekommenderar vidare.
-
-**Vad som finns idag:**
-- ✅ Kommentarer på uppgifter (`CommentsSection`)
-- ✅ @mentions (fungerar i kommentarer)
-- ✅ Bilduppladdning i kommentarer
-- ⚠️ Kommentarer på rum — behöver verifieras
-- ⚠️ Kommentarer på ritningsobjekt (shapes) — `drawing_object_id` finns i DB
-
-**Vad som kan förbättras:**
-- Tydligare CTA för kunder att kommentera ("Har du frågor? Skriv här")
-- Notifikationer när projektledaren svarar
-- "Godkänn ändring"-knapp på ändringsförslag
-
-### Onboarding per segment
-
-| Segment | Ingång | Onboarding-fokus | Kritiska första minuter |
-|---------|--------|------------------|------------------------|
-| **Firmaägaren** | Signup (organisk/referral) | Skapa offert → bjud in kund | Offert-verktyget |
-| **Husägaren (projektägare)** | Signup (organisk) | Skapa projekt → lägg till rum → uppgifter | WelcomeModal → Demo |
-| **Husägaren (inbjuden kund)** | Invitation-länk | Förstå projektstatus → **börja kommunicera** | Projekt-översikt + kommentar-CTA |
-| **Fältarbetaren** | Invitation-länk | Se uppgifter → ta foto → rapportera | Mobil tasks-vy |
-
-**Nyckelinsikt för inbjudna husägare:** De ska inte känna sig som passiva observatörer. Även med view-access ska de uppmuntras att:
-- Ställa frågor via kommentarer
-- Ladda upp inspirationsbilder eller foton på problem
-- Tagga projektledaren för snabbt svar
-- Godkänna ändringar och milstolpar
+**North Star W10:** Committa, applicera migrationer, stabilisera offert→faktura → börja mäta.
 
 ---
-
-### Firmaägare (Specialist-logg)
-
-**Datum:** 2026-02-12
-
-**Analys:** Första granskning av Renomate ur småföretagarperspektiv
-
-**Vad som FINNS:**
-- ✅ Komplett offert-funktionalitet (CreateQuote, ViewQuote)
-- ✅ ROT-avdrag i offerter
-- ✅ Kund kan acceptera/avvisa offert digitalt
-- ✅ Inbjudningssystem med granulära roller
-- ✅ Fältarbetare kan se tilldelade uppgifter
-
-**Vad som SAKNAS (prioriterat):**
-
-| Prio | Funktion | Varför kritiskt | Insats |
-|------|----------|-----------------|--------|
-| **1** | **Offert → Projekt konvertering** | 30 min manuellt arbete per projekt | Medium (3-5 dagar) |
-| **2** | **Kund-dashboard (förenklad vy)** | Kunden ringer "hur går det?" | Medium (3-5 dagar) |
-| **3** | **Demo-banner i projekt** | Nya användare förstår inte att det är demo | Liten (2h) |
-| **4** | Lead-hantering (CRM-light) | Tappar förfrågningar i mail-kaos | Stor (1-2 veckor) |
-
-**Prioritet:** Hög — Firmaägaren är den virala motorn (1 firma → 5 kunder → 10 fältarbetare)
-
-**Förslag:** Bygg "Offert → Projekt med ett klick" i Sprint 2-3
-
-**Insats:** Medium för offert-konvertering, Liten för demo-banner
-
----
-
-### Hemägare (Oteknisk privatperson)
-
-**Datum:** 2026-02-10
-
-**Analys:** Fail-test av hela appen ur en oteknisk hemägares perspektiv — två flöden testade:
-1. **Inbjudan:** Bli inbjuden till ett projekt av min byggfirma
-2. **Eget projekt:** Signupa själv och försöka skapa ett projekt
-
----
-
-## HEMÄGARENS FAIL-TEST — FULLSTÄNDIG RAPPORT
-
-*Jag heter Anna, 42 år. Jag har köpt en 2:a på Söder som behöver nytt kök och badrum. Min byggfirma "Pers Bygg" ska göra jobbet. Per sa att jag kan "följa renoveringen i en app". Jag laddar ner... vad nu?*
-
----
-
-### TEST 1: INBJUDEN TILL PROJEKT (80% av hemägare)
-
-#### Steg 1: Jag får ett mail ✅ OK
-
-```
-"Hej Anna! Per från Pers Bygg har bjudit in dig till
-projekt Köksrenovering Södermalm. Klicka här för att
-följa med i processen."
-
-[ Öppna mitt projekt ]
-```
-
-**Känsla:** Bra! Jag förstår vad det handlar om. Mailet visar projektnamn, min roll och vilka delar jag har tillgång till.
-
-**Betyg: 7/10** — Begripligt, men lite formellt. Hade velat se "Per" med bild, inte bara text.
-
----
-
-#### Steg 2: Jag klickar på länken ⚠️ STOPP
-
-Jag hamnar på en sida som säger att jag måste **skapa konto eller logga in**.
-
-**Min reaktion:** *"Måste jag skapa ÄNNU ETT konto? Jag har redan 40 lösenord..."*
-
-Jag skapar ett konto. Email, lösenord. OK.
-
-**Men sen:** Jag hamnar på... **InvitationResponse-sidan** som visar:
-- Projektnamn ✓
-- Min roll: "Client" ✓
-- Behörigheter: "Timeline: view, Tasks: view, Space Planner: view..."
-
-**Min reaktion:** *"Vad är 'Space Planner'? Vad är 'Timeline view'? Varför ser jag en behörighetslista som ser ut som IT-inställningar?"*
-
-**Betyg: 4/10** — Teknisk jargong. Jag vill bara se mitt kök.
-
----
-
-#### Steg 3: Jag accepterar inbjudan och landar i projektet ❌ FÖRVIRRING
-
-Jag klickar "Acceptera" och hamnar på... **samma projektsida som alla andra**.
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ Overview │ Space Planner (Beta) │ Files │ Tasks │ Purchases │ Budget │ Team │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Min reaktion:** *"Sju flikar? Vad är 'Space Planner (Beta)'? Vad är 'Purchases'? Varför står det 'Beta' — är appen inte färdig?"*
-
-**Ingen välkomsttext.** Ingen "Hej Anna, här kan du följa din renovering." Ingen guide. Bara en projektvy med pulskort som visar "0 of 0 tasks completed".
-
-**Dessutom:** Jag ser **OnboardingChecklist** som säger:
-- "Skapa ditt första projekt"
-- "Öppna Space Planner"
-- "Rita ett rum"
-
-**Min reaktion:** *"Jag SKA inte skapa projekt? Per bjöd ju in mig? Varför vill appen att JAG ska rita rum? Det är Pers jobb!"*
-
-**KRITISKT FYND:** Inbjudna användare får exakt samma onboarding som nya användare som signupar själva. Ingen anpassning. Checklistan är helt irrelevant för en inbjuden hemägare.
-
-**Betyg: 2/10** — Jag vet inte vad jag ska göra. Appen pratar till fel person.
-
----
-
-#### Steg 4: Jag försöker hitta bilder ❌ SVÅRT
-
-Per sa att han skulle lägga upp bilder. Jag letar...
-
-- "Overview" — Ser pulskort med siffror. Inga bilder.
-- "Files" — Jag hittar fliken. Ser en lista med filnamn och datum. Inte bilder — **filnamn**. "IMG_2847.jpg", "IMG_2848.jpg".
-
-**Min reaktion:** *"Vilken bild är vad? Jag vill se SENASTE bilderna stort, inte en fillista. Det här ser ut som en mapp på datorn."*
-
-**Vad jag önskade:** En "Senaste bilderna"-sektion direkt på översikten. Stort. Med datum och beskrivning.
-
-**Betyg: 3/10** — Bilder finns tekniskt, men upplevelsen är som en filhanterare, inte Instagram.
-
----
-
-#### Steg 5: Jag försöker skriva en fråga till Per ⚠️ OKLART
-
-Jag vill fråga "Hej Per, hur ser det ut med kaklet till badrummet?"
-
-**Var skriver jag det?**
-
-- Jag hittar ingen tydlig "Skriv till Per"-knapp på översikten
-- Feed-fliken? Den ligger bakom "More"-menyn på mobil
-- Kommentarer finns på uppgifter — men jag måste **först hitta rätt uppgift**, klicka på den, scrolla ner till "Comments"
-
-**Min reaktion:** *"I WhatsApp skriver jag ett meddelande. Här måste jag navigera runt och hitta rätt ställe att kommentera. Det här är inte en konversation — det är ett ärendesystem."*
-
-**KRITISKT FYND:** Det finns inget sätt att bara "prata med Per" — all kommunikation är kopplad till specifika objekt (uppgifter, material, filer). För en hemägare som bara vill ställa en fråga är det som att behöva skapa ett ärende hos kundtjänst.
-
-**Betyg: 2/10** — Kommunikation finns men den är gömd och objektbunden.
-
----
-
-#### Steg 6: Jag vill se hur det går med budgeten ⚠️ ÖVERVÄLDIGANDE
-
-Jag klickar på "Budget"-fliken.
-
-**Jag ser:**
-- "Totalbudget", "Beställt belopp", "Betalt", "Återstår"
-- En tabell med kolumner: Namn, Typ, Budget, Beställt, Betalt, Återstår, Status
-- "Kostnadsställe" som filter
-
-**Min reaktion:** *"Kostnadsställe? Beställt belopp? Det här ser ut som Fortnox. Jag ville bara veta: hur mycket av mina 200 000 kr har vi använt?"*
-
-**Vad jag önskade:**
-
-```
-┌──────────────────────────────────────────┐
-│  💰 Budget                                │
-│                                           │
-│  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░ 135 000 kr     │
-│  av 200 000 kr                            │
-│                                           │
-│  Kök:    95 000 kr                        │
-│  Badrum:  40 000 kr                       │
-│  Övrigt:      0 kr                        │
-│                                           │
-│  65 000 kr kvar                           │
-└──────────────────────────────────────────┘
-```
-
-**Betyg: 3/10** — Informationen finns men presentationen är för en bokförare.
-
----
-
-#### Steg 7: Mobilupplevelsen ❌ PROBLEM
-
-Jag öppnar appen på telefonen (90% av min användning).
-
-**Bottennavigeringen visar:** Overview, Plans, Tasks, Purchases
-
-**Min reaktion:** *"Plans? Jag vill se bilder och prata med Per — inte ritningar. Varför är 'Plans' här men inte 'Bilder'?"*
-
-- "Files" (bilder) ligger bakom "More"-menyn → **3 klick bort**
-- "Feed" (kommunikation) ligger bakom "More"-menyn → **3 klick bort**
-- "Budget" ligger bakom "More"-menyn → **3 klick bort**
-
-De tre saker jag använder mest (bilder, kommunikation, budget) är alla gömda.
-
-**Notifikationer:** Bara i appen. Ingen push, ingen SMS. Per lägger upp bilder → jag vet inte om det förrän jag råkar öppna appen och ser klockan.
-
-**Betyg: 3/10** — Mobil-navet är byggt för projektledaren, inte för mig.
-
----
-
-### SAMMANFATTNING TEST 1: INBJUDEN TILL PROJEKT
-
-| Steg | Vad som händer | Betyg | Fail? |
-|------|---------------|-------|-------|
-| Få mail | Bra, begripligt | 7/10 | |
-| Skapa konto | Ytterligare ett konto... | 5/10 | |
-| Invitation-sida | Teknisk behörighetslista | 4/10 | ⚠️ |
-| Landa i projekt | Fel onboarding, 7 flikar, ingen guide | 2/10 | ❌ |
-| Hitta bilder | Fillista, inte bildgalleri | 3/10 | ❌ |
-| Skriva till Per | Gömd, objektbunden | 2/10 | ❌ |
-| Se budget | Bokföringstabell | 3/10 | ❌ |
-| Mobil | Fel saker i navbaren | 3/10 | ❌ |
-
-**Totalbetyg flöde 1: 3/10**
-**Prognos:** Jag stänger appen efter 2 minuter och ringer Per istället.
-
----
-
-### TEST 2: EGET PROJEKT (20% av hemägare)
-
-#### Steg 1: Signup + WelcomeModal ✅ BÄTTRE
-
-Jag signupar. WelcomeModal öppnas.
-
-- **Steg 1 — Språkval:** 4 språk visas tydligt med flaggor. Jag klickar 🇸🇪 Svenska. OK!
-- **Steg 2 — Användartyp:** "Husägare" med ikon och kort beskrivning. Jag klickar. OK!
-- **Steg 3 — Vad vill du göra?** Tre alternativ:
-  - "Skapa nytt projekt"
-  - "Importera från dokument"
-  - "Utforska först"
-
-**Min reaktion:** *"'Importera från dokument'? Vilket dokument? Jag har inget dokument. 'Utforska först' — ja, det kanske?"*
-
-Jag klickar "Utforska först".
-
-**Betyg: 6/10** — Språk och typ funkar bra. Tredje steget lite oklart men "Utforska" är ett bra säkert val.
-
----
-
-#### Steg 2: Demo-projektet ⚠️ HALVBRA
-
-Jag hamnar i ett demo-projekt med 4 rum, uppgifter och material.
-
-**Bra:** Jag ser hur det KAN se ut med data. Rum, uppgifter, bilder.
-
-**Dåligt:**
-- Jag förstår inte att det är ett DEMO. Ingen tydlig "Det här är ett exempel"-banner.
-- Projektet heter "Apartment Renovation" — på engelska? (om jag valt svenska)
-- Jag vågar inte klicka på saker — tänk om jag förstör demon?
-
-**Betyg: 5/10** — Bra idé, otydlig exekvering.
-
----
-
-#### Steg 3: Skapa eget projekt ⚠️ OKLART
-
-Jag går tillbaka till projektsidan och klickar "+ Nytt projekt".
-
-**Steg 1 — Formulär:**
-- Projektnamn (obligatoriskt) — "Köksreno Söder"
-- Adress (valfritt) — OK
-- Postnummer + Stad (valfritt) — OK
-- Beskrivning (valfritt) — Hmm, vad ska jag skriva?
-
-**Steg 2 — Detaljer:**
-- Projekttyp — "Köksrenovering" — bra!
-- Startdatum — OK
-- Totalbudget — "0 kr" ← *"Vad ska jag skriva? Med eller utan ROT? Inkl moms?"*
-
-**Min reaktion:** Budget-fältet utan förklaring gör mig osäker. Jag skriver "200000" och hoppas.
-
-Projektet skapas. Jag hamnar på Overview.
-
-**Betyg: 5/10** — Formuläret är OK men budget-fältet behöver kontexthjälp.
-
----
-
-#### Steg 4: OnboardingChecklist ❌ FEL FOKUS
-
-Nu ser jag checklistan:
-1. "Skapa ditt första projekt" ✅
-2. "Öppna Space Planner"
-3. "Rita ditt första rum"
-4. "Generera väggar (valfritt)"
-5. "Skapa uppgift kopplad till rum"
-
-**Min reaktion:** *"Space Planner? Rita rum? Generera VÄGGAR? Jag vill inte rita — jag vill skapa en enkel att-göra-lista! 'Riv gamla köket', 'Dra ny el', 'Sätt kakel'. Varför vill appen att jag ska bli arkitekt?"*
-
-**KRITISKT FYND:** Onboarding-stegen förutsätter att alla användare vill använda ritverktyget. En hemägare som bara vill ha koll på sin renovering tvingas igenom ett CAD-liknande flöde.
-
-**Betyg: 2/10** — Checklistan pratar till en inredningsarkitekt, inte till mig.
-
----
-
-#### Steg 5: Bjuda in min byggfirma ⚠️ SVÅRT ATT HITTA
-
-Jag vill bjuda in Per. Var gör jag det?
-
-- Jag klickar runt. "Team"-fliken? Jag ser den — sjunde fliken till höger.
-- På mobil: gömd bakom "More"
-- Jag hittar "Bjud in teammedlem" och fyller i Pers email
-
-**Rollval:** "Contractor", "Project Manager", "Client", "Viewer"
-
-**Min reaktion:** *"Per är min byggfirma — är han 'Contractor' eller 'Project Manager'? Vad är skillnaden? Och varför heter det 'Contractor' på engelska?"*
-
-**Betyg: 4/10** — Funktionen finns men terminologin och placeringen gör det svårt.
-
----
-
-### SAMMANFATTNING TEST 2: EGET PROJEKT
-
-| Steg | Vad som händer | Betyg | Fail? |
-|------|---------------|-------|-------|
-| WelcomeModal | Bra val, tredje steget lite oklart | 6/10 | |
-| Demo-projekt | Bra idé, dålig förklaring | 5/10 | ⚠️ |
-| Skapa projekt | OK formulär, budget oklart | 5/10 | ⚠️ |
-| Onboarding-steg | Fokuserar på ritverktyg, inte mina behov | 2/10 | ❌ |
-| Bjuda in team | Svårt att hitta, engelska roller | 4/10 | ⚠️ |
-
-**Totalbetyg flöde 2: 4/10**
-**Prognos:** Jag skapar ett projekt men ger upp vid "Rita ditt första rum". Appen står oanvänd.
-
----
-
-## DE 10 VÄRSTA PROBLEMEN FÖR HEMÄGAREN
-
-| # | Problem | Allvarlighet | Flöde | Lösning (kort) |
-|---|---------|-------------|-------|-----------------|
-| **1** | **Ingen anpassad onboarding för inbjudna** — får "skapa projekt"-guide trots att de bjudits in | KRITISK | Inbjudan | Detektera inbjudan → visa "Välkommen till ditt projekt" istället |
-| **2** | **Kommunikation är objektbunden** — ingen enkel "prata med Per"-funktion | KRITISK | Båda | Lägg till en projektchatt/meddelandefunktion eller synlig kommentar-CTA på översikten |
-| **3** | **Bilder gömda i fillista** — ingen "senaste bilder"-sektion på översikt | HÖG | Båda | Visa bildkarusell direkt på Overview |
-| **4** | **Mobil-nav byggt för projektledare** — bilder, chat, budget gömda bakom "More" | HÖG | Båda | Anpassa navbaren per roll: hemägare ser Översikt, Bilder, Chat, Budget |
-| **5** | **Onboarding förutsätter ritintresse** — alla steg handlar om Space Planner | HÖG | Eget | Skapa hemägar-specifik onboarding: "Lägg till rum" → "Skapa uppgift" → "Bjud in team" |
-| **6** | **Budget-vy är bokföring** — "Kostnadsställe", "Beställt belopp" | HÖG | Båda | Förenklad budget-vy för hemägare: stapeldiagram + "X kr av Y kr" |
-| **7** | **Ingen push/SMS-notis** — hemägaren vet inte när Per lägger upp bilder | HÖG | Inbjudan | Implementera push + email-notis vid viktiga händelser |
-| **8** | **7 flikar med facktermer** — "Space Planner (Beta)", "Purchases" | MEDIUM | Båda | Byt namn: "Ritning", "Material". Dölj orelevanta flikar per roll |
-| **9** | **Invitation-sidan visar behörighetstabell** — "Timeline: view, Tasks: view..." | MEDIUM | Inbjudan | Visa istället: "Du kan följa framsteg, se bilder och skriva kommentarer" |
-| **10** | **Demo-projekt oklart** — ingen banner, engelskt namn | MEDIUM | Eget | Tydlig "DEMO"-markering + lokaliserat projektnamn |
-
----
-
-## VAD SOM FAKTISKT FUNKAR BRA
-
-Jag vill inte bara klaga. Det finns saker som funkar:
-
-| Funktion | Min kommentar |
-|----------|---------------|
-| ✅ Inbjudnings-mailet | Tydligt, visar vem som bjöd in och projektnamn |
-| ✅ WelcomeModal steg 1-2 | Språk + användartyp fungerar smidigt |
-| ✅ Touch targets i mobil-nav | Tillräckligt stora knappar (48px) — jag träffar rätt |
-| ✅ Demo-projektet (konceptet) | Bra att man kan se hur det ser ut med data |
-| ✅ Rollsystemet | Granulära behörigheter finns — rätt info för rätt person |
-| ✅ Kommentarer med @mentions | När jag väl HITTAR kommentarfunktionen funkar den |
-| ✅ Pulskort på Overview | Snygga, färgkodade — ger snabb överblick |
-
----
-
-## HEMÄGARENS ÖNSKELISTA (om jag fick välja)
-
-### 1. En vy som är "min" — Kund-Dashboard
-
-```
-┌─────────────────────────────────────────────────┐
-│  Köksreno Söder                      Per 📱     │
-├─────────────────────────────────────────────────┤
-│                                                  │
-│  🟢 Det går framåt!                              │
-│  ▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░ 4 av 8 klart            │
-│  Beräknat klart: 15 mars                        │
-│                                                  │
-│  📸 Idag (3 nya bilder)                          │
-│  ┌────┐ ┌────┐ ┌────┐                           │
-│  │    │ │    │ │    │  "Nytt golv i köket!"     │
-│  └────┘ └────┘ └────┘                           │
-│                                                  │
-│  💬 Per skrev 14:32:                             │
-│  "Kaklet har kommit! Vill du kika?"             │
-│  ┌─────────────────────────────┐                │
-│  │ Svara Per...                │  📎  📷  Skicka │
-│  └─────────────────────────────┘                │
-│                                                  │
-│  💰 Budget: 135 000 av 200 000 kr               │
-│  ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░ 65 000 kr kvar            │
-│                                                  │
-│  ⏭️ Nästa: Sätta kakel i badrum (startar mån)   │
-│                                                  │
-│  ❓ Väntar på ditt svar:                         │
-│  "Vilken fog vill du ha — vit eller grå?"       │
-│  [ Vit ] [ Grå ] [ Skriv eget svar ]            │
-└─────────────────────────────────────────────────┘
-```
-
-### 2. Mobil-nav anpassad för mig
-
-```
-Nuvarande:  Översikt │ Plans │ Tasks │ Purchases │ More
-Önskat:     Översikt │ Bilder │ Chat │ Budget │ Mer
-```
-
-### 3. Push-notis som faktiskt når mig
-
-```
-📱 Notis på telefonen:
-"Per har lagt upp 3 nya bilder från köket"
-"Per frågar: Vilken fog vill du ha — vit eller grå?"
-"Ny faktura: Kakel badrum — 12 500 kr"
-```
-
----
-
-**Prioritet:** KRITISK — hemägaren avgör om byggfirman (den betalande kunden) fortsätter använda appen
-
-**Förslag till CEO:**
-1. **(Sprint nu):** Detektera inbjudna användare → visa anpassad välkomstvy istället för standard-onboarding
-2. **(Sprint nu):** Lägg till bildkarusell + enkel kommentar-CTA direkt på Overview
-3. **(Sprint 2):** Kund-Dashboard — förenklad vy per roll (client/viewer)
-4. **(Sprint 2):** Roll-baserad mobil-nav (hemägare ser bilder+chat+budget, inte plans+tasks+purchases)
-5. **(Sprint 3):** Push-notiser för viktiga händelser
-
-**Insats:**
-- Inbjudnings-anpassning: Liten (1-2 dagar)
-- Bildkarusell på Overview: Liten (1 dag)
-- Kund-Dashboard: Medium (3-5 dagar)
-- Roll-baserad nav: Medium (2-3 dagar)
-- Push-notiser: Stor (1-2 veckor)
-
----
-
-### Community Manager (CM)
-
-**Datum:** 2026-02-12
-
-**Analys:** Strategisk retention page — "Discover"-koncept för att hålla användare engagerade mellan projektuppgifter
-
----
-
-## RETENTION PAGE — GEMENSAM ANALYS (CRO + CM)
-
-### Bakgrund
-
-CEO:s idé: Skapa en inspirationssida som håller användare (husägare + proffs) engagerade även när de inte har aktiva projektuppgifter. Potentiellt via API-integrationer, RSS-feeds, och personaliserat innehåll.
-
-### Timing-bedömning
-
-```
-Revenue Readiness: STEG 2 (RETENTION)
-Nuvarande fas:     STEG 1 (ACTIVATION) — ej klart
-
-⚠️ VARNING: 50 testare kämpar med "Vad gör jag nu?"
-   Retention-features FÖRE activation = optimera något ingen använder.
-```
-
-| Tidpunkt | CRO-bedömning | CM-bedömning |
-|----------|---------------|--------------|
-| Nu (Sprint 1) | ❌ Fokus activation | ❌ Fokus activation |
-| Sprint 2-3 | ⚠️ OK som experiment | ⚠️ Seed content first |
-| Sprint 4+ | ✅ Om retention >40% | ✅ Om UGC börjar flöda |
-
-### Strategisk risk/möjlighet
-
-| Aspekt | Bedömning |
-|--------|-----------|
-| **Konkurrenter** | Houzz, Pinterest, Hemnet dominerar generisk inspiration |
-| **Differentiering** | Låg om generisk — HÖG om kopplad till användarens projekt |
-| **Viral potential** | Medium — "kolla denna artikeln" kan delas |
-| **Revenue impact** | Indirekt — retention → uppgradering till Pro |
-
-### Rätt vs Fel approach
-
-```
-❌ FEL: Generisk inspirationssida
-   → Houzz/Pinterest gör det bättre
-   → Ingen anledning att stanna på Renomate
-
-✅ RÄTT: Kontextuell inspiration kopplad till projekt
-   → "Du renoverar kök? Här är 5 projekt med liknande budget"
-   → "Din badrumsrenovering är 60% klar — så här kan det se ut färdigt"
-   → Data från Renomate = unikt, kan inte kopieras
-```
-
-### Content Mix-strategi
-
-```
-┌──────────────┬───────────────────┬───────────────┬──────────────┐
-│ Typ          │ Källa             │ Teknik        │ Status       │
-├──────────────┼───────────────────┼───────────────┼──────────────┤
-│ CURATED      │ RSS/API           │ Auto-ingest   │ Planerat     │
-│ CREATED      │ Tips-sidan        │ i18n          │ ✅ KLAR      │
-│ COMMUNITY    │ Renomate-projekt  │ Opt-in UGC    │ Behöver data │
-└──────────────┴───────────────────┴───────────────┴──────────────┘
-```
-
----
-
-## API/RSS INTEGRATIONS-ROADMAP (Research 2026-02-12)
-
-### Tier 1: Myndigheter & Officiella källor (Hög prioritet, bevisad tillgänglighet)
-
-| Källa | API/Teknik | Innehåll | Insats | Status | Länk |
-|-------|------------|----------|--------|--------|------|
-| **Boverket** | ✅ Officiellt API | Byggregler, BBR, författningar | 1d | Tillgänglig via Lantmäteriet | [Info](https://www.lantmateriet.se/sv/smartare-samhallsbyggnadsprocess/) |
-| **Skatteverket** | RSS/Nyhetsbrev | ROT/RUT-uppdateringar | 2h | Publik | [Nyheter](https://www.skatteverket.se) |
-| **Konsumentverket** | RSS | Konsumenträtt, hantverkarregler | 2h | Publik | [Hallå Konsument](https://www.hallakonsument.se) |
-| **SMHI** | ✅ Öppen API | Väder, prognoser | 4h | Gratis, öppen | [API](https://opendata.smhi.se/apidocs/) |
-
-### Tier 2: Gratis bildbanker (Bekräftad tillgänglighet)
-
-| Källa | API/Teknik | Innehåll | Insats | Licens | Länk |
-|-------|------------|----------|--------|--------|------|
-| **Unsplash** | ✅ Gratis API | 50,000+ renoverings-/inredningsbilder | 4h | Gratis, ingen attribution | [Developers](https://unsplash.com/developers) |
-| **Pinterest** | ✅ oEmbed | Inspirationsboards | ✅ FINNS | Publik | Redan integrerat |
-| **Pexels** | ✅ Gratis API | Interiör-/renovationsbilder | 4h | Gratis | [API](https://www.pexels.com/api/) |
-
-### Tier 3: Fastighet & Marknad (Kräver partnerskap)
-
-| Källa | API/Teknik | Innehåll | Insats | Tillgänglighet | Kontakt |
-|-------|------------|----------|--------|----------------|---------|
-| **Hemnet** | BostadsAPI | Bostadspriser, listings | - | ❌ Endast mäklare (kontrakt krävs) | [Integration](https://integration.hemnet.se) |
-| **Booli Pro** | Prenumeration | Prisstatistik, analysverktyg | - | 💰 Betald tjänst | pro@booli.se |
-| **Lantmäteriet** | API | Fastighetsdata, kartor | 2v | Licensavtal krävs | [Geodata](https://www.lantmateriet.se) |
-
-### Tier 4: Produktkataloger (Inofficiella, instabila)
-
-| Källa | API/Teknik | Innehåll | Insats | Risk | Notering |
-|-------|------------|----------|--------|------|----------|
-| **IKEA** | ⚠️ Inofficiell | Produkter, priser, 3D-modeller | 1v | ⚠️ Kan sluta fungera | [GitHub](https://github.com/vrslev/ikea-api-client) |
-| **Bauhaus/Hornbach** | Scraping | Byggmaterial, priser | - | ⚠️ ToS-brott | Ej rekommenderat |
-
-### Tier 5: Inspiration & Livsstil (Varierad tillgänglighet)
-
-| Källa | API/Teknik | Innehåll | Insats | Status | Notering |
-|-------|------------|----------|--------|--------|----------|
-| **Houzz** | ❌ Ingen API | Home design inspiration | - | Stängd | Endast browsing |
-| **Trendenser** | RSS | Svensk inredningsblogg | 2h | Publik | [Blog](https://trendenser.se) |
-| **My Scandinavian Home** | RSS | Nordisk inspiration | 2h | Publik | [Blog](https://www.myscandinavianhome.com) |
-| **Residence Magazine** | RSS | Svenska inredningstrender | 2h | Osäker | Kolla tillgänglighet |
-| **Dezeen** | RSS | Arkitektur/design (internationell) | 2h | Publik | [RSS](https://www.dezeen.com/rss/) |
-
-### Tier 6: Branschspecifikt (Framtida research)
-
-| Källa | Potentiell nytta | Notering |
-|-------|------------------|----------|
-| **Byggföretagen** | Branschnyheter för proffs | Kolla RSS |
-| **Villaägarna** | Tips för husägare | Kolla RSS |
-| **Bostadsrätterna** | BRF-specifikt | Kolla RSS |
-| **Svensk Byggtjänst** | Produktinformation | Kommersiell |
-
----
-
-## API-PRIORITERING FÖR MVP
-
-### Fas 1: Gratis & Bevisat (Sprint 4-5, ~2 dagar)
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ SMHI Väder API ──► "Torrt imorgon — bra för utomhusarbete"      │
-│ Unsplash API ───► Inspirationsbilder per rumstyp                │
-│ Pinterest oEmbed ► Redan integrerat ✅                           │
-│ Boverket RSS ───► Automatiska byggregelsnyheter                 │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-### Fas 2: Personalisering (Sprint 6-7, ~1 vecka)
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ Boverket API ───► Visa relevanta regler per projekttyp          │
-│ Skatteverket ───► ROT-kalkylator kopplad till projekt           │
-│ Inredningsbloggar RSS ► Trendande innehåll                      │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-### Fas 3: Partnerskap (Sprint 8+, kräver affärskontakt)
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ Booli Pro ─────► Prisstatistik per område (kontakta pro@booli)  │
-│ Hemnet ────────► Bostadsinspiration (mäklarpartnerskap?)        │
-│ IKEA (inofficiell) ► Produktförslag per rum (riskabelt)         │
-└──────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## TEKNISK IMPLEMENTATION (skiss)
-
-```typescript
-// src/services/discover/feeds.ts
-
-export const FEED_SOURCES = {
-  // Tier 1 — Officiella
-  boverket: {
-    type: 'api',
-    url: 'https://api.boverket.se/...',  // Verifiera endpoint
-    refresh: '24h',
-    tags: ['regler', 'byggnormer']
-  },
-  smhi: {
-    type: 'api',
-    url: 'https://opendata-download-metfcst.smhi.se/api/...',
-    refresh: '3h',
-    personalize: (user) => user.project?.address?.coords
-  },
-
-  // Tier 2 — Bilder
-  unsplash: {
-    type: 'api',
-    url: 'https://api.unsplash.com/search/photos',
-    queries: ['kitchen renovation', 'bathroom design', 'scandinavian interior'],
-    refresh: '12h'
-  },
-
-  // Tier 5 — RSS
-  trendenser: {
-    type: 'rss',
-    url: 'https://trendenser.se/feed/',
-    refresh: '6h',
-    tags: ['inspiration', 'trender']
-  },
-  dezeen: {
-    type: 'rss',
-    url: 'https://www.dezeen.com/interiors/feed/',
-    refresh: '6h',
-    tags: ['arkitektur', 'design']
-  }
-};
-
-// Personalisering baserat på användarens projekt
-export const getPersonalizedFeed = async (user: User) => {
-  const project = user.activeProject;
-
-  return {
-    weather: await fetchSMHI(project?.address),
-    inspiration: await fetchUnsplash(project?.rooms.map(r => r.type)),
-    news: await fetchBoverketNews(project?.type),
-    blogs: await fetchRSSFeeds(['trendenser', 'dezeen'])
-  };
-};
-```
-
----
-
-## DRÖMSCENARIO: "Discover"-fliken (Sprint 4+)
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  📖 Discover                                    Stockholm 🌤️ 3°│
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  🏷️ FÖR DITT PROJEKT: Köksreno Söder                            │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │ 📸 5 köksrenoveringar med liknande budget (120-180k)        ││
-│  │    från Renomate-community                                  ││
-│  │ 💡 "ROT-taket höjt — du kan spara 7 500 kr extra"          ││
-│  │ 🔧 "Komplettera ditt kök med dessa IKEA-lösningar"         ││
-│  └─────────────────────────────────────────────────────────────┘│
-│                                                                  │
-│  📰 NYHETER DENNA VECKA                                          │
-│  • Boverket: Nya regler för våtutrymmen från 1 juli             │
-│  • Skatteverket: Så fungerar ROT-avdraget 2026                  │
-│  • Konsumentverket: Dina rättigheter vid försenat arbete        │
-│                                                                  │
-│  🌤️ VÄDER I STOCKHOLM (din projektadress)                       │
-│  "Torrt nästa vecka — bra för utomhusarbeten"                   │
-│  "Solnedgång 17:42 — planera dagsljusarbeten"                   │
-│                                                                  │
-│  📐 INSPIRATION FRÅN NÄTET                                       │
-│  ┌────┐ ┌────┐ ┌────┐ ┌────┐                                    │
-│  │ 📌 │ │ 📌 │ │ 📌 │ │ 📌 │  ← Pinterest: "kök skandinavisk"  │
-│  └────┘ └────┘ └────┘ └────┘                                    │
-│                                                                  │
-│  🏠 DITT OMRÅDE: Södermalm                                       │
-│  "Genomsnittspris kök i området: 145 000 kr"                    │
-│  "Din budget är 8% under genomsnitt — smart!"                   │
-│                                                                  │
-│  🎯 POPULÄRT PÅ RENOMATE                                         │
-│  • 23 nya badrum skapade denna vecka                            │
-│  • Trending rumstyp: Tvättstuga (+15%)                          │
-│  • Nytt: AI-import av planlösning från PDF                      │
-│                                                                  │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │ 🌟 DELA DITT PROJEKT                                        ││
-│  │ Visa andra hur din renovering går — få feedback!            ││
-│  │ [ Publicera före/efter-bilder ]                             ││
-│  └─────────────────────────────────────────────────────────────┘│
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## MINIMAL VIABLE RETENTION (om vi börjar nu)
-
-**Insats:** ~1 vecka
-
-| # | Komponent | Källa | Insats |
-|---|-----------|-------|--------|
-| 1 | Boverket/Skatteverket RSS | Myndigheter | 4h |
-| 2 | Tips-sidan | ✅ Finns | 0h |
-| 3 | Väder-widget | SMHI | 4h |
-| 4 | Pinterest oEmbed | Befintlig integration | 2h |
-| 5 | "Liknande projekt" | Demo-projektet | 4h |
-| 6 | CTA för icke-inloggade | Egen | 2h |
-
-**Vad vi INTE bygger nu:**
-- Full personalisering (kräver data)
-- UGC showcase (kräver användare)
-- Hemnet/Booli-integration (kräver partnerskap)
-- Forum/diskussioner (för tidigt)
-
----
-
-**Prioritet:** Parkerad (Sprint 4+)
-**Förslag:** Logga API-listan som framtida roadmap. Börja med Tier 1 (myndighets-RSS) som "free wins" när activation är löst.
-**Insats:** Minimal nu (logga plan), 1 vecka för MVP senare
-
----
-
-## MONETISERINGSPLAN — CTO + CRO GEMENSAM ANALYS (2026-02-13)
-
-### Bakgrund
-
-CEO vill planera för monetiseringsaktivering: teknisk implementation, triggers, compliance, paywall-design och värdeleverans efter betalning.
-
-### Revenue Readiness Check
-
-```
-Nuvarande:  STEG 1 (ACTIVATION) — pågående
-Monetarisering kräver: STEG 2 (RETENTION) med >40% weekly + STEG 3 triggers
-Estimerad timing: Sprint 8-10 (v.11-15)
-```
-
-**CRO-regel:** Monetarisera ALDRIG före retention är bevisad. Men infrastrukturen kan byggas parallellt.
-
----
-
-## 1. BETALPLATTFORM — JÄMFÖRELSE
-
-### Rekommendation: **Stripe** (primär) + Swish/Klarna (komplement)
-
-| Kriterium | Stripe | Klarna | Swish | Autogiro |
-|-----------|--------|--------|-------|----------|
-| **SaaS-prenumerationer** | ✅ Inbyggt | ⚠️ Begränsat | ⚠️ Nytt (2024+) | ✅ Fungerar |
-| **Internationellt** | ✅ 135+ länder | ⚠️ Främst Norden/EU | ❌ Endast Sverige | ❌ Endast Sverige |
-| **Supabase-integration** | ✅ Officiell guide + webhooks | ❌ Manuellt | ❌ Manuellt | ❌ Manuellt |
-| **VAT/Moms-hantering** | ✅ Stripe Tax (automatisk) | ⚠️ Manuellt | ❌ Ej relevant | ❌ Manuellt |
-| **Checkout UX** | ✅ Hosted + Elements | ✅ Smooth | ✅ BankID | ⚠️ Formulär |
-| **Avgift (Sverige)** | 1.5% + 1.80 kr | 2.99% | 2 kr/tx | ~1 kr/tx |
-| **Prövotid/Trial** | ✅ Inbyggt | ❌ | ❌ | ❌ |
-| **Webhook-driven** | ✅ Full support | ⚠️ Begränsat | ❌ Polling | ❌ Polling |
-
-### Stripe-fördelar för Renomate
-
-1. **Supabase-redo** — Officiell guide, färdiga schemas, webhook-hantering via Edge Functions
-2. **Internationell expansion** — Samma integration fungerar i NO, DK, FI, DACH
-3. **Automatisk moms** — Stripe Tax hanterar EU VAT, OSS, reverse charge
-4. **Subscription billing** — Trials, uppgraderingar, nedgraderingar, proration inbyggt
-5. **Customer Portal** — Användare hanterar betalmetod själv (mindre support)
-
-### Svenska komplement (Fas 2)
-
-- **Swish** för one-time (receipts, add-ons) — svensk användare förväntar sig det
-- **Klarna** för BNPL om vi har större engångsprodukter
-
----
-
-## 2. JURIDISK & COMPLIANCE CHECKLISTA
-
-### Fas 0: Innan första kronan (Sprint 6-7)
-
-| Krav | Status | Åtgärd | Ansvarig |
-|------|--------|--------|----------|
-| **Företagsform** | ? | Verifiera att AB är registrerat | CEO |
-| **F-skattsedel** | ? | Krävs för att fakturera | CEO |
-| **Momsregistrering** | ? | Obligatoriskt vid >30k/år | CEO/Revisor |
-| **Stripe-konto** | ❌ | Skapa + verifiera (tar 2-5 dagar) | CTO |
-| **Användarvillkor** | ❌ | Skriv + juridisk granskning | CEO + Jurist |
-| **Integritetspolicy** | ⚠️ Finns | Uppdatera med betaldata | CEO |
-| **Cookiepolicy** | ? | GDPR-krav för Stripe.js | CTO |
-
-### EU VAT-regler (B2C SaaS)
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      EU VAT FÖR SAAS                                │
-├─────────────────────────────────────────────────────────────────────┤
-│ Total B2C-försäljning < €10,000/år (alla EU-länder):               │
-│   → Svensk moms (25%) på allt                                       │
-│   → Ingen OSS-registrering krävs                                    │
-├─────────────────────────────────────────────────────────────────────┤
-│ Total B2C-försäljning > €10,000/år:                                 │
-│   → Moms i kundens land (varierar 17-27%)                          │
-│   → OSS-registrering via Skatteverket                              │
-│   → Stripe Tax hanterar automatiskt                                │
-├─────────────────────────────────────────────────────────────────────┤
-│ B2B-försäljning (företagskunder):                                   │
-│   → Reverse charge (0% moms, kund redovisar)                       │
-│   → Kräver kundens VAT-nummer                                       │
-│   → Stripe validerar VAT-nummer automatiskt                        │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Källa:** [Stripe EU Tax Guide](https://docs.stripe.com/tax/supported-countries/european-union)
-
-### GDPR för betaldata
-
-| Data | Lagringstid | Legal grund | Var lagras |
-|------|-------------|-------------|------------|
-| Betalhistorik | 7 år | Bokföringslagen | Stripe + DB |
-| Kortuppgifter | Aldrig hos oss | - | Endast Stripe (PCI DSS) |
-| Stripe Customer ID | Tills konto raderas | Avtal | profiles.stripe_customer_id |
-| Fakturor | 7 år | Bokföringslagen | Stripe + backup |
-
----
-
-## 3. TEKNISK IMPLEMENTATION
-
-### Databasschema (nya tabeller)
-
-```sql
--- Fas 1: Lägg till i profiles
-ALTER TABLE profiles ADD COLUMN stripe_customer_id TEXT UNIQUE;
-ALTER TABLE profiles ADD COLUMN subscription_tier TEXT DEFAULT 'free'
-  CHECK (subscription_tier IN ('free', 'pro', 'business'));
-ALTER TABLE profiles ADD COLUMN subscription_status TEXT DEFAULT 'inactive'
-  CHECK (subscription_status IN ('inactive', 'trialing', 'active', 'past_due', 'canceled'));
-ALTER TABLE profiles ADD COLUMN subscription_period_end TIMESTAMPTZ;
-
--- Fas 1: Produkter och priser (synkas från Stripe via webhook)
-CREATE TABLE public.stripe_products (
-  id TEXT PRIMARY KEY,  -- Stripe product ID
-  name TEXT NOT NULL,
-  description TEXT,
-  active BOOLEAN DEFAULT true,
-  metadata JSONB,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE public.stripe_prices (
-  id TEXT PRIMARY KEY,  -- Stripe price ID
-  product_id TEXT REFERENCES stripe_products(id),
-  currency TEXT NOT NULL,
-  unit_amount INTEGER,  -- i ören/cents
-  interval TEXT,  -- 'month' | 'year'
-  interval_count INTEGER DEFAULT 1,
-  active BOOLEAN DEFAULT true,
-  metadata JSONB,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Fas 2: Prenumerationshistorik
-CREATE TABLE public.subscriptions (
-  id TEXT PRIMARY KEY,  -- Stripe subscription ID
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  price_id TEXT REFERENCES stripe_prices(id),
-  status TEXT NOT NULL,
-  current_period_start TIMESTAMPTZ,
-  current_period_end TIMESTAMPTZ,
-  cancel_at TIMESTAMPTZ,
-  canceled_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- RLS för säkerhet
-ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view own subscriptions" ON subscriptions
-  FOR SELECT USING (user_id = auth.uid());
-```
-
-### Supabase Edge Functions
-
-```
-supabase/functions/
-├── stripe-webhooks/        # Tar emot Stripe events
-│   └── index.ts
-├── create-checkout/        # Skapar Checkout Session
-│   └── index.ts
-├── create-portal-session/  # Stripe Customer Portal
-│   └── index.ts
-└── check-subscription/     # Verifierar access (intern)
-    └── index.ts
-```
-
-### Webhook-flöde
-
-```
-┌─────────────┐    ┌─────────────┐    ┌─────────────────────┐
-│   Stripe    │───►│ Edge Func   │───►│ Supabase Database   │
-│  (webhook)  │    │ (verify +   │    │                     │
-│             │    │  process)   │    │ - Update profiles   │
-└─────────────┘    └─────────────┘    │ - Update subscr.    │
-                         │            │ - Log event         │
-                         ▼            └─────────────────────┘
-                   ┌─────────────┐
-                   │ Supabase    │
-                   │ Realtime    │───► UI uppdateras live
-                   └─────────────┘
-```
-
-### Viktiga Stripe Events att hantera
-
-| Event | Åtgärd |
-|-------|--------|
-| `customer.subscription.created` | Skapa subscription-rad, uppdatera profile.tier |
-| `customer.subscription.updated` | Uppdatera status, period_end |
-| `customer.subscription.deleted` | Sätt tier='free', status='canceled' |
-| `invoice.paid` | Logga betalning, förläng access |
-| `invoice.payment_failed` | Sätt status='past_due', skicka email |
-| `customer.created` | Spara stripe_customer_id i profiles |
-
----
-
-## 4. PAYWALL & FEATURE GATING
-
-### Tier-definition (CRO-godkänd)
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                           PRICING TIERS                              │
-├─────────────────┬─────────────────┬─────────────────────────────────┤
-│ FREE            │ PRO (495 kr/mån)│ BUSINESS (995 kr/mån)           │
-│                 │ (4 950 kr/år)   │ (9 950 kr/år)                   │
-├─────────────────┼─────────────────┼─────────────────────────────────┤
-│ 1 projekt       │ 10 projekt      │ Obegränsat                      │
-│ 2 teammedlemmar │ 15 teammedlemmar│ Obegränsat                      │
-│ Grundritning    │ Avancerad canvas│ Alla canvas-features            │
-│ Uppgifter       │ Budget-spårning │ API-access                      │
-│ Foton           │ Timeline/Gantt  │ PDF/DWG-export                  │
-│ Kommentarer     │ Offline read    │ Anpassad branding               │
-│                 │ AI-import       │ Prioriterad support             │
-│                 │ 14 dagars trial │ SSO (kommande)                  │
-├─────────────────┴─────────────────┴─────────────────────────────────┤
-│ ★ Alla planer: Obegränsat med inbjudna viewers (husägare/kunder)   │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### Feature Gate Implementation
-
-```typescript
-// src/hooks/useSubscription.ts
-export function useSubscription() {
-  const { data: profile } = useProfile();
-
-  const tier = profile?.subscription_tier || 'free';
-  const isActive = profile?.subscription_status === 'active'
-                || profile?.subscription_status === 'trialing';
-
-  const limits = {
-    free: { projects: 1, teamMembers: 2, features: ['basic'] },
-    pro: { projects: 10, teamMembers: 15, features: ['budget', 'timeline', 'ai', 'offline'] },
-    business: { projects: Infinity, teamMembers: Infinity, features: ['all'] }
-  };
-
-  const can = (feature: string) => {
-    if (!isActive && tier !== 'free') return false;
-    return limits[tier].features.includes(feature) || limits[tier].features.includes('all');
-  };
-
-  const canCreateProject = (currentCount: number) => currentCount < limits[tier].projects;
-  const canInviteTeam = (currentCount: number) => currentCount < limits[tier].teamMembers;
-
-  return { tier, isActive, can, canCreateProject, canInviteTeam, limits: limits[tier] };
-}
-```
-
-### Paywall UI Triggers
-
-| Trigger | Var | Beteende |
-|---------|-----|----------|
-| Skapa 2:a projekt | Projects.tsx | Visa upgrade modal |
-| Bjud in 3:e teammedlem | TeamManagement.tsx | Visa upgrade modal |
-| Öppna Budget | BudgetTab.tsx | Visa "Pro feature" overlay |
-| AI-import | AIFloorPlanImport.tsx | Visa "Pro feature" med preview |
-| Export PDF | SpacePlannerTopBar.tsx | Visa upgrade prompt |
-| After 14-day trial | Global check | Visa "Trial ended" modal |
-
-### Upgrade Modal Design
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  ✨ Uppgradera till Pro                                    [X]      │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  Du försöker använda "Budget-spårning" som är en Pro-funktion.      │
-│                                                                      │
-│  Med Pro får du:                                                     │
-│  ✓ Budget-spårning med diagram och prognoser                        │
-│  ✓ Timeline/Gantt-vy                                                 │
-│  ✓ AI-import av planlösningar                                        │
-│  ✓ Upp till 10 projekt och 15 teammedlemmar                          │
-│                                                                      │
-│  ┌─────────────────┐  ┌─────────────────┐                            │
-│  │  495 kr/mån     │  │  4 950 kr/år    │                            │
-│  │                 │  │  SPARA 17%      │                            │
-│  │  [Välj månad]   │  │  [Välj år ★]    │                            │
-│  └─────────────────┘  └─────────────────┘                            │
-│                                                                      │
-│  🔒 Säker betalning via Stripe                                       │
-│  📧 Faktura skickas automatiskt                                      │
-│  ↩️ Avsluta när som helst                                            │
-│                                                                      │
-│              [ Starta 14 dagars kostnadsfri provperiod ]             │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 5. IMPLEMENTATION ROADMAP
-
-### Fas 0: Legal & Förberedelse (Sprint 6, ~1 vecka)
-
-| # | Uppgift | Ansvarig | Status |
-|---|---------|----------|--------|
-| 1 | Verifiera F-skatt + momsregistrering | CEO | ❌ |
-| 2 | Skapa Stripe-konto + verifiera | CTO | ❌ |
-| 3 | Uppdatera Integritetspolicy (betaldata) | CEO | ❌ |
-| 4 | Skriv/uppdatera Användarvillkor | CEO + Jurist | ❌ |
-| 5 | Cookie-consent för Stripe.js | CTO | ❌ |
-
-### Fas 1: Infrastruktur (Sprint 7, ~1 vecka)
-
-| # | Uppgift | Insats | Beroende |
-|---|---------|--------|----------|
-| 1 | DB-migration (profiles + stripe tables) | 2h | - |
-| 2 | Edge Function: stripe-webhooks | 4h | Stripe-konto |
-| 3 | Edge Function: create-checkout | 2h | 1 |
-| 4 | Edge Function: create-portal-session | 2h | 1 |
-| 5 | useSubscription hook | 2h | 1 |
-| 6 | Stripe produkt/pris-setup | 1h | Stripe-konto |
-
-### Fas 2: UI & UX (Sprint 8, ~1 vecka)
-
-| # | Uppgift | Insats |
-|---|---------|--------|
-| 1 | Pricing-sida (/pricing) | 4h |
-| 2 | Upgrade modal (reusable) | 4h |
-| 3 | Feature gates (Budget, Timeline, AI) | 4h |
-| 4 | Profile → Subscription-sektion | 2h |
-| 5 | Success/Cancel-sidor | 2h |
-
-### Fas 3: Test & Lansering (Sprint 9)
-
-| # | Uppgift | Insats |
-|---|---------|--------|
-| 1 | Stripe test-läge E2E | 4h |
-| 2 | Webhook-testning (alla events) | 4h |
-| 3 | UAT med beta-testare (5-10 st) | 1v |
-| 4 | Production Stripe-konfiguration | 2h |
-| 5 | Soft-launch (invitation only) | - |
-
-### Fas 4: Optimering (Sprint 10+)
-
-- A/B-test prissättning
-- Churn-analys + win-back flows
-- Annual billing incentives
-- Swish/Klarna som komplement
-- Upgrade prompts baserat på usage
-
----
-
-## 6. MÄTVÄRDEN (CRO)
-
-### Pre-launch (mät nu)
-
-| Metrik | Nuläge | Mål före monetarisering |
-|--------|--------|-------------------------|
-| Activation rate | ~30% | >50% |
-| Weekly retention | ? | >40% |
-| Projects per user | ~1 | >1.5 |
-| Features used | ? | >3 per projekt |
-
-### Post-launch
-
-| Metrik | Mål mån 1 | Mål mån 3 | Mål mån 6 |
-|--------|-----------|-----------|-----------|
-| Trial starts | 50 | 200 | 500 |
-| Trial → Paid | 20% | 30% | 40% |
-| MRR | 10 000 kr | 50 000 kr | 150 000 kr |
-| Churn | <10% | <7% | <5% |
-
----
-
-## 7. RISKER & MITIGERING
-
-| Risk | Sannolikhet | Konsekvens | Mitigering |
-|------|-------------|------------|------------|
-| Stripe-verifiering tar tid | Medium | Fördröjning 1-2v | Starta nu |
-| Webhook missar events | Låg | Fel subscription status | Retry-logik + manuell override |
-| VAT-fel | Medium | Skattefel | Använd Stripe Tax |
-| Feature gate bypass | Låg | Gratis-användare får Pro | RLS + server-side check |
-| Låg konvertering | Hög | Ingen revenue | Trial + freemium fungerar, iterera |
-
----
-
-## 8. SAMMANFATTNING
-
-### CTO-rekommendation
-
-```
-✅ Stripe som primär plattform (bäst för SaaS, Supabase-redo)
-✅ Börja Fas 0-1 nu (juridik + schema) även om lansering är Sprint 8+
-✅ Webhooks via Edge Functions (ej polling)
-✅ Feature gates via useSubscription hook + RLS
-⚠️ Verifiera momsregistrering innan lansering
-⚠️ Testfas minst 2 veckor med riktiga testare
-```
-
-### CRO-rekommendation
-
-```
-✅ Prissättning: 495/995 kr/mån är rimligt för svenska SME
-✅ Trial: 14 dagar, kräver kort (högre konvertering)
-✅ Freemium: 1 projekt, 2 team — ger viral spridning
-✅ Viewers alltid gratis — det är tillväxtmotorn
-⚠️ Monetarisera INTE före retention >40%
-⚠️ Soft-launch till befintliga beta-testare först
-```
-
-### Nästa steg (om CEO godkänner)
-
-1. ✅ CEO: Bekräfta F-skatt + momsregistrering
-2. ✅ CTO: Skapa Stripe-konto + starta verifiering
-3. ✅ CEO: Beställ juridisk granskning av Användarvillkor
-4. ✅ CTO: Implementera DB-migration (kan göras nu, kostar inget)
-
----
-
-**Prioritet:** Hög (infrastruktur kan byggas parallellt med activation-arbete)
-**Total insats:** ~4 veckor (sprida över Sprint 6-9)
-**Estimerad lansering:** Sprint 9-10 (v.13-15, mars-april 2026)
-
-**Källor:**
-- [Stripe EU Tax](https://docs.stripe.com/tax/supported-countries/european-union)
-- [Supabase Stripe Webhooks](https://supabase.com/docs/guides/functions/examples/stripe-webhooks)
-- [Stripe Sweden Payments](https://stripe.com/resources/more/accepting-online-payments-in-sweden)
-- [Skatteverket Moms](https://skatteverket.se/foretag/moms/)
+*Last Updated: 2026-03-02*

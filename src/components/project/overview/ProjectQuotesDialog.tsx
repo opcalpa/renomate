@@ -19,6 +19,8 @@ import {
   Send,
   X,
   Clock,
+  Eye,
+  RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -42,6 +44,11 @@ interface Quote {
   total_after_rot: number;
   created_at: string;
   updated_at: string;
+  viewed_at: string | null;
+  client_id_ref: string | null;
+  is_ata: boolean | null;
+  quote_number: string | null;
+  revised_from: string | null;
 }
 
 const statusConfig: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
@@ -80,7 +87,7 @@ export function ProjectQuotesDialog({
       setLoading(true);
       const { data, error } = await supabase
         .from("quotes")
-        .select("id, title, status, total_amount, total_after_rot, created_at, updated_at")
+        .select("id, title, status, total_amount, total_after_rot, created_at, updated_at, viewed_at, client_id_ref, is_ata, quote_number, revised_from")
         .eq("project_id", projectId)
         .order("updated_at", { ascending: false });
 
@@ -108,9 +115,14 @@ export function ProjectQuotesDialog({
   };
 
   // Calculate totals for accepted quotes
-  const acceptedTotal = quotes
-    .filter((q) => q.status === "accepted")
-    .reduce((sum, q) => sum + (q.total_after_rot || q.total_amount || 0), 0);
+  const acceptedQuotes = quotes.filter((q) => q.status === "accepted");
+  const acceptedTotal = acceptedQuotes.reduce((sum, q) => sum + (q.total_after_rot || q.total_amount || 0), 0);
+  const hasAcceptedQuote = acceptedQuotes.length > 0;
+
+  // Find client from existing quotes (for ÄTA pre-fill)
+  const existingClientId = acceptedQuotes.find((q) => q.client_id_ref)?.client_id_ref
+    || quotes.find((q) => q.client_id_ref)?.client_id_ref
+    || null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -149,6 +161,17 @@ export function ProjectQuotesDialog({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium truncate">{quote.title}</span>
+                          {quote.is_ata && (
+                            <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
+                              ÄTA
+                            </Badge>
+                          )}
+                          {quote.revised_from && (
+                            <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                              Rev.
+                            </Badge>
+                          )}
                           <Badge
                             variant="secondary"
                             className={cn("text-xs", config.bgColor, config.color)}
@@ -157,6 +180,9 @@ export function ProjectQuotesDialog({
                             {t(`quotes.${quote.status}`)}
                           </Badge>
                         </div>
+                        {quote.quote_number && (
+                          <p className="text-xs text-muted-foreground mb-0.5">{quote.quote_number}</p>
+                        )}
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span>{formatAmount(amount)}</span>
                           <span>·</span>
@@ -166,6 +192,15 @@ export function ProjectQuotesDialog({
                               locale: getLocale(),
                             })}
                           </span>
+                          {quote.status === "sent" && quote.viewed_at && (
+                            <>
+                              <span>·</span>
+                              <span className="text-green-600 flex items-center gap-1">
+                                <Eye className="h-3 w-3" />
+                                {t("quotes.viewedByCustomer")}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                       <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-1" />
@@ -189,9 +224,25 @@ export function ProjectQuotesDialog({
 
         <Separator />
 
-        <Button onClick={onCreateQuote} className="w-full">
+        <Button
+          onClick={() => {
+            if (hasAcceptedQuote) {
+              // ÄTA flow: navigate directly with is_ata + existing client
+              const params = new URLSearchParams({ projectId });
+              params.set("is_ata", "true");
+              if (existingClientId) params.set("clientId", existingClientId);
+              navigate(`/quotes/new?${params.toString()}`);
+              onOpenChange(false);
+            } else {
+              onCreateQuote();
+            }
+          }}
+          className="w-full"
+        >
           <Plus className="h-4 w-4 mr-2" />
-          {t("quotes.createQuote")}
+          {hasAcceptedQuote
+            ? t("quotes.createChangeOrder", "Create change order")
+            : t("quotes.createQuote")}
         </Button>
       </DialogContent>
     </Dialog>

@@ -24,6 +24,8 @@ import Feedback from "./pages/Feedback";
 import FindProfessionals from "./pages/FindProfessionals";
 import CreateQuote from "./pages/CreateQuote";
 import ViewQuote from "./pages/ViewQuote";
+import CreateInvoice from "./pages/CreateInvoice";
+import ViewInvoice from "./pages/ViewInvoice";
 import ClientRegistry from "./pages/ClientRegistry";
 import CustomerIntake from "./pages/CustomerIntake";
 import IntakeRequests from "./pages/IntakeRequests";
@@ -77,6 +79,8 @@ const App = () => (
               <Route path="/find-pros" element={<FindProfessionals />} />
               <Route path="/quotes/new" element={<CreateQuote />} />
               <Route path="/quotes/:quoteId" element={<ViewQuote />} />
+              <Route path="/invoices/new" element={<CreateInvoice />} />
+              <Route path="/invoices/:invoiceId" element={<ViewInvoice />} />
               <Route path="/clients" element={<ClientRegistry />} />
               <Route path="/intake/:token" element={<CustomerIntake />} />
               <Route path="/intake-requests" element={<IntakeRequests />} />

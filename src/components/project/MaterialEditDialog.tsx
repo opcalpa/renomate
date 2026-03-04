@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Loader2 } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -146,6 +147,7 @@ export const MaterialEditDialog = ({
 
     setSaving(true);
     try {
+      const computedTotal = (material.quantity || 0) * (material.price_per_unit || 0);
       const { error } = await supabase
         .from("materials")
         .update({
@@ -154,6 +156,7 @@ export const MaterialEditDialog = ({
           quantity: material.quantity,
           unit: material.unit,
           price_per_unit: material.price_per_unit,
+          price_total: computedTotal || null,
           status: material.status || "submitted",
           vendor_name: material.vendor_name,
           vendor_link: material.vendor_link,
@@ -408,6 +411,16 @@ export const MaterialEditDialog = ({
                 <Label htmlFor="edit-exclude-from-budget" className="text-sm font-normal cursor-pointer">
                   {t("purchases.excludeFromBudget")}
                 </Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-[240px]">
+                      <p className="text-xs">{t("purchases.ataTooltip")}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
 
               {/* Photos */}

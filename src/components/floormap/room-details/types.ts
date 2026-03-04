@@ -28,6 +28,7 @@ export interface Room {
     width_mm?: number;
     height_mm?: number;
     perimeter_mm?: number;
+    non_paintable_area_sqm?: number;
   } | null;
   floor_plan_position: {
     points?: { x: number; y: number }[];
@@ -119,6 +120,10 @@ export const roomFormSchema = z.object({
   priority: z.string(),
   links: z.string().optional(),
   notes: z.string().optional(),
+  area_sqm: z.number().min(0).optional(),
+  width_mm: z.number().min(0).optional(),
+  depth_mm: z.number().min(0).optional(),
+  non_paintable_area_sqm: z.number().min(0).optional(),
   floor_spec: floorSpecSchema,
   ceiling_spec: ceilingSpecSchema,
   wall_spec: wallSpecSchema,
@@ -140,6 +145,8 @@ export interface RoomDetailDialogProps {
   isCreateMode?: boolean;
   /** Callback to open room elevation view */
   onViewElevation?: () => void;
+  /** Show Pinterest features (only for homeowners) */
+  showPinterest?: boolean;
 }
 
 // Props for section components
@@ -152,9 +159,10 @@ export interface SectionProps {
   ) => void;
 }
 
-// Props for identity section (needs area for read-only display)
+// Props for identity section (needs dimensions for display)
 export interface IdentitySectionProps extends SectionProps {
   areaSqm?: number;
+  perimeterMm?: number;
   createdAt?: string;
 }
 

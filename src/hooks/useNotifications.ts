@@ -3,14 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface NotificationItem {
   id: string;
-  type: "comment" | "mention" | "task" | "material";
+  type: "comment" | "mention" | "task" | "material" | "quote_accepted" | "quote_rejected";
   title: string;
   preview: string;
   projectId: string;
   projectName: string;
   createdAt: string;
   isUnread: boolean;
-  entityType?: "task" | "material" | "room" | "drawing_object" | "project";
+  entityType?: "task" | "material" | "room" | "drawing_object" | "project" | "quote";
   entityId?: string;
   entityName?: string;
 }
@@ -95,6 +95,7 @@ export function useNotifications() {
     // Shared select for comment queries (includes task/material name + project_id fallback)
     const commentSelect = `
       id, content, created_at, created_by_user_id, task_id, material_id, project_id,
+      entity_id, entity_type,
       creator:profiles(name),
       task:tasks(title, project_id),
       material:materials(name, project_id)
@@ -103,6 +104,7 @@ export function useNotifications() {
     type CommentRow = {
       id: string; content: string; created_at: string; created_by_user_id: string;
       task_id: string | null; material_id: string | null; project_id: string | null;
+      entity_id: string | null; entity_type: string | null;
       creator: { name: string } | null;
       task: { title: string; project_id: string } | null;
       material: { name: string; project_id: string } | null;
@@ -115,7 +117,15 @@ export function useNotifications() {
     function resolveEntityName(c: CommentRow): string | undefined {
       if (c.task_id && c.task) return c.task.title;
       if (c.material_id && c.material) return c.material.name;
+      if (c.entity_type === "quote" && c.entity_id) return undefined;
       return undefined;
+    }
+
+    function resolveEntityType(c: CommentRow): NotificationItem["entityType"] {
+      if (c.task_id) return "task";
+      if (c.material_id) return "material";
+      if (c.entity_type === "quote") return "quote";
+      return "project";
     }
 
     // 1. Mentions — always fetch regardless of project membership
@@ -148,8 +158,8 @@ export function useNotifications() {
             projectName: projectMap.get(pId) || "",
             createdAt: c.created_at,
             isUnread: c.created_at > lastReadAt && !readIds.has(`mention-${c.id}`) && !readIds.has(`comment-${c.id}`),
-            entityType: c.task_id ? "task" : c.material_id ? "material" : "project",
-            entityId: c.task_id || c.material_id || undefined,
+            entityType: resolveEntityType(c),
+            entityId: c.task_id || c.material_id || c.entity_id || undefined,
             entityName: resolveEntityName(c),
           });
         }
@@ -178,17 +188,37 @@ export function useNotifications() {
       for (const c of recentComments as unknown as CommentRow[]) {
         const pId = resolveProject(c);
         if (items.some((i) => i.id === `mention-${c.id}`)) continue;
+
+        // Detect quote accept/decline comments by content pattern (works across locales)
+        const isQuoteComment = c.entity_type === "quote";
+        let type: NotificationItem["type"] = "comment";
+        let title = c.creator?.name || "Someone";
+        if (isQuoteComment) {
+          const lc = c.content.toLowerCase();
+          // Match known i18n patterns: "accepted the quote" / "godkände offerten"
+          if (/accepted the quote|godkände offerten|zaakceptowan|прийня/i.test(lc)) {
+            type = "quote_accepted";
+            // Extract quote name from content (between quotes or after the pattern)
+            const quoteNameMatch = c.content.match(/[""]([^""]+)[""]|"([^"]+)"/);
+            title = quoteNameMatch ? (quoteNameMatch[1] || quoteNameMatch[2]) : (c.entity_id || "");
+          } else if (/declined the quote|avböjde offerten|odrzucon|відхил/i.test(lc)) {
+            type = "quote_rejected";
+            const quoteNameMatch = c.content.match(/[""]([^""]+)[""]|"([^"]+)"/);
+            title = quoteNameMatch ? (quoteNameMatch[1] || quoteNameMatch[2]) : (c.entity_id || "");
+          }
+        }
+
         items.push({
           id: `comment-${c.id}`,
-          type: "comment",
-          title: c.creator?.name || "Someone",
-          preview: truncate(c.content),
+          type,
+          title,
+          preview: type === "quote_accepted" || type === "quote_rejected" ? "" : truncate(c.content),
           projectId: pId,
           projectName: projectMap.get(pId) || "",
           createdAt: c.created_at,
           isUnread: c.created_at > lastReadAt && !readIds.has(`mention-${c.id}`) && !readIds.has(`comment-${c.id}`),
-          entityType: c.task_id ? "task" : c.material_id ? "material" : "project",
-          entityId: c.task_id || c.material_id || undefined,
+          entityType: resolveEntityType(c),
+          entityId: c.task_id || c.material_id || c.entity_id || undefined,
           entityName: resolveEntityName(c),
         });
       }
@@ -331,32 +361,58 @@ export function useNotifications() {
       }
     }
 
-    // 5. Quote acceptance notifications from activity_log
+    // 5. Quote activity notifications from activity_log (accepted, rejected, viewed)
+    const quoteStatusEntityIds = new Set<string>();
+
     const { data: quoteActivity } = await supabase
       .from("activity_log")
-      .select("id, entity_id, entity_name, created_at, project_id")
+      .select("id, entity_id, entity_name, created_at, project_id, action, actor_id, changes")
       .eq("entity_type", "quote")
-      .eq("action", "status_changed")
-      .contains("changes", { new: "accepted" })
+      .in("action", ["status_changed", "viewed"])
       .in("project_id", projectIds)
+      .neq("actor_id", userId)
       .gte("created_at", sevenDaysAgo)
       .order("created_at", { ascending: false })
       .limit(10);
 
     if (quoteActivity) {
       for (const a of quoteActivity) {
+        const isViewed = a.action === "viewed";
+        const newStatus = (a.changes as Record<string, unknown>)?.new as string | undefined;
+        const isAccepted = a.action === "status_changed" && newStatus === "accepted";
+        const isRejected = a.action === "status_changed" && newStatus === "rejected";
+        if (!isViewed && !isAccepted && !isRejected) continue;
+
+        // Track quote IDs that have status-change notifications to suppress duplicate comments
+        if ((isAccepted || isRejected) && a.entity_id) {
+          quoteStatusEntityIds.add(a.entity_id);
+        }
+
         items.push({
           id: `quote-${a.id}`,
-          type: "task",
-          title: `Quote accepted: ${a.entity_name || ""}`,
+          type: isAccepted ? "quote_accepted" : isRejected ? "quote_rejected" : "task",
+          title: isViewed
+            ? `opened your quote: ${a.entity_name || ""}`
+            : a.entity_name || "",
           preview: "",
           projectId: a.project_id,
           projectName: projectMap.get(a.project_id) || "",
           createdAt: a.created_at,
           isUnread: a.created_at > lastReadAt && !readIds.has(`quote-${a.id}`),
-          entityType: "task",
+          entityType: "quote",
           entityId: a.entity_id || undefined,
         });
+      }
+    }
+
+    // Remove duplicate comment notifications for quotes that already have status-change notifications
+    if (quoteStatusEntityIds.size > 0) {
+      const before = items.length;
+      for (let i = items.length - 1; i >= 0; i--) {
+        const n = items[i];
+        if (n.type === "comment" && n.entityType === "quote" && n.entityId && quoteStatusEntityIds.has(n.entityId)) {
+          items.splice(i, 1);
+        }
       }
     }
 

@@ -45,6 +45,10 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
         priority: room.priority || "medium",
         links: room.links || "",
         notes: room.notes || "",
+        area_sqm: room.dimensions?.area_sqm,
+        width_mm: room.dimensions?.width_mm,
+        depth_mm: room.dimensions?.height_mm,
+        non_paintable_area_sqm: room.dimensions?.non_paintable_area_sqm,
         floor_spec: room.floor_spec || {},
         ceiling_spec: room.ceiling_spec || {},
         wall_spec: room.wall_spec || {},
@@ -83,6 +87,16 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
 
     setSaving(true);
     try {
+      // Build dimensions JSONB by merging with existing
+      const existingDims = room?.dimensions ?? {};
+      const dimensions = {
+        ...existingDims,
+        ...(formData.area_sqm !== undefined ? { area_sqm: formData.area_sqm } : {}),
+        ...(formData.width_mm !== undefined ? { width_mm: formData.width_mm } : {}),
+        ...(formData.depth_mm !== undefined ? { height_mm: formData.depth_mm } : {}),
+        ...(formData.non_paintable_area_sqm !== undefined ? { non_paintable_area_sqm: formData.non_paintable_area_sqm } : {}),
+      };
+
       if (isNewRoom) {
         // Create new room
         const { error: createError } = await supabase
@@ -97,6 +111,7 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
             priority: formData.priority,
             links: formData.links?.trim() || null,
             notes: formData.notes?.trim() || null,
+            dimensions,
             floor_spec: formData.floor_spec,
             ceiling_spec: formData.ceiling_spec,
             wall_spec: formData.wall_spec,
@@ -132,6 +147,7 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
             priority: formData.priority,
             links: formData.links?.trim() || null,
             notes: formData.notes?.trim() || null,
+            dimensions,
             floor_spec: formData.floor_spec,
             ceiling_spec: formData.ceiling_spec,
             wall_spec: formData.wall_spec,

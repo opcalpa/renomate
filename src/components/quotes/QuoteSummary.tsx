@@ -8,11 +8,11 @@ interface QuoteSummaryProps {
 export function QuoteSummary({ items }: QuoteSummaryProps) {
   const { t } = useTranslation();
 
-  const subtotal = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  const subtotal = items.reduce((sum, i) => sum + i.quantity * i.unitPrice * (1 - (i.discountPercent ?? 0) / 100), 0);
   const vat = subtotal * 0.25;
   const rotEligibleTotal = items
     .filter((i) => i.isRotEligible)
-    .reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+    .reduce((sum, i) => sum + i.quantity * i.unitPrice * (1 - (i.discountPercent ?? 0) / 100), 0);
   const rotDeduction = rotEligibleTotal * 0.3;
   const totalToPay = subtotal + vat - rotDeduction;
 

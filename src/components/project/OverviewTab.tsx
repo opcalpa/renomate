@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -11,21 +11,21 @@ import { Settings2, Receipt, FileText, Mail, MessageSquare, ChevronDown } from "
 import { useTranslation } from "react-i18next";
 import { useOverviewData } from "./overview/useOverviewData";
 import { PulseCards } from "./overview/PulseCards";
-import { ProjectQuotesCard } from "./overview/ProjectQuotesCard";
-import { NeedsActionSection } from "./overview/NeedsActionSection";
-import { ActiveTasksSection } from "./overview/ActiveTasksSection";
+import { ProjectDocumentsCard } from "./overview/ProjectDocumentsCard";
 import { OverviewFeedSection } from "./overview/OverviewFeedSection";
-import { RecentPhotos } from "./overview/RecentPhotos";
 import { ProjectSettingsDialog } from "./overview/ProjectSettingsDialog";
 import { QuickReceiptCaptureModal } from "./QuickReceiptCaptureModal";
 import { CreateQuoteDialog } from "./CreateQuoteDialog";
 import { SendCustomerFormDialog } from "./SendCustomerFormDialog";
-import { ProjectLockBanner } from "./ProjectLockBanner";
+import { InvoiceMethodDialog } from "@/components/invoices/InvoiceMethodDialog";
 import { useProjectLock } from "@/hooks/useProjectLock";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { ProjectStatusCTA } from "./overview/ProjectStatusCTA";
 import { PlanningTaskList } from "./overview/PlanningTaskList";
-import { normalizeStatus } from "@/lib/projectStatus";
+import { ProjectHeader } from "./overview/ProjectHeader";
+import { RotDetailsCard } from "./overview/RotDetailsCard";
+import { normalizeStatus, isQuotePhase } from "@/lib/projectStatus";
+import { supabase } from "@/integrations/supabase/client";
 import type { OverviewProject, OverviewNavigation } from "./overview/types";
 import type { FeedComment } from "./feed/types";
 
@@ -58,18 +58,47 @@ const OverviewTab = ({
   const { lockStatus } = useProjectLock(project.id);
   const isHomeowner = userType === "homeowner";
   const projectStatus = normalizeStatus(project.status);
-  const isPlanning = projectStatus === "planning";
+  const isPlanning = projectStatus === "planning" || isQuotePhase(projectStatus);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
   const [customerFormOpen, setCustomerFormOpen] = useState(false);
+  const [invoiceMethodOpen, setInvoiceMethodOpen] = useState(false);
+  const [rotPersonnummer, setRotPersonnummer] = useState<string | null>(null);
+
+  // Fetch client personnummer for ROT card (builder view)
+  useEffect(() => {
+    if (isHomeowner) return;
+    const fetchClientPersonnummer = async () => {
+      // Find client share for this project
+      const { data: shares } = await supabase
+        .from("project_shares")
+        .select("shared_with_user_id")
+        .eq("project_id", project.id)
+        .eq("role", "client")
+        .limit(1);
+
+      const clientProfileId = shares?.[0]?.shared_with_user_id;
+      if (!clientProfileId) return;
+
+      const { data: clientProfile } = await supabase
+        .from("profiles")
+        .select("personnummer")
+        .eq("id", clientProfileId)
+        .single();
+
+      if (clientProfile?.personnummer) {
+        setRotPersonnummer(clientProfile.personnummer);
+      }
+    };
+    fetchClientPersonnummer();
+  }, [project.id, isHomeowner]);
 
   const {
     taskStats,
     budgetStats,
     orderStats,
     timelineStats,
-    inProgressTasks,
     refetch,
   } = useOverviewData(project);
 
@@ -90,15 +119,13 @@ const OverviewTab = ({
   if (isPlanning && !isHomeowner) {
     return (
       <div className="space-y-6">
-        <ProjectLockBanner lockStatus={lockStatus} />
+        <ProjectHeader project={project} onOpenSettings={() => setSettingsOpen(true)} />
 
-        <ProjectStatusCTA
-          status={project.status}
-          taskCount={taskStats.total}
+        <ProjectDocumentsCard
+          projectId={project.id}
           currency={project.currency}
-          onNavigateToTasks={() => onNavigateToTasks?.()}
           onCreateQuote={() => setQuoteDialogOpen(true)}
-          onViewQuote={() => setQuoteDialogOpen(true)}
+          onCreateInvoice={() => setInvoiceMethodOpen(true)}
         />
 
         <PlanningTaskList
@@ -106,20 +133,8 @@ const OverviewTab = ({
           currency={project.currency}
           onNavigateToTasks={(taskId) => onNavigateToTasks?.(taskId)}
           onCreateQuote={() => setQuoteDialogOpen(true)}
+          locked={lockStatus.isLocked}
         />
-
-        {/* Minimal settings access */}
-        <div className="flex justify-end">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground"
-            onClick={() => setSettingsOpen(true)}
-          >
-            <Settings2 className="h-4 w-4 mr-1" />
-            {t("overview.advancedSettings", "Settings")}
-          </Button>
-        </div>
 
         {/* Dialogs */}
         <ProjectSettingsDialog
@@ -133,6 +148,11 @@ const OverviewTab = ({
           open={quoteDialogOpen}
           onOpenChange={setQuoteDialogOpen}
         />
+        <InvoiceMethodDialog
+          projectId={project.id}
+          open={invoiceMethodOpen}
+          onOpenChange={setInvoiceMethodOpen}
+        />
       </div>
     );
   }
@@ -140,10 +160,8 @@ const OverviewTab = ({
   // ----- Active / other phases: full dashboard view -----
   return (
     <div className="space-y-6">
-      <ProjectLockBanner lockStatus={lockStatus} />
-
-      {/* Status CTA for non-active statuses */}
-      {!isHomeowner && projectStatus !== "active" && (
+      {/* Status CTA */}
+      {!isHomeowner && (
         <ProjectStatusCTA
           status={project.status}
           taskCount={taskStats.total}
@@ -151,49 +169,53 @@ const OverviewTab = ({
           onNavigateToTasks={() => onNavigateToTasks?.()}
           onCreateQuote={() => setQuoteDialogOpen(true)}
           onViewQuote={() => setQuoteDialogOpen(true)}
+          onCreateInvoice={() => setInvoiceMethodOpen(true)}
+          onReviseQuote={() => setQuoteDialogOpen(true)}
         />
       )}
 
+      <ProjectHeader project={project} />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-semibold">{t("overview.projectOverview")}</h2>
+        <h2 className="text-base font-medium text-muted-foreground">{t("overview.projectOverview")}</h2>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Quote dropdown - only for contractors, not homeowners */}
-          {!isHomeowner && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="flex-1 sm:flex-none gap-1">
-                  <FileText className="h-4 w-4" />
-                  <span className="hidden sm:inline">{t("overview.quoteMenu")}</span>
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-64">
-                <DropdownMenuItem
-                  onClick={() => setCustomerFormOpen(true)}
-                  className="flex flex-col items-start cursor-pointer py-3"
-                >
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    <span className="font-medium">{t("overview.customerForm")}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground ml-6">
-                    {t("overview.customerFormHint")}
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setQuoteDialogOpen(true)}
-                  className="flex flex-col items-start cursor-pointer py-3"
-                >
-                  <div className="flex items-center gap-2">
+          {/* Quote dropdown - only for contractors in planning phase, not homeowners */}
+          {!isHomeowner && !projectStatus?.startsWith("active") && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex-1 sm:flex-none gap-1">
                     <FileText className="h-4 w-4" />
-                    <span className="font-medium">{t("overview.createQuote")}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground ml-6">
-                    {t("overview.createQuoteHint")}
-                  </span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <span className="hidden sm:inline">{t("overview.quoteMenu")}</span>
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-64">
+                  <DropdownMenuItem
+                    onClick={() => setCustomerFormOpen(true)}
+                    className="flex flex-col items-start cursor-pointer py-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      <span className="font-medium">{t("overview.customerForm")}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground ml-6">
+                      {t("overview.customerFormHint")}
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setQuoteDialogOpen(true)}
+                    className="flex flex-col items-start cursor-pointer py-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      <span className="font-medium">{t("overview.createQuote")}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground ml-6">
+                      {t("overview.createQuoteHint")}
+                    </span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
           )}
           <Button
             variant="outline"
@@ -221,18 +243,10 @@ const OverviewTab = ({
         timelineStats={timelineStats}
         navigation={navigation}
         currency={project.currency}
+        isBuilder={!isHomeowner}
       />
 
-      <RecentPhotos
-        projectId={project.id}
-        onViewAll={() => onNavigateToFiles?.()}
-        onNavigateToRoom={onNavigateToRoom}
-        onNavigateToTask={(taskId) => onNavigateToTasks?.(taskId)}
-        onNavigateToMaterial={(materialId) => onNavigateToPurchases?.(materialId)}
-        onNavigateToFiles={onNavigateToFiles}
-      />
-
-      <Card>
+      <Card id="project-chat">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
@@ -252,31 +266,34 @@ const OverviewTab = ({
         </CardContent>
       </Card>
 
-      {/* Quotes card - only for contractors, not homeowners */}
+      {/* Quotes & Invoices unified card - only for contractors */}
       {!isHomeowner && (
-        <ProjectQuotesCard
+        <ProjectDocumentsCard
           projectId={project.id}
           currency={project.currency}
           onCreateQuote={() => setQuoteDialogOpen(true)}
+          onCreateInvoice={() => setInvoiceMethodOpen(true)}
+          estimatedProfit={budgetStats.estimatedProfit}
         />
       )}
 
-      <NeedsActionSection
-        taskStats={taskStats}
-        budgetStats={budgetStats}
-        orderStats={orderStats}
-        navigation={navigation}
-      />
-
-      <ActiveTasksSection
-        tasks={inProgressTasks}
-        navigation={navigation}
-      />
+      {/* ROT details card - only for contractors when ROT data exists */}
+      {!isHomeowner && (
+        <RotDetailsCard
+          personnummer={rotPersonnummer}
+          propertyAddress={project.address}
+          propertyDesignation={project.property_designation}
+        />
+      )}
 
       <OverviewFeedSection
         projectId={project.id}
         navigation={navigation}
         onNavigateToEntity={onNavigateToEntity}
+        onNavigateToFiles={onNavigateToFiles}
+        onNavigateToTask={(taskId) => onNavigateToTasks?.(taskId)}
+        onNavigateToMaterial={(materialId) => onNavigateToPurchases?.(materialId)}
+        onNavigateToRoom={onNavigateToRoom}
       />
 
       <ProjectSettingsDialog
@@ -308,6 +325,12 @@ const OverviewTab = ({
         open={customerFormOpen}
         onOpenChange={setCustomerFormOpen}
         onSuccess={() => refetch()}
+      />
+
+      <InvoiceMethodDialog
+        projectId={project.id}
+        open={invoiceMethodOpen}
+        onOpenChange={setInvoiceMethodOpen}
       />
     </div>
   );

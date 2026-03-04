@@ -1,0 +1,916 @@
+import { useState, useCallback, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
+import { DEFAULT_COST_CENTERS } from "@/lib/costCenters";
+import {
+  Pencil,
+  Users,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Columns3,
+  Save,
+  Trash2,
+  ToggleLeft,
+} from "lucide-react";
+import { useTasksTableView } from "./useTasksTableView";
+import { TaskColumnKey, TaskColumnDef, EXTRA_COLUMN_KEYS } from "./tasksTableTypes";
+import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
+
+interface Task {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  due_date: string | null;
+  start_date: string | null;
+  finish_date: string | null;
+  progress: number;
+  assigned_to_stakeholder_id: string | null;
+  room_id: string | null;
+  budget: number | null;
+  ordered_amount: number | null;
+  payment_status: string | null;
+  paid_amount: number | null;
+  cost_center: string | null;
+  cost_centers?: string[] | null;
+  task_cost_type: string | null;
+  estimated_hours: number | null;
+  hourly_rate: number | null;
+  subcontractor_cost: number | null;
+  markup_percent: number | null;
+  material_estimate: number | null;
+  is_ata?: boolean;
+  parent_task_id?: string | null;
+}
+
+interface Stakeholder {
+  id: string;
+  name: string;
+  role: string;
+  contractor_category: string | null;
+}
+
+interface TeamMember {
+  id: string;
+  name: string;
+  role?: string;
+}
+
+export interface TasksTableViewProps {
+  tasks: Task[];
+  projectId: string;
+  rooms: { id: string; name: string }[];
+  stakeholders: Stakeholder[];
+  teamMembers: TeamMember[];
+  currency?: string | null;
+  isReadOnly?: boolean;
+  onTaskClick: (task: Task) => void;
+  onTaskUpdated: () => void;
+  statusLabels: Record<string, string>;
+  getStatusIcon: (status: string) => ReactNode;
+  getPriorityColor: (priority: string) => string;
+  getAssignedMemberName: (task: Task) => string | null;
+}
+
+const DB_FIELD_MAP: Record<TaskColumnKey, string> = {
+  title: "title",
+  status: "status",
+  priority: "priority",
+  actions: "",
+  assignee: "assigned_to_stakeholder_id",
+  room: "room_id",
+  startDate: "start_date",
+  finishDate: "finish_date",
+  dueDate: "due_date",
+  progress: "progress",
+  budget: "budget",
+  orderedAmount: "ordered_amount",
+  paidAmount: "paid_amount",
+  paymentStatus: "payment_status",
+  costCenter: "cost_center",
+  estimatedHours: "estimated_hours",
+  hourlyRate: "hourly_rate",
+  subcontractorCost: "subcontractor_cost",
+  materialEstimate: "material_estimate",
+  markupPercent: "markup_percent",
+};
+
+const SORT_FIELD_MAP: Record<TaskColumnKey, keyof Task | null> = {
+  title: "title",
+  status: "status",
+  priority: "priority",
+  actions: null,
+  assignee: "assigned_to_stakeholder_id",
+  room: "room_id",
+  startDate: "start_date",
+  finishDate: "finish_date",
+  dueDate: "due_date",
+  progress: "progress",
+  budget: "budget",
+  orderedAmount: "ordered_amount",
+  paidAmount: "paid_amount",
+  paymentStatus: "payment_status",
+  costCenter: "cost_center",
+  estimatedHours: "estimated_hours",
+  hourlyRate: "hourly_rate",
+  subcontractorCost: "subcontractor_cost",
+  materialEstimate: "material_estimate",
+  markupPercent: "markup_percent",
+};
+
+export function TasksTableView({
+  tasks,
+  projectId,
+  rooms,
+  stakeholders,
+  teamMembers,
+  currency,
+  isReadOnly,
+  onTaskClick,
+  onTaskUpdated,
+  statusLabels,
+  getStatusIcon,
+  getPriorityColor,
+  getAssignedMemberName,
+}: TasksTableViewProps) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+
+  const {
+    ALL_COLUMNS,
+    visibleColumns,
+    visibleExtras,
+    toggleExtraColumn,
+    sortKey,
+    sortDir,
+    handleSort,
+    handleDragStart,
+    handleDragOver,
+    handleDrop,
+    handleDragEnd,
+    dragColIdx,
+    dragOverIdx,
+    compactRows,
+    setCompactRows,
+    savedViews,
+    saveView,
+    loadView,
+    deleteView,
+  } = useTasksTableView(projectId);
+
+  // Inline editing state
+  const [editingCell, setEditingCell] = useState<{
+    rowId: string;
+    col: TaskColumnKey;
+  } | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  // Save view UI state
+  const [saveViewOpen, setSaveViewOpen] = useState(false);
+  const [saveViewName, setSaveViewName] = useState("");
+  const [loadViewOpen, setLoadViewOpen] = useState(false);
+
+  // Sort tasks
+  const sortedTasks = [...tasks].sort((a, b) => {
+    if (!sortKey) return 0;
+    const field = SORT_FIELD_MAP[sortKey];
+    if (!field) return 0;
+
+    const aValue = a[field];
+    const bValue = b[field];
+
+    if (aValue === null || aValue === undefined)
+      return sortDir === "asc" ? 1 : -1;
+    if (bValue === null || bValue === undefined)
+      return sortDir === "asc" ? -1 : 1;
+
+    const aComp = typeof aValue === "string" ? aValue.toLowerCase() : aValue;
+    const bComp = typeof bValue === "string" ? bValue.toLowerCase() : bValue;
+
+    if (aComp < bComp) return sortDir === "asc" ? -1 : 1;
+    if (aComp > bComp) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  // Inline cell save
+  const handleCellSave = useCallback(
+    async (taskId: string, colKey: TaskColumnKey, value: unknown) => {
+      const dbField = DB_FIELD_MAP[colKey];
+      if (!dbField) return;
+
+      const { error } = await supabase
+        .from("tasks")
+        .update({ [dbField]: value })
+        .eq("id", taskId);
+
+      if (error) {
+        toast({
+          title: t("common.error"),
+          description: t("tasksTable.failedToUpdateField"),
+          variant: "destructive",
+        });
+      } else {
+        onTaskUpdated();
+      }
+      setEditingCell(null);
+    },
+    [onTaskUpdated, t, toast]
+  );
+
+  const handleNumericSave = useCallback(
+    (taskId: string, colKey: TaskColumnKey) => {
+      const numValue = editValue === "" ? null : parseFloat(editValue);
+      if (editValue !== "" && isNaN(numValue as number)) {
+        setEditingCell(null);
+        return;
+      }
+      handleCellSave(taskId, colKey, numValue);
+    },
+    [editValue, handleCellSave]
+  );
+
+  const handleProgressSave = useCallback(
+    (taskId: string) => {
+      const num = parseInt(editValue, 10);
+      const clamped = isNaN(num) ? 0 : Math.max(0, Math.min(100, num));
+      handleCellSave(taskId, "progress", clamped);
+    },
+    [editValue, handleCellSave]
+  );
+
+  const getSortIcon = (key: TaskColumnKey) => {
+    if (sortKey !== key) return <ArrowUpDown className="h-3 w-3 ml-1" />;
+    return sortDir === "asc" ? (
+      <ArrowUp className="h-3 w-3 ml-1" />
+    ) : (
+      <ArrowDown className="h-3 w-3 ml-1" />
+    );
+  };
+
+  const renderCell = (col: TaskColumnDef, task: Task) => {
+    const isEditing =
+      editingCell?.rowId === task.id && editingCell?.col === col.key;
+
+    switch (col.key) {
+      case "title":
+        return (
+          <div className="flex items-center gap-2">
+            {getStatusIcon(task.status)}
+            <span
+              className={
+                task.status === "completed"
+                  ? "line-through text-muted-foreground"
+                  : ""
+              }
+            >
+              {task.title}
+            </span>
+          </div>
+        );
+
+      case "status":
+        if (isReadOnly) {
+          return (
+            <Badge variant="outline" className="text-xs">
+              {statusLabels[task.status] || task.status}
+            </Badge>
+          );
+        }
+        return (
+          <Select
+            value={task.status}
+            onValueChange={(v) => handleCellSave(task.id, "status", v)}
+          >
+            <SelectTrigger
+              className="h-8 w-[120px] text-xs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(statusLabels).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+
+      case "priority":
+        if (isReadOnly) {
+          return (
+            <Badge
+              variant={getPriorityColor(task.priority) as "default" | "destructive" | "secondary"}
+              className="text-xs"
+            >
+              {task.priority}
+            </Badge>
+          );
+        }
+        return (
+          <Select
+            value={task.priority}
+            onValueChange={(v) => handleCellSave(task.id, "priority", v)}
+          >
+            <SelectTrigger
+              className="h-8 w-[90px] text-xs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">{t("tasks.priorityLow")}</SelectItem>
+              <SelectItem value="medium">
+                {t("tasks.priorityMedium")}
+              </SelectItem>
+              <SelectItem value="high">{t("tasks.priorityHigh")}</SelectItem>
+            </SelectContent>
+          </Select>
+        );
+
+      case "assignee": {
+        if (isReadOnly) {
+          const name = getAssignedMemberName(task);
+          return name ? (
+            <div className="flex items-center gap-1 text-sm">
+              <Users className="h-3 w-3" />
+              {name}
+            </div>
+          ) : (
+            <span className="text-muted-foreground text-xs">
+              {t("common.unassigned")}
+            </span>
+          );
+        }
+        return (
+          <Select
+            value={task.assigned_to_stakeholder_id || "unassigned"}
+            onValueChange={(v) =>
+              handleCellSave(
+                task.id,
+                "assignee",
+                v === "unassigned" ? null : v
+              )
+            }
+          >
+            <SelectTrigger
+              className="h-8 w-[140px] text-xs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unassigned">
+                {t("common.unassigned")}
+              </SelectItem>
+              {[...stakeholders, ...teamMembers.filter(
+                (tm) => !stakeholders.some((s) => s.id === tm.id)
+              )].map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      }
+
+      case "room": {
+        if (isReadOnly) {
+          const roomName = rooms.find((r) => r.id === task.room_id)?.name;
+          return roomName ? (
+            <span className="text-sm">{roomName}</span>
+          ) : (
+            <span className="text-muted-foreground text-xs">
+              {t("tasks.noRoom")}
+            </span>
+          );
+        }
+        return (
+          <Select
+            value={task.room_id || "none"}
+            onValueChange={(v) =>
+              handleCellSave(task.id, "room", v === "none" ? null : v)
+            }
+          >
+            <SelectTrigger
+              className="h-8 w-[120px] text-xs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{t("tasks.noRoom")}</SelectItem>
+              {rooms.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {r.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      }
+
+      case "startDate":
+      case "finishDate":
+      case "dueDate": {
+        const fieldMap: Record<string, keyof Task> = {
+          startDate: "start_date",
+          finishDate: "finish_date",
+          dueDate: "due_date",
+        };
+        const dateStr = task[fieldMap[col.key]] as string | null;
+        if (isReadOnly) {
+          return dateStr ? (
+            <span className="text-sm">
+              {parseLocalDate(dateStr).toLocaleDateString()}
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-xs">-</span>
+          );
+        }
+        return (
+          <div onClick={(e) => e.stopPropagation()}>
+            <DatePicker
+              date={dateStr ? parseLocalDate(dateStr) : undefined}
+              onDateChange={(d) =>
+                handleCellSave(
+                  task.id,
+                  col.key,
+                  d ? formatLocalDate(d) : null
+                )
+              }
+              className="h-8 w-[130px] text-xs"
+            />
+          </div>
+        );
+      }
+
+      case "progress": {
+        if (isReadOnly || !isEditing) {
+          return (
+            <div
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={(e) => {
+                if (isReadOnly) return;
+                e.stopPropagation();
+                setEditingCell({ rowId: task.id, col: "progress" });
+                setEditValue(String(task.progress));
+              }}
+            >
+              <Progress value={task.progress} className="h-2 w-16" />
+              <span className="text-xs text-muted-foreground">
+                {task.progress}%
+              </span>
+            </div>
+          );
+        }
+        return (
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            className="w-20 h-7 text-right text-xs"
+            autoFocus
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleProgressSave(task.id);
+              if (e.key === "Escape") setEditingCell(null);
+            }}
+            onBlur={() => handleProgressSave(task.id)}
+            onClick={(e) => e.stopPropagation()}
+          />
+        );
+      }
+
+      case "budget":
+      case "orderedAmount":
+      case "paidAmount":
+      case "estimatedHours":
+      case "hourlyRate":
+      case "subcontractorCost":
+      case "materialEstimate":
+      case "markupPercent": {
+        const fieldMap: Record<string, keyof Task> = {
+          budget: "budget",
+          orderedAmount: "ordered_amount",
+          paidAmount: "paid_amount",
+          estimatedHours: "estimated_hours",
+          hourlyRate: "hourly_rate",
+          subcontractorCost: "subcontractor_cost",
+          materialEstimate: "material_estimate",
+          markupPercent: "markup_percent",
+        };
+        const rawValue = task[fieldMap[col.key]] as number | null;
+        const isCurrency = [
+          "budget",
+          "orderedAmount",
+          "paidAmount",
+          "hourlyRate",
+          "subcontractorCost",
+          "materialEstimate",
+        ].includes(col.key);
+
+        if (isEditing && !isReadOnly) {
+          return (
+            <Input
+              type="number"
+              className="w-24 h-7 text-right text-xs"
+              autoFocus
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleNumericSave(task.id, col.key);
+                if (e.key === "Escape") setEditingCell(null);
+              }}
+              onBlur={() => handleNumericSave(task.id, col.key)}
+              onClick={(e) => e.stopPropagation()}
+            />
+          );
+        }
+
+        if (rawValue === null || rawValue === undefined) {
+          if (isReadOnly) {
+            return <span className="text-muted-foreground text-xs">-</span>;
+          }
+          return (
+            <button
+              className="text-muted-foreground text-xs hover:bg-muted px-1 rounded cursor-text"
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingCell({ rowId: task.id, col: col.key });
+                setEditValue("");
+              }}
+            >
+              -
+            </button>
+          );
+        }
+
+        const display = isCurrency
+          ? formatCurrency(rawValue, currency)
+          : col.key === "markupPercent"
+            ? `${rawValue}%`
+            : String(rawValue);
+
+        if (isReadOnly) {
+          return <span className="text-sm">{display}</span>;
+        }
+
+        return (
+          <button
+            className="hover:bg-muted px-1 rounded cursor-text text-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingCell({ rowId: task.id, col: col.key });
+              setEditValue(String(rawValue));
+            }}
+          >
+            {display}
+          </button>
+        );
+      }
+
+      case "paymentStatus": {
+        if (isReadOnly) {
+          return (
+            <Badge variant="outline" className="text-xs">
+              {task.payment_status || t("tasks.notPaid")}
+            </Badge>
+          );
+        }
+        return (
+          <Select
+            value={task.payment_status || "not_paid"}
+            onValueChange={(v) =>
+              handleCellSave(task.id, "paymentStatus", v)
+            }
+          >
+            <SelectTrigger
+              className="h-8 w-[130px] text-xs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="not_paid">{t("tasks.notPaid")}</SelectItem>
+              <SelectItem value="paid">{t("tasks.paid")}</SelectItem>
+              <SelectItem value="billed">{t("tasks.billed")}</SelectItem>
+              <SelectItem value="partially_paid">
+                {t("tasks.partiallyPaid")}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        );
+      }
+
+      case "costCenter": {
+        const currentCC = task.cost_center;
+        if (isReadOnly) {
+          if (!currentCC) {
+            return <span className="text-muted-foreground text-xs">-</span>;
+          }
+          const label =
+            DEFAULT_COST_CENTERS.find((cc) => cc.id === currentCC)?.label ||
+            currentCC;
+          return <span className="text-sm">{label}</span>;
+        }
+        return (
+          <Select
+            value={currentCC || "none"}
+            onValueChange={(v) =>
+              handleCellSave(
+                task.id,
+                "costCenter",
+                v === "none" ? null : v
+              )
+            }
+          >
+            <SelectTrigger
+              className="h-8 w-[130px] text-xs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">-</SelectItem>
+              {DEFAULT_COST_CENTERS.map((cc) => (
+                <SelectItem key={cc.id} value={cc.id}>
+                  {cc.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      }
+
+      case "actions":
+        return (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onTaskClick(task);
+            }}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const handleSaveView = () => {
+    const name = saveViewName.trim();
+    if (!name) return;
+    saveView(name);
+    setSaveViewName("");
+    setSaveViewOpen(false);
+    toast({
+      title: t("tasksTable.viewSaved"),
+      description: t("tasksTable.viewSavedDescription", { name }),
+    });
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* Columns toggle */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1">
+              <Columns3 className="h-4 w-4" />
+              {t("tasksTable.columns")}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-52" align="start">
+            <div className="space-y-2">
+              <p className="text-sm font-medium mb-2">
+                {t("tasksTable.extraColumns")}
+              </p>
+              {EXTRA_COLUMN_KEYS.map((key) => {
+                const col = ALL_COLUMNS.find((c) => c.key === key);
+                return (
+                  <label
+                    key={key}
+                    className="flex items-center gap-2 text-sm cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={visibleExtras.has(key)}
+                      onCheckedChange={() => toggleExtraColumn(key)}
+                    />
+                    {col?.label}
+                  </label>
+                );
+              })}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Compact toggle */}
+        <Button
+          variant={compactRows ? "secondary" : "outline"}
+          size="sm"
+          className="gap-1"
+          onClick={() => setCompactRows(!compactRows)}
+        >
+          <ToggleLeft className="h-4 w-4" />
+          {t("tasksTable.compactRows")}
+        </Button>
+
+        {/* Save view */}
+        <Popover open={saveViewOpen} onOpenChange={setSaveViewOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1">
+              <Save className="h-4 w-4" />
+              {t("tasksTable.saveView")}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56" align="start">
+            <div className="space-y-2">
+              <Input
+                placeholder={t("tasksTable.viewName")}
+                value={saveViewName}
+                onChange={(e) => setSaveViewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveView();
+                }}
+                className="h-8"
+              />
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={handleSaveView}
+                disabled={!saveViewName.trim()}
+              >
+                {t("tasksTable.saveView")}
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Load saved views */}
+        {savedViews.length > 0 && (
+          <Popover open={loadViewOpen} onOpenChange={setLoadViewOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1">
+                {t("tasksTable.savedViews")} ({savedViews.length})
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56" align="start">
+              <div className="space-y-1">
+                {savedViews.map((view) => (
+                  <div
+                    key={view.id}
+                    className="flex items-center justify-between"
+                  >
+                    <button
+                      className="text-sm hover:bg-muted px-2 py-1 rounded flex-1 text-left"
+                      onClick={() => {
+                        loadView(view);
+                        setLoadViewOpen(false);
+                        toast({
+                          title: t("tasksTable.viewLoaded"),
+                          description: t("tasksTable.viewLoadedDescription", {
+                            name: view.name,
+                          }),
+                        });
+                      }}
+                    >
+                      {view.name}
+                    </button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => deleteView(view.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
+
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {visibleColumns.map((col, idx) => (
+                    <TableHead
+                      key={col.key}
+                      className={cn(
+                        col.width || "",
+                        col.align === "right" ? "text-right" : "",
+                        "select-none cursor-grab",
+                        compactRows && "py-1 text-xs h-8",
+                        dragColIdx === idx && "opacity-40",
+                        dragOverIdx === idx && dragColIdx !== null && dragColIdx !== idx && "border-l-2 border-primary",
+                      )}
+                      draggable
+                      onDragStart={() => handleDragStart(idx)}
+                      onDragOver={(e) => handleDragOver(e, idx)}
+                      onDrop={handleDrop}
+                      onDragEnd={handleDragEnd}
+                    >
+                      {col.key !== "actions" ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSort(col.key)}
+                          className="h-8 px-2"
+                        >
+                          {col.label}
+                          {getSortIcon(col.key)}
+                        </Button>
+                      ) : (
+                        <span className="text-xs">{col.label}</span>
+                      )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedTasks.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={visibleColumns.length}
+                      className="text-center text-muted-foreground py-8"
+                    >
+                      {t("tasksTable.noTasks")}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedTasks.map((task) => (
+                    <TableRow
+                      key={task.id}
+                      className="hover:bg-muted/50 cursor-pointer"
+                      onClick={() => onTaskClick(task)}
+                    >
+                      {visibleColumns.map((col, colIdx) => (
+                        <TableCell
+                          key={col.key}
+                          className={cn(
+                            col.align === "right" ? "text-right" : "",
+                            compactRows && "py-1 text-xs",
+                            dragOverIdx === colIdx && dragColIdx !== null && dragColIdx !== colIdx && "border-l-2 border-primary",
+                          )}
+                        >
+                          {renderCell(col, task)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

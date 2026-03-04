@@ -14,6 +14,197 @@ export type Database = {
   }
   public: {
     Tables: {
+      invoices: {
+        Row: {
+          id: string
+          project_id: string
+          creator_id: string
+          client_id: string | null
+          client_id_ref: string | null
+          quote_id: string | null
+          title: string
+          description: string | null
+          invoice_number: string | null
+          status: string
+          total_amount: number | null
+          total_rot_deduction: number | null
+          total_after_rot: number | null
+          paid_amount: number | null
+          due_date: string | null
+          payment_terms_days: number | null
+          ocr_reference: string | null
+          bankgiro: string | null
+          bank_account_number: string | null
+          notes: string | null
+          free_text: string | null
+          is_ata: boolean | null
+          viewed_at: string | null
+          sent_at: string | null
+          paid_at: string | null
+          invoicing_method: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          creator_id: string
+          client_id?: string | null
+          client_id_ref?: string | null
+          quote_id?: string | null
+          title?: string
+          description?: string | null
+          invoice_number?: string | null
+          status?: string
+          total_amount?: number | null
+          total_rot_deduction?: number | null
+          total_after_rot?: number | null
+          paid_amount?: number | null
+          due_date?: string | null
+          payment_terms_days?: number | null
+          ocr_reference?: string | null
+          bankgiro?: string | null
+          bank_account_number?: string | null
+          notes?: string | null
+          free_text?: string | null
+          is_ata?: boolean | null
+          viewed_at?: string | null
+          sent_at?: string | null
+          paid_at?: string | null
+          invoicing_method?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          creator_id?: string
+          client_id?: string | null
+          client_id_ref?: string | null
+          quote_id?: string | null
+          title?: string
+          description?: string | null
+          invoice_number?: string | null
+          status?: string
+          total_amount?: number | null
+          total_rot_deduction?: number | null
+          total_after_rot?: number | null
+          paid_amount?: number | null
+          due_date?: string | null
+          payment_terms_days?: number | null
+          ocr_reference?: string | null
+          bankgiro?: string | null
+          bank_account_number?: string | null
+          notes?: string | null
+          free_text?: string | null
+          is_ata?: boolean | null
+          viewed_at?: string | null
+          sent_at?: string | null
+          paid_at?: string | null
+          invoicing_method?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_items: {
+        Row: {
+          id: string
+          invoice_id: string
+          description: string
+          quantity: number
+          unit: string | null
+          unit_price: number
+          total_price: number
+          is_rot_eligible: boolean | null
+          rot_deduction: number | null
+          sort_order: number | null
+          room_id: string | null
+          comment: string | null
+          discount_percent: number | null
+          source_task_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          description: string
+          quantity?: number
+          unit?: string | null
+          unit_price?: number
+          total_price?: never
+          is_rot_eligible?: boolean | null
+          rot_deduction?: number | null
+          sort_order?: number | null
+          room_id?: string | null
+          comment?: string | null
+          discount_percent?: number | null
+          source_task_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          description?: string
+          quantity?: number
+          unit?: string | null
+          unit_price?: number
+          total_price?: never
+          is_rot_eligible?: boolean | null
+          rot_deduction?: number | null
+          sort_order?: number | null
+          room_id?: string | null
+          comment?: string | null
+          discount_percent?: number | null
+          source_task_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contractors: {
         Row: {
           category: string | null
@@ -327,6 +518,8 @@ export type Database = {
           rot_deduction: number | null
           sort_order: number | null
           room_id: string | null
+          comment: string | null
+          discount_percent: number | null
           created_at: string
         }
         Insert: {
@@ -341,6 +534,8 @@ export type Database = {
           rot_deduction?: number | null
           sort_order?: number | null
           room_id?: string | null
+          comment?: string | null
+          discount_percent?: number | null
           created_at?: string
         }
         Update: {
@@ -355,6 +550,8 @@ export type Database = {
           rot_deduction?: number | null
           sort_order?: number | null
           room_id?: string | null
+          comment?: string | null
+          discount_percent?: number | null
           created_at?: string
         }
         Relationships: [
@@ -388,8 +585,11 @@ export type Database = {
           total_after_rot: number | null
           valid_until: string | null
           notes: string | null
+          is_ata: boolean | null
           created_at: string
           updated_at: string
+          viewed_at: string | null
+          revised_from: string | null
         }
         Insert: {
           id?: string
@@ -404,8 +604,11 @@ export type Database = {
           total_after_rot?: number | null
           valid_until?: string | null
           notes?: string | null
+          is_ata?: boolean | null
           created_at?: string
           updated_at?: string
+          viewed_at?: string | null
+          revised_from?: string | null
         }
         Update: {
           id?: string
@@ -420,8 +623,11 @@ export type Database = {
           total_after_rot?: number | null
           valid_until?: string | null
           notes?: string | null
+          is_ata?: boolean | null
           created_at?: string
           updated_at?: string
+          viewed_at?: string | null
+          revised_from?: string | null
         }
         Relationships: [
           {
@@ -451,6 +657,8 @@ export type Database = {
         Row: {
           avatar_url: string | null
           average_rating: number | null
+          bank_account_number: string | null
+          bankgiro: string | null
           company_address: string | null
           company_city: string | null
           company_country: string | null
@@ -460,6 +668,9 @@ export type Database = {
           company_website: string | null
           contractor_category: string | null
           created_at: string
+          default_hourly_rate: number | null
+          default_labor_cost_percent: number | null
+          default_payment_terms_days: number | null
           email: string | null
           id: string
           is_professional: boolean
@@ -476,6 +687,7 @@ export type Database = {
           onboarding_drawn_room: boolean | null
           onboarding_user_type: string | null
           onboarding_welcome_completed: boolean | null
+          personnummer: string | null
           phone: string | null
           role: string | null
           updated_at: string
@@ -484,6 +696,8 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           average_rating?: number | null
+          bank_account_number?: string | null
+          bankgiro?: string | null
           company_address?: string | null
           company_city?: string | null
           company_country?: string | null
@@ -493,6 +707,9 @@ export type Database = {
           company_website?: string | null
           contractor_category?: string | null
           created_at?: string
+          default_hourly_rate?: number | null
+          default_labor_cost_percent?: number | null
+          default_payment_terms_days?: number | null
           email?: string | null
           id?: string
           is_professional?: boolean
@@ -509,6 +726,7 @@ export type Database = {
           onboarding_drawn_room?: boolean | null
           onboarding_user_type?: string | null
           onboarding_welcome_completed?: boolean | null
+          personnummer?: string | null
           phone?: string | null
           role?: string | null
           updated_at?: string
@@ -517,6 +735,8 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           average_rating?: number | null
+          bank_account_number?: string | null
+          bankgiro?: string | null
           company_address?: string | null
           company_city?: string | null
           company_country?: string | null
@@ -526,6 +746,9 @@ export type Database = {
           company_website?: string | null
           contractor_category?: string | null
           created_at?: string
+          default_hourly_rate?: number | null
+          default_labor_cost_percent?: number | null
+          default_payment_terms_days?: number | null
           email?: string | null
           id?: string
           is_professional?: boolean
@@ -542,6 +765,7 @@ export type Database = {
           onboarding_drawn_room?: boolean | null
           onboarding_user_type?: string | null
           onboarding_welcome_completed?: boolean | null
+          personnummer?: string | null
           phone?: string | null
           role?: string | null
           updated_at?: string
@@ -564,6 +788,8 @@ export type Database = {
           invited_phone: string | null
           permissions_snapshot: Record<string, unknown> | null
           project_id: string
+          related_invoice_id: string | null
+          related_quote_id: string | null
           status: string
           updated_at: string
         }
@@ -581,6 +807,8 @@ export type Database = {
           invited_phone?: string | null
           permissions_snapshot?: Record<string, unknown> | null
           project_id: string
+          related_invoice_id?: string | null
+          related_quote_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -598,6 +826,8 @@ export type Database = {
           invited_phone?: string | null
           permissions_snapshot?: Record<string, unknown> | null
           project_id?: string
+          related_invoice_id?: string | null
+          related_quote_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -616,6 +846,20 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "project_invitations_related_invoice_id_fkey"
+            columns: ["related_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_invitations_related_quote_id_fkey"
+            columns: ["related_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       project_shares: {
@@ -623,6 +867,7 @@ export type Database = {
           can_create_purchase_requests: boolean | null
           contractor_role: Database["public"]["Enums"]["contractor_role"] | null
           created_at: string
+          customer_view_access: string | null
           id: string
           project_id: string
           role: string | null
@@ -634,6 +879,7 @@ export type Database = {
             | Database["public"]["Enums"]["contractor_role"]
             | null
           created_at?: string
+          customer_view_access?: string | null
           id?: string
           project_id: string
           role?: string | null
@@ -645,6 +891,7 @@ export type Database = {
             | Database["public"]["Enums"]["contractor_role"]
             | null
           created_at?: string
+          customer_view_access?: string | null
           id?: string
           project_id?: string
           role?: string | null
@@ -680,6 +927,7 @@ export type Database = {
           owner_id: string
           postal_code: string | null
           project_type: string | null
+          property_designation: string | null
           spent_amount: number | null
           start_date: string | null
           status: string | null
@@ -698,6 +946,7 @@ export type Database = {
           owner_id: string
           postal_code?: string | null
           project_type?: string | null
+          property_designation?: string | null
           spent_amount?: number | null
           start_date?: string | null
           status?: string | null
@@ -716,6 +965,7 @@ export type Database = {
           owner_id?: string
           postal_code?: string | null
           project_type?: string | null
+          property_designation?: string | null
           spent_amount?: number | null
           start_date?: string | null
           status?: string | null
@@ -863,11 +1113,18 @@ export type Database = {
           created_by_user_id: string
           description: string | null
           due_date: string | null
+          estimated_hours: number | null
           finish_date: string | null
           floor_plan_position: Json | null
+          hourly_rate: number | null
           id: string
+          labor_cost_percent: number | null
+          markup_percent: number | null
+          material_estimate: number | null
+          material_markup_percent: number | null
           ordered_amount: number | null
           paid_amount: number | null
+          parent_task_id: string | null
           payment_status: string | null
           priority: string | null
           progress: number | null
@@ -875,7 +1132,11 @@ export type Database = {
           room_id: string | null
           start_date: string | null
           status: string | null
+          subcontractor_cost: number | null
+          task_cost_type: string | null
           title: string
+          invoiced_amount: number | null
+          invoiced_percent: number | null
           updated_at: string
         }
         Insert: {
@@ -886,11 +1147,18 @@ export type Database = {
           created_by_user_id: string
           description?: string | null
           due_date?: string | null
+          estimated_hours?: number | null
           finish_date?: string | null
           floor_plan_position?: Json | null
+          hourly_rate?: number | null
           id?: string
+          labor_cost_percent?: number | null
+          markup_percent?: number | null
+          material_estimate?: number | null
+          material_markup_percent?: number | null
           ordered_amount?: number | null
           paid_amount?: number | null
+          parent_task_id?: string | null
           payment_status?: string | null
           priority?: string | null
           progress?: number | null
@@ -898,7 +1166,11 @@ export type Database = {
           room_id?: string | null
           start_date?: string | null
           status?: string | null
+          subcontractor_cost?: number | null
+          task_cost_type?: string | null
           title: string
+          invoiced_amount?: number | null
+          invoiced_percent?: number | null
           updated_at?: string
         }
         Update: {
@@ -909,11 +1181,18 @@ export type Database = {
           created_by_user_id?: string
           description?: string | null
           due_date?: string | null
+          estimated_hours?: number | null
           finish_date?: string | null
           floor_plan_position?: Json | null
+          hourly_rate?: number | null
           id?: string
+          labor_cost_percent?: number | null
+          markup_percent?: number | null
+          material_estimate?: number | null
+          material_markup_percent?: number | null
           ordered_amount?: number | null
           paid_amount?: number | null
+          parent_task_id?: string | null
           payment_status?: string | null
           priority?: string | null
           progress?: number | null
@@ -921,7 +1200,11 @@ export type Database = {
           room_id?: string | null
           start_date?: string | null
           status?: string | null
+          subcontractor_cost?: number | null
+          task_cost_type?: string | null
           title?: string
+          invoiced_amount?: number | null
+          invoiced_percent?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -951,6 +1234,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]

@@ -307,12 +307,11 @@ export async function submitIntakeRequest(
 // =============================================================================
 
 /**
- * Create a project directly from guided setup (self-service mode)
- * This creates a project, rooms, and tasks without going through intake_request
+ * Create a project from guided setup (room-first → work types → matrix flow)
  *
- * Task creation strategy:
- * - Common work types: ONE task per work type, room_id = null, rooms listed in description
- * - Room-specific work types: ONE task per work type per room, room_id = the room's id
+ * Input shape:
+ * - rooms: name + optional dimensions (area_sqm, ceiling_height_mm)
+ * - tasks: flat list derived from matrix (workTypeLabel, costCenter, roomName|null)
  */
 export async function createProjectFromGuidedSetup(
   input: {
@@ -320,8 +319,16 @@ export async function createProjectFromGuidedSetup(
     address?: string;
     postalCode?: string;
     city?: string;
-    commonWorkTypes?: WorkType[];
-    rooms: IntakeRoom[];
+    rooms: Array<{
+      name: string;
+      area_sqm?: number;
+      ceiling_height_mm?: number;
+    }>;
+    tasks: Array<{
+      workTypeLabel: string;
+      costCenter: string;
+      roomName: string | null;
+    }>;
   },
   creatorProfileId: string
 ): Promise<{ projectId: string }> {
@@ -344,101 +351,56 @@ export async function createProjectFromGuidedSetup(
     throw new Error(projectError?.message || "Failed to create project");
   }
 
-  // 2. Create rooms from guided setup data
-  const roomMapping = await createRoomsFromIntake(project.id, input.rooms);
+  // 2. Create rooms with optional dimensions
+  const roomNameToId = new Map<string, string>();
+  for (const room of input.rooms) {
+    const { data, error } = await supabase
+      .from("rooms")
+      .insert({
+        project_id: project.id,
+        name: room.name,
+        ceiling_height_mm: room.ceiling_height_mm || null,
+        dimensions: room.area_sqm ? { area_sqm: room.area_sqm } : null,
+      })
+      .select("id")
+      .single();
 
-  // 3. Create common work tasks (ONE task per work type, applies to all rooms)
-  const roomNames = input.rooms.map(r => r.name);
-  if (input.commonWorkTypes && input.commonWorkTypes.length > 0) {
-    await createCommonWorkTasks(
-      project.id,
-      input.commonWorkTypes,
-      roomNames,
-      creatorProfileId
-    );
+    if (error) {
+      console.error("Failed to create room:", error);
+      continue;
+    }
+    roomNameToId.set(room.name, data.id);
   }
 
-  // 4. Create room-specific tasks (extra work beyond common work)
-  await createRoomSpecificTasks(project.id, input.rooms, roomMapping, creatorProfileId);
+  // 3. Create tasks from flat list
+  for (const task of input.tasks) {
+    const title = task.roomName
+      ? `${task.workTypeLabel} - ${task.roomName}`
+      : task.workTypeLabel;
+    const roomId = task.roomName ? roomNameToId.get(task.roomName) : null;
 
-  // 5. Mark onboarding step as complete
+    const { error } = await supabase.from("tasks").insert({
+      project_id: project.id,
+      room_id: roomId || null,
+      title,
+      status: "planned",
+      priority: "medium",
+      cost_center: task.costCenter,
+      created_by_user_id: creatorProfileId,
+    });
+
+    if (error) {
+      console.error("Failed to create task:", error);
+    }
+  }
+
+  // 4. Mark onboarding step as complete
   await supabase
     .from("profiles")
     .update({ onboarding_created_project: true })
     .eq("id", creatorProfileId);
 
   return { projectId: project.id };
-}
-
-/**
- * Create ONE task per common work type (applies to whole apartment)
- * These tasks have room_id = null but list rooms in the description
- */
-async function createCommonWorkTasks(
-  projectId: string,
-  workTypes: WorkType[],
-  roomNames: string[],
-  creatorProfileId: string
-): Promise<void> {
-  const roomsText = roomNames.length > 0
-    ? `Rum: ${roomNames.join(", ")}`
-    : "";
-
-  for (const workType of workTypes) {
-    const { error } = await supabase.from("tasks").insert({
-      project_id: projectId,
-      room_id: null, // Not linked to specific room - applies to all
-      title: getWorkTypeLabel(workType),
-      description: roomsText,
-      status: "planned",
-      priority: "medium",
-      cost_center: workTypeToCostCenter(workType),
-      created_by_user_id: creatorProfileId,
-    });
-
-    if (error) {
-      console.error("Failed to create common work task:", error);
-    }
-  }
-}
-
-/**
- * Create tasks for room-specific extra work
- * These tasks have room_id set to the specific room
- */
-async function createRoomSpecificTasks(
-  projectId: string,
-  rooms: IntakeRoom[],
-  roomMapping: Array<{ intakeRoomId: string; dbRoomId: string }>,
-  creatorProfileId: string
-): Promise<void> {
-  const roomIdMap = new Map(roomMapping.map((r) => [r.intakeRoomId, r.dbRoomId]));
-
-  for (const room of rooms) {
-    // Only create tasks for room-specific work_types (not common work)
-    if (room.work_types.length === 0) continue;
-
-    const dbRoomId = roomIdMap.get(room.id);
-
-    for (const workType of room.work_types) {
-      const taskTitle = `${getWorkTypeLabel(workType)} - ${room.name}`;
-
-      const { error } = await supabase.from("tasks").insert({
-        project_id: projectId,
-        room_id: dbRoomId || null,
-        title: taskTitle,
-        description: room.description,
-        status: "planned",
-        priority: room.priority === "high" ? "high" : room.priority === "low" ? "low" : "medium",
-        cost_center: workTypeToCostCenter(workType),
-        created_by_user_id: creatorProfileId,
-      });
-
-      if (error) {
-        console.error("Failed to create room-specific task:", error);
-      }
-    }
-  }
 }
 
 // =============================================================================

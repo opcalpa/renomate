@@ -5,6 +5,7 @@ import { Eye, Edit3, Plus, UserPlus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface FeatureAccess {
+  customerView: "none" | "view";
   timeline: "none" | "view" | "edit";
   tasks: "none" | "view" | "edit";
   tasksScope: "all" | "assigned";
@@ -48,6 +49,7 @@ const OPTION_LABEL_KEYS: Record<string, string> = {
 };
 
 const FEATURES: FeatureConfig[] = [
+  { key: "customerView", labelKey: "roles.featureCustomerView", options: ["none", "view"] },
   { key: "timeline", labelKey: "roles.featureTimeline", options: ["none", "view", "edit"] },
   {
     key: "tasks",

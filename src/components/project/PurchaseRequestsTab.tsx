@@ -45,6 +45,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/currency";
 import { ProjectLockBanner } from "./ProjectLockBanner";
 import { useProjectLock } from "@/hooks/useProjectLock";
@@ -101,7 +102,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   const [creating, setCreating] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
-  const [tasks, setTasks] = useState<{ id: string; title: string }[]>([]);
+  const [tasks, setTasks] = useState<{ id: string; title: string; budget: number | null; material_estimate: number | null; material_items: unknown[] | null; is_ata: boolean; materialSpent: number }[]>([]);
   const [teamMembers, setTeamMembers] = useState<{ id: string; name: string }[]>([]);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [isProjectOwner, setIsProjectOwner] = useState<boolean>(false);
@@ -252,14 +253,34 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
 
   const fetchTasks = async () => {
     try {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select("id, title")
-        .eq("project_id", projectId)
-        .order("title");
+      const [tasksRes, materialsRes] = await Promise.all([
+        supabase
+          .from("tasks")
+          .select("id, title, budget, material_estimate, material_items, is_ata")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("materials")
+          .select("task_id, price_total")
+          .eq("project_id", projectId)
+          .eq("exclude_from_budget", false)
+          .not("task_id", "is", null),
+      ]);
 
-      if (error) throw error;
-      setTasks(data || []);
+      if (tasksRes.error) throw tasksRes.error;
+
+      const spendMap = new Map<string, number>();
+      (materialsRes.data || []).forEach(m => {
+        if (m.task_id) {
+          spendMap.set(m.task_id, (spendMap.get(m.task_id) || 0) + (m.price_total || 0));
+        }
+      });
+
+      setTasks((tasksRes.data || []).map(task => ({
+        ...task,
+        is_ata: task.is_ata ?? false,
+        materialSpent: spendMap.get(task.id) || 0,
+      })));
     } catch (error: unknown) {
       console.error("Error fetching tasks:", error);
     }
@@ -721,6 +742,88 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                           </SelectContent>
                         </Select>
                       </div>
+                      {/* Task picker */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">{t("document.linkToTask")}</Label>
+                        <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
+                          {tasks.map(task => (
+                            <div key={task.id} className="flex flex-col">
+                              <button
+                                type="button"
+                                onClick={() => setNewMaterial({ ...newMaterial, task_id: task.id })}
+                                className={cn(
+                                  "flex items-center justify-between p-2.5 rounded-lg border text-left text-sm transition-colors",
+                                  newMaterial.task_id === task.id
+                                    ? "border-primary bg-primary/5"
+                                    : "border-border hover:border-primary/30 hover:bg-accent/50"
+                                )}
+                              >
+                                <span className="truncate font-medium flex items-center gap-1.5">
+                                  {task.title}
+                                  {task.is_ata && (
+                                    <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-300 shrink-0">ÄTA</Badge>
+                                  )}
+                                </span>
+                                {(() => {
+                                  const denom = (task.material_estimate && task.material_estimate > 0)
+                                    ? task.material_estimate : task.budget;
+                                  if (!denom || denom <= 0) return null;
+                                  const ratio = task.materialSpent / denom;
+                                  const color = ratio >= 1 ? "text-destructive" : ratio >= 0.8 ? "text-amber-600" : "text-emerald-600";
+                                  const bar = ratio >= 1 ? "bg-destructive" : ratio >= 0.8 ? "bg-amber-500" : "bg-emerald-500";
+                                  return (
+                                    <div className="flex flex-col items-end gap-0.5 ml-2 shrink-0">
+                                      <span className={cn("text-xs", color)}>
+                                        {formatCurrency(task.materialSpent, currency)} / {formatCurrency(denom, currency)}
+                                      </span>
+                                      <div className="w-16 h-1 rounded-full bg-muted overflow-hidden">
+                                        <div className={cn("h-full rounded-full", bar)} style={{ width: `${Math.min(ratio * 100, 100)}%` }} />
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </button>
+                              {newMaterial.task_id === task.id && task.material_items && (task.material_items as Array<{id: string; name: string; amount: number}>).length > 0 && (
+                                <div className="ml-4 pl-3 border-l-2 border-muted space-y-1 py-1">
+                                  <span className="text-xs text-muted-foreground font-medium">
+                                    {t("costBreakdown.plannedMaterials")}
+                                  </span>
+                                  {(task.material_items as Array<{id: string; name: string; amount: number}>).map((item) => (
+                                    <div key={item.id} className="flex justify-between text-xs">
+                                      <span className="text-muted-foreground">{item.name}</span>
+                                      <span>{formatCurrency(item.amount, currency)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => setNewMaterial({ ...newMaterial, task_id: "none" })}
+                            className={cn(
+                              "flex items-center p-2.5 rounded-lg border text-left text-sm transition-colors border-dashed",
+                              !newMaterial.task_id || newMaterial.task_id === "none"
+                                ? "border-primary bg-primary/5"
+                                : "border-muted-foreground/30 hover:border-primary/30"
+                            )}
+                          >
+                            <span className="text-muted-foreground">{t("document.noTaskLink")}</span>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="quick-exclude-from-budget"
+                          checked={newMaterial.exclude_from_budget}
+                          onChange={(e) => setNewMaterial({ ...newMaterial, exclude_from_budget: e.target.checked })}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <Label htmlFor="quick-exclude-from-budget" className="text-sm font-normal cursor-pointer">
+                          {t('purchases.excludeFromBudget')}
+                        </Label>
+                      </div>
                       <Button type="submit" className="w-full" disabled={creating}>
                         {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : t('purchases.sendOrder')}
                       </Button>
@@ -1082,7 +1185,14 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell className="font-medium">{material.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <span className="flex items-center gap-1.5">
+                          {material.name}
+                          {material.exclude_from_budget && (
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-300 shrink-0">ÄTA</Badge>
+                          )}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         <AttachmentIndicator hasAttachment={material.hasAttachment || false} count={material.attachmentCount} />
                       </TableCell>

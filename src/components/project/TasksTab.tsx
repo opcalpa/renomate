@@ -15,13 +15,13 @@ import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map } from "lucide-react";
+import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map as MapIcon, Loader2, AlertTriangle, Link2 } from "lucide-react";
 import { TaskListSkeleton } from "@/components/ui/skeleton-screens";
 import { DEFAULT_COST_CENTERS, getCostCenterIcon, getCostCenterLabel } from "@/lib/costCenters";
 import { formatCurrency } from "@/lib/currency";
+import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import MaterialsList from "./MaterialsList";
 import { EntityPhotoGallery } from "@/components/shared/EntityPhotoGallery";
@@ -32,6 +32,7 @@ import ProjectTimeline from "./ProjectTimeline";
 import { ProjectLockBanner } from "./ProjectLockBanner";
 import { useProjectLock } from "@/hooks/useProjectLock";
 import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
+import { TasksTableView } from "./tasks";
 
 interface ChecklistItem {
   id: string;
@@ -64,6 +65,16 @@ interface Task {
   cost_center: string | null;
   cost_centers?: string[] | null;
   checklists?: Checklist[];
+  // Cost estimation fields
+  task_cost_type: string | null;
+  estimated_hours: number | null;
+  hourly_rate: number | null;
+  subcontractor_cost: number | null;
+  markup_percent: number | null;
+  material_estimate: number | null;
+  // Sub-task / ÄTA fields
+  is_ata?: boolean;
+  parent_task_id?: string | null;
 }
 
 interface Stakeholder {
@@ -125,6 +136,9 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
   const [customCostCenters, setCustomCostCenters] = useState<string[]>([]);
   const [showCustomCostCenter, setShowCustomCostCenter] = useState(false);
   const [customCostCenterValue, setCustomCostCenterValue] = useState("");
+  const [newTaskIsAta, setNewTaskIsAta] = useState(false);
+  const [newTaskParentId, setNewTaskParentId] = useState<string | null>(null);
+  const [taskMaterialSpend, setTaskMaterialSpend] = useState<Map<string, number>>(new Map());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -139,11 +153,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
   
   // View mode
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  
-  // Table sorting
-  const [sortColumn, setSortColumn] = useState<string>('created_at');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
 
   // Timeline visibility
   const [timelineOpen, setTimelineOpen] = useState(true);
@@ -284,9 +294,26 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
         query = query.eq("assigned_to_stakeholder_id", currentProfileId);
       }
 
-      const { data, error } = await query.order("created_at", { ascending: false });
+      const [{ data, error }, materialsRes] = await Promise.all([
+        query.order("created_at", { ascending: false }),
+        supabase
+          .from("materials")
+          .select("task_id, price_total")
+          .eq("project_id", projectId)
+          .eq("exclude_from_budget", false)
+          .not("task_id", "is", null),
+      ]);
 
       if (error) throw error;
+
+      // Build material spend map per task
+      const spendMap = new Map<string, number>();
+      (materialsRes.data || []).forEach((m: { task_id: string | null; price_total: number | null }) => {
+        if (m.task_id) {
+          spendMap.set(m.task_id, (spendMap.get(m.task_id) || 0) + (m.price_total || 0));
+        }
+      });
+      setTaskMaterialSpend(spendMap);
 
       // Map database fields to our interface (assigned_to_contractor_id is deprecated, use assigned_to_stakeholder_id)
       const mappedTasks = (data || []).map((task: any) => ({
@@ -393,6 +420,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
           project_id: projectId,
           title: newTaskTitle,
           description: newTaskDescription,
+          status: "to_do",
           priority: newTaskPriority,
           start_date: newTaskStartDate || null,
           finish_date: newTaskFinishDate || null,
@@ -402,6 +430,8 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
           cost_centers: newTaskCostCenters.length > 0 ? newTaskCostCenters : null,
           assigned_to_stakeholder_id: newTaskAssignee && newTaskAssignee !== "unassigned" ? newTaskAssignee : null,
           created_by_user_id: profile.id,
+          is_ata: !isPlanning && newTaskIsAta,
+          parent_task_id: newTaskParentId || null,
         });
 
       if (error) throw error;
@@ -434,6 +464,8 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
       setNewTaskCostCenters([]);
       setShowCustomCostCenter(false);
       setCustomCostCenterValue("");
+      setNewTaskIsAta(false);
+      setNewTaskParentId(null);
       fetchTasks();
     } catch (error: any) {
       toast({
@@ -452,26 +484,37 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
     setCreating(true);
 
     try {
+      const payload: Record<string, unknown> = {
+        title: editingTask.title,
+        description: editingTask.description,
+        status: editingTask.status,
+        priority: editingTask.priority,
+        start_date: editingTask.start_date || null,
+        finish_date: editingTask.finish_date || null,
+        room_id: editingTask.room_id || null,
+        progress: editingTask.progress,
+        assigned_to_stakeholder_id: editingTask.assigned_to_stakeholder_id || null,
+        budget: editingTask.budget || null,
+        ordered_amount: editingTask.ordered_amount || null,
+        payment_status: editingTask.payment_status || null,
+        paid_amount: editingTask.paid_amount || null,
+        cost_center: editingTask.cost_center || null,
+        cost_centers: editingTask.cost_centers || null,
+        checklists: editingTask.checklists || [],
+      };
+
+      if ("task_cost_type" in editingTask) {
+        payload.task_cost_type = editingTask.task_cost_type || "own_labor";
+        payload.estimated_hours = editingTask.estimated_hours || null;
+        payload.hourly_rate = editingTask.hourly_rate || null;
+        payload.subcontractor_cost = editingTask.subcontractor_cost || null;
+        payload.markup_percent = editingTask.markup_percent ?? 0;
+        payload.material_estimate = editingTask.material_estimate || null;
+      }
+
       const { error } = await supabase
         .from("tasks")
-        .update({
-          title: editingTask.title,
-          description: editingTask.description,
-          status: editingTask.status,
-          priority: editingTask.priority,
-          start_date: editingTask.start_date || null,
-          finish_date: editingTask.finish_date || null,
-          room_id: editingTask.room_id || null,
-          progress: editingTask.progress,
-          assigned_to_stakeholder_id: editingTask.assigned_to_stakeholder_id || null,
-          budget: editingTask.budget || null,
-          ordered_amount: editingTask.ordered_amount || null,
-          payment_status: editingTask.payment_status || null,
-          paid_amount: editingTask.paid_amount || null,
-          cost_center: editingTask.cost_center || null,
-          cost_centers: editingTask.cost_centers || null,
-          checklists: editingTask.checklists || [],
-        })
+        .update(payload)
         .eq("id", editingTask.id);
 
       if (error) throw error;
@@ -677,38 +720,6 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
     }
     return true;
   });
-
-  // Sort tasks for table view
-  const sortedTasks = [...filteredTasks].sort((a, b) => {
-    let aValue: any = a[sortColumn as keyof Task];
-    let bValue: any = b[sortColumn as keyof Task];
-
-    // Handle null values
-    if (aValue === null || aValue === undefined) return sortDirection === 'asc' ? 1 : -1;
-    if (bValue === null || bValue === undefined) return sortDirection === 'asc' ? -1 : 1;
-
-    // Convert to comparable values
-    if (typeof aValue === 'string') aValue = aValue.toLowerCase();
-    if (typeof bValue === 'string') bValue = bValue.toLowerCase();
-
-    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(column);
-      setSortDirection('asc');
-    }
-  };
-
-  const getSortIcon = (column: string) => {
-    if (sortColumn !== column) return <ArrowUpDown className="h-3 w-3 ml-1" />;
-    return sortDirection === 'asc' ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
-  };
 
   // Group tasks by status (supporting both old and new status values)
   // Note: 'done' is a legacy status that should be merged into 'completed'
@@ -982,6 +993,14 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
               ) : null;
             })()}
 
+            {/* Material estimate indicator */}
+            {task.material_estimate && task.material_estimate > 0 && (
+              <div className="flex items-center gap-0.5 text-muted-foreground" title={`${t("taskCost.materialEstimate", "Material")}: ${formatCurrency(task.material_estimate, currency)}`}>
+                <ShoppingCart className="h-3 w-3" />
+                <span className="text-xs">{formatCurrency(task.material_estimate, currency)}</span>
+              </div>
+            )}
+
             {/* Edit icon - visible on hover */}
             <Pencil className="h-3 w-3 ml-auto text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
@@ -1043,198 +1062,162 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
             </ToggleGroupItem>
           </ToggleGroup>
 
-          {/* Mobile filter toggle */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="md:hidden h-9"
-            onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-          >
-            <Filter className="h-3 w-3 mr-2" />
-            {t('tasks.filter', 'Filter')}
-            {(filterStatuses.size + filterAssignees.size + filterRooms.size + filterCostCenters.size) > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                {filterStatuses.size + filterAssignees.size + filterRooms.size + filterCostCenters.size}
-              </Badge>
-            )}
-            <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${mobileFiltersOpen ? 'rotate-180' : ''}`} />
-          </Button>
-
-          <div className="w-px h-6 bg-border hidden md:block" />
-
-          {/* Filter popovers - collapsible on mobile */}
-          <div className={`${mobileFiltersOpen ? 'flex' : 'hidden'} md:flex items-center gap-3 flex-wrap w-full md:w-auto`}>
-          {/* Status Filter */}
+          {/* Unified Filter Popover */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="h-9">
                 <Filter className="h-3 w-3 mr-2" />
-                {t('tasks.status')}
-                {filterStatuses.size > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{filterStatuses.size}</Badge>
+                {t('tasks.filter', 'Filter')}
+                {(filterStatuses.size + filterAssignees.size + filterRooms.size + filterCostCenters.size) > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                    {filterStatuses.size + filterAssignees.size + filterRooms.size + filterCostCenters.size}
+                  </Badge>
                 )}
-                <ChevronDown className="h-3 w-3 ml-1" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-56 p-2" align="start">
-              <div className="space-y-1 max-h-64 overflow-y-auto">
-                {statusOrder.map(status => {
-                  const count = getStatusCount(status);
-                  const label = statusLabels[status as keyof typeof statusLabels] || status;
-                  return (
-                    <label key={status} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+            <PopoverContent className="w-72 p-0" align="start">
+              <div className="max-h-[70vh] overflow-y-auto">
+                {/* Status */}
+                <div className="px-3 pt-3 pb-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('tasks.status')}</p>
+                </div>
+                <div className="px-1 pb-2">
+                  {statusOrder.map(status => {
+                    const count = getStatusCount(status);
+                    const label = statusLabels[status as keyof typeof statusLabels] || status;
+                    return (
+                      <label key={status} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                        <Checkbox
+                          checked={filterStatuses.has(status)}
+                          onCheckedChange={() => toggleFilterValue(setFilterStatuses, status)}
+                        />
+                        <span className="flex-1">{label}</span>
+                        <span className="text-xs text-muted-foreground">{count}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <div className="border-t" />
+
+                {/* Assignee */}
+                <div className="px-3 pt-3 pb-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('tasks.assignee')}</p>
+                </div>
+                <div className="px-1 pb-2">
+                  <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                    <Checkbox
+                      checked={filterAssignees.has("unassigned")}
+                      onCheckedChange={() => toggleFilterValue(setFilterAssignees, "unassigned")}
+                    />
+                    <span className="flex-1">{t('common.unassigned')}</span>
+                    <span className="text-xs text-muted-foreground">{getAssigneeCount("unassigned")}</span>
+                  </label>
+                  {teamMembers.map(member => (
+                    <label key={member.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
                       <Checkbox
-                        checked={filterStatuses.has(status)}
-                        onCheckedChange={() => toggleFilterValue(setFilterStatuses, status)}
+                        checked={filterAssignees.has(member.id)}
+                        onCheckedChange={() => toggleFilterValue(setFilterAssignees, member.id)}
                       />
-                      <span className="flex-1">{label}</span>
-                      <span className="text-xs text-muted-foreground">{count}</span>
+                      <span className="flex-1">{member.name}</span>
+                      <span className="text-xs text-muted-foreground">{getAssigneeCount(member.id)}</span>
                     </label>
-                  );
-                })}
-              </div>
-            </PopoverContent>
-          </Popover>
+                  ))}
+                </div>
 
-          {/* Assignee Filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9">
-                <Filter className="h-3 w-3 mr-2" />
-                {t('tasks.assignee')}
-                {filterAssignees.size > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{filterAssignees.size}</Badge>
-                )}
-                <ChevronDown className="h-3 w-3 ml-1" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-2" align="start">
-              <div className="space-y-1 max-h-64 overflow-y-auto">
-                <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
-                  <Checkbox
-                    checked={filterAssignees.has("unassigned")}
-                    onCheckedChange={() => toggleFilterValue(setFilterAssignees, "unassigned")}
-                  />
-                  <span className="flex-1">{t('common.unassigned')}</span>
-                  <span className="text-xs text-muted-foreground">{getAssigneeCount("unassigned")}</span>
-                </label>
-                {teamMembers.map(member => (
-                  <label key={member.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                <div className="border-t" />
+
+                {/* Room */}
+                <div className="px-3 pt-3 pb-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('tasks.room')}</p>
+                </div>
+                <div className="px-1 pb-2">
+                  <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
                     <Checkbox
-                      checked={filterAssignees.has(member.id)}
-                      onCheckedChange={() => toggleFilterValue(setFilterAssignees, member.id)}
+                      checked={filterRooms.has("unassigned")}
+                      onCheckedChange={() => toggleFilterValue(setFilterRooms, "unassigned")}
                     />
-                    <span className="flex-1">{member.name}</span>
-                    <span className="text-xs text-muted-foreground">{getAssigneeCount(member.id)}</span>
+                    <span className="flex-1">{t('tasks.noRoom')}</span>
+                    <span className="text-xs text-muted-foreground">{getRoomCount("unassigned")}</span>
                   </label>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Room Filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9">
-                <Filter className="h-3 w-3 mr-2" />
-                {t('tasks.room')}
-                {filterRooms.size > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{filterRooms.size}</Badge>
-                )}
-                <ChevronDown className="h-3 w-3 ml-1" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-2" align="start">
-              <div className="space-y-1 max-h-64 overflow-y-auto">
-                <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
-                  <Checkbox
-                    checked={filterRooms.has("unassigned")}
-                    onCheckedChange={() => toggleFilterValue(setFilterRooms, "unassigned")}
-                  />
-                  <span className="flex-1">{t('tasks.noRoom')}</span>
-                  <span className="text-xs text-muted-foreground">{getRoomCount("unassigned")}</span>
-                </label>
-                {rooms.map(room => (
-                  <label key={room.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
-                    <Checkbox
-                      checked={filterRooms.has(room.id)}
-                      onCheckedChange={() => toggleFilterValue(setFilterRooms, room.id)}
-                    />
-                    <span className="flex-1">{room.name}</span>
-                    <span className="text-xs text-muted-foreground">{getRoomCount(room.id)}</span>
-                  </label>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Cost Center Filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9">
-                <Filter className="h-3 w-3 mr-2" />
-                {t('tasks.costCenter')}
-                {filterCostCenters.size > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{filterCostCenters.size}</Badge>
-                )}
-                <ChevronDown className="h-3 w-3 ml-1" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-2" align="start">
-              <div className="space-y-1 max-h-64 overflow-y-auto">
-                <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
-                  <Checkbox
-                    checked={filterCostCenters.has("none")}
-                    onCheckedChange={() => toggleFilterValue(setFilterCostCenters, "none")}
-                  />
-                  <span className="flex-1">{t('common.none')}</span>
-                  <span className="text-xs text-muted-foreground">{getCostCenterCount("none")}</span>
-                </label>
-                {DEFAULT_COST_CENTERS.map(cc => {
-                  const Icon = cc.icon;
-                  return (
-                    <label key={cc.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                  {rooms.map(room => (
+                    <label key={room.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
                       <Checkbox
-                        checked={filterCostCenters.has(cc.id)}
-                        onCheckedChange={() => toggleFilterValue(setFilterCostCenters, cc.id)}
+                        checked={filterRooms.has(room.id)}
+                        onCheckedChange={() => toggleFilterValue(setFilterRooms, room.id)}
                       />
-                      <Icon className="h-3 w-3 flex-shrink-0" />
-                      <span className="flex-1">{cc.label}</span>
-                      <span className="text-xs text-muted-foreground">{getCostCenterCount(cc.id)}</span>
+                      <span className="flex-1">{room.name}</span>
+                      <span className="text-xs text-muted-foreground">{getRoomCount(room.id)}</span>
                     </label>
-                  );
-                })}
-                {customCcIds.map(ccId => (
-                  <label key={ccId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                  ))}
+                </div>
+
+                <div className="border-t" />
+
+                {/* Cost Center */}
+                <div className="px-3 pt-3 pb-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('tasks.costCenter')}</p>
+                </div>
+                <div className="px-1 pb-2">
+                  <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
                     <Checkbox
-                      checked={filterCostCenters.has(ccId)}
-                      onCheckedChange={() => toggleFilterValue(setFilterCostCenters, ccId)}
+                      checked={filterCostCenters.has("none")}
+                      onCheckedChange={() => toggleFilterValue(setFilterCostCenters, "none")}
                     />
-                    <Tag className="h-3 w-3 flex-shrink-0" />
-                    <span className="flex-1">{getCostCenterLabel(ccId)}</span>
-                    <span className="text-xs text-muted-foreground">{getCostCenterCount(ccId)}</span>
+                    <span className="flex-1">{t('common.none')}</span>
+                    <span className="text-xs text-muted-foreground">{getCostCenterCount("none")}</span>
                   </label>
-                ))}
+                  {DEFAULT_COST_CENTERS.map(cc => {
+                    const Icon = cc.icon;
+                    return (
+                      <label key={cc.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                        <Checkbox
+                          checked={filterCostCenters.has(cc.id)}
+                          onCheckedChange={() => toggleFilterValue(setFilterCostCenters, cc.id)}
+                        />
+                        <Icon className="h-3 w-3 flex-shrink-0" />
+                        <span className="flex-1">{cc.label}</span>
+                        <span className="text-xs text-muted-foreground">{getCostCenterCount(cc.id)}</span>
+                      </label>
+                    );
+                  })}
+                  {customCcIds.map(ccId => (
+                    <label key={ccId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                      <Checkbox
+                        checked={filterCostCenters.has(ccId)}
+                        onCheckedChange={() => toggleFilterValue(setFilterCostCenters, ccId)}
+                      />
+                      <Tag className="h-3 w-3 flex-shrink-0" />
+                      <span className="flex-1">{getCostCenterLabel(ccId)}</span>
+                      <span className="text-xs text-muted-foreground">{getCostCenterCount(ccId)}</span>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Clear all */}
+                {(filterStatuses.size > 0 || filterAssignees.size > 0 || filterRooms.size > 0 || filterCostCenters.size > 0) && (
+                  <>
+                    <div className="border-t" />
+                    <div className="p-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          setFilterStatuses(new Set());
+                          setFilterAssignees(new Set());
+                          setFilterRooms(new Set());
+                          setFilterCostCenters(new Set());
+                        }}
+                      >
+                        {t('tasks.clearFilters')}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             </PopoverContent>
           </Popover>
-
-          {/* Clear filters button (only show when filters are active) */}
-          {(filterStatuses.size > 0 || filterAssignees.size > 0 || filterRooms.size > 0 || filterCostCenters.size > 0) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setFilterStatuses(new Set());
-                setFilterAssignees(new Set());
-                setFilterRooms(new Set());
-                setFilterCostCenters(new Set());
-              }}
-            >
-              {t('tasks.clearFilters')}
-            </Button>
-          )}
-          </div>{/* end filter popovers wrapper */}
 
           {/* Spacer to push Add Task to the right */}
           <div className="flex-1" />
@@ -1309,16 +1292,16 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                 <div className="space-y-2">
                   <Label htmlFor="task-start-date">{t('tasks.startDateOptional')}</Label>
                   <DatePicker
-                    date={newTaskStartDate ? new Date(newTaskStartDate) : undefined}
-                    onDateChange={(date) => setNewTaskStartDate(date ? date.toISOString().split('T')[0] : '')}
+                    date={newTaskStartDate ? parseLocalDate(newTaskStartDate) : undefined}
+                    onDateChange={(date) => setNewTaskStartDate(date ? formatLocalDate(date) : '')}
                     placeholder="Välj startdatum"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="task-finish-date">{t('tasks.finishDateOptional')}</Label>
                   <DatePicker
-                    date={newTaskFinishDate ? new Date(newTaskFinishDate) : undefined}
-                    onDateChange={(date) => setNewTaskFinishDate(date ? date.toISOString().split('T')[0] : '')}
+                    date={newTaskFinishDate ? parseLocalDate(newTaskFinishDate) : undefined}
+                    onDateChange={(date) => setNewTaskFinishDate(date ? formatLocalDate(date) : '')}
                     placeholder="Välj slutdatum"
                   />
                 </div>
@@ -1349,6 +1332,75 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                   onChange={(e) => setNewTaskBudget(e.target.value)}
                 />
               </div>
+              {/* Budget post picker — only during active project */}
+              {!isPlanning && (() => {
+                const budgetPosts = tasks.filter(
+                  (t) => !t.is_ata && (t.budget || 0) > 0 && !t.parent_task_id
+                );
+                // "standalone" = parentId null + not ÄTA, "ata" = parentId null + ÄTA
+                const pickerValue = newTaskIsAta ? "ata" : (newTaskParentId ?? "standalone");
+                return (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5">
+                      <Link2 className="h-4 w-4" />
+                      {t('tasks.linkToBudgetPost')}
+                    </Label>
+                    <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-1">
+                      {budgetPosts.map((bp) => {
+                        const spent = taskMaterialSpend.get(bp.id) || 0;
+                        return (
+                          <label
+                            key={bp.id}
+                            className={`flex items-center justify-between gap-2 p-2 rounded cursor-pointer hover:bg-accent/50 ${pickerValue === bp.id ? "bg-accent" : ""}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="parentTask"
+                                checked={pickerValue === bp.id}
+                                onChange={() => {
+                                  setNewTaskParentId(bp.id);
+                                  setNewTaskIsAta(false);
+                                }}
+                                className="accent-primary"
+                              />
+                              <span className="text-sm font-medium truncate max-w-[200px]">{bp.title}</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {formatCurrency(spent)} / {formatCurrency(bp.budget || 0)}
+                            </span>
+                          </label>
+                        );
+                      })}
+                      {budgetPosts.length > 0 && <Separator className="my-1" />}
+                      <label
+                        className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-accent/50 ${pickerValue === "standalone" ? "bg-accent" : ""}`}
+                      >
+                        <input
+                          type="radio"
+                          name="parentTask"
+                          checked={pickerValue === "standalone"}
+                          onChange={() => { setNewTaskParentId(null); setNewTaskIsAta(false); }}
+                          className="accent-primary"
+                        />
+                        <span className="text-sm">{t('tasks.standaloneTask')}</span>
+                      </label>
+                      <label
+                        className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-accent/50 ${pickerValue === "ata" ? "bg-accent" : ""}`}
+                      >
+                        <input
+                          type="radio"
+                          name="parentTask"
+                          checked={pickerValue === "ata"}
+                          onChange={() => { setNewTaskParentId(null); setNewTaskIsAta(true); }}
+                          className="accent-primary"
+                        />
+                        <span className="text-sm">{t('tasks.isAta')}</span>
+                      </label>
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="space-y-2">
                 <Label>{t('tasks.costCentersOptional')}</Label>
                 <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
@@ -1595,16 +1647,16 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                   <div className="space-y-2">
                     <Label htmlFor="edit-task-start-date">{t('tasks.startDate')}</Label>
                     <DatePicker
-                      date={editingTask.start_date ? new Date(editingTask.start_date) : undefined}
-                      onDateChange={(date) => setEditingTask({ ...editingTask, start_date: date ? date.toISOString().split('T')[0] : null })}
+                      date={editingTask.start_date ? parseLocalDate(editingTask.start_date) : undefined}
+                      onDateChange={(date) => setEditingTask({ ...editingTask, start_date: date ? formatLocalDate(date) : null })}
                       placeholder="Välj startdatum"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="edit-task-finish-date">{t('tasks.finishDate')}</Label>
                     <DatePicker
-                      date={editingTask.finish_date ? new Date(editingTask.finish_date) : undefined}
-                      onDateChange={(date) => setEditingTask({ ...editingTask, finish_date: date ? date.toISOString().split('T')[0] : null })}
+                      date={editingTask.finish_date ? parseLocalDate(editingTask.finish_date) : undefined}
+                      onDateChange={(date) => setEditingTask({ ...editingTask, finish_date: date ? formatLocalDate(date) : null })}
                       placeholder="Välj slutdatum"
                     />
                   </div>
@@ -1647,12 +1699,157 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                         }}
                         title={t('tasks.viewOnFloorPlan')}
                       >
-                        <Map className="h-4 w-4" />
+                        <MapIcon className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
                 </div>
-                <div className={`grid gap-4 ${isPlanning ? 'grid-cols-1' : 'grid-cols-3'}`}>
+                {/* Cost estimation — planning mode gets the full pricing form */}
+                {isPlanning ? (
+                <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+                  <Label className="text-sm font-semibold">{t('taskCost.pricing', 'Pricing')}</Label>
+
+                  {/* Cost type toggle */}
+                  <ToggleGroup
+                    type="single"
+                    value={editingTask.task_cost_type || "own_labor"}
+                    onValueChange={(value) => {
+                      if (value) setEditingTask({ ...editingTask, task_cost_type: value });
+                    }}
+                    className="justify-start"
+                  >
+                    <ToggleGroupItem value="own_labor" className="text-xs px-3">
+                      {t('taskCost.ownLabor', 'Own labor')}
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="subcontractor" className="text-xs px-3">
+                      {t('taskCost.subcontractor', 'Subcontractor')}
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+
+                  {(editingTask.task_cost_type || "own_labor") === "own_labor" ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">{t('taskCost.estimatedHours', 'Hours')}</Label>
+                          <Input
+                            type="number"
+                            step="0.5"
+                            min="0"
+                            placeholder="0"
+                            value={editingTask.estimated_hours?.toString() || ""}
+                            onChange={(e) => {
+                              const hours = e.target.value ? parseFloat(e.target.value) : null;
+                              const rate = editingTask.hourly_rate || 0;
+                              const labor = (hours || 0) * rate;
+                              const material = editingTask.material_estimate || 0;
+                              setEditingTask({ ...editingTask, estimated_hours: hours, budget: labor + material || null });
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">{t('taskCost.hourlyRate', 'Hourly rate')}</Label>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            placeholder="0"
+                            value={editingTask.hourly_rate?.toString() || ""}
+                            onChange={(e) => {
+                              const rate = e.target.value ? parseFloat(e.target.value) : null;
+                              const hours = editingTask.estimated_hours || 0;
+                              const labor = hours * (rate || 0);
+                              const material = editingTask.material_estimate || 0;
+                              setEditingTask({ ...editingTask, hourly_rate: rate, budget: labor + material || null });
+                            }}
+                          />
+                        </div>
+                      </div>
+                      {(editingTask.estimated_hours && editingTask.hourly_rate) ? (
+                        <p className="text-xs text-muted-foreground">
+                          {t('taskCost.laborTotal', 'Labor')}: {formatCurrency((editingTask.estimated_hours || 0) * (editingTask.hourly_rate || 0), currency)}
+                        </p>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">{t('taskCost.subcontractorCost', 'Subcontractor cost')}</Label>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            placeholder="0"
+                            value={editingTask.subcontractor_cost?.toString() || ""}
+                            onChange={(e) => {
+                              const cost = e.target.value ? parseFloat(e.target.value) : null;
+                              const markup = editingTask.markup_percent || 0;
+                              const withMarkup = (cost || 0) * (1 + markup / 100);
+                              const material = editingTask.material_estimate || 0;
+                              setEditingTask({ ...editingTask, subcontractor_cost: cost, budget: withMarkup + material || null });
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">{t('taskCost.markupPercent', 'Markup %')}</Label>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            placeholder="0"
+                            value={editingTask.markup_percent?.toString() || ""}
+                            onChange={(e) => {
+                              const markup = e.target.value ? parseFloat(e.target.value) : null;
+                              const cost = editingTask.subcontractor_cost || 0;
+                              const withMarkup = cost * (1 + (markup || 0) / 100);
+                              const material = editingTask.material_estimate || 0;
+                              setEditingTask({ ...editingTask, markup_percent: markup, budget: withMarkup + material || null });
+                            }}
+                          />
+                        </div>
+                      </div>
+                      {editingTask.subcontractor_cost ? (
+                        <p className="text-xs text-muted-foreground">
+                          {t('taskCost.withMarkup', 'With markup')}: {formatCurrency((editingTask.subcontractor_cost || 0) * (1 + (editingTask.markup_percent || 0) / 100), currency)}
+                        </p>
+                      ) : null}
+                    </>
+                  )}
+
+                  {/* Material estimate — shared between both types */}
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">{t('taskCost.materialEstimate', 'Material estimate')}</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      min="0"
+                      placeholder="0"
+                      value={editingTask.material_estimate?.toString() || ""}
+                      onChange={(e) => {
+                        const material = e.target.value ? parseFloat(e.target.value) : null;
+                        const costType = editingTask.task_cost_type || "own_labor";
+                        let base = 0;
+                        if (costType === "own_labor") {
+                          base = (editingTask.estimated_hours || 0) * (editingTask.hourly_rate || 0);
+                        } else {
+                          base = (editingTask.subcontractor_cost || 0) * (1 + (editingTask.markup_percent || 0) / 100);
+                        }
+                        setEditingTask({ ...editingTask, material_estimate: material, budget: base + (material || 0) || null });
+                      }}
+                    />
+                  </div>
+
+                  {/* Customer price summary */}
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{t('taskCost.customerPrice', 'Customer price')}</span>
+                    <span className="text-sm font-semibold">
+                      {formatCurrency(editingTask.budget || 0, currency)}
+                    </span>
+                  </div>
+                </div>
+                ) : (
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-task-budget">{t('tasks.budget')}</Label>
                     <Input
@@ -1664,8 +1861,6 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                       onChange={(e) => setEditingTask({ ...editingTask, budget: e.target.value ? parseFloat(e.target.value) : null })}
                     />
                   </div>
-                  {!isPlanning && (
-                  <>
                   <div className="space-y-2">
                     <Label htmlFor="edit-task-ordered">{t('tasks.ordered')}</Label>
                     <Input
@@ -1688,9 +1883,15 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                       onChange={(e) => setEditingTask({ ...editingTask, paid_amount: e.target.value ? parseFloat(e.target.value) : null })}
                     />
                   </div>
-                  </>
-                  )}
                 </div>
+                )}
+                {editingTask.material_estimate != null && editingTask.material_estimate > 0 && !isPlanning && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
+                    <ShoppingCart className="h-3.5 w-3.5" />
+                    <span>{t("taskCost.materialEstimate", "Material estimate")}:</span>
+                    <span className="font-medium text-foreground">{formatCurrency(editingTask.material_estimate, currency)}</span>
+                  </div>
+                )}
                 {editingTask.budget && !isPlanning && (
                   <>
                     <div className="space-y-2">
@@ -1721,8 +1922,13 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                 {/* Advanced sections — hidden in planning phase */}
                 {!isPlanning && (
                 <>
+                <Collapsible>
                 <div className="space-y-2">
-                  <Label>{t('tasks.costCentersMultiple')}</Label>
+                  <CollapsibleTrigger className="flex items-center gap-1 text-sm font-medium cursor-pointer hover:text-foreground text-muted-foreground">
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    {t('tasks.costCentersMultiple')}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
                   <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                     {DEFAULT_COST_CENTERS.map((cc) => {
                       const Icon = cc.icon;
@@ -1851,7 +2057,9 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                       </Button>
                     </div>
                   )}
+                  </CollapsibleContent>
                 </div>
+                </Collapsible>
                 {/* Checklists */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -2227,168 +2435,21 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
         </div>
       ) : (
         /* Table View */
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[300px]">
-                      <Button variant="ghost" size="sm" onClick={() => handleSort('title')} className="h-8 px-2">
-                        {t('tasks.taskTitle')}
-                        {getSortIcon('title')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="w-[130px]">
-                      <Button variant="ghost" size="sm" onClick={() => handleSort('status')} className="h-8 px-2">
-                        {t('tasks.status')}
-                        {getSortIcon('status')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="w-[100px]">
-                      <Button variant="ghost" size="sm" onClick={() => handleSort('priority')} className="h-8 px-2">
-                        {t('tasks.priority')}
-                        {getSortIcon('priority')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="w-[150px]">
-                      <Button variant="ghost" size="sm" onClick={() => handleSort('assigned_to_stakeholder_id')} className="h-8 px-2">
-                        {t('tasks.assignee')}
-                        {getSortIcon('assigned_to_stakeholder_id')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="w-[120px]">
-                      <Button variant="ghost" size="sm" onClick={() => handleSort('room_id')} className="h-8 px-2">
-                        {t('tasks.room')}
-                        {getSortIcon('room_id')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="w-[120px]">
-                      <Button variant="ghost" size="sm" onClick={() => handleSort('start_date')} className="h-8 px-2">
-                        {t('tasks.startDate')}
-                        {getSortIcon('start_date')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="w-[120px]">
-                      <Button variant="ghost" size="sm" onClick={() => handleSort('finish_date')} className="h-8 px-2">
-                        {t('tasks.finishDate')}
-                        {getSortIcon('finish_date')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="w-[100px]">
-                      <Button variant="ghost" size="sm" onClick={() => handleSort('progress')} className="h-8 px-2">
-                        {t('tasks.progress')}
-                        {getSortIcon('progress')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="w-[120px]">
-                      <Button variant="ghost" size="sm" onClick={() => handleSort('budget')} className="h-8 px-2">
-                        {t('tasks.budget')}
-                        {getSortIcon('budget')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="w-[60px]">{t('tasks.actions')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedTasks.map((task) => {
-                    const assignedTo = getAssignedMemberName(task);
-                    const roomName = rooms.find(r => r.id === task.room_id)?.name;
-                    
-                    return (
-                      <TableRow 
-                        key={task.id} 
-                        className="hover:bg-muted/50 cursor-pointer"
-                        onClick={() => {
-                          setEditingTask(task);
-                          setEditDialogOpen(true);
-                        }}
-                      >
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(task.status)}
-                            <span className={task.status === "completed" ? "line-through text-muted-foreground" : ""}>
-                              {task.title}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">
-                            {statusLabels[task.status as keyof typeof statusLabels] || task.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getPriorityColor(task.priority)} className="text-xs">
-                            {task.priority}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-sm">
-                            {assignedTo ? (
-                              <>
-                                <Users className="h-3 w-3" />
-                                {assignedTo}
-                              </>
-                            ) : (
-                              <span className="text-muted-foreground text-xs">{t('common.unassigned')}</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {roomName ? (
-                            <span className="text-sm">{roomName}</span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">{t('tasks.noRoom')}</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {task.start_date ? (
-                            <span className="text-sm">{new Date(task.start_date).toLocaleDateString()}</span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {task.finish_date ? (
-                            <span className="text-sm">{new Date(task.finish_date).toLocaleDateString()}</span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress value={task.progress} className="h-2 w-16" />
-                            <span className="text-xs text-muted-foreground">{task.progress}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {task.budget ? (
-                            <span className="text-sm">{formatCurrency(task.budget, currency)}</span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingTask(task);
-                              setEditDialogOpen(true);
-                            }}
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+        <TasksTableView
+          tasks={filteredTasks}
+          projectId={projectId}
+          rooms={rooms}
+          stakeholders={stakeholders}
+          teamMembers={teamMembers}
+          currency={currency}
+          isReadOnly={lockStatus.isLocked}
+          onTaskClick={(task) => { setEditingTask(task); setEditDialogOpen(true); }}
+          onTaskUpdated={fetchTasks}
+          statusLabels={statusLabels}
+          getStatusIcon={getStatusIcon}
+          getPriorityColor={getPriorityColor}
+          getAssignedMemberName={getAssignedMemberName}
+        />
       )}
       {/* Create Purchase Order Dialog */}
       <Dialog open={poDialogOpen} onOpenChange={setPoDialogOpen}>

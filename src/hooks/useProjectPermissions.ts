@@ -8,6 +8,8 @@ export interface ProjectPermissions {
   isOwner: boolean;
   isSystemAdmin: boolean;
   isDemoProject: boolean;
+  isClient: boolean;
+  customerView: string;
   overview: string;
   timeline: string;
   tasks: string;
@@ -25,6 +27,8 @@ const ALL_EDIT: Omit<ProjectPermissions, "loading"> = {
   isOwner: true,
   isSystemAdmin: false,
   isDemoProject: false,
+  isClient: false,
+  customerView: "none",
   overview: "edit",
   timeline: "edit",
   tasks: "edit",
@@ -43,6 +47,8 @@ const DEMO_VIEW_ONLY: Omit<ProjectPermissions, "loading"> = {
   isOwner: false,
   isSystemAdmin: false,
   isDemoProject: true,
+  isClient: false,
+  customerView: "none",
   overview: "view",
   timeline: "view",
   tasks: "view",
@@ -59,6 +65,8 @@ const ALL_NONE: Omit<ProjectPermissions, "loading"> = {
   isOwner: false,
   isSystemAdmin: false,
   isDemoProject: false,
+  isClient: false,
+  customerView: "none",
   overview: "none",
   timeline: "none",
   tasks: "none",
@@ -137,7 +145,7 @@ export function useProjectPermissions(projectId: string | undefined): ProjectPer
       // Check for project_shares (works for both demo and regular projects)
       const { data: share } = await supabase
         .from("project_shares")
-        .select("overview_access, timeline_access, tasks_access, tasks_scope, space_planner_access, purchases_access, purchases_scope, budget_access, files_access, teams_access")
+        .select("role, customer_view_access, overview_access, timeline_access, tasks_access, tasks_scope, space_planner_access, purchases_access, purchases_scope, budget_access, files_access, teams_access")
         .eq("project_id", projectId)
         .eq("shared_with_user_id", profile.id)
         .maybeSingle();
@@ -146,10 +154,13 @@ export function useProjectPermissions(projectId: string | undefined): ProjectPer
 
       if (share) {
         // User is invited - use their share permissions
+        const customerView = share.customer_view_access || "none";
         setPerms({
           isOwner: false,
           isSystemAdmin: false,
           isDemoProject: isDemo,
+          isClient: customerView !== "none",
+          customerView,
           overview: share.overview_access || "none",
           timeline: share.timeline_access || "none",
           tasks: share.tasks_access || "none",

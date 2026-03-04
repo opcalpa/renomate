@@ -15,6 +15,15 @@ interface RawTask {
   assigned_to_contractor_id: string | null;
   assigned_to_stakeholder_id?: string | null;
   budget: number | null;
+  is_ata: boolean | null;
+  parent_task_id: string | null;
+  estimated_hours: number | null;
+  hourly_rate: number | null;
+  labor_cost_percent: number | null;
+  subcontractor_cost: number | null;
+  markup_percent: number | null;
+  material_estimate: number | null;
+  material_markup_percent: number | null;
 }
 
 interface Stakeholder {
@@ -26,6 +35,7 @@ interface Material {
   price_total: number | null;
   exclude_from_budget: boolean;
   status: string | null;
+  task_id: string | null;
 }
 
 export function useOverviewData(project: OverviewProject): OverviewData {
@@ -35,6 +45,7 @@ export function useOverviewData(project: OverviewProject): OverviewData {
   });
   const [budgetStats, setBudgetStats] = useState<BudgetStats>({
     total: null, spent: 0, percentage: 0, isWarning: false,
+    contractTotal: 0, invoicedTotal: 0, invoicedPercent: 0, estimatedProfit: 0,
   });
   const [orderStats, setOrderStats] = useState<OrderStats>({ pendingCount: 0 });
   const [timelineStats, setTimelineStats] = useState<TimelineStats>({
@@ -46,7 +57,9 @@ export function useOverviewData(project: OverviewProject): OverviewData {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [tasksRes, stakeholdersRes, materialsRes, activitiesData] = await Promise.all([
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const [tasksRes, stakeholdersRes, materialsRes, activitiesData, quotesRes, invoicesRes, profileRes] = await Promise.all([
         supabase
           .from("tasks")
           .select("*")
@@ -57,9 +70,24 @@ export function useOverviewData(project: OverviewProject): OverviewData {
           .eq("project_id", project.id),
         supabase
           .from("materials")
-          .select("price_total, exclude_from_budget, status")
+          .select("price_total, exclude_from_budget, status, task_id")
           .eq("project_id", project.id),
         fetchProjectActivities(project.id),
+        supabase
+          .from("quotes")
+          .select("total_amount")
+          .eq("project_id", project.id)
+          .eq("status", "accepted"),
+        supabase
+          .from("invoices")
+          .select("total_amount, status")
+          .eq("project_id", project.id)
+          .neq("status", "cancelled"),
+        user ? supabase
+          .from("profiles")
+          .select("default_labor_cost_percent")
+          .eq("user_id", user.id)
+          .single() : Promise.resolve({ data: null }),
       ]);
 
       const tasks: RawTask[] = (tasksRes.data || []) as unknown as RawTask[];
@@ -110,22 +138,80 @@ export function useOverviewData(project: OverviewProject): OverviewData {
         .map(mapTask);
       setInProgressTasks(inProgressList);
 
-      // Budget stats
-      const taskBudgetTotal = tasks.reduce((sum, t) => sum + (t.budget || 0), 0);
-      const materialCostTotal = materials.reduce((sum, m) => {
-        if (m.exclude_from_budget) return sum;
-        return sum + (m.price_total || 0);
-      }, 0);
-      const spent = taskBudgetTotal + materialCostTotal;
+      // Budget stats — avoid double-counting linked purchases & sub-tasks
+      // Sub-task budgets grouped by parent
+      const childBudgetByParent = new Map<string, number>();
+      tasks.forEach(t => {
+        if (t.parent_task_id && !t.is_ata && (t.budget || 0) > 0) {
+          childBudgetByParent.set(
+            t.parent_task_id,
+            (childBudgetByParent.get(t.parent_task_id) || 0) + (t.budget || 0)
+          );
+        }
+      });
+
+      // Root tasks only (not sub-tasks, not ÄTA)
+      const rootTasks = tasks.filter(t => !t.parent_task_id && !t.is_ata);
+
+      // IDs of root tasks that have linked items (materials or sub-tasks)
+      const taskIdsWithLinkedItems = new Set([
+        ...materials.filter(m => m.task_id && !m.exclude_from_budget).map(m => m.task_id),
+        ...Array.from(childBudgetByParent.keys()),
+      ]);
+
+      // Actual spend = linked materials + sub-task budgets
+      const linkedSpend =
+        materials
+          .filter(m => m.task_id && !m.exclude_from_budget)
+          .reduce((sum, m) => sum + (m.price_total || 0), 0)
+        + Array.from(childBudgetByParent.values()).reduce((sum, v) => sum + v, 0);
+
+      // Root tasks WITHOUT linked items → use their budget as estimate
+      const unlinkedTaskBudget = rootTasks
+        .filter(t => !taskIdsWithLinkedItems.has(t.id))
+        .reduce((sum, t) => sum + (t.budget || 0), 0);
+
+      // Unlinked materials (no task_id, not excluded from budget)
+      const unlinkedMaterialCost = materials
+        .filter(m => !m.task_id && !m.exclude_from_budget)
+        .reduce((sum, m) => sum + (m.price_total || 0), 0);
+
+      const spent = linkedSpend + unlinkedTaskBudget + unlinkedMaterialCost;
       const totalBudget = project.total_budget;
       const budgetPercentage = totalBudget && totalBudget > 0
         ? Math.round((spent / totalBudget) * 100)
         : 0;
+
+      // Builder financial pulse
+      const contractTotal = (quotesRes.data || []).reduce(
+        (sum, q) => sum + ((q as { total_amount: number | null }).total_amount || 0), 0
+      );
+      const invoicedTotal = (invoicesRes.data || [])
+        .filter(inv => (inv as { status: string }).status !== "draft")
+        .reduce((sum, inv) => sum + ((inv as { total_amount: number | null }).total_amount || 0), 0);
+      const invoicedPercent = contractTotal > 0
+        ? Math.round((invoicedTotal / contractTotal) * 100) : 0;
+
+      const laborCostPct = (profileRes.data as { default_labor_cost_percent?: number | null })
+        ?.default_labor_cost_percent ?? 50;
+      const estimatedProfit = tasks.reduce((sum, t) => {
+        const laborTotal = (t.estimated_hours || 0) * (t.hourly_rate || 0);
+        const costPct = t.labor_cost_percent ?? laborCostPct;
+        const laborProfit = laborTotal * (1 - costPct / 100);
+        const ueProfit = (t.subcontractor_cost || 0) * (t.markup_percent || 0) / 100;
+        const matProfit = (t.material_estimate || 0) * (t.material_markup_percent || 0) / 100;
+        return sum + laborProfit + ueProfit + matProfit;
+      }, 0);
+
       setBudgetStats({
         total: totalBudget,
         spent,
         percentage: budgetPercentage,
         isWarning: budgetPercentage > 80,
+        contractTotal,
+        invoicedTotal,
+        invoicedPercent,
+        estimatedProfit,
       });
 
       // Order stats

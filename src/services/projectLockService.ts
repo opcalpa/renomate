@@ -12,12 +12,15 @@ export interface ProjectLockStatus {
 }
 
 /**
- * Get the lock status of a project
+ * Get the lock status of a project.
+ * The lock only applies during the quote_sent phase. If the project has moved
+ * past that (e.g. active, completed) the lock is stale and should be ignored.
  */
 export async function getProjectLockStatus(projectId: string): Promise<ProjectLockStatus> {
   const { data: project, error } = await supabase
     .from("projects")
     .select(`
+      status,
       locked_for_quote,
       locked_at,
       locked_by_quote_id,
@@ -35,13 +38,28 @@ export async function getProjectLockStatus(projectId: string): Promise<ProjectLo
     return { isLocked: false, lockedAt: null, lockedByQuoteId: null };
   }
 
+  // Lock only applies during quote_sent phase
+  const lockableStatuses = ["planning", "quote_created", "quote_sent"];
+  const projectStatus = project.status ?? "planning";
+  const effectivelyLocked =
+    (project.locked_for_quote || false) && lockableStatuses.includes(projectStatus);
+
   const quote = Array.isArray(project.quotes) ? project.quotes[0] : project.quotes;
 
+  // Auto-clear stale lock in the background (fire-and-forget)
+  if (project.locked_for_quote && !effectivelyLocked) {
+    supabase
+      .from("projects")
+      .update({ locked_for_quote: false, locked_at: null, locked_by_quote_id: null })
+      .eq("id", projectId)
+      .then(() => {});
+  }
+
   return {
-    isLocked: project.locked_for_quote || false,
-    lockedAt: project.locked_at,
-    lockedByQuoteId: project.locked_by_quote_id,
-    quote: quote ? {
+    isLocked: effectivelyLocked,
+    lockedAt: effectivelyLocked ? project.locked_at : null,
+    lockedByQuoteId: effectivelyLocked ? project.locked_by_quote_id : null,
+    quote: effectivelyLocked && quote ? {
       id: quote.id,
       title: quote.title,
       status: quote.status,

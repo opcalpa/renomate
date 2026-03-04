@@ -25,10 +25,23 @@ export interface BudgetStats {
   spent: number;
   percentage: number;
   isWarning: boolean;
+  contractTotal: number;
+  invoicedTotal: number;
+  invoicedPercent: number;
+  estimatedProfit: number;
 }
 
 export interface OrderStats {
   pendingCount: number;
+}
+
+export interface InvoiceStats {
+  contractTotal: number;
+  invoicedTotal: number;
+  receivedTotal: number;
+  unbilledTotal: number;
+  overdueTotal: number;
+  ataTotal: number;
 }
 
 export interface TimelineStats {
@@ -55,6 +68,8 @@ export interface OverviewProject {
   start_date: string | null;
   finish_goal_date: string | null;
   currency?: string | null;
+  address?: string | null;
+  property_designation?: string | null;
 }
 
 export interface OverviewData {

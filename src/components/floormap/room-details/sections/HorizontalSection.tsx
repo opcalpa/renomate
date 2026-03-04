@@ -2,13 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Layers } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ComboboxSelect } from "../fields/ComboboxSelect";
 import { MultiSelect } from "../fields/MultiSelect";
 import {
   FLOOR_MATERIAL_OPTIONS,
@@ -40,23 +34,15 @@ export function HorizontalSection({
           {/* Floor material */}
           <div className="space-y-2">
             <Label htmlFor="floor-material">{t('rooms.material')}</Label>
-            <Select
+            <ComboboxSelect
+              id="floor-material"
+              options={FLOOR_MATERIAL_OPTIONS}
               value={floorSpec?.material || ""}
-              onValueChange={(value) =>
+              onChange={(value) =>
                 updateSpec("floor_spec", { ...floorSpec, material: value })
               }
-            >
-              <SelectTrigger id="floor-material">
-                <SelectValue placeholder={t('rooms.selectFloorMaterial')} />
-              </SelectTrigger>
-              <SelectContent>
-                {FLOOR_MATERIAL_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {t(option.labelKey)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder={t('rooms.selectFloorMaterial')}
+            />
           </div>
 
           {/* Floor specification (free text) */}
@@ -89,23 +75,15 @@ export function HorizontalSection({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="skirting-type">{t('rooms.skirtingType')}</Label>
-              <Select
+              <ComboboxSelect
+                id="skirting-type"
+                options={SKIRTING_OPTIONS}
                 value={floorSpec?.skirting_type || ""}
-                onValueChange={(value) =>
+                onChange={(value) =>
                   updateSpec("floor_spec", { ...floorSpec, skirting_type: value })
                 }
-              >
-                <SelectTrigger id="skirting-type">
-                  <SelectValue placeholder={t('rooms.selectSkirtingType')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {SKIRTING_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {t(option.labelKey)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder={t('rooms.selectSkirtingType')}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="skirting-color">{t('rooms.skirtingColor')}</Label>
@@ -136,23 +114,15 @@ export function HorizontalSection({
           {/* Ceiling material */}
           <div className="space-y-2">
             <Label htmlFor="ceiling-material">{t('rooms.material')}</Label>
-            <Select
+            <ComboboxSelect
+              id="ceiling-material"
+              options={CEILING_MATERIAL_OPTIONS}
               value={ceilingSpec?.material || ""}
-              onValueChange={(value) =>
+              onChange={(value) =>
                 updateSpec("ceiling_spec", { ...ceilingSpec, material: value })
               }
-            >
-              <SelectTrigger id="ceiling-material">
-                <SelectValue placeholder={t('rooms.selectCeilingMaterial')} />
-              </SelectTrigger>
-              <SelectContent>
-                {CEILING_MATERIAL_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {t(option.labelKey)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder={t('rooms.selectCeilingMaterial')}
+            />
           </div>
 
           {/* Ceiling color */}
@@ -171,23 +141,15 @@ export function HorizontalSection({
           {/* Ceiling molding */}
           <div className="space-y-2">
             <Label htmlFor="ceiling-molding">{t('rooms.ceilingMolding')}</Label>
-            <Select
+            <ComboboxSelect
+              id="ceiling-molding"
+              options={CEILING_MOLDING_OPTIONS}
               value={ceilingSpec?.molding_type || ""}
-              onValueChange={(value) =>
+              onChange={(value) =>
                 updateSpec("ceiling_spec", { ...ceilingSpec, molding_type: value })
               }
-            >
-              <SelectTrigger id="ceiling-molding">
-                <SelectValue placeholder={t('rooms.selectCeilingMolding')} />
-              </SelectTrigger>
-              <SelectContent>
-                {CEILING_MOLDING_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {t(option.labelKey)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder={t('rooms.selectCeilingMolding')}
+            />
           </div>
         </div>
       </div>

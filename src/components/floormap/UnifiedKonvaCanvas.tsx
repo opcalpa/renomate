@@ -109,9 +109,10 @@ interface UnifiedKonvaCanvasProps {
   onRoomCreated?: () => void;
   isReadOnly?: boolean;
   highlightedRoomIds?: string[];
+  showPinterest?: boolean;
 }
 
-export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCreated, isReadOnly, highlightedRoomIds }) => {
+export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCreated, isReadOnly, highlightedRoomIds, showPinterest }) => {
   const { t } = useTranslation();
   const stageRef = useRef<Konva.Stage>(null);
   const shapeRefs = useRef<Map<string, Konva.Node>>(new Map());
@@ -3833,9 +3834,9 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           onOpenImageImport={() => {
             window.dispatchEvent(new CustomEvent('openImageImport'));
           }}
-          onOpenPinterestImport={() => {
+          onOpenPinterestImport={showPinterest ? () => {
             window.dispatchEvent(new CustomEvent('openPinterestImport'));
-          }}
+          } : undefined}
           onOpenTemplates={() => {
             window.dispatchEvent(new CustomEvent('openTemplateGallery'));
           }}

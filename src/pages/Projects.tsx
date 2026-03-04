@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ChevronRight, ChevronLeft, Users, BookOpen, Trash2, Zap, Upload, FileText, X, Loader2, Sparkles, ChevronDown, ChevronUp, MessageSquare, File } from "lucide-react";
+import { Plus, ChevronRight, ChevronLeft, Users, User, BookOpen, Trash2, Upload, FileText, X, Loader2, Sparkles, ChevronDown, ChevronUp, MessageSquare, Mail } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -36,8 +36,11 @@ import { WithHotspot } from "@/components/onboarding/Hotspot";
 import { PageLoadingSkeleton } from "@/components/ui/skeleton-screens";
 import { isDemoProject } from "@/services/demoProjectService";
 import { normalizeStatus, STATUS_META } from "@/lib/projectStatus";
+import { formatCurrency } from "@/lib/currency";
 import { LeadsPipelineSection } from "@/components/pipeline";
+import { FinancialAnalysisSection } from "@/components/project/FinancialAnalysisSection";
 import { GuestBanner } from "@/components/guest";
+import { CreateIntakeDialog } from "@/components/intake/CreateIntakeDialog";
 import {
   getGuestProjects,
   saveGuestProject,
@@ -89,6 +92,9 @@ const Projects = () => {
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
+  const [createIntakeOpen, setCreateIntakeOpen] = useState(false);
+  const [projectFinancials, setProjectFinancials] = useState<Record<string, { budget: number; profit: number }>>({});
+  const [ownerNames, setOwnerNames] = useState<Record<string, string>>({});
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -156,15 +162,12 @@ const Projects = () => {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id")
+        .select("id, default_labor_cost_percent")
         .eq("user_id", user.id)
         .single();
 
       if (!profile) return;
 
-      // Fetch both owned projects and shared projects
-      // RLS will handle access control, so we don't need to filter by owner_id
-      // The public_demo project is visible to everyone (shared demo)
       const { data, error } = await supabase
         .from("projects")
         .select("*")
@@ -172,9 +175,27 @@ const Projects = () => {
 
       if (error) throw error;
 
-      // No filtering needed - RLS handles access control
-      // public_demo is shown to all users as the shared demo
       setProjects(data || []);
+
+      // Fetch owner names
+      const uniqueOwnerIds = [...new Set((data || []).map((p: Project) => p.owner_id).filter(Boolean))] as string[];
+      if (uniqueOwnerIds.length > 0) {
+        const { data: owners } = await supabase
+          .from("profiles")
+          .select("id, name")
+          .in("id", uniqueOwnerIds);
+        if (owners) {
+          const map: Record<string, string> = {};
+          for (const o of owners) {
+            map[o.id] = o.name || "";
+          }
+          setOwnerNames(map);
+        }
+      }
+
+      const laborCostPct = (profile as { default_labor_cost_percent?: number | null })?.default_labor_cost_percent ?? 50;
+      const ids = (data || []).map((p: Project) => p.id);
+      fetchProjectFinancials(ids, laborCostPct);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -184,6 +205,32 @@ const Projects = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchProjectFinancials = async (projectIds: string[], laborCostPercent: number) => {
+    if (projectIds.length === 0) return;
+    const { data: tasks } = await supabase
+      .from("tasks")
+      .select("project_id, budget, estimated_hours, hourly_rate, labor_cost_percent, subcontractor_cost, markup_percent, material_estimate, material_markup_percent")
+      .in("project_id", projectIds);
+
+    if (!tasks) return;
+
+    const financials: Record<string, { budget: number; profit: number }> = {};
+    for (const task of tasks) {
+      if (!financials[task.project_id]) {
+        financials[task.project_id] = { budget: 0, profit: 0 };
+      }
+      financials[task.project_id].budget += task.budget || 0;
+
+      const laborTotal = (task.estimated_hours || 0) * (task.hourly_rate || 0);
+      const costPct = task.labor_cost_percent ?? laborCostPercent;
+      const laborProfit = laborTotal * (1 - costPct / 100);
+      const ueProfit = (task.subcontractor_cost || 0) * (task.markup_percent || 0) / 100;
+      const matProfit = (task.material_estimate || 0) * (task.material_markup_percent || 0) / 100;
+      financials[task.project_id].profit += laborProfit + ueProfit + matProfit;
+    }
+    setProjectFinancials(financials);
   };
 
   const handleCreateProject = async (e: React.FormEvent) => {
@@ -480,6 +527,7 @@ const Projects = () => {
   };
 
   const profileId = profile?.id as string | undefined;
+  const isContractor = (profile?.onboarding_user_type as string) === "contractor";
 
   // Show loading while auth or data is loading
   if (authLoading || loading) {
@@ -541,14 +589,18 @@ const Projects = () => {
             >
               <Button onClick={() => setDialogOpen(true)} className="flex-1 sm:flex-none">
                 <Plus className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">{t('projects.newProject')}</span>
+                <span className="hidden sm:inline">
+                  {isContractor ? t('projects.newAssignment') : t('projects.newProject')}
+                </span>
                 <span className="sm:hidden">{t('common.create', 'Skapa')}</span>
               </Button>
             </WithHotspot>
             <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setCreateStep(1); setCreateMethod("choose"); setNewProjectName(""); setNewProjectDescription(""); setNewProjectAddress(""); setNewProjectPostalCode(""); setNewProjectCity(""); setNewProjectType(""); setNewProjectStartDate(""); setNewProjectBudget(""); setUploadedFile(null); setUseAI(true); if (fileInputRef.current) fileInputRef.current.value = ""; } }}>
             <DialogContent className={createMethod === "choose" ? "sm:max-w-lg" : undefined}>
               <DialogHeader>
-                <DialogTitle>{t('projects.createProjectTitle')}</DialogTitle>
+                <DialogTitle>
+                  {isContractor ? t('projects.newAssignment') : t('projects.createProjectTitle')}
+                </DialogTitle>
                 <DialogDescription>
                   {createMethod === "choose"
                     ? t('projects.chooseMethodDescription', 'Choose how you want to create your project')
@@ -576,41 +628,57 @@ const Projects = () => {
                     </div>
                   </button>
 
-                  {/* Guided questionnaire option */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDialogOpen(false);
-                      // Delay opening the guided setup to let the first dialog fully close
-                      // This prevents aria-hidden focus conflicts between dialogs
-                      setTimeout(() => setShowGuidedSetup(true), 150);
-                    }}
-                    className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98] border-border"
-                  >
-                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <MessageSquare className="h-6 w-6 text-primary" />
+                  {/* Customer form — fill yourself or send to client */}
+                  <div className="rounded-xl border-2 border-border p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <MessageSquare className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-base">{t('projects.methodCustomerForm', 'Customer form')}</p>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          {t('projects.methodCustomerFormDesc', 'Select rooms and work types to auto-create tasks')}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-base">{t('projects.methodGuided', 'Answer questionnaire')}</p>
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        {t('projects.methodGuidedDesc', 'Select rooms and work types to auto-create tasks')}
-                      </p>
+                    <div className={`grid gap-2 ${isContractor ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDialogOpen(false);
+                          setTimeout(() => setShowGuidedSetup(true), 150);
+                        }}
+                        className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border transition-all text-left hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98]"
+                      >
+                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">{t('projects.methodFillSelf', 'Fill in yourself')}</span>
+                      </button>
+                      {isContractor && (
+                        <button
+                          type="button"
+                          onClick={() => { setDialogOpen(false); setTimeout(() => setCreateIntakeOpen(true), 150); }}
+                          className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border transition-all text-left hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98]"
+                        >
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">{t('projects.methodSendToClient', 'Send to client')}</span>
+                        </button>
+                      )}
                     </div>
-                  </button>
+                  </div>
 
-                  {/* Manual option */}
+                  {/* Blank project option */}
                   <button
                     type="button"
                     onClick={() => setCreateMethod("manual")}
                     className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98] border-border"
                   >
                     <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                      <File className="h-6 w-6 text-muted-foreground" />
+                      <FileText className="h-6 w-6 text-muted-foreground" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-base">{t('projects.methodManual', 'Create manually')}</p>
+                      <p className="font-medium text-base">{t('projects.methodBlank', 'Plan from blank document')}</p>
                       <p className="text-sm text-muted-foreground mt-0.5">
-                        {t('projects.methodManualDesc', 'Start from scratch and fill in details yourself')}
+                        {t('projects.methodBlankDesc', 'Start with an empty project and add details manually')}
                       </p>
                     </div>
                   </button>
@@ -926,8 +994,24 @@ const Projects = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
+                    {(() => {
+                      const fin = projectFinancials[project.id];
+                      if (!fin || fin.budget <= 0) return null;
+                      return (
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
+                          <span>
+                            {t("planningTasks.estimatedBudget", "Estimated budget")}: <span className="font-medium text-foreground">{formatCurrency(fin.budget)}</span>
+                          </span>
+                          {isContractor && fin.profit > 0 && (
+                            <span>
+                              {t("planningTasks.estimatedProfit", "Est. profit")}: <span className="font-medium text-green-600">{formatCurrency(fin.profit)}</span>
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusMeta.color}`}>
                           {t(statusMeta.labelKey)}
                         </span>
@@ -935,6 +1019,17 @@ const Projects = () => {
                         <span>
                           {new Date(project.created_at).toLocaleDateString()}
                         </span>
+                        {project.owner_id && (
+                          <>
+                            <span>•</span>
+                            <span className="inline-flex items-center gap-1 text-xs">
+                              <User className="h-3 w-3" />
+                              {project.owner_id === profileId
+                                ? t("projects.ownerYou", "You")
+                                : ownerNames[project.owner_id] || t("common.loading")}
+                            </span>
+                          </>
+                        )}
                       </div>
                       {/* Show delete button for guest projects or owned projects */}
                       {(isGuest || (profileId && project.owner_id === profileId)) && !isDemo && (
@@ -958,6 +1053,15 @@ const Projects = () => {
           </div>
         )}
         </section>
+
+        {/* Financial Analysis - contractors only, at the bottom */}
+        {isContractor && !isGuest && projects.length > 0 && (
+          <FinancialAnalysisSection
+            projects={projects}
+            financials={projectFinancials}
+            currency={(profile?.currency as string) ?? null}
+          />
+        )}
       </main>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
@@ -995,9 +1099,12 @@ const Projects = () => {
         />
       )}
 
+      {/* Create Intake Dialog (send customer form) */}
+      <CreateIntakeDialog open={createIntakeOpen} onOpenChange={setCreateIntakeOpen} onCreated={() => { /* intake created from dialog */ }} />
+
       {/* Guided Setup Wizard */}
       <Dialog open={showGuidedSetup} onOpenChange={setShowGuidedSetup}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("guidedSetup.title")}</DialogTitle>
             <DialogDescription>

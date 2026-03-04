@@ -680,6 +680,7 @@
     "featureTeamManagement": "Zarządzanie zespołem",
     "featureBudget": "Budżet",
     "featureFiles": "Pliki",
+    "featureCustomerView": "Widok klienta",
     "accessNone": "Brak",
     "accessView": "Podgląd",
     "accessEdit": "Edycja",
@@ -1599,7 +1600,8 @@
     "mentionedYou": "wspomniał o Tobie",
     "newTask": "Przypisano nowe zadanie",
     "newPurchaseOrder": "Nowe zamówienie zakupowe",
-    "inProject": "w {{project}}"
+    "inProject": "w {{project}}",
+    "quoteAccepted": "Oferta zaakceptowana!"
   },
   "elevationShapeDialog": {
     "wallLabel": "Ściana",
@@ -1760,7 +1762,9 @@
     "groupByStatus": "Status",
     "groupByRoom": "Pokój",
     "groupByAssignee": "Przypisany",
-    "groupByPriority": "Priorytet"
+    "groupByPriority": "Priorytet",
+    "dependenciesCascaded": "Przeniesiono również {{count}} zależnych zadań",
+    "weekShort": "T"
   },
   "canvas": {
     "settings": "Ustawienia rysunku",
@@ -2350,6 +2354,10 @@
     "shared": "Udostępnione",
     "noSavedQuotes": "Brak zapisanych wycen",
     "recipient": "Odbiorca",
+    "previewHint": "Tak wygląda oferta dla klienta",
+    "quoteLabel": "Oferta",
+    "projectLabel": "Projekt",
+    "quoteNumberLabel": "Nr oferty",
     "selectRecipient": "Wybierz odbiorcę",
     "createNewClient": "Utwórz nowego...",
     "freeTextPlaceholder": "Dodatkowe uwagi, warunki lub zastrzeżenia...",
@@ -2802,5 +2810,26 @@
       "unsupportedFileType": "Nieobsługiwany typ pliku",
       "fileTooLarge": "Plik jest za duży (maks. 10MB)"
     }
+  },
+  "unifiedTable": {
+    "linkedPurchases": "{{count}} zakupów",
+    "linkedPurchases_one": "{{count}} zakup"
+  },
+  "invoices": {
+    "previewHint": "Tak faktura wygląda dla klienta",
+    "invoiceLabel": "Faktura",
+    "projectLabel": "Projekt",
+    "invoiceNumberLabel": "Nr faktury",
+    "recipient": "Odbiorca",
+    "bankAccountNumber": "Numer konta"
+  },
+  "profile": {
+    "bankgiro": "Bankgiro",
+    "bankAccountNumber": "Numer konta",
+    "bankgiroHint": "Automatycznie wypełniane na nowych fakturach",
+    "defaultPaymentTerms": "Domyślne warunki płatności",
+    "defaultPaymentTermsHint": "Automatycznie wypełniane na nowych fakturach",
+    "paymentFieldsHint": "Bankgiro i numer konta są automatycznie wypełniane na nowych fakturach",
+    "days": "dni"
   }
 }

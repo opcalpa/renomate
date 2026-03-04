@@ -29,9 +29,10 @@ const PinterestLogo = ({ className }: { className?: string }) => (
 
 interface PhotoSectionProps {
   roomId: string;
+  showPinterest?: boolean;
 }
 
-export function PhotoSection({ roomId }: PhotoSectionProps) {
+export function PhotoSection({ roomId, showPinterest = false }: PhotoSectionProps) {
   const { t } = useTranslation();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
@@ -402,25 +403,27 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
         </Button>
       </div>
 
-      {/* Pinterest Buttons */}
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          onClick={handleOpenPinImport}
-          className="flex-1 gap-2 border-[#E60023]/30 text-[#E60023] hover:bg-[#E60023]/5 hover:border-[#E60023]"
-        >
-          <PinterestLogo className="h-4 w-4" />
-          {t('rooms.importPin', 'Import Pin')}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={handleAddPinterestBoard}
-          className="flex-1 gap-2 border-[#E60023]/30 text-[#E60023] hover:bg-[#E60023]/5 hover:border-[#E60023] opacity-70"
-        >
-          <Plus className="h-4 w-4" />
-          {pinterestBoardUrl ? t('rooms.changeBoard', 'Change Board') : t('rooms.linkBoard', 'Link Board')}
-        </Button>
-      </div>
+      {/* Pinterest Buttons - Only for homeowners */}
+      {showPinterest && (
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleOpenPinImport}
+            className="flex-1 gap-2 border-[#E60023]/30 text-[#E60023] hover:bg-[#E60023]/5 hover:border-[#E60023]"
+          >
+            <PinterestLogo className="h-4 w-4" />
+            {t('rooms.importPin', 'Import Pin')}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleAddPinterestBoard}
+            className="flex-1 gap-2 border-[#E60023]/30 text-[#E60023] hover:bg-[#E60023]/5 hover:border-[#E60023] opacity-70"
+          >
+            <Plus className="h-4 w-4" />
+            {pinterestBoardUrl ? t('rooms.changeBoard', 'Change Board') : t('rooms.linkBoard', 'Link Board')}
+          </Button>
+        </div>
+      )}
 
       {/* Pinterest Pin Import Dialog */}
       <Dialog open={pinImportDialogOpen} onOpenChange={setPinImportDialogOpen}>
@@ -619,8 +622,8 @@ export function PhotoSection({ roomId }: PhotoSectionProps) {
         </div>
       )}
 
-      {/* Pinterest Board Embed (secondary - for browsing inspiration) */}
-      {pinterestBoardUrl && (
+      {/* Pinterest Board Embed - Only for homeowners */}
+      {showPinterest && pinterestBoardUrl && (
         <PinterestBoardEmbed
           boardUrl={pinterestBoardUrl}
           onRemove={handleRemovePinterestBoard}

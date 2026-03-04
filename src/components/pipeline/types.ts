@@ -1,3 +1,5 @@
+export type ProjectBucket = "draft" | "sent" | "accepted";
+
 export interface LeadsPipelineData {
   intakeRequests: {
     total: number;
@@ -5,13 +7,10 @@ export interface LeadsPipelineData {
     submitted: number; // Customer has responded
     unlinked: number; // Not linked to a project
   };
-  quotes: {
-    total: number;
-    draft: number;
-    sent: number;
-    accepted: number;
-    rejected: number;
-    acceptedTotal: number; // Sum of accepted quote amounts
+  projectQuotes: {
+    draft: { count: number; totalAmount: number; totalAfterRot: number };
+    sent: { count: number; totalAmount: number; totalAfterRot: number };
+    accepted: { count: number; totalAmount: number; totalAfterRot: number };
   };
   loading: boolean;
 }

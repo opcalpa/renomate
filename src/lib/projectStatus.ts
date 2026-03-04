@@ -13,6 +13,7 @@ export const PROJECT_STATUSES = [
   "planning",
   "quote_created",
   "quote_sent",
+  "quote_rejected",
   "active",
   "on_hold",
   "completed",
@@ -55,33 +56,40 @@ export const STATUS_META: Record<ProjectStatus, StatusMeta> = {
     iconName: "Send",
     sortOrder: 2,
   },
+  quote_rejected: {
+    labelKey: "projectStatus.quoteRejected",
+    descriptionKey: "projectStatus.quoteRejectedDesc",
+    color: "bg-red-100 text-red-700",
+    iconName: "XCircle",
+    sortOrder: 3,
+  },
   active: {
     labelKey: "projectStatus.active",
     descriptionKey: "projectStatus.activeDesc",
     color: "bg-green-100 text-green-700",
     iconName: "Hammer",
-    sortOrder: 3,
+    sortOrder: 4,
   },
   on_hold: {
     labelKey: "projectStatus.onHold",
     descriptionKey: "projectStatus.onHoldDesc",
     color: "bg-yellow-100 text-yellow-700",
     iconName: "PauseCircle",
-    sortOrder: 4,
+    sortOrder: 5,
   },
   completed: {
     labelKey: "projectStatus.completed",
     descriptionKey: "projectStatus.completedDesc",
     color: "bg-emerald-100 text-emerald-700",
     iconName: "CheckCircle2",
-    sortOrder: 5,
+    sortOrder: 6,
   },
   cancelled: {
     labelKey: "projectStatus.cancelled",
     descriptionKey: "projectStatus.cancelledDesc",
     color: "bg-gray-100 text-gray-500",
     iconName: "XCircle",
-    sortOrder: 6,
+    sortOrder: 7,
   },
 };
 
@@ -90,13 +98,14 @@ export const STATUS_META: Record<ProjectStatus, StatusMeta> = {
 // ---------------------------------------------------------------------------
 
 export const ALLOWED_TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
-  planning:      ["quote_created", "active", "on_hold", "cancelled"],
-  quote_created: ["planning", "quote_sent", "active", "on_hold", "cancelled"],
-  quote_sent:    ["planning", "quote_created", "active", "on_hold", "cancelled"],
-  active:        ["on_hold", "completed", "cancelled"],
-  on_hold:       ["active", "cancelled"],
-  completed:     ["active"],   // reopen
-  cancelled:     ["planning"], // restart
+  planning:       ["quote_created", "active", "on_hold", "cancelled"],
+  quote_created:  ["planning", "quote_sent", "active", "on_hold", "cancelled"],
+  quote_sent:     ["planning", "quote_created", "active", "on_hold", "cancelled"],
+  quote_rejected: ["quote_created", "planning", "cancelled"],
+  active:         ["on_hold", "completed", "cancelled"],
+  on_hold:        ["active", "cancelled"],
+  completed:      ["active"],   // reopen
+  cancelled:      ["planning"], // restart
 };
 
 // ---------------------------------------------------------------------------
@@ -107,11 +116,11 @@ export interface StatusCTA {
   messageKey: string;
   primaryAction: {
     labelKey: string;
-    action: "navigate_tasks" | "create_quote" | "send_quote" | "view_quote" | "navigate_overview" | "export";
+    action: "navigate_tasks" | "create_quote" | "send_quote" | "view_quote" | "revise_quote" | "navigate_overview" | "export" | "create_invoice";
   };
   secondaryAction?: {
     labelKey: string;
-    action: "navigate_tasks" | "create_quote" | "edit_quote" | "send_reminder" | "navigate_overview" | "archive";
+    action: "navigate_tasks" | "create_quote" | "edit_quote" | "send_reminder" | "revise_quote" | "navigate_overview" | "archive" | "create_invoice";
   };
 }
 
@@ -153,12 +162,28 @@ export function getStatusCTA(status: ProjectStatus): StatusCTA | null {
           action: "send_reminder",
         },
       };
+    case "quote_rejected":
+      return {
+        messageKey: "projectStatus.cta.quoteRejectedMessage",
+        primaryAction: {
+          labelKey: "projectStatus.cta.reviseQuote",
+          action: "revise_quote",
+        },
+        secondaryAction: {
+          labelKey: "projectStatus.cta.viewQuote",
+          action: "view_quote",
+        },
+      };
     case "active":
       return {
         messageKey: "projectStatus.cta.activeMessage",
         primaryAction: {
           labelKey: "projectStatus.cta.viewTasks",
           action: "navigate_tasks",
+        },
+        secondaryAction: {
+          labelKey: "projectStatus.cta.createInvoice",
+          action: "create_invoice",
         },
       };
     case "completed":
@@ -211,6 +236,7 @@ export function getTabVisibility(status: ProjectStatus): TabConfig {
       };
     case "quote_created":
     case "quote_sent":
+    case "quote_rejected":
       return {
         ...FULL_ACCESS,
         purchases: "hide",
@@ -260,7 +286,7 @@ export function normalizeStatus(raw: string | null | undefined): ProjectStatus {
 
 /** Check whether a status is in the quoting phase */
 export function isQuotePhase(status: ProjectStatus): boolean {
-  return status === "quote_created" || status === "quote_sent";
+  return status === "quote_created" || status === "quote_sent" || status === "quote_rejected";
 }
 
 /** Check whether a project is editable (not completed/cancelled) */

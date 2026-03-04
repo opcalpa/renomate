@@ -1,11 +1,15 @@
-import { Trash2, Ruler } from "lucide-react";
+import { Trash2, Ruler, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 
 const UNITS = ["st", "m2", "m", "h", "kg"];
+
+export type QuoteItemSource = "hours" | "subcontractor" | "material" | "fixed" | "missing";
 
 export interface QuoteItem {
   id: string;
@@ -15,6 +19,10 @@ export interface QuoteItem {
   unitPrice: number;
   isRotEligible: boolean;
   roomId?: string;
+  comment?: string;
+  discountPercent?: number;
+  /** Origin type — set during prepopulation to give visual context */
+  source?: QuoteItemSource;
 }
 
 interface QuoteItemRowProps {
@@ -24,23 +32,56 @@ interface QuoteItemRowProps {
   onImportRoom: (id: string) => void;
 }
 
+const SOURCE_STYLES: Record<QuoteItemSource, string> = {
+  hours: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  subcontractor: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+  material: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  fixed: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  missing: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+};
+
 export function QuoteItemRow({ item, onChange, onDelete, onImportRoom }: QuoteItemRowProps) {
   const { t } = useTranslation();
-  const lineTotal = item.quantity * item.unitPrice;
+  const lineTotal = item.quantity * item.unitPrice * (1 - (item.discountPercent ?? 0) / 100);
+  const isMissing = item.source === "missing";
 
   return (
-    <div className="rounded-lg border bg-card p-4 space-y-3">
-      <Input
-        placeholder={t("quotes.description")}
-        value={item.description}
-        onChange={(e) => onChange(item.id, { description: e.target.value })}
-        className="min-h-[48px]"
-      />
+    <div className={cn(
+      "rounded-lg border bg-card p-4 space-y-3",
+      isMissing && "border-red-300 dark:border-red-800"
+    )}>
+      <div className="flex items-center gap-2">
+        <Input
+          placeholder={t("quotes.description")}
+          value={item.description}
+          onChange={(e) => onChange(item.id, { description: e.target.value })}
+          className="min-h-[48px] flex-1"
+        />
+        {item.source && (
+          <Badge
+            variant="secondary"
+            className={cn("text-xs font-normal shrink-0 h-6", SOURCE_STYLES[item.source])}
+          >
+            {item.source === "hours" && t("quotes.sourceHours", "Hours")}
+            {item.source === "subcontractor" && t("quotes.sourceSubcontractor", "Subcontractor")}
+            {item.source === "material" && t("quotes.sourceMaterial", "Material")}
+            {item.source === "fixed" && t("quotes.sourceFixed", "Fixed")}
+            {item.source === "missing" && t("quotes.sourceMissing", "No price")}
+          </Badge>
+        )}
+      </div>
+
+      {isMissing && (
+        <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          {t("quotes.missingPriceHint", "This task has no cost data. Fill in hours/rate on the task first, or set a price here.")}
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-2">
         <Input
           type="number"
-          placeholder={t("quotes.quantity")}
+          placeholder={item.source === "hours" ? t("quotes.hoursPlaceholder", "Hours") : t("quotes.quantity")}
           value={item.quantity || ""}
           onChange={(e) => onChange(item.id, { quantity: parseFloat(e.target.value) || 0 })}
           className="min-h-[48px] sm:w-24"
@@ -59,24 +100,43 @@ export function QuoteItemRow({ item, onChange, onDelete, onImportRoom }: QuoteIt
         </Select>
         <Input
           type="number"
-          placeholder={t("quotes.unitPrice")}
+          placeholder={item.source === "hours" ? t("quotes.hourlyRatePlaceholder", "Rate/h") : t("quotes.unitPrice")}
           value={item.unitPrice || ""}
           onChange={(e) => onChange(item.id, { unitPrice: parseFloat(e.target.value) || 0 })}
           className="min-h-[48px] sm:flex-1"
           min={0}
           step="any"
         />
+        <Input
+          type="number"
+          placeholder={t("quotes.discountPercent", "Discount %")}
+          value={item.discountPercent || ""}
+          onChange={(e) => onChange(item.id, { discountPercent: parseFloat(e.target.value) || 0 })}
+          className="min-h-[48px] sm:w-24"
+          min={0}
+          max={100}
+          step="any"
+        />
       </div>
+
+      <Input
+        placeholder={t("quotes.commentPlaceholder", "Add a note for this line...")}
+        value={item.comment || ""}
+        onChange={(e) => onChange(item.id, { comment: e.target.value })}
+        className="min-h-[40px] text-sm text-muted-foreground"
+      />
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 min-h-[48px]">
-            <Checkbox
-              checked={item.isRotEligible}
-              onCheckedChange={(checked) => onChange(item.id, { isRotEligible: !!checked })}
-            />
-            <span className="text-sm">{t("quotes.rotEligible")}</span>
-          </label>
+          {item.source !== "material" && (
+            <label className="flex items-center gap-2 min-h-[48px]">
+              <Checkbox
+                checked={item.isRotEligible}
+                onCheckedChange={(checked) => onChange(item.id, { isRotEligible: !!checked })}
+              />
+              <span className="text-sm">{t("quotes.rotEligible")}</span>
+            </label>
+          )}
           <span className="text-sm font-medium">
             {lineTotal.toLocaleString("sv-SE", { minimumFractionDigits: 2 })} kr
           </span>

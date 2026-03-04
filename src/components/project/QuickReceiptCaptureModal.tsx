@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
 import {
   Camera,
   Upload,
@@ -40,6 +42,7 @@ import {
   type DocumentAnalysisResult,
 } from "@/services/receiptAnalysisService";
 import { DatePicker } from "@/components/ui/date-picker";
+import { formatLocalDate } from "@/lib/dateUtils";
 import {
   SearchableEntityPicker,
   type SelectedEntity,
@@ -213,6 +216,10 @@ export function QuickReceiptCaptureModal({
   const [linkOption, setLinkOption] = useState<LinkOption>("new");
   const [linkedEntity, setLinkedEntity] = useState<SelectedEntity | null>(null);
 
+  // Task picker state
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<Array<{id: string; title: string; budget: number | null; material_estimate: number | null; material_items: unknown[] | null; is_ata: boolean; materialSpent: number}>>([]);
+
   // Data state
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
@@ -250,6 +257,7 @@ export function QuickReceiptCaptureModal({
     setDueDate(undefined);
     setLinkOption("new");
     setLinkedEntity(null);
+    setSelectedTaskId(null);
   };
 
   const fetchRooms = async () => {
@@ -260,6 +268,38 @@ export function QuickReceiptCaptureModal({
       .order("name");
     setRooms(data || []);
   };
+
+  // Fetch tasks + their linked material spend when modal opens
+  useEffect(() => {
+    if (!open || !projectId) return;
+    const fetchTasks = async () => {
+      const [tasksRes, materialsRes] = await Promise.all([
+        supabase
+          .from("tasks")
+          .select("id, title, budget, material_estimate, material_items, is_ata")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("materials")
+          .select("task_id, price_total")
+          .eq("project_id", projectId)
+          .eq("exclude_from_budget", false)
+          .not("task_id", "is", null),
+      ]);
+      const spendMap = new Map<string, number>();
+      (materialsRes.data || []).forEach(m => {
+        if (m.task_id) {
+          spendMap.set(m.task_id, (spendMap.get(m.task_id) || 0) + (m.price_total || 0));
+        }
+      });
+      setTasks((tasksRes.data || []).map(t => ({
+        ...t,
+        is_ata: t.is_ata ?? false,
+        materialSpent: spendMap.get(t.id) || 0,
+      })));
+    };
+    fetchTasks();
+  }, [open, projectId]);
 
   const handleFileSelect = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -315,6 +355,7 @@ export function QuickReceiptCaptureModal({
     setDueDate(undefined);
     setLinkOption("new");
     setLinkedEntity(null);
+    setSelectedTaskId(null);
   };
 
   const handleAnalyze = async () => {
@@ -390,8 +431,8 @@ export function QuickReceiptCaptureModal({
 
       const amount = parseFloat(totalAmount) || 0;
       const dateStr = purchaseDate
-        ? purchaseDate.toISOString().split("T")[0]
-        : new Date().toISOString().split("T")[0];
+        ? formatLocalDate(purchaseDate)
+        : formatLocalDate(new Date());
 
       // Generate filename
       const filename = generateDocumentFilename(
@@ -429,7 +470,7 @@ export function QuickReceiptCaptureModal({
               invoice_number: invoiceNumber || null,
               ocr_number: ocrNumber || null,
               invoice_due_date: dueDate
-                ? dueDate.toISOString().split("T")[0]
+                ? formatLocalDate(dueDate)
                 : null,
             })
             .select("id")
@@ -452,6 +493,7 @@ export function QuickReceiptCaptureModal({
               status: "submitted",
               created_by_user_id: profile.id,
               room_id: roomId !== "none" ? roomId : null,
+              task_id: selectedTaskId || null,
             })
             .select("id")
             .single();
@@ -549,6 +591,7 @@ export function QuickReceiptCaptureModal({
     setAnalysisError(false);
     setLinkOption("new");
     setLinkedEntity(null);
+    setSelectedTaskId(null);
   };
 
   return (
@@ -714,6 +757,79 @@ export function QuickReceiptCaptureModal({
                       selectedEntity={linkedEntity}
                       onSelect={setLinkedEntity}
                     />
+                  )}
+
+                  {/* Task picker for new receipts */}
+                  {linkOption === "new" && documentType !== "invoice" && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">{t("document.linkToTask")}</Label>
+                      <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
+                        {tasks.map(task => (
+                          <div key={task.id} className="flex flex-col">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedTaskId(task.id)}
+                              className={cn(
+                                "flex items-center justify-between p-2.5 rounded-lg border text-left text-sm transition-colors",
+                                selectedTaskId === task.id
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border hover:border-primary/30 hover:bg-accent/50"
+                              )}
+                            >
+                              <span className="truncate font-medium flex items-center gap-1.5">
+                                {task.title}
+                                {task.is_ata && (
+                                  <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-300 shrink-0">ÄTA</Badge>
+                                )}
+                              </span>
+                              {(() => {
+                                const denom = (task.material_estimate && task.material_estimate > 0)
+                                  ? task.material_estimate : task.budget;
+                                if (!denom || denom <= 0) return null;
+                                const ratio = task.materialSpent / denom;
+                                const color = ratio >= 1 ? "text-destructive" : ratio >= 0.8 ? "text-amber-600" : "text-emerald-600";
+                                const bar = ratio >= 1 ? "bg-destructive" : ratio >= 0.8 ? "bg-amber-500" : "bg-emerald-500";
+                                return (
+                                  <div className="flex flex-col items-end gap-0.5 ml-2 shrink-0">
+                                    <span className={cn("text-xs", color)}>
+                                      {formatCurrency(task.materialSpent, currency)} / {formatCurrency(denom, currency)}
+                                    </span>
+                                    <div className="w-16 h-1 rounded-full bg-muted overflow-hidden">
+                                      <div className={cn("h-full rounded-full", bar)} style={{ width: `${Math.min(ratio * 100, 100)}%` }} />
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </button>
+                            {selectedTaskId === task.id && task.material_items && (task.material_items as Array<{id: string; name: string; amount: number}>).length > 0 && (
+                              <div className="ml-4 pl-3 border-l-2 border-muted space-y-1 py-1">
+                                <span className="text-xs text-muted-foreground font-medium">
+                                  {t("costBreakdown.plannedMaterials")}
+                                </span>
+                                {(task.material_items as Array<{id: string; name: string; amount: number}>).map((item) => (
+                                  <div key={item.id} className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">{item.name}</span>
+                                    <span>{formatCurrency(item.amount, currency)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTaskId(null)}
+                          className={cn(
+                            "flex items-center p-2.5 rounded-lg border text-left text-sm transition-colors border-dashed",
+                            selectedTaskId === null
+                              ? "border-primary bg-primary/5"
+                              : "border-muted-foreground/30 hover:border-primary/30"
+                          )}
+                        >
+                          <span className="text-muted-foreground">{t("document.noTaskLink")}</span>
+                        </button>
+                      </div>
+                    </div>
                   )}
 
                   {/* Common fields */}

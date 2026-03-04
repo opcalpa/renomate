@@ -24,3 +24,8 @@ entrypoint = "./functions/pinterest-oembed/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/translate-comments/index.ts"
+
+[functions.send-quote-email]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/send-quote-email/index.ts"

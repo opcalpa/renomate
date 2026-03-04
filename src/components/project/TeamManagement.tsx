@@ -50,6 +50,7 @@ interface TeamMember {
   phone: string | null;
   company: string | null;
   notes: string | null;
+  customer_view_access?: string;
   timeline_access?: string;
   tasks_access?: string;
   tasks_scope?: string;
@@ -71,6 +72,7 @@ interface Invitation {
   status: string;
   created_at: string;
   token: string;
+  customer_view_access?: string;
   timeline_access?: string;
   tasks_access?: string;
   tasks_scope?: string;
@@ -88,6 +90,7 @@ interface ProjectOwner {
   name: string;
   email: string;
   phone: string | null;
+  company: string | null;
 }
 
 interface TeamManagementProps {
@@ -98,6 +101,7 @@ interface TeamManagementProps {
 const ROLE_TEMPLATES: Record<string, { access: FeatureAccess }> = {
   contractor: {
     access: {
+      customerView: "none",
       timeline: "view",
       tasks: "edit",
       tasksScope: "assigned",
@@ -112,6 +116,7 @@ const ROLE_TEMPLATES: Record<string, { access: FeatureAccess }> = {
   },
   project_manager: {
     access: {
+      customerView: "none",
       timeline: "edit",
       tasks: "edit",
       tasksScope: "all",
@@ -126,20 +131,22 @@ const ROLE_TEMPLATES: Record<string, { access: FeatureAccess }> = {
   },
   client: {
     access: {
-      timeline: "view",
-      tasks: "view",
+      customerView: "view",
+      timeline: "none",
+      tasks: "none",
       tasksScope: "all",
-      spacePlanner: "view",
-      purchases: "view",
+      spacePlanner: "none",
+      purchases: "none",
       purchasesScope: "all",
-      overview: "view",
-      teams: "view",
-      budget: "view",
+      overview: "none",
+      teams: "none",
+      budget: "none",
       files: "view",
     },
   },
   viewer: {
     access: {
+      customerView: "none",
       timeline: "view",
       tasks: "view",
       tasksScope: "all",
@@ -171,6 +178,7 @@ const invitationSchemaEmail = z.object({
 
 function accessToDb(access: FeatureAccess) {
   return {
+    customer_view_access: access.customerView,
     timeline_access: access.timeline,
     tasks_access: access.tasks,
     tasks_scope: access.tasksScope,
@@ -189,6 +197,7 @@ function dbToAccess(
   fallback: "none" | "view" = "none"
 ): FeatureAccess {
   return {
+    customerView: (source.customer_view_access as FeatureAccess["customerView"]) || "none",
     timeline: (source.timeline_access as FeatureAccess["timeline"]) || fallback,
     tasks: (source.tasks_access as FeatureAccess["tasks"]) || fallback,
     tasksScope: (source.tasks_scope as FeatureAccess["tasksScope"]) || "assigned",
@@ -206,6 +215,7 @@ function detectTemplate(access: FeatureAccess): string {
   for (const [key, template] of Object.entries(ROLE_TEMPLATES)) {
     const t = template.access;
     if (
+      access.customerView === t.customerView &&
       access.timeline === t.timeline &&
       access.tasks === t.tasks &&
       access.tasksScope === t.tasksScope &&
@@ -273,19 +283,20 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       // Fetch project owner
       const { data: projectData, error: projectError } = await supabase
         .from("projects")
-        .select("owner_id, profiles:owner_id ( id, name, email, phone )")
+        .select("owner_id, profiles:owner_id ( id, name, email, phone, company_name )")
         .eq("id", projectId)
         .single();
 
       if (projectError) throw projectError;
 
       if (projectData?.profiles) {
-        const ownerProfile = projectData.profiles as unknown as ProjectOwner;
+        const ownerProfile = projectData.profiles as unknown as { id: string; name: string; email: string; phone: string | null; company_name: string | null };
         setProjectOwner({
           id: ownerProfile.id,
           name: ownerProfile.name || "Unknown",
           email: ownerProfile.email || "",
           phone: ownerProfile.phone || null,
+          company: ownerProfile.company_name || null,
         });
       }
 
@@ -295,9 +306,9 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
         .select(
           `id, role, role_type, contractor_category, phone, company, notes,
           display_name, display_email,
-          timeline_access, tasks_access, tasks_scope, space_planner_access,
-          purchases_access, purchases_scope, overview_access, teams_access,
-          budget_access, files_access,
+          customer_view_access, timeline_access, tasks_access, tasks_scope,
+          space_planner_access, purchases_access, purchases_scope,
+          overview_access, teams_access, budget_access, files_access,
           profiles:shared_with_user_id ( name, email )`
         )
         .eq("project_id", projectId);
@@ -321,6 +332,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
               phone: share.phone as string | null,
               company: share.company as string | null,
               notes: share.notes as string | null,
+              customer_view_access: share.customer_view_access as string | undefined,
               timeline_access: share.timeline_access as string | undefined,
               tasks_access: share.tasks_access as string | undefined,
               tasks_scope: share.tasks_scope as string | undefined,
@@ -726,41 +738,34 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
         )}
       </div>
 
-      {/* Project Owner */}
-      {projectOwner && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("roles.projectOwner", "Projektägare")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-3 p-3 border border-border rounded-lg bg-primary/5">
-              <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-medium shrink-0">
-                <Crown className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{projectOwner.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{projectOwner.email}</p>
-                {projectOwner.phone && (
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {projectOwner.phone}
-                  </p>
-                )}
-              </div>
-              <span className="text-sm text-muted-foreground whitespace-nowrap">
-                {t("roles.roleTemplates.client", "Hemägare")}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Team Members — Card Layout */}
-      {members.length > 0 && (
+      {/* All Team Members (owner + shares) */}
+      {(projectOwner || members.length > 0) && (
         <Card>
           <CardHeader>
             <CardTitle>{t("roles.teamMembers")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* Project Owner — always first */}
+            {projectOwner && (
+              <div className="flex items-center gap-3 p-3 border border-border rounded-lg bg-primary/5">
+                <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-medium shrink-0">
+                  <Crown className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{projectOwner.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{projectOwner.email}</p>
+                  {(projectOwner.company || projectOwner.phone) && (
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {[projectOwner.company, projectOwner.phone].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+                </div>
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {t("roles.projectOwner", "Ägare")}
+                </span>
+              </div>
+            )}
+            {/* Shared members */}
             {members.map((member) => (
               <div
                 key={member.id}
@@ -1030,6 +1035,7 @@ const ACCESS_LABEL_KEYS: Record<string, string> = {
 };
 
 const FEATURE_LABEL_KEYS = [
+  { key: "customerView" as const, labelKey: "roles.featureCustomerView" },
   { key: "timeline" as const, labelKey: "roles.featureTimeline" },
   { key: "tasks" as const, labelKey: "roles.featureTasks" },
   { key: "spacePlanner" as const, labelKey: "roles.featureSpacePlanner" },

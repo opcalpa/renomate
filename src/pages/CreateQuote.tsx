@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Plus } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -15,7 +14,9 @@ import { QuoteSummary } from "@/components/quotes/QuoteSummary";
 import { QuotePreview } from "@/components/quotes/QuotePreview";
 import { ImportRoomDialog } from "@/components/quotes/ImportRoomDialog";
 import { CreateClientDialog, type Client } from "@/components/quotes/CreateClientDialog";
-import { createQuote, addQuoteItem } from "@/services/quoteService";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { createQuote, addQuoteItem, updateQuoteDraft, replaceQuoteItems, generateQuoteNumber, recalculateQuoteTotals, calculateRotDeduction } from "@/services/quoteService";
 
 interface SimpleProject {
   id: string;
@@ -30,6 +31,8 @@ function newItem(): QuoteItem {
     unit: "st",
     unitPrice: 0,
     isRotEligible: false,
+    comment: "",
+    discountPercent: 0,
   };
 }
 
@@ -41,16 +44,18 @@ export default function CreateQuote() {
 
   // Read URL params
   const urlProjectId = searchParams.get("projectId");
+  const editQuoteId = searchParams.get("editQuoteId");
   const urlClientId = searchParams.get("clientId");
   const shouldPrepopulate = searchParams.get("prepopulate") === "true";
   const fromQuickQuote = searchParams.get("fromQuickQuote") === "true";
   const fromIntake = searchParams.get("fromIntake") === "true";
+  const isAta = searchParams.get("is_ata") === "true";
   const taskIds = searchParams.get("taskIds")?.split(",").filter(Boolean) || [];
   const materialIds = searchParams.get("materialIds")?.split(",").filter(Boolean) || [];
   const groupByType = searchParams.get("groupByType") || "grouped";
+  const pricingFormat = searchParams.get("pricingFormat") || "fixed";
   const applyRot = searchParams.get("applyRot") !== "false"; // default true
 
-  const [title, setTitle] = useState("");
   const [projectId, setProjectId] = useState<string>("");
   const [projects, setProjects] = useState<SimpleProject[]>([]);
   const [items, setItems] = useState<QuoteItem[]>([newItem()]);
@@ -58,6 +63,17 @@ export default function CreateQuote() {
   const [importRoomItemId, setImportRoomItemId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [companyName, setCompanyName] = useState<string | undefined>();
+  const [companyLogoUrl, setCompanyLogoUrl] = useState<string | undefined>();
+  const [companyInfo, setCompanyInfo] = useState<{
+    address?: string;
+    postalCode?: string;
+    city?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    orgNumber?: string;
+    bankgiro?: string;
+  }>({});
   const [userName, setUserName] = useState<string | undefined>();
   const [userEmail, setUserEmail] = useState<string | undefined>();
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>();
@@ -66,6 +82,7 @@ export default function CreateQuote() {
   const [clients, setClients] = useState<Client[]>([]);
   const [createClientOpen, setCreateClientOpen] = useState(false);
   const [freeText, setFreeText] = useState("");
+  const [quoteNumber, setQuoteNumber] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -78,15 +95,29 @@ export default function CreateQuote() {
       });
     supabase
       .from("profiles")
-      .select("id, name, company_name, avatar_url")
+      .select("id, name, company_name, avatar_url, company_logo_url, company_address, company_postal_code, company_city, phone, email, company_website, bankgiro")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
         if (data) {
           setCompanyName(data.company_name ?? undefined);
+          setCompanyLogoUrl((data as Record<string, unknown>).company_logo_url as string | undefined);
           setUserName(data.name ?? undefined);
           setAvatarUrl(data.avatar_url ?? undefined);
           setProfileId(data.id);
+          // Generate next quote number (editable by user)
+          if (!editQuoteId) {
+            generateQuoteNumber(data.id).then((num) => setQuoteNumber(num));
+          }
+          setCompanyInfo({
+            address: data.company_address ?? undefined,
+            postalCode: data.company_postal_code ?? undefined,
+            city: data.company_city ?? undefined,
+            phone: data.phone ?? undefined,
+            email: data.email ?? undefined,
+            website: data.company_website ?? undefined,
+            bankgiro: data.bankgiro ?? undefined,
+          });
           supabase
             .from("clients")
             .select("*")
@@ -113,6 +144,52 @@ export default function CreateQuote() {
       setClientId(urlClientId);
     }
   }, [urlClientId, clientId]);
+
+  // Load existing quote for editing
+  useEffect(() => {
+    if (!editQuoteId) return;
+
+    const loadQuote = async () => {
+      const [quoteRes, itemsRes] = await Promise.all([
+        supabase
+          .from("quotes")
+          .select("title, free_text, client_id_ref, project_id, quote_number")
+          .eq("id", editQuoteId)
+          .single(),
+        supabase
+          .from("quote_items")
+          .select("*")
+          .eq("quote_id", editQuoteId)
+          .order("sort_order", { ascending: true }),
+      ]);
+
+      if (quoteRes.data) {
+        setFreeText(quoteRes.data.free_text || "");
+        if (quoteRes.data.client_id_ref) setClientId(quoteRes.data.client_id_ref);
+        if (quoteRes.data.project_id) setProjectId(quoteRes.data.project_id);
+        const qn = (quoteRes.data as Record<string, unknown>).quote_number as string | null;
+        if (qn) setQuoteNumber(qn);
+      }
+
+      if (itemsRes.data && itemsRes.data.length > 0) {
+        setItems(
+          itemsRes.data.map((item) => ({
+            id: item.id,
+            description: item.description || "",
+            quantity: item.quantity ?? 1,
+            unit: item.unit || "st",
+            unitPrice: item.unit_price ?? 0,
+            isRotEligible: item.is_rot_eligible ?? false,
+            roomId: item.room_id ?? undefined,
+            comment: item.comment || "",
+            discountPercent: item.discount_percent ?? 0,
+          }))
+        );
+      }
+    };
+
+    loadQuote();
+  }, [editQuoteId]);
 
   // Handle AI-generated items from QuickQuote
   useEffect(() => {
@@ -187,23 +264,6 @@ export default function CreateQuote() {
     if (taskIds.length === 0 && materialIds.length === 0) return;
 
     const fetchProjectData = async () => {
-      interface TaskWithRoom {
-        id: string;
-        title: string;
-        budget: number | null;
-        room_id: string | null;
-        roomName: string | null;
-      }
-      interface MaterialWithRoom {
-        id: string;
-        name: string;
-        quantity: number | null;
-        unit: string | null;
-        price_per_unit: number | null;
-        room_id: string | null;
-        roomName: string | null;
-      }
-
       const taskItems: (QuoteItem & { roomName: string | null })[] = [];
       const materialItems: (QuoteItem & { roomName: string | null })[] = [];
 
@@ -211,23 +271,113 @@ export default function CreateQuote() {
       if (taskIds.length > 0) {
         const { data: tasks } = await supabase
           .from("tasks")
-          .select("id, title, budget, room_id, rooms(name)")
+          .select("id, title, description, budget, room_id, rooms(name), task_cost_type, estimated_hours, hourly_rate, subcontractor_cost, markup_percent, material_estimate")
           .in("id", taskIds)
           .order("created_at");
 
         if (tasks && tasks.length > 0) {
           for (const task of tasks) {
             const roomName = (task.rooms as { name: string } | null)?.name || null;
-            taskItems.push({
-              id: crypto.randomUUID(),
-              description: task.title,
-              quantity: 1,
-              unit: "st",
-              unitPrice: task.budget || 0,
-              isRotEligible: applyRot, // ROT only applies to labor
-              roomId: task.room_id || undefined,
-              roomName,
-            });
+
+            if (pricingFormat === "detailed") {
+              const hasOwnLabor = !!(task.estimated_hours && task.hourly_rate);
+              const hasSub = !!(task.subcontractor_cost && task.subcontractor_cost > 0);
+              const hasMaterial = !!(task.material_estimate && task.material_estimate > 0);
+              const hasAnyDetail = hasOwnLabor || hasSub || hasMaterial;
+
+              // Own labor row — carries task description as comment
+              if (hasOwnLabor) {
+                taskItems.push({
+                  id: crypto.randomUUID(),
+                  description: task.title,
+                  quantity: task.estimated_hours,
+                  unit: "h",
+                  unitPrice: task.hourly_rate,
+                  isRotEligible: applyRot,
+                  roomId: task.room_id || undefined,
+                  roomName,
+                  source: "hours",
+                  comment: task.description || "",
+                });
+              }
+
+              // Subcontractor row (incl. markup, without revealing breakdown)
+              if (hasSub) {
+                const markup = task.markup_percent || 0;
+                const adjustedPrice = task.subcontractor_cost * (1 + markup / 100);
+                taskItems.push({
+                  id: crypto.randomUUID(),
+                  description: hasOwnLabor ? `${task.title} — UE` : task.title,
+                  quantity: 1,
+                  unit: "st",
+                  unitPrice: Math.round(adjustedPrice * 100) / 100,
+                  isRotEligible: applyRot,
+                  roomId: task.room_id || undefined,
+                  roomName,
+                  source: "subcontractor",
+                });
+              }
+
+              // Material row
+              if (hasMaterial) {
+                taskItems.push({
+                  id: crypto.randomUUID(),
+                  description: `${task.title} — material`,
+                  quantity: 1,
+                  unit: "st",
+                  unitPrice: task.material_estimate,
+                  isRotEligible: false,
+                  roomId: task.room_id || undefined,
+                  roomName,
+                  source: "material",
+                });
+              }
+
+              // Fallback: budget only or no data
+              if (!hasAnyDetail) {
+                if (task.budget && task.budget > 0) {
+                  taskItems.push({
+                    id: crypto.randomUUID(),
+                    description: task.title,
+                    quantity: 1,
+                    unit: "st",
+                    unitPrice: task.budget,
+                    isRotEligible: applyRot,
+                    roomId: task.room_id || undefined,
+                    roomName,
+                    source: "fixed",
+                    comment: task.description || "",
+                  });
+                } else {
+                  taskItems.push({
+                    id: crypto.randomUUID(),
+                    description: task.title,
+                    quantity: 1,
+                    unit: "st",
+                    unitPrice: 0,
+                    isRotEligible: applyRot,
+                    roomId: task.room_id || undefined,
+                    roomName,
+                    source: "missing",
+                    comment: task.description || "",
+                  });
+                }
+              }
+            } else {
+              // Fixed price: lump sum per task
+              taskItems.push({
+                id: crypto.randomUUID(),
+                description: task.title,
+                quantity: 1,
+                unit: "st",
+                unitPrice: task.budget || 0,
+                isRotEligible: applyRot,
+                roomId: task.room_id || undefined,
+                roomName,
+                source: "fixed",
+                comment: task.description || "",
+              });
+            }
           }
         }
       }
@@ -249,9 +399,10 @@ export default function CreateQuote() {
               quantity: material.quantity || 1,
               unit: material.unit || "st",
               unitPrice: material.price_per_unit || 0,
-              isRotEligible: false, // ROT never applies to materials
+              isRotEligible: false,
               roomId: material.room_id || undefined,
               roomName,
+              source: "material",
             });
           }
         }
@@ -317,7 +468,7 @@ export default function CreateQuote() {
     };
 
     fetchProjectData();
-  }, [shouldPrepopulate, urlProjectId, taskIds.join(","), materialIds.join(","), groupByType, applyRot, t]);
+  }, [shouldPrepopulate, urlProjectId, taskIds.join(","), materialIds.join(","), groupByType, pricingFormat, applyRot, t]);
 
   const handleChange = useCallback((id: string, updates: Partial<QuoteItem>) => {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...updates } : i)));
@@ -355,25 +506,10 @@ export default function CreateQuote() {
       return;
     }
     setSaving(true);
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_id", user.id)
-      .single();
-    if (!profile) {
-      toast.error("Profile not found");
-      setSaving(false);
-      return;
-    }
-    const quote = await createQuote(projectId, title || t("quotes.newQuote"), profile.id, clientId || undefined, freeText.trim() || undefined);
-    if (!quote) {
-      setSaving(false);
-      return;
-    }
-    for (let idx = 0; idx < items.length; idx++) {
-      const item = items[idx];
-      if (!item.description && item.unitPrice === 0) continue;
-      await addQuoteItem(quote.id, {
+
+    const itemPayloads = items
+      .filter((item) => item.description || item.unitPrice > 0)
+      .map((item, idx) => ({
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unitPrice,
@@ -381,11 +517,71 @@ export default function CreateQuote() {
         is_rot_eligible: item.isRotEligible,
         room_id: item.roomId,
         sort_order: idx,
+        comment: item.comment || null,
+        discount_percent: item.discountPercent || null,
+      }));
+
+    const titlePrefix = isAta
+      ? t("quotes.changeOrderLabel", "Tillägg")
+      : t("quotes.quoteLabel", "Offert");
+    const autoTitle = `${titlePrefix} — ${projectName || t("quotes.newQuote")}`;
+
+    if (editQuoteId) {
+      // Update existing quote
+      const updated = await updateQuoteDraft(editQuoteId, {
+        title: autoTitle,
+        free_text: freeText.trim() || null,
+        client_id_ref: clientId || null,
       });
+      if (!updated) {
+        setSaving(false);
+        return;
+      }
+      const ok = await replaceQuoteItems(editQuoteId, itemPayloads);
+      if (!ok) {
+        setSaving(false);
+        return;
+      }
+      setSaving(false);
+      toast.success(t("quotes.saveDraft"));
+      const returnTo = projectId ? `?returnTo=${encodeURIComponent(`/projects/${projectId}`)}` : "";
+      navigate(`/quotes/${editQuoteId}${returnTo}`);
+    } else {
+      // Create new quote
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+      if (!profile) {
+        toast.error("Profile not found");
+        setSaving(false);
+        return;
+      }
+      const quote = await createQuote(projectId, autoTitle, profile.id, clientId || undefined, freeText.trim() || undefined, quoteNumber || undefined, isAta || undefined);
+      if (!quote) {
+        setSaving(false);
+        return;
+      }
+      for (const item of itemPayloads) {
+        await addQuoteItem(quote.id, item);
+      }
+      // Recalculate and persist quote totals
+      const computedItems = itemPayloads.map((item) => {
+        const total_price = item.quantity * item.unit_price * (1 - (item.discount_percent ?? 0) / 100);
+        return {
+          total_price,
+          is_rot_eligible: item.is_rot_eligible ?? false,
+          rot_deduction: calculateRotDeduction(total_price, item.is_rot_eligible ?? false),
+        };
+      });
+      const totals = recalculateQuoteTotals(computedItems);
+      await supabase.from("quotes").update(totals).eq("id", quote.id);
+      setSaving(false);
+      toast.success(t("quotes.saveDraft"));
+      const returnTo = projectId ? `?returnTo=${encodeURIComponent(`/projects/${projectId}`)}` : "";
+      navigate(`/quotes/${quote.id}${returnTo}`);
     }
-    setSaving(false);
-    toast.success(t("quotes.saveDraft"));
-    navigate("/quotes/" + quote.id);
   };
 
   const handleSignOut = async () => {
@@ -411,14 +607,18 @@ export default function CreateQuote() {
       />
 
       <main className="container mx-auto px-4 py-6 max-w-2xl space-y-4">
+        {urlProjectId && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
+            onClick={() => navigate(`/projects/${urlProjectId}`)}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t("quotes.backToPlanning")}
+          </Button>
+        )}
         <h1 className="text-2xl font-bold">{t("quotes.newQuote")}</h1>
-
-        <Input
-          placeholder={t("quotes.title")}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="min-h-[48px]"
-        />
 
         <Select value={projectId} onValueChange={setProjectId}>
           <SelectTrigger className="min-h-[48px]">
@@ -452,6 +652,24 @@ export default function CreateQuote() {
           </SelectContent>
         </Select>
 
+        <div className="space-y-1">
+          <Label className="text-sm text-muted-foreground">{t("quotes.quoteNumberLabel", "Offertnr")}</Label>
+          <Input
+            value={quoteNumber}
+            onChange={(e) => setQuoteNumber(e.target.value)}
+            placeholder="OFF-2026-001"
+            className="min-h-[48px]"
+          />
+        </div>
+
+        <Textarea
+          placeholder={t("quotes.freeTextPlaceholder")}
+          value={freeText}
+          onChange={(e) => setFreeText(e.target.value)}
+          rows={3}
+          className="min-h-[80px]"
+        />
+
         <div className="space-y-3">
           {items.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">{t("quotes.noItems")}</p>
@@ -476,14 +694,6 @@ export default function CreateQuote() {
           {t("quotes.addItem")}
         </Button>
 
-        <Textarea
-          placeholder={t("quotes.freeTextPlaceholder")}
-          value={freeText}
-          onChange={(e) => setFreeText(e.target.value)}
-          rows={3}
-          className="min-h-[80px]"
-        />
-
         <QuoteSummary items={items} />
 
         <div className="flex gap-2 pb-8">
@@ -507,11 +717,16 @@ export default function CreateQuote() {
       <QuotePreview
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        title={title || t("quotes.newQuote")}
         projectName={projectName}
         items={items}
-        companyName={companyName}
         freeText={freeText}
+        company={{
+          name: companyName,
+          logoUrl: companyLogoUrl,
+          ...companyInfo,
+        }}
+        clientName={clients.find((c) => c.id === clientId)?.name}
+        quoteNumber={quoteNumber}
       />
 
       <ImportRoomDialog

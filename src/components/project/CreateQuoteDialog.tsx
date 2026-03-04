@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -66,6 +66,7 @@ export function CreateQuoteDialog({
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<Set<string>>(new Set());
   const [groupByType, setGroupByType] = useState<"mixed" | "grouped" | "byRoom">("grouped");
+  const [pricingFormat, setPricingFormat] = useState<"fixed" | "detailed">("detailed");
   const [applyRot, setApplyRot] = useState(true);
   const [tasksOpen, setTasksOpen] = useState(false);
   const [materialsOpen, setMaterialsOpen] = useState(false);
@@ -156,6 +157,7 @@ export function CreateQuoteDialog({
       projectId,
       prepopulate: "true",
       groupByType,
+      pricingFormat,
       applyRot: applyRot.toString(),
     });
 
@@ -178,11 +180,6 @@ export function CreateQuoteDialog({
 
   const hasData = data.tasks.length > 0 || data.materials.length > 0;
   const willImportAnything = selectedTaskIds.size > 0 || selectedMaterialIds.size > 0;
-
-  // Check if any item has a room for "by room" option relevance
-  const hasRooms = useMemo(() => {
-    return data.tasks.some((t) => t.room_id) || data.materials.some((m) => m.room_id);
-  }, [data.tasks, data.materials]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -389,19 +386,55 @@ export function CreateQuoteDialog({
                     {t("quotes.groupedByType")}
                   </Label>
                 </div>
-                {hasRooms && (
-                  <div className="flex items-center space-x-3">
-                    <RadioGroupItem value="byRoom" id="byRoom" />
-                    <Label htmlFor="byRoom" className="text-sm font-normal cursor-pointer">
-                      {t("quotes.groupedByRoom")}
-                    </Label>
-                  </div>
-                )}
+                <div className="flex items-center space-x-3">
+                  <RadioGroupItem value="byRoom" id="byRoom" />
+                  <Label htmlFor="byRoom" className="text-sm font-normal cursor-pointer">
+                    {t("quotes.groupedByRoom")}
+                  </Label>
+                </div>
                 <div className="flex items-center space-x-3">
                   <RadioGroupItem value="mixed" id="mixed" />
                   <Label htmlFor="mixed" className="text-sm font-normal cursor-pointer">
                     {t("quotes.mixedList")}
                   </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <Separator />
+
+            {/* Pricing format */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">
+                {t("quotes.pricingFormat", "Pricing format")}
+              </Label>
+
+              <RadioGroup
+                value={pricingFormat}
+                onValueChange={(value) => setPricingFormat(value as "fixed" | "detailed")}
+                className="space-y-2"
+              >
+                <div className="flex items-start space-x-3">
+                  <RadioGroupItem value="detailed" id="detailed" className="mt-0.5" />
+                  <div>
+                    <Label htmlFor="detailed" className="text-sm font-normal cursor-pointer">
+                      {t("quotes.pricingDetailed", "Hour specification")}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {t("quotes.pricingDetailedHint", "Own labor shows hours × rate. Subcontractor shown as adjusted unit price.")}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <RadioGroupItem value="fixed" id="fixed" className="mt-0.5" />
+                  <div>
+                    <Label htmlFor="fixed" className="text-sm font-normal cursor-pointer">
+                      {t("quotes.pricingFixed", "Fixed price")}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {t("quotes.pricingFixedHint", "Each task shown as a lump sum.")}
+                    </p>
+                  </div>
                 </div>
               </RadioGroup>
             </div>

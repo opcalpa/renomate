@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,19 +6,20 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Calendar, Loader2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Move, ZoomIn, ZoomOut, RotateCcw, Layers, SlidersHorizontal, Info, X } from "lucide-react";
+import { Calendar, Loader2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ZoomIn, ZoomOut, RotateCcw, Layers, SlidersHorizontal, X } from "lucide-react";
 import { useTimelineGestures } from "@/hooks/useTimelineGestures";
 import { Slider } from "@/components/ui/slider";
-import { format, differenceInDays, parseISO, addDays } from "date-fns";
+import { format, differenceInDays, parseISO, addDays, getISOWeek } from "date-fns";
 import { sv } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TaskEditDialog } from "./TaskEditDialog";
+import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 interface Task {
   id: string;
   title: string;
@@ -56,6 +57,23 @@ interface TaskGroup {
   tasks: Task[];
   isCollapsed: boolean;
 }
+function getDownstreamTasks(
+  taskId: string,
+  dependencies: TaskDependency[],
+  visited = new Set<string>()
+): string[] {
+  if (visited.has(taskId)) return [];
+  visited.add(taskId);
+  const directDependents = dependencies
+    .filter(d => d.depends_on_task_id === taskId)
+    .map(d => d.task_id);
+  const all = [...directDependents];
+  for (const depId of directDependents) {
+    all.push(...getDownstreamTasks(depId, dependencies, visited));
+  }
+  return all;
+}
+
 interface ProjectTimelineProps {
   projectId: string;
   projectName?: string;
@@ -77,7 +95,7 @@ const ProjectTimeline = ({
   isDemo = false
 }: ProjectTimelineProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [unscheduledCount, setUnscheduledCount] = useState(0);
+  const [unscheduledTasks, setUnscheduledTasks] = useState<{ id: string; title: string }[]>([]);
   const [dependencies, setDependencies] = useState<TaskDependency[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -85,16 +103,21 @@ const ProjectTimeline = ({
   const [groupBy, setGroupBy] = useState<GroupByOption>('none');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [draggingTask, setDraggingTask] = useState<Task | null>(null);
-  const [resizingTask, setResizingTask] = useState<Task | null>(null);
-  const [resizeSide, setResizeSide] = useState<'left' | 'right' | null>(null);
-  const [dragStartX, setDragStartX] = useState<number>(0);
+  const [dragInteraction, setDragInteraction] = useState<{
+    mode: 'moving' | 'resize-left' | 'resize-right';
+    taskId: string;
+    startX: number;
+    origStart: string;
+    origFinish: string;
+    previewStart: string;
+    previewFinish: string;
+  } | null>(null);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [showLegend, setShowLegend] = useState(false);
   const { toast } = useToast();
   const { t } = useTranslation();
 
@@ -109,7 +132,6 @@ const ProjectTimeline = ({
     setCenterDate,
     zoomIn,
     zoomOut,
-    goToToday,
     panByDays,
     minDays,
     maxDays,
@@ -117,8 +139,8 @@ const ProjectTimeline = ({
   } = useTimelineGestures({
     minDays: 7,
     maxDays: 365,
-    initialDays: 30,
-    initialCenterDate: new Date(),
+    initialDays: 7,
+    initialCenterDate: addDays(new Date(), 3),
   });
   useEffect(() => {
     fetchTasks();
@@ -159,14 +181,15 @@ const ProjectTimeline = ({
       if (error) throw error;
       setTasks(data || []);
 
-      // Count unscheduled tasks
-      const { count, error: countError } = await supabase
+      // Fetch unscheduled tasks (title for hover list)
+      const { data: unschedData, error: unschedError } = await supabase
         .from("tasks")
-        .select("id", { count: "exact", head: true })
+        .select("id, title")
         .eq("project_id", projectId)
-        .or("start_date.is.null,finish_date.is.null");
-      if (!countError) {
-        setUnscheduledCount(count || 0);
+        .or("start_date.is.null,finish_date.is.null")
+        .order("created_at", { ascending: true });
+      if (!unschedError) {
+        setUnscheduledTasks(unschedData || []);
       }
     } catch (error: any) {
       toast({
@@ -262,7 +285,7 @@ const ProjectTimeline = ({
   };
 
   const handleToday = () => {
-    goToToday();
+    setCenterDate(addDays(new Date(), Math.floor(daysVisible / 2)));
   };
 
   // View mode presets - set specific day ranges
@@ -270,12 +293,15 @@ const ProjectTimeline = ({
     switch (preset) {
       case 'week':
         setDaysVisible(7);
+        setCenterDate(addDays(new Date(), 3));
         break;
       case 'month':
         setDaysVisible(30);
+        setCenterDate(addDays(new Date(), 15));
         break;
       case '3months':
         setDaysVisible(90);
+        setCenterDate(addDays(new Date(), 45));
         break;
       case 'full':
         // Calculate full project span
@@ -304,27 +330,6 @@ const ProjectTimeline = ({
 
   // Generate date markers for the timeline based on visible days
   // Must be called before any early returns (React hooks rule)
-  const dateMarkers = useMemo(() => {
-    const markers: Date[] = [];
-    let currentMarker = minDate;
-    // Dynamically choose interval based on days visible
-    let interval: number;
-    if (daysVisible <= 14) {
-      interval = 1; // Show every day for 2 weeks or less
-    } else if (daysVisible <= 45) {
-      interval = Math.ceil(daysVisible / 15); // ~15 markers
-    } else if (daysVisible <= 90) {
-      interval = Math.ceil(daysVisible / 12); // ~12 markers
-    } else {
-      interval = Math.ceil(daysVisible / 10); // ~10 markers for longer ranges
-    }
-    while (currentMarker <= maxDate) {
-      markers.push(currentMarker);
-      currentMarker = addDays(currentMarker, interval);
-    }
-    return markers;
-  }, [minDate, maxDate, daysVisible]);
-
   // Filter tasks that overlap with current view and match assignee filter
   // Must be called before any early returns (React hooks rule)
   const visibleTasks = useMemo(() => {
@@ -498,6 +503,49 @@ const ProjectTimeline = ({
     }, 0);
   }, [groupedTasks, groupBy, visibleTasks.length]);
 
+  // Container width tracking for SVG dependency arrows
+  const timelineContentRef = useRef<HTMLDivElement>(null);
+  const [timelineWidth, setTimelineWidth] = useState(0);
+
+  useEffect(() => {
+    const el = timelineContentRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setTimelineWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Build task-row index map for dependency arrow positioning
+  const taskRowMap = useMemo(() => {
+    const map = new Map<string, number>();
+    let rowIndex = 0;
+    for (const group of groupedTasks) {
+      if (groupBy !== 'none') rowIndex++; // group header row
+      if (!group.isCollapsed) {
+        for (const task of group.tasks) {
+          map.set(task.id, rowIndex);
+          rowIndex++;
+        }
+      }
+    }
+    return map;
+  }, [groupedTasks, groupBy]);
+
+  // Pixel width of one day column (for pointer drag)
+  const dayWidthPx = timelineWidth > 0 ? timelineWidth / totalDays : 0;
+
+  // Cleanup drag listeners on unmount
+  useEffect(() => {
+    return () => { dragCleanupRef.current?.(); };
+  }, []);
+
+  // Stable today string to avoid repeated format() calls
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+
   const getTaskPosition = (task: Task, minDate: Date, totalDays: number) => {
     if (!task.start_date || !task.finish_date) return {
       left: 0,
@@ -552,126 +600,123 @@ const ProjectTimeline = ({
         return "border-border";
     }
   };
-  const handleDragStart = (e: React.DragEvent, task: Task) => {
-    const target = e.target as HTMLElement;
-    const isResizeHandle = target.classList.contains('resize-handle');
-    if (isResizeHandle) {
-      const side = target.classList.contains('resize-left') ? 'left' : 'right';
-      setResizingTask(task);
-      setResizeSide(side);
-    } else {
-      setDraggingTask(task);
-    }
-    setDragStartX(e.clientX);
-    e.dataTransfer.effectAllowed = "move";
-  };
-  const handleDragEnd = (e: React.DragEvent) => {
-    if (e.currentTarget instanceof HTMLElement) {
-      e.currentTarget.style.opacity = "1";
-    }
-    setDraggingTask(null);
-    setResizingTask(null);
-    setResizeSide(null);
-    setDragStartX(0);
-  };
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    if (resizingTask && resizeSide) {
-      await handleResize(e);
-    } else if (draggingTask) {
-      await handleMove(e);
-    }
-  };
-  const handleMove = async (e: React.DragEvent) => {
-    if (!draggingTask) return;
-    const timeline = e.currentTarget;
-    const rect = timeline.getBoundingClientRect();
-    const dropX = e.clientX - rect.left;
-    const timelineWidth = rect.width;
-
-    // Calculate percentage position
-    const percentage = dropX / timelineWidth * 100;
-
-    // Calculate new start date based on position
-    const daysFromStart = Math.round(percentage / 100 * totalDays);
-    const newStartDate = addDays(minDate, daysFromStart);
-
-    // Calculate duration and new finish date
-    const originalStart = parseISO(draggingTask.start_date!);
-    const originalFinish = parseISO(draggingTask.finish_date!);
-    const duration = differenceInDays(originalFinish, originalStart);
-    const newFinishDate = addDays(newStartDate, duration);
+  // Commit drag result to Supabase (with cascade for moves)
+  const commitTaskDates = async (
+    interaction: NonNullable<typeof dragInteraction>,
+    task: Task
+  ) => {
     try {
-      const {
-        error
-      } = await supabase.from("tasks").update({
-        start_date: format(newStartDate, "yyyy-MM-dd"),
-        finish_date: format(newFinishDate, "yyyy-MM-dd")
-      }).eq("id", draggingTask.id);
+      const { error } = await supabase.from("tasks").update({
+        start_date: interaction.previewStart,
+        finish_date: interaction.previewFinish,
+      }).eq("id", interaction.taskId);
       if (error) throw error;
-      toast({
-        title: t('timeline.taskRescheduled', 'Task rescheduled'),
-        description: `${draggingTask.title} moved to ${format(newStartDate, "MMM d, yyyy")}`
-      });
+
+      if (interaction.mode === 'moving') {
+        const delta = differenceInDays(
+          parseISO(interaction.previewStart),
+          parseISO(interaction.origStart)
+        );
+        let cascadedCount = 0;
+        if (delta !== 0) {
+          const downstreamIds = getDownstreamTasks(interaction.taskId, dependencies);
+          for (const dt of tasks.filter(tt => downstreamIds.includes(tt.id))) {
+            if (dt.start_date && dt.finish_date) {
+              const { error: ce } = await supabase.from("tasks").update({
+                start_date: format(addDays(parseISO(dt.start_date), delta), "yyyy-MM-dd"),
+                finish_date: format(addDays(parseISO(dt.finish_date), delta), "yyyy-MM-dd"),
+              }).eq("id", dt.id);
+              if (!ce) cascadedCount++;
+            }
+          }
+        }
+        toast({
+          title: t('timeline.taskRescheduled', 'Task rescheduled'),
+          description: cascadedCount > 0
+            ? `${task.title} → ${format(parseISO(interaction.previewStart), "MMM d")}. ${t('timeline.dependenciesCascaded', 'Also moved {{count}} dependent task(s)', { count: cascadedCount })}`
+            : `${task.title} → ${format(parseISO(interaction.previewStart), "MMM d, yyyy")}`
+        });
+      } else {
+        const dateStr = interaction.mode === 'resize-left'
+          ? interaction.previewStart : interaction.previewFinish;
+        toast({
+          title: t('timeline.taskDurationUpdated', 'Task duration updated'),
+          description: `${task.title} ${interaction.mode === 'resize-left' ? 'start' : 'end'} → ${format(parseISO(dateStr), "MMM d")}`
+        });
+      }
       fetchTasks();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast({ title: "Error", description: message, variant: "destructive" });
     }
   };
-  const handleResize = async (e: React.DragEvent) => {
-    if (!resizingTask || !resizeSide) return;
-    const timeline = e.currentTarget;
-    const rect = timeline.getBoundingClientRect();
-    const dropX = e.clientX - rect.left;
-    const timelineWidth = rect.width;
-    const percentage = dropX / timelineWidth * 100;
-    const daysFromStart = Math.round(percentage / 100 * totalDays);
-    const newDate = addDays(minDate, daysFromStart);
-    const originalStart = parseISO(resizingTask.start_date!);
-    const originalFinish = parseISO(resizingTask.finish_date!);
-    let newStartDate = originalStart;
-    let newFinishDate = originalFinish;
-    if (resizeSide === 'left') {
-      newStartDate = newDate;
-      // Ensure start date is before finish date
-      if (newStartDate >= originalFinish) {
-        newStartDate = addDays(originalFinish, -1);
+
+  // Pointer-based drag: smooth real-time move/resize with day-snapping
+  const handleBarPointerDown = (
+    e: React.PointerEvent,
+    task: Task,
+    mode: 'moving' | 'resize-left' | 'resize-right'
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    let current = {
+      mode,
+      taskId: task.id,
+      startX: e.clientX,
+      origStart: task.start_date!,
+      origFinish: task.finish_date!,
+      previewStart: task.start_date!,
+      previewFinish: task.finish_date!,
+    };
+    setDragInteraction(current);
+
+    const onMove = (ev: PointerEvent) => {
+      if (dayWidthPx === 0) return;
+      const deltaDays = Math.round((ev.clientX - current.startX) / dayWidthPx);
+      let ps = current.origStart;
+      let pf = current.origFinish;
+
+      if (current.mode === 'moving') {
+        ps = format(addDays(parseISO(current.origStart), deltaDays), 'yyyy-MM-dd');
+        pf = format(addDays(parseISO(current.origFinish), deltaDays), 'yyyy-MM-dd');
+      } else if (current.mode === 'resize-left') {
+        const ns = addDays(parseISO(current.origStart), deltaDays);
+        if (ns < parseISO(current.origFinish)) ps = format(ns, 'yyyy-MM-dd');
+      } else {
+        const nf = addDays(parseISO(current.origFinish), deltaDays);
+        if (nf > parseISO(current.origStart)) pf = format(nf, 'yyyy-MM-dd');
       }
-    } else {
-      newFinishDate = newDate;
-      // Ensure finish date is after start date
-      if (newFinishDate <= originalStart) {
-        newFinishDate = addDays(originalStart, 1);
+
+      if (ps !== current.previewStart || pf !== current.previewFinish) {
+        current = { ...current, previewStart: ps, previewFinish: pf };
+        setDragInteraction({ ...current });
       }
-    }
-    try {
-      const {
-        error
-      } = await supabase.from("tasks").update({
-        start_date: format(newStartDate, "yyyy-MM-dd"),
-        finish_date: format(newFinishDate, "yyyy-MM-dd")
-      }).eq("id", resizingTask.id);
-      if (error) throw error;
-      toast({
-        title: t('timeline.taskDurationUpdated', 'Task duration updated'),
-        description: `${resizingTask.title} ${resizeSide === 'left' ? 'start' : 'end'} date changed`
-      });
-      fetchTasks();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
+    };
+
+    const onUp = async () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      dragCleanupRef.current = null;
+
+      const final = current;
+      setDragInteraction(null);
+
+      const noChange = final.previewStart === final.origStart
+        && final.previewFinish === final.origFinish;
+      if (noChange) {
+        if (final.mode === 'moving') handleTaskClick(task);
+        return;
+      }
+      await commitTaskDates(final, task);
+    };
+
+    dragCleanupRef.current = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   };
   const handleTaskClick = (task: Task) => {
     setSelectedTaskId(task.id);
@@ -751,14 +796,6 @@ const ProjectTimeline = ({
             </div>
             <div className="flex items-center gap-1">
               <Button
-                variant={showLegend ? "secondary" : "ghost"}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setShowLegend(!showLegend)}
-              >
-                <Info className="h-4 w-4" />
-              </Button>
-              <Button
                 variant={mobileFiltersOpen ? "secondary" : "outline"}
                 size="sm"
                 className="h-8"
@@ -770,29 +807,22 @@ const ProjectTimeline = ({
             </div>
           </div>
 
-          {/* Row 2: Compact navigation + zoom */}
+          {/* Row 2: Zoom + navigation */}
           <div className="flex items-center justify-between gap-2">
-            {/* View preset pills */}
-            <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
-              {(['week', 'month', '3months', 'full'] as const).map((preset) => {
-                const isActive =
-                  (preset === 'week' && daysVisible <= 10) ||
-                  (preset === 'month' && daysVisible > 10 && daysVisible <= 45) ||
-                  (preset === '3months' && daysVisible > 45 && daysVisible <= 120) ||
-                  (preset === 'full' && daysVisible > 120);
-                const labels = { week: '1V', month: '1M', '3months': '3M', full: t('timeline.fullProject', 'Alla') };
-                return (
-                  <Button
-                    key={preset}
-                    variant={isActive ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewPreset(preset)}
-                    className="h-7 px-2 text-xs"
-                  >
-                    {labels[preset]}
-                  </Button>
-                );
-              })}
+            {/* Zoom controls */}
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" onClick={zoomOut} disabled={daysVisible >= maxDays} className="h-7 w-7">
+                <ZoomOut className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-xs text-muted-foreground min-w-[50px] text-center">
+                {daysVisible} {t('timeline.days', 'd')}
+              </span>
+              <Button variant="outline" size="icon" onClick={zoomIn} disabled={daysVisible <= minDays} className="h-7 w-7">
+                <ZoomIn className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={() => setViewPreset('month')} className="h-7 w-7">
+                <RotateCcw className="h-3.5 w-3.5" />
+              </Button>
             </div>
             {/* Navigation */}
             <div className="flex items-center gap-1">
@@ -844,54 +874,33 @@ const ProjectTimeline = ({
                   </SelectContent>
                 </Select>
               </div>
-              {/* Zoom controls */}
-              <div className="flex items-center justify-center gap-2 pt-1">
-                <Button variant="outline" size="icon" onClick={zoomOut} disabled={daysVisible >= maxDays} className="h-8 w-8">
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <span className="text-sm text-muted-foreground min-w-[70px] text-center">
-                  {daysVisible} {t('timeline.days', 'dagar')}
-                </span>
-                <Button variant="outline" size="icon" onClick={zoomIn} disabled={daysVisible <= minDays} className="h-8 w-8">
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={() => setViewPreset('month')} className="h-8 w-8">
-                  <RotateCcw className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Legend (toggle) */}
-          {showLegend && (
-            <div className="flex items-center gap-3 text-xs flex-wrap bg-muted/30 rounded-lg p-2">
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-emerald-500" />
-                <span>{t('projectDetail.completed')}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-blue-500" />
-                <span>{t('projectDetail.inProgress')}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-slate-400" />
-                <span>{t('projectDetail.toDo')}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-yellow-500" />
-                <span>{t('statuses.onHold')}</span>
-              </div>
             </div>
           )}
 
           {/* Unscheduled badge */}
-          {unscheduledCount > 0 && (
-            <Badge variant="secondary" className="text-xs w-fit">
-              <Calendar className="h-3 w-3 mr-1" />
-              {unscheduledCount === 1
-                ? t('timeline.unscheduledTasksSingular', '1 oschemalagd')
-                : t('timeline.unscheduledTasks', '{{count}} oschemalagda', { count: unscheduledCount })}
-            </Badge>
+          {unscheduledTasks.length > 0 && (
+            <HoverCard openDelay={200}>
+              <HoverCardTrigger asChild>
+                <Badge variant="secondary" className="text-xs w-fit cursor-default">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  {unscheduledTasks.length === 1
+                    ? t('timeline.unscheduledTasksSingular', '1 oschemalagd')
+                    : t('timeline.unscheduledTasks', '{{count}} oschemalagda', { count: unscheduledTasks.length })}
+                </Badge>
+              </HoverCardTrigger>
+              <HoverCardContent className="w-64 p-3" align="start">
+                <p className="text-xs font-medium text-muted-foreground mb-2">
+                  {t('timeline.unscheduledTasksTitle', 'Unscheduled tasks')}
+                </p>
+                <ul className="space-y-1">
+                  {unscheduledTasks.map((ut) => (
+                    <li key={ut.id} className="text-sm truncate">
+                      {ut.title}
+                    </li>
+                  ))}
+                </ul>
+              </HoverCardContent>
+            </HoverCard>
           )}
         </div>
 
@@ -899,71 +908,120 @@ const ProjectTimeline = ({
         <div className="hidden md:block">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <CardTitle>{projectName || t('projectDetail.timeline')}</CardTitle>
+              <CardTitle className="mb-1">{projectName || t('projectDetail.timeline')}</CardTitle>
               <CardDescription>
                 {format(minDate, "MMM d, yyyy")} - {format(maxDate, "MMM d, yyyy")} ({daysVisible} {t('timeline.days', 'days')})
               </CardDescription>
+              {(projectStartDate || projectFinishDate) && (
+                <div className="flex items-center gap-1.5 mt-2">
+                  {projectStartDate && (
+                    <Badge variant="outline" className="text-xs">Start: {format(parseISO(projectStartDate), "MMM d, yyyy")}</Badge>
+                  )}
+                  {projectFinishDate && (
+                    <Badge variant="outline" className="text-xs">Goal: {format(parseISO(projectFinishDate), "MMM d, yyyy")}</Badge>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Group by dropdown */}
-              <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupByOption)}>
-                <SelectTrigger className="w-36">
-                  <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder={t('timeline.groupBy', 'Group by')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t('timeline.noGrouping', 'No grouping')}</SelectItem>
-                  <SelectItem value="status">{t('timeline.groupByStatus', 'Status')}</SelectItem>
-                  <SelectItem value="room">{t('timeline.groupByRoom', 'Room')}</SelectItem>
-                  <SelectItem value="assignee">{t('timeline.groupByAssignee', 'Assignee')}</SelectItem>
-                  <SelectItem value="priority">{t('timeline.groupByPriority', 'Priority')}</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Filter by assignee" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('budget.allAssignees')}</SelectItem>
-                  <SelectItem value="unassigned">{t('common.unassigned')}</SelectItem>
-                  {teamMembers.map(member => <SelectItem key={member.id} value={member.id}>
-                      {member.name}
-                    </SelectItem>)}
-                </SelectContent>
-              </Select>
-              {/* View preset buttons */}
+            <div className="flex items-center gap-2">
+              {/* Unscheduled tasks button */}
+              {unscheduledTasks.length > 0 && (
+                <HoverCard openDelay={200}>
+                  <HoverCardTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8 relative cursor-default">
+                      <Calendar className="h-4 w-4" />
+                      <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-0.5 rounded-full bg-orange-500 text-white text-[10px] font-medium flex items-center justify-center">
+                        {unscheduledTasks.length}
+                      </span>
+                    </Button>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-64 p-3" align="end">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                      {t('timeline.unscheduledTasksTitle', 'Unscheduled tasks')}
+                    </p>
+                    <ul className="space-y-1">
+                      {unscheduledTasks.map((ut) => (
+                        <li key={ut.id} className="text-sm truncate">
+                          {ut.title}
+                        </li>
+                      ))}
+                    </ul>
+                  </HoverCardContent>
+                </HoverCard>
+              )}
+              {/* Filter popover */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant={groupBy !== "none" || selectedAssignee !== "all" ? "secondary" : "outline"} size="icon" className="h-8 w-8 relative">
+                    <SlidersHorizontal className="h-4 w-4" />
+                    {(groupBy !== "none" || selectedAssignee !== "all") && (
+                      <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary" />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="end">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-medium">{t('timeline.filters', 'Filter')}</p>
+                    {(groupBy !== "none" || selectedAssignee !== "all") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs text-muted-foreground"
+                        onClick={() => { setGroupBy("none"); setSelectedAssignee("all"); }}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        {t('common.clear', 'Rensa')}
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">{t('timeline.groupBy', 'Gruppering')}</label>
+                      <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupByOption)}>
+                        <SelectTrigger className="h-9">
+                          <Layers className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{t('timeline.noGrouping', 'No grouping')}</SelectItem>
+                          <SelectItem value="status">{t('timeline.groupByStatus', 'Status')}</SelectItem>
+                          <SelectItem value="room">{t('timeline.groupByRoom', 'Room')}</SelectItem>
+                          <SelectItem value="assignee">{t('timeline.groupByAssignee', 'Assignee')}</SelectItem>
+                          <SelectItem value="priority">{t('timeline.groupByPriority', 'Priority')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">{t('budget.allAssignees', 'Tilldelade')}</label>
+                      <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">{t('budget.allAssignees')}</SelectItem>
+                          <SelectItem value="unassigned">{t('common.unassigned')}</SelectItem>
+                          {teamMembers.map(member => (
+                            <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              {/* Zoom controls */}
               <div className="flex items-center gap-1 border rounded-md p-0.5">
-                <Button
-                  variant={daysVisible <= 10 ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewPreset('week')}
-                  className="h-7 px-2 text-xs"
-                >
-                  {t('timeline.weekly', '1W')}
+                <Button variant="ghost" size="icon" onClick={zoomOut} disabled={daysVisible >= maxDays} className="h-7 w-7" title={t('timeline.showMoreDays', 'Show more days')}>
+                  <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
-                <Button
-                  variant={daysVisible > 10 && daysVisible <= 45 ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewPreset('month')}
-                  className="h-7 px-2 text-xs"
-                >
-                  {t('timeline.monthly', '1M')}
+                <span className="text-xs text-muted-foreground min-w-[60px] text-center">
+                  {daysVisible} {t('timeline.days', 'days')}
+                </span>
+                <Button variant="ghost" size="icon" onClick={zoomIn} disabled={daysVisible <= minDays} className="h-7 w-7" title={t('timeline.showFewerDays', 'Show fewer days')}>
+                  <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
-                <Button
-                  variant={daysVisible > 45 && daysVisible <= 120 ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewPreset('3months')}
-                  className="h-7 px-2 text-xs"
-                >
-                  {t('timeline.threeMonths', '3M')}
-                </Button>
-                <Button
-                  variant={daysVisible > 120 ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewPreset('full')}
-                  className="h-7 px-2 text-xs"
-                >
-                  {t('timeline.fullProject', 'All')}
+                <Button variant="ghost" size="icon" onClick={() => setViewPreset('month')} className="h-7 w-7" title={t('timeline.resetZoom', 'Reset to 1 month')}>
+                  <RotateCcw className="h-3.5 w-3.5" />
                 </Button>
               </div>
               <Button variant="outline" onClick={handleToday}>
@@ -977,60 +1035,6 @@ const ProjectTimeline = ({
               </Button>
             </div>
           </div>
-          {/* Zoom controls */}
-          <div className="flex items-center gap-2 mt-3 pb-2 border-b">
-            <Button variant="ghost" size="icon" onClick={zoomOut} disabled={daysVisible >= maxDays} className="h-8 w-8" title={t('timeline.showMoreDays', 'Show more days')}>
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <span className="text-sm text-muted-foreground min-w-[80px] text-center">
-              {daysVisible} {t('timeline.days', 'days')}
-            </span>
-            <Button variant="ghost" size="icon" onClick={zoomIn} disabled={daysVisible <= minDays} className="h-8 w-8" title={t('timeline.showFewerDays', 'Show fewer days')}>
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => setViewPreset('month')} className="h-8 w-8" title={t('timeline.resetZoom', 'Reset to 1 month')}>
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-            <span className="text-xs text-muted-foreground ml-2">
-              {t('timeline.gestureHint', 'Pinch to zoom, swipe to pan')}
-            </span>
-          </div>
-          <div className="flex items-center gap-4 text-sm flex-wrap mt-3">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-lg bg-emerald-500/90 shadow-sm border border-emerald-600/20" />
-              <span className="text-muted-foreground font-medium">{t('projectDetail.completed')}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-lg bg-blue-500/90 shadow-sm border border-blue-600/20" />
-              <span className="text-muted-foreground font-medium">{t('projectDetail.inProgress')}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-lg bg-slate-400/90 shadow-sm border border-slate-500/20" />
-              <span className="text-muted-foreground font-medium">{t('projectDetail.toDo')}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-lg bg-yellow-500/90 shadow-sm border border-yellow-600/20" />
-              <span className="text-muted-foreground font-medium">{t('statuses.onHold')}</span>
-            </div>
-            <div className="flex items-center gap-2 ml-auto">
-              {projectStartDate && (
-                <Badge variant="outline">Start: {format(parseISO(projectStartDate), "MMM d, yyyy")}</Badge>
-              )}
-              {projectFinishDate && (
-                <Badge variant="outline">Goal: {format(parseISO(projectFinishDate), "MMM d, yyyy")}</Badge>
-              )}
-            </div>
-          </div>
-          {unscheduledCount > 0 && (
-            <div className="mt-3">
-              <Badge variant="secondary" className="text-xs">
-                <Calendar className="h-3 w-3 mr-1" />
-                {unscheduledCount === 1
-                  ? t('timeline.unscheduledTasksSingular', '1 unscheduled task')
-                  : t('timeline.unscheduledTasks', '{{count}} unscheduled tasks', { count: unscheduledCount })}
-              </Badge>
-            </div>
-          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -1044,51 +1048,118 @@ const ProjectTimeline = ({
             ><div
               className="relative min-w-[800px]"
             >
-              {/* Sticky date ruler/timeline axis - clean design without vertical lines */}
-              <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border/40 shadow-sm flex">
-                {/* Spacer for left sidebar when grouping */}
-                {groupBy !== 'none' && <div className="w-40 flex-shrink-0 border-r border-border/30 flex items-end pb-2 px-3">
-                  <span className="text-xs font-medium text-muted-foreground">{t('timeline.groupBy', 'Group by')}: {groupBy}</span>
-                </div>}
-                <div className="relative h-12 flex items-end pb-2 flex-1">
-                  {dateMarkers.map((date, index) => {
-                    const daysFromStart = differenceInDays(date, minDate);
-                    const left = daysFromStart / totalDays * 100;
-                    const isToday = format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
-                    return <TooltipProvider key={index}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className={`absolute flex flex-col items-center cursor-help ${isToday ? 'z-20' : ''}`} style={{
-                              left: `${left}%`,
-                              transform: 'translateX(-50%)'
-                            }}>
-                              <div className={`text-xs whitespace-nowrap font-medium ${isToday ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
-                                {daysVisible <= 14 ? format(date, "EEE d") : daysVisible <= 60 ? format(date, "MMM d") : format(date, "d MMM")}
-                              </div>
-                              {isToday && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{format(date, "EEEE, MMMM d, yyyy")}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>;
-                  })}
-                  {/* Project start date marker if it's in view */}
-                  {projectStartDate && parseISO(projectStartDate) >= minDate && parseISO(projectStartDate) <= maxDate && <div className="absolute flex flex-col items-center z-10" style={{
-                    left: `${differenceInDays(parseISO(projectStartDate), minDate) / totalDays * 100}%`,
-                    transform: 'translateX(-50%)'
-                  }}>
-                      <Badge variant="default" className="text-xs">Start</Badge>
-                    </div>}
+              {/* Sticky date ruler — month / week / day rows */}
+              <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm flex flex-col">
+                {/* Row 1: Month blocks */}
+                <div className="flex">
+                  {groupBy !== 'none' && <div className="w-40 flex-shrink-0 border-r border-border/30" />}
+                  <div className="relative h-5 flex-1 border-b border-border/40">
+                    {(() => {
+                      const monthBlocks: { start: number; span: number; label: string }[] = [];
+                      let blockStart = 0;
+                      let currentMonth = minDate.getMonth();
+                      for (let i = 1; i <= totalDays; i++) {
+                        const date = addDays(minDate, i);
+                        const month = i < totalDays ? date.getMonth() : -1;
+                        if (month !== currentMonth || i === totalDays) {
+                          const blockDate = addDays(minDate, blockStart);
+                          monthBlocks.push({
+                            start: blockStart,
+                            span: i - blockStart,
+                            label: format(blockDate, "MMMM yyyy"),
+                          });
+                          blockStart = i;
+                          currentMonth = month;
+                        }
+                      }
+                      return monthBlocks.map((block, idx) => {
+                        const left = (block.start / totalDays) * 100;
+                        const width = (block.span / totalDays) * 100;
+                        return (
+                          <div
+                            key={idx}
+                            className={`absolute h-full flex items-center overflow-hidden border-r border-border/60 px-2 ${idx % 2 === 0 ? 'bg-muted/10' : ''}`}
+                            style={{ left: `${left}%`, width: `${width}%` }}
+                          >
+                            <span className="text-[10px] font-bold text-foreground/60 uppercase tracking-wider whitespace-nowrap">
+                              {block.label}
+                            </span>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+                {/* Row 2: Week blocks */}
+                <div className="flex">
+                  {groupBy !== 'none' && <div className="w-40 flex-shrink-0 border-r border-border/30" />}
+                  <div className="relative h-5 flex-1 border-b border-border/30">
+                    {(() => {
+                      const weekBlocks: { start: number; span: number; weekNum: number }[] = [];
+                      let blockStart = 0;
+                      let currentWeek = getISOWeek(minDate);
+                      for (let i = 1; i <= totalDays; i++) {
+                        const date = addDays(minDate, i);
+                        const week = i < totalDays ? getISOWeek(date) : -1;
+                        if (week !== currentWeek || i === totalDays) {
+                          weekBlocks.push({ start: blockStart, span: i - blockStart, weekNum: currentWeek });
+                          blockStart = i;
+                          currentWeek = week;
+                        }
+                      }
+                      return weekBlocks.map((block, idx) => {
+                        const left = (block.start / totalDays) * 100;
+                        const width = (block.span / totalDays) * 100;
+                        return (
+                          <div
+                            key={idx}
+                            className={`absolute h-full flex items-center justify-center overflow-hidden border-r border-border/50 ${idx % 2 === 0 ? 'bg-muted/15' : ''}`}
+                            style={{ left: `${left}%`, width: `${width}%` }}
+                          >
+                            <span className="text-[9px] font-semibold text-muted-foreground whitespace-nowrap">
+                              {t('timeline.weekShort', 'V')}{block.weekNum}
+                            </span>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+                {/* Row 3: Day labels */}
+                <div className="flex">
+                  {groupBy !== 'none' && <div className="w-40 flex-shrink-0 border-r border-border/30 flex items-end pb-0.5 px-3">
+                    <span className="text-[9px] font-medium text-muted-foreground">{t('timeline.groupBy', 'Group by')}: {groupBy}</span>
+                  </div>}
+                  <div className="relative h-6 flex-1">
+                    {Array.from({ length: totalDays }, (_, i) => {
+                      const date = addDays(minDate, i);
+                      const isToday = format(date, "yyyy-MM-dd") === todayStr;
+                      const isMonday = date.getDay() === 1;
+                      const colLeft = (i / totalDays) * 100;
+                      const colWidth = 100 / totalDays;
 
-                  {/* Goal date marker if it's in view */}
-                  {projectFinishDate && parseISO(projectFinishDate) >= minDate && parseISO(projectFinishDate) <= maxDate && <div className="absolute flex flex-col items-center z-10" style={{
-                    left: `${differenceInDays(parseISO(projectFinishDate), minDate) / totalDays * 100}%`,
-                    transform: 'translateX(-50%)'
-                  }}>
-                      <Badge variant="default" className="text-xs">Goal</Badge>
-                    </div>}
+                      let showLabel = false;
+                      if (daysVisible <= 14) showLabel = true;
+                      else if (daysVisible <= 31) showLabel = i % 2 === 0;
+                      else if (daysVisible <= 90) showLabel = isMonday || date.getDate() === 1;
+                      else showLabel = date.getDate() === 1;
+                      if (isToday) showLabel = true;
+
+                      if (!showLabel) return null;
+
+                      return (
+                        <div
+                          key={i}
+                          className={`absolute h-full flex items-center justify-center overflow-hidden ${isToday ? 'z-10' : ''}`}
+                          style={{ left: `${colLeft}%`, width: `${colWidth}%` }}
+                        >
+                          <span className={`text-[10px] whitespace-nowrap leading-none ${isToday ? 'text-primary font-bold' : isMonday ? 'text-foreground/70 font-semibold' : 'text-muted-foreground'}`}>
+                            {daysVisible <= 14 ? format(date, "EEE d") : format(date, "d")}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -1097,7 +1168,7 @@ const ProjectTimeline = ({
                 {/* Left sidebar for group labels - only shown when grouping is active */}
                 {groupBy !== 'none' && (
                   <div className="sticky left-0 z-20 bg-background/95 backdrop-blur-sm border-r border-border/30 w-40 flex-shrink-0">
-                    <div className="pt-4">
+                    <div className="pt-1">
                       {groupedTasks.map((group) => (
                         <div key={group.id}>
                           {/* Group header */}
@@ -1132,31 +1203,66 @@ const ProjectTimeline = ({
 
                 {/* Main timeline area */}
                 <div className="flex-1 min-w-0">
-                  <div className="relative pt-4 overflow-hidden rounded-lg p-4" onDragOver={handleDragOver} onDrop={handleDrop}>
-                    {/* Background grid - subtle week lines and weekend shading */}
+                  <div ref={timelineContentRef} className="relative pt-1 overflow-hidden">
+                    {/* Background grid - week blocks, day lines, weekend shading */}
                     <div className="absolute inset-0 pointer-events-none" style={{ top: 0 }}>
+                      {/* Week-alternating background bands */}
+                      {(() => {
+                        const weekBands: { start: number; span: number; idx: number }[] = [];
+                        let blockStart = 0;
+                        let currentWeek = getISOWeek(minDate);
+                        let weekIdx = 0;
+                        for (let i = 1; i <= totalDays; i++) {
+                          const date = addDays(minDate, i);
+                          const week = i < totalDays ? getISOWeek(date) : -1;
+                          if (week !== currentWeek || i === totalDays) {
+                            weekBands.push({ start: blockStart, span: i - blockStart, idx: weekIdx });
+                            blockStart = i;
+                            currentWeek = week;
+                            weekIdx++;
+                          }
+                        }
+                        return weekBands.map((band) => {
+                          const left = (band.start / totalDays) * 100;
+                          const width = (band.span / totalDays) * 100;
+                          return band.idx % 2 === 0 ? (
+                            <div
+                              key={`wb-${band.idx}`}
+                              className="absolute bg-muted/15 pointer-events-none"
+                              style={{ left: `${left}%`, width: `${width}%`, top: '0', bottom: '0', height: '100%' }}
+                            />
+                          ) : null;
+                        });
+                      })()}
                       {Array.from({ length: totalDays + 1 }, (_, i) => {
                         const currentDate = addDays(minDate, i);
                         const isMonday = currentDate.getDay() === 1;
+                        const isFirstOfMonth = currentDate.getDate() === 1 && i > 0;
                         const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
-                        const isToday = format(currentDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+                        const isToday = format(currentDate, "yyyy-MM-dd") === todayStr;
                         const left = (i / totalDays) * 100;
 
                         return (
                           <React.Fragment key={`grid-${i}`}>
-                            {/* Week separator line (between Sunday and Monday) */}
-                            {isMonday && (
+                            {/* Day separator lines — hierarchy: month > week (Monday) > day */}
+                            {i > 0 && (
                               <div
-                                className="absolute w-px bg-border/50"
+                                className={`absolute pointer-events-none ${
+                                  isFirstOfMonth ? 'w-[2px] bg-border' :
+                                  isMonday ? 'w-[2px] bg-border/60' :
+                                  'w-px bg-border/30'
+                                }`}
                                 style={{ left: `${left}%`, top: '0', bottom: '0', height: '100%' }}
                               />
                             )}
+                            {/* Weekend shading */}
                             {isWeekend && i < totalDays && (
                               <div
-                                className="absolute bg-muted/10 pointer-events-none"
+                                className="absolute bg-muted/25 pointer-events-none"
                                 style={{ left: `${left}%`, width: `${100/totalDays}%`, top: '0', bottom: '0', height: '100%' }}
                               />
                             )}
+                            {/* Today indicator */}
                             {isToday && (
                               <div
                                 className="absolute w-0.5 bg-primary z-20 pointer-events-none"
@@ -1168,12 +1274,58 @@ const ProjectTimeline = ({
                       })}
                     </div>
 
+                    {/* Dependency arrows SVG overlay */}
+                    {timelineWidth > 0 && dependencies.length > 0 && (
+                      <svg className="absolute inset-0 pointer-events-none z-10" style={{ top: '0.25rem' }}>
+                        <defs>
+                          <marker id="dep-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                            <path d="M0,0 L8,3 L0,6" className="fill-muted-foreground/50" />
+                          </marker>
+                        </defs>
+                        {dependencies.filter(dep =>
+                          taskRowMap.has(dep.task_id) && taskRowMap.has(dep.depends_on_task_id)
+                        ).map(dep => {
+                          const sourceTask = tasks.find(t => t.id === dep.depends_on_task_id);
+                          const targetTask = tasks.find(t => t.id === dep.task_id);
+                          if (!sourceTask || !targetTask) return null;
+
+                          const sourcePos = getTaskPosition(sourceTask, minDate, totalDays);
+                          const targetPos = getTaskPosition(targetTask, minDate, totalDays);
+                          const sourceRow = taskRowMap.get(dep.depends_on_task_id)!;
+                          const targetRow = taskRowMap.get(dep.task_id)!;
+
+                          // Convert percentage to pixels
+                          const x1 = (sourcePos.left + sourcePos.width) / 100 * timelineWidth;
+                          const y1 = sourceRow * 48 + 24;
+                          const x2 = targetPos.left / 100 * timelineWidth;
+                          const y2 = targetRow * 48 + 24;
+
+                          // Bezier control points for smooth curve
+                          const dx = Math.abs(x2 - x1) / 2;
+                          const cpx1 = x1 + Math.max(dx, 20);
+                          const cpx2 = x2 - Math.max(dx, 20);
+                          const path = `M ${x1} ${y1} C ${cpx1} ${y1}, ${cpx2} ${y2}, ${x2} ${y2}`;
+
+                          return (
+                            <path
+                              key={dep.id}
+                              d={path}
+                              className="stroke-muted-foreground/40"
+                              strokeWidth={1.5}
+                              fill="none"
+                              markerEnd="url(#dep-arrow)"
+                            />
+                          );
+                        })}
+                      </svg>
+                    )}
+
                     {/* Grouped task rows */}
                     {groupedTasks.map((group) => (
                       <div key={group.id}>
                         {/* Group header row (only when grouping is active) */}
                         {groupBy !== 'none' && (
-                          <div className="h-10 flex items-center border-b border-border/30 bg-muted/20 -mx-4 px-4">
+                          <div className="h-10 flex items-center border-b border-border/30 bg-muted/20 px-2">
                             <div className="flex items-center gap-2">
                               {group.color && <div className={`w-3 h-3 rounded-full ${group.color}`} />}
                               <span className="text-sm font-semibold text-foreground">{group.label}</span>
@@ -1184,104 +1336,74 @@ const ProjectTimeline = ({
 
                         {/* Task rows (hidden when collapsed) */}
                         {!group.isCollapsed && group.tasks.map((task) => {
-                          const { left, width } = getTaskPosition(task, minDate, totalDays);
+                          // Use preview dates during drag for real-time feedback
+                          const isDragging = dragInteraction?.taskId === task.id;
+                          const displayStart = isDragging ? dragInteraction.previewStart : task.start_date;
+                          const displayFinish = isDragging ? dragInteraction.previewFinish : task.finish_date;
+                          const { left, width } = getTaskPosition(
+                            { ...task, start_date: displayStart, finish_date: displayFinish },
+                            minDate, totalDays
+                          );
                           return (
                             <div key={task.id} className="relative h-12 py-0.5">
-                              {/* Task bar - compact design */}
-                              <HoverCard openDelay={300}>
+                              <HoverCard openDelay={400} open={!!dragInteraction ? false : undefined} key={dragInteraction ? 'dragging' : 'idle'}>
                                 <HoverCardTrigger asChild>
                                   <div
-                                    className={`task-bar absolute h-11 rounded-lg ${getStatusColor(task.status)} shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer overflow-hidden group border border-white/20`}
-                                    style={{ left: `${left}%`, width: `${width}%`, minWidth: '50px' }}
-                                    onClick={() => handleTaskClick(task)}
+                                    className={`task-bar absolute h-11 rounded-md ${getStatusColor(task.status)} shadow-sm hover:shadow-md transition-shadow group border border-white/20 ${
+                                      isDragging ? 'opacity-90 shadow-lg ring-2 ring-primary/30 z-30' : ''
+                                    }`}
+                                    style={{ left: `${left}%`, width: `${Math.max(width, 100 / totalDays * 0.5)}%`, overflow: 'clip' }}
                                   >
                                     {/* Left resize handle */}
                                     <div
-                                      draggable
-                                      onDragStart={e => { e.stopPropagation(); handleDragStart(e, task); }}
-                                      className="resize-handle resize-left absolute left-0 top-0 h-full w-2 cursor-ew-resize hover:bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity z-30 rounded-l-lg"
-                                      onClick={e => e.stopPropagation()}
+                                      className="absolute left-0 top-0 h-full w-2 cursor-ew-resize hover:bg-white/20 z-30 rounded-l-md touch-none"
+                                      onPointerDown={(e) => handleBarPointerDown(e, task, 'resize-left')}
                                     />
 
-                                    {/* Progress bar overlay */}
-                                    {task.progress > 0 && (
-                                      <div
-                                        className="absolute inset-0 bg-white/20 pointer-events-none rounded-lg"
-                                        style={{
-                                          width: `${task.progress}%`,
-                                          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,.05) 8px, rgba(255,255,255,.05) 16px)'
-                                        }}
-                                      />
-                                    )}
-
-                                    {/* Task content - allows 2 lines of text */}
-                                    <div className="h-full flex items-center justify-between px-2 py-0.5 relative z-10 gap-1">
-                                      <div className="flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
-                                        <span className="text-xs font-semibold text-white drop-shadow line-clamp-2 leading-tight">{task.title}</span>
-                                        <div
-                                          draggable
-                                          onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, task); }}
-                                          onDragEnd={handleDragEnd}
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="cursor-move flex-shrink-0"
-                                        >
-                                          <Move className="h-3 w-3 text-white/70 opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
-                                        </div>
-                                      </div>
-                                      {/* Progress badge - hidden on mobile for cleaner look */}
-                                    {task.progress > 0 && (
-                                        <div className="hidden md:flex flex-shrink-0 bg-black/20 px-1.5 py-0.5 rounded">
+                                    {/* Task content — drag to move, tap to open */}
+                                    <div
+                                      className="sticky left-0 h-full w-fit max-w-full flex items-center px-2.5 py-0.5 relative z-10 touch-none cursor-grab active:cursor-grabbing"
+                                      onPointerDown={(e) => handleBarPointerDown(e, task, 'moving')}
+                                    >
+                                      <span className="text-xs font-semibold text-white drop-shadow line-clamp-2 leading-tight min-w-0">
+                                        {task.title}
+                                      </span>
+                                      {task.progress > 0 && (
+                                        <div className="hidden md:flex flex-shrink-0 bg-black/20 px-1.5 py-0.5 rounded ml-1">
                                           <span className="text-[10px] font-bold text-white">{task.progress}%</span>
                                         </div>
                                       )}
                                     </div>
 
-                                    {/* Date range on hover */}
-                                    <div className="absolute bottom-0 left-0 right-0 bg-black/30 text-white text-[9px] px-2 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-b-lg flex items-center justify-between">
-                                      <span>{format(parseISO(task.start_date!), "MMM d")}</span>
-                                      <span>→</span>
-                                      <span>{format(parseISO(task.finish_date!), "MMM d")}</span>
-                                    </div>
+                                    {/* Progress bar overlay */}
+                                    {task.progress > 0 && (
+                                      <div
+                                        className="absolute inset-0 bg-white/15 pointer-events-none rounded-md"
+                                        style={{ width: `${task.progress}%` }}
+                                      />
+                                    )}
 
                                     {/* Right resize handle */}
                                     <div
-                                      draggable
-                                      onDragStart={e => { e.stopPropagation(); handleDragStart(e, task); }}
-                                      className="resize-handle resize-right absolute right-0 top-0 h-full w-2 cursor-ew-resize hover:bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity z-30 rounded-r-lg"
-                                      onClick={e => e.stopPropagation()}
+                                      className="absolute right-0 top-0 h-full w-2 cursor-ew-resize hover:bg-white/20 z-30 rounded-r-md touch-none"
+                                      onPointerDown={(e) => handleBarPointerDown(e, task, 'resize-right')}
                                     />
                                   </div>
                                 </HoverCardTrigger>
-                                <HoverCardContent className="w-80">
-                                  <div className="space-y-3">
+                                <HoverCardContent className="w-72">
+                                  <div className="space-y-2">
                                     <div className="flex items-start justify-between gap-2">
-                                      <h4 className="font-semibold leading-tight">{task.title}</h4>
+                                      <h4 className="font-semibold leading-tight text-sm">{task.title}</h4>
                                       <span className={`px-2 py-0.5 rounded text-xs font-medium border whitespace-nowrap ${getStatusBadgeColor(task.status)}`}>
                                         {getStatusLabel(task.status)}
                                       </span>
                                     </div>
                                     {task.description && (
-                                      <p className="text-sm text-muted-foreground">{task.description}</p>
+                                      <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
                                     )}
-                                    <div className="grid grid-cols-2 gap-2 text-sm">
-                                      <div>
-                                        <span className="text-muted-foreground">{t('tasks.priority')}:</span>{' '}
-                                        <span className="font-medium">{task.priority}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-muted-foreground">{t('common.progress')}:</span>{' '}
-                                        <span className="font-medium">{task.progress}%</span>
-                                      </div>
-                                      {task.budget && (
-                                        <div className="col-span-2">
-                                          <span className="text-muted-foreground">{t('common.budget')}:</span>{' '}
-                                          <span className="font-medium">{task.budget}</span>
-                                        </div>
-                                      )}
-                                      <div className="col-span-2">
-                                        <span className="text-muted-foreground">{t('timeline.duration', 'Duration')}:</span>{' '}
-                                        <span className="font-medium">{format(parseISO(task.start_date!), "MMM d")} - {format(parseISO(task.finish_date!), "MMM d, yyyy")}</span>
-                                      </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {format(parseISO(task.start_date!), "MMM d")} – {format(parseISO(task.finish_date!), "MMM d, yyyy")}
+                                      {task.progress > 0 && ` · ${task.progress}%`}
                                     </div>
                                   </div>
                                 </HoverCardContent>
@@ -1382,16 +1504,16 @@ const ProjectTimeline = ({
                 <div className="space-y-2">
                   <Label htmlFor="edit-task-start-date">{t('common.startDate')}</Label>
                   <DatePicker
-                    date={editingTask.start_date ? new Date(editingTask.start_date) : undefined}
-                    onDateChange={(date) => setEditingTask({ ...editingTask, start_date: date ? date.toISOString().split('T')[0] : null })}
+                    date={editingTask.start_date ? parseLocalDate(editingTask.start_date) : undefined}
+                    onDateChange={(date) => setEditingTask({ ...editingTask, start_date: date ? formatLocalDate(date) : null })}
                     placeholder="Välj startdatum"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-task-finish-date">{t('common.finishDate')}</Label>
                   <DatePicker
-                    date={editingTask.finish_date ? new Date(editingTask.finish_date) : undefined}
-                    onDateChange={(date) => setEditingTask({ ...editingTask, finish_date: date ? date.toISOString().split('T')[0] : null })}
+                    date={editingTask.finish_date ? parseLocalDate(editingTask.finish_date) : undefined}
+                    onDateChange={(date) => setEditingTask({ ...editingTask, finish_date: date ? formatLocalDate(date) : null })}
                     placeholder="Välj slutdatum"
                   />
                 </div>

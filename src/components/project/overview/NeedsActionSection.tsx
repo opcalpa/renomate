@@ -9,6 +9,7 @@ interface NeedsActionSectionProps {
   budgetStats: BudgetStats;
   orderStats: OrderStats;
   navigation: OverviewNavigation;
+  isBuilder?: boolean;
 }
 
 interface ActionItem {
@@ -23,6 +24,7 @@ export function NeedsActionSection({
   budgetStats,
   orderStats,
   navigation,
+  isBuilder,
 }: NeedsActionSectionProps) {
   const { t } = useTranslation();
 
@@ -55,7 +57,7 @@ export function NeedsActionSection({
     });
   }
 
-  if (budgetStats.isWarning) {
+  if (budgetStats.isWarning && !(isBuilder && budgetStats.contractTotal > 0)) {
     items.push({
       key: "budget",
       icon: <TrendingUp className="h-4 w-4 text-red-500" />,

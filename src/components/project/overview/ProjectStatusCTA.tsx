@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   XCircle,
   ArrowRight,
+  RefreshCw,
 } from "lucide-react";
 import {
   type ProjectStatus,
@@ -22,6 +23,7 @@ const STATUS_ICONS: Record<ProjectStatus, React.ElementType> = {
   planning: ClipboardList,
   quote_created: FileText,
   quote_sent: Send,
+  quote_rejected: RefreshCw,
   active: Hammer,
   on_hold: PauseCircle,
   completed: CheckCircle2,
@@ -36,6 +38,8 @@ interface ProjectStatusCTAProps {
   onNavigateToTasks?: () => void;
   onCreateQuote?: () => void;
   onViewQuote?: () => void;
+  onCreateInvoice?: () => void;
+  onReviseQuote?: () => void;
 }
 
 export function ProjectStatusCTA({
@@ -44,6 +48,8 @@ export function ProjectStatusCTA({
   onNavigateToTasks,
   onCreateQuote,
   onViewQuote,
+  onCreateInvoice,
+  onReviseQuote,
 }: ProjectStatusCTAProps) {
   const { t } = useTranslation();
   const status = normalizeStatus(rawStatus);
@@ -65,6 +71,12 @@ export function ProjectStatusCTA({
       case "view_quote":
       case "edit_quote":
         onViewQuote?.();
+        break;
+      case "create_invoice":
+        onCreateInvoice?.();
+        break;
+      case "revise_quote":
+        onReviseQuote?.();
         break;
     }
   };

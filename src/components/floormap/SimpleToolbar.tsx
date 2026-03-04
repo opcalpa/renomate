@@ -232,6 +232,7 @@ interface SimpleToolbarProps {
   canUndo: boolean;
   canRedo: boolean;
   isDemo?: boolean;
+  showPinterest?: boolean;
 }
 
 export const SimpleToolbar = ({
@@ -243,6 +244,7 @@ export const SimpleToolbar = ({
   canUndo,
   canRedo,
   isDemo,
+  showPinterest,
 }: SimpleToolbarProps) => {
   const { t } = useTranslation();
   const { activeTool, setActiveTool, viewState, setViewState, selectedShapeIds, addShape, currentPlanId, pendingObjectId, setPendingObjectId } = useFloorMapStore();
@@ -504,7 +506,7 @@ export const SimpleToolbar = ({
       description: 'Bakgrundsbild',
       onClick: () => imageInputRef.current?.click(),
     },
-    {
+    ...(showPinterest ? [{
       id: 'pinterest-import',
       icon: PinterestLogo,
       label: 'Importera Pin',
@@ -514,7 +516,7 @@ export const SimpleToolbar = ({
         setPinterestUrlError(null);
         setPinterestDialogOpen(true);
       },
-    },
+    }] : []),
   ];
 
   const drawTools: ToolItem[] = [

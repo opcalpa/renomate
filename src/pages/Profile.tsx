@@ -10,12 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Loader2, Save, BadgeCheck, Eye, ShieldCheck, Plus, X, Download, Home, Wrench } from "lucide-react";
+import { Loader2, Save, BadgeCheck, Eye, ShieldCheck, Plus, X, Download, Home, Wrench, Upload } from "lucide-react";
 import { downloadUserDataAsJson } from "@/services/dataExportService";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CERTIFICATION_PRESETS } from "@/lib/professionalCertifications";
 import { PublicProfileSheet } from "@/components/shared/PublicProfileSheet";
 import { PROFESSIONAL_CATEGORIES } from "@/lib/professionalCategories";
+import { validatePersonnummer } from "@/lib/personnummerValidator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -45,6 +46,7 @@ interface ProfileData {
   company_description: string | null;
   company_website: string | null;
   org_number: string | null;
+  company_logo_url: string | null;
 }
 
 const LANGUAGES = [
@@ -84,8 +86,26 @@ const Profile = () => {
   const [companyDescription, setCompanyDescription] = useState("");
   const [companyWebsite, setCompanyWebsite] = useState("");
   const [orgNumber, setOrgNumber] = useState("");
+  const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
+  const [bankgiro, setBankgiro] = useState("");
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const [personnummer, setPersonnummer] = useState("");
+  const [defaultPaymentTermsDays, setDefaultPaymentTermsDays] = useState("30");
+  const [defaultHourlyRate, setDefaultHourlyRate] = useState("");
+  const [defaultLaborCostPercent, setDefaultLaborCostPercent] = useState("50");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [certifications, setCertifications] = useState<Array<{ id: string; name: string; issuer: string; year: string; custom: boolean }>>([]);
+
+  // Homeowner: projects with property details
+  interface ProjectProperty {
+    id: string;
+    name: string;
+    address: string;
+    property_designation: string;
+  }
+  const [projectProperties, setProjectProperties] = useState<ProjectProperty[]>([]);
+  const [savingProjectId, setSavingProjectId] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -101,6 +121,52 @@ const Profile = () => {
       fetchProfile();
     }
   }, [user]);
+
+  // Fetch project properties for homeowners
+  useEffect(() => {
+    if (!profile || userType !== "homeowner") return;
+    const fetchProjectProperties = async () => {
+      // Collect project IDs from two sources:
+      // 1. Projects shared with this user as client
+      const { data: shares } = await supabase
+        .from("project_shares")
+        .select("project_id")
+        .eq("shared_with_user_id", profile.id)
+        .eq("role", "client");
+
+      // 2. Projects owned by this user
+      const { data: owned } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("owner_id", profile.id);
+
+      const projectIds = [
+        ...new Set([
+          ...(shares?.map((s) => s.project_id) || []),
+          ...(owned?.map((p) => p.id) || []),
+        ]),
+      ];
+
+      if (!projectIds.length) return;
+
+      const { data: projects } = await supabase
+        .from("projects")
+        .select("id, name, address, property_designation")
+        .in("id", projectIds);
+
+      if (projects) {
+        setProjectProperties(
+          projects.map((p) => ({
+            id: p.id,
+            name: p.name,
+            address: p.address || "",
+            property_designation: (p as Record<string, unknown>).property_designation as string || "",
+          }))
+        );
+      }
+    };
+    fetchProjectProperties();
+  }, [profile, userType]);
 
   const fetchProfile = async () => {
     try {
@@ -126,6 +192,13 @@ const Profile = () => {
       setCompanyDescription(data.company_description || "");
       setCompanyWebsite(data.company_website || "");
       setOrgNumber(data.org_number || "");
+      setCompanyLogoUrl(data.company_logo_url || null);
+      setBankgiro(data.bankgiro || "");
+      setBankAccountNumber(data.bank_account_number || "");
+      setPersonnummer(data.personnummer || "");
+      setDefaultPaymentTermsDays(String(data.default_payment_terms_days ?? 30));
+      setDefaultHourlyRate(data.default_hourly_rate != null ? String(data.default_hourly_rate) : "");
+      setDefaultLaborCostPercent(data.default_labor_cost_percent != null ? String(data.default_labor_cost_percent) : "50");
       setCertifications(data.certifications || []);
     } catch (error: any) {
       toast({
@@ -138,11 +211,41 @@ const Profile = () => {
     }
   };
 
+  const handleSaveProjectProperty = async (projectId: string) => {
+    const proj = projectProperties.find((p) => p.id === projectId);
+    if (!proj) return;
+    setSavingProjectId(projectId);
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .update({
+          address: proj.address.trim() || null,
+          property_designation: proj.property_designation.trim() || null,
+        })
+        .eq("id", projectId);
+      if (error) throw error;
+      toast({
+        title: t("rot.saved"),
+        description: t("rot.savedDescription"),
+      });
+    } catch (error: unknown) {
+      toast({
+        title: t("errors.generic"),
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingProjectId(null);
+    }
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
     try {
+      const isContractor = userType === "contractor";
+
       // Validate pro fields if enabling professional mode
       if (isProfessional && (!companyName.trim() || !contractorCategory)) {
         toast({
@@ -154,10 +257,10 @@ const Profile = () => {
         return;
       }
 
-      // Geocode address if professional and address fields present
+      // Geocode address if contractor and address fields present
       let lat: number | null = null;
       let lng: number | null = null;
-      if (isProfessional && (companyAddress || companyCity)) {
+      if (isContractor && (companyAddress || companyCity)) {
         try {
           const parts = [companyAddress, companyPostalCode, companyCity, "Sweden"].filter(Boolean).join(", ");
           const res = await fetch(
@@ -177,17 +280,24 @@ const Profile = () => {
       const updateData: Record<string, unknown> = {
         name,
         phone,
+        personnummer: personnummer.trim() || null,
         language_preference: languagePreference,
         onboarding_user_type: userType,
         is_professional: isProfessional,
-        company_name: isProfessional ? companyName : null,
+        company_name: isContractor ? companyName : null,
+        org_number: isContractor ? orgNumber : null,
+        company_address: isContractor ? companyAddress : null,
+        company_city: isContractor ? companyCity : null,
+        company_postal_code: isContractor ? companyPostalCode : null,
+        company_website: isContractor ? companyWebsite : null,
+        company_logo_url: isContractor ? companyLogoUrl : null,
+        bankgiro: isContractor ? (bankgiro.trim() || null) : null,
+        bank_account_number: isContractor ? (bankAccountNumber.trim() || null) : null,
+        default_payment_terms_days: isContractor ? (parseInt(defaultPaymentTermsDays) || 30) : null,
+        default_hourly_rate: isContractor ? (defaultHourlyRate ? parseFloat(defaultHourlyRate) : null) : null,
+        default_labor_cost_percent: isContractor ? (parseFloat(defaultLaborCostPercent) || 50) : null,
         contractor_category: isProfessional ? contractorCategory : null,
-        company_address: isProfessional ? companyAddress : null,
-        company_city: isProfessional ? companyCity : null,
-        company_postal_code: isProfessional ? companyPostalCode : null,
         company_description: isProfessional ? companyDescription : null,
-        company_website: isProfessional ? companyWebsite : null,
-        org_number: isProfessional ? orgNumber : null,
         certifications: isProfessional ? certifications : [],
       };
 
@@ -310,6 +420,70 @@ const Profile = () => {
     }
   };
 
+  const compressLogo = (file: File, maxSize = 400): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          resolve(new File([blob!], file.name, { type: "image/png" }));
+        }, "image/png", 0.9);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile) return;
+    setUploadingLogo(true);
+
+    try {
+      const compressed = await compressLogo(file, 400);
+      const ext = file.name.split(".").pop() || "png";
+      const path = `${profile.id}/${Date.now()}.${ext}`;
+
+      // Delete old logo if exists
+      if (companyLogoUrl) {
+        const oldPath = companyLogoUrl.split("/company-logos/")[1];
+        if (oldPath) await supabase.storage.from("company-logos").remove([oldPath]);
+      }
+
+      const { error } = await supabase.storage.from("company-logos").upload(path, compressed);
+      if (error) {
+        toast({ title: t("errors.generic"), description: error.message, variant: "destructive" });
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage.from("company-logos").getPublicUrl(path);
+      setCompanyLogoUrl(publicUrl);
+
+      await supabase.from("profiles").update({ company_logo_url: publicUrl }).eq("user_id", user?.id);
+      toast({ title: t("profile.logoUploaded") });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : t("errors.generic");
+      toast({ title: t("errors.generic"), description: message, variant: "destructive" });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!companyLogoUrl || !profile) return;
+
+    const oldPath = companyLogoUrl.split("/company-logos/")[1];
+    if (oldPath) await supabase.storage.from("company-logos").remove([oldPath]);
+
+    setCompanyLogoUrl(null);
+    await supabase.from("profiles").update({ company_logo_url: null }).eq("user_id", user?.id);
+    toast({ title: t("profile.logoRemoved") });
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -319,7 +493,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <AppHeader
         userName={profile?.name}
         userEmail={profile?.email || user?.email}
@@ -327,7 +501,7 @@ const Profile = () => {
         onSignOut={handleSignOut}
       />
 
-      <main className="container mx-auto px-4 py-8 max-w-3xl">
+      <main className="mx-auto px-4 py-8 max-w-3xl">
         <div className="mb-8">
           <h2 className="text-2xl font-semibold mb-2">{t('profile.title')}</h2>
           <p className="text-muted-foreground">{t('profile.description')}</p>
@@ -394,6 +568,26 @@ const Profile = () => {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {userType === "homeowner" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="personnummer">{t("profile.personnummer")}</Label>
+                    <Input
+                      id="personnummer"
+                      value={personnummer}
+                      onChange={(e) => setPersonnummer(e.target.value)}
+                      placeholder="YYYYMMDD-XXXX"
+                    />
+                    {personnummer.trim() && !validatePersonnummer(personnummer).valid && (
+                      <p className="text-sm text-destructive">
+                        {t("rot.personnummerInvalid")}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {t("profile.personnummerHint")}
+                    </p>
+                  </div>
+                )}
             </CardContent>
           </Card>
 
@@ -449,7 +643,250 @@ const Profile = () => {
             </CardContent>
           </Card>
 
-          {/* Professional Profile */}
+          {/* Property details per project — visible for homeowners */}
+          {userType === "homeowner" && projectProperties.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("profile.myProperties")}</CardTitle>
+                <CardDescription>{t("profile.myPropertiesDescription")}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {projectProperties.map((proj) => (
+                  <div key={proj.id} className="space-y-3 pb-4 border-b last:border-b-0 last:pb-0">
+                    <p className="text-sm font-medium">{proj.name}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">{t("rot.propertyAddress")}</Label>
+                        <Input
+                          value={proj.address}
+                          onChange={(e) =>
+                            setProjectProperties((prev) =>
+                              prev.map((p) =>
+                                p.id === proj.id ? { ...p, address: e.target.value } : p
+                              )
+                            )
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">{t("rot.propertyDesignation")}</Label>
+                        <Input
+                          value={proj.property_designation}
+                          onChange={(e) =>
+                            setProjectProperties((prev) =>
+                              prev.map((p) =>
+                                p.id === proj.id
+                                  ? { ...p, property_designation: e.target.value }
+                                  : p
+                              )
+                            )
+                          }
+                          placeholder={t("rot.propertyDesignationPlaceholder")}
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={savingProjectId === proj.id}
+                      onClick={() => handleSaveProjectProperty(proj.id)}
+                    >
+                      {savingProjectId === proj.id ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      ) : (
+                        <Save className="mr-1 h-3 w-3" />
+                      )}
+                      {t("common.save")}
+                    </Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Company Details — visible for all contractors */}
+          {userType === "contractor" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('profile.companyDetails')}</CardTitle>
+                <CardDescription>{t('profile.companyDetailsDescription')}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-4">
+                  {companyLogoUrl ? (
+                    <div className="relative group">
+                      <img src={companyLogoUrl} alt="" className="h-16 w-auto max-w-[200px] object-contain rounded border" />
+                      <button
+                        type="button"
+                        onClick={handleRemoveLogo}
+                        className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="h-16 w-32 border-2 border-dashed rounded flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
+                      <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
+                      {uploadingLogo ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      ) : (
+                        <Upload className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </label>
+                  )}
+                  <div>
+                    <p className="text-sm font-medium">{t("profile.companyLogo")}</p>
+                    <p className="text-xs text-muted-foreground">{t("profile.companyLogoHint")}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName">{t('profile.companyName')}</Label>
+                    <Input
+                      id="companyName"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      placeholder={t('profile.companyNamePlaceholder')}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="orgNumber">{t('profile.orgNumber')}</Label>
+                    <Input
+                      id="orgNumber"
+                      value={orgNumber}
+                      onChange={(e) => setOrgNumber(e.target.value)}
+                      placeholder={t('profile.orgNumberPlaceholder')}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2 min-w-0">
+                    <Label htmlFor="companyAddress">{t('profile.companyAddress')}</Label>
+                    <Input
+                      id="companyAddress"
+                      value={companyAddress}
+                      onChange={(e) => setCompanyAddress(e.target.value)}
+                      placeholder={t('profile.companyAddressPlaceholder')}
+                    />
+                  </div>
+                  <div className="space-y-2 min-w-0">
+                    <Label htmlFor="companyPostalCode">{t('profile.companyPostalCode')}</Label>
+                    <Input
+                      id="companyPostalCode"
+                      value={companyPostalCode}
+                      onChange={(e) => setCompanyPostalCode(e.target.value)}
+                      placeholder={t('profile.companyPostalCodePlaceholder')}
+                    />
+                  </div>
+                  <div className="space-y-2 min-w-0">
+                    <Label htmlFor="companyCity">{t('profile.companyCity')}</Label>
+                    <Input
+                      id="companyCity"
+                      value={companyCity}
+                      onChange={(e) => setCompanyCity(e.target.value)}
+                      placeholder={t('profile.companyCityPlaceholder')}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="companyWebsite">{t('profile.companyWebsite')}</Label>
+                  <Input
+                    id="companyWebsite"
+                    type="text"
+                    value={companyWebsite}
+                    onChange={(e) => setCompanyWebsite(e.target.value)}
+                    placeholder={t('profile.companyWebsitePlaceholder')}
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="bankgiro">{t('profile.bankgiro')}</Label>
+                    <Input
+                      id="bankgiro"
+                      value={bankgiro}
+                      onChange={(e) => setBankgiro(e.target.value)}
+                      placeholder="123-4567"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bankAccountNumber">{t('profile.bankAccountNumber')}</Label>
+                    <Input
+                      id="bankAccountNumber"
+                      value={bankAccountNumber}
+                      onChange={(e) => setBankAccountNumber(e.target.value)}
+                      placeholder="1234-12 345 67"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="defaultPaymentTerms">{t('profile.defaultPaymentTerms')}</Label>
+                    <Select value={defaultPaymentTermsDays} onValueChange={setDefaultPaymentTermsDays}>
+                      <SelectTrigger id="defaultPaymentTerms">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10 {t('profile.days')}</SelectItem>
+                        <SelectItem value="15">15 {t('profile.days')}</SelectItem>
+                        <SelectItem value="20">20 {t('profile.days')}</SelectItem>
+                        <SelectItem value="30">30 {t('profile.days')}</SelectItem>
+                        <SelectItem value="45">45 {t('profile.days')}</SelectItem>
+                        <SelectItem value="60">60 {t('profile.days')}</SelectItem>
+                        <SelectItem value="90">90 {t('profile.days')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {t('profile.defaultPaymentTermsHint')}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="defaultHourlyRate">{t('profile.defaultHourlyRate')}</Label>
+                    <Input
+                      id="defaultHourlyRate"
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={defaultHourlyRate}
+                      onChange={(e) => setDefaultHourlyRate(e.target.value)}
+                      placeholder={t('profile.defaultHourlyRatePlaceholder', 'e.g. 550')}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t('profile.defaultHourlyRateHint')}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="defaultLaborCostPercent">{t('profile.defaultLaborCostPercent')}</Label>
+                    <Input
+                      id="defaultLaborCostPercent"
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="100"
+                      value={defaultLaborCostPercent}
+                      onChange={(e) => setDefaultLaborCostPercent(e.target.value)}
+                      placeholder="50"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t('profile.defaultLaborCostPercentHint')}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('profile.paymentFieldsHint')}
+                </p>
+
+                <p className="text-xs text-muted-foreground">
+                  {t('profile.companyDetailsHint')}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Professional Profile — hidden for homeowners */}
+          {userType !== "homeowner" && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -489,29 +926,6 @@ const Profile = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="companyName">{t('profile.companyName')} *</Label>
-                      <Input
-                        id="companyName"
-                        value={companyName}
-                        onChange={(e) => setCompanyName(e.target.value)}
-                        placeholder={t('profile.companyNamePlaceholder')}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="orgNumber">{t('profile.orgNumber')}</Label>
-                      <Input
-                        id="orgNumber"
-                        value={orgNumber}
-                        onChange={(e) => setOrgNumber(e.target.value)}
-                        placeholder={t('profile.orgNumberPlaceholder')}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
                       <Label htmlFor="contractorCategory">{t('profile.professionalCategory')} *</Label>
                       <Select value={contractorCategory} onValueChange={setContractorCategory}>
                         <SelectTrigger id="contractorCategory">
@@ -528,36 +942,6 @@ const Profile = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-2 sm:col-span-1">
-                      <Label htmlFor="companyAddress">{t('profile.companyAddress')}</Label>
-                      <Input
-                        id="companyAddress"
-                        value={companyAddress}
-                        onChange={(e) => setCompanyAddress(e.target.value)}
-                        placeholder={t('profile.companyAddressPlaceholder')}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="companyCity">{t('profile.companyCity')}</Label>
-                      <Input
-                        id="companyCity"
-                        value={companyCity}
-                        onChange={(e) => setCompanyCity(e.target.value)}
-                        placeholder={t('profile.companyCityPlaceholder')}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="companyPostalCode">{t('profile.companyPostalCode')}</Label>
-                      <Input
-                        id="companyPostalCode"
-                        value={companyPostalCode}
-                        onChange={(e) => setCompanyPostalCode(e.target.value)}
-                        placeholder={t('profile.companyPostalCodePlaceholder')}
-                      />
-                    </div>
-                  </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="companyDescription">{t('profile.companyDescription')}</Label>
                     <Textarea
@@ -566,17 +950,6 @@ const Profile = () => {
                       onChange={(e) => setCompanyDescription(e.target.value)}
                       placeholder={t('profile.companyDescriptionPlaceholder')}
                       rows={3}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="companyWebsite">{t('profile.companyWebsite')}</Label>
-                    <Input
-                      id="companyWebsite"
-                      type="url"
-                      value={companyWebsite}
-                      onChange={(e) => setCompanyWebsite(e.target.value)}
-                      placeholder={t('profile.companyWebsitePlaceholder')}
                     />
                   </div>
 
@@ -683,6 +1056,7 @@ const Profile = () => {
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* Save button for all profile fields */}
           <Button type="submit" disabled={saving} className="w-full" size="lg">

@@ -28,8 +28,11 @@ export function QuickInfoSection({
   const floorAreaWithWaste = areaSqm ? (areaSqm * 1.1).toFixed(1) : null;
 
   const ceilingHeightM = formData.ceiling_height_mm / 1000;
-  const wallArea = perimeterMm ? (perimeterMm / 1000) * ceilingHeightM : 0;
-  const paintLiters = wallArea > 0 ? Math.ceil((wallArea / 10) * 2) : null;
+  const totalWallArea = perimeterMm ? (perimeterMm / 1000) * ceilingHeightM : 0;
+  const paintableWallArea = formData.non_paintable_area_sqm
+    ? Math.max(0, totalWallArea - formData.non_paintable_area_sqm)
+    : totalWallArea;
+  const paintLiters = paintableWallArea > 0 ? Math.ceil((paintableWallArea / 10) * 2) : null;
 
   const hasEstimates = (floorMaterialLabel && floorAreaWithWaste) || paintLiters;
 

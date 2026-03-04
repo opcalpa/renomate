@@ -3,13 +3,7 @@ import { Square, DoorOpen } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ComboboxSelect } from "../fields/ComboboxSelect";
 import { MultiSelect } from "../fields/MultiSelect";
 import {
   WALL_TREATMENT_OPTIONS,
@@ -115,45 +109,29 @@ export function VerticalSection({
           {/* Door type */}
           <div className="space-y-2">
             <Label htmlFor="door-type">{t('rooms.doorType')}</Label>
-            <Select
+            <ComboboxSelect
+              id="door-type"
+              options={DOOR_TYPE_OPTIONS}
               value={joinerySpec?.door_type || ""}
-              onValueChange={(value) =>
+              onChange={(value) =>
                 updateSpec("joinery_spec", { ...joinerySpec, door_type: value })
               }
-            >
-              <SelectTrigger id="door-type">
-                <SelectValue placeholder={t('rooms.selectDoorType')} />
-              </SelectTrigger>
-              <SelectContent>
-                {DOOR_TYPE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {t(option.labelKey)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder={t('rooms.selectDoorType')}
+            />
           </div>
 
           {/* Trim type */}
           <div className="space-y-2">
             <Label htmlFor="trim-type">{t('rooms.trimMolding')}</Label>
-            <Select
+            <ComboboxSelect
+              id="trim-type"
+              options={TRIM_TYPE_OPTIONS}
               value={joinerySpec?.trim_type || ""}
-              onValueChange={(value) =>
+              onChange={(value) =>
                 updateSpec("joinery_spec", { ...joinerySpec, trim_type: value })
               }
-            >
-              <SelectTrigger id="trim-type">
-                <SelectValue placeholder={t('rooms.selectTrimType')} />
-              </SelectTrigger>
-              <SelectContent>
-                {TRIM_TYPE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {t(option.labelKey)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder={t('rooms.selectTrimType')}
+            />
           </div>
         </div>
       </div>
