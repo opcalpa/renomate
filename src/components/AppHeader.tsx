@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, User, Settings, Globe, Lightbulb, MessageSquare, Search, FolderOpen, ChevronDown, MoreHorizontal, Users, FileText } from "lucide-react";
+import { LogOut, User, Settings, Globe, Lightbulb, MessageSquare, FolderOpen, ChevronDown, MoreHorizontal, Users, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -128,15 +128,6 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
       <Button
         variant="ghost"
         size="sm"
-        className={`gap-1.5 text-sm ${isActive("/find-pros") ? "bg-accent" : ""}`}
-        onClick={() => navigate("/find-pros")}
-      >
-        <Search className="h-4 w-4" />
-        <span className="hidden sm:inline">{t('marketplace.findProfessionals')}</span>
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
         className={`gap-1.5 text-sm ${isActive("/tips") ? "bg-accent" : ""}`}
         onClick={() => navigate("/tips")}
       >
@@ -235,7 +226,7 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
       <div className="container mx-auto px-4 py-2 flex items-center gap-2 md:gap-4">
         <div
           className="flex items-center cursor-pointer shrink-0"
-          onClick={() => navigate("/start")}
+          onClick={() => navigate(user ? "/start" : "/")}
         >
           <img
             src="/logo.png"
@@ -282,10 +273,6 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
                     <span>{t('clients.title')}</span>
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => navigate("/find-pros")} className="cursor-pointer">
-                  <Search className="mr-2 h-4 w-4" />
-                  <span>{t('marketplace.findProfessionals')}</span>
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/tips")} className="cursor-pointer">
                   <Lightbulb className="mr-2 h-4 w-4" />
                   <span>{t('nav.tips')}</span>
@@ -314,10 +301,6 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
                       <span>{t('clients.title')}</span>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => navigate("/find-pros")} className="cursor-pointer">
-                    <Search className="mr-2 h-4 w-4" />
-                    <span>{t('marketplace.findProfessionals')}</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/tips")} className="cursor-pointer">
                     <Lightbulb className="mr-2 h-4 w-4" />
                     <span>{t('nav.tips')}</span>

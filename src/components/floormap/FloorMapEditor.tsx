@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useRef, Suspense, lazy } from "react";
 import { SimpleToolbar } from "./SimpleToolbar";
+import { HomeownerToolbar } from "./HomeownerToolbar";
 import { UnifiedKonvaCanvas } from "./UnifiedKonvaCanvas";
 import { ElevationCanvas } from "./ElevationCanvas";
 import { RoomElevationView } from "./RoomElevationView";
 import { RoomDetailDialog } from "./RoomDetailDialog";
 import { RoomPickerDialog } from "./RoomPickerDialog";
 import { SpacePlannerTopBar } from "./SpacePlannerTopBar";
+import { PropertyInsightsPanel } from "./PropertyInsightsPanel";
 import { useFloorMapStore } from "./store";
 import { FloorMapShape } from "./types";
 import { toast } from "sonner";
@@ -27,9 +29,10 @@ interface FloorMapEditorProps {
   isDemo?: boolean;
   highlightedRoomIds?: string[];
   showPinterest?: boolean;
+  simplified?: boolean;
 }
 
-export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isReadOnly, isDemo, highlightedRoomIds, showPinterest }: FloorMapEditorProps) => {
+export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isReadOnly, isDemo, highlightedRoomIds, showPinterest, simplified }: FloorMapEditorProps) => {
   const { t } = useTranslation();
   const {
     plans,
@@ -285,19 +288,31 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isRe
         `
       }} />
       <div className={`flex flex-1 relative ${isDemo ? 'pt-[96px]' : 'pt-14'}`}> {/* Padding for fixed TopBar + optional demo banner */}
-        {/* Left Toolbar - Only show in floor plan mode and when not read-only */}
-        {viewMode === 'floor' && !isReadOnly && (
-          <SimpleToolbar
-            projectId={projectId}
-            onSave={handleManualSave}
-            onDelete={handleDelete}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            canUndo={canUndoState}
-            canRedo={canRedoState}
-            isDemo={isDemo}
-            showPinterest={showPinterest}
-          />
+        {/* Left Toolbar - Show in floor plan mode when editable, or always in demo */}
+        {viewMode === 'floor' && (!isReadOnly || isDemo) && (
+          simplified ? (
+            <HomeownerToolbar
+              projectId={projectId}
+              onSave={handleManualSave}
+              onDelete={handleDelete}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              canUndo={canUndoState}
+              canRedo={canRedoState}
+            />
+          ) : (
+            <SimpleToolbar
+              projectId={projectId}
+              onSave={handleManualSave}
+              onDelete={handleDelete}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              canUndo={canUndoState}
+              canRedo={canRedoState}
+              isDemo={isDemo}
+              showPinterest={showPinterest}
+            />
+          )
         )}
 
         {/* Main Canvas Area - Switch based on viewMode */}
@@ -311,10 +326,14 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isRe
                   onboarding.markStepComplete("drawRoom");
                 }
               }}
-              isReadOnly={isReadOnly}
+              isReadOnly={isReadOnly && !isDemo}
+              isDemo={isDemo}
               highlightedRoomIds={highlightedRoomIds}
               showPinterest={showPinterest}
+              simplified={simplified}
             />
+            {/* Property insights panel — always visible in simplified mode */}
+            {simplified && <PropertyInsightsPanel />}
             {/* Onboarding canvas hint */}
             {!isReadOnly && !canvasHintDismissed && !onboarding.isDismissed && onboarding.currentStep?.canvasHintKey && (
               <CanvasHint

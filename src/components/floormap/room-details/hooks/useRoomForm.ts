@@ -55,6 +55,7 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
         joinery_spec: room.joinery_spec || {},
         electrical_spec: room.electrical_spec || {},
         heating_spec: room.heating_spec || {},
+        checklists: room.checklists || [],
       });
     } else {
       // Reset to defaults for new room
@@ -118,6 +119,7 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
             joinery_spec: formData.joinery_spec,
             electrical_spec: formData.electrical_spec,
             heating_spec: formData.heating_spec,
+            checklists: formData.checklists || [],
           });
 
         if (createError) throw createError;
@@ -154,6 +156,7 @@ export function useRoomForm({ room, projectId, onRoomUpdated, onClose }: UseRoom
             joinery_spec: formData.joinery_spec,
             electrical_spec: formData.electrical_spec,
             heating_spec: formData.heating_spec,
+            checklists: formData.checklists || [],
           })
           .eq("id", room!.id);
 

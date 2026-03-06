@@ -1,61 +1,56 @@
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  TaskColumnKey,
-  TaskColumnDef,
-  TaskSavedView,
+  PurchaseColumnKey,
+  PurchaseColumnDef,
+  PurchaseSavedView,
   EXTRA_COLUMN_KEYS,
   DEFAULT_VISIBLE_EXTRAS,
-} from "./tasksTableTypes";
+} from "./purchasesTypes";
 
 const VIEWS_STORAGE_KEY = (projectId: string) =>
-  `tasks-table-views-${projectId}`;
+  `purchases-table-views-${projectId}`;
 
-function loadSavedViews(projectId: string): TaskSavedView[] {
+function loadSavedViews(projectId: string): PurchaseSavedView[] {
   try {
     const raw = localStorage.getItem(VIEWS_STORAGE_KEY(projectId));
     if (!raw) return [];
-    return JSON.parse(raw) as TaskSavedView[];
+    return JSON.parse(raw) as PurchaseSavedView[];
   } catch {
     return [];
   }
 }
 
-function persistSavedViews(projectId: string, views: TaskSavedView[]) {
+function persistSavedViews(projectId: string, views: PurchaseSavedView[]) {
   localStorage.setItem(VIEWS_STORAGE_KEY(projectId), JSON.stringify(views));
 }
 
-export function useTasksTableView(projectId: string) {
+export function usePurchasesTableView(projectId: string) {
   const { t } = useTranslation();
 
-  const ALL_COLUMNS: TaskColumnDef[] = useMemo(
+  const ALL_COLUMNS: PurchaseColumnDef[] = useMemo(
     () => [
-      { key: "title", label: t("tasks.taskTitle"), width: "w-[300px]", editType: "none" },
-      { key: "status", label: t("tasks.status"), width: "w-[130px]", editType: "select" },
-      { key: "priority", label: t("tasks.priority"), width: "w-[100px]", editType: "select" },
-      { key: "assignee", label: t("tasks.assignee"), width: "w-[150px]", extra: true, editType: "select", dbField: "assigned_to_stakeholder_id" },
-      { key: "room", label: t("tasks.room"), width: "w-[120px]", extra: true, editType: "select", dbField: "room_id" },
-      { key: "startDate", label: t("tasks.startDate"), width: "w-[140px]", extra: true, editType: "date", dbField: "start_date" },
-      { key: "finishDate", label: t("tasks.finishDate"), width: "w-[140px]", extra: true, editType: "date", dbField: "finish_date" },
-      { key: "dueDate", label: t("tasksTable.dueDate"), width: "w-[140px]", extra: true, editType: "date", dbField: "due_date" },
-      { key: "progress", label: t("tasks.progress"), width: "w-[120px]", extra: true, editType: "progress" },
-      { key: "budget", label: t("tasks.budget"), width: "w-[120px]", align: "right", extra: true, editType: "numeric" },
-      { key: "paidAmount", label: t("tasksTable.paidAmount"), width: "w-[120px]", align: "right", extra: true, editType: "numeric", dbField: "paid_amount" },
-      { key: "remaining", label: t("tasksTable.remaining"), width: "w-[120px]", align: "right", extra: true, editType: "none" },
-      { key: "paymentStatus", label: t("tasksTable.paymentStatus"), width: "w-[140px]", extra: true, editType: "select", dbField: "payment_status" },
-      { key: "costCenter", label: t("tasks.costCenter"), width: "w-[140px]", extra: true, editType: "select", dbField: "cost_center" },
-      { key: "estimatedHours", label: t("tasksTable.estimatedHours"), width: "w-[110px]", align: "right", extra: true, editType: "numeric", dbField: "estimated_hours" },
-      { key: "hourlyRate", label: t("tasksTable.hourlyRate"), width: "w-[110px]", align: "right", extra: true, editType: "numeric", dbField: "hourly_rate" },
-      { key: "subcontractorCost", label: t("tasksTable.subcontractorCost"), width: "w-[130px]", align: "right", extra: true, editType: "numeric", dbField: "subcontractor_cost" },
-      { key: "materialEstimate", label: t("tasksTable.materialEstimate"), width: "w-[130px]", align: "right", extra: true, editType: "numeric", dbField: "material_estimate" },
-      { key: "markupPercent", label: t("tasksTable.markupPercent"), width: "w-[110px]", align: "right", extra: true, editType: "numeric", dbField: "markup_percent" },
+      { key: "name", label: t("purchases.materialName"), width: "w-[250px]", editType: "none" },
+      { key: "status", label: t("common.status"), width: "w-[130px]", editType: "select" },
+      { key: "quantity", label: t("common.quantity"), width: "w-[100px]", extra: true, editType: "none" },
+      { key: "pricePerUnit", label: t("purchases.pricePerUnit"), width: "w-[110px]", align: "right", extra: true, editType: "numeric", dbField: "price_per_unit" },
+      { key: "priceTotal", label: t("purchases.priceTotal"), width: "w-[110px]", align: "right", extra: true, editType: "numeric", dbField: "price_total" },
+      { key: "paidAmount", label: t("purchases.paidAmount"), width: "w-[110px]", align: "right", extra: true, editType: "numeric", dbField: "paid_amount" },
+      { key: "remaining", label: t("purchasesTable.remaining"), width: "w-[110px]", align: "right", extra: true, editType: "none" },
+      { key: "vendor", label: t("purchases.vendor"), width: "w-[140px]", extra: true, editType: "none" },
+      { key: "room", label: t("purchases.room"), width: "w-[120px]", extra: true, editType: "select", dbField: "room_id" },
+      { key: "task", label: t("purchases.task"), width: "w-[150px]", extra: true, editType: "select", dbField: "task_id" },
+      { key: "assignedTo", label: t("purchases.assignedTo"), width: "w-[140px]", extra: true, editType: "select", dbField: "assigned_to_user_id" },
+      { key: "createdBy", label: t("purchases.addedBy"), width: "w-[130px]", extra: true, editType: "none" },
+      { key: "createdAt", label: t("purchasesTable.date"), width: "w-[110px]", extra: true, editType: "none" },
+      { key: "attachment", label: t("purchasesTable.attachment"), width: "w-[80px]", extra: true, editType: "none" },
       { key: "actions", label: t("common.actions"), width: "w-[60px]", editType: "none" },
     ],
     [t]
   );
 
-  const [columns, setColumns] = useState<TaskColumnDef[]>(ALL_COLUMNS);
-  const [visibleExtras, setVisibleExtras] = useState<Set<TaskColumnKey>>(
+  const [columns, setColumns] = useState<PurchaseColumnDef[]>(ALL_COLUMNS);
+  const [visibleExtras, setVisibleExtras] = useState<Set<PurchaseColumnKey>>(
     () => new Set(DEFAULT_VISIBLE_EXTRAS)
   );
 
@@ -64,7 +59,7 @@ export function useTasksTableView(projectId: string) {
     [columns, visibleExtras]
   );
 
-  const toggleExtraColumn = useCallback((key: TaskColumnKey) => {
+  const toggleExtraColumn = useCallback((key: PurchaseColumnKey) => {
     setVisibleExtras((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -74,11 +69,11 @@ export function useTasksTableView(projectId: string) {
   }, []);
 
   // Sort state
-  const [sortKey, setSortKey] = useState<TaskColumnKey | null>(null);
+  const [sortKey, setSortKey] = useState<PurchaseColumnKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const handleSort = useCallback(
-    (key: TaskColumnKey) => {
+    (key: PurchaseColumnKey) => {
       if (sortKey === key) {
         setSortDir((d) => (d === "asc" ? "desc" : "asc"));
       } else {
@@ -113,7 +108,6 @@ export function useTasksTableView(projectId: string) {
       setDragOverIdx(null);
       return;
     }
-    // Map visible indices → column keys to fix hidden-column index bug
     const fromKey = visibleColumns[dragColIdx]?.key;
     const toKey = visibleColumns[dragOverIdx]?.key;
     if (!fromKey || !toKey) return;
@@ -135,13 +129,13 @@ export function useTasksTableView(projectId: string) {
   const [compactRows, setCompactRows] = useState(false);
 
   // Saved views
-  const [savedViews, setSavedViews] = useState<TaskSavedView[]>(() =>
+  const [savedViews, setSavedViews] = useState<PurchaseSavedView[]>(() =>
     loadSavedViews(projectId)
   );
 
   const saveView = useCallback(
     (name: string) => {
-      const newView: TaskSavedView = {
+      const newView: PurchaseSavedView = {
         id: crypto.randomUUID(),
         name,
         columnOrder: columns.map((c) => c.key),
@@ -159,10 +153,10 @@ export function useTasksTableView(projectId: string) {
   );
 
   const loadView = useCallback(
-    (view: TaskSavedView) => {
+    (view: PurchaseSavedView) => {
       const orderedColumns = view.columnOrder
         .map((key) => ALL_COLUMNS.find((c) => c.key === key))
-        .filter((c): c is TaskColumnDef => c !== undefined);
+        .filter((c): c is PurchaseColumnDef => c !== undefined);
       for (const col of ALL_COLUMNS) {
         if (!orderedColumns.some((c) => c.key === col.key)) {
           orderedColumns.push(col);
@@ -210,4 +204,4 @@ export function useTasksTableView(projectId: string) {
   };
 }
 
-export type TasksTableViewState = ReturnType<typeof useTasksTableView>;
+export type PurchasesTableViewState = ReturnType<typeof usePurchasesTableView>;

@@ -46,6 +46,10 @@ import { useFloorMapStore } from "@/components/floormap/store";
 import { FloorMapShape } from "@/components/floormap/types";
 import { v4 as uuidv4 } from "uuid";
 import { GuestBanner } from "@/components/guest";
+import { useDemoPreferences } from "@/hooks/useDemoPreferences";
+import { DemoRoleModal } from "@/components/demo/DemoRoleModal";
+import { DemoBanner } from "@/components/demo/DemoBanner";
+import { DemoPageGuide } from "@/components/demo/DemoPageGuide";
 import {
   getGuestProject,
   getGuestRooms,
@@ -92,6 +96,8 @@ const ProjectDetail = () => {
   // For the public demo, we ignore guest mode completely
   const isPublicDemoProject = projectId === PUBLIC_DEMO_PROJECT_ID;
   const isGuest = isPublicDemoProject ? false : isGuestFromContext;
+  const demoPrefs = useDemoPreferences();
+  const [showDemoRoleModal, setShowDemoRoleModal] = useState(false);
   useProfileLanguage();
   const { t } = useTranslation();
 
@@ -125,7 +131,9 @@ const ProjectDetail = () => {
     budget: permissions.budget,
     table: permissions.budget,
     team: permissions.teams,
-    customer: permissions.customerView || "none",
+    customer: (isPublicDemoProject && demoPrefs.preferences.role === "homeowner")
+      ? "view"
+      : (permissions.customerView || "none"),
     chat: "view",
   };
 
@@ -264,6 +272,28 @@ const ProjectDetail = () => {
       loadData();
     }
   }, [user, projectId, authLoading, isGuest, isPublicDemoProject]);
+
+  // Show demo role modal on first visit (no role chosen yet)
+  useEffect(() => {
+    if (isPublicDemoProject && !loading && !demoPrefs.hasChosenRole && !user) {
+      setShowDemoRoleModal(true);
+    }
+  }, [isPublicDemoProject, loading, demoPrefs.hasChosenRole, user]);
+
+  // Derive effective user type: demo role for demo projects (regardless of login), profile for regular projects
+  const effectiveUserType = isPublicDemoProject
+    ? demoPrefs.preferences.role
+    : profile?.onboarding_user_type;
+
+  // Override project status based on demo phase stepper (contractor only)
+  const effectiveProject = (isPublicDemoProject && demoPrefs.preferences.role === "contractor" && project)
+    ? {
+        ...project,
+        status: demoPrefs.preferences.phase === "planning" ? "planning"
+          : demoPrefs.preferences.phase === "quote_sent" ? "quote_sent"
+          : "in_progress",
+      }
+    : project;
 
   const loadGuestData = () => {
     if (!projectId) return;
@@ -778,10 +808,11 @@ const ProjectDetail = () => {
   };
 
   const isDemo = project ? isDemoProject(project.project_type) : false;
-  const projectStatus = normalizeStatus(project?.status);
+  const isPersonalDemo = isDemo && !isPublicDemoProject;
+  const projectStatus = normalizeStatus(effectiveProject?.status);
   const statusMeta = STATUS_META[projectStatus];
 
-  const demoBannerContent = isDemo ? (
+  const demoBannerContent = isPersonalDemo ? (
     <>
       <BookOpen className="h-4 w-4" />
       <span className="font-medium">Demo</span>
@@ -839,14 +870,14 @@ const ProjectDetail = () => {
               variant="ghost"
               size="sm"
               className="gap-2 shrink-0"
-              onClick={() => navigate("/start")}
+              onClick={() => navigate(user ? "/start" : "/")}
             >
               <ArrowLeft className="h-4 w-4" />
               <span className="hidden lg:inline">{t('projectDetail.backToStart')}</span>
             </Button>
             <div className="flex items-center space-x-4 lg:space-x-6">
               {/* Client-only: Kundvy tab */}
-              {(permissions.customerView || "none") !== "none" && (
+              {!isTabBlocked("customer") && (
                 <div
                   className={cn(
                     "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
@@ -857,10 +888,10 @@ const ProjectDetail = () => {
                   {t("customerView.tabTitle")}
                 </div>
               )}
-              {/* Chat tab */}
+              {/* Chat tab — mobile only (on desktop, chat lives on the Overview page) */}
               <div
                 className={cn(
-                  "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                  "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors md:hidden",
                   activeTab === "chat" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"
                 )}
                 onClick={() => handleMenuSelect('chat', 'chat')}
@@ -1055,8 +1086,28 @@ const ProjectDetail = () => {
             </div>
           </div>
         </AppHeader>
-        {/* Demo banner inside sticky wrapper — sticks with header */}
-        {isDemo && (
+        {/* Public demo banner with role/phase stepper */}
+        {isPublicDemoProject && (
+          <DemoBanner
+            role={demoPrefs.preferences.role}
+            phase={demoPrefs.preferences.phase}
+            onPhaseChange={demoPrefs.setPhase}
+            onChangeRole={() => {
+              demoPrefs.resetPreferences();
+              setShowDemoRoleModal(true);
+            }}
+          />
+        )}
+        {/* Demo context info bar for homeowners — explains which view they're seeing */}
+        {isPublicDemoProject && demoPrefs.preferences.role === "homeowner" && (
+          <div className="px-4 py-1.5 flex items-center justify-center gap-2 text-xs bg-blue-50 text-blue-700 border-b border-blue-100 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-900">
+            {activeTab === "customer"
+              ? t("demo.homeownerContext.customerView", "You are viewing the Client View — this is what you see when a builder invites you to follow your project.")
+              : t("demo.homeownerContext.overview", "You are viewing your own project — this is how it looks when you manage a renovation yourself.")}
+          </div>
+        )}
+        {/* Personal demo banner */}
+        {isPersonalDemo && (
           <div className="bg-primary text-primary-foreground px-4 py-2.5 flex items-center justify-center gap-2 text-sm">
             {demoBannerContent}
           </div>
@@ -1074,7 +1125,20 @@ const ProjectDetail = () => {
       )}
 
       {/* Demo banner in floorplan mode — fixed below SpacePlannerTopBar */}
-      {!isHeaderVisible && isDemo && (
+      {!isHeaderVisible && isPublicDemoProject && (
+        <div className="fixed top-14 left-0 right-0 z-[59]">
+          <DemoBanner
+            role={demoPrefs.preferences.role}
+            phase={demoPrefs.preferences.phase}
+            onPhaseChange={demoPrefs.setPhase}
+            onChangeRole={() => {
+              demoPrefs.resetPreferences();
+              setShowDemoRoleModal(true);
+            }}
+          />
+        </div>
+      )}
+      {!isHeaderVisible && isPersonalDemo && (
         <div className="fixed top-14 left-0 right-0 z-[59] bg-primary text-primary-foreground px-4 py-2.5 flex items-center justify-center gap-2 text-sm">
           {demoBannerContent}
         </div>
@@ -1091,6 +1155,11 @@ const ProjectDetail = () => {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col">
+
+        {/* Demo page guide — contextual onboarding modal for demo visitors */}
+        {isPublicDemoProject && !user && demoPrefs.preferences.role && (
+          <DemoPageGuide pageKey={activeTab} role={demoPrefs.preferences.role} />
+        )}
 
         <TabsContent value="overview" className="m-0 pb-8">
           {isTabBlocked("overview") ? null : activeSubTab === 'feed' ? (
@@ -1118,8 +1187,8 @@ const ProjectDetail = () => {
                 </Card>
               )}
               <OverviewTab
-                project={project}
-                userType={profile?.onboarding_user_type}
+                project={effectiveProject!}
+                userType={effectiveUserType}
                 onProjectUpdate={loadData}
                 onNavigateToEntity={handleFeedNavigate}
                 onNavigateToPurchases={(materialId?: string) => {
@@ -1168,7 +1237,8 @@ const ProjectDetail = () => {
                   isReadOnly={permissions.spacePlanner === 'view'}
                   isDemo={isDemo}
                   highlightedRoomIds={contractorRoomIds}
-                  showPinterest={profile?.onboarding_user_type === "homeowner"}
+                  showPinterest={effectiveUserType === "homeowner"}
+                  simplified={effectiveUserType === "homeowner"}
                 />
               )}
               {(!activeSubTab || activeSubTab === 'rooms') && (
@@ -1224,12 +1294,13 @@ const ProjectDetail = () => {
               <TasksTab
                 projectId={project.id}
                 projectName={project.name}
-                projectStatus={project.status}
+                projectStatus={effectiveProject?.status}
                 tasksScope={permissions.tasksScope as 'all' | 'assigned'}
                 openEntityId={activeTab === "tasks" ? openEntityId : null}
                 onEntityOpened={() => setOpenEntityId(null)}
                 onNavigateToRoom={handleNavigateToRoomById}
                 showTimeline={permissions.timeline !== 'none'}
+                userType={effectiveUserType}
                 currency={project?.currency}
               />
             </div>
@@ -1255,7 +1326,7 @@ const ProjectDetail = () => {
                 projectId={project.id}
                 currency={project?.currency}
                 isReadOnly={permissions.budget === "view"}
-                userType={profile?.onboarding_user_type}
+                userType={effectiveUserType}
               />
             </div>
           )}
@@ -1270,7 +1341,7 @@ const ProjectDetail = () => {
                 projectId={project.id}
                 currency={project?.currency}
                 isReadOnly={permissions.budget === "view"}
-                userType={profile?.onboarding_user_type}
+                userType={effectiveUserType}
               />
             </div>
           )}
@@ -1339,7 +1410,7 @@ const ProjectDetail = () => {
         open={showRoomDialog}
         onOpenChange={setShowRoomDialog}
         onRoomUpdated={handleRoomUpdated}
-        showPinterest={profile?.onboarding_user_type === "homeowner"}
+        showPinterest={effectiveUserType === "homeowner"}
       />
 
       {/* Create Room Dialog */}
@@ -1350,7 +1421,7 @@ const ProjectDetail = () => {
         onOpenChange={setShowCreateRoomDialog}
         onRoomUpdated={handleRoomCreated}
         isCreateMode={true}
-        showPinterest={profile?.onboarding_user_type === "homeowner"}
+        showPinterest={effectiveUserType === "homeowner"}
       />
 
       {isHeaderVisible && (
@@ -1373,6 +1444,24 @@ const ProjectDetail = () => {
           }
         />
       )}
+
+      {/* Demo role selection modal */}
+      <DemoRoleModal
+        open={showDemoRoleModal}
+        onComplete={(role, language) => {
+          demoPrefs.setRole(role);
+          demoPrefs.setLanguage(language);
+          setShowDemoRoleModal(false);
+          if (role === "homeowner") {
+            setActiveTab("customer");
+          }
+        }}
+        onDismiss={() => {
+          // Default to contractor experience if dismissed without choosing
+          demoPrefs.setRole("contractor");
+          setShowDemoRoleModal(false);
+        }}
+      />
     </div>
   );
 };

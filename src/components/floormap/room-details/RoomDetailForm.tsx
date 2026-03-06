@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Home,
   Layers,
@@ -10,6 +10,11 @@ import {
   MessageSquare,
   ChevronDown,
   ChevronRight,
+  ListChecks,
+  Plus,
+  Trash2,
+  X,
+  Pencil,
 } from "lucide-react";
 import {
   Accordion,
@@ -18,6 +23,15 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { VisionSection } from "./sections/VisionSection";
 import { InternalNotesSection } from "./sections/InternalNotesSection";
@@ -33,7 +47,7 @@ import { RelatedPurchaseOrdersSection } from "./sections/RelatedPurchaseOrdersSe
 import { FilledIndicator } from "./components/FilledIndicator";
 import { countFilledFields } from "./utils/countFilledFields";
 import { useTranslation } from "react-i18next";
-import type { RoomFormData, Room } from "./types";
+import type { RoomFormData, Room, Checklist, ChecklistItem } from "./types";
 
 interface RoomDetailFormProps {
   room: Room | null;
@@ -60,12 +74,17 @@ export function RoomDetailForm({
   const areaSqm = room?.dimensions?.area_sqm;
   const perimeterMm = room?.dimensions?.perimeter_mm;
 
+  // Inline-editable title
+  const [editingName, setEditingName] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
   // Track which accordion sections are open
   const [openSections, setOpenSections] = useState<string[]>(["tasks"]);
 
   // Track collapsible sections
   const [photosExpanded, setPhotosExpanded] = useState(true);
   const [tasksExpanded, setTasksExpanded] = useState(true);
+  const [checklistsExpanded, setChecklistsExpanded] = useState(true);
   const [purchasesExpanded, setPurchasesExpanded] = useState(true);
   const [commentsExpanded, setCommentsExpanded] = useState(true);
 
@@ -89,11 +108,37 @@ export function RoomDetailForm({
     <div className="space-y-4">
       {/* Header with name, status, area and canvas settings */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="text-xl font-semibold">
-            {formData.name || t("rooms.unnamed", "Unnamed room")}
-          </div>
-          <Badge variant={getStatusBadgeVariant(formData.status)}>
+        <div className="flex items-center gap-3 min-w-0">
+          {editingName ? (
+            <input
+              ref={nameInputRef}
+              type="text"
+              value={formData.name}
+              onChange={(e) => updateFormData({ name: e.target.value })}
+              onBlur={() => setEditingName(false)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === "Escape") {
+                  setEditingName(false);
+                }
+              }}
+              className="text-xl font-semibold bg-transparent border-b-2 border-primary outline-none min-w-[120px] max-w-full"
+              autoFocus
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingName(true);
+                setTimeout(() => nameInputRef.current?.select(), 0);
+              }}
+              className="text-xl font-semibold hover:text-primary transition-colors cursor-text group flex items-center gap-1.5 truncate"
+              title={t("rooms.clickToRename", "Click to rename")}
+            >
+              <span className="truncate">{formData.name || t("rooms.unnamed", "Unnamed room")}</span>
+              <Pencil className="h-3.5 w-3.5 opacity-0 group-hover:opacity-50 shrink-0" />
+            </button>
+          )}
+          <Badge variant={getStatusBadgeVariant(formData.status)} className="shrink-0">
             {t(`roomStatuses.${formData.status === "to_be_renovated" ? "toBeRenovated" : formData.status === "new_construction" ? "newConstruction" : formData.status}`)}
           </Badge>
         </div>
@@ -280,6 +325,154 @@ export function RoomDetailForm({
           {tasksExpanded && (
             <div className="px-4 pb-4">
               <RelatedTasksSection roomId={room!.id} projectId={projectId} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Checklists */}
+      {!isNewRoom && (
+        <div className="border rounded-lg">
+          <button
+            type="button"
+            onClick={() => setChecklistsExpanded(!checklistsExpanded)}
+            className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors rounded-t-lg"
+          >
+            <div className="flex items-center gap-2">
+              <ListChecks className="h-4 w-4 text-emerald-600" />
+              <span className="font-medium text-sm">
+                {t("rooms.checklists", "Checklists")} {(formData.checklists || []).length > 0 && `(${(formData.checklists || []).length})`}
+              </span>
+            </div>
+            {checklistsExpanded ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+          </button>
+          {checklistsExpanded && (
+            <div className="px-4 pb-4 space-y-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newChecklist: Checklist = {
+                    id: crypto.randomUUID(),
+                    title: t("rooms.checklist", "Checklist"),
+                    items: [],
+                  };
+                  updateFormData({ checklists: [...(formData.checklists || []), newChecklist] });
+                }}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                {t("rooms.addChecklist", "Add checklist")}
+              </Button>
+              {(formData.checklists || []).map((checklist, clIdx) => {
+                const completedCount = checklist.items.filter((i: ChecklistItem) => i.completed).length;
+                const totalCount = checklist.items.length;
+                const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+                return (
+                  <div key={checklist.id} className="border rounded-lg">
+                    <Collapsible defaultOpen>
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <Input
+                          value={checklist.title}
+                          onChange={(e) => {
+                            const updated = [...(formData.checklists || [])];
+                            updated[clIdx] = { ...updated[clIdx], title: e.target.value };
+                            updateFormData({ checklists: updated });
+                          }}
+                          className="h-7 text-sm font-medium border-none shadow-none px-1 focus-visible:ring-1"
+                        />
+                        {totalCount > 0 && (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">{completedCount}/{totalCount}</span>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => {
+                            const updated = (formData.checklists || []).filter((_: Checklist, i: number) => i !== clIdx);
+                            updateFormData({ checklists: updated });
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      {totalCount > 0 && (
+                        <div className="px-3 pb-1"><Progress value={progressPct} className="h-1.5" /></div>
+                      )}
+                      <CollapsibleContent>
+                        <div className="px-3 pb-3 space-y-1">
+                          {checklist.items.map((item: ChecklistItem, itemIdx: number) => (
+                            <div key={item.id} className="flex items-center gap-2 group">
+                              <Checkbox
+                                checked={item.completed}
+                                onCheckedChange={(checked) => {
+                                  const updated = [...(formData.checklists || [])];
+                                  const newItems = [...checklist.items];
+                                  newItems[itemIdx] = { ...newItems[itemIdx], completed: !!checked };
+                                  updated[clIdx] = { ...updated[clIdx], items: newItems };
+                                  updateFormData({ checklists: updated });
+                                }}
+                              />
+                              <Input
+                                value={item.title}
+                                onChange={(e) => {
+                                  const updated = [...(formData.checklists || [])];
+                                  const newItems = [...checklist.items];
+                                  newItems[itemIdx] = { ...newItems[itemIdx], title: e.target.value };
+                                  updated[clIdx] = { ...updated[clIdx], items: newItems };
+                                  updateFormData({ checklists: updated });
+                                }}
+                                className={`h-7 text-sm border-none shadow-none px-1 focus-visible:ring-1 ${item.completed ? "line-through text-muted-foreground" : ""}`}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                                onClick={() => {
+                                  const updated = [...(formData.checklists || [])];
+                                  const newItems = checklist.items.filter((_: ChecklistItem, i: number) => i !== itemIdx);
+                                  updated[clIdx] = { ...updated[clIdx], items: newItems };
+                                  updateFormData({ checklists: updated });
+                                }}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Input
+                            placeholder={t("rooms.addItem", "Add item...")}
+                            className="h-7 text-sm mt-1"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const val = (e.target as HTMLInputElement).value.trim();
+                                if (val) {
+                                  const updated = [...(formData.checklists || [])];
+                                  const newItem: ChecklistItem = { id: crypto.randomUUID(), title: val, completed: false };
+                                  updated[clIdx] = { ...updated[clIdx], items: [...checklist.items, newItem] };
+                                  updateFormData({ checklists: updated });
+                                  (e.target as HTMLInputElement).value = "";
+                                }
+                              }
+                            }}
+                          />
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

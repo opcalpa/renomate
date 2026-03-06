@@ -471,14 +471,36 @@
     "noTasks": "Inga arbeten matchar aktuella filter",
     "failedToUpdateField": "Kunde inte uppdatera fält",
     "dueDate": "Förfallodatum",
-    "orderedAmount": "Beställt",
     "paidAmount": "Betalt",
+    "remaining": "Kvarstår",
     "paymentStatus": "Betalningsstatus",
     "estimatedHours": "Uppsk. timmar",
     "hourlyRate": "Timpris",
     "subcontractorCost": "Underentreprenör",
     "materialEstimate": "Materialuppsk.",
     "markupPercent": "Påslag %"
+  },
+  "purchasesTable": {
+    "columns": "Kolumner",
+    "extraColumns": "Extra kolumner",
+    "compactRows": "Kompakt",
+    "saveView": "Spara vy",
+    "viewName": "Vynamn...",
+    "viewSaved": "Vy sparad",
+    "viewSavedDescription": "\"{{name}}\" har sparats",
+    "savedViews": "Sparade vyer",
+    "viewLoaded": "Vy laddad",
+    "viewLoadedDescription": "\"{{name}}\" tillämpad",
+    "noMaterials": "Inga inköp matchar aktuella filter",
+    "failedToUpdateField": "Kunde inte uppdatera fält",
+    "dropPurchasesHere": "Släpp inköp här",
+    "hideEmptyColumns": "Dölj tomma kolumner",
+    "showEmptyColumns": "Visa tomma kolumner",
+    "noTask": "Ingen uppgift",
+    "noRoom": "Inget rum",
+    "remaining": "Kvarstår",
+    "date": "Datum",
+    "attachment": "Bilaga"
   },
   "rooms": {
     "title": "Rum",
@@ -651,6 +673,10 @@
     "unnamed": "Namnlöst rum",
     "ceilingHeightShort": "h",
     "relatedTasks": "Kopplade arbeten",
+    "checklists": "Checklistor",
+    "checklist": "Checklista",
+    "addChecklist": "Lägg till checklista",
+    "addItem": "Lägg till punkt...",
     "relatedPurchases": "Kopplade inköp",
     "relatedPurchaseOrders": "Inköpsordrar",
     "visionTitle": "Kundens önskemål",
@@ -1012,7 +1038,16 @@
     "groupByPriority": "Prioritet",
     "filters": "Filter",
     "dependenciesCascaded": "Flyttade även {{count}} beroende uppgift(er)",
-    "weekShort": "V"
+    "weekShort": "V",
+    "missingProjectDates": "Saknade projektdatum",
+    "goalDate": "Måldatum",
+    "goal": "Mål",
+    "reminderSingular": "1 påminnelse",
+    "reminders": "{{count}} påminnelser",
+    "projectDates": "Projektdatum",
+    "projectDatesTitle": "Projektdatum",
+    "setDate": "Ange datum",
+    "showFullProject": "Visa hela projektperioden"
   },
   "statuses": {
     "ideas": "Idéer",
@@ -1123,6 +1158,24 @@
     "openingRoomDetails": "Öppnar rumsdetaljer",
     "roomMustBeSavedFirst": "Rummet måste namnges och sparas först.",
     "openingPropertyPanel": "Öppnar egenskapspanel",
+    "tools": {
+      "select": "Markera",
+      "room": "Rum",
+      "doorWindow": "Dörr / Fönster",
+      "doorLine": "Dörr",
+      "windowLine": "Fönster",
+      "slidingDoor": "Skjutdörr",
+      "measure": "Mäta",
+      "moreTools": "Fler verktyg",
+      "lessTools": "Färre verktyg",
+      "freehand": "Frihand",
+      "triangle": "Triangel",
+      "bezier": "Kurva",
+      "text": "Text",
+      "eraser": "Sudd",
+      "scissors": "Dela linje",
+      "glue": "Klistra ihop"
+    },
     "hoverInfo": {
       "wall": "Vägg",
       "line": "Linje",
@@ -1396,7 +1449,10 @@
     "assignedTo": "Tilldelad till",
     "statusChangedTo": "Status ändrad till {{status}}",
     "linkedTo": "Kopplad till",
-    "excludedFromBudget": "ÄTA (Ändringsarbete)"
+    "excludedFromBudget": "ÄTA (Ändringsarbete)",
+    "connections": "Kopplingar",
+    "photos": "Bilder",
+    "comments": "Kommentarer"
   },
   "overview": {
     "projectOverview": "Projektöversikt",
@@ -1591,6 +1647,15 @@
     "description": "Samlad vy av arbetsbudgetar och materialkostnader. Dra kolumnrubriker för att ändra ordning.",
     "name": "Namn",
     "type": "Typ",
+    "status": "Status",
+    "estimatedHours": "Ber. timmar",
+    "hourlyRate": "Timpris",
+    "subcontractorCost": "UE-kostnad",
+    "paymentStatus": "Betalning",
+    "quantity": "Antal",
+    "pricePerUnit": "Pris/st",
+    "orderedAmount": "Beställt belopp",
+    "vendor": "Leverantör",
     "ordered": "Beställt",
     "paid": "Betalt",
     "remaining": "Återstående",
@@ -1695,6 +1760,8 @@
     "matBudget": "Mat. budget",
     "matConsumed": "Förbrukat",
     "matRemaining": "Mat. kvar",
+    "financialSummary": "Ekonomisk sammanfattning",
+    "priceChangedWarning": "Kundpriset avviker från ursprungligt offertbelopp. Offerten uppdateras inte.",
     "unlinkedWarning": "Inte kopplat till arbete — avräknas ej mot arbetsbudget",
     "linkedMaterials": "{{count}} material",
     "builder": {
@@ -1706,7 +1773,16 @@
       "ata": "ÄTA",
       "createInvoice": "Skapa faktura",
       "invoices": "Fakturor",
-      "newInvoice": "Ny"
+      "newInvoice": "Ny",
+      "contractDetails": "Kontraktsdetaljer",
+      "invoiceList": "Fakturerat — Detaljer",
+      "receivedList": "Mottagna betalningar",
+      "overdueList": "Förfallna fakturor",
+      "ataList": "ÄTA / Tilläggsarbeten",
+      "noItems": "Inga poster",
+      "viewQuote": "Visa offert",
+      "viewInvoice": "Visa faktura",
+      "outstanding": "Utestående"
     }
   },
   "budgetCharts": {
@@ -1719,6 +1795,38 @@
     "byCostCenter": "Per kostnadsställe",
     "noCostCenter": "Inget kostnadsställe",
     "noData": "Ingen data att visa"
+  },
+  "homeownerBudget": {
+    "myBudget": "Min budget",
+    "quoted": "Offererat",
+    "invoiced": "Fakturerat",
+    "paid": "Betalt",
+    "disposableFunds": "Rörliga medel",
+    "used": "förbrukat",
+    "totalBudget": "Total budget",
+    "contracted": "Kontrakterat (offert)",
+    "ownPurchases": "Egna inköp",
+    "ataChanges": "Tilläggsarbeten (ÄTA)",
+    "availableToSpend": "Kvar att spendera",
+    "unpaidInvoices": "Kvarstår att betala (obetalda fakturor)",
+    "outstandingBalance": "Kvarstår att betala",
+    "outstandingShort": "Kvarstår",
+    "outstanding": "Kvarstående",
+    "remaining": "kvar",
+    "setBudget": "Ange budget",
+    "budgetUpdated": "Budget uppdaterad",
+    "failedToUpdateBudget": "Kunde inte uppdatera budget",
+    "budgetFromQuote": "Från godkänd offert",
+    "noBudgetDescription": "Ange en totalbudget för din renovering för att spåra utgifter.",
+    "quoteOverview": "Offertöversikt",
+    "invoices": "Fakturor",
+    "myPurchases": "Mina inköp",
+    "totalInvoiced": "Totalt fakturerat",
+    "totalPaid": "Totalt betalt",
+    "afterRot": "Efter ROT",
+    "deduction": "avdrag",
+    "paidBadge": "Betald",
+    "ataShort": "ÄTA"
   },
   "budgetDashboard": {
     "failedToLoadPayments": "Kunde inte ladda betalningsdetaljer",
@@ -1788,6 +1896,9 @@
     "taskUpdated": "Arbete uppdaterat",
     "poCreated": "Inköpsorder skapad och kopplad till arbete",
     "poCreatedAndLinked": "Inköpsorder skapad och kopplad till arbete",
+    "finances": "Ekonomi",
+    "photosAndFiles": "Bilder & Filer",
+    "comments": "Kommentarer",
     "failedToLoad": "Kunde inte ladda arbetsdetaljer",
     "failedToUpdate": "Kunde inte uppdatera arbete",
     "failedToCreatePO": "Kunde inte skapa inköpsorder",
@@ -1919,6 +2030,28 @@
     "title": "Namnge Rum",
     "description": "Ge rummet ett namn som visas på planritningen.",
     "placeholder": "ex. Vardagsrum, Kök..."
+  },
+  "roomPresets": {
+    "kitchen": "Kök",
+    "bedroom": "Sovrum",
+    "livingRoom": "Vardagsrum",
+    "bathroom": "Badrum",
+    "hallway": "Hall",
+    "laundry": "Tvättstuga"
+  },
+  "insights": {
+    "totalArea": "Total yta",
+    "rooms": "rum",
+    "room": "Rum",
+    "area": "Yta",
+    "wallArea": "Väggyta",
+    "paint": "Färg",
+    "total": "Totalt",
+    "liters": "L",
+    "noRooms": "Rita rum för att se insikter",
+    "propertyInsights": "Fastighetsöversikt",
+    "expandDetails": "Visa detaljer",
+    "collapseDetails": "Dölj detaljer"
   },
   "minimap": {
     "showOverview": "Visa översiktskarta",
@@ -2626,7 +2759,7 @@
     "placeholder": "Skriv ett meddelande...",
     "send": "Skicka",
     "noMessages": "Inga meddelanden ännu. Skicka ett meddelande för att starta konversationen.",
-    "privateNotice": "Meddelanden är privata mellan dig och denna professionella.",
+    "privateNotice": "Bara projektmedlemmar kan se dessa meddelanden.",
     "messageSent": "Meddelande skickat",
     "messageSentDescription": "Ditt meddelande har levererats.",
     "deleteMessage": "Ta bort meddelande",
@@ -3653,5 +3786,102 @@
     "spent": "Spenderat",
     "remainingToBuy": "Kvar att handla",
     "plannedMaterials": "Planerade material"
+  },
+  "demo": {
+    "roleModal": {
+      "title": "Hur vill du utforska?",
+      "subtitle": "Välj ditt perspektiv för att se demon"
+    },
+    "banner": {
+      "builder": "Demo - Byggare",
+      "homeowner": "Demo - Hemägare",
+      "changeRole": "Byt roll",
+      "signUp": "Skapa konto"
+    },
+    "phases": {
+      "planning": "Planering",
+      "quoteSent": "Offert skickad",
+      "active": "Pågående projekt"
+    },
+    "homeownerContext": {
+      "overview": "Du visar ditt eget projekt — så här ser det ut när du själv hanterar en renovering.",
+      "customerView": "Du visar Kundvyn — så här ser det ut när en byggare bjuder in dig att följa ditt projekt."
+    }
+  },
+  "demoGuide": {
+    "homeowner": {
+      "overview": {
+        "title": "Din projektöversikt",
+        "body": "Det här är startsidan för dig som hemägare när du driver ditt eget renoveringsprojekt — med hjälp av byggare, målare och andra yrkesproffs.\n\nHär ges full insyn i arbetsmoment, materialinköp, budget med mera.",
+        "tip": "Tips: Sammanfattningskorten överst ger dig en snabb bild av projektets status."
+      },
+      "customer": {
+        "title": "Kundvy",
+        "body": "Denna sida är tillgänglig när du som kund blivit inbjuden av din byggfirma att följa renoveringsprocessen.\n\nHär kan du se tidslinjen, ha koll på ekonomin och ställa frågor till ditt projektteam.",
+        "tip": "Tips: Detta är en förenklad vy — din byggare styr vilken information som delas här."
+      },
+      "tasks": {
+        "title": "Arbeten",
+        "body": "Här ser du alla arbetsmoment i din renovering — från rivning och elarbete till målning och slutstädning.\n\nVarje arbete visar status, tidsplan och vem som ansvarar.",
+        "tip": "Tips: Klicka på ett arbete för att se detaljer och länkade material."
+      },
+      "purchases": {
+        "title": "Inköp",
+        "body": "Här hittar du alla materialbeställningar och inköp till ditt projekt — kakel, armaturer, bänkskivor med mera.\n\nDu kan följa status från beställning till leverans.",
+        "tip": "Tips: Dra kort mellan kolumner för att uppdatera status på en beställning."
+      },
+      "budget": {
+        "title": "Budget",
+        "body": "Budgetsidan ger dig full koll på renoveringens ekonomi.\n\nSe vad som offerterats, vad som betalats och vad som kvarstår för varje post.",
+        "tip": "Tips: Använd Kolumner-knappen för att lägga till extra kolumner som 'Betalat' och 'Kvarstående'."
+      },
+      "spaceplanner": {
+        "title": "Ytplanering",
+        "body": "Planritningen ger dig en visuell översikt av ditt hems rum och planlösning.\n\nSe rumsdetaljer, checklistor och kopplade arbetsmoment för varje utrymme.",
+        "tip": "Tips: Klicka på ett rum för att se alla arbeten och material kopplade till det."
+      },
+      "files": {
+        "title": "Filer",
+        "body": "Alla projektdokument samlas här — offerter, fakturor, ritningar, foton med mera.\n\nAllt organiserat och lättillgängligt på ett ställe.",
+        "tip": ""
+      }
+    },
+    "contractor": {
+      "overview": {
+        "title": "Välkommen — Planeringsfasen",
+        "body": "Du startar i Planeringsfasen — där varje projekt börjar. Här definierar du omfattningen, lägger till arbetsmoment och förbereder en offert till kunden.\n\nNär du är redo, använd fasstegen i baren ovanför för att byta till 'Offert skickad' och 'Pågående projekt' och se hur projektet utvecklas genom varje fas.",
+        "tip": "Tips: Testa alla tre faser! Varje fas visar olika verktyg och vyer anpassade för det steget i projektet."
+      },
+      "tasks": {
+        "title": "Arbetshantering",
+        "body": "Planera och följ alla arbetsmoment i projektet. Tilldela teammedlemmar, schemalägg, koppla material och följ upp framsteg.\n\nVäxla mellan tabell- och kanbanvy beroende på ditt arbetssätt.",
+        "tip": "Tips: Dra arbeten mellan kolumner i kanbanvyn för att snabbt uppdatera status."
+      },
+      "purchases": {
+        "title": "Inköpsorder",
+        "body": "Hantera materialbeställningar, spåra leveranser och håll koll på inköpskostnader.\n\nVarje order kan kopplas till ett arbete och rum för full spårbarhet.",
+        "tip": "Tips: Använd filterknappen för att snabbt hitta order efter status, rum eller leverantör."
+      },
+      "budget": {
+        "title": "Budget & Marginaler",
+        "body": "Full ekonomisk översikt med kundpriser, faktiska kostnader, marginaler och materialbudget.\n\nRedigera värden direkt i tabellen för snabba uppdateringar.",
+        "tip": "Tips: Kolumnen 'Resultat' visar din marginal per arbete — rött innebär att du gått över budget."
+      },
+      "spaceplanner": {
+        "title": "Ytplanering",
+        "body": "Rita planlösningar, definiera rum och koppla arbeten och material till specifika utrymmen.\n\nAnvänd rumschecklistan för att spåra renoveringsomfattning per rum.",
+        "tip": "Tips: Byt till 'Planritning' i underflikarna för att använda ritverktyget."
+      },
+      "files": {
+        "title": "Projektfiler",
+        "body": "Samla alla projektdokument — offerter, fakturor, ritningar, kontrakt och foton.\n\nKoppla filer till specifika arbeten eller material för enkel referens.",
+        "tip": ""
+      },
+      "team": {
+        "title": "Teamhantering",
+        "body": "Bjud in underentreprenörer, kunder och teammedlemmar till ditt projekt.\n\nStyr exakt vad varje person kan se och göra med detaljerade behörigheter.",
+        "tip": "Tips: Använd rollmallar för att snabbt sätta rätt åtkomstnivå för kunder respektive teammedlemmar."
+      }
+    }
   }
 }

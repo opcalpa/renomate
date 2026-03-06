@@ -12,8 +12,8 @@ export type TaskColumnKey =
   | "dueDate"
   | "progress"
   | "budget"
-  | "orderedAmount"
   | "paidAmount"
+  | "remaining"
   | "paymentStatus"
   | "costCenter"
   | "estimatedHours"
@@ -47,8 +47,8 @@ export const EXTRA_COLUMN_KEYS: TaskColumnKey[] = [
   "dueDate",
   "progress",
   "budget",
-  "orderedAmount",
   "paidAmount",
+  "remaining",
   "paymentStatus",
   "costCenter",
   "estimatedHours",

@@ -2,17 +2,19 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/currency";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Save, FolderOpen, Trash2, Plus, Rows3, Paperclip, Copy, ChevronDown, ChevronRight, FileText } from "lucide-react";
+import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Save, FolderOpen, Trash2, Plus, Rows3, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart } from "lucide-react";
 import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
+import { getStatusBadgeColor } from "@/lib/statusColors";
 import { BudgetChartsSection } from "./BudgetChartsSection";
 import { BuilderSummaryCards } from "./budget/BuilderSummaryCards";
-import { InvoiceListSection } from "./budget/InvoiceListSection";
+import { HomeownerBudgetView } from "./budget/HomeownerBudgetView";
 import { InvoiceMethodDialog } from "@/components/invoices/InvoiceMethodDialog";
 import { TaskEditDialog } from "./TaskEditDialog";
 import { MaterialEditDialog } from "./MaterialEditDialog";
@@ -64,9 +66,20 @@ interface BudgetRow {
   taskId?: string;
   materialBudget: number;
   materialConsumed: number;
+  status?: string;
+  // Task-specific
+  estimatedHours?: number;
+  hourlyRate?: number;
+  subcontractorCost?: number;
+  paymentStatus?: string;
+  // Material-specific
+  quantity?: number;
+  pricePerUnit?: number;
+  orderedAmount?: number;
+  vendor?: string;
 }
 
-type ColumnKey = "name" | "type" | "budget" | "paid" | "remaining" | "margin" | "matBudget" | "matConsumed" | "matRemaining" | "room" | "assignee" | "costCenter" | "startDate" | "finishDate" | "attachment";
+type ColumnKey = "name" | "type" | "status" | "budget" | "paid" | "remaining" | "margin" | "matBudget" | "matConsumed" | "matRemaining" | "room" | "assignee" | "costCenter" | "startDate" | "finishDate" | "attachment" | "estimatedHours" | "hourlyRate" | "subcontractorCost" | "paymentStatus" | "quantity" | "pricePerUnit" | "orderedAmount" | "vendor";
 
 interface ColumnDef {
   key: ColumnKey;
@@ -75,7 +88,36 @@ interface ColumnDef {
   extra?: boolean;
 }
 
-const EXTRA_COLUMN_KEYS: ColumnKey[] = ["room", "assignee", "costCenter", "startDate", "finishDate", "attachment"];
+const EXTRA_COLUMN_KEYS: ColumnKey[] = [
+  "room", "assignee", "costCenter", "startDate", "finishDate", "attachment",
+  // Task-specific extras
+  "estimatedHours", "hourlyRate", "subcontractorCost", "paymentStatus",
+  // Material-specific extras
+  "quantity", "pricePerUnit", "orderedAmount", "vendor",
+];
+const HOMEOWNER_HIDDEN_COLUMNS = new Set<ColumnKey>([
+  "margin", "matBudget", "matConsumed", "matRemaining",
+  "assignee", "costCenter",
+  // Builder-internal task cost details
+  "estimatedHours", "hourlyRate", "subcontractorCost", "paymentStatus",
+]);
+const HOMEOWNER_EXTRA_KEYS: ColumnKey[] = [
+  "room", "startDate", "finishDate", "attachment",
+  "paid", "remaining",
+  "quantity", "pricePerUnit", "orderedAmount", "vendor",
+];
+
+// Status badge colors for combined status column
+// Status badge colors now come from shared getStatusBadgeColor()
+
+const budgetStatusKey = (s: string) => {
+  const map: Record<string, string> = {
+    to_do: "toDo",
+    in_progress: "inProgress",
+    on_hold: "onHold",
+  };
+  return map[s] || s;
+};
 
 interface BudgetTabProps {
   projectId: string;
@@ -180,12 +222,13 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
   const ALL_COLUMNS: ColumnDef[] = useMemo(() => [
     { key: "name", label: t('budget.name') },
     { key: "type", label: t('budget.type') },
-    { key: "budget", label: t('budget.customerPrice'), align: "right" },
+    { key: "status", label: t('budget.status', 'Status') },
+    { key: "budget", label: isBuilder ? t('budget.customerPrice') : t('homeownerBudget.quoted', 'Offert'), align: "right" },
     { key: "matBudget", label: t('budget.matBudget'), align: "right" },
     { key: "matConsumed", label: t('budget.matConsumed'), align: "right" },
     { key: "matRemaining", label: t('budget.matRemaining'), align: "right" },
-    { key: "paid", label: t('budget.cost'), align: "right" },
-    { key: "remaining", label: t('budget.result'), align: "right" },
+    { key: "paid", label: isBuilder ? t('budget.cost') : t('homeownerBudget.paid', 'Betalat'), align: "right" },
+    { key: "remaining", label: isBuilder ? t('budget.result') : t('homeownerBudget.outstanding', 'Kvarstående'), align: "right" },
     { key: "margin", label: t('budget.margin'), align: "right" },
     { key: "room", label: t('budget.room'), extra: true },
     { key: "assignee", label: t('budget.assignee'), extra: true },
@@ -193,7 +236,28 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
     { key: "startDate", label: t('common.startDate'), extra: true },
     { key: "finishDate", label: t('common.finishDate'), extra: true },
     { key: "attachment", label: t('common.attachment'), extra: true },
-  ], [t]);
+    // Task-specific extras
+    { key: "estimatedHours", label: t('budget.estimatedHours', 'Est. hours'), align: "right", extra: true },
+    { key: "hourlyRate", label: t('budget.hourlyRate', 'Hourly rate'), align: "right", extra: true },
+    { key: "subcontractorCost", label: t('budget.subcontractorCost', 'Subcontractor'), align: "right", extra: true },
+    { key: "paymentStatus", label: t('budget.paymentStatus', 'Payment'), extra: true },
+    // Material-specific extras
+    { key: "quantity", label: t('budget.quantity', 'Quantity'), align: "right", extra: true },
+    { key: "pricePerUnit", label: t('budget.pricePerUnit', 'Price/unit'), align: "right", extra: true },
+    { key: "orderedAmount", label: t('budget.orderedAmount', 'Ordered'), align: "right", extra: true },
+    { key: "vendor", label: t('budget.vendor', 'Vendor'), extra: true },
+  ], [t, isBuilder]);
+
+  // For homeowners, filter out builder-only columns and remap certain core columns as extra
+  const homeownerExtraSet = useMemo(() => new Set(HOMEOWNER_EXTRA_KEYS), []);
+  const effectiveColumns = useMemo(() => {
+    if (isBuilder) return ALL_COLUMNS;
+    return ALL_COLUMNS
+      .filter((col) => !HOMEOWNER_HIDDEN_COLUMNS.has(col.key))
+      .map((col) => homeownerExtraSet.has(col.key) ? { ...col, extra: true } : col);
+  }, [ALL_COLUMNS, isBuilder, homeownerExtraSet]);
+
+  const effectiveExtraKeys = isBuilder ? EXTRA_COLUMN_KEYS : HOMEOWNER_EXTRA_KEYS;
 
   // Column order (drag reorder)
   const [columns, setColumns] = useState<ColumnDef[]>(ALL_COLUMNS);
@@ -247,9 +311,6 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
     });
   }, []);
 
-  // Collapsible invoice section
-  const [invoicesExpanded, setInvoicesExpanded] = useState(true);
-
   // Inline add row
   const [isAddingRow, setIsAddingRow] = useState(false);
   const [newRowType, setNewRowType] = useState<"task" | "material">("task");
@@ -284,7 +345,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
 
   const handleLoadView = (view: SavedView) => {
     // Restore column order, filtering out removed columns from old saved views
-    const removedKeys = new Set(["ordered", "status"]);
+    const removedKeys = new Set(["ordered"]);
     const orderedColumns = view.columnOrder
       .filter((key) => !removedKeys.has(key))
       .map((key) => ALL_COLUMNS.find((c) => c.key === key))
@@ -312,8 +373,14 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
 
   // Visible columns (filter out hidden extras)
   const visibleColumns = useMemo(
-    () => columns.filter((col) => !col.extra || visibleExtras.has(col.key)),
-    [columns, visibleExtras]
+    () => {
+      // Apply user column order but filter through effective columns for role
+      const effectiveKeys = new Set(effectiveColumns.map((c) => c.key));
+      return columns
+        .filter((col) => effectiveKeys.has(col.key))
+        .filter((col) => !col.extra || visibleExtras.has(col.key));
+    },
+    [columns, visibleExtras, effectiveColumns]
   );
 
   const toggleExtraColumn = (key: ColumnKey) => {
@@ -348,11 +415,11 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
       const [tasksRes, materialsRes, extraRes, projectRes, taskDocsRes, materialDocsRes] = await Promise.all([
         supabase
           .from("tasks")
-          .select("id, title, budget, ordered_amount, payment_status, paid_amount, room_id, cost_center, start_date, finish_date, is_ata, estimated_hours, hourly_rate, labor_cost_percent, subcontractor_cost, markup_percent, material_estimate, material_markup_percent, task_cost_type, material_items")
+          .select("id, title, status, budget, ordered_amount, payment_status, paid_amount, room_id, cost_center, start_date, finish_date, is_ata, estimated_hours, hourly_rate, labor_cost_percent, subcontractor_cost, markup_percent, material_estimate, material_markup_percent, task_cost_type, material_items")
           .eq("project_id", projectId),
         supabase
           .from("materials")
-          .select("id, name, price_total, quantity, price_per_unit, ordered_amount, paid_amount, status, room_id, task_id")
+          .select("id, name, price_total, quantity, price_per_unit, ordered_amount, paid_amount, status, room_id, task_id, vendor_name")
           .eq("project_id", projectId)
           .eq("exclude_from_budget", false),
         supabase
@@ -463,6 +530,12 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
           attachmentCount,
           materialBudget: computeMaterialBudget(t),
           materialConsumed: materialConsumedMap.get(t.id) || 0,
+          status: t.status ?? undefined,
+          estimatedHours: t.estimated_hours ?? undefined,
+          hourlyRate: t.hourly_rate ?? undefined,
+          subcontractorCost: t.subcontractor_cost ?? undefined,
+          paymentStatus: t.payment_status ?? undefined,
+          orderedAmount: t.ordered_amount ?? undefined,
         };
       });
 
@@ -485,6 +558,11 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
           taskId: m.task_id ?? undefined,
           materialBudget: 0,
           materialConsumed: 0,
+          status: m.status ?? undefined,
+          quantity: m.quantity ?? undefined,
+          pricePerUnit: m.price_per_unit ?? undefined,
+          orderedAmount: m.ordered_amount ?? undefined,
+          vendor: m.vendor_name ?? undefined,
         };
       });
 
@@ -841,8 +919,15 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
         av = getEffectiveCost(a);
         bv = getEffectiveCost(b);
       } else if (sortKey === "remaining") {
-        av = a.budget - getEffectiveCost(a);
-        bv = b.budget - getEffectiveCost(b);
+        if (isBuilder) {
+          av = a.budget - getEffectiveCost(a);
+          bv = b.budget - getEffectiveCost(b);
+        } else {
+          const aq = a.type === "task" ? a.budget : a.estimatedCost;
+          const bq = b.type === "task" ? b.budget : b.estimatedCost;
+          av = aq - a.paid;
+          bv = bq - b.paid;
+        }
       } else if (sortKey === "margin") {
         av = a.budget > 0 ? (a.budget - getEffectiveCost(a)) / a.budget : 0;
         bv = b.budget > 0 ? (b.budget - getEffectiveCost(b)) / b.budget : 0;
@@ -868,6 +953,33 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
       } else if (sortKey === "finishDate") {
         av = a.finishDate || "";
         bv = b.finishDate || "";
+      } else if (sortKey === "status") {
+        av = a.status || "";
+        bv = b.status || "";
+      } else if (sortKey === "estimatedHours") {
+        av = a.estimatedHours ?? 0;
+        bv = b.estimatedHours ?? 0;
+      } else if (sortKey === "hourlyRate") {
+        av = a.hourlyRate ?? 0;
+        bv = b.hourlyRate ?? 0;
+      } else if (sortKey === "subcontractorCost") {
+        av = a.subcontractorCost ?? 0;
+        bv = b.subcontractorCost ?? 0;
+      } else if (sortKey === "paymentStatus") {
+        av = a.paymentStatus || "";
+        bv = b.paymentStatus || "";
+      } else if (sortKey === "quantity") {
+        av = a.quantity ?? 0;
+        bv = b.quantity ?? 0;
+      } else if (sortKey === "pricePerUnit") {
+        av = a.pricePerUnit ?? 0;
+        bv = b.pricePerUnit ?? 0;
+      } else if (sortKey === "orderedAmount") {
+        av = a.orderedAmount ?? 0;
+        bv = b.orderedAmount ?? 0;
+      } else if (sortKey === "vendor") {
+        av = a.vendor || "";
+        bv = b.vendor || "";
       } else {
         av = a[sortKey];
         bv = b[sortKey];
@@ -946,19 +1058,6 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
       case "name":
         return (
           <span className={`inline-flex items-center gap-1${row.isChild ? " pl-6" : ""}`}>
-            {row.type === "task" && (row.childCount ?? 0) > 0 && (
-              <button
-                className="p-0.5 rounded hover:bg-muted"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleTaskExpand(row.id);
-                }}
-              >
-                {expandedTasks.has(row.id)
-                  ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                  : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-              </button>
-            )}
             {row.isChild && (
               <span className="text-muted-foreground text-xs mr-0.5">└</span>
             )}
@@ -972,9 +1071,16 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
               {row.name}
             </button>
             {row.type === "task" && (row.childCount ?? 0) > 0 && (
-              <span className="text-xs text-muted-foreground ml-1">
-                ({row.childCount} {t('budget.material').toLowerCase()})
-              </span>
+              <button
+                className="ml-1.5 inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors rounded px-1 py-0.5 hover:bg-muted"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleTaskExpand(row.id);
+                }}
+              >
+                <ShoppingCart className="h-3 w-3" />
+                <span className="text-xs">{row.childCount}</span>
+              </button>
             )}
             {row.isUnlinked && (
               <span className="ml-1.5 text-amber-500" title={t("budget.unlinkedWarning")}>
@@ -989,7 +1095,16 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
             {row.type === "task" ? t('budget.task') : t('budget.material')}
           </Badge>
         );
+      case "status": {
+        if (!row.status) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        const statusLabel = row.type === "task"
+          ? t(`statuses.${budgetStatusKey(row.status)}`, row.status)
+          : t(`materialStatuses.${row.status}`, row.status);
+        return <Badge className={cn("border", getStatusBadgeColor(row.status))}>{statusLabel}</Badge>;
+      }
       case "budget": {
+        if (row.type === "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (!isBuilder) return <span>{formatCurrency(row.budget, currency)}</span>;
         const isEditing = editingCell?.rowId === row.id && editingCell?.col === col.key;
         if (isEditing) {
           return (
@@ -1022,6 +1137,11 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
         );
       }
       case "paid": {
+        if (!isBuilder) {
+          // Homeowner: show only actual paid amount — no estimate fallback
+          return <span>{formatCurrency(row.paid, currency)}</span>;
+        }
+        // Builder: show effectiveCost (falls back to estimate when no payment)
         const effectiveCost = getEffectiveCost(row);
         const isEditing = editingCell?.rowId === row.id && editingCell?.col === col.key;
         if (isEditing) {
@@ -1058,14 +1178,28 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
         );
       }
       case "remaining": {
-        const result = row.budget - getEffectiveCost(row);
+        if (isBuilder) {
+          // Builder: remaining = budget - effective cost (tasks only)
+          if (row.type === "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
+          const result = row.budget - getEffectiveCost(row);
+          return (
+            <span className={result < 0 ? "text-destructive" : result > 0 ? "text-green-600" : ""}>
+              {formatCurrency(result, currency)}
+            </span>
+          );
+        }
+        // Homeowner: outstanding = quoted - paid (all rows)
+        const quoted = row.type === "task" ? row.budget : row.estimatedCost;
+        if (quoted <= 0) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        const outstanding = quoted - row.paid;
         return (
-          <span className={result < 0 ? "text-destructive" : result > 0 ? "text-green-600" : ""}>
-            {formatCurrency(result, currency)}
+          <span className={outstanding < 0 ? "text-destructive" : outstanding > 0 ? "text-amber-600" : "text-green-600"}>
+            {formatCurrency(outstanding, currency)}
           </span>
         );
       }
       case "margin": {
+        if (row.type === "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
         const effectiveCost = getEffectiveCost(row);
         const result = row.budget - effectiveCost;
         const marginPct = row.budget > 0 ? Math.round((result / row.budget) * 100) : 0;
@@ -1107,6 +1241,37 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
         return <span className="text-sm">{formatDate(row.finishDate)}</span>;
       case "attachment":
         return <AttachmentIndicator hasAttachment={row.hasAttachment} count={row.attachmentCount} />;
+      // Task-specific extras
+      case "estimatedHours":
+        if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        return <span className="text-sm">{row.estimatedHours != null ? row.estimatedHours : "\u2014"}</span>;
+      case "hourlyRate":
+        if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        return <span className="text-sm">{row.hourlyRate != null ? formatCurrency(row.hourlyRate, currency) : "\u2014"}</span>;
+      case "subcontractorCost":
+        if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        return <span className="text-sm">{row.subcontractorCost ? formatCurrency(row.subcontractorCost, currency) : "\u2014"}</span>;
+      case "paymentStatus": {
+        if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (!row.paymentStatus) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        const pmtKey = budgetStatusKey(row.paymentStatus);
+        const pmtColor = row.paymentStatus === "paid" ? "bg-green-100 text-green-700"
+          : row.paymentStatus === "partially_paid" ? "bg-amber-100 text-amber-700"
+          : "bg-gray-100 text-gray-700";
+        return <Badge className={pmtColor}>{t(`paymentStatuses.${pmtKey}`, row.paymentStatus)}</Badge>;
+      }
+      // Material-specific extras
+      case "quantity":
+        if (row.type !== "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        return <span className="text-sm">{row.quantity != null ? row.quantity : "\u2014"}</span>;
+      case "pricePerUnit":
+        if (row.type !== "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        return <span className="text-sm">{row.pricePerUnit != null ? formatCurrency(row.pricePerUnit, currency) : "\u2014"}</span>;
+      case "orderedAmount":
+        return <span className="text-sm">{row.orderedAmount ? formatCurrency(row.orderedAmount, currency) : "\u2014"}</span>;
+      case "vendor":
+        if (row.type !== "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        return <span className="text-sm">{row.vendor || "\u2014"}</span>;
       default:
         return null;
     }
@@ -1119,12 +1284,27 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
       case "budget":
         return <span className="font-bold">{formatCurrency(totals.budget, currency)}</span>;
       case "paid":
-        return <span className="font-bold">{formatCurrency(totals.cost, currency)}</span>;
+        // Homeowner: sum of actual payments only; Builder: sum of effective costs
+        return <span className="font-bold">{formatCurrency(isBuilder ? totals.cost : totals.paid, currency)}</span>;
       case "remaining": {
-        const totalResult = totals.budget - totals.cost;
+        if (isBuilder) {
+          const totalResult = totals.budget - totals.cost;
+          return (
+            <span className={`font-bold ${totalResult < 0 ? "text-destructive" : totalResult > 0 ? "text-green-600" : ""}`}>
+              {formatCurrency(totalResult, currency)}
+            </span>
+          );
+        }
+        // Homeowner: sum of (quoted - paid) for tasks + unlinked materials only
+        // Linked materials are already included in the parent task's quote
+        const totalOutstanding = filtered.reduce((sum, r) => {
+          if (r.type === "material" && r.taskId) return sum; // skip linked materials
+          const quoted = r.type === "task" ? r.budget : r.estimatedCost;
+          return sum + (quoted > 0 ? quoted - r.paid : 0);
+        }, 0);
         return (
-          <span className={`font-bold ${totalResult < 0 ? "text-destructive" : totalResult > 0 ? "text-green-600" : ""}`}>
-            {formatCurrency(totalResult, currency)}
+          <span className={`font-bold ${totalOutstanding < 0 ? "text-destructive" : totalOutstanding > 0 ? "text-amber-600" : "text-green-600"}`}>
+            {formatCurrency(totalOutstanding, currency)}
           </span>
         );
       }
@@ -1237,60 +1417,21 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">{t('budget.title')}</h2>
-      <p className="text-muted-foreground mb-6">
-        {t('budget.description')}
-      </p>
-
-      {/* Collapsible Invoice Section (builders only) */}
-      {isBuilder && (
-        <div className="border rounded-lg mb-6">
-          <button
-            type="button"
-            onClick={() => setInvoicesExpanded(!invoicesExpanded)}
-            className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="font-medium">{t("budget.invoicesSection")}</span>
-            </div>
-            {invoicesExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {invoicesExpanded && (
-            <div className="px-4 pb-4 space-y-4">
-              <BuilderSummaryCards projectId={projectId} currency={currency} onCreateInvoice={() => setInvoiceMethodOpen(true)} />
-              <InvoiceListSection projectId={projectId} currency={currency} onCreateInvoice={() => setInvoiceMethodOpen(true)} />
-            </div>
-          )}
+      {isBuilder ? (
+        <>
+          <h2 className="text-2xl font-bold mb-4">{t('budget.title')}</h2>
+          <p className="text-muted-foreground mb-6">
+            {t('budget.description')}
+          </p>
+          <div className="mb-6">
+            <BuilderSummaryCards projectId={projectId} currency={currency} onCreateInvoice={() => setInvoiceMethodOpen(true)} />
+          </div>
+        </>
+      ) : (
+        <div className="mb-6">
+          <HomeownerBudgetView projectId={projectId} currency={currency} />
         </div>
       )}
-
-      {/* Homeowner Summary Boxes */}
-      {!isBuilder && (() => {
-        const remaining = projectBudget - totals.paid;
-        return (
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4 mb-6">
-            <div className="bg-muted/50 rounded-lg p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">{t('common.budget')}</p>
-              <p className="text-xl font-bold">{formatCurrency(projectBudget, currency)}</p>
-            </div>
-            <div className="bg-muted/50 rounded-lg p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">{t('budget.actualCost')}</p>
-              <p className="text-xl font-bold">{formatCurrency(totals.paid, currency)}</p>
-            </div>
-            <div className="bg-muted/50 rounded-lg p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">{t('budget.variance')}</p>
-              <p className={`text-xl font-bold ${remaining < 0 ? "text-destructive" : remaining > 0 ? "text-green-600" : ""}`}>
-                {formatCurrency(remaining, currency)}
-              </p>
-            </div>
-            <div className="bg-muted/50 rounded-lg p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">{t('budget.extra')}</p>
-              <p className="text-xl font-bold">{formatCurrency(extraTotal, currency)}</p>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Filters */}
       <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-end md:gap-4 mb-4">
@@ -1343,7 +1484,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
           <PopoverContent className="w-48" align="end">
             <div className="space-y-2">
               <p className="text-sm font-medium mb-2">{t('budget.extraColumns')}</p>
-              {EXTRA_COLUMN_KEYS.map((key) => {
+              {effectiveExtraKeys.map((key) => {
                 const col = ALL_COLUMNS.find((c) => c.key === key);
                 return (
                   <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -1552,7 +1693,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
           ← {t('budget.swipeToSeeMore', 'Svep för mer')} →
         </span>
       </div>
-      <div className="border rounded-lg overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
+      <div className="border rounded-lg overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0 bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -1581,14 +1722,16 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
                   </span>
                 </TableHead>
               ))}
-              {/* Actions column header */}
-              <TableHead className={`w-20${compactRows ? " py-1 text-xs h-8" : ""}`} />
+              {/* Actions column header (builder only) */}
+              {isBuilder && (
+                <TableHead className={`w-20${compactRows ? " py-1 text-xs h-8" : ""}`} />
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {displayRows.length === 0 && !isAddingRow ? (
               <TableRow>
-                <TableCell colSpan={visibleColumns.length + 1} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={visibleColumns.length + (isBuilder ? 1 : 0)} className="text-center py-8 text-muted-foreground">
                   {t('budget.noBudgetItems')}
                 </TableCell>
               </TableRow>
@@ -1607,139 +1750,143 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
                       {renderCell(col, row)}
                     </TableCell>
                   ))}
-                  {/* Row Actions */}
-                  <TableCell className={`${compactRows ? "py-0.5 px-1" : "px-2"}`} onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-0.5">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={compactRows ? "h-6 w-6" : "h-8 w-8"}
-                        onClick={() => handleDuplicateRow(row)}
-                        title={t('budget.duplicate')}
-                      >
-                        <Copy className={compactRows ? "h-3 w-3" : "h-4 w-4"} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={`${compactRows ? "h-6 w-6" : "h-8 w-8"} text-muted-foreground hover:text-destructive`}
-                        onClick={() => handleDeleteRow(row)}
-                        title={t('budget.deleteRow')}
-                      >
-                        <Trash2 className={compactRows ? "h-3 w-3" : "h-4 w-4"} />
-                      </Button>
-                    </div>
-                  </TableCell>
+                  {/* Row Actions (builder only) */}
+                  {isBuilder && (
+                    <TableCell className={`${compactRows ? "py-0.5 px-1" : "px-2"}`} onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={compactRows ? "h-6 w-6" : "h-8 w-8"}
+                          onClick={() => handleDuplicateRow(row)}
+                          title={t('budget.duplicate')}
+                        >
+                          <Copy className={compactRows ? "h-3 w-3" : "h-4 w-4"} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={`${compactRows ? "h-6 w-6" : "h-8 w-8"} text-muted-foreground hover:text-destructive`}
+                          onClick={() => handleDeleteRow(row)}
+                          title={t('budget.deleteRow')}
+                        >
+                          <Trash2 className={compactRows ? "h-3 w-3" : "h-4 w-4"} />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}
 
-            {/* Inline Add Row */}
-            {isAddingRow ? (
-              <TableRow className={`bg-primary/5 border-primary/20${compactRows ? " h-8" : ""}`}>
-                {visibleColumns.map((col) => (
-                  <TableCell
-                    key={col.key}
-                    className={`${col.align === "right" ? "text-right" : ""}${compactRows ? " py-0.5 px-2 text-xs" : " py-1"}`}
-                  >
-                    {col.key === "name" ? (
-                      <Input
-                        ref={newRowNameRef}
-                        type="text"
-                        placeholder={t('budget.enterName')}
-                        className={`${compactRows ? "h-6 text-xs" : "h-8"} w-full min-w-[120px]`}
-                        value={newRowName}
-                        onChange={(e) => setNewRowName(e.target.value)}
-                        onKeyDown={handleNewRowKeyDown}
-                        disabled={addingRowLoading}
-                      />
-                    ) : col.key === "type" ? (
-                      <Select
-                        value={newRowType}
-                        onValueChange={(v) => setNewRowType(v as "task" | "material")}
+            {/* Inline Add Row (builder only) */}
+            {isBuilder && (
+              isAddingRow ? (
+                <TableRow className={`bg-primary/5 border-primary/20${compactRows ? " h-8" : ""}`}>
+                  {visibleColumns.map((col) => (
+                    <TableCell
+                      key={col.key}
+                      className={`${col.align === "right" ? "text-right" : ""}${compactRows ? " py-0.5 px-2 text-xs" : " py-1"}`}
+                    >
+                      {col.key === "name" ? (
+                        <Input
+                          ref={newRowNameRef}
+                          type="text"
+                          placeholder={t('budget.enterName')}
+                          className={`${compactRows ? "h-6 text-xs" : "h-8"} w-full min-w-[120px]`}
+                          value={newRowName}
+                          onChange={(e) => setNewRowName(e.target.value)}
+                          onKeyDown={handleNewRowKeyDown}
+                          disabled={addingRowLoading}
+                        />
+                      ) : col.key === "type" ? (
+                        <Select
+                          value={newRowType}
+                          onValueChange={(v) => setNewRowType(v as "task" | "material")}
+                          disabled={addingRowLoading}
+                        >
+                          <SelectTrigger className={`${compactRows ? "h-6 text-xs" : "h-8"} w-[100px]`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="task">{t('budget.task')}</SelectItem>
+                            <SelectItem value="material">{t('budget.material')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : col.key === "budget" ? (
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          className={`${compactRows ? "h-6 text-xs" : "h-8"} w-24 text-right`}
+                          value={newRowBudget}
+                          onChange={(e) => setNewRowBudget(e.target.value)}
+                          onKeyDown={handleNewRowKeyDown}
+                          disabled={addingRowLoading}
+                        />
+                      ) : col.key === "room" ? (
+                        <Select
+                          value={newRowRoomId || "none"}
+                          onValueChange={(v) => setNewRowRoomId(v === "none" ? "" : v)}
+                          disabled={addingRowLoading}
+                        >
+                          <SelectTrigger className={`${compactRows ? "h-6 text-xs" : "h-8"} w-[120px]`}>
+                            <SelectValue placeholder={t('budget.selectRoom')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">{t('budget.noRoom')}</SelectItem>
+                            {allRooms.map((room) => (
+                              <SelectItem key={room.id} value={room.id}>
+                                {room.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : null}
+                    </TableCell>
+                  ))}
+                  {/* Save/Cancel buttons in actions column */}
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        className={compactRows ? "h-6 text-xs px-2" : "h-8"}
+                        onClick={handleSaveNewRow}
+                        disabled={addingRowLoading || !newRowName.trim()}
+                      >
+                        {addingRowLoading ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          t('common.save')
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className={compactRows ? "h-6 text-xs px-2" : "h-8"}
+                        onClick={handleCancelAddRow}
                         disabled={addingRowLoading}
                       >
-                        <SelectTrigger className={`${compactRows ? "h-6 text-xs" : "h-8"} w-[100px]`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="task">{t('budget.task')}</SelectItem>
-                          <SelectItem value="material">{t('budget.material')}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : col.key === "budget" ? (
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        className={`${compactRows ? "h-6 text-xs" : "h-8"} w-24 text-right`}
-                        value={newRowBudget}
-                        onChange={(e) => setNewRowBudget(e.target.value)}
-                        onKeyDown={handleNewRowKeyDown}
-                        disabled={addingRowLoading}
-                      />
-                    ) : col.key === "room" ? (
-                      <Select
-                        value={newRowRoomId || "none"}
-                        onValueChange={(v) => setNewRowRoomId(v === "none" ? "" : v)}
-                        disabled={addingRowLoading}
-                      >
-                        <SelectTrigger className={`${compactRows ? "h-6 text-xs" : "h-8"} w-[120px]`}>
-                          <SelectValue placeholder={t('budget.selectRoom')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">{t('budget.noRoom')}</SelectItem>
-                          {allRooms.map((room) => (
-                            <SelectItem key={room.id} value={room.id}>
-                              {room.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : null}
+                        {t('common.cancel')}
+                      </Button>
+                    </div>
                   </TableCell>
-                ))}
-                {/* Save/Cancel buttons in actions column */}
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      size="sm"
-                      className={compactRows ? "h-6 text-xs px-2" : "h-8"}
-                      onClick={handleSaveNewRow}
-                      disabled={addingRowLoading || !newRowName.trim()}
-                    >
-                      {addingRowLoading ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        t('common.save')
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className={compactRows ? "h-6 text-xs px-2" : "h-8"}
-                      onClick={handleCancelAddRow}
-                      disabled={addingRowLoading}
-                    >
-                      {t('common.cancel')}
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              <TableRow
-                className={`hover:bg-muted/50 cursor-pointer${compactRows ? " h-8" : ""}`}
-                onClick={handleStartAddRow}
-              >
-                <TableCell
-                  colSpan={visibleColumns.length + 1}
-                  className={`text-muted-foreground${compactRows ? " py-0.5 px-2 text-xs" : ""}`}
+                </TableRow>
+              ) : (
+                <TableRow
+                  className={`hover:bg-muted/50 cursor-pointer${compactRows ? " h-8" : ""}`}
+                  onClick={handleStartAddRow}
                 >
-                  <span className="inline-flex items-center gap-1.5 text-sm">
-                    <Plus className="h-4 w-4" />
-                    {t('budget.addRow')}
-                  </span>
-                </TableCell>
-              </TableRow>
+                  <TableCell
+                    colSpan={visibleColumns.length + 1}
+                    className={`text-muted-foreground${compactRows ? " py-0.5 px-2 text-xs" : ""}`}
+                  >
+                    <span className="inline-flex items-center gap-1.5 text-sm">
+                      <Plus className="h-4 w-4" />
+                      {t('budget.addRow')}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              )
             )}
           </TableBody>
           {filtered.length > 0 && (
@@ -1753,15 +1900,15 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
                     {renderFooterCell(col)}
                   </TableCell>
                 ))}
-                <TableCell />
+                {isBuilder && <TableCell />}
               </TableRow>
             </TableFooter>
           )}
         </Table>
       </div>
 
-      {/* Budget Charts Section */}
-      <BudgetChartsSection rows={rows} currency={currency} />
+      {/* Budget Charts Section (builder only) */}
+      {isBuilder && <BudgetChartsSection rows={rows} currency={currency} />}
 
       {/* Task Edit Dialog */}
       <TaskEditDialog
@@ -1783,11 +1930,13 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
         currency={currency}
       />
 
-      <InvoiceMethodDialog
-        projectId={projectId}
-        open={invoiceMethodOpen}
-        onOpenChange={setInvoiceMethodOpen}
-      />
+      {isBuilder && (
+        <InvoiceMethodDialog
+          projectId={projectId}
+          open={invoiceMethodOpen}
+          onOpenChange={setInvoiceMethodOpen}
+        />
+      )}
     </div>
   );
 };

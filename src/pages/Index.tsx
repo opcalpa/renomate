@@ -34,8 +34,15 @@ const Index = () => {
   };
 
   const handleDemoProject = () => {
-    // Navigate directly to the public demo project (accessible without login)
     navigate(`/projects/${PUBLIC_DEMO_PROJECT_ID}`);
+  };
+
+  const navigateToDemo = (role: "homeowner" | "contractor", tab?: string) => {
+    localStorage.setItem("demo_view_role", role);
+    if (role === "contractor") {
+      localStorage.removeItem("demo_view_phase");
+    }
+    navigate(`/projects/${PUBLIC_DEMO_PROJECT_ID}${tab ? `?tab=${tab}` : ""}`);
   };
 
   return (
@@ -59,9 +66,7 @@ const Index = () => {
             {/* Text content */}
             <div className="text-center lg:text-left order-1">
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 tracking-tight">
-                {t('landing.heroTitle')}
-                <br />
-                <span className="text-primary">{t('landing.heroSubtitle')}</span>
+                <span className="text-primary">Renomate</span> — {t('landing.heroTitle')} <span style={{ color: '#306839' }}>{t('landing.heroSubtitle')}</span>
               </h1>
               <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl mx-auto lg:mx-0">
                 {t('landing.heroDescription')}
@@ -80,7 +85,10 @@ const Index = () => {
 
             {/* Hero screenshot */}
             <div className="order-2 relative">
-              <div className="relative rounded-xl overflow-hidden shadow-2xl border border-border bg-card">
+              <div
+                className="relative rounded-xl overflow-hidden shadow-2xl border border-border bg-card cursor-pointer hover:shadow-3xl transition-shadow"
+                onClick={() => navigateToDemo("contractor", "tasks")}
+              >
                 <img
                   src="/screenshots/Timeline.png"
                   alt="Renomate project timeline"
@@ -103,31 +111,40 @@ const Index = () => {
             <h2 className="text-2xl font-bold">{t('landing.contractorTitle')}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-card p-6 rounded-xl border border-border hover:border-blue-500/30 transition-colors">
+            <div
+              className="bg-card p-6 rounded-xl border border-border hover:border-blue-500/30 hover:shadow-md transition-all cursor-pointer group"
+              onClick={() => navigateToDemo("contractor", "overview")}
+            >
               <div className="bg-blue-100 dark:bg-blue-900/30 w-10 h-10 rounded-lg flex items-center justify-center mb-3">
                 <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="font-semibold mb-1">{t('landing.co1Title')}</h3>
+              <h3 className="font-semibold mb-1 group-hover:text-blue-600 transition-colors">{t('landing.co1Title')}</h3>
               <p className="text-sm text-muted-foreground">
                 {t('landing.co1Desc')}
               </p>
             </div>
 
-            <div className="bg-card p-6 rounded-xl border border-border hover:border-blue-500/30 transition-colors">
+            <div
+              className="bg-card p-6 rounded-xl border border-border hover:border-blue-500/30 hover:shadow-md transition-all cursor-pointer group"
+              onClick={() => navigateToDemo("contractor", "tasks")}
+            >
               <div className="bg-blue-100 dark:bg-blue-900/30 w-10 h-10 rounded-lg flex items-center justify-center mb-3">
                 <LayoutDashboard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="font-semibold mb-1">{t('landing.co2Title')}</h3>
+              <h3 className="font-semibold mb-1 group-hover:text-blue-600 transition-colors">{t('landing.co2Title')}</h3>
               <p className="text-sm text-muted-foreground">
                 {t('landing.co2Desc')}
               </p>
             </div>
 
-            <div className="bg-card p-6 rounded-xl border border-border hover:border-blue-500/30 transition-colors">
+            <div
+              className="bg-card p-6 rounded-xl border border-border hover:border-blue-500/30 hover:shadow-md transition-all cursor-pointer group"
+              onClick={() => navigateToDemo("contractor", "team")}
+            >
               <div className="bg-blue-100 dark:bg-blue-900/30 w-10 h-10 rounded-lg flex items-center justify-center mb-3">
                 <HardHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="font-semibold mb-1">{t('landing.co3Title')}</h3>
+              <h3 className="font-semibold mb-1 group-hover:text-blue-600 transition-colors">{t('landing.co3Title')}</h3>
               <p className="text-sm text-muted-foreground">
                 {t('landing.co3Desc')}
               </p>
@@ -135,7 +152,10 @@ const Index = () => {
           </div>
 
           {/* Contractor screenshot */}
-          <div className="relative rounded-xl overflow-hidden shadow-xl border border-blue-200 dark:border-blue-800/50 bg-card">
+          <div
+            className="relative rounded-xl overflow-hidden shadow-xl border border-blue-200 dark:border-blue-800/50 bg-card cursor-pointer hover:shadow-2xl transition-shadow"
+            onClick={() => navigateToDemo("contractor", "tasks")}
+          >
             <img
               src="/screenshots/Kanban.png"
               alt="Task management kanban board"
@@ -153,7 +173,10 @@ const Index = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Floor Planner */}
-            <div className="relative rounded-xl overflow-hidden shadow-lg border border-border bg-card">
+            <div
+              className="relative rounded-xl overflow-hidden shadow-lg border border-border bg-card cursor-pointer hover:shadow-xl transition-shadow"
+              onClick={() => navigateToDemo("contractor", "spaceplanner")}
+            >
               <img
                 src="/screenshots/Floorplan.png"
                 alt="Floor planner"
@@ -166,7 +189,10 @@ const Index = () => {
               </div>
             </div>
             {/* Overview */}
-            <div className="relative rounded-xl overflow-hidden shadow-lg border border-border bg-card">
+            <div
+              className="relative rounded-xl overflow-hidden shadow-lg border border-border bg-card cursor-pointer hover:shadow-xl transition-shadow"
+              onClick={() => navigateToDemo("contractor", "overview")}
+            >
               <img
                 src="/screenshots/Overview.png"
                 alt="Project overview"
@@ -190,31 +216,40 @@ const Index = () => {
             <h2 className="text-2xl font-bold">{t('landing.homeownerTitle')}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-card p-6 rounded-xl border border-border hover:border-emerald-500/30 transition-colors">
+            <div
+              className="bg-card p-6 rounded-xl border border-border hover:border-emerald-500/30 hover:shadow-md transition-all cursor-pointer group"
+              onClick={() => navigateToDemo("homeowner", "tasks")}
+            >
               <div className="bg-emerald-100 dark:bg-emerald-900/30 w-10 h-10 rounded-lg flex items-center justify-center mb-3">
                 <ClipboardList className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <h3 className="font-semibold mb-1">{t('landing.ho1Title')}</h3>
+              <h3 className="font-semibold mb-1 group-hover:text-emerald-600 transition-colors">{t('landing.ho1Title')}</h3>
               <p className="text-sm text-muted-foreground">
                 {t('landing.ho1Desc')}
               </p>
             </div>
 
-            <div className="bg-card p-6 rounded-xl border border-border hover:border-emerald-500/30 transition-colors">
+            <div
+              className="bg-card p-6 rounded-xl border border-border hover:border-emerald-500/30 hover:shadow-md transition-all cursor-pointer group"
+              onClick={() => navigateToDemo("homeowner", "overview")}
+            >
               <div className="bg-emerald-100 dark:bg-emerald-900/30 w-10 h-10 rounded-lg flex items-center justify-center mb-3">
                 <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <h3 className="font-semibold mb-1">{t('landing.ho2Title')}</h3>
+              <h3 className="font-semibold mb-1 group-hover:text-emerald-600 transition-colors">{t('landing.ho2Title')}</h3>
               <p className="text-sm text-muted-foreground">
                 {t('landing.ho2Desc')}
               </p>
             </div>
 
-            <div className="bg-card p-6 rounded-xl border border-border hover:border-emerald-500/30 transition-colors">
+            <div
+              className="bg-card p-6 rounded-xl border border-border hover:border-emerald-500/30 hover:shadow-md transition-all cursor-pointer group"
+              onClick={() => navigateToDemo("homeowner", "budget")}
+            >
               <div className="bg-emerald-100 dark:bg-emerald-900/30 w-10 h-10 rounded-lg flex items-center justify-center mb-3">
                 <Wallet className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <h3 className="font-semibold mb-1">{t('landing.ho3Title')}</h3>
+              <h3 className="font-semibold mb-1 group-hover:text-emerald-600 transition-colors">{t('landing.ho3Title')}</h3>
               <p className="text-sm text-muted-foreground">
                 {t('landing.ho3Desc')}
               </p>
@@ -222,7 +257,10 @@ const Index = () => {
           </div>
 
           {/* Homeowner screenshot - Budget tracking */}
-          <div className="relative rounded-xl overflow-hidden shadow-xl border border-emerald-200 dark:border-emerald-800/50 bg-card">
+          <div
+            className="relative rounded-xl overflow-hidden shadow-xl border border-emerald-200 dark:border-emerald-800/50 bg-card cursor-pointer hover:shadow-2xl transition-shadow"
+            onClick={() => navigateToDemo("homeowner", "budget")}
+          >
             <img
               src="/screenshots/Budget.png"
               alt="Budget tracking overview"

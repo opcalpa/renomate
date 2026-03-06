@@ -220,4 +220,5 @@ export const DEFAULT_FORM_VALUES = {
   joinery_spec: {},
   electrical_spec: {},
   heating_spec: {},
+  checklists: [],
 };

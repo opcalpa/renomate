@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+// Checklist types (shared with tasks)
+export interface ChecklistItem { id: string; title: string; completed: boolean; }
+export interface Checklist { id: string; title: string; items: ChecklistItem[]; }
+
 // Base room interface matching Supabase schema
 export interface Room {
   id: string;
@@ -33,6 +37,7 @@ export interface Room {
   floor_plan_position: {
     points?: { x: number; y: number }[];
   } | null;
+  checklists?: Checklist[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -130,6 +135,7 @@ export const roomFormSchema = z.object({
   joinery_spec: joinerySpecSchema,
   electrical_spec: electricalSpecSchema,
   heating_spec: heatingSpecSchema,
+  checklists: z.array(z.any()).optional(),
 });
 
 export type RoomFormData = z.infer<typeof roomFormSchema>;

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Home, Ruler, Calendar, AlertTriangle, TriangleAlert } from "lucide-react";
+import { Ruler, Calendar, AlertTriangle, TriangleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ComboboxFretext } from "../fields/ComboboxFretext";
 import {
-  ROOM_NAME_SUGGESTION_KEYS,
   ROOM_STATUS_OPTIONS,
   PRIORITY_OPTIONS,
 } from "../constants";
@@ -69,22 +67,6 @@ export function IdentitySection({
           <span>{t('rooms.createdOn', 'Skapad')}: {formattedDate}</span>
         </div>
       )}
-
-      {/* Room name with combobox */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Home className="h-4 w-4 text-gray-600" />
-          <Label htmlFor="room-name">{t('identitySection.roomName')}</Label>
-        </div>
-        <ComboboxFretext
-          id="room-name"
-          suggestionKeys={ROOM_NAME_SUGGESTION_KEYS}
-          value={formData.name}
-          onChange={(value) => updateFormData({ name: value })}
-          placeholder={t('identitySection.selectOrType')}
-          searchPlaceholder={t('identitySection.searchOrType')}
-        />
-      </div>
 
       {/* Status and Priority side by side */}
       <div className="grid grid-cols-2 gap-4">

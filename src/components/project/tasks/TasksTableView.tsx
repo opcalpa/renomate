@@ -43,9 +43,10 @@ import {
   Trash2,
   ToggleLeft,
 } from "lucide-react";
-import { useTasksTableView } from "./useTasksTableView";
+import { useTasksTableView, type TasksTableViewState } from "./useTasksTableView";
 import { TaskColumnKey, TaskColumnDef, EXTRA_COLUMN_KEYS } from "./tasksTableTypes";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
+import { getStatusBadgeColor } from "@/lib/statusColors";
 
 interface Task {
   id: string;
@@ -102,6 +103,8 @@ export interface TasksTableViewProps {
   getStatusIcon: (status: string) => ReactNode;
   getPriorityColor: (priority: string) => string;
   getAssignedMemberName: (task: Task) => string | null;
+  tableViewState?: TasksTableViewState;
+  hideToolbar?: boolean;
 }
 
 const DB_FIELD_MAP: Record<TaskColumnKey, string> = {
@@ -116,8 +119,8 @@ const DB_FIELD_MAP: Record<TaskColumnKey, string> = {
   dueDate: "due_date",
   progress: "progress",
   budget: "budget",
-  orderedAmount: "ordered_amount",
   paidAmount: "paid_amount",
+  remaining: "",
   paymentStatus: "payment_status",
   costCenter: "cost_center",
   estimatedHours: "estimated_hours",
@@ -139,8 +142,8 @@ const SORT_FIELD_MAP: Record<TaskColumnKey, keyof Task | null> = {
   dueDate: "due_date",
   progress: "progress",
   budget: "budget",
-  orderedAmount: "ordered_amount",
   paidAmount: "paid_amount",
+  remaining: null,
   paymentStatus: "payment_status",
   costCenter: "cost_center",
   estimatedHours: "estimated_hours",
@@ -164,10 +167,13 @@ export function TasksTableView({
   getStatusIcon,
   getPriorityColor,
   getAssignedMemberName,
+  tableViewState: externalState,
+  hideToolbar,
 }: TasksTableViewProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
 
+  const internalState = useTasksTableView(projectId);
   const {
     ALL_COLUMNS,
     visibleColumns,
@@ -188,7 +194,7 @@ export function TasksTableView({
     saveView,
     loadView,
     deleteView,
-  } = useTasksTableView(projectId);
+  } = externalState || internalState;
 
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{
@@ -303,7 +309,7 @@ export function TasksTableView({
       case "status":
         if (isReadOnly) {
           return (
-            <Badge variant="outline" className="text-xs">
+            <Badge className={cn("text-xs border", getStatusBadgeColor(task.status))}>
               {statusLabels[task.status] || task.status}
             </Badge>
           );
@@ -314,7 +320,7 @@ export function TasksTableView({
             onValueChange={(v) => handleCellSave(task.id, "status", v)}
           >
             <SelectTrigger
-              className="h-8 w-[120px] text-xs"
+              className={cn("h-8 w-[120px] text-xs border", getStatusBadgeColor(task.status))}
               onClick={(e) => e.stopPropagation()}
             >
               <SelectValue />
@@ -517,8 +523,21 @@ export function TasksTableView({
         );
       }
 
+      case "remaining": {
+        const budget = task.budget;
+        const paid = task.paid_amount;
+        if (budget == null) {
+          return <span className="text-muted-foreground text-xs">-</span>;
+        }
+        const rem = budget - (paid || 0);
+        return (
+          <span className={cn("text-sm", rem < 0 && "text-destructive")}>
+            {formatCurrency(rem, currency)}
+          </span>
+        );
+      }
+
       case "budget":
-      case "orderedAmount":
       case "paidAmount":
       case "estimatedHours":
       case "hourlyRate":
@@ -527,7 +546,6 @@ export function TasksTableView({
       case "markupPercent": {
         const fieldMap: Record<string, keyof Task> = {
           budget: "budget",
-          orderedAmount: "ordered_amount",
           paidAmount: "paid_amount",
           estimatedHours: "estimated_hours",
           hourlyRate: "hourly_rate",
@@ -538,7 +556,6 @@ export function TasksTableView({
         const rawValue = task[fieldMap[col.key]] as number | null;
         const isCurrency = [
           "budget",
-          "orderedAmount",
           "paidAmount",
           "hourlyRate",
           "subcontractorCost",
@@ -712,7 +729,7 @@ export function TasksTableView({
   return (
     <div className="space-y-2">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
+      {!hideToolbar && <div className="flex items-center gap-2 flex-wrap">
         {/* Columns toggle */}
         <Popover>
           <PopoverTrigger asChild>
@@ -831,7 +848,7 @@ export function TasksTableView({
             </PopoverContent>
           </Popover>
         )}
-      </div>
+      </div>}
 
       {/* Table */}
       <Card>

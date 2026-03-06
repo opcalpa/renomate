@@ -471,14 +471,36 @@
     "noTasks": "No tasks match current filters",
     "failedToUpdateField": "Failed to update field",
     "dueDate": "Due date",
-    "orderedAmount": "Ordered",
     "paidAmount": "Paid",
+    "remaining": "Remaining",
     "paymentStatus": "Payment status",
     "estimatedHours": "Est. hours",
     "hourlyRate": "Hourly rate",
     "subcontractorCost": "Subcontractor",
     "materialEstimate": "Material est.",
     "markupPercent": "Markup %"
+  },
+  "purchasesTable": {
+    "columns": "Columns",
+    "extraColumns": "Extra columns",
+    "compactRows": "Compact",
+    "saveView": "Save view",
+    "viewName": "View name...",
+    "viewSaved": "View saved",
+    "viewSavedDescription": "\"{{name}}\" has been saved",
+    "savedViews": "Saved views",
+    "viewLoaded": "View loaded",
+    "viewLoadedDescription": "\"{{name}}\" applied",
+    "noMaterials": "No purchases match current filters",
+    "failedToUpdateField": "Failed to update field",
+    "dropPurchasesHere": "Drop purchases here",
+    "hideEmptyColumns": "Hide empty columns",
+    "showEmptyColumns": "Show empty columns",
+    "noTask": "No task",
+    "noRoom": "No room",
+    "remaining": "Remaining",
+    "date": "Date",
+    "attachment": "Attachment"
   },
   "rooms": {
     "title": "Rooms",
@@ -650,6 +672,10 @@
     "unnamed": "Unnamed room",
     "ceilingHeightShort": "h",
     "relatedTasks": "Related Tasks",
+    "checklists": "Checklists",
+    "checklist": "Checklist",
+    "addChecklist": "Add checklist",
+    "addItem": "Add item...",
     "relatedPurchases": "Related Purchases",
     "relatedPurchaseOrders": "Purchase Orders",
     "visionTitle": "Client requirements",
@@ -1094,6 +1120,28 @@
     "description": "Give the room a name that will be shown on the floor plan.",
     "placeholder": "e.g. Living room, Kitchen..."
   },
+  "roomPresets": {
+    "kitchen": "Kitchen",
+    "bedroom": "Bedroom",
+    "livingRoom": "Living Room",
+    "bathroom": "Bathroom",
+    "hallway": "Hallway",
+    "laundry": "Laundry Room"
+  },
+  "insights": {
+    "totalArea": "Total area",
+    "rooms": "rooms",
+    "room": "Room",
+    "area": "Area",
+    "wallArea": "Wall area",
+    "paint": "Paint",
+    "total": "Total",
+    "liters": "L",
+    "noRooms": "Draw rooms to see insights",
+    "propertyInsights": "Property Insights",
+    "expandDetails": "Show details",
+    "collapseDetails": "Hide details"
+  },
   "minimap": {
     "showOverview": "Show overview map",
     "overviewMap": "Overview Map",
@@ -1417,7 +1465,16 @@
     "groupByPriority": "Priority",
     "filters": "Filters",
     "dependenciesCascaded": "Also moved {{count}} dependent task(s)",
-    "weekShort": "W"
+    "weekShort": "W",
+    "missingProjectDates": "Missing project dates",
+    "goalDate": "Goal date",
+    "goal": "Goal",
+    "reminderSingular": "1 reminder",
+    "reminders": "{{count}} reminders",
+    "projectDates": "Project dates",
+    "projectDatesTitle": "Project dates",
+    "setDate": "Set date",
+    "showFullProject": "Show full project period"
   },
   "statuses": {
     "ideas": "Ideas",
@@ -1528,6 +1585,24 @@
     "openingRoomDetails": "Opening room details",
     "roomMustBeSavedFirst": "Room must be named and saved first.",
     "openingPropertyPanel": "Opening property panel",
+    "tools": {
+      "select": "Select",
+      "room": "Room",
+      "doorWindow": "Door / Window",
+      "doorLine": "Door",
+      "windowLine": "Window",
+      "slidingDoor": "Sliding Door",
+      "measure": "Measure",
+      "moreTools": "More tools",
+      "lessTools": "Fewer tools",
+      "freehand": "Freehand",
+      "triangle": "Triangle",
+      "bezier": "Curve",
+      "text": "Text",
+      "eraser": "Eraser",
+      "scissors": "Split Line",
+      "glue": "Merge"
+    },
     "hoverInfo": {
       "wall": "Wall",
       "line": "Line",
@@ -1801,7 +1876,10 @@
     "assignedTo": "Assigned To",
     "statusChangedTo": "Status changed to {{status}}",
     "linkedTo": "Linked to",
-    "excludedFromBudget": "ÄTA (Change order)"
+    "excludedFromBudget": "ÄTA (Change order)",
+    "connections": "Connections",
+    "photos": "Photos",
+    "comments": "Comments"
   },
   "overview": {
     "projectOverview": "Project Overview",
@@ -1996,6 +2074,15 @@
     "description": "Unified view of task budgets and material costs. Drag column headers to reorder.",
     "name": "Name",
     "type": "Type",
+    "status": "Status",
+    "estimatedHours": "Est. hours",
+    "hourlyRate": "Hourly rate",
+    "subcontractorCost": "Subcontractor",
+    "paymentStatus": "Payment",
+    "quantity": "Quantity",
+    "pricePerUnit": "Price/unit",
+    "orderedAmount": "Ordered",
+    "vendor": "Vendor",
     "ordered": "Ordered",
     "paid": "Paid",
     "remaining": "Remaining",
@@ -2100,6 +2187,8 @@
     "matBudget": "Mat. budget",
     "matConsumed": "Consumed",
     "matRemaining": "Mat. remaining",
+    "financialSummary": "Financial summary",
+    "priceChangedWarning": "Customer price differs from original quote amount. This won't update the quote.",
     "unlinkedWarning": "Not linked to a task — won't be tracked against task budget",
     "linkedMaterials": "{{count}} material",
     "builder": {
@@ -2111,7 +2200,16 @@
       "ata": "ATA",
       "createInvoice": "Create Invoice",
       "invoices": "Invoices",
-      "newInvoice": "New"
+      "newInvoice": "New",
+      "contractDetails": "Contract Details",
+      "invoiceList": "Invoiced — Details",
+      "receivedList": "Received Payments",
+      "overdueList": "Overdue Invoices",
+      "ataList": "ATA / Change Orders",
+      "noItems": "No items",
+      "viewQuote": "View quote",
+      "viewInvoice": "View invoice",
+      "outstanding": "Outstanding"
     }
   },
   "budgetCharts": {
@@ -2124,6 +2222,38 @@
     "byCostCenter": "By cost center",
     "noCostCenter": "No cost center",
     "noData": "No data to display"
+  },
+  "homeownerBudget": {
+    "myBudget": "My Budget",
+    "quoted": "Quoted",
+    "invoiced": "Invoiced",
+    "paid": "Paid",
+    "disposableFunds": "Disposable Funds",
+    "used": "used",
+    "totalBudget": "Total budget",
+    "contracted": "Contracted (quote)",
+    "ownPurchases": "Own purchases",
+    "ataChanges": "Additional work (ATA)",
+    "availableToSpend": "Available to spend",
+    "unpaidInvoices": "Outstanding balance (unpaid invoices)",
+    "outstandingBalance": "Outstanding",
+    "outstandingShort": "Outstanding",
+    "outstanding": "Outstanding",
+    "remaining": "remaining",
+    "setBudget": "Set budget",
+    "budgetUpdated": "Budget updated",
+    "failedToUpdateBudget": "Could not update budget",
+    "budgetFromQuote": "From accepted quote",
+    "noBudgetDescription": "Set a total budget for your renovation to track spending.",
+    "quoteOverview": "Quote Overview",
+    "invoices": "Invoices",
+    "myPurchases": "My Purchases",
+    "totalInvoiced": "Total invoiced",
+    "totalPaid": "Total paid",
+    "afterRot": "After ROT",
+    "deduction": "deduction",
+    "paidBadge": "Paid",
+    "ataShort": "ATA"
   },
   "budgetDashboard": {
     "failedToLoadPayments": "Failed to load payment details",
@@ -2193,6 +2323,9 @@
     "taskUpdated": "Task updated successfully",
     "poCreated": "Purchase Order created and linked to task",
     "poCreatedAndLinked": "Purchase Order created and linked to task",
+    "finances": "Finances",
+    "photosAndFiles": "Photos & Files",
+    "comments": "Comments",
     "failedToLoad": "Failed to load task details",
     "failedToUpdate": "Failed to update task",
     "failedToCreatePO": "Failed to create purchase order",
@@ -2628,7 +2761,7 @@
     "placeholder": "Write a message...",
     "send": "Send",
     "noMessages": "No messages yet. Send a message to start the conversation.",
-    "privateNotice": "Messages are private between you and this professional.",
+    "privateNotice": "Only project members can see these messages.",
     "messageSent": "Message sent",
     "messageSentDescription": "Your message has been delivered.",
     "deleteMessage": "Delete message",
@@ -3655,5 +3788,102 @@
     "spent": "Spent",
     "remainingToBuy": "Remaining to buy",
     "plannedMaterials": "Planned materials"
+  },
+  "demo": {
+    "roleModal": {
+      "title": "How would you like to explore?",
+      "subtitle": "Choose your perspective to see the demo"
+    },
+    "banner": {
+      "builder": "Demo - Builder",
+      "homeowner": "Demo - Homeowner",
+      "changeRole": "Change role",
+      "signUp": "Create account"
+    },
+    "phases": {
+      "planning": "Planning",
+      "quoteSent": "Quote sent",
+      "active": "Active project"
+    },
+    "homeownerContext": {
+      "overview": "You are viewing your own project — this is how it looks when you manage a renovation yourself.",
+      "customerView": "You are viewing the Client View — this is what you see when a builder invites you to follow your project."
+    }
+  },
+  "demoGuide": {
+    "homeowner": {
+      "overview": {
+        "title": "Your Project Dashboard",
+        "body": "This is the home page for you as a homeowner when you manage your own renovation project — with help from builders, painters, and other professionals.\n\nHere you get full insight into tasks, material purchases, budget, and more.",
+        "tip": "Tip: The summary cards at the top give you a quick snapshot of the project's status."
+      },
+      "customer": {
+        "title": "Client View",
+        "body": "This page is available when you as a client have been invited by your building contractor to follow the renovation process.\n\nHere you can see the timeline, keep track of finances, and communicate with your project team.",
+        "tip": "Tip: This is a simplified view — your builder controls what information is shared here."
+      },
+      "tasks": {
+        "title": "Tasks",
+        "body": "Here you can see all the tasks in your renovation — from demolition and electrical work to painting and final cleaning.\n\nEach task shows status, schedule, and who is responsible.",
+        "tip": "Tip: Click on a task to see full details and any linked materials."
+      },
+      "purchases": {
+        "title": "Purchases",
+        "body": "Here you'll find all material orders and purchases for your project — tiles, fixtures, countertops, and more.\n\nYou can track status from order to delivery.",
+        "tip": "Tip: Drag cards between columns to update the status of a purchase."
+      },
+      "budget": {
+        "title": "Budget",
+        "body": "The budget page gives you full control over your renovation's finances.\n\nSee what has been quoted, what has been paid, and what remains for each item.",
+        "tip": "Tip: Use the Columns button to add extra columns like 'Paid' and 'Outstanding'."
+      },
+      "spaceplanner": {
+        "title": "Space Planner",
+        "body": "The floor plan gives you a visual overview of your home's rooms and layout.\n\nView room details, checklists, and linked tasks for each space.",
+        "tip": "Tip: Click on a room to see all tasks and materials connected to it."
+      },
+      "files": {
+        "title": "Files",
+        "body": "All project documents are collected here — quotes, invoices, drawings, photos, and more.\n\nEverything organized and accessible in one place.",
+        "tip": ""
+      }
+    },
+    "contractor": {
+      "overview": {
+        "title": "Welcome — Planning Phase",
+        "body": "You're starting in the Planning phase — where every project begins. Here you define the scope, add tasks, and prepare a quote for the client.\n\nWhen you're ready, use the phase stepper in the bar above to switch to 'Quote sent' and 'Active project' to see how the project evolves through each stage.",
+        "tip": "Tip: Try all three phases! Each one unlocks different tools and views tailored to that stage of the project."
+      },
+      "tasks": {
+        "title": "Task Management",
+        "body": "Plan and track all tasks in the project. Assign team members, set schedules, link materials, and monitor progress.\n\nSwitch between table and kanban view depending on your workflow.",
+        "tip": "Tip: Drag tasks between columns in kanban view to quickly update their status."
+      },
+      "purchases": {
+        "title": "Purchase Orders",
+        "body": "Manage material orders, track deliveries, and keep spending under control.\n\nEach order can be linked to a task and room for full traceability.",
+        "tip": "Tip: Use the filter button to quickly find orders by status, room, or vendor."
+      },
+      "budget": {
+        "title": "Budget & Margins",
+        "body": "Full financial overview with customer prices, actual costs, margins, and material budgets.\n\nInline-edit values directly in the table for fast updates.",
+        "tip": "Tip: The 'Result' column shows your margin per task — red means you're over budget."
+      },
+      "spaceplanner": {
+        "title": "Space Planner",
+        "body": "Draw floor plans, define rooms, and link tasks and materials to specific spaces.\n\nUse the room checklist to track renovation scope per room.",
+        "tip": "Tip: Switch to 'Floor Plan' in the sub-tabs to use the full drawing canvas."
+      },
+      "files": {
+        "title": "Project Files",
+        "body": "Collect all project documents — quotes, invoices, drawings, contracts, and photos.\n\nLink files to specific tasks or materials for easy reference.",
+        "tip": ""
+      },
+      "team": {
+        "title": "Team Management",
+        "body": "Invite subcontractors, clients, and team members to your project.\n\nControl exactly what each person can see and do with granular permissions.",
+        "tip": "Tip: Use the role presets to quickly set appropriate access levels for clients vs. team members."
+      }
+    }
   }
 }

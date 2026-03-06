@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { getStatusBadgeColor } from "@/lib/statusColors";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -433,18 +434,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated, o
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-emerald-500/90 text-white";
-      case "in_progress":
-        return "bg-blue-500/90 text-white";
-      case "waiting":
-        return "bg-yellow-500/90 text-white";
-      default:
-        return "bg-slate-400/90 text-white";
-    }
-  };
+  const getStatusColor = (status: string) => getStatusBadgeColor(status);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {

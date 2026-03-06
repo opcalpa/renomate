@@ -577,8 +577,7 @@ const Projects = () => {
         <section id="projekt" className="scroll-mt-20">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
-            <h2 className="text-2xl font-semibold mb-2">{t('projects.title')}</h2>
-            <p className="text-muted-foreground">{t('projects.description')}</p>
+            <h2 className="text-2xl font-semibold">{t('projects.title')}</h2>
           </div>
           <div className="flex gap-2 flex-wrap">
             <WithHotspot
@@ -590,7 +589,7 @@ const Projects = () => {
               <Button onClick={() => setDialogOpen(true)} className="flex-1 sm:flex-none">
                 <Plus className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">
-                  {isContractor ? t('projects.newAssignment') : t('projects.newProject')}
+                  {t('projects.newProject')}
                 </span>
                 <span className="sm:hidden">{t('common.create', 'Skapa')}</span>
               </Button>
@@ -599,7 +598,7 @@ const Projects = () => {
             <DialogContent className={createMethod === "choose" ? "sm:max-w-lg" : undefined}>
               <DialogHeader>
                 <DialogTitle>
-                  {isContractor ? t('projects.newAssignment') : t('projects.createProjectTitle')}
+                  {t('projects.newProject')}
                 </DialogTitle>
                 <DialogDescription>
                   {createMethod === "choose"

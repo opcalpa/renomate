@@ -1,0 +1,759 @@
+import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
+import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
+import { getStatusBadgeColor } from "@/lib/statusColors";
+import {
+  Pencil,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Columns3,
+  Save,
+  Trash2,
+  ToggleLeft,
+  ExternalLink,
+} from "lucide-react";
+import { usePurchasesTableView, type PurchasesTableViewState } from "./usePurchasesTableView";
+import { PurchaseColumnKey, PurchaseColumnDef, EXTRA_COLUMN_KEYS } from "./purchasesTypes";
+
+interface Material {
+  id: string;
+  name: string;
+  description?: string | null;
+  quantity: number;
+  unit: string;
+  price_per_unit: number | null;
+  price_total: number | null;
+  ordered_amount: number | null;
+  paid_amount: number | null;
+  vendor_name: string | null;
+  vendor_link: string | null;
+  status: string;
+  exclude_from_budget: boolean;
+  created_at: string;
+  task_id: string | null;
+  room_id: string | null;
+  created_by_user_id: string | null;
+  assigned_to_user_id: string | null;
+  creator?: { name: string } | null;
+  assigned_to?: { name: string } | null;
+  task?: { title: string } | null;
+  room?: { name: string } | null;
+  hasAttachment?: boolean;
+  attachmentCount?: number;
+}
+
+export interface PurchasesTableViewProps {
+  materials: Material[];
+  projectId: string;
+  rooms: { id: string; name: string }[];
+  tasks: { id: string; title: string }[];
+  teamMembers: { id: string; name: string }[];
+  currency?: string | null;
+  isReadOnly?: boolean;
+  onMaterialClick: (material: Material) => void;
+  onMaterialUpdated: () => void;
+  canEditMaterial: (material: Material) => boolean;
+  getStatusColor: (status: string) => string;
+  tableViewState?: PurchasesTableViewState;
+  hideToolbar?: boolean;
+}
+
+const SORT_FIELD_MAP: Record<PurchaseColumnKey, string | null> = {
+  name: "name",
+  status: "status",
+  quantity: "quantity",
+  pricePerUnit: "price_per_unit",
+  priceTotal: "price_total",
+  paidAmount: "paid_amount",
+  remaining: null,
+  vendor: "vendor_name",
+  room: "room_id",
+  task: "task_id",
+  assignedTo: "assigned_to_user_id",
+  createdBy: "created_by_user_id",
+  createdAt: "created_at",
+  attachment: null,
+  actions: null,
+};
+
+const DB_FIELD_MAP: Record<PurchaseColumnKey, string> = {
+  name: "name",
+  status: "status",
+  quantity: "quantity",
+  pricePerUnit: "price_per_unit",
+  priceTotal: "price_total",
+  paidAmount: "paid_amount",
+  remaining: "",
+  vendor: "vendor_name",
+  room: "room_id",
+  task: "task_id",
+  assignedTo: "assigned_to_user_id",
+  createdBy: "",
+  createdAt: "",
+  attachment: "",
+  actions: "",
+};
+
+export function PurchasesTableView({
+  materials,
+  projectId,
+  rooms,
+  tasks,
+  teamMembers,
+  currency,
+  isReadOnly,
+  onMaterialClick,
+  onMaterialUpdated,
+  canEditMaterial,
+  getStatusColor,
+  tableViewState: externalState,
+  hideToolbar,
+}: PurchasesTableViewProps) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+
+  const internalState = usePurchasesTableView(projectId);
+  const {
+    ALL_COLUMNS,
+    visibleColumns,
+    visibleExtras,
+    toggleExtraColumn,
+    sortKey,
+    sortDir,
+    handleSort,
+    handleDragStart,
+    handleDragOver,
+    handleDrop,
+    handleDragEnd,
+    dragColIdx,
+    dragOverIdx,
+    compactRows,
+    setCompactRows,
+    savedViews,
+    saveView,
+    loadView,
+    deleteView,
+  } = externalState || internalState;
+
+  // Inline editing state
+  const [editingCell, setEditingCell] = useState<{
+    rowId: string;
+    col: PurchaseColumnKey;
+  } | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  // Save view UI state
+  const [saveViewOpen, setSaveViewOpen] = useState(false);
+  const [saveViewName, setSaveViewName] = useState("");
+  const [loadViewOpen, setLoadViewOpen] = useState(false);
+
+  // Sort materials
+  const sortedMaterials = [...materials].sort((a, b) => {
+    if (!sortKey) return 0;
+    const field = SORT_FIELD_MAP[sortKey];
+    if (!field) return 0;
+
+    const aValue = (a as Record<string, unknown>)[field];
+    const bValue = (b as Record<string, unknown>)[field];
+
+    if (aValue === null || aValue === undefined)
+      return sortDir === "asc" ? 1 : -1;
+    if (bValue === null || bValue === undefined)
+      return sortDir === "asc" ? -1 : 1;
+
+    const aComp = typeof aValue === "string" ? aValue.toLowerCase() : aValue;
+    const bComp = typeof bValue === "string" ? bValue.toLowerCase() : bValue;
+
+    if (aComp < bComp) return sortDir === "asc" ? -1 : 1;
+    if (aComp > bComp) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  // Inline cell save
+  const handleCellSave = useCallback(
+    async (materialId: string, colKey: PurchaseColumnKey, value: unknown) => {
+      const dbField = DB_FIELD_MAP[colKey];
+      if (!dbField) return;
+
+      const { error } = await supabase
+        .from("materials")
+        .update({ [dbField]: value })
+        .eq("id", materialId);
+
+      if (error) {
+        toast({
+          title: t("common.error"),
+          description: t("purchasesTable.failedToUpdateField"),
+          variant: "destructive",
+        });
+      } else {
+        onMaterialUpdated();
+      }
+      setEditingCell(null);
+    },
+    [onMaterialUpdated, t, toast]
+  );
+
+  const handleNumericSave = useCallback(
+    (materialId: string, colKey: PurchaseColumnKey) => {
+      const numValue = editValue === "" ? null : parseFloat(editValue);
+      if (editValue !== "" && isNaN(numValue as number)) {
+        setEditingCell(null);
+        return;
+      }
+      handleCellSave(materialId, colKey, numValue);
+    },
+    [editValue, handleCellSave]
+  );
+
+  const getSortIcon = (key: PurchaseColumnKey) => {
+    if (sortKey !== key) return <ArrowUpDown className="h-3 w-3 ml-1" />;
+    return sortDir === "asc" ? (
+      <ArrowUp className="h-3 w-3 ml-1" />
+    ) : (
+      <ArrowDown className="h-3 w-3 ml-1" />
+    );
+  };
+
+  const statusOptions = [
+    { value: "submitted", labelKey: "materialStatuses.submitted" },
+    { value: "approved", labelKey: "materialStatuses.approved" },
+    { value: "billed", labelKey: "materialStatuses.billed" },
+    { value: "paid", labelKey: "materialStatuses.paid" },
+    { value: "paused", labelKey: "materialStatuses.paused" },
+    { value: "declined", labelKey: "materialStatuses.declined" },
+  ];
+
+  const renderCell = (col: PurchaseColumnDef, material: Material) => {
+    const isEditing =
+      editingCell?.rowId === material.id && editingCell?.col === col.key;
+
+    switch (col.key) {
+      case "name":
+        return (
+          <span className="flex items-center gap-1.5 font-medium">
+            {material.name}
+            {material.exclude_from_budget && (
+              <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-300 shrink-0">
+                ÄTA
+              </Badge>
+            )}
+          </span>
+        );
+
+      case "status":
+        if (isReadOnly) {
+          return (
+            <Badge className={cn("text-xs border", getStatusBadgeColor(material.status))}>
+              {t(`materialStatuses.${material.status}`, material.status)}
+            </Badge>
+          );
+        }
+        return (
+          <Select
+            value={material.status || "submitted"}
+            onValueChange={(v) => handleCellSave(material.id, "status", v)}
+          >
+            <SelectTrigger
+              className={cn("h-8 w-[120px] text-xs border", getStatusBadgeColor(material.status))}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {t(opt.labelKey)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+
+      case "quantity":
+        return (
+          <span className="text-sm">
+            {material.quantity} {material.unit}
+          </span>
+        );
+
+      case "remaining": {
+        const total = material.price_total;
+        const paid = material.paid_amount;
+        if (total == null) {
+          return <span className="text-muted-foreground text-xs">-</span>;
+        }
+        const rem = total - (paid || 0);
+        return (
+          <span className={cn("text-sm", rem < 0 && "text-destructive")}>
+            {formatCurrency(rem, currency, { decimals: 2 })}
+          </span>
+        );
+      }
+
+      case "pricePerUnit":
+      case "priceTotal":
+      case "paidAmount": {
+        const fieldMap: Record<string, keyof Material> = {
+          pricePerUnit: "price_per_unit",
+          priceTotal: "price_total",
+          paidAmount: "paid_amount",
+        };
+        const val = material[fieldMap[col.key]] as number | null;
+        const isBold = col.key === "priceTotal";
+
+        if (isReadOnly || !canEditMaterial(material)) {
+          return val != null ? (
+            <span className={cn("text-sm", isBold && "font-semibold")}>
+              {formatCurrency(val, currency, { decimals: 2 })}
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-xs">-</span>
+          );
+        }
+
+        if (isEditing) {
+          return (
+            <Input
+              autoFocus
+              type="number"
+              step="0.01"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={() => handleNumericSave(material.id, col.key)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleNumericSave(material.id, col.key);
+                if (e.key === "Escape") setEditingCell(null);
+              }}
+              className="h-8 w-[100px] text-xs"
+              onClick={(e) => e.stopPropagation()}
+            />
+          );
+        }
+
+        return (
+          <span
+            className={cn(
+              "text-sm cursor-pointer hover:underline",
+              isBold && "font-semibold"
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingCell({ rowId: material.id, col: col.key });
+              setEditValue(val?.toString() || "");
+            }}
+          >
+            {val != null ? formatCurrency(val, currency, { decimals: 2 }) : "-"}
+          </span>
+        );
+      }
+
+      case "vendor":
+        if (!material.vendor_name) {
+          return <span className="text-muted-foreground text-xs">-</span>;
+        }
+        return material.vendor_link ? (
+          <a
+            href={material.vendor_link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline flex items-center gap-1 text-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {material.vendor_name}
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        ) : (
+          <span className="text-sm">{material.vendor_name}</span>
+        );
+
+      case "room": {
+        const roomName = material.room?.name;
+        if (isReadOnly) {
+          return roomName ? (
+            <span className="text-sm">{roomName}</span>
+          ) : (
+            <span className="text-muted-foreground text-xs">-</span>
+          );
+        }
+        return (
+          <Select
+            value={material.room_id || "none"}
+            onValueChange={(v) =>
+              handleCellSave(material.id, "room", v === "none" ? null : v)
+            }
+          >
+            <SelectTrigger
+              className="h-8 w-[110px] text-xs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{t("purchasesTable.noRoom")}</SelectItem>
+              {rooms.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {r.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      }
+
+      case "task": {
+        const taskTitle = material.task?.title;
+        if (isReadOnly) {
+          return taskTitle ? (
+            <span className="text-sm">{taskTitle}</span>
+          ) : (
+            <span className="text-muted-foreground text-xs">-</span>
+          );
+        }
+        return (
+          <Select
+            value={material.task_id || "none"}
+            onValueChange={(v) =>
+              handleCellSave(material.id, "task", v === "none" ? null : v)
+            }
+          >
+            <SelectTrigger
+              className="h-8 w-[140px] text-xs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{t("purchasesTable.noTask")}</SelectItem>
+              {tasks.map((tk) => (
+                <SelectItem key={tk.id} value={tk.id}>
+                  {tk.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      }
+
+      case "assignedTo": {
+        const assigneeName = material.assigned_to?.name;
+        if (isReadOnly) {
+          return assigneeName ? (
+            <span className="text-sm">{assigneeName}</span>
+          ) : (
+            <span className="text-muted-foreground text-xs">-</span>
+          );
+        }
+        return (
+          <Select
+            value={material.assigned_to_user_id || "none"}
+            onValueChange={(v) =>
+              handleCellSave(material.id, "assignedTo", v === "none" ? null : v)
+            }
+          >
+            <SelectTrigger
+              className="h-8 w-[130px] text-xs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{t("common.unassigned")}</SelectItem>
+              {teamMembers.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      }
+
+      case "createdBy":
+        return (
+          <span className="text-sm">
+            {material.creator?.name || "-"}
+          </span>
+        );
+
+      case "createdAt":
+        return (
+          <span className="text-sm">
+            {new Date(material.created_at).toLocaleDateString()}
+          </span>
+        );
+
+      case "attachment":
+        return (
+          <AttachmentIndicator
+            hasAttachment={material.hasAttachment || false}
+            count={material.attachmentCount}
+          />
+        );
+
+      case "actions":
+        return canEditMaterial(material) ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onMaterialClick(material);
+            }}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+        ) : null;
+
+      default:
+        return null;
+    }
+  };
+
+  const handleSaveView = () => {
+    const name = saveViewName.trim();
+    if (!name) return;
+    saveView(name);
+    setSaveViewName("");
+    setSaveViewOpen(false);
+    toast({
+      title: t("purchasesTable.viewSaved"),
+      description: t("purchasesTable.viewSavedDescription", { name }),
+    });
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Toolbar */}
+      {!hideToolbar && <div className="flex items-center gap-2 flex-wrap">
+        {/* Columns toggle */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1">
+              <Columns3 className="h-4 w-4" />
+              {t("purchasesTable.columns")}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-52" align="start">
+            <div className="space-y-2">
+              <p className="text-sm font-medium mb-2">
+                {t("purchasesTable.extraColumns")}
+              </p>
+              {EXTRA_COLUMN_KEYS.map((key) => {
+                const col = ALL_COLUMNS.find((c) => c.key === key);
+                return (
+                  <label
+                    key={key}
+                    className="flex items-center gap-2 text-sm cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={visibleExtras.has(key)}
+                      onCheckedChange={() => toggleExtraColumn(key)}
+                    />
+                    {col?.label}
+                  </label>
+                );
+              })}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Compact toggle */}
+        <Button
+          variant={compactRows ? "secondary" : "outline"}
+          size="sm"
+          className="gap-1"
+          onClick={() => setCompactRows(!compactRows)}
+        >
+          <ToggleLeft className="h-4 w-4" />
+          {t("purchasesTable.compactRows")}
+        </Button>
+
+        {/* Save view */}
+        <Popover open={saveViewOpen} onOpenChange={setSaveViewOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1">
+              <Save className="h-4 w-4" />
+              {t("purchasesTable.saveView")}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56" align="start">
+            <div className="space-y-2">
+              <Input
+                placeholder={t("purchasesTable.viewName")}
+                value={saveViewName}
+                onChange={(e) => setSaveViewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveView();
+                }}
+                className="h-8"
+              />
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={handleSaveView}
+                disabled={!saveViewName.trim()}
+              >
+                {t("purchasesTable.saveView")}
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Load saved views */}
+        {savedViews.length > 0 && (
+          <Popover open={loadViewOpen} onOpenChange={setLoadViewOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1">
+                {t("purchasesTable.savedViews")} ({savedViews.length})
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56" align="start">
+              <div className="space-y-1">
+                {savedViews.map((view) => (
+                  <div
+                    key={view.id}
+                    className="flex items-center justify-between"
+                  >
+                    <button
+                      className="text-sm hover:bg-muted px-2 py-1 rounded flex-1 text-left"
+                      onClick={() => {
+                        loadView(view);
+                        setLoadViewOpen(false);
+                        toast({
+                          title: t("purchasesTable.viewLoaded"),
+                          description: t("purchasesTable.viewLoadedDescription", {
+                            name: view.name,
+                          }),
+                        });
+                      }}
+                    >
+                      {view.name}
+                    </button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => deleteView(view.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>}
+
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {visibleColumns.map((col, idx) => (
+                    <TableHead
+                      key={col.key}
+                      className={cn(
+                        col.width || "",
+                        col.align === "right" ? "text-right" : "",
+                        "select-none cursor-grab",
+                        compactRows && "py-1 text-xs h-8",
+                        dragColIdx === idx && "opacity-40",
+                        dragOverIdx === idx && dragColIdx !== null && dragColIdx !== idx && "border-l-2 border-primary",
+                      )}
+                      draggable
+                      onDragStart={() => handleDragStart(idx)}
+                      onDragOver={(e) => handleDragOver(e, idx)}
+                      onDrop={handleDrop}
+                      onDragEnd={handleDragEnd}
+                    >
+                      {col.key !== "actions" ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSort(col.key)}
+                          className="h-8 px-2"
+                        >
+                          {col.label}
+                          {getSortIcon(col.key)}
+                        </Button>
+                      ) : (
+                        <span className="text-xs">{col.label}</span>
+                      )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedMaterials.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={visibleColumns.length}
+                      className="text-center text-muted-foreground py-8"
+                    >
+                      {t("purchasesTable.noMaterials")}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedMaterials.map((material) => (
+                    <TableRow
+                      key={material.id}
+                      className="hover:bg-muted/50 cursor-pointer"
+                      onClick={() => onMaterialClick(material)}
+                    >
+                      {visibleColumns.map((col, colIdx) => (
+                        <TableCell
+                          key={col.key}
+                          className={cn(
+                            col.align === "right" ? "text-right" : "",
+                            compactRows && "py-1 text-xs",
+                            dragOverIdx === colIdx && dragColIdx !== null && dragColIdx !== colIdx && "border-l-2 border-primary",
+                          )}
+                        >
+                          {renderCell(col, material)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

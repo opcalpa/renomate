@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { getStatusBadgeColor } from "@/lib/statusColors";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -128,18 +129,7 @@ const TaskDetailDialog = ({ taskId, open, onOpenChange, onEdit, currency }: Task
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-success text-success-foreground";
-      case "in_progress":
-        return "bg-warning text-warning-foreground";
-      case "waiting":
-        return "bg-warning/80 text-warning-foreground";
-      default:
-        return "bg-secondary text-secondary-foreground";
-    }
-  };
+  const getStatusColor = (status: string) => getStatusBadgeColor(status);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {

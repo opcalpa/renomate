@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TaskEditDialog } from "./TaskEditDialog";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
+import { getStatusSolidColor } from "@/lib/statusColors";
 interface Task {
   id: string;
   title: string;
@@ -103,6 +104,13 @@ const ProjectTimeline = ({
   const [groupBy, setGroupBy] = useState<GroupByOption>('none');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+
+  // Project dates (fetched if not passed as props)
+  const [fetchedStartDate, setFetchedStartDate] = useState<string | null>(null);
+  const [fetchedFinishDate, setFetchedFinishDate] = useState<string | null>(null);
+  const effectiveStartDate = projectStartDate ?? fetchedStartDate;
+  const effectiveFinishDate = projectFinishDate ?? fetchedFinishDate;
+  const [savingProjectDate, setSavingProjectDate] = useState(false);
   const [dragInteraction, setDragInteraction] = useState<{
     mode: 'moving' | 'resize-left' | 'resize-right';
     taskId: string;
@@ -147,28 +155,61 @@ const ProjectTimeline = ({
     fetchDependencies();
     fetchTeamMembers();
     fetchRooms();
+    fetchProjectDates();
   }, [projectId]);
 
-  // Auto-set view to 'full' for demo projects once tasks are loaded
-  useEffect(() => {
-    if (isDemo && !loading && tasks.length > 0) {
-      // Calculate full project span and set view
-      const dates: Date[] = [];
-      if (projectStartDate) dates.push(parseISO(projectStartDate));
-      if (projectFinishDate) dates.push(parseISO(projectFinishDate));
-      tasks.forEach(task => {
-        if (task.start_date) dates.push(parseISO(task.start_date));
-        if (task.finish_date) dates.push(parseISO(task.finish_date));
-      });
-      if (dates.length >= 2) {
-        const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
-        const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
-        const span = differenceInDays(maxDate, minDate) + 14; // Add padding
-        setDaysVisible(Math.min(span, maxDays));
-        setCenterDate(addDays(minDate, Math.floor(span / 2)));
-      }
+  const fetchProjectDates = async () => {
+    const { data } = await supabase
+      .from("projects")
+      .select("start_date, finish_goal_date")
+      .eq("id", projectId)
+      .single();
+    if (data) {
+      setFetchedStartDate(data.start_date);
+      setFetchedFinishDate(data.finish_goal_date);
     }
-  }, [isDemo, loading, tasks, projectStartDate, projectFinishDate, maxDays, setDaysVisible, setCenterDate]);
+  };
+
+  const zoomToProjectSpan = () => {
+    if (!effectiveStartDate || !effectiveFinishDate) return;
+    const start = parseISO(effectiveStartDate);
+    const finish = parseISO(effectiveFinishDate);
+    const span = differenceInDays(finish, start) + 2; // 1 day padding each side
+    const clampedSpan = Math.max(minDays, Math.min(span, maxDays));
+    setDaysVisible(clampedSpan);
+    setCenterDate(addDays(start, Math.floor(differenceInDays(finish, start) / 2)));
+  };
+
+  const saveProjectDate = async (field: "start_date" | "finish_goal_date", value: string) => {
+    setSavingProjectDate(true);
+    const { error } = await supabase
+      .from("projects")
+      .update({ [field]: value })
+      .eq("id", projectId);
+    setSavingProjectDate(false);
+    if (error) {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      return;
+    }
+    if (field === "start_date") setFetchedStartDate(value);
+    else setFetchedFinishDate(value);
+    toast({ title: t("common.saved") });
+  };
+
+  // Auto-zoom to project span when start+finish dates exist
+  const hasAutoZoomed = useRef(false);
+  useEffect(() => {
+    if (hasAutoZoomed.current || loading) return;
+    if (!effectiveStartDate || !effectiveFinishDate) return;
+
+    const start = parseISO(effectiveStartDate);
+    const finish = parseISO(effectiveFinishDate);
+    const span = differenceInDays(finish, start) + 2; // 1 day padding each side
+    const clampedSpan = Math.max(7, Math.min(span, maxDays));
+    setDaysVisible(clampedSpan);
+    setCenterDate(addDays(start, Math.floor(differenceInDays(finish, start) / 2)));
+    hasAutoZoomed.current = true;
+  }, [loading, effectiveStartDate, effectiveFinishDate, maxDays, setDaysVisible, setCenterDate]);
 
   const fetchTasks = async () => {
     try {
@@ -345,33 +386,7 @@ const ProjectTimeline = ({
     });
   }, [tasks, minDate, maxDate, selectedAssignee]);
 
-  // Status colors for task bars - following universal conventions
-  // Green = Completed, Blue = In Progress, Amber = Waiting/On Hold, Red = Blocked/Cancelled, Gray = To Do
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-      case "done":
-        return "bg-emerald-500";
-      case "in_progress":
-      case "doing":
-        return "bg-blue-500";
-      case "waiting":
-      case "on_hold":
-        return "bg-amber-500";
-      case "blocked":
-        return "bg-red-500";
-      case "cancelled":
-      case "scrapped":
-        return "bg-red-400";
-      case "planned":
-      case "discovery":
-        return "bg-indigo-400";
-      case "ideas":
-        return "bg-purple-400";
-      default:
-        return "bg-slate-400";
-    }
-  };
+  const getStatusColor = (status: string) => getStatusSolidColor(status);
 
   const getStatusLabel = (status: string) => {
     const statusKey = status.replace(/_/g, '');
@@ -877,31 +892,113 @@ const ProjectTimeline = ({
             </div>
           )}
 
-          {/* Unscheduled badge */}
-          {unscheduledTasks.length > 0 && (
-            <HoverCard openDelay={200}>
-              <HoverCardTrigger asChild>
-                <Badge variant="secondary" className="text-xs w-fit cursor-default">
-                  <Calendar className="h-3 w-3 mr-1" />
-                  {unscheduledTasks.length === 1
-                    ? t('timeline.unscheduledTasksSingular', '1 oschemalagd')
-                    : t('timeline.unscheduledTasks', '{{count}} oschemalagda', { count: unscheduledTasks.length })}
-                </Badge>
-              </HoverCardTrigger>
-              <HoverCardContent className="w-64 p-3" align="start">
-                <p className="text-xs font-medium text-muted-foreground mb-2">
-                  {t('timeline.unscheduledTasksTitle', 'Unscheduled tasks')}
-                </p>
-                <ul className="space-y-1">
-                  {unscheduledTasks.map((ut) => (
-                    <li key={ut.id} className="text-sm truncate">
-                      {ut.title}
-                    </li>
-                  ))}
-                </ul>
-              </HoverCardContent>
-            </HoverCard>
-          )}
+          {/* Timeline info popover (mobile) */}
+          {(() => {
+            const missingStart = !effectiveStartDate;
+            const missingFinish = !effectiveFinishDate;
+            const warningCount = unscheduledTasks.length + (missingStart ? 1 : 0) + (missingFinish ? 1 : 0);
+            return (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Badge variant="secondary" className="text-xs w-fit cursor-pointer">
+                    <Calendar className="h-3 w-3 mr-1" />
+                    {warningCount > 0
+                      ? (warningCount === 1
+                        ? t('timeline.reminderSingular', '1 reminder')
+                        : t('timeline.reminders', '{{count}} reminders', { count: warningCount }))
+                      : t('timeline.projectDates', 'Project dates')}
+                  </Badge>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-0" align="start">
+                  {/* Project dates — always visible */}
+                  <div className="p-3 space-y-2 border-b">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {t('timeline.projectDatesTitle', 'Project dates')}
+                    </p>
+                    {/* Start date */}
+                    <div className="space-y-1">
+                      <Label className="text-xs">{t('common.startDate')}</Label>
+                      {effectiveStartDate ? (
+                        <Input
+                          type="date"
+                          className="h-8 text-sm"
+                          value={effectiveStartDate}
+                          disabled={savingProjectDate}
+                          onChange={(e) => {
+                            if (e.target.value) saveProjectDate("start_date", e.target.value);
+                          }}
+                        />
+                      ) : (
+                        <Input
+                          type="date"
+                          className="h-8 text-sm border-amber-300 bg-amber-50/50"
+                          placeholder={t('timeline.setDate', 'Set date')}
+                          disabled={savingProjectDate}
+                          onChange={(e) => {
+                            if (e.target.value) saveProjectDate("start_date", e.target.value);
+                          }}
+                        />
+                      )}
+                    </div>
+                    {/* Finish date */}
+                    <div className="space-y-1">
+                      <Label className="text-xs">{t('timeline.goalDate', 'Goal date')}</Label>
+                      {effectiveFinishDate ? (
+                        <Input
+                          type="date"
+                          className="h-8 text-sm"
+                          value={effectiveFinishDate}
+                          disabled={savingProjectDate}
+                          onChange={(e) => {
+                            if (e.target.value) saveProjectDate("finish_goal_date", e.target.value);
+                          }}
+                        />
+                      ) : (
+                        <Input
+                          type="date"
+                          className="h-8 text-sm border-amber-300 bg-amber-50/50"
+                          placeholder={t('timeline.setDate', 'Set date')}
+                          disabled={savingProjectDate}
+                          onChange={(e) => {
+                            if (e.target.value) saveProjectDate("finish_goal_date", e.target.value);
+                          }}
+                        />
+                      )}
+                    </div>
+                    {/* Zoom to project span */}
+                    {effectiveStartDate && effectiveFinishDate && (
+                      <button
+                        type="button"
+                        className="w-full text-left text-xs text-primary hover:underline pt-1"
+                        onClick={zoomToProjectSpan}
+                      >
+                        {t('timeline.showFullProject', 'Show full project period')}
+                      </button>
+                    )}
+                  </div>
+                  {/* Unscheduled tasks */}
+                  {unscheduledTasks.length > 0 && (
+                    <div className="p-3">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                        {t('timeline.unscheduledTasksTitle', 'Unscheduled tasks')}
+                      </p>
+                      <ul className="space-y-1">
+                        {unscheduledTasks.map((ut) => (
+                          <li
+                            key={ut.id}
+                            className="text-sm truncate text-primary hover:underline cursor-pointer"
+                            onClick={() => onTaskClick?.(ut.id)}
+                          >
+                            {ut.title}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            );
+          })()}
         </div>
 
         {/* === DESKTOP HEADER (full controls) === */}
@@ -912,43 +1009,115 @@ const ProjectTimeline = ({
               <CardDescription>
                 {format(minDate, "MMM d, yyyy")} - {format(maxDate, "MMM d, yyyy")} ({daysVisible} {t('timeline.days', 'days')})
               </CardDescription>
-              {(projectStartDate || projectFinishDate) && (
-                <div className="flex items-center gap-1.5 mt-2">
-                  {projectStartDate && (
-                    <Badge variant="outline" className="text-xs">Start: {format(parseISO(projectStartDate), "MMM d, yyyy")}</Badge>
-                  )}
-                  {projectFinishDate && (
-                    <Badge variant="outline" className="text-xs">Goal: {format(parseISO(projectFinishDate), "MMM d, yyyy")}</Badge>
-                  )}
-                </div>
-              )}
             </div>
             <div className="flex items-center gap-2">
-              {/* Unscheduled tasks button */}
-              {unscheduledTasks.length > 0 && (
-                <HoverCard openDelay={200}>
-                  <HoverCardTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-8 w-8 relative cursor-default">
-                      <Calendar className="h-4 w-4" />
-                      <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-0.5 rounded-full bg-orange-500 text-white text-[10px] font-medium flex items-center justify-center">
-                        {unscheduledTasks.length}
-                      </span>
-                    </Button>
-                  </HoverCardTrigger>
-                  <HoverCardContent className="w-64 p-3" align="end">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">
-                      {t('timeline.unscheduledTasksTitle', 'Unscheduled tasks')}
-                    </p>
-                    <ul className="space-y-1">
-                      {unscheduledTasks.map((ut) => (
-                        <li key={ut.id} className="text-sm truncate">
-                          {ut.title}
-                        </li>
-                      ))}
-                    </ul>
-                  </HoverCardContent>
-                </HoverCard>
-              )}
+              {/* Timeline info popover (desktop) */}
+              {(() => {
+                const missingStart = !effectiveStartDate;
+                const missingFinish = !effectiveFinishDate;
+                const warningCount = unscheduledTasks.length + (missingStart ? 1 : 0) + (missingFinish ? 1 : 0);
+                return (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="icon" className="h-8 w-8 relative">
+                        <Calendar className="h-4 w-4" />
+                        {warningCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-0.5 rounded-full bg-orange-500 text-white text-[10px] font-medium flex items-center justify-center">
+                            {warningCount}
+                          </span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 p-0" align="end">
+                      {/* Project dates — always visible */}
+                      <div className="p-3 space-y-2 border-b">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {t('timeline.projectDatesTitle', 'Project dates')}
+                        </p>
+                        {/* Start date */}
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t('common.startDate')}</Label>
+                          {effectiveStartDate ? (
+                            <Input
+                              type="date"
+                              className="h-8 text-sm"
+                              value={effectiveStartDate}
+                              disabled={savingProjectDate}
+                              onChange={(e) => {
+                                if (e.target.value) saveProjectDate("start_date", e.target.value);
+                              }}
+                            />
+                          ) : (
+                            <Input
+                              type="date"
+                              className="h-8 text-sm border-amber-300 bg-amber-50/50"
+                              placeholder={t('timeline.setDate', 'Set date')}
+                              disabled={savingProjectDate}
+                              onChange={(e) => {
+                                if (e.target.value) saveProjectDate("start_date", e.target.value);
+                              }}
+                            />
+                          )}
+                        </div>
+                        {/* Finish date */}
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t('timeline.goalDate', 'Goal date')}</Label>
+                          {effectiveFinishDate ? (
+                            <Input
+                              type="date"
+                              className="h-8 text-sm"
+                              value={effectiveFinishDate}
+                              disabled={savingProjectDate}
+                              onChange={(e) => {
+                                if (e.target.value) saveProjectDate("finish_goal_date", e.target.value);
+                              }}
+                            />
+                          ) : (
+                            <Input
+                              type="date"
+                              className="h-8 text-sm border-amber-300 bg-amber-50/50"
+                              placeholder={t('timeline.setDate', 'Set date')}
+                              disabled={savingProjectDate}
+                              onChange={(e) => {
+                                if (e.target.value) saveProjectDate("finish_goal_date", e.target.value);
+                              }}
+                            />
+                          )}
+                        </div>
+                        {/* Zoom to project span */}
+                        {effectiveStartDate && effectiveFinishDate && (
+                          <button
+                            type="button"
+                            className="w-full text-left text-xs text-primary hover:underline pt-1"
+                            onClick={zoomToProjectSpan}
+                          >
+                            {t('timeline.showFullProject', 'Show full project period')}
+                          </button>
+                        )}
+                      </div>
+                      {/* Unscheduled tasks */}
+                      {unscheduledTasks.length > 0 && (
+                        <div className="p-3">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">
+                            {t('timeline.unscheduledTasksTitle', 'Unscheduled tasks')}
+                          </p>
+                          <ul className="space-y-1">
+                            {unscheduledTasks.map((ut) => (
+                              <li
+                                key={ut.id}
+                                className="text-sm truncate text-primary hover:underline cursor-pointer"
+                                onClick={() => onTaskClick?.(ut.id)}
+                              >
+                                {ut.title}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                );
+              })()}
               {/* Filter popover */}
               <Popover>
                 <PopoverTrigger asChild>
@@ -1039,14 +1208,13 @@ const ProjectTimeline = ({
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          {visibleTasks.length === 0 ? <div className="text-center py-8 text-muted-foreground">
-              {t('timeline.noTasksInPeriod', 'No tasks scheduled in this time period')}
-            </div> : <div
+          <div
               ref={gestureContainerRef}
               className="overflow-x-auto overflow-y-auto -mx-3 px-3 md:mx-0 md:px-0 touch-pan-x touch-pan-y select-none scrollbar-thin rounded-lg"
-              style={{ maxHeight: '70vh', cursor: isDragging ? 'grabbing' : 'grab' }}
+              style={{ maxHeight: '70vh', minHeight: '200px', cursor: isDragging ? 'grabbing' : 'grab' }}
             ><div
               className="relative min-w-[800px]"
+              style={{ minHeight: '160px' }}
             >
               {/* Sticky date ruler — month / week / day rows */}
               <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm flex flex-col">
@@ -1272,6 +1440,52 @@ const ProjectTimeline = ({
                           </React.Fragment>
                         );
                       })}
+
+                      {/* Project start date marker */}
+                      {effectiveStartDate && (() => {
+                        const startDay = differenceInDays(parseISO(effectiveStartDate), minDate);
+                        if (startDay < 0 || startDay > totalDays) return null;
+                        const left = (startDay / totalDays) * 100;
+                        return (
+                          <>
+                            <div
+                              className="absolute w-0.5 bg-blue-400/60 z-10 pointer-events-none"
+                              style={{ left: `${left}%`, top: '0', bottom: '0', height: '100%' }}
+                            />
+                            <div
+                              className="absolute z-20 pointer-events-none flex items-center gap-0.5"
+                              style={{ left: `${left}%`, top: '2px', transform: 'translateX(-50%)' }}
+                            >
+                              <span className="text-[9px] font-medium text-blue-500 bg-background/80 rounded px-1 py-0.5 whitespace-nowrap leading-none">
+                                ▶ Start
+                              </span>
+                            </div>
+                          </>
+                        );
+                      })()}
+
+                      {/* Project finish/goal date marker */}
+                      {effectiveFinishDate && (() => {
+                        const finishDay = differenceInDays(parseISO(effectiveFinishDate), minDate);
+                        if (finishDay < 0 || finishDay > totalDays) return null;
+                        const left = (finishDay / totalDays) * 100;
+                        return (
+                          <>
+                            <div
+                              className="absolute w-0.5 bg-green-400/60 z-10 pointer-events-none"
+                              style={{ left: `${left}%`, top: '0', bottom: '0', height: '100%' }}
+                            />
+                            <div
+                              className="absolute z-20 pointer-events-none flex items-center gap-0.5"
+                              style={{ left: `${left}%`, top: '2px', transform: 'translateX(-50%)' }}
+                            >
+                              <span className="text-[9px] font-medium text-green-600 bg-background/80 rounded px-1 py-0.5 whitespace-nowrap leading-none">
+                                {t('timeline.goal', 'Goal')} 🏁
+                              </span>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
 
                     {/* Dependency arrows SVG overlay */}
@@ -1318,6 +1532,13 @@ const ProjectTimeline = ({
                           );
                         })}
                       </svg>
+                    )}
+
+                    {/* Empty state message (shown inside grid so scroll/gestures still work) */}
+                    {visibleTasks.length === 0 && (
+                      <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+                        {t('timeline.noTasksInPeriod', 'No tasks scheduled in this time period')}
+                      </div>
                     )}
 
                     {/* Grouped task rows */}
@@ -1416,7 +1637,7 @@ const ProjectTimeline = ({
                   </div>
                 </div>
               </div>
-            </div></div>}
+            </div></div>
         </div>
       </CardContent>
 

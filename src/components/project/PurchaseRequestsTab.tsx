@@ -1,24 +1,32 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import {
   Package,
   Loader2,
   Plus,
-  Pencil,
-  ExternalLink,
   Filter,
-  X,
-  Paperclip,
+  ChevronDown,
+  Store,
+  Image,
+  MessageSquare,
+  Link2,
+  LayoutGrid,
+  Table as TableIcon,
+  Columns3,
+  Save,
+  ToggleLeft,
+  Trash2,
 } from "lucide-react";
-import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -36,20 +44,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/currency";
+import { getStatusBadgeColor } from "@/lib/statusColors";
 import { ProjectLockBanner } from "./ProjectLockBanner";
 import { useProjectLock } from "@/hooks/useProjectLock";
 import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
+import { PurchasesTableView } from "./purchases/PurchasesTableView";
+import { PurchasesKanbanView } from "./purchases/PurchasesKanbanView";
+import { usePurchasesTableView } from "./purchases/usePurchasesTableView";
+import { EXTRA_COLUMN_KEYS as PURCHASE_EXTRA_COLUMN_KEYS } from "./purchases/purchasesTypes";
 
 interface Material {
   id: string;
@@ -72,16 +79,16 @@ interface Material {
   assigned_to_user_id: string | null;
   creator?: {
     name: string;
-  };
+  } | null;
   assigned_to?: {
     name: string;
-  };
+  } | null;
   task?: {
     title: string;
-  };
+  } | null;
   room?: {
     name: string;
-  };
+  } | null;
   hasAttachment?: boolean;
   attachmentCount?: number;
 }
@@ -108,14 +115,25 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   const [isProjectOwner, setIsProjectOwner] = useState<boolean>(false);
   const [userPurchasesAccess, setUserPurchasesAccess] = useState<string>('none');
   const [userPurchasesScope, setUserPurchasesScope] = useState<string>('assigned');
+  const [permissionsResolved, setPermissionsResolved] = useState(false);
 
   const [quickMode, setQuickMode] = useState(true);
 
-  // Filter state
-  const [filterStatus, setFilterStatus] = useState<string | null>(null);
-  const [filterCreatedBy, setFilterCreatedBy] = useState<string | null>(null);
-  const [filterAttachment, setFilterAttachment] = useState<"all" | "has" | "missing">("all");
-  const [showFilters, setShowFilters] = useState(false);
+  // View mode
+  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
+
+  // Table view state (lifted so toolbar renders in parent row)
+  const purchaseTableViewState = usePurchasesTableView(projectId);
+  const [pSaveViewOpen, setPSaveViewOpen] = useState(false);
+  const [pSaveViewName, setPSaveViewName] = useState("");
+  const [pLoadViewOpen, setPLoadViewOpen] = useState(false);
+
+  // Filter state (multi-select sets)
+  const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set());
+  const [filterRooms, setFilterRooms] = useState<Set<string>>(new Set());
+  const [filterTasks, setFilterTasks] = useState<Set<string>>(new Set());
+  const [filterCreatedBy, setFilterCreatedBy] = useState<Set<string>>(new Set());
+  const [filterAttachment, setFilterAttachment] = useState<Set<string>>(new Set());
 
   const [newMaterial, setNewMaterial] = useState({
     name: "",
@@ -160,23 +178,21 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
     };
   }, [projectId]);
 
-  // Fetch materials when profileId is available (for proper filtering)
+  // Fetch materials when permissions are resolved
   useEffect(() => {
-    if (currentProfileId !== null) {
+    if (currentProfileId !== null || permissionsResolved) {
       fetchMaterials();
     }
-  }, [currentProfileId, projectId, isProjectOwner]);
+  }, [currentProfileId, projectId, isProjectOwner, permissionsResolved]);
 
-  // Auto-open a specific material from notification deep link or feed navigation
+  // Auto-open a specific material from notification deep link
   useEffect(() => {
     if (!openEntityId || materials.length === 0) return;
     const material = materials.find((m) => m.id === openEntityId);
     if (material) {
-      setEditingMaterial(material);
-      setEditDialogOpen(true);
+      openEditDialog(material);
       onEntityOpened?.();
     }
-    // Don't clear openEntityId if not found — materials may still be loading with different scope
   }, [openEntityId, materials]);
 
   // Safety timeout: clear openEntityId after 5s if material was never found
@@ -191,7 +207,10 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   const fetchUserPermissions = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setPermissionsResolved(true);
+        return;
+      }
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -199,10 +218,12 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         .eq("user_id", user.id)
         .single();
 
-      if (!profile) return;
+      if (!profile) {
+        setPermissionsResolved(true);
+        return;
+      }
       setCurrentProfileId(profile.id);
 
-      // Check if user is owner
       const { data: project } = await supabase
         .from("projects")
         .select("owner_id")
@@ -210,16 +231,15 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         .single();
 
       if (project?.owner_id === profile.id) {
-        // Owner has full access
         setIsProjectOwner(true);
         setUserPurchasesAccess('edit');
         setUserPurchasesScope('all');
+        setPermissionsResolved(true);
         return;
       }
 
       setIsProjectOwner(false);
 
-      // Check project_shares for permissions
       const { data: share } = await supabase
         .from("project_shares")
         .select("purchases_access, purchases_scope")
@@ -231,8 +251,10 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         setUserPurchasesAccess(share.purchases_access || 'none');
         setUserPurchasesScope(share.purchases_scope || 'assigned');
       }
+      setPermissionsResolved(true);
     } catch (error: unknown) {
       console.error("Error fetching user permissions:", error);
+      setPermissionsResolved(true);
     }
   };
 
@@ -288,7 +310,6 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
 
   const fetchTeamMembers = async () => {
     try {
-      // Get project owner
       const { data: projectData } = await supabase
         .from("projects")
         .select(`
@@ -298,7 +319,6 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         .eq("id", projectId)
         .single();
 
-      // Get shared users
       const { data: sharesData } = await supabase
         .from("project_shares")
         .select(`
@@ -345,8 +365,6 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         `)
         .eq("project_id", projectId);
 
-      // Filter at DB level when scope is 'assigned' and user is not owner
-      // Skip this filter for public demo project - everyone should see all demo materials
       const isPublicDemo = projectId === PUBLIC_DEMO_PROJECT_ID;
       if (!isPublicDemo && !isProjectOwner && userPurchasesScope === 'assigned' && currentProfileId) {
         query = query.eq("created_by_user_id", currentProfileId);
@@ -363,7 +381,6 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
 
       if (materialsRes.error) throw materialsRes.error;
 
-      // Build document count map (handle gracefully if material_id column doesn't exist yet)
       const docCounts = new Map<string, number>();
       if (!docsRes.error) {
         (docsRes.data || []).forEach((d) => {
@@ -373,7 +390,6 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         });
       }
 
-      // Batch fetch all creator profiles in one query (avoid N+1)
       const creatorIds = [...new Set(
         (materialsRes.data || [])
           .map(m => m.created_by_user_id)
@@ -392,14 +408,37 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         });
       }
 
+      // Batch fetch assigned-to profiles
+      const assignedIds = [...new Set(
+        (materialsRes.data || [])
+          .map(m => m.assigned_to_user_id)
+          .filter((id): id is string => id !== null)
+      )];
+
+      const assignedMap = new Map<string, string>();
+      if (assignedIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, name")
+          .in("id", assignedIds);
+
+        (profiles || []).forEach(p => {
+          if (p.name) assignedMap.set(p.id, p.name);
+        });
+      }
+
       const materialsWithNames = (materialsRes.data || []).map((material) => {
         const creatorName = material.created_by_user_id
           ? creatorMap.get(material.created_by_user_id)
+          : null;
+        const assignedName = material.assigned_to_user_id
+          ? assignedMap.get(material.assigned_to_user_id)
           : null;
         const attachmentCount = docCounts.get(material.id) || 0;
         return {
           ...material,
           creator: creatorName ? { name: creatorName } : null,
+          assigned_to: assignedName ? { name: assignedName } : null,
           hasAttachment: attachmentCount > 0,
           attachmentCount,
         };
@@ -529,68 +568,88 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
     }
   };
 
-  const canEditMaterial = (material: Material): boolean => {
-    // Project owner can edit everything
+  const canEditMaterial = useCallback((material: Material): boolean => {
     if (isProjectOwner) return true;
-
     if (!currentProfileId) return false;
 
-    // Full edit access
     if (userPurchasesAccess === 'edit') {
       if (userPurchasesScope === 'all') return true;
-      // Assigned/created scope - check if user created it OR is assigned to it
       return material.created_by_user_id === currentProfileId ||
              material.assigned_to_user_id === currentProfileId;
     }
 
-    // Create access - can edit own created orders OR assigned orders
     if (userPurchasesAccess === 'create') {
       return material.created_by_user_id === currentProfileId ||
              material.assigned_to_user_id === currentProfileId;
     }
 
-    // View access - can edit if assigned to them (even with view access)
     if (userPurchasesAccess === 'view') {
       return material.assigned_to_user_id === currentProfileId;
     }
 
     return false;
+  }, [isProjectOwner, currentProfileId, userPurchasesAccess, userPurchasesScope]);
+
+  const getStatusColor = useCallback((status: string) => getStatusBadgeColor(status), []);
+
+  const openEditDialog = useCallback((material: Material) => {
+    setEditingMaterial({
+      ...material,
+      description: material.description || null,
+      status: material.status || "submitted",
+      room_id: material.room_id || "none",
+      task_id: material.task_id || "none",
+      assigned_to_user_id: material.assigned_to_user_id || "none"
+    });
+    setEditDialogOpen(true);
+  }, []);
+
+  // Filter helpers
+  const toggleFilterValue = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, value: string) => {
+    setter(prev => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
   };
 
-  const handleStatusChange = async (materialId: string, newStatus: string) => {
-    try {
-      const { error } = await supabase
-        .from("materials")
-        .update({ status: newStatus })
-        .eq("id", materialId);
+  const totalFilterCount = filterStatuses.size + filterRooms.size + filterTasks.size + filterCreatedBy.size + filterAttachment.size;
 
-      if (error) throw error;
-
-      toast({
-        title: t('purchases.statusUpdated'),
-        description: t('purchases.statusChangedTo', { status: newStatus }),
-      });
-
-      fetchMaterials();
-    } catch (error: unknown) {
-      toast({
-        title: t('common.error'),
-        description: (error as Error).message,
-        variant: "destructive",
-      });
-    }
+  const clearAllFilters = () => {
+    setFilterStatuses(new Set());
+    setFilterRooms(new Set());
+    setFilterTasks(new Set());
+    setFilterCreatedBy(new Set());
+    setFilterAttachment(new Set());
   };
 
-  // Filter materials based on selected filters
+  // Filter materials
   const filteredMaterials = materials.filter((material) => {
-    if (filterStatus && material.status !== filterStatus) return false;
-    if (filterCreatedBy && material.created_by_user_id !== filterCreatedBy) return false;
-    if (filterAttachment === "has" && !material.hasAttachment) return false;
-    if (filterAttachment === "missing" && material.hasAttachment) return false;
+    if (filterStatuses.size > 0 && !filterStatuses.has(material.status)) return false;
+    if (filterRooms.size > 0) {
+      const roomMatch = material.room_id ? filterRooms.has(material.room_id) : filterRooms.has("none");
+      if (!roomMatch) return false;
+    }
+    if (filterTasks.size > 0) {
+      const taskMatch = material.task_id ? filterTasks.has(material.task_id) : filterTasks.has("none");
+      if (!taskMatch) return false;
+    }
+    if (filterCreatedBy.size > 0 && material.created_by_user_id && !filterCreatedBy.has(material.created_by_user_id)) return false;
+    if (filterAttachment.size > 0) {
+      if (filterAttachment.has("has") && !material.hasAttachment) return false;
+      if (filterAttachment.has("missing") && material.hasAttachment) return false;
+    }
     return true;
   });
 
-  // Get unique creators for filter dropdown
+  // Count helpers for filter popover
+  const getStatusCount = (status: string) => materials.filter(m => m.status === status).length;
+  const getRoomCount = (id: string) => materials.filter(m => id === "none" ? !m.room_id : m.room_id === id).length;
+  const getTaskCount = (id: string) => materials.filter(m => id === "none" ? !m.task_id : m.task_id === id).length;
+  const getCreatorCount = (id: string) => materials.filter(m => m.created_by_user_id === id).length;
+
+  // Get unique creators
   const uniqueCreators = Array.from(
     new Map(
       materials
@@ -599,35 +658,14 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
     ).values()
   );
 
-  // Status options for filter
   const statusOptions = [
     { value: "submitted", labelKey: "materialStatuses.submitted" },
-    { value: "declined", labelKey: "materialStatuses.declined" },
     { value: "approved", labelKey: "materialStatuses.approved" },
     { value: "billed", labelKey: "materialStatuses.billed" },
     { value: "paid", labelKey: "materialStatuses.paid" },
     { value: "paused", labelKey: "materialStatuses.paused" },
+    { value: "declined", labelKey: "materialStatuses.declined" },
   ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "submitted": return "bg-yellow-100 text-yellow-700 border-yellow-200";
-      case "approved": return "bg-blue-100 text-blue-700 border-blue-200";
-      case "declined": return "bg-red-100 text-red-700 border-red-200";
-      case "billed": return "bg-purple-100 text-purple-700 border-purple-200";
-      case "paid": return "bg-emerald-100 text-emerald-700 border-emerald-200";
-      case "paused": return "bg-gray-100 text-gray-500 border-gray-200";
-      default: return "bg-slate-100 text-slate-700 border-slate-200";
-    }
-  };
-
-  const clearFilters = () => {
-    setFilterStatus(null);
-    setFilterCreatedBy(null);
-    setFilterAttachment("all");
-  };
-
-  const hasActiveFilters = filterStatus !== null || filterCreatedBy !== null || filterAttachment !== "all";
 
   if (loading) {
     return (
@@ -662,7 +700,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                   <span className="sm:inline">{t('purchases.addOrder')}</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+              <DialogContent className="max-w-3xl lg:max-w-5xl max-h-[90vh] flex flex-col">
                 <DialogHeader className="flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <DialogTitle>
@@ -694,7 +732,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                           required
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-2">
                           <Label>{t('common.quantity')} *</Label>
                           <Input
@@ -724,94 +762,87 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                             </SelectContent>
                           </Select>
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{t('purchases.room')}</Label>
-                        <Select
-                          value={newMaterial.room_id || "none"}
-                          onValueChange={(v) => setNewMaterial({ ...newMaterial, room_id: v === "none" ? "" : v })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder={t('purchases.selectRoom')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">{t('purchases.noRoom')}</SelectItem>
-                            {rooms.map((r) => (
-                              <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {/* Task picker */}
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">{t("document.linkToTask")}</Label>
-                        <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
-                          {tasks.map(task => (
-                            <div key={task.id} className="flex flex-col">
-                              <button
-                                type="button"
-                                onClick={() => setNewMaterial({ ...newMaterial, task_id: task.id })}
-                                className={cn(
-                                  "flex items-center justify-between p-2.5 rounded-lg border text-left text-sm transition-colors",
-                                  newMaterial.task_id === task.id
-                                    ? "border-primary bg-primary/5"
-                                    : "border-border hover:border-primary/30 hover:bg-accent/50"
-                                )}
-                              >
-                                <span className="truncate font-medium flex items-center gap-1.5">
-                                  {task.title}
-                                  {task.is_ata && (
-                                    <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-300 shrink-0">ÄTA</Badge>
-                                  )}
-                                </span>
-                                {(() => {
-                                  const denom = (task.material_estimate && task.material_estimate > 0)
-                                    ? task.material_estimate : task.budget;
-                                  if (!denom || denom <= 0) return null;
-                                  const ratio = task.materialSpent / denom;
-                                  const color = ratio >= 1 ? "text-destructive" : ratio >= 0.8 ? "text-amber-600" : "text-emerald-600";
-                                  const bar = ratio >= 1 ? "bg-destructive" : ratio >= 0.8 ? "bg-amber-500" : "bg-emerald-500";
-                                  return (
-                                    <div className="flex flex-col items-end gap-0.5 ml-2 shrink-0">
-                                      <span className={cn("text-xs", color)}>
-                                        {formatCurrency(task.materialSpent, currency)} / {formatCurrency(denom, currency)}
-                                      </span>
-                                      <div className="w-16 h-1 rounded-full bg-muted overflow-hidden">
-                                        <div className={cn("h-full rounded-full", bar)} style={{ width: `${Math.min(ratio * 100, 100)}%` }} />
-                                      </div>
-                                    </div>
-                                  );
-                                })()}
-                              </button>
-                              {newMaterial.task_id === task.id && task.material_items && (task.material_items as Array<{id: string; name: string; amount: number}>).length > 0 && (
-                                <div className="ml-4 pl-3 border-l-2 border-muted space-y-1 py-1">
-                                  <span className="text-xs text-muted-foreground font-medium">
-                                    {t("costBreakdown.plannedMaterials")}
-                                  </span>
-                                  {(task.material_items as Array<{id: string; name: string; amount: number}>).map((item) => (
-                                    <div key={item.id} className="flex justify-between text-xs">
-                                      <span className="text-muted-foreground">{item.name}</span>
-                                      <span>{formatCurrency(item.amount, currency)}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                          <button
-                            type="button"
-                            onClick={() => setNewMaterial({ ...newMaterial, task_id: "none" })}
-                            className={cn(
-                              "flex items-center p-2.5 rounded-lg border text-left text-sm transition-colors border-dashed",
-                              !newMaterial.task_id || newMaterial.task_id === "none"
-                                ? "border-primary bg-primary/5"
-                                : "border-muted-foreground/30 hover:border-primary/30"
-                            )}
-                          >
-                            <span className="text-muted-foreground">{t("document.noTaskLink")}</span>
-                          </button>
+                        <div className="space-y-2">
+                          <Label>{t('purchases.pricePerUnit')}</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={newMaterial.price_per_unit}
+                            onChange={(e) => setNewMaterial({ ...newMaterial, price_per_unit: e.target.value })}
+                          />
                         </div>
                       </div>
+                      {newMaterial.quantity && newMaterial.price_per_unit && (
+                        <p className="text-sm text-muted-foreground">
+                          {t('purchases.priceTotal')}: {formatCurrency(parseFloat(newMaterial.quantity) * parseFloat(newMaterial.price_per_unit), currency, { decimals: 2 })}
+                        </p>
+                      )}
+                      {/* Koppling (Connections) */}
+                      <Collapsible>
+                        <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 text-sm font-semibold cursor-pointer hover:text-foreground text-muted-foreground group">
+                          <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                          <Link2 className="h-4 w-4" />
+                          {t('purchases.connections', 'Connections')}
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pt-3 space-y-3">
+                          <div className="space-y-2">
+                            <Label>{t('purchases.linkToTask')}</Label>
+                            <Select
+                              value={newMaterial.task_id || "none"}
+                              onValueChange={(v) => setNewMaterial({ ...newMaterial, task_id: v === "none" ? "" : v })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder={t('purchases.selectTask')} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">{t('purchases.noTask')}</SelectItem>
+                                {tasks.map((task) => (
+                                  <SelectItem key={task.id} value={task.id}>
+                                    {task.title}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>{t('purchases.room')}</Label>
+                            <Select
+                              value={newMaterial.room_id || "none"}
+                              onValueChange={(v) => setNewMaterial({ ...newMaterial, room_id: v === "none" ? "" : v })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder={t('purchases.selectRoom')} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">{t('purchases.noRoom')}</SelectItem>
+                                {rooms.map((r) => (
+                                  <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>{t('purchases.assignTo')}</Label>
+                            <Select
+                              value={newMaterial.assigned_to_user_id || "none"}
+                              onValueChange={(v) => setNewMaterial({ ...newMaterial, assigned_to_user_id: v === "none" ? "" : v })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder={t('purchases.selectTeamMember')} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">{t('common.unassigned')}</SelectItem>
+                                {teamMembers.map((member) => (
+                                  <SelectItem key={member.id} value={member.id}>
+                                    {member.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
                       <div className="flex items-center space-x-2">
                         <input
                           type="checkbox"
@@ -852,7 +883,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="quantity">{t('common.quantity')}*</Label>
                       <Input
@@ -875,105 +906,121 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                         required
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="price_per_unit">{t('purchases.pricePerUnit')}</Label>
+                      <Input
+                        id="price_per_unit"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={newMaterial.price_per_unit}
+                        onChange={(e) => setNewMaterial({ ...newMaterial, price_per_unit: e.target.value })}
+                      />
+                    </div>
                   </div>
+                  {newMaterial.quantity && newMaterial.price_per_unit && (
+                    <p className="text-sm text-muted-foreground">
+                      {t('purchases.priceTotal')}: {formatCurrency(parseFloat(newMaterial.quantity) * parseFloat(newMaterial.price_per_unit), currency, { decimals: 2 })}
+                    </p>
+                  )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="price_per_unit">{t('purchases.pricePerUnit')} ({t('common.optional')})</Label>
-                    <Input
-                      id="price_per_unit"
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={newMaterial.price_per_unit}
-                      onChange={(e) => setNewMaterial({ ...newMaterial, price_per_unit: e.target.value })}
-                    />
-                    {newMaterial.quantity && newMaterial.price_per_unit && (
-                      <p className="text-sm text-muted-foreground">
-                        {t('purchases.priceTotal')}: {formatCurrency(parseFloat(newMaterial.quantity) * parseFloat(newMaterial.price_per_unit), currency, { decimals: 2 })}
-                      </p>
-                    )}
-                  </div>
+                  {/* Leverantör */}
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 text-sm font-semibold cursor-pointer hover:text-foreground text-muted-foreground group">
+                      <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                      <Store className="h-4 w-4" />
+                      {t('purchases.vendorName')}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-3 space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="vendor-name">{t('purchases.vendorName')}</Label>
+                        <Input
+                          id="vendor-name"
+                          placeholder="Home Depot, Lowe's, etc."
+                          value={newMaterial.vendor_name}
+                          onChange={(e) => setNewMaterial({ ...newMaterial, vendor_name: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="vendor-link">{t('purchases.vendorLink')}</Label>
+                        <Input
+                          id="vendor-link"
+                          type="url"
+                          placeholder="https://..."
+                          value={newMaterial.vendor_link}
+                          onChange={(e) => setNewMaterial({ ...newMaterial, vendor_link: e.target.value })}
+                        />
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="vendor-name">{t('purchases.vendorName')} ({t('common.optional')})</Label>
-                    <Input
-                      id="vendor-name"
-                      placeholder="Home Depot, Lowe's, etc."
-                      value={newMaterial.vendor_name}
-                      onChange={(e) => setNewMaterial({ ...newMaterial, vendor_name: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="vendor-link">{t('purchases.vendorLink')} ({t('common.optional')})</Label>
-                    <Input
-                      id="vendor-link"
-                      type="url"
-                      placeholder="https://..."
-                      value={newMaterial.vendor_link}
-                      onChange={(e) => setNewMaterial({ ...newMaterial, vendor_link: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="room">{t('purchases.room')} ({t('common.optional')})</Label>
-                    <Select
-                      value={newMaterial.room_id || "none"}
-                      onValueChange={(value) => setNewMaterial({ ...newMaterial, room_id: value === "none" ? "" : value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={t('purchases.selectRoom')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{t('purchases.noRoom')}</SelectItem>
-                        {rooms.map((room) => (
-                          <SelectItem key={room.id} value={room.id}>
-                            {room.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="task">{t('purchases.linkToTask')} ({t('common.optional')})</Label>
-                    <Select
-                      value={newMaterial.task_id || "none"}
-                      onValueChange={(value) => setNewMaterial({ ...newMaterial, task_id: value === "none" ? "" : value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={t('purchases.selectTask')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{t('purchases.noTask')}</SelectItem>
-                        {tasks.map((task) => (
-                          <SelectItem key={task.id} value={task.id}>
-                            {task.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="assigned-to">{t('purchases.assignTo')} ({t('common.optional')})</Label>
-                    <Select
-                      value={newMaterial.assigned_to_user_id || "none"}
-                      onValueChange={(value) => setNewMaterial({ ...newMaterial, assigned_to_user_id: value === "none" ? "" : value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={t('purchases.selectTeamMember')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{t('common.unassigned')}</SelectItem>
-                        {teamMembers.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
-                            {member.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Koppling */}
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 text-sm font-semibold cursor-pointer hover:text-foreground text-muted-foreground group">
+                      <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                      <Link2 className="h-4 w-4" />
+                      {t('purchases.connections', 'Connections')}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-3 space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="task">{t('purchases.linkToTask')}</Label>
+                        <Select
+                          value={newMaterial.task_id || "none"}
+                          onValueChange={(value) => setNewMaterial({ ...newMaterial, task_id: value === "none" ? "" : value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('purchases.selectTask')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">{t('purchases.noTask')}</SelectItem>
+                            {tasks.map((task) => (
+                              <SelectItem key={task.id} value={task.id}>
+                                {task.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="room">{t('purchases.room')}</Label>
+                        <Select
+                          value={newMaterial.room_id || "none"}
+                          onValueChange={(value) => setNewMaterial({ ...newMaterial, room_id: value === "none" ? "" : value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('purchases.selectRoom')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">{t('purchases.noRoom')}</SelectItem>
+                            {rooms.map((room) => (
+                              <SelectItem key={room.id} value={room.id}>
+                                {room.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="assigned-to">{t('purchases.assignTo')}</Label>
+                        <Select
+                          value={newMaterial.assigned_to_user_id || "none"}
+                          onValueChange={(value) => setNewMaterial({ ...newMaterial, assigned_to_user_id: value === "none" ? "" : value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('purchases.selectTeamMember')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">{t('common.unassigned')}</SelectItem>
+                            {teamMembers.map((member) => (
+                              <SelectItem key={member.id} value={member.id}>
+                                {member.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
 
                   <div className="flex items-center space-x-2">
                     <input
@@ -1028,243 +1075,320 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
             </div>
           ) : (
             <>
-              {/* Filter Section */}
-              <div className="mb-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={hasActiveFilters ? "border-primary text-primary" : ""}
-                  >
-                    <Filter className="h-4 w-4 mr-2" />
-                    {t('purchases.filters', 'Filter')}
-                    {hasActiveFilters && (
-                      <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                        {(filterStatus ? 1 : 0) + (filterCreatedBy ? 1 : 0) + (filterAttachment !== "all" ? 1 : 0)}
-                      </Badge>
-                    )}
-                  </Button>
-                  {hasActiveFilters && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters}>
-                      <X className="h-4 w-4 mr-1" />
-                      {t('purchases.clearFilters', 'Rensa filter')}
-                    </Button>
-                  )}
-                </div>
+              {/* Toolbar: View Toggle + Filter + Results count */}
+              <div className="flex items-center gap-3 flex-wrap mb-4">
+                {/* View Toggle */}
+                <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'kanban' | 'table')}>
+                  <ToggleGroupItem value="kanban" aria-label="Kanban view">
+                    <LayoutGrid className="h-4 w-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="table" aria-label="Table view">
+                    <TableIcon className="h-4 w-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
 
-                {showFilters && (
-                  <div className="flex flex-wrap gap-4 p-4 bg-muted/50 rounded-lg">
-                    {/* Status Filter */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">{t('common.status')}</Label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {statusOptions.map((status) => (
-                          <button
-                            key={status.value}
-                            type="button"
-                            onClick={() => setFilterStatus(filterStatus === status.value ? null : status.value)}
-                            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                              filterStatus === status.value
-                                ? getStatusColor(status.value)
-                                : "bg-transparent text-muted-foreground border-dashed border-muted-foreground/40 hover:border-muted-foreground"
-                            }`}
-                          >
-                            {t(status.labelKey)}
-                          </button>
+                {/* Filter Popover */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9">
+                      <Filter className="h-3 w-3 mr-2" />
+                      {t('purchases.filters', 'Filter')}
+                      {totalFilterCount > 0 && (
+                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                          {totalFilterCount}
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-0" align="start">
+                    <div className="max-h-[70vh] overflow-y-auto">
+                      {/* Status */}
+                      <div className="px-3 pt-3 pb-1">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('common.status')}</p>
+                      </div>
+                      <div className="px-1 pb-2">
+                        {statusOptions.map(opt => (
+                          <label key={opt.value} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                            <Checkbox
+                              checked={filterStatuses.has(opt.value)}
+                              onCheckedChange={() => toggleFilterValue(setFilterStatuses, opt.value)}
+                            />
+                            <span className="flex-1">{t(opt.labelKey)}</span>
+                            <span className="text-xs text-muted-foreground">{getStatusCount(opt.value)}</span>
+                          </label>
                         ))}
                       </div>
-                    </div>
 
-                    {/* Created By Filter */}
-                    {uniqueCreators.length > 0 && (
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">{t('purchases.addedBy')}</Label>
-                        <Select
-                          value={filterCreatedBy || "all"}
-                          onValueChange={(value) => setFilterCreatedBy(value === "all" ? null : value)}
-                        >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder={t('purchases.allUsers', 'Alla')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">{t('purchases.allUsers', 'Alla')}</SelectItem>
-                            {uniqueCreators.map((creator) => (
-                              <SelectItem key={creator.id} value={creator.id}>
-                                {creator.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                      <div className="border-t" />
+
+                      {/* Room */}
+                      <div className="px-3 pt-3 pb-1">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('purchases.room')}</p>
                       </div>
-                    )}
+                      <div className="px-1 pb-2">
+                        <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                          <Checkbox
+                            checked={filterRooms.has("none")}
+                            onCheckedChange={() => toggleFilterValue(setFilterRooms, "none")}
+                          />
+                          <span className="flex-1">{t('purchasesTable.noRoom')}</span>
+                          <span className="text-xs text-muted-foreground">{getRoomCount("none")}</span>
+                        </label>
+                        {rooms.map(room => (
+                          <label key={room.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                            <Checkbox
+                              checked={filterRooms.has(room.id)}
+                              onCheckedChange={() => toggleFilterValue(setFilterRooms, room.id)}
+                            />
+                            <span className="flex-1">{room.name}</span>
+                            <span className="text-xs text-muted-foreground">{getRoomCount(room.id)}</span>
+                          </label>
+                        ))}
+                      </div>
 
-                    {/* Attachment Filter */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">{t('budget.filterAttachment')}</Label>
-                      <Select
-                        value={filterAttachment}
-                        onValueChange={(value) => setFilterAttachment(value as "all" | "has" | "missing")}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">{t('common.all')}</SelectItem>
-                          <SelectItem value="has">{t('budget.hasAttachment')}</SelectItem>
-                          <SelectItem value="missing">{t('budget.missingAttachment')}</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="border-t" />
+
+                      {/* Task */}
+                      <div className="px-3 pt-3 pb-1">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('purchases.task')}</p>
+                      </div>
+                      <div className="px-1 pb-2">
+                        <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                          <Checkbox
+                            checked={filterTasks.has("none")}
+                            onCheckedChange={() => toggleFilterValue(setFilterTasks, "none")}
+                          />
+                          <span className="flex-1">{t('purchasesTable.noTask')}</span>
+                          <span className="text-xs text-muted-foreground">{getTaskCount("none")}</span>
+                        </label>
+                        {tasks.map(task => (
+                          <label key={task.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                            <Checkbox
+                              checked={filterTasks.has(task.id)}
+                              onCheckedChange={() => toggleFilterValue(setFilterTasks, task.id)}
+                            />
+                            <span className="flex-1 truncate">{task.title}</span>
+                            <span className="text-xs text-muted-foreground">{getTaskCount(task.id)}</span>
+                          </label>
+                        ))}
+                      </div>
+
+                      <div className="border-t" />
+
+                      {/* Created by */}
+                      {uniqueCreators.length > 0 && (
+                        <>
+                          <div className="px-3 pt-3 pb-1">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('purchases.addedBy')}</p>
+                          </div>
+                          <div className="px-1 pb-2">
+                            {uniqueCreators.map(creator => (
+                              <label key={creator.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                                <Checkbox
+                                  checked={filterCreatedBy.has(creator.id)}
+                                  onCheckedChange={() => toggleFilterValue(setFilterCreatedBy, creator.id)}
+                                />
+                                <span className="flex-1">{creator.name}</span>
+                                <span className="text-xs text-muted-foreground">{getCreatorCount(creator.id)}</span>
+                              </label>
+                            ))}
+                          </div>
+                          <div className="border-t" />
+                        </>
+                      )}
+
+                      {/* Attachment */}
+                      <div className="px-3 pt-3 pb-1">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('purchasesTable.attachment')}</p>
+                      </div>
+                      <div className="px-1 pb-2">
+                        <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                          <Checkbox
+                            checked={filterAttachment.has("has")}
+                            onCheckedChange={() => toggleFilterValue(setFilterAttachment, "has")}
+                          />
+                          <span className="flex-1">{t('budget.hasAttachment')}</span>
+                        </label>
+                        <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                          <Checkbox
+                            checked={filterAttachment.has("missing")}
+                            onCheckedChange={() => toggleFilterValue(setFilterAttachment, "missing")}
+                          />
+                          <span className="flex-1">{t('budget.missingAttachment')}</span>
+                        </label>
+                      </div>
+
+                      {/* Clear all */}
+                      {totalFilterCount > 0 && (
+                        <>
+                          <div className="border-t" />
+                          <div className="p-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full"
+                              onClick={clearAllFilters}
+                            >
+                              {t('purchases.clearFilters', 'Clear filters')}
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </div>
-                  </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Table view toolbar items (inline) */}
+                {viewMode === 'table' && (
+                  <>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-1 h-9">
+                          <Columns3 className="h-4 w-4" />
+                          {t("purchasesTable.columns")}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-52" align="start">
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium mb-2">{t("purchasesTable.extraColumns")}</p>
+                          {PURCHASE_EXTRA_COLUMN_KEYS.map((key) => {
+                            const col = purchaseTableViewState.ALL_COLUMNS.find((c) => c.key === key);
+                            return (
+                              <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
+                                <Checkbox
+                                  checked={purchaseTableViewState.visibleExtras.has(key)}
+                                  onCheckedChange={() => purchaseTableViewState.toggleExtraColumn(key)}
+                                />
+                                {col?.label}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    <Button
+                      variant={purchaseTableViewState.compactRows ? "secondary" : "outline"}
+                      size="sm"
+                      className="gap-1 h-9"
+                      onClick={() => purchaseTableViewState.setCompactRows(!purchaseTableViewState.compactRows)}
+                    >
+                      <ToggleLeft className="h-4 w-4" />
+                      {t("purchasesTable.compactRows")}
+                    </Button>
+                    <Popover open={pSaveViewOpen} onOpenChange={setPSaveViewOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-1 h-9">
+                          <Save className="h-4 w-4" />
+                          {t("purchasesTable.saveView")}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56" align="start">
+                        <div className="space-y-2">
+                          <Input
+                            placeholder={t("purchasesTable.viewName")}
+                            value={pSaveViewName}
+                            onChange={(e) => setPSaveViewName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && pSaveViewName.trim()) {
+                                purchaseTableViewState.saveView(pSaveViewName.trim());
+                                setPSaveViewName("");
+                                setPSaveViewOpen(false);
+                              }
+                            }}
+                            className="h-8"
+                          />
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            onClick={() => {
+                              if (!pSaveViewName.trim()) return;
+                              purchaseTableViewState.saveView(pSaveViewName.trim());
+                              setPSaveViewName("");
+                              setPSaveViewOpen(false);
+                            }}
+                            disabled={!pSaveViewName.trim()}
+                          >
+                            {t("purchasesTable.saveView")}
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    {purchaseTableViewState.savedViews.length > 0 && (
+                      <Popover open={pLoadViewOpen} onOpenChange={setPLoadViewOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-1 h-9">
+                            {t("purchasesTable.savedViews")} ({purchaseTableViewState.savedViews.length})
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56" align="start">
+                          <div className="space-y-1">
+                            {purchaseTableViewState.savedViews.map((view) => (
+                              <div key={view.id} className="flex items-center justify-between">
+                                <button
+                                  className="text-sm hover:bg-muted px-2 py-1 rounded flex-1 text-left"
+                                  onClick={() => {
+                                    purchaseTableViewState.loadView(view);
+                                    setPLoadViewOpen(false);
+                                  }}
+                                >
+                                  {view.name}
+                                </button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => purchaseTableViewState.deleteView(view.id)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  </>
                 )}
 
-                {/* Active Filters Summary */}
-                {hasActiveFilters && (
-                  <div className="text-sm text-muted-foreground">
-                    {t('purchases.showingResults', 'Visar {{count}} av {{total}} ordrar', {
+                {/* Active filter count summary */}
+                {totalFilterCount > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    {t('purchases.showingResults', 'Showing {{count}} of {{total}} orders', {
                       count: filteredMaterials.length,
-                      total: materials.length
+                      total: materials.length,
                     })}
-                  </div>
+                  </span>
                 )}
               </div>
 
-              <div className="border rounded-lg overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('common.status')}</TableHead>
-                    <TableHead>{t('purchases.materialName')}</TableHead>
-                    <TableHead className="w-10"><Paperclip className="h-4 w-4" /></TableHead>
-                    <TableHead>{t('common.quantity')}</TableHead>
-                    <TableHead>{t('purchases.pricePerUnit')}</TableHead>
-                    <TableHead>{t('purchases.priceTotal')}</TableHead>
-                    <TableHead>{t('purchases.vendor')}</TableHead>
-                    <TableHead>{t('purchases.room')}</TableHead>
-                    <TableHead>{t('purchases.task')}</TableHead>
-                    <TableHead>{t('purchases.assignedTo')}</TableHead>
-                    <TableHead>{t('purchases.addedBy')}</TableHead>
-                    <TableHead>{t('purchases.addedDate')}</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredMaterials.map((material) => (
-                    <TableRow
-                      key={material.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => {
-                        setEditingMaterial({
-                          ...material,
-                          description: material.description || null,
-                          status: material.status || "submitted",
-                          room_id: material.room_id || "none",
-                          task_id: material.task_id || "none",
-                          assigned_to_user_id: material.assigned_to_user_id || "none"
-                        });
-                        setEditDialogOpen(true);
-                      }}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Select
-                          value={material.status || "submitted"}
-                          onValueChange={(value) => handleStatusChange(material.id, value)}
-                          disabled={userPurchasesAccess !== 'edit' && !isProjectOwner}
-                        >
-                          <SelectTrigger className="w-[110px]">
-                            <SelectValue placeholder={t('common.selectStatus')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="submitted">{t('materialStatuses.submitted')}</SelectItem>
-                            <SelectItem value="declined">{t('materialStatuses.declined')}</SelectItem>
-                            <SelectItem value="approved">{t('materialStatuses.approved')}</SelectItem>
-                            <SelectItem value="billed">{t('materialStatuses.billed')}</SelectItem>
-                            <SelectItem value="paid">{t('materialStatuses.paid')}</SelectItem>
-                            <SelectItem value="paused">{t('materialStatuses.paused')}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        <span className="flex items-center gap-1.5">
-                          {material.name}
-                          {material.exclude_from_budget && (
-                            <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-300 shrink-0">ÄTA</Badge>
-                          )}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <AttachmentIndicator hasAttachment={material.hasAttachment || false} count={material.attachmentCount} />
-                      </TableCell>
-                      <TableCell>
-                        {material.quantity} {material.unit}
-                      </TableCell>
-                      <TableCell>
-                        {material.price_per_unit ? formatCurrency(material.price_per_unit, currency, { decimals: 2 }) : "-"}
-                      </TableCell>
-                      <TableCell className="font-semibold">
-                        {material.price_total ? formatCurrency(material.price_total, currency, { decimals: 2 }) : "-"}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        {material.vendor_name ? (
-                          material.vendor_link ? (
-                            <a
-                              href={material.vendor_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline flex items-center gap-1"
-                            >
-                              {material.vendor_name}
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          ) : (
-                            material.vendor_name
-                          )
-                        ) : (
-                          "-"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {material.room?.name || "-"}
-                      </TableCell>
-                      <TableCell>
-                        {material.task?.title || "-"}
-                      </TableCell>
-                      <TableCell>
-                        {material.assigned_to?.name || "-"}
-                      </TableCell>
-                      <TableCell>{material.creator?.name || "Unknown"}</TableCell>
-                      <TableCell>
-                        {new Date(material.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        {canEditMaterial(material) && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              // Ensure all fields are properly set
-                              setEditingMaterial({
-                                ...material,
-                                description: material.description || null,
-                                status: material.status || "submitted",
-                                room_id: material.room_id || "none",
-                                task_id: material.task_id || "none",
-                                assigned_to_user_id: material.assigned_to_user_id || "none"
-                              });
-                              setEditDialogOpen(true);
-                            }}
-                            title={t('purchases.editOrder')}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+              {/* Views */}
+              {viewMode === 'kanban' ? (
+                <PurchasesKanbanView
+                  materials={filteredMaterials}
+                  projectId={projectId}
+                  currency={currency}
+                  isReadOnly={lockStatus.isLocked || (userPurchasesAccess !== 'edit' && !isProjectOwner)}
+                  onMaterialClick={openEditDialog}
+                  onMaterialUpdated={fetchMaterials}
+                  getStatusColor={getStatusColor}
+                />
+              ) : (
+                <PurchasesTableView
+                  materials={filteredMaterials}
+                  projectId={projectId}
+                  rooms={rooms}
+                  tasks={tasks}
+                  teamMembers={teamMembers}
+                  currency={currency}
+                  isReadOnly={lockStatus.isLocked || (userPurchasesAccess !== 'edit' && !isProjectOwner)}
+                  onMaterialClick={openEditDialog}
+                  onMaterialUpdated={fetchMaterials}
+                  canEditMaterial={canEditMaterial}
+                  getStatusColor={getStatusColor}
+                  tableViewState={purchaseTableViewState}
+                  hideToolbar
+                />
+              )}
             </>
           )}
         </CardContent>
@@ -1272,7 +1396,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-3xl lg:max-w-5xl max-h-[90vh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>{t('purchases.editOrder')}</DialogTitle>
             <DialogDescription>
@@ -1321,7 +1445,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                   rows={3}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-quantity">{t('common.quantity')}*</Label>
                   <Input
@@ -1342,124 +1466,22 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                     required
                   />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-price-per-unit">{t('purchases.pricePerUnit')}</Label>
-                <Input
-                  id="edit-price-per-unit"
-                  type="number"
-                  step="0.01"
-                  value={editingMaterial.price_per_unit || ""}
-                  onChange={(e) => setEditingMaterial({ ...editingMaterial, price_per_unit: e.target.value ? parseFloat(e.target.value) : null })}
-                />
-                {editingMaterial.quantity && editingMaterial.price_per_unit && (
-                  <p className="text-sm text-muted-foreground">
-                    {t('purchases.priceTotal')}: {formatCurrency(editingMaterial.quantity * editingMaterial.price_per_unit, currency, { decimals: 2 })}
-                  </p>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-ordered-amount">{t('purchases.orderedAmount')}</Label>
+                  <Label htmlFor="edit-price-per-unit">{t('purchases.pricePerUnit')}</Label>
                   <Input
-                    id="edit-ordered-amount"
+                    id="edit-price-per-unit"
                     type="number"
                     step="0.01"
-                    placeholder="0.00"
-                    value={editingMaterial.ordered_amount?.toString() || ""}
-                    onChange={(e) => setEditingMaterial({ ...editingMaterial, ordered_amount: e.target.value ? parseFloat(e.target.value) : null })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-paid-amount">{t('purchases.paidAmount')}</Label>
-                  <Input
-                    id="edit-paid-amount"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={editingMaterial.paid_amount?.toString() || ""}
-                    onChange={(e) => setEditingMaterial({ ...editingMaterial, paid_amount: e.target.value ? parseFloat(e.target.value) : null })}
+                    value={editingMaterial.price_per_unit || ""}
+                    onChange={(e) => setEditingMaterial({ ...editingMaterial, price_per_unit: e.target.value ? parseFloat(e.target.value) : null })}
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-vendor-name">{t('purchases.vendorName')}</Label>
-                <Input
-                  id="edit-vendor-name"
-                  value={editingMaterial.vendor_name || ""}
-                  onChange={(e) => setEditingMaterial({ ...editingMaterial, vendor_name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-vendor-link">{t('purchases.vendorLink')}</Label>
-                <Input
-                  id="edit-vendor-link"
-                  type="url"
-                  value={editingMaterial.vendor_link || ""}
-                  onChange={(e) => setEditingMaterial({ ...editingMaterial, vendor_link: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-room">{t('purchases.room')} ({t('common.optional')})</Label>
-                <Select
-                  value={editingMaterial.room_id || "none"}
-                  onValueChange={(value) => setEditingMaterial({ ...editingMaterial, room_id: value === "none" ? null : value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('purchases.selectRoom')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t('purchases.noRoom')}</SelectItem>
-                    {rooms.map((room) => (
-                      <SelectItem key={room.id} value={room.id}>
-                        {room.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-task">{t('purchases.linkToTask')} ({t('common.optional')})</Label>
-                <Select
-                  value={editingMaterial.task_id || "none"}
-                  onValueChange={(value) => setEditingMaterial({ ...editingMaterial, task_id: value === "none" ? null : value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('purchases.selectTask')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t('purchases.noTask')}</SelectItem>
-                    {tasks.map((task) => (
-                      <SelectItem key={task.id} value={task.id}>
-                        {task.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-assigned-to">{t('purchases.assignTo')} ({t('common.optional')})</Label>
-                <Select
-                  value={editingMaterial.assigned_to_user_id || "none"}
-                  onValueChange={(value) => setEditingMaterial({ ...editingMaterial, assigned_to_user_id: value === "none" ? null : value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('purchases.selectTeamMember')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t('common.unassigned')}</SelectItem>
-                    {teamMembers.map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
+              {editingMaterial.quantity && editingMaterial.price_per_unit && (
+                <p className="text-sm text-muted-foreground">
+                  {t('purchases.priceTotal')}: {formatCurrency(editingMaterial.quantity * editingMaterial.price_per_unit, currency, { decimals: 2 })}
+                </p>
+              )}
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -1473,13 +1495,135 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                 </Label>
               </div>
 
-              {/* Photos */}
-              <Separator className="my-4" />
-              <EntityPhotoGallery entityId={editingMaterial.id} entityType="material" />
+              <Separator className="my-2" />
 
-              {/* Comments Section */}
-              <Separator className="my-4" />
-              <CommentsSection materialId={editingMaterial.id} projectId={projectId} />
+              {/* Leverantör */}
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 text-sm font-semibold cursor-pointer hover:text-foreground text-muted-foreground group">
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                  <Store className="h-4 w-4" />
+                  {t('purchases.vendorName')}
+                  {(editingMaterial.vendor_name || editingMaterial.vendor_link) && (
+                    <Badge variant="secondary" className="ml-auto text-xs">{editingMaterial.vendor_name || "1"}</Badge>
+                  )}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3 space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-vendor-name">{t('purchases.vendorName')}</Label>
+                    <Input
+                      id="edit-vendor-name"
+                      value={editingMaterial.vendor_name || ""}
+                      onChange={(e) => setEditingMaterial({ ...editingMaterial, vendor_name: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-vendor-link">{t('purchases.vendorLink')}</Label>
+                    <Input
+                      id="edit-vendor-link"
+                      type="url"
+                      value={editingMaterial.vendor_link || ""}
+                      onChange={(e) => setEditingMaterial({ ...editingMaterial, vendor_link: e.target.value })}
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Kopplingar */}
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 text-sm font-semibold cursor-pointer hover:text-foreground text-muted-foreground group">
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                  <Link2 className="h-4 w-4" />
+                  {t('purchases.connections', 'Connections')}
+                  {(editingMaterial.task_id || editingMaterial.room_id || editingMaterial.assigned_to_user_id) && (
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      {[editingMaterial.task_id, editingMaterial.room_id, editingMaterial.assigned_to_user_id].filter(Boolean).length}
+                    </Badge>
+                  )}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3 space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-task">{t('purchases.linkToTask')} ({t('common.optional')})</Label>
+                    <Select
+                      value={editingMaterial.task_id || "none"}
+                      onValueChange={(value) => setEditingMaterial({ ...editingMaterial, task_id: value === "none" ? null : value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('purchases.selectTask')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{t('purchases.noTask')}</SelectItem>
+                        {tasks.map((task) => (
+                          <SelectItem key={task.id} value={task.id}>
+                            {task.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-assigned-to">{t('purchases.assignTo')} ({t('common.optional')})</Label>
+                    <Select
+                      value={editingMaterial.assigned_to_user_id || "none"}
+                      onValueChange={(value) => setEditingMaterial({ ...editingMaterial, assigned_to_user_id: value === "none" ? null : value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('purchases.selectTeamMember')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{t('common.unassigned')}</SelectItem>
+                        {teamMembers.map((member) => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-room">{t('purchases.room')} ({t('common.optional')})</Label>
+                    <Select
+                      value={editingMaterial.room_id || "none"}
+                      onValueChange={(value) => setEditingMaterial({ ...editingMaterial, room_id: value === "none" ? null : value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('purchases.selectRoom')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{t('purchases.noRoom')}</SelectItem>
+                        {rooms.map((room) => (
+                          <SelectItem key={room.id} value={room.id}>
+                            {room.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Bilder */}
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 text-sm font-semibold cursor-pointer hover:text-foreground text-muted-foreground group">
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                  <Image className="h-4 w-4" />
+                  {t('purchases.photos', 'Photos')}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3">
+                  <EntityPhotoGallery entityId={editingMaterial.id} entityType="material" />
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Kommentarer */}
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 text-sm font-semibold cursor-pointer hover:text-foreground text-muted-foreground group">
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                  <MessageSquare className="h-4 w-4" />
+                  {t('purchases.comments', 'Comments')}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3">
+                  <CommentsSection materialId={editingMaterial.id} projectId={projectId} />
+                </CollapsibleContent>
+              </Collapsible>
               </div>
 
               {/* Fixed Save Button */}

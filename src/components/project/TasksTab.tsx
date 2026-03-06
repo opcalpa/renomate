@@ -17,7 +17,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map as MapIcon, Loader2, AlertTriangle, Link2 } from "lucide-react";
+import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map as MapIcon, Loader2, AlertTriangle, Link2, ImageIcon, MessageSquare, Columns3, Save, ToggleLeft } from "lucide-react";
 import { TaskListSkeleton } from "@/components/ui/skeleton-screens";
 import { DEFAULT_COST_CENTERS, getCostCenterIcon, getCostCenterLabel } from "@/lib/costCenters";
 import { formatCurrency } from "@/lib/currency";
@@ -32,7 +32,7 @@ import ProjectTimeline from "./ProjectTimeline";
 import { ProjectLockBanner } from "./ProjectLockBanner";
 import { useProjectLock } from "@/hooks/useProjectLock";
 import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
-import { TasksTableView } from "./tasks";
+import { TasksTableView, useTasksTableView, EXTRA_COLUMN_KEYS } from "./tasks";
 
 interface ChecklistItem {
   id: string;
@@ -72,6 +72,9 @@ interface Task {
   subcontractor_cost: number | null;
   markup_percent: number | null;
   material_estimate: number | null;
+  labor_cost_percent: number | null;
+  material_markup_percent: number | null;
+  material_items?: { amount?: number }[] | null;
   // Sub-task / ÄTA fields
   is_ata?: boolean;
   parent_task_id?: string | null;
@@ -105,11 +108,13 @@ interface TasksTabProps {
   onNavigateToRoom?: (roomId: string) => void;
   showTimeline?: boolean;
   currency?: string | null;
+  userType?: string | null;
 }
 
-const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', openEntityId, onEntityOpened, onNavigateToRoom, showTimeline = true, currency }: TasksTabProps) => {
+const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', openEntityId, onEntityOpened, onNavigateToRoom, showTimeline = true, currency, userType }: TasksTabProps) => {
   const { t } = useTranslation();
   const isPlanning = projectStatus === "planning";
+  const isBuilder = userType !== "homeowner";
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -139,6 +144,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
   const [newTaskIsAta, setNewTaskIsAta] = useState(false);
   const [newTaskParentId, setNewTaskParentId] = useState<string | null>(null);
   const [taskMaterialSpend, setTaskMaterialSpend] = useState<Map<string, number>>(new Map());
+  const [defaultLaborCostPercent, setDefaultLaborCostPercent] = useState(57);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -154,6 +160,13 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
   // View mode
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
 
+  // Table view state (lifted so toolbar can render in parent)
+  const tableViewState = useTasksTableView(projectId);
+
+  // Save view UI state (for toolbar in parent)
+  const [saveViewOpen, setSaveViewOpen] = useState(false);
+  const [saveViewName, setSaveViewName] = useState("");
+  const [loadViewOpen, setLoadViewOpen] = useState(false);
 
   // Timeline visibility
   const [timelineOpen, setTimelineOpen] = useState(true);
@@ -245,13 +258,16 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id")
+        .select("id, default_labor_cost_percent")
         .eq("user_id", user.id)
         .single();
 
       if (!profile) return;
 
       setCurrentProfileId(profile.id);
+      if (profile.default_labor_cost_percent != null) {
+        setDefaultLaborCostPercent(profile.default_labor_cost_percent);
+      }
 
       // Check if user can create purchase requests
       const { data: shareData } = await supabase
@@ -1219,6 +1235,130 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
             </PopoverContent>
           </Popover>
 
+          {/* Table view toolbar items (inline) */}
+          {viewMode === 'table' && (
+            <>
+              {/* Columns toggle */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1 h-9">
+                    <Columns3 className="h-4 w-4" />
+                    {t("tasksTable.columns")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-52" align="start">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium mb-2">
+                      {t("tasksTable.extraColumns")}
+                    </p>
+                    {EXTRA_COLUMN_KEYS.map((key) => {
+                      const col = tableViewState.ALL_COLUMNS.find((c) => c.key === key);
+                      return (
+                        <label
+                          key={key}
+                          className="flex items-center gap-2 text-sm cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={tableViewState.visibleExtras.has(key)}
+                            onCheckedChange={() => tableViewState.toggleExtraColumn(key)}
+                          />
+                          {col?.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Compact toggle */}
+              <Button
+                variant={tableViewState.compactRows ? "secondary" : "outline"}
+                size="sm"
+                className="gap-1 h-9"
+                onClick={() => tableViewState.setCompactRows(!tableViewState.compactRows)}
+              >
+                <ToggleLeft className="h-4 w-4" />
+                {t("tasksTable.compactRows")}
+              </Button>
+
+              {/* Save view */}
+              <Popover open={saveViewOpen} onOpenChange={setSaveViewOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1 h-9">
+                    <Save className="h-4 w-4" />
+                    {t("tasksTable.saveView")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56" align="start">
+                  <div className="space-y-2">
+                    <Input
+                      placeholder={t("tasksTable.viewName")}
+                      value={saveViewName}
+                      onChange={(e) => setSaveViewName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && saveViewName.trim()) {
+                          tableViewState.saveView(saveViewName.trim());
+                          setSaveViewName("");
+                          setSaveViewOpen(false);
+                        }
+                      }}
+                      className="h-8"
+                    />
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        if (!saveViewName.trim()) return;
+                        tableViewState.saveView(saveViewName.trim());
+                        setSaveViewName("");
+                        setSaveViewOpen(false);
+                      }}
+                      disabled={!saveViewName.trim()}
+                    >
+                      {t("tasksTable.saveView")}
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Load saved views */}
+              {tableViewState.savedViews.length > 0 && (
+                <Popover open={loadViewOpen} onOpenChange={setLoadViewOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1 h-9">
+                      {t("tasksTable.savedViews")} ({tableViewState.savedViews.length})
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56" align="start">
+                    <div className="space-y-1">
+                      {tableViewState.savedViews.map((view) => (
+                        <div key={view.id} className="flex items-center justify-between">
+                          <button
+                            className="text-sm hover:bg-muted px-2 py-1 rounded flex-1 text-left"
+                            onClick={() => {
+                              tableViewState.loadView(view);
+                              setLoadViewOpen(false);
+                            }}
+                          >
+                            {view.name}
+                          </button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => tableViewState.deleteView(view.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </>
+          )}
+
           {/* Spacer to push Add Task to the right */}
           <div className="flex-1" />
 
@@ -1536,7 +1676,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
         </Dialog>
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] h-[90vh] flex flex-col p-0">
+          <DialogContent className="max-w-2xl lg:max-w-5xl max-h-[90vh] h-[90vh] flex flex-col p-0">
             <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-2">
               <DialogTitle>{t('tasks.editTask')}</DialogTitle>
               <DialogDescription>
@@ -1564,7 +1704,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                     rows={3}
                   />
                 </div>
-                {/* Status, Priority, Assignee — hidden in planning phase */}
+                {/* Status, Priority, Assignee, Progress — hidden in planning phase */}
                 {!isPlanning && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -1626,23 +1766,23 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-task-progress">{t('tasks.progress')}: {editingTask.progress}%</Label>
+                    <Slider
+                      id="edit-task-progress"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={[editingTask.progress]}
+                      onValueChange={([value]) => setEditingTask({ ...editingTask, progress: value })}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
                 )}
-                {/* Progress, Dates — hidden in planning phase */}
+                {/* Dates — hidden in planning phase */}
                 {!isPlanning && (
                 <>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-task-progress">{t('tasks.progress')}: {editingTask.progress}%</Label>
-                  <Slider
-                    id="edit-task-progress"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={[editingTask.progress]}
-                    onValueChange={([value]) => setEditingTask({ ...editingTask, progress: value })}
-                    className="w-full"
-                  />
-                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-task-start-date">{t('tasks.startDate')}</Label>
@@ -1704,7 +1844,14 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                     )}
                   </div>
                 </div>
-                {/* Cost estimation — planning mode gets the full pricing form */}
+                {/* Ekonomi section */}
+                <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 text-sm font-semibold cursor-pointer hover:text-foreground text-muted-foreground group">
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                  <DollarSign className="h-4 w-4" />
+                  {t('taskPanel.finances', 'Finances')}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3">
                 {isPlanning ? (
                 <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
                   <Label className="text-sm font-semibold">{t('taskCost.pricing', 'Pricing')}</Label>
@@ -1848,7 +1995,88 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                     </span>
                   </div>
                 </div>
+                ) : isBuilder ? (
+                /* Builder active phase — read-only financial summary */
+                (() => {
+                  const laborTotal = (editingTask.estimated_hours || 0) * (editingTask.hourly_rate || 0);
+                  const laborCost = laborTotal * ((editingTask.labor_cost_percent ?? defaultLaborCostPercent) / 100);
+                  const ueCost = editingTask.subcontractor_cost || 0;
+                  const items = editingTask.material_items || [];
+                  const materialCost = items.length > 0
+                    ? items.reduce((sum, i) => sum + (i.amount || 0), 0)
+                    : (editingTask.material_estimate || 0);
+                  const estimatedCost = laborCost + ueCost + materialCost;
+                  const customerPrice = editingTask.budget || 0;
+                  const margin = customerPrice - estimatedCost;
+                  const marginPct = customerPrice > 0 ? Math.round((margin / customerPrice) * 100) : 0;
+                  const matBudget = items.length > 0
+                    ? items.reduce((sum, i) => sum + (i.amount || 0), 0)
+                    : (editingTask.material_estimate || 0);
+                  const matConsumed = taskMaterialSpend.get(editingTask.id) || 0;
+                  const matRemaining = matBudget - matConsumed;
+
+                  const originalBudget = tasks.find(t => t.id === editingTask.id)?.budget;
+                  const priceChanged = originalBudget != null && customerPrice !== originalBudget && originalBudget > 0;
+
+                  return (
+                    <div className="space-y-3 rounded-lg border p-4 bg-muted/30">
+                      <Label className="text-sm font-semibold">{t('budget.financialSummary', 'Financial summary')}</Label>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="text-center space-y-1">
+                          <p className="text-xs text-muted-foreground">{t('budget.customerPrice', 'Customer price')}</p>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="h-7 text-sm text-center font-semibold"
+                            value={editingTask.budget?.toString() || ""}
+                            onChange={(e) => setEditingTask({ ...editingTask, budget: e.target.value ? parseFloat(e.target.value) : null })}
+                          />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground">{t('budget.cost', 'Cost')}</p>
+                          <p className="text-sm font-semibold">{formatCurrency(estimatedCost, currency)}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground">{t('budget.result', 'Result')}</p>
+                          <p className={`text-sm font-semibold ${margin < 0 ? "text-destructive" : margin > 0 ? "text-green-600" : ""}`}>
+                            {formatCurrency(margin, currency)} ({marginPct}%)
+                          </p>
+                        </div>
+                      </div>
+                      {matBudget > 0 && (
+                        <>
+                          <Separator />
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="text-center">
+                              <p className="text-xs text-muted-foreground">{t('budget.matBudget', 'Material budget')}</p>
+                              <p className="text-sm font-medium">{formatCurrency(matBudget, currency)}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-muted-foreground">{t('budget.matConsumed', 'Consumed')}</p>
+                              <p className="text-sm font-medium">{formatCurrency(matConsumed, currency)}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-muted-foreground">{t('budget.matRemaining', 'Remaining')}</p>
+                              <p className={`text-sm font-medium ${matRemaining < 0 ? "text-destructive" : matRemaining <= matBudget * 0.2 ? "text-amber-500" : "text-green-600"}`}>
+                                {formatCurrency(matRemaining, currency)}
+                              </p>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      {priceChanged && (
+                        <div className="flex items-start gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 rounded-md px-3 py-2">
+                          <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                          <span>{t('budget.priceChangedWarning', 'Customer price differs from original quote amount. This won\'t update the quote.')}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
                 ) : (
+                /* Homeowner active phase — editable Budget / Ordered / Paid */
+                <>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-task-budget">{t('tasks.budget')}</Label>
@@ -1884,44 +2112,35 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                     />
                   </div>
                 </div>
-                )}
-                {editingTask.material_estimate != null && editingTask.material_estimate > 0 && !isPlanning && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
-                    <ShoppingCart className="h-3.5 w-3.5" />
-                    <span>{t("taskCost.materialEstimate", "Material estimate")}:</span>
-                    <span className="font-medium text-foreground">{formatCurrency(editingTask.material_estimate, currency)}</span>
+                {editingTask.budget && (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-task-payment-status">{t('tasks.paymentStatus')}</Label>
+                    <Select
+                      value={editingTask.payment_status || "not_paid"}
+                      onValueChange={(value) => {
+                        if (value === "input_amount") {
+                          setEditingTask({ ...editingTask, payment_status: "partially_paid" });
+                        } else {
+                          setEditingTask({ ...editingTask, payment_status: value, paid_amount: value === "paid" && editingTask.budget ? editingTask.budget : null });
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="not_paid">{t('tasks.notPaid')}</SelectItem>
+                        <SelectItem value="paid">{t('tasks.paid')}</SelectItem>
+                        <SelectItem value="billed">{t('tasks.billed')}</SelectItem>
+                        <SelectItem value="input_amount">{t('tasks.partiallyPaid')}</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
-                {editingTask.budget && !isPlanning && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-task-payment-status">{t('tasks.paymentStatus')}</Label>
-                      <Select
-                        value={editingTask.payment_status || "not_paid"}
-                        onValueChange={(value) => {
-                          if (value === "input_amount") {
-                            setEditingTask({ ...editingTask, payment_status: "partially_paid" });
-                          } else {
-                            setEditingTask({ ...editingTask, payment_status: value, paid_amount: value === "paid" && editingTask.budget ? editingTask.budget : null });
-                          }
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="not_paid">{t('tasks.notPaid')}</SelectItem>
-                          <SelectItem value="paid">{t('tasks.paid')}</SelectItem>
-                          <SelectItem value="billed">{t('tasks.billed')}</SelectItem>
-                          <SelectItem value="input_amount">{t('tasks.partiallyPaid')}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
+                </>
                 )}
-                {/* Advanced sections — hidden in planning phase */}
+                {/* Cost Centers — nested inside Ekonomi, hidden in planning */}
                 {!isPlanning && (
-                <>
                 <Collapsible>
                 <div className="space-y-2">
                   <CollapsibleTrigger className="flex items-center gap-1 text-sm font-medium cursor-pointer hover:text-foreground text-muted-foreground">
@@ -2060,10 +2279,27 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                   </CollapsibleContent>
                 </div>
                 </Collapsible>
-                {/* Checklists */}
+                )}
+                </CollapsibleContent>
+                </Collapsible>
+
+                {/* Remaining advanced sections — hidden in planning phase */}
+                {!isPlanning && (
+                <>
+                {/* Checklistor */}
+                <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 text-sm font-semibold cursor-pointer hover:text-foreground text-muted-foreground group">
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                  <CheckSquare className="h-4 w-4" />
+                  {t('tasks.checklists')}
+                  {(editingTask.checklists?.length || 0) > 0 && (
+                    <Badge variant="secondary" className="ml-auto text-xs">{editingTask.checklists!.length}</Badge>
+                  )}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3">
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label>{t('tasks.checklists')}</Label>
+                  <div className="flex items-center justify-end">
+                    {/* Add checklist button aligned right */}
                     <Button
                       type="button"
                       variant="outline"
@@ -2195,10 +2431,21 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                     );
                   })}
                 </div>
+                </CollapsibleContent>
+                </Collapsible>
 
+                {/* Beroenden (Dependencies) */}
+                <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 text-sm font-semibold cursor-pointer hover:text-foreground text-muted-foreground group">
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                  <Link2 className="h-4 w-4" />
+                  {t('taskPanel.dependencies')}
+                  {(taskDependencies[editingTask.id]?.length || 0) > 0 && (
+                    <Badge variant="secondary" className="ml-auto text-xs">{taskDependencies[editingTask.id].length}</Badge>
+                  )}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3">
                 <div className="space-y-2">
-                  <Label>{t('tasks.dependencies')}</Label>
-                  <div className="space-y-2">
                     {taskDependencies[editingTask.id]?.map((dep) => {
                       const depTask = tasks.find(t => t.id === dep.depends_on_task_id);
                       return (
@@ -2230,17 +2477,21 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                           ))}
                       </SelectContent>
                     </Select>
-                  </div>
                 </div>
-                
-                {/* Purchase Orders */}
-                <Separator className="my-4" />
+                </CollapsibleContent>
+                </Collapsible>
+
+                {/* Inköpsordrar (Purchase Orders) */}
+                <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 text-sm font-semibold cursor-pointer hover:text-foreground text-muted-foreground group">
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                  <ShoppingCart className="h-4 w-4" />
+                  {t('taskPanel.purchaseOrders')}
+                  <Badge variant="secondary" className="ml-auto text-xs">{editTaskMaterials.length}</Badge>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3">
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                      <Label className="mb-0">{t('taskPanel.purchaseOrders')} ({editTaskMaterials.length})</Label>
-                    </div>
+                  <div className="flex justify-end">
                     <Button
                       type="button"
                       variant="outline"
@@ -2276,18 +2527,33 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                     <p className="text-sm text-muted-foreground">{t('taskPanel.noPurchaseOrdersForTask')}</p>
                   )}
                 </div>
+                </CollapsibleContent>
+                </Collapsible>
 
-                {/* Photos */}
-                <Separator className="my-4" />
+                {/* Bilder & Filer (Photos & Files) */}
+                <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 text-sm font-semibold cursor-pointer hover:text-foreground text-muted-foreground group">
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                  <ImageIcon className="h-4 w-4" />
+                  {t('taskPanel.photosAndFiles', 'Photos & Files')}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3 space-y-4">
                 <EntityPhotoGallery entityId={editingTask.id} entityType="task" />
-
-                {/* Linked Files */}
-                <Separator className="my-4" />
                 <TaskFilesList taskId={editingTask.id} projectId={projectId} />
+                </CollapsibleContent>
+                </Collapsible>
 
-                {/* Comments */}
-                <Separator className="my-4" />
+                {/* Kommentarer (Comments) */}
+                <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 text-sm font-semibold cursor-pointer hover:text-foreground text-muted-foreground group">
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                  <MessageSquare className="h-4 w-4" />
+                  {t('taskPanel.comments', 'Comments')}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3">
                 <CommentsSection taskId={editingTask.id} projectId={projectId} />
+                </CollapsibleContent>
+                </Collapsible>
                 </>
                 )}
 
@@ -2449,6 +2715,8 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
           getStatusIcon={getStatusIcon}
           getPriorityColor={getPriorityColor}
           getAssignedMemberName={getAssignedMemberName}
+          tableViewState={tableViewState}
+          hideToolbar
         />
       )}
       {/* Create Purchase Order Dialog */}

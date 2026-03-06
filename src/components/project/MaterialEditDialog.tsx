@@ -188,7 +188,7 @@ export const MaterialEditDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-3xl lg:max-w-5xl max-h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{t("purchases.editOrder")}</DialogTitle>
           <DialogDescription>{t("purchases.editOrderDescription")}</DialogDescription>
