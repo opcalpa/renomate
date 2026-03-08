@@ -15,7 +15,6 @@ import { ArrowLeft, ChevronDown, FolderOpen, Lock, BookOpen, Loader2, MessageSqu
 import { isDemoProject, refreshDemoProjectDates } from "@/services/demoProjectService";
 import { normalizeStatus, STATUS_META } from "@/lib/projectStatus";
 import { ProjectDetailSkeleton } from "@/components/ui/skeleton-screens";
-import { WithHotspot } from "@/components/onboarding/Hotspot";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslation } from "react-i18next";
@@ -121,10 +120,10 @@ const ProjectDetail = () => {
   const [loading, setLoading] = useState(true);
   const [leadQuoteId, setLeadQuoteId] = useState<string | null>(null);
 
-  // Derive effective user type: demo role for demo projects (regardless of login), profile for regular projects
+  // Derive effective user type: demo role for demo projects, profile for authenticated, localStorage for guests
   const effectiveUserType = isPublicDemoProject
     ? demoPrefs.preferences.role
-    : profile?.onboarding_user_type;
+    : profile?.onboarding_user_type || (isGuest ? localStorage.getItem("guest_user_type") : undefined);
 
   // Map tab keys to permission keys
   const tabPermissionMap: Record<string, string> = {
@@ -140,7 +139,7 @@ const ProjectDetail = () => {
     customer: (isPublicDemoProject && demoPrefs.preferences.role === "homeowner")
       ? "view"
       : (permissions.customerView || "none"),
-    planning: effectiveUserType === "homeowner" ? "view" : "none",
+    planning: "none",  // Planning is now a sub-section of Overview
     chat: "view",
   };
 
@@ -203,8 +202,8 @@ const ProjectDetail = () => {
   useEffect(() => {
     if (!permissions.loading && permissions.isClient && !isQuotePhase) {
       if (!searchParams.get("tab") || isTabBlocked(activeTab)) {
-        // Homeowners default to planning tab; other clients to customer view
-        setActiveTab(effectiveUserType === "homeowner" ? "planning" : "customer");
+        // Clients default to customer view
+        setActiveTab("customer");
       }
     }
   }, [permissions.loading, permissions.isClient, isQuotePhase, activeTab, effectiveUserType]);
@@ -879,18 +878,6 @@ const ProjectDetail = () => {
               <span className="hidden lg:inline">{t('projectDetail.backToStart')}</span>
             </Button>
             <div className="flex items-center space-x-4 lg:space-x-6">
-              {/* Homeowner-only: Planning tab */}
-              {!isTabBlocked("planning") && (
-                <div
-                  className={cn(
-                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                    activeTab === "planning" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}
-                  onClick={() => handleMenuSelect('planning', 'planning')}
-                >
-                  {t("homeownerPlanning.tabTitle", "Planning")}
-                </div>
-              )}
               {/* Client-only: Kundvy tab */}
               {!isTabBlocked("customer") && (
                 <div
@@ -985,28 +972,21 @@ const ProjectDetail = () => {
               {/* Secondary tabs - visible on large screens, hidden on medium */}
               <div className="hidden xl:contents">
                 {/* 5. Yta */}
-                <WithHotspot
-                  hotspotId="canvas-tab"
-                  hotspotContent="hotspots.canvas"
-                  hotspotPosition="top-right"
-                  showOnce={true}
-                >
-                  <HoverTabMenu
-                    trigger={
-                      <div className={cn(
-                        "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                        activeTab === "spaceplanner" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
-                        isTabBlocked("spaceplanner") && "opacity-40 pointer-events-none cursor-default"
-                      )}>
-                        {t('projectDetail.spacePlanner')}
-                      </div>
-                    }
-                    items={menuConfigs.spaceplanner}
-                    onSelect={(value) => handleMenuSelect('spaceplanner', value)}
-                    onMainClick={() => handleMenuSelect('spaceplanner', 'rooms')}
-                    activeValue={activeTab === "spaceplanner" ? activeSubTab || "rooms" : undefined}
-                  />
-                </WithHotspot>
+                <HoverTabMenu
+                  trigger={
+                    <div className={cn(
+                      "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                      activeTab === "spaceplanner" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                      isTabBlocked("spaceplanner") && "opacity-40 pointer-events-none cursor-default"
+                    )}>
+                      {t('projectDetail.spacePlanner')}
+                    </div>
+                  }
+                  items={menuConfigs.spaceplanner}
+                  onSelect={(value) => handleMenuSelect('spaceplanner', value)}
+                  onMainClick={() => handleMenuSelect('spaceplanner', 'rooms')}
+                  activeValue={activeTab === "spaceplanner" ? activeSubTab || "rooms" : undefined}
+                />
 
                 {/* 6. Filer */}
                 <HoverTabMenu
@@ -1026,28 +1006,21 @@ const ProjectDetail = () => {
                 />
 
                 {/* 7. Team */}
-                <WithHotspot
-                  hotspotId="invite-team"
-                  hotspotContent="hotspots.inviteTeam"
-                  hotspotPosition="top-right"
-                  showOnce={true}
-                >
-                  <HoverTabMenu
-                    trigger={
-                      <div className={cn(
-                        "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                        activeTab === "team" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
-                        isTabBlocked("team") && "opacity-40 pointer-events-none cursor-default"
-                      )}>
-                        {t('projectDetail.team')}
-                      </div>
-                    }
-                    items={menuConfigs.team}
-                    onSelect={(value) => handleMenuSelect('team', value)}
-                    onMainClick={() => handleMenuSelect('team', 'team')}
-                    activeValue={activeTab === "team" ? activeSubTab || "team" : undefined}
-                  />
-                </WithHotspot>
+                <HoverTabMenu
+                  trigger={
+                    <div className={cn(
+                      "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                      activeTab === "team" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                      isTabBlocked("team") && "opacity-40 pointer-events-none cursor-default"
+                    )}>
+                      {t('projectDetail.team')}
+                    </div>
+                  }
+                  items={menuConfigs.team}
+                  onSelect={(value) => handleMenuSelect('team', value)}
+                  onMainClick={() => handleMenuSelect('team', 'team')}
+                  activeValue={activeTab === "team" ? activeSubTab || "team" : undefined}
+                />
               </div>
 
               {/* Overflow menu - visible on medium screens, hidden on large */}
@@ -1204,6 +1177,7 @@ const ProjectDetail = () => {
               <OverviewTab
                 project={effectiveProject!}
                 userType={effectiveUserType}
+                isGuest={isGuest}
                 onProjectUpdate={loadData}
                 onNavigateToEntity={handleFeedNavigate}
                 onNavigateToPurchases={(materialId?: string) => {

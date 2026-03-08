@@ -38,8 +38,8 @@ interface Material {
   task_id: string | null;
 }
 
-export function useOverviewData(project: OverviewProject): OverviewData {
-  const [loading, setLoading] = useState(true);
+export function useOverviewData(project: OverviewProject, skip?: boolean): OverviewData {
+  const [loading, setLoading] = useState(!skip);
   const [taskStats, setTaskStats] = useState<TaskStats>({
     total: 0, completed: 0, inProgress: 0, overdue: [], blockedOrOnHold: [], percentage: 0,
   });
@@ -239,8 +239,8 @@ export function useOverviewData(project: OverviewProject): OverviewData {
   }, [project.id, project.total_budget, project.finish_goal_date, project.start_date]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (!skip) fetchData();
+  }, [fetchData, skip]);
 
   return {
     taskStats,

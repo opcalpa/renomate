@@ -32,7 +32,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
 import { WelcomeModal, QuickStartChoice } from "@/components/onboarding/WelcomeModal";
 import { GuidedSetupWizard } from "@/components/onboarding/GuidedSetupWizard";
-import { WithHotspot } from "@/components/onboarding/Hotspot";
 import { PageLoadingSkeleton } from "@/components/ui/skeleton-screens";
 import { isDemoProject } from "@/services/demoProjectService";
 import { normalizeStatus, STATUS_META } from "@/lib/projectStatus";
@@ -107,6 +106,10 @@ const Projects = () => {
     } else if (isGuest) {
       // Load guest projects from localStorage
       fetchGuestProjects();
+      // Show welcome modal for new guests
+      if (!localStorage.getItem("guest_onboarding_completed")) {
+        setShowWelcomeModal(true);
+      }
     } else {
       fetchProfile();
       fetchProjects();
@@ -458,11 +461,15 @@ const Projects = () => {
   const handleWelcomeComplete = async (userType: "homeowner" | "contractor", quickStart?: QuickStartChoice) => {
     setShowWelcomeModal(false);
 
-    // Refresh projects - fetchProjects() already handles demo seeding
-    await fetchProjects();
-
-    // Refresh onboarding state
-    onboarding.refresh();
+    if (isGuest) {
+      // Guest mode: refresh guest projects
+      fetchGuestProjects();
+    } else {
+      // Refresh projects - fetchProjects() already handles demo seeding
+      await fetchProjects();
+      // Refresh onboarding state
+      onboarding.refresh();
+    }
 
     // Handle quick start choice
     if (quickStart === "guided") {
@@ -580,12 +587,6 @@ const Projects = () => {
             <h2 className="text-2xl font-semibold">{t('projects.title')}</h2>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <WithHotspot
-              hotspotId="create-project"
-              hotspotContent="hotspots.createProject"
-              hotspotPosition="top-right"
-              showOnce={true}
-            >
               <Button onClick={() => setDialogOpen(true)} className="flex-1 sm:flex-none">
                 <Plus className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">
@@ -593,7 +594,6 @@ const Projects = () => {
                 </span>
                 <span className="sm:hidden">{t('common.create', 'Skapa')}</span>
               </Button>
-            </WithHotspot>
             <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setCreateStep(1); setCreateMethod("choose"); setNewProjectName(""); setNewProjectDescription(""); setNewProjectAddress(""); setNewProjectPostalCode(""); setNewProjectCity(""); setNewProjectType(""); setNewProjectStartDate(""); setNewProjectBudget(""); setUploadedFile(null); setUseAI(true); if (fileInputRef.current) fileInputRef.current.value = ""; } }}>
             <DialogContent className={createMethod === "choose" ? "sm:max-w-lg" : undefined}>
               <DialogHeader>
@@ -1089,14 +1089,12 @@ const Projects = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Welcome modal for new users */}
-      {profile?.id && (
-        <WelcomeModal
-          open={showWelcomeModal}
-          profileId={profile.id as string}
-          onComplete={handleWelcomeComplete}
-        />
-      )}
+      {/* Welcome modal for new users (authenticated & guests) */}
+      <WelcomeModal
+        open={showWelcomeModal}
+        profileId={profile?.id as string | undefined}
+        onComplete={handleWelcomeComplete}
+      />
 
       {/* Create Intake Dialog (send customer form) */}
       <CreateIntakeDialog open={createIntakeOpen} onOpenChange={setCreateIntakeOpen} onCreated={() => { /* intake created from dialog */ }} />

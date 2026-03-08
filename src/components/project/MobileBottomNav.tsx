@@ -38,7 +38,6 @@ const DEFAULT_PRIMARY: TabConfig[] = [
 ];
 
 const CLIENT_PRIMARY: TabConfig[] = [
-  { tab: "planning", icon: ClipboardList, labelKey: "nav.mobileNav.planning" },
   { tab: "customer", icon: LayoutDashboard, labelKey: "nav.mobileNav.clientView" },
   { tab: "chat", icon: MessageSquare, labelKey: "nav.mobileNav.chat" },
   { tab: "files", icon: ImageIcon, labelKey: "nav.mobileNav.photos" },

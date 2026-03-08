@@ -1888,6 +1888,8 @@
   },
   "overview": {
     "projectOverview": "Project Overview",
+    "guestPlanningTitle": "Sign in to start planning",
+    "guestPlanningDesc": "Create an account to add rooms, tasks, and materials to your project. Your project will be saved and you can invite collaborators.",
     "addPurchase": "Register Purchase",
     "createQuote": "Create Quote",
     "createQuoteHint": "Create quote manually",

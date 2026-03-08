@@ -39,7 +39,7 @@ const ALL_LANGUAGES = [...PRIMARY_LANGUAGES, ...ADDITIONAL_LANGUAGES];
 
 interface WelcomeModalProps {
   open: boolean;
-  profileId: string;
+  profileId?: string | null;
   onComplete: (userType: UserType, quickStart?: QuickStartChoice) => void;
 }
 
@@ -68,6 +68,7 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
     if (!selectedLanguage) return;
 
     await i18n.changeLanguage(selectedLanguage);
+    localStorage.setItem("i18nextLng", selectedLanguage);
 
     if (profileId) {
       try {
@@ -88,22 +89,25 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
   };
 
   const handleUserTypeContinue = async () => {
-    if (!selectedType || !profileId) return;
+    if (!selectedType) return;
 
     setSaving(true);
     try {
-      // Save user type and auto-enable professional listing for contractors
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          onboarding_user_type: selectedType,
-          // Auto-enable "Find Professionals" listing for contractors
-          // They can disable it later in profile settings if they don't want to be searchable
-          ...(selectedType === "contractor" ? { is_professional: true } : {}),
-        })
-        .eq("id", profileId);
+      if (profileId) {
+        // Save user type and auto-enable professional listing for contractors
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            onboarding_user_type: selectedType,
+            ...(selectedType === "contractor" ? { is_professional: true } : {}),
+          })
+          .eq("id", profileId);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Guest mode: store in localStorage
+        localStorage.setItem("guest_user_type", selectedType);
+      }
 
       analytics.capture(AnalyticsEvents.ONBOARDING_STEP_COMPLETED, {
         step: "user_type",
@@ -120,19 +124,22 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
   };
 
   const handleQuickStartChoice = async (choice: QuickStartChoice) => {
-    if (!profileId) return;
-
     setSaving(true);
     try {
-      // Now mark onboarding as complete
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          onboarding_welcome_completed: true,
-        })
-        .eq("id", profileId);
+      if (profileId) {
+        // Mark onboarding as complete in DB
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            onboarding_welcome_completed: true,
+          })
+          .eq("id", profileId);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Guest mode: mark in localStorage
+        localStorage.setItem("guest_onboarding_completed", "true");
+      }
 
       analytics.capture(AnalyticsEvents.ONBOARDING_COMPLETED, {
         user_type: selectedType,
