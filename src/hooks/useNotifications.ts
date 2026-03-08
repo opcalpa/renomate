@@ -236,74 +236,80 @@ export function useNotifications() {
       .eq("created_by_user_id", userId)
       .in("project_id", projectIds);
 
-    const userTaskIds = userTasks?.map((t) => t.id) || [];
-    const userMaterialIds = userMaterials?.map((m) => m.id) || [];
+    // Cap IDs to avoid overly long URLs that cause Supabase 500 errors
+    const MAX_IN_IDS = 50;
+    const userTaskIds = (userTasks?.map((t) => t.id) || []).slice(0, MAX_IN_IDS);
+    const userMaterialIds = (userMaterials?.map((m) => m.id) || []).slice(0, MAX_IN_IDS);
     const seenIds = new Set(items.map((i) => i.id));
 
     if (userTaskIds.length > 0) {
-      const { data: taskComments } = await supabase
-        .from("comments")
-        .select(commentSelect)
-        .in("task_id", userTaskIds)
-        .neq("created_by_user_id", userId)
-        .gte("created_at", sevenDaysAgo)
-        .order("created_at", { ascending: false })
-        .limit(20);
+      try {
+        const { data: taskComments } = await supabase
+          .from("comments")
+          .select(commentSelect)
+          .in("task_id", userTaskIds)
+          .neq("created_by_user_id", userId)
+          .gte("created_at", sevenDaysAgo)
+          .order("created_at", { ascending: false })
+          .limit(20);
 
-      if (taskComments) {
-        for (const c of taskComments as unknown as CommentRow[]) {
-          const key = `comment-${c.id}`;
-          if (seenIds.has(key) || seenIds.has(`mention-${c.id}`)) continue;
-          seenIds.add(key);
-          const pId = resolveProject(c);
-          items.push({
-            id: key,
-            type: "comment",
-            title: c.creator?.name || "Someone",
-            preview: truncate(c.content),
-            projectId: pId,
-            projectName: projectMap.get(pId) || "",
-            createdAt: c.created_at,
-            isUnread: c.created_at > lastReadAt && !readIds.has(`mention-${c.id}`) && !readIds.has(`comment-${c.id}`),
-            entityType: "task",
-            entityId: c.task_id || undefined,
-            entityName: resolveEntityName(c),
-          });
+        if (taskComments) {
+          for (const c of taskComments as unknown as CommentRow[]) {
+            const key = `comment-${c.id}`;
+            if (seenIds.has(key) || seenIds.has(`mention-${c.id}`)) continue;
+            seenIds.add(key);
+            const pId = resolveProject(c);
+            items.push({
+              id: key,
+              type: "comment",
+              title: c.creator?.name || "Someone",
+              preview: truncate(c.content),
+              projectId: pId,
+              projectName: projectMap.get(pId) || "",
+              createdAt: c.created_at,
+              isUnread: c.created_at > lastReadAt && !readIds.has(`mention-${c.id}`) && !readIds.has(`comment-${c.id}`),
+              entityType: "task",
+              entityId: c.task_id || undefined,
+              entityName: resolveEntityName(c),
+            });
+          }
         }
-      }
+      } catch { /* silently skip if query fails */ }
     }
 
     if (userMaterialIds.length > 0) {
-      const { data: matComments } = await supabase
-        .from("comments")
-        .select(commentSelect)
-        .in("material_id", userMaterialIds)
-        .neq("created_by_user_id", userId)
-        .gte("created_at", sevenDaysAgo)
-        .order("created_at", { ascending: false })
-        .limit(20);
+      try {
+        const { data: matComments } = await supabase
+          .from("comments")
+          .select(commentSelect)
+          .in("material_id", userMaterialIds)
+          .neq("created_by_user_id", userId)
+          .gte("created_at", sevenDaysAgo)
+          .order("created_at", { ascending: false })
+          .limit(20);
 
-      if (matComments) {
-        for (const c of matComments as unknown as CommentRow[]) {
-          const key = `comment-${c.id}`;
-          if (seenIds.has(key) || seenIds.has(`mention-${c.id}`)) continue;
-          seenIds.add(key);
-          const pId = resolveProject(c);
-          items.push({
-            id: key,
-            type: "comment",
-            title: c.creator?.name || "Someone",
-            preview: truncate(c.content),
-            projectId: pId,
-            projectName: projectMap.get(pId) || "",
-            createdAt: c.created_at,
-            isUnread: c.created_at > lastReadAt && !readIds.has(`mention-${c.id}`) && !readIds.has(`comment-${c.id}`),
-            entityType: "material",
-            entityId: c.material_id || undefined,
-            entityName: resolveEntityName(c),
-          });
+        if (matComments) {
+          for (const c of matComments as unknown as CommentRow[]) {
+            const key = `comment-${c.id}`;
+            if (seenIds.has(key) || seenIds.has(`mention-${c.id}`)) continue;
+            seenIds.add(key);
+            const pId = resolveProject(c);
+            items.push({
+              id: key,
+              type: "comment",
+              title: c.creator?.name || "Someone",
+              preview: truncate(c.content),
+              projectId: pId,
+              projectName: projectMap.get(pId) || "",
+              createdAt: c.created_at,
+              isUnread: c.created_at > lastReadAt && !readIds.has(`mention-${c.id}`) && !readIds.has(`comment-${c.id}`),
+              entityType: "material",
+              entityId: c.material_id || undefined,
+              entityName: resolveEntityName(c),
+            });
+          }
         }
-      }
+      } catch { /* silently skip if query fails */ }
     }
 
     // 3. Tasks created by others in user's projects

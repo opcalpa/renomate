@@ -13,6 +13,7 @@ interface CustomerViewTabProps {
   projectStartDate?: string | null;
   projectFinishDate?: string | null;
   currency?: string | null;
+  userType?: string | null;
 }
 
 interface SectionProps {
@@ -49,6 +50,7 @@ export default function CustomerViewTab({
   projectStartDate,
   projectFinishDate,
   currency,
+  userType,
 }: CustomerViewTabProps) {
   const { t } = useTranslation();
 
@@ -65,6 +67,7 @@ export default function CustomerViewTab({
           projectStartDate={projectStartDate}
           projectFinishDate={projectFinishDate}
           currency={currency}
+          userType={userType}
         />
       </CollapsibleSection>
 

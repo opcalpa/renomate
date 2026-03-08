@@ -22,6 +22,8 @@ import { useProjectLock } from "@/hooks/useProjectLock";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { ProjectStatusCTA } from "./overview/ProjectStatusCTA";
 import { PlanningTaskList } from "./overview/PlanningTaskList";
+import { PlanningRoomList } from "./overview/PlanningRoomList";
+import { HomeownerPlanningView } from "./overview/HomeownerPlanningView";
 import { ProjectHeader } from "./overview/ProjectHeader";
 import { RotDetailsCard } from "./overview/RotDetailsCard";
 import { normalizeStatus, isQuotePhase } from "@/lib/projectStatus";
@@ -115,6 +117,27 @@ const OverviewTab = ({
     refetch();
   };
 
+  // ----- Planning phase: homeowner RFQ builder -----
+  if (isPlanning && isHomeowner) {
+    return (
+      <div className="space-y-6">
+        <ProjectHeader project={project} onOpenSettings={() => setSettingsOpen(true)} />
+        <HomeownerPlanningView
+          projectId={project.id}
+          projectName={project.name}
+          projectAddress={project.address}
+          currency={project.currency}
+        />
+        <ProjectSettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          project={project}
+          onProjectUpdate={handleProjectUpdate}
+        />
+      </div>
+    );
+  }
+
   // ----- Planning phase: focused scope-builder view -----
   if (isPlanning && !isHomeowner) {
     return (
@@ -133,6 +156,11 @@ const OverviewTab = ({
           currency={project.currency}
           onNavigateToTasks={(taskId) => onNavigateToTasks?.(taskId)}
           onCreateQuote={() => setQuoteDialogOpen(true)}
+          locked={lockStatus.isLocked}
+        />
+
+        <PlanningRoomList
+          projectId={project.id}
           locked={lockStatus.isLocked}
         />
 

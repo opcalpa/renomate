@@ -348,10 +348,15 @@ export type Database = {
           cost: number | null
           created_at: string
           created_by_user_id: string
+          description: string | null
+          exclude_from_budget: boolean
           id: string
+          markup_percent: number | null
           name: string
           ordered_amount: number | null
           paid_amount: number | null
+          price_per_unit: number | null
+          price_total: number | null
           project_id: string | null
           quantity: number | null
           room_id: string | null
@@ -366,10 +371,15 @@ export type Database = {
           cost?: number | null
           created_at?: string
           created_by_user_id: string
+          description?: string | null
+          exclude_from_budget?: boolean
           id?: string
+          markup_percent?: number | null
           name: string
           ordered_amount?: number | null
           paid_amount?: number | null
+          price_per_unit?: number | null
+          price_total?: number | null
           project_id?: string | null
           quantity?: number | null
           room_id?: string | null
@@ -384,10 +394,15 @@ export type Database = {
           cost?: number | null
           created_at?: string
           created_by_user_id?: string
+          description?: string | null
+          exclude_from_budget?: boolean
           id?: string
+          markup_percent?: number | null
           name?: string
           ordered_amount?: number | null
           paid_amount?: number | null
+          price_per_unit?: number | null
+          price_total?: number | null
           project_id?: string | null
           quantity?: number | null
           room_id?: string | null
@@ -672,6 +687,7 @@ export type Database = {
           default_labor_cost_percent: number | null
           default_payment_terms_days: number | null
           email: string | null
+          estimation_settings: Record<string, unknown> | null
           id: string
           is_professional: boolean
           language_preference: string | null
@@ -711,6 +727,7 @@ export type Database = {
           default_labor_cost_percent?: number | null
           default_payment_terms_days?: number | null
           email?: string | null
+          estimation_settings?: Record<string, unknown> | null
           id?: string
           is_professional?: boolean
           language_preference?: string | null
@@ -750,6 +767,7 @@ export type Database = {
           default_labor_cost_percent?: number | null
           default_payment_terms_days?: number | null
           email?: string | null
+          estimation_settings?: Record<string, unknown> | null
           id?: string
           is_professional?: boolean
           language_preference?: string | null
@@ -928,6 +946,7 @@ export type Database = {
           postal_code: string | null
           project_type: string | null
           property_designation: string | null
+          source_rfq_project_id: string | null
           spent_amount: number | null
           start_date: string | null
           status: string | null
@@ -947,6 +966,7 @@ export type Database = {
           postal_code?: string | null
           project_type?: string | null
           property_designation?: string | null
+          source_rfq_project_id?: string | null
           spent_amount?: number | null
           start_date?: string | null
           status?: string | null
@@ -966,6 +986,7 @@ export type Database = {
           postal_code?: string | null
           project_type?: string | null
           property_designation?: string | null
+          source_rfq_project_id?: string | null
           spent_amount?: number | null
           start_date?: string | null
           status?: string | null
@@ -1130,6 +1151,7 @@ export type Database = {
           progress: number | null
           project_id: string
           room_id: string | null
+          room_ids: string[] | null
           start_date: string | null
           status: string | null
           subcontractor_cost: number | null
@@ -1164,6 +1186,7 @@ export type Database = {
           progress?: number | null
           project_id: string
           room_id?: string | null
+          room_ids?: string[] | null
           start_date?: string | null
           status?: string | null
           subcontractor_cost?: number | null
@@ -1198,6 +1221,7 @@ export type Database = {
           progress?: number | null
           project_id?: string
           room_id?: string | null
+          room_ids?: string[] | null
           start_date?: string | null
           status?: string | null
           subcontractor_cost?: number | null

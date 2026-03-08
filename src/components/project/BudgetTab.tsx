@@ -169,21 +169,32 @@ function computeTaskEstimatedCost(
     material_estimate?: number | null;
     material_items?: MaterialItem[] | null;
   },
-  defaultLaborCostPercent: number
+  defaultLaborCostPercent: number,
+  plannedMaterialCost?: number
 ): number {
   const laborTotal = (task.estimated_hours || 0) * (task.hourly_rate || 0);
   const laborCost = laborTotal * ((task.labor_cost_percent ?? defaultLaborCostPercent) / 100);
   const ueCost = task.subcontractor_cost || 0;
-  const items = task.material_items || [];
-  const materialCost = items.length > 0
-    ? items.reduce((sum, i) => sum + (i.amount || 0), 0)
-    : (task.material_estimate || 0);
+  let materialCost: number;
+  if (plannedMaterialCost != null && plannedMaterialCost > 0) {
+    materialCost = plannedMaterialCost;
+  } else {
+    const items = task.material_items || [];
+    materialCost = items.length > 0
+      ? items.reduce((sum, i) => sum + (i.amount || 0), 0)
+      : (task.material_estimate || 0);
+  }
   return laborCost + ueCost + materialCost;
 }
 
 const getEffectiveCost = (row: BudgetRow) => row.paid > 0 ? row.paid : row.estimatedCost;
 
-function computeMaterialBudget(task: { material_items?: MaterialItem[] | null; material_estimate?: number | null }): number {
+function computeMaterialBudget(
+  task: { material_items?: MaterialItem[] | null; material_estimate?: number | null },
+  plannedMaterialCost?: number
+): number {
+  // Prefer planned materials from materials table, then legacy JSONB, then flat estimate
+  if (plannedMaterialCost != null && plannedMaterialCost > 0) return plannedMaterialCost;
   const items = task.material_items || [];
   return items.length > 0
     ? items.reduce((sum, i) => sum + (i.amount || 0), 0)
@@ -498,18 +509,23 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
         }
       }
 
-      // Sum linked material costs per task
+      // Sum linked material costs per task — split planned vs actual
       const materialConsumedMap = new Map<string, number>();
+      const materialPlannedMap = new Map<string, number>();
       for (const m of materialsRes.data || []) {
         if (m.task_id) {
           const cost = m.price_total ?? (((m.quantity || 0) * (m.price_per_unit || 0)) || 0);
-          materialConsumedMap.set(m.task_id, (materialConsumedMap.get(m.task_id) || 0) + cost);
+          if (m.status === "planned") {
+            materialPlannedMap.set(m.task_id, (materialPlannedMap.get(m.task_id) || 0) + cost);
+          } else {
+            materialConsumedMap.set(m.task_id, (materialConsumedMap.get(m.task_id) || 0) + cost);
+          }
         }
       }
 
       const taskRows: BudgetRow[] = (tasksRes.data || []).filter((t) => !t.is_ata).map((t) => {
         const attachmentCount = taskDocCounts.get(t.id) || 0;
-        const estCost = computeTaskEstimatedCost(t, defaultLaborCostPercent);
+        const estCost = computeTaskEstimatedCost(t, defaultLaborCostPercent, materialPlannedMap.get(t.id));
         return {
           id: t.id,
           name: t.title,
@@ -528,7 +544,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
           finishDate: t.finish_date ?? undefined,
           hasAttachment: attachmentCount > 0,
           attachmentCount,
-          materialBudget: computeMaterialBudget(t),
+          materialBudget: computeMaterialBudget(t, materialPlannedMap.get(t.id)),
           materialConsumed: materialConsumedMap.get(t.id) || 0,
           status: t.status ?? undefined,
           estimatedHours: t.estimated_hours ?? undefined,

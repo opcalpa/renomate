@@ -144,6 +144,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
   const [newTaskIsAta, setNewTaskIsAta] = useState(false);
   const [newTaskParentId, setNewTaskParentId] = useState<string | null>(null);
   const [taskMaterialSpend, setTaskMaterialSpend] = useState<Map<string, number>>(new Map());
+  const [taskMaterialPlanned, setTaskMaterialPlanned] = useState<Map<string, number>>(new Map());
   const [defaultLaborCostPercent, setDefaultLaborCostPercent] = useState(57);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -314,7 +315,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
         query.order("created_at", { ascending: false }),
         supabase
           .from("materials")
-          .select("task_id, price_total")
+          .select("task_id, price_total, status, quantity, price_per_unit")
           .eq("project_id", projectId)
           .eq("exclude_from_budget", false)
           .not("task_id", "is", null),
@@ -322,14 +323,21 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
 
       if (error) throw error;
 
-      // Build material spend map per task
+      // Build material spend map per task (exclude planned — those are budget, not spend)
       const spendMap = new Map<string, number>();
-      (materialsRes.data || []).forEach((m: { task_id: string | null; price_total: number | null }) => {
+      const plannedMap = new Map<string, number>();
+      (materialsRes.data || []).forEach((m: { task_id: string | null; price_total: number | null; status: string | null; quantity: number | null; price_per_unit: number | null }) => {
         if (m.task_id) {
-          spendMap.set(m.task_id, (spendMap.get(m.task_id) || 0) + (m.price_total || 0));
+          const cost = m.price_total ?? ((m.quantity || 0) * (m.price_per_unit || 0));
+          if (m.status === "planned") {
+            plannedMap.set(m.task_id, (plannedMap.get(m.task_id) || 0) + cost);
+          } else {
+            spendMap.set(m.task_id, (spendMap.get(m.task_id) || 0) + cost);
+          }
         }
       });
       setTaskMaterialSpend(spendMap);
+      setTaskMaterialPlanned(plannedMap);
 
       // Map database fields to our interface (assigned_to_contractor_id is deprecated, use assigned_to_stakeholder_id)
       const mappedTasks = (data || []).map((task: any) => ({
@@ -2001,17 +2009,18 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                   const laborTotal = (editingTask.estimated_hours || 0) * (editingTask.hourly_rate || 0);
                   const laborCost = laborTotal * ((editingTask.labor_cost_percent ?? defaultLaborCostPercent) / 100);
                   const ueCost = editingTask.subcontractor_cost || 0;
+                  const plannedMatCost = taskMaterialPlanned.get(editingTask.id) || 0;
                   const items = editingTask.material_items || [];
-                  const materialCost = items.length > 0
-                    ? items.reduce((sum, i) => sum + (i.amount || 0), 0)
-                    : (editingTask.material_estimate || 0);
+                  const materialCost = plannedMatCost > 0
+                    ? plannedMatCost
+                    : items.length > 0
+                      ? items.reduce((sum, i) => sum + (i.amount || 0), 0)
+                      : (editingTask.material_estimate || 0);
                   const estimatedCost = laborCost + ueCost + materialCost;
                   const customerPrice = editingTask.budget || 0;
                   const margin = customerPrice - estimatedCost;
                   const marginPct = customerPrice > 0 ? Math.round((margin / customerPrice) * 100) : 0;
-                  const matBudget = items.length > 0
-                    ? items.reduce((sum, i) => sum + (i.amount || 0), 0)
-                    : (editingTask.material_estimate || 0);
+                  const matBudget = materialCost;
                   const matConsumed = taskMaterialSpend.get(editingTask.id) || 0;
                   const matRemaining = matBudget - matConsumed;
 

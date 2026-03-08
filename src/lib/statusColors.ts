@@ -18,6 +18,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled:    "bg-red-100 text-red-600 border-red-200",
 
   // Material / purchase statuses
+  planned:      "bg-indigo-100 text-indigo-600 border-indigo-200",
   submitted:    "bg-amber-100 text-amber-700 border-amber-200",
   approved:     "bg-blue-100 text-blue-700 border-blue-200",
   billed:       "bg-purple-100 text-purple-700 border-purple-200",

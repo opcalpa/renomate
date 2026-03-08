@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Loader2, Save, BadgeCheck, Eye, ShieldCheck, Plus, X, Download, Home, Wrench, Upload } from "lucide-react";
+import { Loader2, Save, BadgeCheck, Eye, ShieldCheck, Plus, X, Download, Home, Wrench, Upload, Calculator } from "lucide-react";
 import { downloadUserDataAsJson } from "@/services/dataExportService";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CERTIFICATION_PRESETS } from "@/lib/professionalCertifications";
@@ -93,6 +93,24 @@ const Profile = () => {
   const [defaultPaymentTermsDays, setDefaultPaymentTermsDays] = useState("30");
   const [defaultHourlyRate, setDefaultHourlyRate] = useState("");
   const [defaultLaborCostPercent, setDefaultLaborCostPercent] = useState("50");
+  const [paintCoverage, setPaintCoverage] = useState("10");
+  const [paintCoats, setPaintCoats] = useState("2");
+  const [materialPrices, setMaterialPrices] = useState<Record<string, string>>({
+    paint_price_per_liter: "150",
+    floor_price_per_sqm: "300",
+    tile_price_per_sqm: "500",
+  });
+  const [productivityRates, setProductivityRates] = useState<Record<string, string>>({
+    paint_sqm_per_hour: "10",
+    floor_sqm_per_hour: "5",
+    tile_sqm_per_hour: "3",
+    demolition_sqm_per_hour: "8",
+    spackling_sqm_per_hour: "6",
+    sanding_sqm_per_hour: "12",
+    carpentry_sqm_per_hour: "4",
+    electrical_sqm_per_hour: "3",
+    plumbing_sqm_per_hour: "2",
+  });
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [certifications, setCertifications] = useState<Array<{ id: string; name: string; issuer: string; year: string; custom: boolean }>>([]);
@@ -199,6 +217,35 @@ const Profile = () => {
       setDefaultPaymentTermsDays(String(data.default_payment_terms_days ?? 30));
       setDefaultHourlyRate(data.default_hourly_rate != null ? String(data.default_hourly_rate) : "");
       setDefaultLaborCostPercent(data.default_labor_cost_percent != null ? String(data.default_labor_cost_percent) : "50");
+      const es = data.estimation_settings as Record<string, unknown> | null;
+      setPaintCoverage(typeof es?.paint_coverage_sqm_per_liter === "number" ? String(es.paint_coverage_sqm_per_liter) : "10");
+      setPaintCoats(typeof es?.paint_coats === "number" ? String(es.paint_coats) : "2");
+      if (es) {
+        const rateKeys = [
+          "paint_sqm_per_hour", "floor_sqm_per_hour", "tile_sqm_per_hour",
+          "demolition_sqm_per_hour", "spackling_sqm_per_hour", "sanding_sqm_per_hour",
+          "carpentry_sqm_per_hour", "electrical_sqm_per_hour", "plumbing_sqm_per_hour",
+        ];
+        const rateDefaults: Record<string, string> = {
+          paint_sqm_per_hour: "10", floor_sqm_per_hour: "5", tile_sqm_per_hour: "3",
+          demolition_sqm_per_hour: "8", spackling_sqm_per_hour: "6", sanding_sqm_per_hour: "12",
+          carpentry_sqm_per_hour: "4", electrical_sqm_per_hour: "3", plumbing_sqm_per_hour: "2",
+        };
+        const loaded: Record<string, string> = {};
+        for (const k of rateKeys) {
+          loaded[k] = typeof es[k] === "number" ? String(es[k]) : rateDefaults[k];
+        }
+        setProductivityRates(loaded);
+
+        const priceDefaults: Record<string, string> = {
+          paint_price_per_liter: "150", floor_price_per_sqm: "300", tile_price_per_sqm: "500",
+        };
+        const loadedPrices: Record<string, string> = {};
+        for (const k of Object.keys(priceDefaults)) {
+          loadedPrices[k] = typeof es[k] === "number" ? String(es[k]) : priceDefaults[k];
+        }
+        setMaterialPrices(loadedPrices);
+      }
       setCertifications(data.certifications || []);
     } catch (error: any) {
       toast({
@@ -296,6 +343,16 @@ const Profile = () => {
         default_payment_terms_days: isContractor ? (parseInt(defaultPaymentTermsDays) || 30) : null,
         default_hourly_rate: isContractor ? (defaultHourlyRate ? parseFloat(defaultHourlyRate) : null) : null,
         default_labor_cost_percent: isContractor ? (parseFloat(defaultLaborCostPercent) || 50) : null,
+        estimation_settings: isContractor ? {
+          paint_coverage_sqm_per_liter: parseFloat(paintCoverage) || 10,
+          paint_coats: parseInt(paintCoats) || 2,
+          ...Object.fromEntries(
+            Object.entries(productivityRates).map(([k, v]) => [k, parseFloat(v) || 0])
+          ),
+          ...Object.fromEntries(
+            Object.entries(materialPrices).map(([k, v]) => [k, parseFloat(v) || 0])
+          ),
+        } : null,
         contractor_category: isProfessional ? contractorCategory : null,
         company_description: isProfessional ? companyDescription : null,
         certifications: isProfessional ? certifications : [],
@@ -881,6 +938,114 @@ const Profile = () => {
                 <p className="text-xs text-muted-foreground">
                   {t('profile.companyDetailsHint')}
                 </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Calculation Settings — contractor only */}
+          {userType === "contractor" && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Calculator className="h-5 w-5 text-primary" />
+                  <div>
+                    <CardTitle>{t('estimation.title')}</CardTitle>
+                    <CardDescription>{t('estimation.description')}</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium mb-2">{t('estimation.paintFormula')}</h4>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    {t('estimation.paintFormulaDesc')}
+                  </p>
+                  <div className="grid grid-cols-2 gap-4 max-w-sm">
+                    <div className="space-y-1">
+                      <Label htmlFor="paintCoverage">{t('estimation.coverage')}</Label>
+                      <Input
+                        id="paintCoverage"
+                        type="number"
+                        step="0.5"
+                        min="1"
+                        value={paintCoverage}
+                        onChange={(e) => setPaintCoverage(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="paintCoats">{t('estimation.coats')}</Label>
+                      <Input
+                        id="paintCoats"
+                        type="number"
+                        step="1"
+                        min="1"
+                        max="5"
+                        value={paintCoats}
+                        onChange={(e) => setPaintCoats(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <Separator className="my-4" />
+                <div>
+                  <h4 className="text-sm font-medium mb-1">{t('estimation.materialPrices', 'Material prices')}</h4>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    {t('estimation.materialPricesDesc', 'Default unit prices for material estimation.')}
+                  </p>
+                  <div className="grid grid-cols-3 gap-3 max-w-lg">
+                    {[
+                      { key: "paint_price_per_liter", label: "workTypes.painting", unit: "SEK/L" },
+                      { key: "floor_price_per_sqm", label: "workTypes.flooring", unit: "SEK/m²" },
+                      { key: "tile_price_per_sqm", label: "workTypes.tiling", unit: "SEK/m²" },
+                    ].map(({ key, label, unit }) => (
+                      <div key={key} className="space-y-1">
+                        <Label htmlFor={key} className="text-xs">{t(label)} ({unit})</Label>
+                        <Input
+                          id={key}
+                          type="number"
+                          step="10"
+                          min="0"
+                          className="h-8 text-sm"
+                          value={materialPrices[key] || ""}
+                          onChange={(e) => setMaterialPrices((prev) => ({ ...prev, [key]: e.target.value }))}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <Separator className="my-4" />
+                <div>
+                  <h4 className="text-sm font-medium mb-1">{t('estimation.productivityRates', 'Productivity rates')}</h4>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    {t('estimation.productivityRatesDesc', 'Square meters per hour for each work type. Used by auto-estimate.')}
+                  </p>
+                  <div className="grid grid-cols-3 gap-3 max-w-lg">
+                    {[
+                      { key: "paint_sqm_per_hour", label: "workTypes.painting" },
+                      { key: "floor_sqm_per_hour", label: "workTypes.flooring" },
+                      { key: "tile_sqm_per_hour", label: "workTypes.tiling" },
+                      { key: "demolition_sqm_per_hour", label: "workTypes.demolition" },
+                      { key: "spackling_sqm_per_hour", label: "workTypes.spackling" },
+                      { key: "sanding_sqm_per_hour", label: "workTypes.sanding" },
+                      { key: "carpentry_sqm_per_hour", label: "workTypes.carpentry" },
+                      { key: "electrical_sqm_per_hour", label: "workTypes.electrical" },
+                      { key: "plumbing_sqm_per_hour", label: "workTypes.plumbing" },
+                    ].map(({ key, label }) => (
+                      <div key={key} className="space-y-1">
+                        <Label htmlFor={key} className="text-xs">{t(label)} (m²/h)</Label>
+                        <Input
+                          id={key}
+                          type="number"
+                          step="0.5"
+                          min="0.5"
+                          className="h-8 text-sm"
+                          value={productivityRates[key] || ""}
+                          onChange={(e) => setProductivityRates((prev) => ({ ...prev, [key]: e.target.value }))}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}

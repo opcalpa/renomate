@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TaskEditDialog } from "./TaskEditDialog";
+import { ClientTaskSheet } from "./ClientTaskSheet";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 import { getStatusSolidColor } from "@/lib/statusColors";
 interface Task {
@@ -84,6 +85,7 @@ interface ProjectTimelineProps {
   onNavigateToRoom?: (roomId: string) => void;
   currency?: string | null;
   isDemo?: boolean;
+  userType?: string | null;
 }
 const ProjectTimeline = ({
   projectId,
@@ -93,7 +95,8 @@ const ProjectTimeline = ({
   onTaskClick,
   onNavigateToRoom,
   currency,
-  isDemo = false
+  isDemo = false,
+  userType,
 }: ProjectTimelineProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [unscheduledTasks, setUnscheduledTasks] = useState<{ id: string; title: string }[]>([]);
@@ -1788,18 +1791,27 @@ const ProjectTimeline = ({
         </DialogContent>
       </Dialog>
 
-      {/* Task Edit Dialog */}
-      <TaskEditDialog
-        taskId={selectedTaskId}
-        projectId={projectId}
-        open={sidePanelOpen}
-        onOpenChange={setSidePanelOpen}
-        onSaved={() => {
-          fetchTasks();
-          fetchDependencies();
-        }}
-        currency={currency}
-      />
+      {/* Task detail — read-only sheet for homeowners, full edit dialog for builders */}
+      {userType === "homeowner" ? (
+        <ClientTaskSheet
+          taskId={selectedTaskId}
+          projectId={projectId}
+          open={sidePanelOpen}
+          onOpenChange={setSidePanelOpen}
+        />
+      ) : (
+        <TaskEditDialog
+          taskId={selectedTaskId}
+          projectId={projectId}
+          open={sidePanelOpen}
+          onOpenChange={setSidePanelOpen}
+          onSaved={() => {
+            fetchTasks();
+            fetchDependencies();
+          }}
+          currency={currency}
+        />
+      )}
     </Card>;
 };
 export default ProjectTimeline;

@@ -28,6 +28,7 @@ import BudgetTab from "@/components/project/BudgetTab";
 import ProjectFeedTab from "@/components/project/ProjectFeedTab";
 import ProjectFilesTab from "@/components/project/ProjectFilesTab";
 import CustomerViewTab from "@/components/project/CustomerViewTab";
+import { HomeownerPlanningView } from "@/components/project/overview/HomeownerPlanningView";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { UnifiedTableTab } from "@/components/project/unified-table";
 import type { FeedComment } from "@/components/project/feed/types";
@@ -120,6 +121,11 @@ const ProjectDetail = () => {
   const [loading, setLoading] = useState(true);
   const [leadQuoteId, setLeadQuoteId] = useState<string | null>(null);
 
+  // Derive effective user type: demo role for demo projects (regardless of login), profile for regular projects
+  const effectiveUserType = isPublicDemoProject
+    ? demoPrefs.preferences.role
+    : profile?.onboarding_user_type;
+
   // Map tab keys to permission keys
   const tabPermissionMap: Record<string, string> = {
     overview: permissions.overview,
@@ -134,6 +140,7 @@ const ProjectDetail = () => {
     customer: (isPublicDemoProject && demoPrefs.preferences.role === "homeowner")
       ? "view"
       : (permissions.customerView || "none"),
+    planning: effectiveUserType === "homeowner" ? "view" : "none",
     chat: "view",
   };
 
@@ -151,7 +158,7 @@ const ProjectDetail = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     const tabParam = searchParams.get("tab");
-    const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "table", "team", "customer", "chat"];
+    const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "table", "team", "customer", "planning", "chat"];
     return tabParam && validTabs.includes(tabParam) ? tabParam : "overview";
   });
   const [openEntityId, setOpenEntityId] = useState<string | null>(() => searchParams.get("entityId"));
@@ -165,7 +172,7 @@ const ProjectDetail = () => {
     const subtabParam = searchParams.get("subtab");
     const sectionParam = searchParams.get("section");
     const entityParam = searchParams.get("entityId");
-    const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "table", "team", "customer", "chat"];
+    const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "table", "team", "customer", "planning", "chat"];
 
     if (tabParam && validTabs.includes(tabParam)) {
       if (tabParam !== activeTab || subtabParam) {
@@ -192,14 +199,15 @@ const ProjectDetail = () => {
     }
   }, [permissions.loading, permissions.isClient, isQuotePhase, leadQuoteId]);
 
-  // Client on active project → redirect blocked tabs to customer tab (preserve pendingSection)
+  // Client on active project → redirect blocked tabs to default client tab (preserve pendingSection)
   useEffect(() => {
     if (!permissions.loading && permissions.isClient && !isQuotePhase) {
       if (!searchParams.get("tab") || isTabBlocked(activeTab)) {
-        setActiveTab("customer");
+        // Homeowners default to planning tab; other clients to customer view
+        setActiveTab(effectiveUserType === "homeowner" ? "planning" : "customer");
       }
     }
-  }, [permissions.loading, permissions.isClient, isQuotePhase, activeTab]);
+  }, [permissions.loading, permissions.isClient, isQuotePhase, activeTab, effectiveUserType]);
 
   // Scroll to anchor element after tab switch (e.g. section=chat → #project-chat)
   useEffect(() => {
@@ -279,11 +287,6 @@ const ProjectDetail = () => {
       setShowDemoRoleModal(true);
     }
   }, [isPublicDemoProject, loading, demoPrefs.hasChosenRole, user]);
-
-  // Derive effective user type: demo role for demo projects (regardless of login), profile for regular projects
-  const effectiveUserType = isPublicDemoProject
-    ? demoPrefs.preferences.role
-    : profile?.onboarding_user_type;
 
   // Override project status based on demo phase stepper (contractor only)
   const effectiveProject = (isPublicDemoProject && demoPrefs.preferences.role === "contractor" && project)
@@ -876,6 +879,18 @@ const ProjectDetail = () => {
               <span className="hidden lg:inline">{t('projectDetail.backToStart')}</span>
             </Button>
             <div className="flex items-center space-x-4 lg:space-x-6">
+              {/* Homeowner-only: Planning tab */}
+              {!isTabBlocked("planning") && (
+                <div
+                  className={cn(
+                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    activeTab === "planning" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => handleMenuSelect('planning', 'planning')}
+                >
+                  {t("homeownerPlanning.tabTitle", "Planning")}
+                </div>
+              )}
               {/* Client-only: Kundvy tab */}
               {!isTabBlocked("customer") && (
                 <div
@@ -1347,6 +1362,21 @@ const ProjectDetail = () => {
           )}
         </TabsContent>
 
+        <TabsContent value="planning" className="m-0 pb-8">
+          {isTabBlocked("planning") ? (
+            <NoAccessPlaceholder />
+          ) : (
+            <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
+              <HomeownerPlanningView
+                projectId={project.id}
+                projectName={project.name}
+                projectAddress={project.address}
+                currency={project.currency}
+              />
+            </div>
+          )}
+        </TabsContent>
+
         <TabsContent value="customer" className="m-0 pb-8">
           {isTabBlocked("customer") ? (
             <NoAccessPlaceholder />
@@ -1358,6 +1388,7 @@ const ProjectDetail = () => {
                 projectStartDate={project.start_date}
                 projectFinishDate={project.finish_goal_date}
                 currency={project.currency}
+                userType={effectiveUserType}
               />
             </div>
           )}

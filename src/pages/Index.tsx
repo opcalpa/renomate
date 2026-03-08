@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { useGuestMode } from "@/hooks/useGuestMode";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
@@ -21,6 +22,7 @@ import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
 const Index = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { enterGuestMode } = useGuestMode();
 
   useEffect(() => {
     checkAuth();
@@ -72,8 +74,8 @@ const Index = () => {
                 {t('landing.heroDescription')}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8">
-                  {t('landing.getStarted')}
+                <Button size="lg" onClick={() => { enterGuestMode(); navigate("/start"); }} className="text-lg px-8">
+                  {t('landing.startProject', 'Start your project')}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
                 <Button size="lg" variant="outline" className="text-lg px-8" onClick={handleDemoProject}>

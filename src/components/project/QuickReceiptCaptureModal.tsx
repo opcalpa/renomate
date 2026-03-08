@@ -218,7 +218,7 @@ export function QuickReceiptCaptureModal({
 
   // Task picker state
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<Array<{id: string; title: string; budget: number | null; material_estimate: number | null; material_items: unknown[] | null; is_ata: boolean; materialSpent: number}>>([]);
+  const [tasks, setTasks] = useState<Array<{id: string; title: string; budget: number | null; material_estimate: number | null; plannedMaterials: Array<{id: string; name: string; amount: number}>; is_ata: boolean; materialSpent: number}>>([]);
 
   // Data state
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
@@ -276,26 +276,35 @@ export function QuickReceiptCaptureModal({
       const [tasksRes, materialsRes] = await Promise.all([
         supabase
           .from("tasks")
-          .select("id, title, budget, material_estimate, material_items, is_ata")
+          .select("id, title, budget, material_estimate, is_ata")
           .eq("project_id", projectId)
           .order("created_at", { ascending: true }),
         supabase
           .from("materials")
-          .select("task_id, price_total")
+          .select("id, name, task_id, price_total, status, quantity, price_per_unit")
           .eq("project_id", projectId)
           .eq("exclude_from_budget", false)
           .not("task_id", "is", null),
       ]);
       const spendMap = new Map<string, number>();
+      const plannedMap = new Map<string, Array<{id: string; name: string; amount: number}>>();
       (materialsRes.data || []).forEach(m => {
         if (m.task_id) {
-          spendMap.set(m.task_id, (spendMap.get(m.task_id) || 0) + (m.price_total || 0));
+          const cost = m.price_total ?? ((m.quantity || 0) * (m.price_per_unit || 0));
+          if (m.status === "planned") {
+            const items = plannedMap.get(m.task_id) || [];
+            items.push({ id: m.id, name: m.name, amount: cost });
+            plannedMap.set(m.task_id, items);
+          } else {
+            spendMap.set(m.task_id, (spendMap.get(m.task_id) || 0) + cost);
+          }
         }
       });
       setTasks((tasksRes.data || []).map(t => ({
         ...t,
         is_ata: t.is_ata ?? false,
         materialSpent: spendMap.get(t.id) || 0,
+        plannedMaterials: plannedMap.get(t.id) || [],
       })));
     };
     fetchTasks();
@@ -801,12 +810,12 @@ export function QuickReceiptCaptureModal({
                                 );
                               })()}
                             </button>
-                            {selectedTaskId === task.id && task.material_items && (task.material_items as Array<{id: string; name: string; amount: number}>).length > 0 && (
+                            {selectedTaskId === task.id && task.plannedMaterials.length > 0 && (
                               <div className="ml-4 pl-3 border-l-2 border-muted space-y-1 py-1">
                                 <span className="text-xs text-muted-foreground font-medium">
                                   {t("costBreakdown.plannedMaterials")}
                                 </span>
-                                {(task.material_items as Array<{id: string; name: string; amount: number}>).map((item) => (
+                                {task.plannedMaterials.map((item) => (
                                   <div key={item.id} className="flex justify-between text-xs">
                                     <span className="text-muted-foreground">{item.name}</span>
                                     <span>{formatCurrency(item.amount, currency)}</span>

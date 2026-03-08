@@ -29,6 +29,7 @@
     "confirm": "Confirm",
     "yes": "Yes",
     "no": "No",
+    "clearAll": "Clear all",
     "unassigned": "Unassigned",
     "addImage": "Add Image",
     "comments": "Comments",
@@ -123,6 +124,8 @@
       "photos": "Photos",
       "chat": "Chat",
       "showAllTabs": "Show all tabs",
+      "planning": "Planning",
+      "clientView": "My Project",
       "customerView": "My Project"
     }
   },
@@ -131,6 +134,7 @@
     "heroSubtitle": "Renovation Project",
     "heroDescription": "Renomate helps both homeowners and professional contractors manage renovation projects, collaborate with teams, and track every detail from start to finish.",
     "getStarted": "Get Started",
+    "startProject": "Start your project",
     "learnMore": "Learn More",
     "homeownerTitle": "For homeowners",
     "ho1Title": "Gather all instructions",
@@ -973,7 +977,7 @@
     "featureTeamManagement": "Team Management",
     "featureBudget": "Budget",
     "featureFiles": "Files",
-    "featureCustomerView": "Customer View",
+    "featureCustomerView": "Client view",
     "accessNone": "None",
     "accessView": "View",
     "accessEdit": "Edit",
@@ -1496,6 +1500,7 @@
     "expired": "Expired"
   },
   "materialStatuses": {
+    "planned": "Planned",
     "submitted": "Submitted",
     "declined": "Declined",
     "approved": "Approved",
@@ -3559,7 +3564,61 @@
     "autoPriceEnabled": "Customer price is now auto-calculated from hours \u00d7 hourly rate",
     "estimatedProfit": "Est. profit",
     "profitTooltip": "Estimated profit per task, based on your cost %",
-    "newRoom": "New room..."
+    "newRoom": "New room...",
+    "autoEstimate": "Auto-estimate",
+    "noRoomsForEstimate": "Assign rooms with dimensions first",
+    "noRecipeDetected": "Could not detect work type from task title",
+    "noEstimatePossible": "Not enough room data to estimate",
+    "estimateApplied": "Estimate applied: {{hours}}h + {{material}} material",
+    "estLabor": "Labor",
+    "estMaterial": "Material",
+    "estNoMaterial": "Material: add manually or via subcontractor quote",
+    "estBudget": "Budget",
+    "estimateDone": "estimate done",
+    "wallArea": "wall area",
+    "floorArea": "floor area",
+    "pickWorkType": "What type of work?"
+  },
+  "planningRooms": {
+    "title": "Room planning",
+    "description": "Add rooms and dimensions to help estimate work",
+    "empty": "No rooms yet",
+    "emptyHint": "Add rooms to plan dimensions and estimate materials",
+    "addFirst": "Add first room",
+    "addRoom": "Add room",
+    "totalArea": "Total area",
+    "measured": "measured",
+    "roomName": "Room"
+  },
+  "workTypes": {
+    "painting": "Painting",
+    "flooring": "Flooring",
+    "tiling": "Tiling",
+    "demolition": "Demolition",
+    "spackling": "Spackling",
+    "sanding": "Sanding",
+    "carpentry": "Carpentry",
+    "electrical": "Electrical",
+    "plumbing": "Plumbing"
+  },
+  "estimation": {
+    "paintFormula": "Paint calculation",
+    "paintFormulaDesc": "wall area / coverage per liter × number of coats",
+    "nonPaintable": "Non-paintable",
+    "paintableArea": "Paintable area",
+    "calculation": "Calculation",
+    "adjustSettings": "Adjust defaults",
+    "coverage": "Coverage (m²/L)",
+    "coats": "Coats",
+    "savedToProfile": "Changes are saved to your profile",
+    "settingsSaved": "Settings saved",
+    "clickToAdjust": "Click to adjust formula",
+    "title": "Calculation settings",
+    "description": "Default values used for material and time estimates",
+    "materialPrices": "Material prices",
+    "materialPricesDesc": "Default unit prices for material estimation.",
+    "productivityRates": "Productivity rates",
+    "productivityRatesDesc": "Square meters per hour for each work type. Used by auto-estimate."
   },
   "taskCost": {
     "pricing": "Pricing",
@@ -3587,7 +3646,9 @@
     "costPercentTooltip": "Your own cost as % of the hourly rate. Used to calculate your profit on this task.",
     "resultTooltip": "Revenue minus your own labor costs, subcontractor costs and material costs",
     "perTask": "Per task",
-    "standard": "Standard"
+    "standard": "Standard",
+    "quantity": "Qty",
+    "unitPrice": "Price/unit"
   },
   "projectStatus": {
     "planning": "Planning",
@@ -3628,7 +3689,7 @@
     }
   },
   "customerView": {
-    "tabTitle": "Customer View",
+    "tabTitle": "Client view",
     "timeline": "Timeline",
     "timelineDescription": "Follow the progress of your renovation project",
     "invoices": "Invoices",
@@ -3885,5 +3946,66 @@
         "tip": "Tip: Use the role presets to quickly set appropriate access levels for clients vs. team members."
       }
     }
+  },
+  "materialRecipes": {
+    "wallPaint": "Wall paint",
+    "ceilingPaint": "Ceiling paint",
+    "includeCeiling": "Include ceiling",
+    "floorMaterial": "Floor material",
+    "tiles": "Tiles",
+    "suggest": "Suggest",
+    "clickToSuggest": "Click to see material suggestions",
+    "noRoomDimensions": "Add room dimensions to get material suggestions",
+    "smartEstimate": "Smart estimate",
+    "applyEstimate": "Apply estimate",
+    "reApplyEstimate": "Re-apply",
+    "estimateApplied": "Estimate applied — adjust values as needed",
+    "estimatedTotal": "Estimated total",
+    "clickToEdit": "Click bold values to adjust before applying",
+    "materialQty": "Quantity",
+    "ceilingQty": "Ceiling qty",
+    "coats": "coats",
+    "coatsLabel": "coats",
+    "coverage": "coverage",
+    "hourlyRate": "hourly rate",
+    "saveAsDefault": "Save as new default in profile?",
+    "onlyThisTask": "Only this task",
+    "defaultSaved": "Default saved to profile"
+  },
+  "homeownerPlanning": {
+    "rfqSummary": "Your renovation plan",
+    "rfqDescription": "Add tasks and rooms to build a detailed request for quotes",
+    "shareRfq": "Share as quote request",
+    "tasks": "Tasks",
+    "rooms": "Rooms",
+    "roughEstimate": "Est. cost (SEK)",
+    "roughEstimateTooltip": "Rough market range based on area. Actual quotes may differ.",
+    "whatToDo": "What needs to be done?",
+    "whatToDoDesc": "List every type of work. Connect each task to a room for better estimates.",
+    "costRange": "Est. range",
+    "addTask": "Add task",
+    "taskPlaceholder": "e.g. Paint living room, new flooring in kitchen...",
+    "addDetails": "Add details...",
+    "descPlaceholder": "e.g. white matte paint, keep ceiling",
+    "pickRoom": "Pick room",
+    "connectHint": "Connect each task to a room to get estimated costs and a more detailed quote request.",
+    "tasksConnected": "tasks connected to rooms.",
+    "tabTitle": "Planning"
+  },
+  "shareRfq": {
+    "title": "Share quote request",
+    "description": "Share your renovation plan with builders to receive quotes.",
+    "scopeOfWork": "Scope of work",
+    "rooms": "Rooms",
+    "inviteBuilder": "Invite a builder",
+    "inviteDescription": "The builder gets access to your scope and rooms, and can create a quote for you.",
+    "emailPlaceholder": "builder@company.com",
+    "messagePlaceholder": "Optional message...",
+    "sendInvitation": "Send invitation",
+    "downloadPdf": "PDF",
+    "inviteSent": "Invitation sent!",
+    "sentConfirmation": "Invitation sent to {{email}}",
+    "sentDescription": "The builder will receive an email with a link to view your renovation plan and create a quote.",
+    "inviteAnother": "Invite another builder"
   }
 }

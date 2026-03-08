@@ -29,6 +29,7 @@
     "confirm": "Bekräfta",
     "yes": "Ja",
     "no": "Nej",
+    "clearAll": "Rensa alla",
     "unassigned": "Ej tilldelad",
     "addImage": "Lägg till bild",
     "comments": "Kommentarer",
@@ -123,6 +124,8 @@
       "photos": "Bilder",
       "chat": "Chatt",
       "showAllTabs": "Visa alla flikar",
+      "planning": "Planering",
+      "clientView": "Mitt projekt",
       "customerView": "Mitt projekt"
     }
   },
@@ -131,6 +134,7 @@
     "heroSubtitle": "din renovering",
     "heroDescription": "Renomate hjälper både privata hemägare och professionella byggfirmor att hantera sina renoveringsprojekt, samarbeta med andra entreprenörer och spåra varje detalj från start till mål.",
     "getStarted": "Kom igång",
+    "startProject": "Starta ditt projekt",
     "learnMore": "Läs mer",
     "homeownerTitle": "För dig som renoverar hemma",
     "ho1Title": "Samla alla instruktioner",
@@ -1069,6 +1073,7 @@
     "expired": "Utgången"
   },
   "materialStatuses": {
+    "planned": "Planerad",
     "submitted": "Inskickad",
     "declined": "Nekad",
     "approved": "Godkänd",
@@ -3557,7 +3562,61 @@
     "autoPriceEnabled": "Kundpris beräknas nu automatiskt från timmar \u00d7 timpris",
     "estimatedProfit": "Est. resultat",
     "profitTooltip": "Beräknad vinst per arbete, baserat på din kostnad %",
-    "newRoom": "Nytt rum..."
+    "newRoom": "Nytt rum...",
+    "autoEstimate": "Auto-estimera",
+    "noRoomsForEstimate": "Tilldela rum med mått först",
+    "noRecipeDetected": "Kunde inte identifiera arbetstyp från uppgiftens titel",
+    "noEstimatePossible": "Inte tillräckligt med rumsdata för att estimera",
+    "estimateApplied": "Estimat tillagt: {{hours}}h + {{material}} material",
+    "estLabor": "Arbetstid",
+    "estMaterial": "Material",
+    "estNoMaterial": "Material: lägg till manuellt eller via UE-offert",
+    "estBudget": "Budget",
+    "estimateDone": "estimat klart",
+    "wallArea": "väggyta",
+    "floorArea": "golvyta",
+    "pickWorkType": "Vilken typ av arbete?"
+  },
+  "planningRooms": {
+    "title": "Rumsplanering",
+    "description": "Lägg till rum och mått för att underlätta estimering",
+    "empty": "Inga rum ännu",
+    "emptyHint": "Lägg till rum för att planera mått och estimera material",
+    "addFirst": "Lägg till första rummet",
+    "addRoom": "Lägg till rum",
+    "totalArea": "Total yta",
+    "measured": "uppmätta",
+    "roomName": "Rum"
+  },
+  "workTypes": {
+    "painting": "Målning",
+    "flooring": "Golv",
+    "tiling": "Plattsättning",
+    "demolition": "Rivning",
+    "spackling": "Spackling",
+    "sanding": "Slipning",
+    "carpentry": "Snickeri",
+    "electrical": "El",
+    "plumbing": "VVS"
+  },
+  "estimation": {
+    "paintFormula": "Färgberäkning",
+    "paintFormulaDesc": "väggyta / täckning per liter × antal lager",
+    "nonPaintable": "Ej målningsbar yta",
+    "paintableArea": "Målningsbar yta",
+    "calculation": "Beräkning",
+    "adjustSettings": "Justera standardvärden",
+    "coverage": "Täckning (m²/L)",
+    "coats": "Lager",
+    "savedToProfile": "Ändringar sparas till din profil",
+    "settingsSaved": "Inställningar sparade",
+    "clickToAdjust": "Klicka för att justera formel",
+    "title": "Beräkningsinställningar",
+    "description": "Standardvärden som används för material- och tidsestimering",
+    "materialPrices": "Materialpriser",
+    "materialPricesDesc": "Standardpriser per enhet för materialestimering.",
+    "productivityRates": "Produktivitetstal",
+    "productivityRatesDesc": "Kvadratmeter per timme för varje arbetstyp. Används av auto-estimera."
   },
   "taskCost": {
     "pricing": "Prissättning",
@@ -3585,7 +3644,9 @@
     "costPercentTooltip": "Din egen kostnad i % av timpriset. Används för att beräkna ditt resultat på denna uppgift.",
     "resultTooltip": "Intäkt minus dina egna arbetskostnader, UE-kostnader och materialkostnader",
     "perTask": "Per uppgift",
-    "standard": "Standard"
+    "standard": "Standard",
+    "quantity": "Antal",
+    "unitPrice": "Pris/st"
   },
   "projectStatus": {
     "planning": "Planering",
@@ -3883,5 +3944,66 @@
         "tip": "Tips: Använd rollmallar för att snabbt sätta rätt åtkomstnivå för kunder respektive teammedlemmar."
       }
     }
+  },
+  "materialRecipes": {
+    "wallPaint": "Väggfärg",
+    "ceilingPaint": "Takfärg",
+    "includeCeiling": "Inkl. takmålning",
+    "floorMaterial": "Golvmaterial",
+    "tiles": "Kakel/klinker",
+    "suggest": "Beräkna",
+    "clickToSuggest": "Klicka för att se materialförslag",
+    "noRoomDimensions": "Lägg till rumsmått för materialförslag",
+    "smartEstimate": "Smart kalkyl",
+    "applyEstimate": "Applicera kalkyl",
+    "reApplyEstimate": "Tillämpa igen",
+    "estimateApplied": "Kalkyl applicerad — justera värden efter behov",
+    "estimatedTotal": "Uppskattat totalt",
+    "clickToEdit": "Klicka på fetstilta värden för att justera innan du applicerar",
+    "materialQty": "Mängd",
+    "ceilingQty": "Takmängd",
+    "coats": "strykningar",
+    "coatsLabel": "strykningar",
+    "coverage": "täckning",
+    "hourlyRate": "timpris",
+    "saveAsDefault": "Spara som nytt standardvärde i profilen?",
+    "onlyThisTask": "Bara denna uppgift",
+    "defaultSaved": "Standardvärde sparat i profilen"
+  },
+  "homeownerPlanning": {
+    "rfqSummary": "Din renoveringsplan",
+    "rfqDescription": "Lägg till uppgifter och rum för att skapa en detaljerad offertförfrågan",
+    "shareRfq": "Dela som offertförfrågan",
+    "tasks": "Uppgifter",
+    "rooms": "Rum",
+    "roughEstimate": "Ca kostnad (SEK)",
+    "roughEstimateTooltip": "Ungefärligt marknadspris baserat på yta. Faktiska offerter kan skilja sig.",
+    "whatToDo": "Vad behöver göras?",
+    "whatToDoDesc": "Lista alla typer av arbete. Koppla varje uppgift till ett rum för bättre uppskattningar.",
+    "costRange": "Ca pris",
+    "addTask": "Lägg till uppgift",
+    "taskPlaceholder": "t.ex. Måla vardagsrum, nytt golv i köket...",
+    "addDetails": "Lägg till detaljer...",
+    "descPlaceholder": "t.ex. vit matt färg, behåll taket",
+    "pickRoom": "Välj rum",
+    "connectHint": "Koppla varje uppgift till ett rum för att få kostnadsuppskattningar och skapa en mer detaljerad offertförfrågan.",
+    "tasksConnected": "uppgifter kopplade till rum.",
+    "tabTitle": "Planering"
+  },
+  "shareRfq": {
+    "title": "Dela offertförfrågan",
+    "description": "Dela din renoveringsplan med byggare för att få offerter.",
+    "scopeOfWork": "Arbetsomfattning",
+    "rooms": "Rum",
+    "inviteBuilder": "Bjud in en byggare",
+    "inviteDescription": "Byggaren får tillgång till ditt underlag och kan skapa en offert åt dig.",
+    "emailPlaceholder": "byggare@foretag.se",
+    "messagePlaceholder": "Valfritt meddelande...",
+    "sendInvitation": "Skicka inbjudan",
+    "downloadPdf": "PDF",
+    "inviteSent": "Inbjudan skickad!",
+    "sentConfirmation": "Inbjudan skickad till {{email}}",
+    "sentDescription": "Byggaren får ett mejl med en länk för att se din renoveringsplan och skapa en offert.",
+    "inviteAnother": "Bjud in en till byggare"
   }
 }

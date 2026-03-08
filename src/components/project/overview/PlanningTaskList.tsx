@@ -19,12 +19,35 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info } from "lucide-react";
+import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from "@/lib/currency";
 import { useToast } from "@/hooks/use-toast";
 import { TaskEditDialog } from "../TaskEditDialog";
+import {
+  suggestMaterials,
+  suggestMaterialsMultiRoom,
+  detectRecipeKey,
+  detectWorkType,
+  estimateTaskMultiRoom,
+  formatSuggestionSummary,
+  parseEstimationSettings,
+  ALL_WORK_TYPES,
+  WORK_TYPE_LABEL_KEYS,
+  type WorkType,
+  type RecipeEstimationSettings,
+  type RecipeRoom,
+} from "@/lib/materialRecipes";
 
 interface PlanningTask {
   id: string;
@@ -32,7 +55,9 @@ interface PlanningTask {
   description: string | null;
   budget: number | null;
   room_id: string | null;
+  room_ids: string[] | null;
   room_name: string | null;
+  room_names: string[];
   status: string;
   task_cost_type: string | null;
   estimated_hours: number | null;
@@ -41,13 +66,16 @@ interface PlanningTask {
   markup_percent: number | null;
   material_estimate: number | null;
   material_markup_percent: number | null;
-  material_items: { amount: number; markup_percent: number | null }[] | null;
+  material_items: { amount: number; markup_percent: number | null; quantity?: number; unit?: string; unit_price?: number }[] | null;
   labor_cost_percent: number | null;
+  cost_center: string | null;
 }
 
 interface Room {
   id: string;
   name: string;
+  dimensions: RecipeRoom["dimensions"];
+  ceiling_height_mm: number | null;
 }
 
 type ExtraColumnKey = "hours" | "hourlyRate" | "room" | "costType" | "material" | "profit" | "description";
@@ -56,9 +84,9 @@ const EXTRA_COLUMNS: { key: ExtraColumnKey; labelKey: string; defaultOn: boolean
   { key: "description", labelKey: "tasks.description", defaultOn: false },
   { key: "hours", labelKey: "taskCost.estimatedHours", defaultOn: true },
   { key: "hourlyRate", labelKey: "taskCost.hourlyRate", defaultOn: true },
-  { key: "room", labelKey: "planningTasks.room", defaultOn: false },
+  { key: "room", labelKey: "planningTasks.room", defaultOn: true },
   { key: "costType", labelKey: "planningTasks.costType", defaultOn: false },
-  { key: "material", labelKey: "taskCost.materialEstimate", defaultOn: false },
+  { key: "material", labelKey: "taskCost.materialEstimate", defaultOn: true },
   { key: "profit", labelKey: "taskCost.result", defaultOn: true },
 ];
 
@@ -85,8 +113,10 @@ export function PlanningTaskList({
   const { toast } = useToast();
   const [tasks, setTasks] = useState<PlanningTask[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [roomMap, setRoomMap] = useState<Map<string, Room>>(new Map());
   const [loading, setLoading] = useState(true);
   const [profileLaborCostPercent, setProfileLaborCostPercent] = useState<number | null>(null);
+  const [estimationSettings, setEstimationSettings] = useState<RecipeEstimationSettings | null>(null);
 
   // Local override: user chose to unlock editing despite active quote
   const [lockOverridden, setLockOverridden] = useState(false);
@@ -148,17 +178,22 @@ export function PlanningTaskList({
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("default_labor_cost_percent")
+        .select("default_labor_cost_percent, estimation_settings")
         .eq("user_id", user.id)
         .single();
       setProfileLaborCostPercent(data?.default_labor_cost_percent ?? null);
+      if (data?.estimation_settings) {
+        setEstimationSettings(
+          parseEstimationSettings(data.estimation_settings as Record<string, unknown>)
+        );
+      }
     } catch {
       // Non-critical
     }
   }, []);
 
   const fetchData = useCallback(async () => {
-    const [tasksRes, roomsRes] = await Promise.all([
+    const [tasksRes, roomsRes, plannedMatsRes] = await Promise.all([
       supabase
         .from("tasks")
         .select("*")
@@ -166,20 +201,53 @@ export function PlanningTaskList({
         .order("created_at", { ascending: true }),
       supabase
         .from("rooms")
-        .select("id, name")
+        .select("id, name, dimensions, ceiling_height_mm")
         .eq("project_id", projectId),
+      supabase
+        .from("materials")
+        .select("id, name, quantity, unit, price_per_unit, price_total, markup_percent, task_id")
+        .eq("project_id", projectId)
+        .eq("status", "planned"),
     ]);
 
-    const roomMap = new Map(
-      (roomsRes.data || []).map((r) => [r.id, r.name])
-    );
-    setRooms(roomsRes.data || []);
+    const fetchedRooms = (roomsRes.data || []) as Room[];
+    const nameMap = new Map(fetchedRooms.map((r) => [r.id, r.name]));
+    const fullRoomMap = new Map(fetchedRooms.map((r) => [r.id, r]));
+    setRooms(fetchedRooms);
+    setRoomMap(fullRoomMap);
+
+    // Build planned materials map per task
+    const plannedByTask = new Map<string, NonNullable<PlanningTask["material_items"]>>();
+    for (const m of plannedMatsRes.data || []) {
+      if (!m.task_id) continue;
+      const items = plannedByTask.get(m.task_id) || [];
+      items.push({
+        amount: m.price_total ?? Math.round((m.quantity || 0) * (m.price_per_unit || 0)),
+        markup_percent: m.markup_percent ?? null,
+        quantity: m.quantity ?? undefined,
+        unit: m.unit ?? undefined,
+        unit_price: m.price_per_unit ?? undefined,
+      });
+      plannedByTask.set(m.task_id, items);
+    }
 
     setTasks(
-      (tasksRes.data || []).map((task) => ({
-        ...task,
-        room_name: task.room_id ? roomMap.get(task.room_id) || null : null,
-      }))
+      (tasksRes.data || []).map((task) => {
+        // Prefer planned materials from materials table over legacy JSONB
+        const planned = plannedByTask.get(task.id);
+        // Build room_ids — prefer array field, fall back to single room_id
+        const ids: string[] = (task.room_ids && task.room_ids.length > 0)
+          ? task.room_ids
+          : task.room_id ? [task.room_id] : [];
+        return {
+          ...task,
+          room_id: ids[0] || null,
+          room_ids: ids,
+          room_name: ids[0] ? nameMap.get(ids[0]) || null : null,
+          room_names: ids.map((id: string) => nameMap.get(id) || "").filter(Boolean),
+          material_items: planned && planned.length > 0 ? planned : task.material_items,
+        };
+      })
     );
     setLoading(false);
   }, [projectId]);
@@ -307,19 +375,37 @@ export function PlanningTaskList({
     [fetchData, t, toast]
   );
 
-  const handleInlineRoomSave = useCallback(
-    async (taskId: string, roomId: string | null) => {
+  const handleRoomToggle = useCallback(
+    async (taskId: string, roomId: string) => {
+      const task = tasks.find((t) => t.id === taskId);
+      const current = task?.room_ids || [];
+      const next = current.includes(roomId)
+        ? current.filter((id) => id !== roomId)
+        : [...current, roomId];
+
       const { error } = await supabase
         .from("tasks")
-        .update({ room_id: roomId })
+        .update({ room_ids: next, room_id: next[0] || null })
         .eq("id", taskId);
 
       if (error) {
-        toast({
-          title: t("common.error"),
-          description: error.message,
-          variant: "destructive",
-        });
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      } else {
+        fetchData();
+      }
+    },
+    [tasks, fetchData, t, toast]
+  );
+
+  const handleClearRooms = useCallback(
+    async (taskId: string) => {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ room_ids: [], room_id: null })
+        .eq("id", taskId);
+
+      if (error) {
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
       } else {
         fetchData();
       }
@@ -348,10 +434,10 @@ export function PlanningTaskList({
         return;
       }
 
-      await handleInlineRoomSave(taskId, room.id);
+      await handleRoomToggle(taskId, room.id);
       setNewRoomName("");
     },
-    [projectId, handleInlineRoomSave, t, toast]
+    [projectId, handleRoomToggle, t, toast]
   );
 
   const handleDeleteTask = useCallback(
@@ -372,6 +458,162 @@ export function PlanningTaskList({
       }
     },
     [fetchData, t, toast]
+  );
+
+  // Auto-estimate: compute hours + materials + budget from room dimensions
+  const [estimatingTaskId, setEstimatingTaskId] = useState<string | null>(null);
+  // Work-type picker popover state (shown when auto-detect fails)
+  const [workTypePickerTaskId, setWorkTypePickerTaskId] = useState<string | null>(null);
+  // Estimate feedback dialog (centered, replaces corner toasts)
+  const [estimateFeedback, setEstimateFeedback] = useState<{
+    title: string;
+    lines: { icon: "success" | "warning" | "error"; text: string }[];
+  } | null>(null);
+
+  const runEstimate = useCallback(
+    async (task: PlanningTask, workType: WorkType) => {
+      const roomIds = task.room_ids || (task.room_id ? [task.room_id] : []);
+      const linkedRooms = roomIds
+        .map((id) => roomMap.get(id))
+        .filter((r): r is Room => !!r && !!r.dimensions);
+
+      setEstimatingTaskId(task.id);
+      try {
+        const taskWithType = { ...task, cost_center: workType };
+        const result = estimateTaskMultiRoom(taskWithType, linkedRooms, estimationSettings ?? undefined);
+        if (!result) {
+          setEstimateFeedback({
+            title: t("planningTasks.noEstimatePossible", "Not enough room data to estimate"),
+            lines: [{ icon: "warning", text: t("planningTasks.noRoomsForEstimate", "Assign rooms with dimensions first") }],
+          });
+          return;
+        }
+
+        const hours = result.estimatedHours;
+        const rate = task.hourly_rate || 0;
+        const materialCost = result.material?.totalCost ?? 0;
+        const laborTotal = hours * rate;
+        const materialWithMarkup = materialCost * (1 + (task.material_markup_percent || 0) / 100);
+        const budget = laborTotal + materialWithMarkup;
+
+        // Update task fields + save cost_center for future detection
+        const { error } = await supabase
+          .from("tasks")
+          .update({
+            estimated_hours: hours,
+            material_estimate: materialCost || null,
+            budget: budget || null,
+            cost_center: workType,
+          })
+          .eq("id", task.id);
+
+        if (error) throw error;
+
+        // Create planned material row (only if material was estimated)
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          await supabase.from("materials").delete().eq("task_id", task.id).eq("status", "planned");
+
+          if (result.material) {
+            const s = result.material;
+            await supabase.from("materials").insert({
+              id: crypto.randomUUID(),
+              name: s.nameFallback,
+              quantity: s.quantity,
+              unit: s.unit,
+              price_per_unit: s.unitPrice,
+              price_total: s.totalCost,
+              task_id: task.id,
+              project_id: projectId,
+              status: "planned",
+              exclude_from_budget: false,
+              created_by_user_id: authUser.id,
+            });
+          }
+        }
+
+        fetchData();
+
+        // Build centered feedback dialog
+        const workLabel = t(WORK_TYPE_LABEL_KEYS[result.workType], result.workType);
+        const areaLabel = result.areaType === "wall"
+          ? t("planningTasks.wallArea", "wall area")
+          : t("planningTasks.floorArea", "floor area");
+        const feedbackLines: { icon: "success" | "warning"; text: string }[] = [];
+        feedbackLines.push({
+          icon: "success",
+          text: `${t("planningTasks.estLabor", "Labor")}: ${hours}h (${result.totalAreaSqm} m² ${areaLabel} × ${result.productivityRate} m²/h)`,
+        });
+        if (result.materialEstimated && result.material) {
+          feedbackLines.push({
+            icon: "success",
+            text: `${t("planningTasks.estMaterial", "Material")}: ${formatCurrency(materialCost, currency)}`,
+          });
+        } else {
+          feedbackLines.push({
+            icon: "warning",
+            text: t("planningTasks.estNoMaterial", "Material: add manually or via subcontractor quote"),
+          });
+        }
+        if (budget > 0) {
+          feedbackLines.push({
+            icon: "success",
+            text: `${t("planningTasks.estBudget", "Budget")}: ${formatCurrency(budget, currency)}`,
+          });
+        }
+
+        setEstimateFeedback({
+          title: `${workLabel} — ${t("planningTasks.estimateDone", "estimate done")}`,
+          lines: feedbackLines,
+        });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setEstimateFeedback({
+          title: t("common.error", "Error"),
+          lines: [{ icon: "error", text: msg }],
+        });
+      } finally {
+        setEstimatingTaskId(null);
+      }
+    },
+    [roomMap, estimationSettings, fetchData, t, projectId, currency]
+  );
+
+  const handleAutoEstimate = useCallback(
+    async (task: PlanningTask) => {
+      const roomIds = task.room_ids || (task.room_id ? [task.room_id] : []);
+      const linkedRooms = roomIds
+        .map((id) => roomMap.get(id))
+        .filter((r): r is Room => !!r && !!r.dimensions);
+
+      if (linkedRooms.length === 0) {
+        setEstimateFeedback({
+          title: t("planningTasks.autoEstimate", "Auto-estimate"),
+          lines: [{ icon: "warning", text: t("planningTasks.noRoomsForEstimate", "Assign rooms with dimensions first") }],
+        });
+        return;
+      }
+
+      const workType = detectWorkType(task);
+      if (!workType) {
+        // Open work-type picker popover instead of showing error toast
+        setWorkTypePickerTaskId(task.id);
+        return;
+      }
+
+      await runEstimate(task, workType);
+    },
+    [roomMap, runEstimate, t]
+  );
+
+  const handleWorkTypePicked = useCallback(
+    async (taskId: string, workType: WorkType) => {
+      setWorkTypePickerTaskId(null);
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return;
+      await runEstimate(task, workType);
+    },
+    [tasks, runEstimate]
   );
 
   const calcTaskProfit = useCallback((task: PlanningTask) => {
@@ -688,26 +930,34 @@ export function PlanningTaskList({
                             <Popover open onOpenChange={(isOpen) => { if (!isOpen) { setEditingCell(null); setNewRoomName(""); } }}>
                               <PopoverTrigger asChild>
                                 <button className="text-sm text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
-                                  {task.room_name || "–"}
+                                  {task.room_names.length > 0 ? task.room_names.join(", ") : "–"}
                                 </button>
                               </PopoverTrigger>
-                              <PopoverContent className="w-48 p-1" align="start">
+                              <PopoverContent className="w-52 p-1" align="start">
                                 <div className="space-y-0.5">
-                                  <button
-                                    className={`w-full text-left text-sm px-2 py-1.5 rounded hover:bg-muted ${!task.room_id ? "bg-muted font-medium" : ""}`}
-                                    onClick={() => handleInlineRoomSave(task.id, null)}
-                                  >
-                                    –
-                                  </button>
-                                  {rooms.map((r) => (
+                                  {rooms.map((r) => {
+                                    const checked = (task.room_ids || []).includes(r.id);
+                                    return (
+                                      <label
+                                        key={r.id}
+                                        className="flex items-center gap-2 w-full text-sm px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                                      >
+                                        <Checkbox
+                                          checked={checked}
+                                          onCheckedChange={() => handleRoomToggle(task.id, r.id)}
+                                        />
+                                        {r.name}
+                                      </label>
+                                    );
+                                  })}
+                                  {(task.room_ids || []).length > 0 && (
                                     <button
-                                      key={r.id}
-                                      className={`w-full text-left text-sm px-2 py-1.5 rounded hover:bg-muted ${task.room_id === r.id ? "bg-muted font-medium" : ""}`}
-                                      onClick={() => handleInlineRoomSave(task.id, r.id)}
+                                      className="w-full text-left text-xs text-muted-foreground px-2 py-1 hover:bg-muted rounded"
+                                      onClick={() => handleClearRooms(task.id)}
                                     >
-                                      {r.name}
+                                      {t("common.clearAll", "Clear all")}
                                     </button>
-                                  ))}
+                                  )}
                                   <div className="border-t pt-1 mt-1">
                                     <form
                                       className="flex items-center gap-1 px-1"
@@ -717,7 +967,6 @@ export function PlanningTaskList({
                                       }}
                                     >
                                       <Input
-                                        autoFocus
                                         placeholder={t("planningTasks.newRoom", "New room...")}
                                         value={newRoomName}
                                         onChange={(e) => setNewRoomName(e.target.value)}
@@ -739,17 +988,17 @@ export function PlanningTaskList({
                               </PopoverContent>
                             </Popover>
                           ) : effectiveLock ? (
-                            <span className="text-sm text-muted-foreground">{task.room_name || "–"}</span>
+                            <span className="text-sm text-muted-foreground">{task.room_names.length > 0 ? task.room_names.join(", ") : "–"}</span>
                           ) : (
                             <button
-                              className="hover:bg-muted px-1.5 py-0.5 rounded cursor-pointer text-sm text-muted-foreground"
+                              className="hover:bg-muted px-1.5 py-0.5 rounded cursor-pointer text-sm text-muted-foreground text-left"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setEditingCell({ taskId: task.id, field: "room_id" });
-                                setEditValue(task.room_id || "");
+                                setEditValue("");
                               }}
                             >
-                              {task.room_name || "–"}
+                              {task.room_names.length > 0 ? task.room_names.join(", ") : "–"}
                             </button>
                           )}
                         </TableCell>
@@ -776,7 +1025,40 @@ export function PlanningTaskList({
                       )}
                       {show.material && (
                         <TableCell className="text-right hidden sm:table-cell py-2.5">
-                          {renderInlineCell("material_estimate", task.material_estimate, "currency")}
+                          {task.material_estimate ? (
+                            renderInlineCell("material_estimate", task.material_estimate, "currency")
+                          ) : (() => {
+                            const linkedRooms = (task.room_ids || [])
+                              .map((id) => roomMap.get(id))
+                              .filter((r): r is Room => !!r);
+                            const suggestions = linkedRooms.length > 0
+                              ? suggestMaterialsMultiRoom(task, linkedRooms, estimationSettings ?? undefined)
+                              : [];
+                            if (suggestions.length > 0) {
+                              const summary = formatSuggestionSummary(suggestions);
+                              return (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button
+                                        className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditTaskId(task.id);
+                                        }}
+                                      >
+                                        {summary}
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs">
+                                      {t("materialRecipes.clickToSuggest")}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              );
+                            }
+                            return renderInlineCell("material_estimate", null, "currency");
+                          })()}
                         </TableCell>
                       )}
                       <TableCell className="text-right py-2.5">
@@ -810,6 +1092,56 @@ export function PlanningTaskList({
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
+                            <Popover
+                              open={workTypePickerTaskId === task.id}
+                              onOpenChange={(open) => {
+                                if (!open) setWorkTypePickerTaskId(null);
+                              }}
+                            >
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                      disabled={estimatingTaskId === task.id}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAutoEstimate(task);
+                                      }}
+                                    >
+                                      {estimatingTaskId === task.id ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <Sparkles className="h-3.5 w-3.5" />
+                                      )}
+                                    </Button>
+                                  </PopoverTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>{t("planningTasks.autoEstimate", "Auto-estimate")}</TooltipContent>
+                              </Tooltip>
+                              <PopoverContent
+                                className="w-48 p-2"
+                                align="end"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <p className="text-xs font-medium text-muted-foreground mb-2 px-1">
+                                  {t("planningTasks.pickWorkType", "What type of work?")}
+                                </p>
+                                <div className="flex flex-col">
+                                  {ALL_WORK_TYPES.map((wt) => (
+                                    <button
+                                      key={wt}
+                                      className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted text-left"
+                                      onClick={() => handleWorkTypePicked(task.id, wt)}
+                                    >
+                                      {t(WORK_TYPE_LABEL_KEYS[wt], wt)}
+                                    </button>
+                                  ))}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -944,6 +1276,33 @@ export function PlanningTaskList({
         currency={currency}
         projectStatus="planning"
       />
+
+      {/* Estimate feedback dialog — centered, impossible to miss */}
+      <AlertDialog open={estimateFeedback !== null} onOpenChange={(open) => !open && setEstimateFeedback(null)}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              {estimateFeedback?.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 pt-1">
+                {estimateFeedback?.lines.map((line, i) => (
+                  <div key={i} className="flex items-start gap-2 text-sm">
+                    {line.icon === "success" && <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />}
+                    {line.icon === "warning" && <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />}
+                    {line.icon === "error" && <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />}
+                    <span className={line.icon === "error" ? "text-destructive" : "text-foreground"}>{line.text}</span>
+                  </div>
+                ))}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction>{t("common.ok", "OK")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

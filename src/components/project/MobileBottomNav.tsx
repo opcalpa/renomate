@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { LayoutDashboard, PenTool, CheckSquare, ShoppingCart, MoreHorizontal, FolderOpen, PiggyBank, Users, ImageIcon, MessageSquare } from "lucide-react";
+import { LayoutDashboard, PenTool, CheckSquare, ShoppingCart, MoreHorizontal, FolderOpen, PiggyBank, Users, ImageIcon, MessageSquare, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -38,7 +38,8 @@ const DEFAULT_PRIMARY: TabConfig[] = [
 ];
 
 const CLIENT_PRIMARY: TabConfig[] = [
-  { tab: "customer", icon: LayoutDashboard, labelKey: "nav.mobileNav.customerView" },
+  { tab: "planning", icon: ClipboardList, labelKey: "nav.mobileNav.planning" },
+  { tab: "customer", icon: LayoutDashboard, labelKey: "nav.mobileNav.clientView" },
   { tab: "chat", icon: MessageSquare, labelKey: "nav.mobileNav.chat" },
   { tab: "files", icon: ImageIcon, labelKey: "nav.mobileNav.photos" },
 ];

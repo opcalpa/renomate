@@ -109,7 +109,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   const [creating, setCreating] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
-  const [tasks, setTasks] = useState<{ id: string; title: string; budget: number | null; material_estimate: number | null; material_items: unknown[] | null; is_ata: boolean; materialSpent: number }[]>([]);
+  const [tasks, setTasks] = useState<{ id: string; title: string; budget: number | null; material_estimate: number | null; is_ata: boolean; materialSpent: number }[]>([]);
   const [teamMembers, setTeamMembers] = useState<{ id: string; name: string }[]>([]);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [isProjectOwner, setIsProjectOwner] = useState<boolean>(false);
@@ -278,7 +278,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
       const [tasksRes, materialsRes] = await Promise.all([
         supabase
           .from("tasks")
-          .select("id, title, budget, material_estimate, material_items, is_ata")
+          .select("id, title, budget, material_estimate, is_ata")
           .eq("project_id", projectId)
           .order("created_at", { ascending: true }),
         supabase

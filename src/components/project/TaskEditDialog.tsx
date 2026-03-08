@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -15,8 +15,9 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { formatCurrency } from "@/lib/currency";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Plus, Tag, ChevronDown, ChevronRight, Trash2, X, Info } from "lucide-react";
+import { Loader2, Plus, Tag, ChevronDown, ChevronRight, Trash2, X, Info, Sparkles } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,20 @@ import { EntityPhotoGallery } from "@/components/shared/EntityPhotoGallery";
 import { TaskFilesList } from "./TaskFilesList";
 import { DEFAULT_COST_CENTERS } from "@/lib/costCenters";
 import { useProjectPermissions } from "@/hooks/useProjectPermissions";
+import {
+  suggestMaterials,
+  suggestMaterialsMultiRoom,
+  detectWorkType,
+  estimateTaskMultiRoom,
+  parseEstimationSettings,
+  computeFloorAreaSqm,
+  computeWallAreaSqm,
+  ALL_WORK_TYPES,
+  WORK_TYPE_LABEL_KEYS,
+  type WorkType,
+  type RecipeEstimationSettings,
+  type RecipeRoom,
+} from "@/lib/materialRecipes";
 
 interface ChecklistItem {
   id: string;
@@ -53,8 +68,27 @@ interface Checklist {
 interface MaterialItem {
   id: string;
   name: string;
-  amount: number;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  amount: number; // computed: quantity × unit_price (kept for backward compat)
   markup_percent: number | null; // null = use group markup
+}
+
+const MATERIAL_UNITS = ["st", "m²", "L", "kg", "m"] as const;
+
+function normalizeMaterialItem(item: Partial<MaterialItem> & { id: string; name: string }): MaterialItem {
+  const quantity = item.quantity ?? 1;
+  const unit = item.unit ?? "st";
+  const unit_price = item.unit_price ?? (item.amount ?? 0);
+  return {
+    ...item,
+    quantity,
+    unit,
+    unit_price,
+    amount: Math.round(quantity * unit_price),
+    markup_percent: item.markup_percent ?? null,
+  };
 }
 
 interface Task {
@@ -69,6 +103,7 @@ interface Task {
   progress: number;
   assigned_to_stakeholder_id: string | null;
   room_id: string | null;
+  room_ids?: string[] | null;
   budget: number | null;
   ordered_amount: number | null;
   payment_status: string | null;
@@ -88,6 +123,416 @@ interface Task {
   labor_cost_percent: number | null;
   is_ata: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Smart Estimate Card — supports all work types (labor + optional material)
+// ---------------------------------------------------------------------------
+
+interface SmartEstimateCardProps {
+  task: Task;
+  rooms: { id: string; name: string; dimensions?: RecipeRoom["dimensions"]; ceiling_height_mm?: number | null }[];
+  estimationSettings: RecipeEstimationSettings | null;
+  onApply: (hours: number, items: MaterialItem[]) => void;
+  onSaveDefault?: (key: keyof RecipeEstimationSettings, value: number) => void;
+  currency?: string | null;
+  t: (key: string, fallback?: string | Record<string, string>) => string;
+}
+
+function SmartEstimateCard({ task, rooms, estimationSettings, onApply, onSaveDefault, currency, t }: SmartEstimateCardProps) {
+  const roomIds = (task.room_ids && task.room_ids.length > 0)
+    ? task.room_ids
+    : task.room_id ? [task.room_id] : [];
+  const linkedRooms = roomIds
+    .map((id) => rooms.find((r) => r.id === id))
+    .filter((r): r is typeof rooms[number] => !!r && !!r.dimensions);
+
+  // Detect work type (or let user pick via cost_center)
+  const detectedType = detectWorkType(task);
+  const isPainting = detectedType === "painting";
+  const [includeCeiling, setIncludeCeiling] = useState(false);
+  const result = linkedRooms.length > 0 && detectedType
+    ? estimateTaskMultiRoom(task, linkedRooms as RecipeRoom[], estimationSettings ?? undefined, { includeCeiling })
+    : null;
+
+  // Local override state
+  const [overrideHours, setOverrideHours] = useState<number | null>(null);
+  const [overrideUnitPrice, setOverrideUnitPrice] = useState<number | null>(null);
+  const [overrideQuantity, setOverrideQuantity] = useState<number | null>(null);
+  const [overrideProductivityRate, setOverrideProductivityRate] = useState<number | null>(null);
+  const [overrideHourlyRate, setOverrideHourlyRate] = useState<number | null>(null);
+  const [overrideCeilingQty, setOverrideCeilingQty] = useState<number | null>(null);
+  const [overrideCeilingPrice, setOverrideCeilingPrice] = useState<number | null>(null);
+  const [overrideCoats, setOverrideCoats] = useState<number | null>(null);
+  const [overrideCoverage, setOverrideCoverage] = useState<number | null>(null);
+  const [overrideWaste, setOverrideWaste] = useState<number | null>(null);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editBuffer, setEditBuffer] = useState("");
+  const [saveDefaultPrompt, setSaveDefaultPrompt] = useState<{ key: keyof RecipeEstimationSettings; value: number; label: string } | null>(null);
+
+  // Reset overrides when estimation changes
+  const prevKey = useRef<string | null>(null);
+  useEffect(() => {
+    const key = result ? `${result.workType}-${result.totalAreaSqm}-${result.productivityRate}-${includeCeiling}` : null;
+    if (key !== prevKey.current) {
+      prevKey.current = key;
+      setOverrideHours(null);
+      setOverrideUnitPrice(null);
+      setOverrideQuantity(null);
+      setOverrideProductivityRate(null);
+      setOverrideHourlyRate(null);
+      setOverrideCeilingQty(null);
+      setOverrideCeilingPrice(null);
+      setOverrideCoats(null);
+      setOverrideCoverage(null);
+      setOverrideWaste(null);
+    }
+  }, [result]);
+
+  if (!result) return null;
+
+  const alreadyApplied = !!task.estimated_hours;
+
+  const productivityRate = overrideProductivityRate ?? result.productivityRate;
+  const defaultHours = Math.round((result.totalAreaSqm / productivityRate) * 2) / 2;
+  const hours = overrideHours ?? defaultHours;
+  const hourlyRate = overrideHourlyRate ?? (task.hourly_rate || 0);
+  const laborTotal = hours * hourlyRate;
+
+  // Material (only for recipe types)
+  const mat = result.material;
+  const unitPrice = overrideUnitPrice ?? (mat?.unitPrice ?? 0);
+
+  // Derive quantity from recipe params (coats/coverage for painting, waste for flooring/tiling)
+  const coats = overrideCoats ?? (mat?.coats ?? 0);
+  const coverage = overrideCoverage ?? (mat?.coverage ?? 0);
+  const wasteFactor = overrideWaste ?? (mat?.wasteFactor ?? 0);
+  const hasPaintRecipe = mat && mat.coats !== undefined;
+  const hasWasteRecipe = mat && mat.wasteFactor !== undefined;
+  const derivedQuantity = hasPaintRecipe
+    ? Math.ceil((mat.workAreaSqm / coverage) * coats)
+    : hasWasteRecipe
+      ? Math.round(mat.workAreaSqm * wasteFactor * 10) / 10
+      : (mat?.quantity ?? 0);
+  const quantity = overrideQuantity ?? derivedQuantity;
+  const materialCost = Math.round(quantity * unitPrice);
+
+  // Compute ceiling with overrides
+  const ceilingExtra = result?.extraMaterials[0] ?? null;
+  const ceilingCoats = overrideCoats ?? (ceilingExtra?.coats ?? 0);
+  const ceilingCoverage = overrideCoverage ?? (ceilingExtra?.coverage ?? 0);
+  const derivedCeilingQty = ceilingExtra && ceilingExtra.coats !== undefined
+    ? Math.ceil((ceilingExtra.workAreaSqm / ceilingCoverage) * ceilingCoats)
+    : (ceilingExtra?.quantity ?? 0);
+  const ceilingQty = overrideCeilingQty ?? derivedCeilingQty;
+  const ceilingPrice = overrideCeilingPrice ?? (ceilingExtra?.unitPrice ?? 0);
+  const ceilingCost = Math.round(ceilingQty * ceilingPrice);
+  const extraMaterialsCost = ceilingExtra ? ceilingCost : 0;
+  const estimatedTotal = laborTotal + materialCost + extraMaterialsCost;
+
+  const areaType = result.areaType;
+  const areaFn = areaType === "wall" ? computeWallAreaSqm : computeFloorAreaSqm;
+  const areaLabel = areaType === "wall" ? t("planningTasks.wallArea", "wall area") : t("planningTasks.floorArea", "floor area");
+
+  const startEdit = (field: string, currentValue: number) => {
+    setEditingField(field);
+    setEditBuffer(String(currentValue));
+  };
+
+  // Map editable fields to profile estimation_settings keys
+  const RATE_KEY_MAP: Record<string, string> = {
+    painting: "paint_sqm_per_hour", flooring: "floor_sqm_per_hour", tiling: "tile_sqm_per_hour",
+    demolition: "demolition_sqm_per_hour", spackling: "spackling_sqm_per_hour", sanding: "sanding_sqm_per_hour",
+    carpentry: "carpentry_sqm_per_hour", electrical: "electrical_sqm_per_hour", plumbing: "plumbing_sqm_per_hour",
+  };
+  const PRICE_KEY_MAP: Record<string, string> = {
+    painting: "paint_price_per_liter", flooring: "floor_price_per_sqm", tiling: "tile_price_per_sqm",
+  };
+
+  const fieldToSettingsKey = (field: string): keyof RecipeEstimationSettings | null => {
+    if (field === "productivityRate") return (RATE_KEY_MAP[result.workType] ?? null) as keyof RecipeEstimationSettings | null;
+    if (field === "unitPrice" || field === "ceilingPrice") return (PRICE_KEY_MAP[result.workType] ?? null) as keyof RecipeEstimationSettings | null;
+    if (field === "coverage") return "paint_coverage_sqm_per_liter";
+    if (field === "coats") return "paint_coats";
+    return null;
+  };
+
+  const fieldLabel = (field: string): string => {
+    if (field === "productivityRate") return t("estimation.productivityRates", "productivity rate");
+    if (field === "unitPrice" || field === "ceilingPrice") return t("estimation.materialPrices", "material price");
+    if (field === "coverage") return t("materialRecipes.coverage", "coverage");
+    if (field === "coats") return t("materialRecipes.coatsLabel", "coats");
+    return field;
+  };
+
+  const commitEdit = () => {
+    if (!editingField) return;
+    const val = parseFloat(editBuffer);
+    if (!isNaN(val) && val > 0) {
+      if (editingField === "hours") setOverrideHours(val);
+      else if (editingField === "unitPrice") setOverrideUnitPrice(val);
+      else if (editingField === "quantity") setOverrideQuantity(val);
+      else if (editingField === "productivityRate") {
+        setOverrideProductivityRate(val);
+        setOverrideHours(null);
+      }
+      else if (editingField === "hourlyRate") setOverrideHourlyRate(val);
+      else if (editingField === "ceilingQty") setOverrideCeilingQty(val);
+      else if (editingField === "ceilingPrice") setOverrideCeilingPrice(val);
+      else if (editingField === "coats") { setOverrideCoats(val); setOverrideQuantity(null); setOverrideCeilingQty(null); }
+      else if (editingField === "coverage") { setOverrideCoverage(val); setOverrideQuantity(null); setOverrideCeilingQty(null); }
+      else if (editingField === "wasteFactor") { setOverrideWaste(val); setOverrideQuantity(null); }
+
+      // Prompt to save as default for profile-linked fields
+      const settingsKey = fieldToSettingsKey(editingField);
+      if (settingsKey && onSaveDefault) {
+        setSaveDefaultPrompt({ key: settingsKey, value: val, label: fieldLabel(editingField) });
+      }
+    } else if (!isNaN(val) && val === 0) {
+      if (editingField === "quantity") setOverrideQuantity(val);
+      else if (editingField === "unitPrice") setOverrideUnitPrice(val);
+      else if (editingField === "hourlyRate") setOverrideHourlyRate(val);
+      else if (editingField === "ceilingQty") setOverrideCeilingQty(val);
+      else if (editingField === "ceilingPrice") setOverrideCeilingPrice(val);
+    }
+    setEditingField(null);
+  };
+
+  const renderEditable = (field: string, value: number, suffix: string) => {
+    if (editingField === field) {
+      return (
+        <input
+          autoFocus
+          type="number"
+          step={field === "hours" || field === "productivityRate" ? "0.5" : "1"}
+          min="0"
+          className="w-16 h-5 text-xs text-right font-semibold bg-white border rounded px-1 tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          value={editBuffer}
+          onChange={(e) => setEditBuffer(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitEdit();
+            if (e.key === "Escape") setEditingField(null);
+          }}
+          onBlur={commitEdit}
+        />
+      );
+    }
+    const isOverridden =
+      (field === "hours" && overrideHours !== null) ||
+      (field === "unitPrice" && overrideUnitPrice !== null) ||
+      (field === "quantity" && overrideQuantity !== null) ||
+      (field === "productivityRate" && overrideProductivityRate !== null) ||
+      (field === "hourlyRate" && overrideHourlyRate !== null) ||
+      (field === "ceilingQty" && overrideCeilingQty !== null) ||
+      (field === "ceilingPrice" && overrideCeilingPrice !== null) ||
+      (field === "coats" && overrideCoats !== null) ||
+      (field === "coverage" && overrideCoverage !== null) ||
+      (field === "wasteFactor" && overrideWaste !== null);
+
+    return (
+      <button
+        type="button"
+        className={`font-semibold cursor-pointer rounded px-0.5 -mx-0.5 transition-colors underline decoration-dotted underline-offset-2 ${isOverridden ? "text-primary decoration-primary/40" : "text-green-700 decoration-green-700/40 hover:text-green-800 hover:decoration-green-800/60"}`}
+        onClick={() => startEdit(field, value)}
+        title={t("materialRecipes.clickToEdit", "Click to adjust")}
+      >
+        {field === "unitPrice" || field === "quantity" || field === "hourlyRate"
+          ? value.toLocaleString("sv-SE")
+          : value}{suffix}
+      </button>
+    );
+  };
+
+  // Per-room breakdown data
+  const roomBreakdown = linkedRooms.map((room) => {
+    const area = areaFn(room as RecipeRoom);
+    const roomHours = area ? Math.round((area / productivityRate) * 2) / 2 : 0;
+    return { name: room.name, area: area ?? 0, hours: roomHours };
+  });
+
+  return (
+    <Collapsible defaultOpen={!alreadyApplied}>
+      <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-1">
+        <div className="flex items-center justify-between">
+          <CollapsibleTrigger className="flex items-center gap-1.5 group">
+            <ChevronRight className="h-3.5 w-3.5 text-primary/60 transition-transform group-data-[state=open]:rotate-90" />
+            <span className="text-xs font-medium text-primary flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" />
+              {t(WORK_TYPE_LABEL_KEYS[result.workType], result.workType)}
+            </span>
+            <span className="text-xs text-muted-foreground tabular-nums ml-1">
+              {hours}h{estimatedTotal > 0 ? ` · ${estimatedTotal.toLocaleString("sv-SE")} SEK` : ""}
+            </span>
+          </CollapsibleTrigger>
+          <Button
+            type="button" variant="default" size="sm" className="h-7 text-xs gap-1.5"
+            onClick={() => {
+              const items: MaterialItem[] = [];
+              if (mat) {
+                items.push({
+                  id: crypto.randomUUID(),
+                  name: t(mat.nameKey, mat.nameFallback),
+                  quantity,
+                  unit: mat.unit,
+                  unit_price: unitPrice,
+                  amount: materialCost,
+                  markup_percent: null,
+                });
+              }
+              if (ceilingExtra) {
+                items.push({
+                  id: crypto.randomUUID(),
+                  name: t(ceilingExtra.nameKey, ceilingExtra.nameFallback),
+                  quantity: ceilingQty,
+                  unit: ceilingExtra.unit,
+                  unit_price: ceilingPrice,
+                  amount: ceilingCost,
+                  markup_percent: null,
+                });
+              }
+              onApply(hours, items);
+            }}
+          >
+            {alreadyApplied
+              ? t("materialRecipes.reApplyEstimate", "Re-apply")
+              : t("materialRecipes.applyEstimate", "Apply estimate")}
+          </Button>
+        </div>
+
+        <CollapsibleContent className="space-y-3 pt-2">
+          {/* Ceiling toggle — only for painting */}
+          {isPainting && linkedRooms.length > 0 && (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox checked={includeCeiling} onCheckedChange={(v) => setIncludeCeiling(!!v)} />
+              <span className="text-xs">{t("materialRecipes.includeCeiling", "Include ceiling")}</span>
+            </label>
+          )}
+
+          {/* Room breakdown mini-table */}
+          {linkedRooms.length > 1 && (
+            <div className="rounded border bg-white/50 overflow-hidden">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left font-medium text-muted-foreground px-2 py-1">{t("tasks.room", "Room")}</th>
+                    <th className="text-right font-medium text-muted-foreground px-2 py-1">{areaLabel}</th>
+                    <th className="text-right font-medium text-muted-foreground px-2 py-1">{t("taskCost.estimatedHours", "Hours")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {roomBreakdown.map((r, i) => (
+                    <tr key={i} className="border-b last:border-0">
+                      <td className="px-2 py-1">{r.name}</td>
+                      <td className="text-right px-2 py-1 tabular-nums">{r.area.toFixed(1)} m²</td>
+                      <td className="text-right px-2 py-1 tabular-nums">{r.hours}h</td>
+                    </tr>
+                  ))}
+                  <tr className="font-medium bg-muted/20">
+                    <td className="px-2 py-1">{t("common.total", "Total")}</td>
+                    <td className="text-right px-2 py-1 tabular-nums">{result.totalAreaSqm} m²</td>
+                    <td className="text-right px-2 py-1 tabular-nums">{hours}h</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Formula breakdown — Hours, then material */}
+          <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs tabular-nums">
+            {/* --- HOURS --- */}
+            <span className="text-muted-foreground">{t("taskCost.estimatedHours", "Hours")}:</span>
+            <span className="text-right">
+              {result.totalAreaSqm} m² ÷ {renderEditable("productivityRate", productivityRate, " m²/h")} = {renderEditable("hours", hours, "h")}
+              {hourlyRate > 0 && (
+                <span className="text-muted-foreground ml-2">
+                  ({t("materialRecipes.hourlyRate", "hourly rate")}: {renderEditable("hourlyRate", hourlyRate, " SEK/h")})
+                </span>
+              )}
+            </span>
+
+            {/* --- MATERIAL SECTION --- */}
+            {mat && (
+              <>
+                {/* Material quantity derivation */}
+                <span className="text-muted-foreground border-t pt-1 mt-1">{t("materialRecipes.materialQty", "Quantity")}:</span>
+                <span className="text-right border-t pt-1 mt-1">
+                  {hasPaintRecipe ? (
+                    <>
+                      {mat.workAreaSqm.toFixed(1)} m² ÷ {renderEditable("coverage", coverage, " m²/L")} × {renderEditable("coats", coats, ` ${t("materialRecipes.coats", "coats")}`)} = {renderEditable("quantity", quantity, mat.unit)}
+                    </>
+                  ) : hasWasteRecipe ? (
+                    <>
+                      {mat.workAreaSqm.toFixed(1)} m² × {renderEditable("wasteFactor", wasteFactor, "")} = {renderEditable("quantity", quantity, ` ${mat.unit}`)}
+                    </>
+                  ) : (
+                    <>{renderEditable("quantity", quantity, ` ${mat.unit}`)}</>
+                  )}
+                </span>
+                {/* Material cost */}
+                <span className="text-muted-foreground">{t(mat.nameKey, mat.nameFallback)}:</span>
+                <span className="text-right">
+                  {renderEditable("quantity", quantity, mat.unit)} × {renderEditable("unitPrice", unitPrice, ` SEK/${mat.unit}`)} = <strong>{materialCost.toLocaleString("sv-SE")} SEK</strong>
+                </span>
+              </>
+            )}
+            {!mat && result.extraMaterials.length === 0 && (
+              <>
+                <span className="text-muted-foreground border-t pt-1 mt-1">{t("planningTasks.estMaterial", "Material")}:</span>
+                <span className="text-right text-amber-600 text-[11px] border-t pt-1 mt-1">
+                  {t("planningTasks.estNoMaterial", "Add manually or via subcontractor quote")}
+                </span>
+              </>
+            )}
+            {/* Ceiling paint */}
+            {ceilingExtra && (
+              <>
+                <span className="text-muted-foreground">{t("materialRecipes.ceilingQty", "Ceiling qty")}:</span>
+                <span className="text-right">
+                  {ceilingExtra.workAreaSqm.toFixed(1)} m² ÷ {renderEditable("coverage", coverage, " m²/L")} × {renderEditable("coats", coats, ` ${t("materialRecipes.coats", "coats")}`)} = {renderEditable("ceilingQty", ceilingQty, ceilingExtra.unit)}
+                </span>
+                <span className="text-muted-foreground">{t(ceilingExtra.nameKey, ceilingExtra.nameFallback)}:</span>
+                <span className="text-right">
+                  {renderEditable("ceilingQty", ceilingQty, ceilingExtra.unit)} × {renderEditable("ceilingPrice", ceilingPrice, ` SEK/${ceilingExtra.unit}`)} = <strong>{ceilingCost.toLocaleString("sv-SE")} SEK</strong>
+                </span>
+              </>
+            )}
+
+            {/* --- TOTAL --- */}
+            <span className="text-muted-foreground font-medium border-t pt-1 mt-1">{t("materialRecipes.estimatedTotal", "Estimated total")}:</span>
+            <span className="text-right font-semibold border-t pt-1 mt-1">{estimatedTotal.toLocaleString("sv-SE")} SEK</span>
+          </div>
+          {/* Save-as-default prompt for profile-linked values */}
+          {saveDefaultPrompt && (
+            <div className="flex items-center gap-2 text-xs bg-blue-50 border border-blue-200 rounded px-2.5 py-1.5 animate-in fade-in slide-in-from-top-1">
+              <span className="text-blue-800 flex-1">
+                {t("materialRecipes.saveAsDefault", "Save as new default in profile?")}
+              </span>
+              <button
+                type="button"
+                className="text-blue-700 font-medium hover:text-blue-900 underline underline-offset-2"
+                onClick={() => {
+                  onSaveDefault?.(saveDefaultPrompt.key, saveDefaultPrompt.value);
+                  setSaveDefaultPrompt(null);
+                }}
+              >
+                {t("common.save", "Save")}
+              </button>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setSaveDefaultPrompt(null)}
+              >
+                {t("materialRecipes.onlyThisTask", "Only this task")}
+              </button>
+            </div>
+          )}
+          <p className="text-[10px] text-muted-foreground/60">{t("materialRecipes.clickToEdit", "Click bold values to adjust before applying")}</p>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
+
+// ---------------------------------------------------------------------------
 
 interface TaskEditDialogProps {
   taskId: string | null;
@@ -116,7 +561,7 @@ export const TaskEditDialog = ({
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
+  const [rooms, setRooms] = useState<{ id: string; name: string; dimensions?: RecipeRoom["dimensions"]; ceiling_height_mm?: number | null }[]>([]);
   const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; role?: string }[]>([]);
   const [customCostCenters, setCustomCostCenters] = useState<string[]>([]);
   const [showCustomCostCenter, setShowCustomCostCenter] = useState(false);
@@ -126,6 +571,7 @@ export const TaskEditDialog = ({
   const [profileLaborCostPercent, setProfileLaborCostPercent] = useState<number | null>(null);
   const hasAutoFilledRef = useRef(false);
   const [materialSpent, setMaterialSpent] = useState(0);
+  const [estimationSettings, setEstimationSettings] = useState<RecipeEstimationSettings | null>(null);
 
   const fetchTask = useCallback(async () => {
     if (!taskId) return;
@@ -139,18 +585,44 @@ export const TaskEditDialog = ({
         .single();
 
       if (error) throw error;
+
+      // Fetch linked materials for this task
+      const { data: linkedMaterials } = await supabase
+        .from("materials")
+        .select("id, name, quantity, unit, price_per_unit, price_total, markup_percent, status, exclude_from_budget")
+        .eq("task_id", taskId);
+
+      // Split into planned items (editable in pricing) vs actual spend
+      const allMaterials = linkedMaterials || [];
+      const plannedItems: MaterialItem[] = allMaterials
+        .filter((m) => m.status === "planned")
+        .map((m) => ({
+          id: m.id,
+          name: m.name,
+          quantity: m.quantity ?? 1,
+          unit: m.unit ?? "st",
+          unit_price: m.price_per_unit ?? (m.price_total ?? 0),
+          amount: Math.round((m.quantity ?? 1) * (m.price_per_unit ?? 0)),
+          markup_percent: m.markup_percent ?? null,
+        }));
+
+      // Fallback: if no planned materials, try legacy JSONB (backward compat)
+      const legacyItems: MaterialItem[] = plannedItems.length === 0 && data.material_items?.length
+        ? data.material_items.map(normalizeMaterialItem)
+        : [];
+
+      const items = plannedItems.length > 0 ? plannedItems : legacyItems;
+      data.material_items = items.length > 0 ? items : undefined;
+
       setTask(data);
 
-      // Fetch material spend for this task
-      const { data: matSpendData } = await supabase
-        .from("materials")
-        .select("price_total")
-        .eq("task_id", taskId)
-        .eq("exclude_from_budget", false);
-      setMaterialSpent((matSpendData || []).reduce((sum, m) => sum + (m.price_total || 0), 0));
+      // Material spend = non-planned materials linked to this task
+      const actualSpend = allMaterials
+        .filter((m) => m.status !== "planned" && !m.exclude_from_budget)
+        .reduce((sum, m) => sum + (m.price_total ?? ((m.quantity || 0) * (m.price_per_unit || 0))), 0);
+      setMaterialSpent(actualSpend);
 
       // Detect per-row markup mode from loaded data
-      const items: MaterialItem[] = data.material_items || [];
       setPerRowMarkup(items.length > 0 && items.some((i: MaterialItem) => (i.markup_percent ?? null) !== null));
 
       // Extract custom cost centers from task
@@ -171,7 +643,7 @@ export const TaskEditDialog = ({
       // Fetch rooms
       const { data: roomsData } = await supabase
         .from("rooms")
-        .select("id, name")
+        .select("id, name, dimensions, ceiling_height_mm")
         .eq("project_id", projectId)
         .order("name");
       setRooms(roomsData || []);
@@ -211,11 +683,16 @@ export const TaskEditDialog = ({
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("default_hourly_rate, default_labor_cost_percent")
+        .select("default_hourly_rate, default_labor_cost_percent, estimation_settings")
         .eq("user_id", user.id)
         .single();
       setProfileDefaultRate(data?.default_hourly_rate ?? null);
       setProfileLaborCostPercent(data?.default_labor_cost_percent ?? null);
+      if (data?.estimation_settings) {
+        setEstimationSettings(
+          parseEstimationSettings(data.estimation_settings as Record<string, unknown>)
+        );
+      }
     } catch {
       // Non-critical
     }
@@ -267,6 +744,7 @@ export const TaskEditDialog = ({
         start_date: task.start_date || null,
         finish_date: task.finish_date || null,
         room_id: task.room_id || null,
+        room_ids: task.room_ids || [],
         progress: task.progress,
         assigned_to_stakeholder_id: task.assigned_to_stakeholder_id || null,
         budget: task.budget || null,
@@ -294,7 +772,8 @@ export const TaskEditDialog = ({
         payload.labor_cost_percent = task.labor_cost_percent;
       }
 
-      // Material items — only include if the column existed when we fetched
+      // Sync material_items to materials table (planned rows)
+      // Also keep JSONB in sync for backward compat during transition
       if ("material_items" in task) {
         payload.material_items = task.material_items || [];
       }
@@ -310,6 +789,52 @@ export const TaskEditDialog = ({
         .eq("id", task.id);
 
       if (error) throw error;
+
+      // Sync material items → materials table rows (status: "planned")
+      const items: MaterialItem[] = task.material_items || [];
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        // Get existing planned materials for this task
+        const { data: existingPlanned } = await supabase
+          .from("materials")
+          .select("id")
+          .eq("task_id", task.id)
+          .eq("status", "planned");
+        const existingIds = new Set((existingPlanned || []).map((m) => m.id));
+
+        // Determine which items to upsert and which to delete
+        const currentIds = new Set(items.map((i) => i.id));
+        const toDelete = [...existingIds].filter((id) => !currentIds.has(id));
+
+        // Delete removed planned materials
+        if (toDelete.length > 0) {
+          await supabase.from("materials").delete().in("id", toDelete);
+        }
+
+        // Upsert current items
+        for (const item of items) {
+          const materialRow = {
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+            price_per_unit: item.unit_price,
+            price_total: item.amount,
+            markup_percent: item.markup_percent,
+            task_id: task.id,
+            project_id: task.project_id,
+            status: "planned",
+            exclude_from_budget: false,
+            created_by_user_id: authUser.id,
+          };
+          if (existingIds.has(item.id)) {
+            const { id: _id, created_by_user_id: _c, ...updateFields } = materialRow;
+            await supabase.from("materials").update(updateFields).eq("id", item.id);
+          } else {
+            await supabase.from("materials").insert(materialRow);
+          }
+        }
+      }
 
       toast({
         title: t("common.success"),
@@ -407,7 +932,7 @@ export const TaskEditDialog = ({
                 />
               </div>
 
-              {/* Room selector — shown during planning */}
+              {/* Room selector — multi-select during planning */}
               {isPlanning && (
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1">
@@ -423,24 +948,46 @@ export const TaskEditDialog = ({
                       </Tooltip>
                     </TooltipProvider>
                   </Label>
-                  <Select
-                    value={task.room_id || "none"}
-                    onValueChange={(value) =>
-                      setTask({ ...task, room_id: value === "none" ? null : value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("tasks.noRoom")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">{t("tasks.noRoom")}</SelectItem>
-                      {rooms.map((room) => (
-                        <SelectItem key={room.id} value={room.id}>
-                          {room.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start font-normal text-sm h-10">
+                        {(() => {
+                          const ids = task.room_ids || (task.room_id ? [task.room_id] : []);
+                          if (ids.length === 0) return <span className="text-muted-foreground">{t("tasks.noRoom")}</span>;
+                          const names = ids.map((id) => rooms.find((r) => r.id === id)?.name).filter(Boolean);
+                          return names.join(", ");
+                        })()}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-1" align="start">
+                      <div className="space-y-0.5">
+                        {rooms.map((room) => {
+                          const ids = task.room_ids || (task.room_id ? [task.room_id] : []);
+                          const checked = ids.includes(room.id);
+                          return (
+                            <label
+                              key={room.id}
+                              className="flex items-center gap-2 w-full text-sm px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={() => {
+                                  const next = checked
+                                    ? ids.filter((id) => id !== room.id)
+                                    : [...ids, room.id];
+                                  setTask({ ...task, room_ids: next, room_id: next[0] || null });
+                                }}
+                              />
+                              {room.name}
+                            </label>
+                          );
+                        })}
+                        {rooms.length === 0 && (
+                          <p className="text-xs text-muted-foreground px-2 py-1.5">{t("planningTasks.noRoomsYet", "No rooms created yet")}</p>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
 
@@ -515,142 +1062,201 @@ export const TaskEditDialog = ({
                 };
 
                 return (
-              <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+              <div className="space-y-2">
                 <Label className="text-sm font-semibold">{t("taskCost.pricing", "Pricing")}</Label>
+              <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+                {/* Smart estimate — rendered via sub-component with local override state */}
+                <SmartEstimateCard
+                  task={task}
+                  rooms={rooms}
+                  estimationSettings={estimationSettings}
+                  onApply={(hours, items) => {
+                    recalcBudget({
+                      estimated_hours: hours,
+                      material_items: items.length > 0 ? items : (task.material_items || []),
+                    });
+                    toast({
+                      description: t("materialRecipes.estimateApplied", "Estimate applied — adjust values as needed"),
+                    });
+                  }}
+                  onSaveDefault={async (key, value) => {
+                    try {
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (!user) return;
+                      const updated = { ...(estimationSettings ?? {}), [key]: value };
+                      await supabase.from("profiles").update({ estimation_settings: updated }).eq("user_id", user.id);
+                      setEstimationSettings(parseEstimationSettings(updated as Record<string, unknown>));
+                      toast({ description: t("materialRecipes.defaultSaved", "Default saved to profile") });
+                    } catch {
+                      toast({ variant: "destructive", description: t("common.errorSaving", "Could not save") });
+                    }
+                  }}
+                  currency={currency}
+                  t={t}
+                />
 
-                {/* Own labor */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">{t("taskCost.ownLabor", "Own labor")}</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">{t("taskCost.estimatedHours", "Hours")}</Label>
-                      <Input
-                        type="number" step="0.5" min="0" placeholder="0"
-                        value={task.estimated_hours?.toString() || ""}
-                        onChange={(e) => {
-                          const hours = e.target.value ? parseFloat(e.target.value) : null;
-                          recalcBudget({ estimated_hours: hours });
-                        }}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">{t("taskCost.hourlyRate", "Hourly rate")}</Label>
-                      <Input
-                        type="number" step="1" min="0" placeholder="0"
-                        value={task.hourly_rate?.toString() || ""}
-                        onChange={(e) => {
-                          const rate = e.target.value ? parseFloat(e.target.value) : null;
-                          recalcBudget({ hourly_rate: rate });
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {laborTotal > 0 && (
-                    <p className="text-xs text-muted-foreground text-right">
-                      {t("taskCost.laborTotal", "Labor")}: {formatCurrency(laborTotal, currency)}
-                    </p>
-                  )}
-                  {laborTotal > 0 && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        {t("taskCost.costPercent", "Cost %")}:
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="h-3 w-3 text-muted-foreground" />
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-[240px]">
-                              <p className="text-xs">{t("taskCost.costPercentTooltip")}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </span>
-                      {task.labor_cost_percent != null ? (
-                        <Input
-                          type="number" step="1" min="0" max="100" placeholder="50"
-                          value={task.labor_cost_percent?.toString() || ""}
-                          onChange={(e) => {
-                            const val = e.target.value ? parseFloat(e.target.value) : null;
-                            setTask({ ...task, labor_cost_percent: val });
-                          }}
-                          className="w-16 h-7 text-sm text-right"
-                        />
-                      ) : (
-                        <span className="text-xs text-muted-foreground">{effectiveCostPercent}%</span>
-                      )}
-                      <Switch
-                        checked={task.labor_cost_percent != null}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setTask({ ...task, labor_cost_percent: effectiveCostPercent });
-                          } else {
-                            setTask({ ...task, labor_cost_percent: null });
-                          }
-                        }}
-                        className="h-4 w-8 [&>span]:h-3 [&>span]:w-3 [&>span]:data-[state=checked]:translate-x-4"
-                      />
-                      <span className="text-xs text-muted-foreground">
-                        {task.labor_cost_percent != null ? t("taskCost.perTask", "Per task") : t("taskCost.standard", "Standard")}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Subcontractor */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">{t("taskCost.subcontractor", "Subcontractor")}</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">{t("taskCost.subcontractorCost", "Subcontractor cost")}</Label>
-                      <Input
-                        type="number" step="1" min="0" placeholder="0"
-                        value={task.subcontractor_cost?.toString() || ""}
-                        onChange={(e) => {
-                          const cost = e.target.value ? parseFloat(e.target.value) : null;
-                          recalcBudget({ subcontractor_cost: cost });
-                        }}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">{t("taskCost.markupPercent", "Markup %")}</Label>
-                      <Input
-                        type="number" step="1" min="0" placeholder="0"
-                        value={task.markup_percent?.toString() || ""}
-                        onChange={(e) => {
-                          const markup = e.target.value ? parseFloat(e.target.value) : null;
-                          recalcBudget({ markup_percent: markup });
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {(task.subcontractor_cost || 0) > 0 && (
-                    <p className="text-xs text-muted-foreground text-right">
-                      {t("taskCost.withMarkup", "With markup")}: {formatCurrency(ueWithMarkup, currency)}
-                    </p>
-                  )}
-                </div>
-
-                {/* Material */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium">{t("taskCost.materialEstimate", "Material estimate")}</Label>
-                    {(task.material_items || []).length === 0 && (
-                      <Button
-                        type="button" variant="ghost" size="sm" className="h-6 w-6 p-0"
-                        onClick={() => {
-                          const firstItem: MaterialItem = {
-                            id: crypto.randomUUID(),
-                            name: "Material",
-                            amount: task.material_estimate || 0,
-                            markup_percent: null,
-                          };
-                          recalcBudget({ material_items: [firstItem] });
-                        }}
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
+                {/* Own labor — collapsible, open if has values */}
+                <Collapsible defaultOpen={!!(task.estimated_hours || task.hourly_rate)}>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full group">
+                    <Label className="text-xs font-medium cursor-pointer flex items-center gap-1.5">
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                      {t("taskCost.ownLabor", "Own labor")}
+                    </Label>
+                    {laborTotal > 0 && (
+                      <span className="text-xs text-muted-foreground tabular-nums">{formatCurrency(laborTotal, currency)}</span>
                     )}
-                  </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">{t("taskCost.estimatedHours", "Hours")}</Label>
+                        <Input
+                          type="number" step="0.5" min="0" placeholder="t.ex. 8"
+                          value={task.estimated_hours?.toString() || ""}
+                          onChange={(e) => {
+                            const hours = e.target.value ? parseFloat(e.target.value) : null;
+                            recalcBudget({ estimated_hours: hours });
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">{t("taskCost.hourlyRate", "Hourly rate")}</Label>
+                        <Input
+                          type="number" step="1" min="0" placeholder="SEK/h"
+                          value={task.hourly_rate?.toString() || ""}
+                          onChange={(e) => {
+                            const rate = e.target.value ? parseFloat(e.target.value) : null;
+                            recalcBudget({ hourly_rate: rate });
+                          }}
+                        />
+                      </div>
+                    </div>
+                    {laborTotal > 0 && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          {t("taskCost.costPercent", "Cost %")}:
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3 w-3 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-[240px]">
+                                <p className="text-xs">{t("taskCost.costPercentTooltip")}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </span>
+                        {task.labor_cost_percent != null ? (
+                          <Input
+                            type="number" step="1" min="0" max="100" placeholder="50"
+                            value={task.labor_cost_percent?.toString() || ""}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseFloat(e.target.value) : null;
+                              setTask({ ...task, labor_cost_percent: val });
+                            }}
+                            className="w-16 h-7 text-sm text-right"
+                          />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">{effectiveCostPercent}%</span>
+                        )}
+                        <Switch
+                          checked={task.labor_cost_percent != null}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setTask({ ...task, labor_cost_percent: effectiveCostPercent });
+                            } else {
+                              setTask({ ...task, labor_cost_percent: null });
+                            }
+                          }}
+                          className="h-4 w-8 [&>span]:h-3 [&>span]:w-3 [&>span]:data-[state=checked]:translate-x-4"
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {task.labor_cost_percent != null ? t("taskCost.perTask", "Per task") : t("taskCost.standard", "Standard")}
+                        </span>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Subcontractor — collapsible, open if has values */}
+                <Collapsible defaultOpen={!!(task.subcontractor_cost)}>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full group">
+                    <Label className="text-xs font-medium cursor-pointer flex items-center gap-1.5">
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                      {t("taskCost.subcontractor", "Subcontractor")}
+                    </Label>
+                    {ueWithMarkup > 0 && (
+                      <span className="text-xs text-muted-foreground tabular-nums">{formatCurrency(ueWithMarkup, currency)}</span>
+                    )}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">{t("taskCost.subcontractorCost", "Subcontractor cost")}</Label>
+                        <Input
+                          type="number" step="1" min="0" placeholder="SEK"
+                          value={task.subcontractor_cost?.toString() || ""}
+                          onChange={(e) => {
+                            const cost = e.target.value ? parseFloat(e.target.value) : null;
+                            recalcBudget({ subcontractor_cost: cost });
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">{t("taskCost.markupPercent", "Markup %")}</Label>
+                        <Input
+                          type="number" step="1" min="0" placeholder="%"
+                          value={task.markup_percent?.toString() || ""}
+                          onChange={(e) => {
+                            const markup = e.target.value ? parseFloat(e.target.value) : null;
+                            recalcBudget({ markup_percent: markup });
+                          }}
+                        />
+                      </div>
+                    </div>
+                    {(task.subcontractor_cost || 0) > 0 && (
+                      <p className="text-xs text-muted-foreground text-right">
+                        {t("taskCost.withMarkup", "With markup")}: {formatCurrency(ueWithMarkup, currency)}
+                      </p>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Material — collapsible, open if has values */}
+                <Collapsible defaultOpen={!!((task.material_items || []).length > 0 || task.material_estimate)}>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full group">
+                    <Label className="text-xs font-medium cursor-pointer flex items-center gap-1.5">
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                      {t("taskCost.materialEstimate", "Material estimate")}
+                    </Label>
+                    <div className="flex items-center gap-1.5">
+                      {materialWithMarkup > 0 && (
+                        <span className="text-xs text-muted-foreground tabular-nums">{formatCurrency(materialWithMarkup, currency)}</span>
+                      )}
+                      {(task.material_items || []).length === 0 && (
+                        <Button
+                          type="button" variant="ghost" size="sm" className="h-6 w-6 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const est = task.material_estimate || 0;
+                            const firstItem: MaterialItem = {
+                              id: crypto.randomUUID(),
+                              name: "Material",
+                              quantity: 1,
+                              unit: "st",
+                              unit_price: est,
+                              amount: est,
+                              markup_percent: null,
+                            };
+                            recalcBudget({ material_items: [firstItem] });
+                          }}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-2">
 
                   {(task.material_items || []).length === 0 ? (
                     /* Simple mode — single amount + markup */
@@ -659,7 +1265,7 @@ export const TaskEditDialog = ({
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">{t("taskCost.materialEstimate", "Material")}</Label>
                           <Input
-                            type="number" step="1" min="0" placeholder="0"
+                            type="number" step="1" min="0" placeholder="SEK"
                             value={task.material_estimate?.toString() || ""}
                             onChange={(e) => {
                               const material = e.target.value ? parseFloat(e.target.value) : null;
@@ -670,7 +1276,7 @@ export const TaskEditDialog = ({
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">{t("taskCost.materialMarkup", "Markup %")}</Label>
                           <Input
-                            type="number" step="1" min="0" placeholder="0"
+                            type="number" step="1" min="0" placeholder="%"
                             value={task.material_markup_percent?.toString() || ""}
                             onChange={(e) => {
                               const markup = e.target.value ? parseFloat(e.target.value) : null;
@@ -718,7 +1324,7 @@ export const TaskEditDialog = ({
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">{t("taskCost.markupPercent", "Markup %")}</Label>
                           <Input
-                            type="number" step="1" min="0" placeholder="0"
+                            type="number" step="1" min="0" placeholder="%"
                             value={task.material_markup_percent?.toString() || ""}
                             onChange={(e) => {
                               const markup = e.target.value ? parseFloat(e.target.value) : null;
@@ -728,30 +1334,74 @@ export const TaskEditDialog = ({
                         </div>
                       )}
 
+                      {/* Column headers */}
+                      <div className="grid grid-cols-[1fr_60px_64px_80px_80px] gap-1.5 text-[10px] text-muted-foreground font-medium px-0.5">
+                        <span>{t("taskCost.materialName", "Description")}</span>
+                        <span className="text-right">{t("taskCost.quantity", "Qty")}</span>
+                        <span>{t("common.unit", "Unit")}</span>
+                        <span className="text-right">{t("taskCost.unitPrice", "Price/unit")}</span>
+                        <span className="text-right">{t("common.total", "Total")}</span>
+                      </div>
+
                       {/* Item rows */}
                       <div className="space-y-2">
                         {(task.material_items || []).map((item, idx) => (
-                          <div key={item.id} className="flex items-center gap-2">
-                            <Input
-                              placeholder={t("taskCost.materialName", "Description")}
-                              value={item.name}
-                              onChange={(e) => {
-                                const items = [...(task.material_items || [])];
-                                items[idx] = { ...items[idx], name: e.target.value };
-                                recalcBudget({ material_items: items });
-                              }}
-                              className="flex-1"
-                            />
-                            <Input
-                              type="number" step="1" min="0" placeholder="SEK"
-                              value={item.amount?.toString() || ""}
-                              onChange={(e) => {
-                                const items = [...(task.material_items || [])];
-                                items[idx] = { ...items[idx], amount: e.target.value ? parseFloat(e.target.value) : 0 };
-                                recalcBudget({ material_items: items });
-                              }}
-                              className="w-24"
-                            />
+                          <div key={item.id} className="flex items-center gap-1.5">
+                            <div className="grid grid-cols-[1fr_60px_64px_80px_80px] gap-1.5 flex-1">
+                              <Input
+                                placeholder={t("taskCost.materialName", "Description")}
+                                value={item.name}
+                                onChange={(e) => {
+                                  const items = [...(task.material_items || [])];
+                                  items[idx] = { ...items[idx], name: e.target.value };
+                                  recalcBudget({ material_items: items });
+                                }}
+                              />
+                              <Input
+                                type="number" step="0.1" min="0"
+                                placeholder="1"
+                                value={item.quantity?.toString() || ""}
+                                className="text-right"
+                                onChange={(e) => {
+                                  const items = [...(task.material_items || [])];
+                                  const qty = e.target.value ? parseFloat(e.target.value) : 0;
+                                  items[idx] = { ...items[idx], quantity: qty, amount: Math.round(qty * (items[idx].unit_price || 0)) };
+                                  recalcBudget({ material_items: items });
+                                }}
+                              />
+                              <Select
+                                value={item.unit || "st"}
+                                onValueChange={(value) => {
+                                  const items = [...(task.material_items || [])];
+                                  items[idx] = { ...items[idx], unit: value };
+                                  recalcBudget({ material_items: items });
+                                }}
+                              >
+                                <SelectTrigger className="h-9 text-xs px-2">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {MATERIAL_UNITS.map((u) => (
+                                    <SelectItem key={u} value={u}>{u}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                type="number" step="1" min="0"
+                                placeholder="SEK"
+                                value={item.unit_price?.toString() || ""}
+                                className="text-right"
+                                onChange={(e) => {
+                                  const items = [...(task.material_items || [])];
+                                  const price = e.target.value ? parseFloat(e.target.value) : 0;
+                                  items[idx] = { ...items[idx], unit_price: price, amount: Math.round((items[idx].quantity || 0) * price) };
+                                  recalcBudget({ material_items: items });
+                                }}
+                              />
+                              <span className="flex items-center justify-end text-sm text-muted-foreground tabular-nums">
+                                {(item.amount || 0).toLocaleString("sv-SE")}
+                              </span>
+                            </div>
                             {perRowMarkup && (
                               <Input
                                 type="number" step="1" min="0" placeholder="%"
@@ -761,15 +1411,14 @@ export const TaskEditDialog = ({
                                   items[idx] = { ...items[idx], markup_percent: e.target.value ? parseFloat(e.target.value) : 0 };
                                   recalcBudget({ material_items: items });
                                 }}
-                                className="w-16"
+                                className="w-14"
                               />
                             )}
                             <Button
-                              type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                              type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive shrink-0"
                               onClick={() => {
                                 const items = (task.material_items || []).filter((_, i) => i !== idx);
                                 if (items.length === 0) {
-                                  // Revert to simple mode
                                   setPerRowMarkup(false);
                                 }
                                 recalcBudget({ material_items: items });
@@ -787,6 +1436,9 @@ export const TaskEditDialog = ({
                           const newItem: MaterialItem = {
                             id: crypto.randomUUID(),
                             name: "",
+                            quantity: 1,
+                            unit: "st",
+                            unit_price: 0,
                             amount: 0,
                             markup_percent: perRowMarkup ? 0 : null,
                           };
@@ -804,7 +1456,8 @@ export const TaskEditDialog = ({
                       )}
                     </>
                   )}
-                </div>
+                  </CollapsibleContent>
+                </Collapsible>
 
                 <Separator />
                 <div className="flex items-center justify-between">
@@ -834,6 +1487,7 @@ export const TaskEditDialog = ({
                   </div>
                 )}
               </div>
+              </div>
                 );
               })()
               ) : (
@@ -845,7 +1499,7 @@ export const TaskEditDialog = ({
                   id="edit-task-budget"
                   type="number"
                   step="0.01"
-                  placeholder="0.00"
+                  placeholder="SEK"
                   value={task.budget?.toString() || ""}
                   onChange={(e) =>
                     setTask({ ...task, budget: e.target.value ? parseFloat(e.target.value) : null })
@@ -1103,7 +1757,7 @@ export const TaskEditDialog = ({
                             id="edit-task-ordered"
                             type="number"
                             step="0.01"
-                            placeholder="0.00"
+                            placeholder="SEK"
                             value={task.ordered_amount?.toString() || ""}
                             onChange={(e) =>
                               setTask({
@@ -1121,7 +1775,7 @@ export const TaskEditDialog = ({
                             id="edit-task-paid"
                             type="number"
                             step="0.01"
-                            placeholder="0.00"
+                            placeholder="SEK"
                             value={task.paid_amount?.toString() || ""}
                             onChange={(e) =>
                               setTask({
