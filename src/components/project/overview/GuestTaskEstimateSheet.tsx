@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Sheet,
@@ -7,12 +7,12 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, MapPin, Clock, Package, ArrowRight } from "lucide-react";
 import type { GuestTask, GuestRoom } from "@/types/guest.types";
 import {
   detectWorkType,
-  estimateTaskMultiRoom,
   computeFloorAreaSqm,
   computeWallAreaSqm,
   WORK_TYPE_LABEL_KEYS,
@@ -46,8 +46,8 @@ const WORK_TYPE_COLORS: Record<WorkType, string> = {
   plumbing: "bg-cyan-100 text-cyan-800",
 };
 
-// Market rate ranges (SEK/h) for homeowner reference
-const MARKET_RATE_RANGES: Partial<Record<WorkType, [number, number]>> = {
+// Default market rate ranges (SEK/h)
+const DEFAULT_MARKET_RATES: Record<WorkType, [number, number]> = {
   painting: [350, 550],
   flooring: [400, 600],
   tiling: [450, 700],
@@ -58,6 +58,130 @@ const MARKET_RATE_RANGES: Partial<Record<WorkType, [number, number]>> = {
   electrical: [500, 800],
   plumbing: [500, 800],
 };
+
+// Default productivity rates (m²/h)
+const DEFAULT_PRODUCTIVITY: Record<WorkType, number> = {
+  painting: 10,
+  flooring: 5,
+  tiling: 3,
+  demolition: 8,
+  spackling: 6,
+  sanding: 12,
+  carpentry: 4,
+  electrical: 3,
+  plumbing: 2,
+};
+
+// Default material unit prices (SEK)
+const DEFAULT_UNIT_PRICES: Partial<Record<WorkType, number>> = {
+  painting: 150,
+  flooring: 300,
+  tiling: 500,
+};
+
+// Default paint settings
+const DEFAULT_COVERAGE = 10; // m²/L
+const DEFAULT_COATS = 2;
+const DEFAULT_WASTE = 1.1;
+
+// localStorage key for guest estimation overrides
+const STORAGE_KEY = "renomate_guest_estimation_overrides";
+
+interface EstimationOverrides {
+  productivity?: Partial<Record<WorkType, number>>;
+  marketRateLow?: Partial<Record<WorkType, number>>;
+  marketRateHigh?: Partial<Record<WorkType, number>>;
+  unitPrice?: Partial<Record<WorkType, number>>;
+  paintCoverage?: number;
+  paintCoats?: number;
+  wasteFactor?: number;
+}
+
+function loadOverrides(): EstimationOverrides {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveOverrides(overrides: EstimationOverrides): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
+  } catch {
+    // localStorage full — ignore
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Editable value component — green dotted underline, click to edit
+// ---------------------------------------------------------------------------
+
+interface EditableValueProps {
+  value: number;
+  suffix?: string;
+  onChange: (val: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  className?: string;
+}
+
+function EditableValue({ value, suffix, onChange, min = 0, max, step = 1, className = "" }: EditableValueProps) {
+  const [editing, setEditing] = useState(false);
+  const [localVal, setLocalVal] = useState(String(value));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!editing) setLocalVal(String(value));
+  }, [value, editing]);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.select();
+  }, [editing]);
+
+  const commit = useCallback(() => {
+    setEditing(false);
+    const num = Number(localVal);
+    if (!isNaN(num) && num > 0 && (max === undefined || num <= max)) {
+      onChange(num);
+    }
+  }, [localVal, onChange, max]);
+
+  if (editing) {
+    return (
+      <span className="inline-flex items-center gap-0.5">
+        <Input
+          ref={inputRef}
+          type="number"
+          step={step}
+          min={min}
+          max={max}
+          className="h-6 w-16 text-sm px-1 tabular-nums text-right"
+          value={localVal}
+          onChange={(e) => setLocalVal(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          onBlur={commit}
+        />
+        {suffix && <span className="text-sm">{suffix}</span>}
+      </span>
+    );
+  }
+
+  return (
+    <button
+      className={`tabular-nums border-b border-dotted border-green-500 text-green-700 hover:text-green-900 hover:border-green-700 transition-colors cursor-pointer ${className}`}
+      onClick={() => setEditing(true)}
+      title="Click to adjust"
+    >
+      {typeof value === "number" && !Number.isInteger(value) ? value.toFixed(1) : value}{suffix}
+    </button>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -98,35 +222,126 @@ export function GuestTaskEstimateSheet({
     [recipeRoom]
   );
 
-  const estimation = useMemo(() => {
-    if (!workType || !recipeRoom) return null;
-    return estimateTaskMultiRoom(
-      { title: task.title },
-      [recipeRoom]
-    );
-  }, [workType, recipeRoom, task.title]);
+  // Editable overrides (persisted in localStorage)
+  const [overrides, setOverrides] = useState<EstimationOverrides>(loadOverrides);
 
-  const marketRange = workType ? MARKET_RATE_RANGES[workType] : null;
+  const updateOverride = useCallback(<K extends keyof EstimationOverrides>(
+    key: K,
+    value: EstimationOverrides[K]
+  ) => {
+    setOverrides((prev) => {
+      const next = { ...prev, [key]: value };
+      saveOverrides(next);
+      return next;
+    });
+  }, []);
 
-  const laborCostRange = useMemo(() => {
-    if (!estimation || !marketRange) return null;
-    return [
-      Math.round(estimation.estimatedHours * marketRange[0]),
-      Math.round(estimation.estimatedHours * marketRange[1]),
-    ] as [number, number];
-  }, [estimation, marketRange]);
+  // Resolved values (defaults + overrides)
+  const productivity = workType
+    ? (overrides.productivity?.[workType] ?? DEFAULT_PRODUCTIVITY[workType])
+    : 0;
 
-  const totalCostRange = useMemo(() => {
-    if (!laborCostRange) return null;
-    const materialCost = estimation?.material?.totalCost ?? 0;
-    return [
-      laborCostRange[0] + materialCost,
-      laborCostRange[1] + materialCost,
-    ] as [number, number];
-  }, [laborCostRange, estimation]);
+  const marketLow = workType
+    ? (overrides.marketRateLow?.[workType] ?? DEFAULT_MARKET_RATES[workType][0])
+    : 0;
+
+  const marketHigh = workType
+    ? (overrides.marketRateHigh?.[workType] ?? DEFAULT_MARKET_RATES[workType][1])
+    : 0;
+
+  const unitPrice = workType
+    ? (overrides.unitPrice?.[workType] ?? DEFAULT_UNIT_PRICES[workType] ?? 0)
+    : 0;
+
+  const paintCoverage = overrides.paintCoverage ?? DEFAULT_COVERAGE;
+  const paintCoats = overrides.paintCoats ?? DEFAULT_COATS;
+  const wasteFactor = overrides.wasteFactor ?? DEFAULT_WASTE;
+
+  // Derived calculations
+  const areaType = workType
+    ? (["painting", "tiling", "spackling"].includes(workType) ? "wall" : "floor")
+    : "floor";
+
+  const totalArea = areaType === "wall" ? wallArea : floorArea;
+  const estimatedHours = totalArea && productivity > 0
+    ? Math.round((totalArea / productivity) * 2) / 2 // round to 0.5
+    : null;
+
+  // Material calculations
+  const materialCalc = useMemo(() => {
+    if (!workType || !totalArea || totalArea <= 0) return null;
+
+    if (workType === "painting") {
+      const qty = Math.ceil((totalArea / paintCoverage) * paintCoats);
+      return {
+        nameKey: "materialRecipes.wallPaint",
+        nameFallback: "Wall paint",
+        quantity: qty,
+        unit: "L",
+        formula: `${totalArea.toFixed(1)} m² / ${paintCoverage} × ${paintCoats} = ${qty}L`,
+        totalCost: Math.round(qty * unitPrice),
+      };
+    }
+
+    if (workType === "flooring" || workType === "tiling") {
+      const qty = Math.round(totalArea * wasteFactor * 10) / 10;
+      const nameKey = workType === "flooring" ? "materialRecipes.floorMaterial" : "materialRecipes.tiles";
+      const nameFallback = workType === "flooring" ? "Floor material" : "Tiles";
+      return {
+        nameKey,
+        nameFallback,
+        quantity: qty,
+        unit: "m²",
+        formula: `${totalArea.toFixed(1)} m² × ${wasteFactor} = ${qty} m²`,
+        totalCost: Math.round(qty * unitPrice),
+      };
+    }
+
+    return null;
+  }, [workType, totalArea, paintCoverage, paintCoats, wasteFactor, unitPrice]);
+
+  // Cost ranges
+  const laborCostLow = estimatedHours ? Math.round(estimatedHours * marketLow) : null;
+  const laborCostHigh = estimatedHours ? Math.round(estimatedHours * marketHigh) : null;
+  const materialCost = materialCalc?.totalCost ?? 0;
+  const totalLow = laborCostLow !== null ? laborCostLow + materialCost : null;
+  const totalHigh = laborCostHigh !== null ? laborCostHigh + materialCost : null;
 
   const hasRoomDimensions = floorArea !== null || wallArea !== null;
   const canEstimate = workType !== null && hasRoomDimensions;
+
+  // Override helpers
+  const setProductivity = useCallback((val: number) => {
+    if (!workType) return;
+    updateOverride("productivity", { ...overrides.productivity, [workType]: val });
+  }, [workType, overrides.productivity, updateOverride]);
+
+  const setMarketLow = useCallback((val: number) => {
+    if (!workType) return;
+    updateOverride("marketRateLow", { ...overrides.marketRateLow, [workType]: val });
+  }, [workType, overrides.marketRateLow, updateOverride]);
+
+  const setMarketHigh = useCallback((val: number) => {
+    if (!workType) return;
+    updateOverride("marketRateHigh", { ...overrides.marketRateHigh, [workType]: val });
+  }, [workType, overrides.marketRateHigh, updateOverride]);
+
+  const setUnitPrice = useCallback((val: number) => {
+    if (!workType) return;
+    updateOverride("unitPrice", { ...overrides.unitPrice, [workType]: val });
+  }, [workType, overrides.unitPrice, updateOverride]);
+
+  const setCoverage = useCallback((val: number) => {
+    updateOverride("paintCoverage", val);
+  }, [updateOverride]);
+
+  const setCoats = useCallback((val: number) => {
+    updateOverride("paintCoats", val);
+  }, [updateOverride]);
+
+  const setWaste = useCallback((val: number) => {
+    updateOverride("wasteFactor", val);
+  }, [updateOverride]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -179,15 +394,20 @@ export function GuestTaskEstimateSheet({
           )}
 
           {/* Estimation breakdown */}
-          {canEstimate && estimation && (
+          {canEstimate && totalArea && estimatedHours && (
             <div className="space-y-4">
+              {/* Editable hint */}
+              <p className="text-[10px] text-muted-foreground/70 text-center">
+                {t("guestEstimate.editHint", "Click green values to adjust")}
+              </p>
+
               {/* Area calculation */}
               <div className="rounded-lg bg-muted/50 p-3 space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   {t("guestEstimate.areaCalc", "Area calculation")}
                 </p>
                 <div className="space-y-1 text-sm">
-                  {estimation.areaType === "wall" ? (
+                  {areaType === "wall" ? (
                     <>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">{t("guestEstimate.perimeter", "Perimeter")}</span>
@@ -236,27 +456,51 @@ export function GuestTaskEstimateSheet({
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t("guestEstimate.area", "Work area")}</span>
-                    <span className="tabular-nums">{estimation.totalAreaSqm} m²</span>
+                    <span className="tabular-nums">{totalArea.toFixed(1)} m²</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">{t("guestEstimate.rate", "Productivity")}</span>
-                    <span className="tabular-nums">{estimation.productivityRate} m²/h</span>
+                    <EditableValue
+                      value={productivity}
+                      suffix=" m²/h"
+                      onChange={setProductivity}
+                      min={0.5}
+                      max={50}
+                      step={0.5}
+                    />
                   </div>
                   <div className="flex justify-between font-medium border-t pt-1">
                     <span>{t("guestEstimate.hours", "Estimated hours")}</span>
-                    <span className="tabular-nums">{estimation.estimatedHours} h</span>
+                    <span className="tabular-nums">{estimatedHours} h</span>
                   </div>
-                  {marketRange && (
-                    <div className="flex justify-between text-xs text-muted-foreground pt-0.5">
-                      <span>{t("guestEstimate.marketRate", "Market rate range")}</span>
-                      <span className="tabular-nums">{marketRange[0]}–{marketRange[1]} kr/h</span>
-                    </div>
-                  )}
-                  {laborCostRange && (
+                  <div className="flex justify-between items-center text-xs text-muted-foreground pt-0.5">
+                    <span>{t("guestEstimate.marketRate", "Market rate range")}</span>
+                    <span className="flex items-center gap-0.5">
+                      <EditableValue
+                        value={marketLow}
+                        onChange={setMarketLow}
+                        min={100}
+                        max={2000}
+                        step={50}
+                        className="text-xs"
+                      />
+                      <span>–</span>
+                      <EditableValue
+                        value={marketHigh}
+                        onChange={setMarketHigh}
+                        min={100}
+                        max={2000}
+                        step={50}
+                        className="text-xs"
+                      />
+                      <span> kr/h</span>
+                    </span>
+                  </div>
+                  {laborCostLow !== null && laborCostHigh !== null && (
                     <div className="flex justify-between font-medium text-primary">
                       <span>{t("guestEstimate.laborCost", "Labor cost estimate")}</span>
                       <span className="tabular-nums">
-                        {laborCostRange[0].toLocaleString("sv-SE")}–{laborCostRange[1].toLocaleString("sv-SE")} kr
+                        {laborCostLow.toLocaleString("sv-SE")}–{laborCostHigh.toLocaleString("sv-SE")} kr
                       </span>
                     </div>
                   )}
@@ -264,7 +508,7 @@ export function GuestTaskEstimateSheet({
               </div>
 
               {/* Material estimate */}
-              {estimation.material && (
+              {materialCalc && (
                 <div className="rounded-lg bg-muted/50 p-3 space-y-2">
                   <div className="flex items-center gap-1.5">
                     <Package className="h-3.5 w-3.5 text-muted-foreground" />
@@ -273,28 +517,73 @@ export function GuestTaskEstimateSheet({
                     </p>
                   </div>
                   <div className="space-y-1 text-sm">
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>{t("guestEstimate.formula", "Formula")}</span>
-                      <span className="tabular-nums text-xs">{estimation.material.formula}</span>
-                    </div>
+                    {/* Formula with editable params */}
+                    {workType === "painting" && (
+                      <div className="flex justify-between items-center text-muted-foreground text-xs">
+                        <span>{t("guestEstimate.formula", "Formula")}</span>
+                        <span className="flex items-center gap-0.5 tabular-nums">
+                          {totalArea.toFixed(1)} m² /
+                          <EditableValue
+                            value={paintCoverage}
+                            onChange={setCoverage}
+                            min={1}
+                            max={30}
+                            step={0.5}
+                            className="text-xs"
+                          />
+                          ×
+                          <EditableValue
+                            value={paintCoats}
+                            onChange={setCoats}
+                            min={1}
+                            max={5}
+                            step={1}
+                            className="text-xs"
+                          />
+                          = {materialCalc.quantity}{materialCalc.unit}
+                        </span>
+                      </div>
+                    )}
+                    {(workType === "flooring" || workType === "tiling") && (
+                      <div className="flex justify-between items-center text-muted-foreground text-xs">
+                        <span>{t("guestEstimate.formula", "Formula")}</span>
+                        <span className="flex items-center gap-0.5 tabular-nums">
+                          {totalArea.toFixed(1)} m² ×
+                          <EditableValue
+                            value={wasteFactor}
+                            onChange={setWaste}
+                            min={1}
+                            max={2}
+                            step={0.05}
+                            className="text-xs"
+                          />
+                          = {materialCalc.quantity} {materialCalc.unit}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">
-                        {t(estimation.material.nameKey, estimation.material.nameFallback)}
+                        {t(materialCalc.nameKey, materialCalc.nameFallback)}
                       </span>
                       <span className="tabular-nums font-medium">
-                        ~{estimation.material.quantity} {estimation.material.unit}
+                        ~{materialCalc.quantity} {materialCalc.unit}
                       </span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">{t("guestEstimate.unitPrice", "Unit price")}</span>
-                      <span className="tabular-nums">
-                        {estimation.material.unitPrice} kr/{estimation.material.unit}
-                      </span>
+                      <EditableValue
+                        value={unitPrice}
+                        suffix={` kr/${materialCalc.unit}`}
+                        onChange={setUnitPrice}
+                        min={1}
+                        max={5000}
+                        step={10}
+                      />
                     </div>
                     <div className="flex justify-between font-medium border-t pt-1 text-primary">
                       <span>{t("guestEstimate.materialCost", "Material cost")}</span>
                       <span className="tabular-nums">
-                        ~{estimation.material.totalCost.toLocaleString("sv-SE")} kr
+                        ~{materialCalc.totalCost.toLocaleString("sv-SE")} kr
                       </span>
                     </div>
                   </div>
@@ -302,35 +591,20 @@ export function GuestTaskEstimateSheet({
               )}
 
               {/* Total estimate */}
-              {totalCostRange && (
+              {totalLow !== null && totalHigh !== null && (
                 <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">
                       {t("guestEstimate.totalEstimate", "Total cost estimate")}
                     </span>
                     <span className="text-base font-bold tabular-nums text-primary">
-                      {totalCostRange[0].toLocaleString("sv-SE")}–{totalCostRange[1].toLocaleString("sv-SE")} kr
+                      {totalLow.toLocaleString("sv-SE")}–{totalHigh.toLocaleString("sv-SE")} kr
                     </span>
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    {t("guestEstimate.disclaimer", "Based on average market rates. Actual costs depend on your contractor.")}
-                  </p>
-                </div>
-              )}
-
-              {/* Labor-only total (no material) */}
-              {!estimation.material && laborCostRange && (
-                <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">
-                      {t("guestEstimate.totalEstimate", "Total cost estimate")}
-                    </span>
-                    <span className="text-base font-bold tabular-nums text-primary">
-                      {laborCostRange[0].toLocaleString("sv-SE")}–{laborCostRange[1].toLocaleString("sv-SE")} kr
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {t("guestEstimate.laborOnlyDisclaimer", "Labor only. Material costs depend on your choice of materials.")}
+                    {materialCalc
+                      ? t("guestEstimate.disclaimer", "Based on average market rates. Actual costs depend on your contractor.")
+                      : t("guestEstimate.laborOnlyDisclaimer", "Labor only. Material costs depend on your choice of materials.")}
                   </p>
                 </div>
               )}

@@ -123,7 +123,8 @@
     "disclaimer": "Based on average market rates. Actual costs depend on your contractor.",
     "laborOnlyDisclaimer": "Labor only. Material costs depend on your choice of materials.",
     "signUpHint": "Create a free account to save estimates, compare quotes, and track your renovation.",
-    "viewEstimate": "View estimate"
+    "viewEstimate": "View estimate",
+    "editHint": "Click green values to adjust"
   },
   "nav": {
     "home": "Home",
