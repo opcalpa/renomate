@@ -125,7 +125,14 @@
     "laborOnlyDisclaimer": "Labor only. Material costs depend on your choice of materials.",
     "signUpHint": "Create a free account to save estimates, compare quotes, and track your renovation.",
     "viewEstimate": "View estimate",
-    "editHint": "Click green values to adjust"
+    "editHint": "Click green values to adjust",
+    "tipProductivity": "How many m² a professional typically completes per hour for this type of work",
+    "tipMarketLow": "Lower end of what contractors typically charge per hour",
+    "tipMarketHigh": "Upper end of what contractors typically charge per hour",
+    "tipCoverage": "Coverage: how many m² one liter of paint covers in one coat",
+    "tipCoats": "Number of coats of paint — typically 2 for good coverage",
+    "tipWaste": "Waste factor: extra material for cuts and waste — 1.1 means 10% extra",
+    "tipUnitPrice": "Average price per unit — varies by brand and quality"
   },
   "nav": {
     "home": "Home",

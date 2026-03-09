@@ -9,6 +9,12 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Sparkles, MapPin, Clock, Package, ArrowRight } from "lucide-react";
 import type { GuestTask, GuestRoom } from "@/types/guest.types";
 import {
@@ -126,9 +132,10 @@ interface EditableValueProps {
   max?: number;
   step?: number;
   className?: string;
+  tooltip?: string;
 }
 
-function EditableValue({ value, suffix, onChange, min = 0, max, step = 1, className = "" }: EditableValueProps) {
+function EditableValue({ value, suffix, onChange, min = 0, max, step = 1, className = "", tooltip }: EditableValueProps) {
   const [editing, setEditing] = useState(false);
   const [localVal, setLocalVal] = useState(String(value));
   const inputRef = useRef<HTMLInputElement>(null);
@@ -172,15 +179,31 @@ function EditableValue({ value, suffix, onChange, min = 0, max, step = 1, classN
     );
   }
 
-  return (
+  const display = typeof value === "number" && !Number.isInteger(value) ? value.toFixed(1) : value;
+
+  const btn = (
     <button
       className={`tabular-nums border-b border-dotted border-green-500 text-green-700 hover:text-green-900 hover:border-green-700 transition-colors cursor-pointer ${className}`}
       onClick={() => setEditing(true)}
-      title="Click to adjust"
     >
-      {typeof value === "number" && !Number.isInteger(value) ? value.toFixed(1) : value}{suffix}
+      {display}{suffix}
     </button>
   );
+
+  if (tooltip) {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>{btn}</TooltipTrigger>
+          <TooltipContent side="top" className="text-xs max-w-[200px]">
+            {tooltip}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return btn;
 }
 
 // ---------------------------------------------------------------------------
@@ -467,6 +490,7 @@ export function GuestTaskEstimateSheet({
                       min={0.5}
                       max={50}
                       step={0.5}
+                      tooltip={t("guestEstimate.tipProductivity", "How many m² a professional typically completes per hour for this type of work")}
                     />
                   </div>
                   <div className="flex justify-between font-medium border-t pt-1">
@@ -483,6 +507,7 @@ export function GuestTaskEstimateSheet({
                         max={2000}
                         step={50}
                         className="text-xs"
+                        tooltip={t("guestEstimate.tipMarketLow", "Lower end of what contractors typically charge per hour")}
                       />
                       <span>–</span>
                       <EditableValue
@@ -492,6 +517,7 @@ export function GuestTaskEstimateSheet({
                         max={2000}
                         step={50}
                         className="text-xs"
+                        tooltip={t("guestEstimate.tipMarketHigh", "Upper end of what contractors typically charge per hour")}
                       />
                       <span> kr/h</span>
                     </span>
@@ -530,6 +556,7 @@ export function GuestTaskEstimateSheet({
                             max={30}
                             step={0.5}
                             className="text-xs"
+                            tooltip={t("guestEstimate.tipCoverage", "Coverage: how many m² one liter of paint covers in one coat")}
                           />
                           ×
                           <EditableValue
@@ -539,6 +566,7 @@ export function GuestTaskEstimateSheet({
                             max={5}
                             step={1}
                             className="text-xs"
+                            tooltip={t("guestEstimate.tipCoats", "Number of coats of paint — typically 2 for good coverage")}
                           />
                           = {materialCalc.quantity}{materialCalc.unit}
                         </span>
@@ -556,6 +584,7 @@ export function GuestTaskEstimateSheet({
                             max={2}
                             step={0.05}
                             className="text-xs"
+                            tooltip={t("guestEstimate.tipWaste", "Waste factor: extra material for cuts and waste — 1.1 means 10% extra")}
                           />
                           = {materialCalc.quantity} {materialCalc.unit}
                         </span>
@@ -578,6 +607,7 @@ export function GuestTaskEstimateSheet({
                         min={1}
                         max={5000}
                         step={10}
+                        tooltip={t("guestEstimate.tipUnitPrice", "Average price per unit — varies by brand and quality")}
                       />
                     </div>
                     <div className="flex justify-between font-medium border-t pt-1 text-primary">
