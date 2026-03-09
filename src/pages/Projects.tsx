@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -71,6 +71,14 @@ const Projects = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [guestRole, setGuestRole] = useState<string | null>(() =>
+    isGuest ? localStorage.getItem("guest_user_type") : null
+  );
+
+  const handleGuestRoleChange = useCallback((role: string) => {
+    localStorage.setItem("guest_user_type", role);
+    setGuestRole(role);
+  }, []);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
   const [newProjectAddress, setNewProjectAddress] = useState("");
@@ -549,7 +557,8 @@ const Projects = () => {
         avatarUrl={isGuest ? undefined : profile?.avatar_url}
         onSignOut={isGuest ? undefined : handleSignOut}
         isGuest={isGuest}
-        guestUserType={isGuest ? localStorage.getItem("guest_user_type") : null}
+        guestUserType={isGuest ? guestRole : null}
+        onGuestRoleChange={isGuest ? handleGuestRoleChange : undefined}
       />
 
       {/* Guest mode banner - sticky below header */}

@@ -1,6 +1,7 @@
 {
   "common": {
     "actions": "Actions",
+    "change": "change",
     "signIn": "Sign In",
     "signOut": "Sign Out",
     "signUp": "Sign Up",

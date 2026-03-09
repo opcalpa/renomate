@@ -1,6 +1,7 @@
 {
   "common": {
     "actions": "Åtgärder",
+    "change": "byt",
     "signIn": "Logga in",
     "signOut": "Logga ut",
     "signUp": "Registrera dig",

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -119,11 +119,19 @@ const ProjectDetail = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [leadQuoteId, setLeadQuoteId] = useState<string | null>(null);
+  const [guestRole, setGuestRole] = useState<string | null>(() =>
+    isGuest ? localStorage.getItem("guest_user_type") : null
+  );
 
   // Derive effective user type: demo role for demo projects, profile for authenticated, localStorage for guests
   const effectiveUserType = isPublicDemoProject
     ? demoPrefs.preferences.role
-    : profile?.onboarding_user_type || (isGuest ? localStorage.getItem("guest_user_type") : undefined);
+    : profile?.onboarding_user_type || (isGuest ? guestRole : undefined);
+
+  const handleGuestRoleChange = useCallback((role: string) => {
+    localStorage.setItem("guest_user_type", role);
+    setGuestRole(role);
+  }, []);
 
   // Map tab keys to permission keys
   // Guest users get overview access (planning sub-section) — no DB permissions exist for them
@@ -854,7 +862,8 @@ const ProjectDetail = () => {
           avatarUrl={(!user || isGuest) ? undefined : profile?.avatar_url}
           onSignOut={(!user || isGuest) ? undefined : handleSignOut}
           isGuest={isGuest || (isPublicDemoProject && !user)}
-          guestUserType={isGuest ? localStorage.getItem("guest_user_type") : null}
+          guestUserType={isGuest ? guestRole : null}
+          onGuestRoleChange={isGuest ? handleGuestRoleChange : undefined}
         >
           {/* Mobile: Back button + project name */}
           <div className="flex items-center gap-2 md:hidden">

@@ -54,9 +54,10 @@ interface AppHeaderProps {
   children?: React.ReactNode;
   isGuest?: boolean;
   guestUserType?: string | null;
+  onGuestRoleChange?: (role: string) => void;
 }
 
-export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children, isGuest = false, guestUserType }: AppHeaderProps) => {
+export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children, isGuest = false, guestUserType, onGuestRoleChange }: AppHeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { i18n, t } = useTranslation();
@@ -333,9 +334,17 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
                   {userEmail || ''}
                 </p>
                 {isGuest && guestUserType && (
-                  <p className="text-xs leading-none text-muted-foreground/70">
+                  <button
+                    className="text-xs leading-none text-muted-foreground/70 hover:text-foreground transition-colors text-left flex items-center gap-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const newRole = guestUserType === 'homeowner' ? 'contractor' : 'homeowner';
+                      onGuestRoleChange?.(newRole);
+                    }}
+                  >
                     {guestUserType === 'homeowner' ? t('roles.homeowner', 'Homeowner') : t('roles.contractor', 'Contractor')}
-                  </p>
+                    <span className="text-[10px] text-muted-foreground/50">({t('common.change', 'change')})</span>
+                  </button>
                 )}
               </div>
               <DropdownMenuSeparator />
