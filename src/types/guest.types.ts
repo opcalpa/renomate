@@ -27,6 +27,10 @@ export interface GuestRoom {
   floor_number: number | null;
   notes: string | null;
   created_at: string;
+  // Dimension fields for inline editing (matching Supabase Room model)
+  width_mm: number | null;
+  height_mm: number | null;  // depth
+  ceiling_height_mm: number | null;
 }
 
 export interface GuestTask {

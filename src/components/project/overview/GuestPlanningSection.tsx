@@ -24,7 +24,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Plus, ClipboardList, Home, Trash2, Cloud, Columns3 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Label } from "@/components/ui/label";
+import { Plus, ClipboardList, Home, Trash2, Cloud, Columns3, Info } from "lucide-react";
 import {
   getGuestTasks,
   saveGuestTask,
@@ -32,9 +39,12 @@ import {
   deleteGuestTask,
   getGuestRooms,
   saveGuestRoom,
+  updateGuestRoom,
   deleteGuestRoom,
 } from "@/services/guestStorageService";
 import type { GuestTask, GuestRoom } from "@/types/guest.types";
+import { computeFloorAreaSqm, computeWallAreaSqm } from "@/lib/materialRecipes";
+import type { RecipeRoom } from "@/lib/materialRecipes";
 
 // ---------------------------------------------------------------------------
 // Column config
@@ -57,6 +67,54 @@ const TASK_COLUMNS: ColumnDef[] = [
 const TASK_STATUSES = ["to_do", "in_progress", "completed"] as const;
 
 // ---------------------------------------------------------------------------
+// Room column config
+// ---------------------------------------------------------------------------
+
+type RoomColumnKey = "width" | "depth" | "ceilingHeight" | "wallArea" | "paintEstimate";
+
+interface RoomColumnDef {
+  key: RoomColumnKey;
+  labelKey: string;
+  defaultOn: boolean;
+}
+
+const ROOM_COLUMNS: RoomColumnDef[] = [
+  { key: "width", labelKey: "rooms.width", defaultOn: true },
+  { key: "depth", labelKey: "rooms.depth", defaultOn: true },
+  { key: "ceilingHeight", labelKey: "rooms.ceilingHeight", defaultOn: true },
+  { key: "wallArea", labelKey: "rooms.wallArea", defaultOn: true },
+  { key: "paintEstimate", labelKey: "rooms.paintEstimate", defaultOn: false },
+];
+
+const DEFAULT_CEILING_MM = 2400;
+
+// ---------------------------------------------------------------------------
+// Helpers: GuestRoom → RecipeRoom adapter
+// ---------------------------------------------------------------------------
+
+function guestRoomToRecipe(room: GuestRoom): RecipeRoom {
+  return {
+    dimensions: {
+      area_sqm: room.area_sqm ?? undefined,
+      width_mm: room.width_mm ?? undefined,
+      height_mm: room.height_mm ?? undefined,
+    },
+    ceiling_height_mm: room.ceiling_height_mm ?? DEFAULT_CEILING_MM,
+  };
+}
+
+function computeGuestPaintLiters(room: GuestRoom, coverage: number, coats: number): number | null {
+  const wallArea = computeWallAreaSqm(guestRoomToRecipe(room));
+  if (!wallArea || wallArea <= 0) return null;
+  return Math.ceil((wallArea / coverage) * coats);
+}
+
+function formatMm(val: number | null | undefined): string {
+  if (val === null || val === undefined) return "";
+  return String(val);
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -77,11 +135,11 @@ export function GuestPlanningSection({ projectId }: GuestPlanningSectionProps) {
   const [addingRoom, setAddingRoom] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
 
-  // Inline editing
+  // Inline editing (shared for tasks and rooms)
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState("");
 
-  // Column visibility
+  // Task column visibility
   const [visibleCols, setVisibleCols] = useState<Set<TaskColumnKey>>(
     () => new Set(TASK_COLUMNS.filter((c) => c.defaultOn).map((c) => c.key))
   );
@@ -99,6 +157,29 @@ export function GuestPlanningSection({ projectId }: GuestPlanningSectionProps) {
       return next;
     });
   }, []);
+
+  // Room column visibility
+  const [visibleRoomCols, setVisibleRoomCols] = useState<Set<RoomColumnKey>>(
+    () => new Set(ROOM_COLUMNS.filter((c) => c.defaultOn).map((c) => c.key))
+  );
+
+  const showRoom = useMemo(() => {
+    const s: Record<RoomColumnKey, boolean> = {} as Record<RoomColumnKey, boolean>;
+    for (const col of ROOM_COLUMNS) s[col.key] = visibleRoomCols.has(col.key);
+    return s;
+  }, [visibleRoomCols]);
+
+  const toggleRoomColumn = useCallback((key: RoomColumnKey) => {
+    setVisibleRoomCols((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
+
+  // Paint estimation settings (localStorage for guests)
+  const [paintCoverage, setPaintCoverage] = useState(10);
+  const [paintCoats, setPaintCoats] = useState(2);
 
   const roomMap = useMemo(() => new Map(rooms.map((r) => [r.id, r.name])), [rooms]);
 
@@ -163,6 +244,9 @@ export function GuestPlanningSection({ projectId }: GuestPlanningSectionProps) {
       area_sqm: null,
       floor_number: null,
       notes: null,
+      width_mm: null,
+      height_mm: null,
+      ceiling_height_mm: DEFAULT_CEILING_MM,
     });
     refreshRooms();
     setNewRoomName("");
@@ -173,6 +257,69 @@ export function GuestPlanningSection({ projectId }: GuestPlanningSectionProps) {
     deleteGuestRoom(projectId, roomId);
     refreshRooms();
   }, [projectId, refreshRooms]);
+
+  // Room inline edit save
+  const saveRoomEdit = useCallback((roomId: string, field: string, rawValue: string) => {
+    setEditingCell(null);
+    const room = rooms.find((r) => r.id === roomId);
+    if (!room) return;
+
+    const numVal = rawValue.trim() === "" ? null : Number(rawValue);
+    let updates: Partial<GuestRoom> = {};
+
+    if (field === "name") {
+      const trimmed = rawValue.trim();
+      if (!trimmed) return;
+      updates = { name: trimmed };
+    } else if (field === "width") {
+      updates = { width_mm: numVal };
+      // Auto-compute area if both dimensions exist
+      if (numVal && room.height_mm) {
+        updates.area_sqm = (numVal / 1000) * (room.height_mm / 1000);
+      }
+    } else if (field === "depth") {
+      updates = { height_mm: numVal };
+      if (numVal && room.width_mm) {
+        updates.area_sqm = (room.width_mm / 1000) * (numVal / 1000);
+      }
+    } else if (field === "ceilingHeight") {
+      updates = { ceiling_height_mm: numVal };
+    } else if (field === "area") {
+      updates = { area_sqm: numVal };
+    }
+
+    if (Object.keys(updates).length === 0) return;
+    updateGuestRoom(projectId, roomId, updates);
+    refreshRooms();
+  }, [rooms, projectId, refreshRooms]);
+
+  // Computed room stats
+  const totalArea = useMemo(() => {
+    return rooms.reduce((sum, r) => {
+      const recipe = guestRoomToRecipe(r);
+      return sum + (computeFloorAreaSqm(recipe) || 0);
+    }, 0);
+  }, [rooms]);
+
+  const totalWallArea = useMemo(() => {
+    return rooms.reduce((sum, r) => {
+      const recipe = guestRoomToRecipe(r);
+      return sum + (computeWallAreaSqm(recipe) || 0);
+    }, 0);
+  }, [rooms]);
+
+  const roomsWithDimensions = useMemo(() => {
+    return rooms.filter((r) => computeFloorAreaSqm(guestRoomToRecipe(r)) !== null).length;
+  }, [rooms]);
+
+  const roomColCount = useMemo(() => {
+    let count = 2; // name + area
+    for (const col of ROOM_COLUMNS) {
+      if (visibleRoomCols.has(col.key)) count++;
+    }
+    count++; // delete column
+    return count;
+  }, [visibleRoomCols]);
 
   // Column count for colSpan
   const colCount = 1 + (show.room ? 1 : 0) + (show.description ? 1 : 0) + (show.status ? 1 : 0) + 1;
@@ -416,14 +563,32 @@ export function GuestPlanningSection({ projectId }: GuestPlanningSectionProps) {
       {/* Room planning card */}
       <Card className="border-l-4 border-l-blue-400">
         <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Home className="h-5 w-5 text-blue-500" />
-            <div>
-              <CardTitle className="text-base">{t("planningRooms.title", "Room planning")}</CardTitle>
-              <CardDescription className="text-xs">
-                {t("planningRooms.description", "Add rooms and dimensions to help estimate work")}
-              </CardDescription>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2">
+              <Home className="h-5 w-5 text-blue-500" />
+              <div>
+                <CardTitle className="text-base">{t("planningRooms.title", "Room planning")}</CardTitle>
+                <CardDescription className="text-xs">
+                  {t("planningRooms.description", "Add rooms and dimensions to help estimate work")}
+                </CardDescription>
+              </div>
             </div>
+
+            {rooms.length > 0 && (
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <span>
+                  {t("planningRooms.totalArea", "Total area")}: <strong>{totalArea > 0 ? `${totalArea.toFixed(1)} m²` : "–"}</strong>
+                </span>
+                {showRoom.wallArea && totalWallArea > 0 && (
+                  <span>
+                    {t("rooms.wallArea")}: <strong>{totalWallArea.toFixed(1)} m²</strong>
+                  </span>
+                )}
+                <span className="text-muted-foreground/60">
+                  {roomsWithDimensions}/{rooms.length} {t("planningRooms.measured", "measured")}
+                </span>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="pt-0">
@@ -446,31 +611,167 @@ export function GuestPlanningSection({ projectId }: GuestPlanningSectionProps) {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-xs font-medium">{t("planningRooms.roomName", "Room")}</TableHead>
+                    <TableHead className="text-xs font-medium w-[180px]">{t("planningRooms.roomName", "Room")}</TableHead>
+                    {showRoom.width && <TableHead className="text-xs font-medium w-[90px]">{t("rooms.width")}</TableHead>}
+                    {showRoom.depth && <TableHead className="text-xs font-medium w-[90px]">{t("rooms.depth")}</TableHead>}
+                    {showRoom.ceilingHeight && <TableHead className="text-xs font-medium w-[90px]">{t("rooms.ceilingHeight")}</TableHead>}
+                    <TableHead className="text-xs font-medium w-[90px]">{t("rooms.area")}</TableHead>
+                    {showRoom.wallArea && <TableHead className="text-xs font-medium w-[90px]">{t("rooms.wallArea")}</TableHead>}
+                    {showRoom.paintEstimate && (
+                      <TableHead className="text-xs font-medium w-[100px]">
+                        <div className="flex items-center gap-1">
+                          {t("rooms.paintEstimate")}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button className="text-muted-foreground/60 hover:text-foreground transition-colors">
+                                      <Info className="h-3 w-3" />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-72 p-3" align="start">
+                                    <div className="space-y-3">
+                                      <div>
+                                        <p className="text-xs font-medium mb-1">{t("estimation.paintFormula", "Paint formula")}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {t("estimation.paintFormulaDesc", "wall area / coverage × coats")}
+                                        </p>
+                                      </div>
+                                      <div className="space-y-2 pt-1 border-t">
+                                        <p className="text-xs font-medium">{t("estimation.adjustSettings", "Adjust defaults")}</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                          <div>
+                                            <Label className="text-xs text-muted-foreground">{t("estimation.coverage", "Coverage (m²/L)")}</Label>
+                                            <Input
+                                              type="number"
+                                              step="0.5"
+                                              min="1"
+                                              className="h-7 text-sm mt-0.5"
+                                              value={paintCoverage}
+                                              onChange={(e) => setPaintCoverage(Number(e.target.value) || 10)}
+                                            />
+                                          </div>
+                                          <div>
+                                            <Label className="text-xs text-muted-foreground">{t("estimation.coats", "Coats")}</Label>
+                                            <Input
+                                              type="number"
+                                              step="1"
+                                              min="1"
+                                              max="5"
+                                              className="h-7 text-sm mt-0.5"
+                                              value={paintCoats}
+                                              onChange={(e) => setPaintCoats(Number(e.target.value) || 2)}
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                {t("estimation.clickToAdjust", "Click to adjust formula")}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </TableHead>
+                    )}
                     <TableHead className="text-xs font-medium w-[40px]" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rooms.map((room) => (
-                    <TableRow key={room.id} className="group">
-                      <TableCell className="py-1.5">
-                        <span className="text-sm font-medium">{room.name}</span>
-                      </TableCell>
-                      <TableCell className="py-1.5 w-[40px]">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDeleteRoom(room.id)}
+                  {rooms.map((room) => {
+                    const recipe = guestRoomToRecipe(room);
+                    const area = computeFloorAreaSqm(recipe);
+                    const wallArea = computeWallAreaSqm(recipe);
+                    const paintLiters = computeGuestPaintLiters(room, paintCoverage, paintCoats);
+
+                    const renderRoomCell = (field: string, displayValue: string, cls = "") => {
+                      const isEditing = editingCell?.id === room.id && editingCell?.field === field;
+                      if (isEditing) {
+                        return (
+                          <Input
+                            autoFocus
+                            type={field === "name" ? "text" : "number"}
+                            className="h-7 w-full text-sm"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveRoomEdit(room.id, field, editValue);
+                              if (e.key === "Escape") setEditingCell(null);
+                            }}
+                            onBlur={() => saveRoomEdit(room.id, field, editValue)}
+                          />
+                        );
+                      }
+                      return (
+                        <button
+                          className={`text-sm text-left w-full rounded px-1 -mx-1 hover:bg-muted cursor-text transition-colors ${cls}`}
+                          onClick={() => {
+                            setEditingCell({ id: room.id, field });
+                            setEditValue(displayValue === "–" ? "" : displayValue);
+                          }}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          {displayValue || <span className="text-muted-foreground">–</span>}
+                        </button>
+                      );
+                    };
+
+                    return (
+                      <TableRow key={room.id} className="group">
+                        <TableCell className="py-1.5">
+                          {renderRoomCell("name", room.name, "font-medium")}
+                        </TableCell>
+                        {showRoom.width && (
+                          <TableCell className="py-1.5">
+                            {renderRoomCell("width", formatMm(room.width_mm), "tabular-nums")}
+                          </TableCell>
+                        )}
+                        {showRoom.depth && (
+                          <TableCell className="py-1.5">
+                            {renderRoomCell("depth", formatMm(room.height_mm), "tabular-nums")}
+                          </TableCell>
+                        )}
+                        {showRoom.ceilingHeight && (
+                          <TableCell className="py-1.5">
+                            {renderRoomCell("ceilingHeight", formatMm(room.ceiling_height_mm), "tabular-nums")}
+                          </TableCell>
+                        )}
+                        <TableCell className="py-1.5">
+                          {renderRoomCell("area", area !== null ? area.toFixed(1) : "", "tabular-nums")}
+                        </TableCell>
+                        {showRoom.wallArea && (
+                          <TableCell className="py-1.5">
+                            <span className="text-sm tabular-nums text-muted-foreground">
+                              {wallArea !== null ? `${wallArea.toFixed(1)} m²` : "–"}
+                            </span>
+                          </TableCell>
+                        )}
+                        {showRoom.paintEstimate && (
+                          <TableCell className="py-1.5">
+                            <span className="text-sm tabular-nums text-muted-foreground">
+                              {paintLiters !== null ? `~${paintLiters} L` : "–"}
+                            </span>
+                          </TableCell>
+                        )}
+                        <TableCell className="py-1.5 w-[40px]">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                            onClick={() => handleDeleteRoom(room.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   {addingRoom && (
                     <TableRow className="hover:bg-transparent">
-                      <TableCell colSpan={2} className="py-1.5">
+                      <TableCell colSpan={roomColCount} className="py-1.5">
                         <form
                           className="flex items-center gap-2"
                           onSubmit={(e) => { e.preventDefault(); handleAddRoom(); }}
@@ -498,11 +799,35 @@ export function GuestPlanningSection({ projectId }: GuestPlanningSectionProps) {
                   )}
                 </TableBody>
               </Table>
-              <div className="mt-2 pt-2 border-t">
+
+              <div className="flex items-center gap-2 mt-2 pt-2 border-t">
                 <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setAddingRoom(true)}>
                   <Plus className="h-3.5 w-3.5" />
                   {t("planningRooms.addRoom", "Add room")}
                 </Button>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 ml-auto">
+                      <Columns3 className="h-3.5 w-3.5" />
+                      {t("planningTasks.showColumns")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-48 p-2" align="end">
+                    {ROOM_COLUMNS.map((col) => (
+                      <label
+                        key={col.key}
+                        className="flex items-center gap-2 py-1 px-1 rounded hover:bg-muted cursor-pointer text-sm"
+                      >
+                        <Checkbox
+                          checked={visibleRoomCols.has(col.key)}
+                          onCheckedChange={() => toggleRoomColumn(col.key)}
+                        />
+                        {t(col.labelKey)}
+                      </label>
+                    ))}
+                  </PopoverContent>
+                </Popover>
               </div>
             </>
           )}
