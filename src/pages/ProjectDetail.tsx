@@ -13,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ChevronDown, FolderOpen, Lock, BookOpen, Loader2, MessageSquare, PartyPopper, X, Zap, FileText, LayoutGrid, MoreHorizontal } from "lucide-react";
 import { isDemoProject, refreshDemoProjectDates } from "@/services/demoProjectService";
-import { normalizeStatus, STATUS_META } from "@/lib/projectStatus";
+import { normalizeStatus } from "@/lib/projectStatus";
 import { ProjectDetailSkeleton } from "@/components/ui/skeleton-screens";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -45,7 +45,6 @@ import { RoomDetailDialog } from "@/components/floormap/RoomDetailDialog";
 import { useFloorMapStore } from "@/components/floormap/store";
 import { FloorMapShape } from "@/components/floormap/types";
 import { v4 as uuidv4 } from "uuid";
-import { GuestBanner } from "@/components/guest";
 import { useDemoPreferences } from "@/hooks/useDemoPreferences";
 import { DemoRoleModal } from "@/components/demo/DemoRoleModal";
 import { DemoBanner } from "@/components/demo/DemoBanner";
@@ -834,7 +833,6 @@ const ProjectDetail = () => {
   const isDemo = project ? isDemoProject(project.project_type) : false;
   const isPersonalDemo = isDemo && !isPublicDemoProject;
   const projectStatus = normalizeStatus(effectiveProject?.status);
-  const statusMeta = STATUS_META[projectStatus];
 
   const demoBannerContent = isPersonalDemo ? (
     <>
@@ -851,9 +849,6 @@ const ProjectDetail = () => {
 
   return (
     <div className={cn("min-h-screen bg-background flex flex-col md:pb-0", isHeaderVisible ? "pb-20" : "pb-0")}>
-      {/* Guest mode banner - sticky below header (not shown for public demo) */}
-      {isGuest && isHeaderVisible && !isPublicDemoProject && <GuestBanner compact />}
-
       {/* Unified Header - Hidden in Floor Plan edit mode */}
       {isHeaderVisible && (
         <div className="sticky top-0 z-50">
@@ -1124,15 +1119,6 @@ const ProjectDetail = () => {
             {demoBannerContent}
           </div>
         )}
-        {/* Project status badge strip */}
-        {!isDemo && projectStatus !== "active" && (
-          <div className="px-4 py-1.5 flex items-center justify-center gap-2 text-sm bg-muted/50 border-b">
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusMeta.color}`}>
-              {t(statusMeta.labelKey)}
-            </span>
-            <span className="text-muted-foreground text-xs">{t(statusMeta.descriptionKey)}</span>
-          </div>
-        )}
         </div>
       )}
 
@@ -1153,16 +1139,6 @@ const ProjectDetail = () => {
       {!isHeaderVisible && isPersonalDemo && (
         <div className="fixed top-14 left-0 right-0 z-[59] bg-primary text-primary-foreground px-4 py-2.5 flex items-center justify-center gap-2 text-sm">
           {demoBannerContent}
-        </div>
-      )}
-
-      {/* Status badge in floorplan mode */}
-      {!isHeaderVisible && !isDemo && projectStatus !== "active" && (
-        <div className="fixed top-14 left-0 right-0 z-[59] bg-muted/90 backdrop-blur-sm border-b px-4 py-1.5 flex items-center justify-center gap-2 text-sm">
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusMeta.color}`}>
-            {t(statusMeta.labelKey)}
-          </span>
-          <span className="text-muted-foreground text-xs">{t(statusMeta.descriptionKey)}</span>
         </div>
       )}
 
