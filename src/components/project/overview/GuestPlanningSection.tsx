@@ -31,7 +31,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
-import { Plus, ClipboardList, Home, Trash2, Cloud, Columns3, Info } from "lucide-react";
+import { Plus, ClipboardList, Home, Trash2, Cloud, Columns3, Info, Sparkles } from "lucide-react";
+import { GuestTaskEstimateSheet } from "./GuestTaskEstimateSheet";
+import { detectWorkType } from "@/lib/materialRecipes";
 import {
   getGuestTasks,
   saveGuestTask,
@@ -134,6 +136,9 @@ export function GuestPlanningSection({ projectId }: GuestPlanningSectionProps) {
   const [rooms, setRooms] = useState<GuestRoom[]>(() => getGuestRooms(projectId));
   const [addingRoom, setAddingRoom] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
+
+  // Task estimate sheet
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   // Inline editing (shared for tasks and rooms)
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
@@ -381,10 +386,14 @@ export function GuestPlanningSection({ projectId }: GuestPlanningSectionProps) {
                   {tasks.map((task) => {
                     const isEditingTitle = editingCell?.id === task.id && editingCell?.field === "title";
                     const isEditingDesc = editingCell?.id === task.id && editingCell?.field === "description";
+                    const taskRoom = task.room_id ? rooms.find((r) => r.id === task.room_id) ?? null : null;
+                    const taskWorkType = detectWorkType({ title: task.title });
+                    const roomHasDims = taskRoom && (taskRoom.width_mm || taskRoom.area_sqm);
+                    const canEstimate = taskWorkType !== null && roomHasDims;
 
                     return (
                       <TableRow key={task.id} className="group">
-                        {/* Title — inline editable */}
+                        {/* Title — inline editable + sparkles indicator */}
                         <TableCell className="py-1.5">
                           {isEditingTitle ? (
                             <Input
@@ -399,12 +408,32 @@ export function GuestPlanningSection({ projectId }: GuestPlanningSectionProps) {
                               onBlur={() => saveEdit(task.id, "title")}
                             />
                           ) : (
-                            <button
-                              className="text-sm font-medium text-left w-full rounded px-1 -mx-1 hover:bg-muted cursor-text transition-colors"
-                              onClick={() => startEdit(task.id, "title", task.title)}
-                            >
-                              {task.title}
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                className="text-sm font-medium text-left flex-1 rounded px-1 -mx-1 hover:bg-muted cursor-text transition-colors"
+                                onClick={() => startEdit(task.id, "title", task.title)}
+                              >
+                                {task.title}
+                              </button>
+                              {canEstimate && (
+                                <button
+                                  className="shrink-0 p-0.5 rounded hover:bg-amber-100 transition-colors"
+                                  onClick={() => setSelectedTaskId(task.id)}
+                                  title={t("guestEstimate.viewEstimate", "View estimate")}
+                                >
+                                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                                </button>
+                              )}
+                              {taskWorkType && !roomHasDims && (
+                                <button
+                                  className="shrink-0 p-0.5 rounded hover:bg-muted transition-colors"
+                                  onClick={() => setSelectedTaskId(task.id)}
+                                  title={t("guestEstimate.viewEstimate", "View estimate")}
+                                >
+                                  <Sparkles className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                </button>
+                              )}
+                            </div>
                           )}
                         </TableCell>
 
@@ -842,6 +871,19 @@ export function GuestPlanningSection({ projectId }: GuestPlanningSectionProps) {
           {t("guest.signUpLink", "Sign up")}
         </Button>
       </div>
+
+      {/* Task estimate sheet */}
+      {selectedTaskId && (
+        <GuestTaskEstimateSheet
+          task={tasks.find((t) => t.id === selectedTaskId)!}
+          room={(() => {
+            const task = tasks.find((t) => t.id === selectedTaskId);
+            return task?.room_id ? rooms.find((r) => r.id === task.room_id) ?? null : null;
+          })()}
+          open={!!selectedTaskId}
+          onOpenChange={(open) => { if (!open) setSelectedTaskId(null); }}
+        />
+      )}
     </>
   );
 }
