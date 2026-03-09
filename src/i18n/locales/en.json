@@ -4070,5 +4070,68 @@
     "sentConfirmation": "Invitation sent to {{email}}",
     "sentDescription": "The builder will receive an email with a link to view your renovation plan and create a quote.",
     "inviteAnother": "Invite another builder"
+  },
+  "contextTips": {
+    "bearingWall": {
+      "title": "Load-bearing wall — permit required",
+      "body": "Removing or modifying a load-bearing wall requires a structural engineer's assessment and a building permit. Always consult your municipality before starting."
+    },
+    "buildingPermit": {
+      "title": "Building permit may be required",
+      "body": "Extensions, facade changes, balconies, and covered patios typically require a building permit. Check with your municipality — processing times can be 6–10 weeks."
+    },
+    "wetRoom": {
+      "title": "Wet room — use certified contractor",
+      "body": "Bathroom waterproofing (tätskikt) must be done by a GVK or BKR-certified contractor for the warranty to be valid. Always ask for certification before hiring."
+    },
+    "electrical": {
+      "title": "Electrical work — licensed electrician required",
+      "body": "In Sweden, all electrical installations must be performed by a licensed electrician. DIY electrical work is illegal and voids insurance."
+    },
+    "plumbing": {
+      "title": "Plumbing — use certified installer",
+      "body": "Plumbing work (water and sewer) should be done by a Säker Vatten-certified installer to ensure warranty coverage and insurance validity."
+    },
+    "rot": {
+      "title": "ROT deduction — save up to 50,000 SEK/year",
+      "body": "As a homeowner, you can deduct 30% of labor costs for renovation work (ROT). Max 50,000 SEK per person per year. The contractor applies the deduction on the invoice.",
+      "link": "Read more at Skatteverket"
+    },
+    "rotBuilder": {
+      "title": "Remember ROT deduction on quotes",
+      "body": "Many homeowners expect ROT deduction to be shown on quotes and invoices. Showing the price both before and after ROT makes your quote more competitive."
+    },
+    "planningChecklist": {
+      "title": "Planning your renovation",
+      "body": "Start by listing all rooms and tasks. Get at least 3 quotes, check contractor references, and agree on a written contract before work begins."
+    },
+    "planningBuilder": {
+      "title": "Planning phase — scope the project",
+      "body": "Help the homeowner define clear deliverables for each task. Detailed scope descriptions reduce change orders and disputes later."
+    },
+    "compareQuotes": {
+      "title": "Compare quotes carefully",
+      "body": "Look beyond the total price. Compare what's included (materials, waste removal, permits), payment terms, timeline, and warranty conditions."
+    },
+    "quoteSpecificity": {
+      "title": "Be specific in your quotes",
+      "body": "Detailed quotes with line items for labor, materials, and timeline build trust and reduce back-and-forth. Include what's excluded to avoid scope creep."
+    },
+    "condo": {
+      "title": "Condo — check with your association",
+      "body": "Renovations in condos (bostadsrätt) often require approval from the housing association (BRF), especially for bathrooms, plumbing, and structural changes."
+    },
+    "paintingPrep": {
+      "title": "Painting — preparation is key",
+      "body": "Good painting results depend on surface preparation. Budget time for filling holes, sanding, priming, and taping. Typically 60–70% of the work is prep."
+    },
+    "firstProject": {
+      "title": "Welcome to your first project!",
+      "body": "Start by adding rooms and tasks to define your renovation scope. You can then share it with contractors to get quotes, or track progress as work begins."
+    },
+    "insurance": {
+      "title": "Check your insurance coverage",
+      "body": "Before renovation starts, verify that your home insurance covers construction damage and that your contractor has liability insurance. Ask for proof."
+    }
   }
 }

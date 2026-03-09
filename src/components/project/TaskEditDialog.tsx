@@ -38,6 +38,8 @@ import { EntityPhotoGallery } from "@/components/shared/EntityPhotoGallery";
 import { TaskFilesList } from "./TaskFilesList";
 import { DEFAULT_COST_CENTERS } from "@/lib/costCenters";
 import { useProjectPermissions } from "@/hooks/useProjectPermissions";
+import { useContextualTips } from "@/hooks/useContextualTips";
+import { TipList } from "@/components/ui/TipCard";
 import {
   suggestMaterials,
   suggestMaterialsMultiRoom,
@@ -573,6 +575,16 @@ export const TaskEditDialog = ({
   const [materialSpent, setMaterialSpent] = useState(0);
   const [estimationSettings, setEstimationSettings] = useState<RecipeEstimationSettings | null>(null);
 
+  // Contextual tips based on task title, work type, room, etc.
+  const taskTipContext = React.useMemo(() => ({
+    taskTitle: task?.title || undefined,
+    workType: task ? detectWorkType(task) ?? undefined : undefined,
+    costCenter: task?.cost_center || undefined,
+    projectStatus: projectStatus || undefined,
+    userRole: isBuilder ? "contractor" as const : "homeowner" as const,
+  }), [task?.title, task?.cost_center, projectStatus, isBuilder]);
+  const { tips: taskTips, dismiss: dismissTip } = useContextualTips(taskTipContext);
+
   const fetchTask = useCallback(async () => {
     if (!taskId) return;
 
@@ -921,6 +933,11 @@ export const TaskEditDialog = ({
                   required
                 />
               </div>
+
+              {/* Contextual tips based on task title */}
+              {taskTips.length > 0 && (
+                <TipList tips={taskTips} onDismiss={dismissTip} maxTips={1} compact />
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="edit-task-description">{t("tasks.description")}</Label>

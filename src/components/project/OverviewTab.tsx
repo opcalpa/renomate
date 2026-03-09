@@ -29,6 +29,9 @@ import { RotDetailsCard } from "./overview/RotDetailsCard";
 import { normalizeStatus, isQuotePhase } from "@/lib/projectStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { updateGuestProject } from "@/services/guestStorageService";
+import { useContextualTips } from "@/hooks/useContextualTips";
+import { TipList } from "@/components/ui/TipCard";
+import type { TipContext } from "@/lib/contextualTips";
 import type { OverviewProject, OverviewNavigation } from "./overview/types";
 import type { FeedComment } from "./feed/types";
 
@@ -146,6 +149,14 @@ const OverviewTab = ({
     );
   }
 
+  // ----- Contextual tips -----
+  const tipContext: TipContext = {
+    projectStatus: projectStatus || undefined,
+    userRole: isHomeowner ? "homeowner" : "contractor",
+    contexts: isPlanning ? ["planningPhase"] : [],
+  };
+  const { tips, dismiss } = useContextualTips(tipContext);
+
   // ----- Scope / Planning section (always available for authenticated users) -----
   const planningSection = (
     <>
@@ -196,7 +207,10 @@ const OverviewTab = ({
       {/* Scope / Planning section — always visible */}
       {planningSection}
 
-      {/* TODO: Homeowner RFQ sharing button can be added here later */}
+      {/* Contextual tips */}
+      {tips.length > 0 && (
+        <TipList tips={tips} onDismiss={dismiss} maxTips={2} compact />
+      )}
 
       {/* Dashboard toolbar + pulse cards — hidden during pure planning phase */}
       {!isPlanning && (

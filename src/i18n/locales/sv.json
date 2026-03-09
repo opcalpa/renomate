@@ -4068,5 +4068,68 @@
     "sentConfirmation": "Inbjudan skickad till {{email}}",
     "sentDescription": "Byggaren får ett mejl med en länk för att se din renoveringsplan och skapa en offert.",
     "inviteAnother": "Bjud in en till byggare"
+  },
+  "contextTips": {
+    "bearingWall": {
+      "title": "Bärande vägg — bygglov krävs",
+      "body": "Att ta bort eller ändra en bärande vägg kräver en konstruktörs bedömning och bygglov. Kontakta alltid kommunen innan du påbörjar arbetet."
+    },
+    "buildingPermit": {
+      "title": "Bygglov kan krävas",
+      "body": "Tillbyggnader, fasadändringar, balkonger och inglasade altaner kräver normalt bygglov. Kontakta din kommun — handläggningstiden kan vara 6–10 veckor."
+    },
+    "wetRoom": {
+      "title": "Våtrum — anlita certifierad hantverkare",
+      "body": "Tätskikt i badrum måste utföras av en GVK- eller BKR-certifierad hantverkare för att garantin ska gälla. Fråga alltid efter certifiering innan du anlitar."
+    },
+    "electrical": {
+      "title": "Elarbete — behörig elektriker krävs",
+      "body": "I Sverige måste alla elinstallationer utföras av en behörig elektriker. Eget elarbete är olagligt och gör försäkringen ogiltig."
+    },
+    "plumbing": {
+      "title": "VVS — anlita certifierad installatör",
+      "body": "VVS-arbete (vatten och avlopp) bör utföras av en Säker Vatten-certifierad installatör för att garantin och försäkringen ska gälla."
+    },
+    "rot": {
+      "title": "ROT-avdrag — spara upp till 50 000 kr/år",
+      "body": "Som husägare kan du göra avdrag på 30% av arbetskostnaden för renoveringsarbete (ROT). Max 50 000 kr per person och år. Hantverkaren gör avdraget på fakturan.",
+      "link": "Läs mer på Skatteverket"
+    },
+    "rotBuilder": {
+      "title": "Glöm inte ROT-avdrag på offerter",
+      "body": "Många husägare förväntar sig att ROT-avdrag visas på offerter och fakturor. Att visa priset både före och efter ROT gör din offert mer konkurrenskraftig."
+    },
+    "planningChecklist": {
+      "title": "Planera din renovering",
+      "body": "Börja med att lista alla rum och arbeten. Hämta minst 3 offerter, kontrollera hantverkarens referenser och skriv alltid ett skriftligt avtal innan arbetet börjar."
+    },
+    "planningBuilder": {
+      "title": "Planeringsfas — definiera projektets omfattning",
+      "body": "Hjälp husägaren att definiera tydliga leverabler för varje arbetsmoment. Detaljerade beskrivningar minskar ÄTA-arbeten och tvister senare."
+    },
+    "compareQuotes": {
+      "title": "Jämför offerter noggrant",
+      "body": "Titta bortom totalpriset. Jämför vad som ingår (material, avfallshantering, tillstånd), betalningsvillkor, tidplan och garantivillkor."
+    },
+    "quoteSpecificity": {
+      "title": "Var detaljerad i dina offerter",
+      "body": "Detaljerade offerter med poster för arbete, material och tidplan bygger förtroende och minskar frågor. Ange vad som inte ingår för att undvika scope creep."
+    },
+    "condo": {
+      "title": "Bostadsrätt — kolla med föreningen",
+      "body": "Renoveringar i bostadsrätter kräver ofta godkännande från BRF-styrelsen, särskilt för badrum, VVS och bärande konstruktioner."
+    },
+    "paintingPrep": {
+      "title": "Målning — förberedelsen är A och O",
+      "body": "Bra målningsresultat beror på ytförberedelsen. Räkna med tid för spackling, slipning, grundning och maskning. Normalt är 60–70% av arbetet förberedelser."
+    },
+    "firstProject": {
+      "title": "Välkommen till ditt första projekt!",
+      "body": "Börja med att lägga till rum och arbeten för att definiera din renovering. Du kan sedan dela med hantverkare för att få offerter, eller följa arbetet när det startar."
+    },
+    "insurance": {
+      "title": "Kontrollera din försäkring",
+      "body": "Innan renoveringen börjar, verifiera att din hemförsäkring täcker byggskador och att din hantverkare har ansvarsförsäkring. Be om intyg."
+    }
   }
 }
