@@ -1,12 +1,12 @@
-# Sprint 2026-W10 (2 mars 2026)
+# Sprint 2026-W11 (9 mars 2026)
 
 ## Kontext
 
-- **Aktiva användare:** ~50 beta-testare (ingen tillväxt sedan W08)
-- **Senaste sprint-brief:** W08 (17-23 feb)
-- **Ocommittade ändringar:** 43 filer, +4 626 / -2 659 rader
-- **Nya migrationer:** 17 st (INTE applicerade till remote)
-- **Teknisk status:** Canvas refaktorerad (commit `80aae18`). Inga kritiska buggar kända.
+- **Aktiva användare:** ~50 beta-testare
+- **Senaste sprint-brief:** W10 (2 mars)
+- **Migrationer:** Alla applicerade till remote (verifierat 2026-03-09)
+- **Teknisk status:** Canvas refaktorerad. Guest mode live. Smart import, estimering, RFQ-flöde byggt.
+- **Mål:** GO LIVE — prioritera blockerare för riktig launch.
 
 ## Vad som byggts sedan W08
 
