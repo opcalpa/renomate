@@ -41,6 +41,7 @@ import {
   Trash2,
   ToggleLeft,
   ExternalLink,
+  Package,
 } from "lucide-react";
 import { usePurchasesTableView, type PurchasesTableViewState } from "./usePurchasesTableView";
 import { PurchaseColumnKey, PurchaseColumnDef, EXTRA_COLUMN_KEYS } from "./purchasesTypes";
@@ -722,9 +723,13 @@ export function PurchasesTableView({
                   <TableRow>
                     <TableCell
                       colSpan={visibleColumns.length}
-                      className="text-center text-muted-foreground py-8"
+                      className="py-12"
                     >
-                      {t("purchasesTable.noMaterials")}
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <Package className="h-10 w-10 opacity-30" />
+                        <p className="text-sm font-medium">{t("purchasesTable.noMaterials")}</p>
+                        <p className="text-xs">{t("purchasesTable.noMaterialsHint", "Track materials and purchases for this project")}</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (

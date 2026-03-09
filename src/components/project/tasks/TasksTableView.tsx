@@ -42,6 +42,7 @@ import {
   Save,
   Trash2,
   ToggleLeft,
+  ClipboardList,
 } from "lucide-react";
 import { useTasksTableView, type TasksTableViewState } from "./useTasksTableView";
 import { TaskColumnKey, TaskColumnDef, EXTRA_COLUMN_KEYS } from "./tasksTableTypes";
@@ -896,9 +897,13 @@ export function TasksTableView({
                   <TableRow>
                     <TableCell
                       colSpan={visibleColumns.length}
-                      className="text-center text-muted-foreground py-8"
+                      className="py-12"
                     >
-                      {t("tasksTable.noTasks")}
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <ClipboardList className="h-10 w-10 opacity-30" />
+                        <p className="text-sm font-medium">{t("tasksTable.noTasks")}</p>
+                        <p className="text-xs">{t("tasksTable.noTasksHint", "Add your first task using the button above")}</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
