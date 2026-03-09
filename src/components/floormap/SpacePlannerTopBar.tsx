@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Layers, Trash2, Pencil, MoreVertical, Home, User, Settings, LogOut, Globe, LayoutDashboard, CheckSquare, ShoppingCart, Users, Map, PanelTop, Box, Eye } from "lucide-react";
+import { ArrowLeft, Plus, Layers, Trash2, Pencil, MoreVertical, Home, User, LogOut, Globe, LayoutDashboard, CheckSquare, ShoppingCart, Users, Map, PanelTop, Box, Eye } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useFloorMapStore } from "./store";
@@ -245,10 +245,6 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, backLabel, 
           <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer">
             <User className="mr-2 h-4 w-4" />
             <span>{t('nav.profile')}</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate("/admin")} className="cursor-pointer">
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Admin</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuSub>

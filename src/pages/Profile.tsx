@@ -72,6 +72,7 @@ const Profile = () => {
   const [languagePreference, setLanguagePreference] = useState("en");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [defaultCurrency, setDefaultCurrency] = useState(() => localStorage.getItem("admin_currency") || "SEK");
 
   // User type from onboarding
   const [userType, setUserType] = useState<"homeowner" | "contractor" | null>(null);
@@ -375,6 +376,9 @@ const Profile = () => {
         await i18n.changeLanguage(languagePreference);
       }
 
+      // Save currency preference to localStorage
+      localStorage.setItem("admin_currency", defaultCurrency);
+
       // Mark onboarding profile step complete
       // For contractors: requires professional fields (is_professional, company_name, contractor_category)
       // For basic users: requires name and (phone or avatar)
@@ -624,6 +628,26 @@ const Profile = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="currency">{t('profile.defaultCurrency')}</Label>
+                  <Select value={defaultCurrency} onValueChange={setDefaultCurrency}>
+                    <SelectTrigger id="currency">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SEK">SEK (kr)</SelectItem>
+                      <SelectItem value="EUR">EUR (€)</SelectItem>
+                      <SelectItem value="USD">USD ($)</SelectItem>
+                      <SelectItem value="NOK">NOK (kr)</SelectItem>
+                      <SelectItem value="DKK">DKK (kr)</SelectItem>
+                      <SelectItem value="GBP">GBP (£)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {t('profile.currencyDescription')}
+                  </p>
                 </div>
 
                 {userType === "homeowner" && (

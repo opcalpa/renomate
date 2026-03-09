@@ -766,6 +766,8 @@
     "profileInfoDescription": "Update your personal details",
     "emailNotChangeable": "Email cannot be changed",
     "defaultLanguage": "Default Language",
+    "defaultCurrency": "Default Currency",
+    "currencyDescription": "Currency for budgets, quotes, and invoices",
     "saveChanges": "Save Changes",
     "saving": "Saving...",
     "profileUpdated": "Profile updated",

@@ -738,6 +738,8 @@
     "profileInfoDescription": "Uppdatera dina personliga uppgifter",
     "emailNotChangeable": "E-post kan inte ändras",
     "defaultLanguage": "Standardspråk",
+    "defaultCurrency": "Standardvaluta",
+    "currencyDescription": "Valuta för budgetar, offerter och fakturor",
     "saveChanges": "Spara ändringar",
     "saving": "Sparar...",
     "profileUpdated": "Profil uppdaterad",

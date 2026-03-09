@@ -11,7 +11,6 @@ import Auth from "./pages/Auth";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import Profile from "./pages/Profile";
-import Admin from "./pages/Admin";
 import InvitationResponse from "./pages/InvitationResponse";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
@@ -67,7 +66,6 @@ const App = () => (
               <Route path="/projects" element={<Navigate to="/start" replace />} />
               <Route path="/projects/:projectId" element={<ProjectDetail />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/admin" element={<Admin />} />
               <Route path="/invitation" element={<InvitationResponse />} />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />

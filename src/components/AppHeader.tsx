@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, User, Settings, Globe, Lightbulb, MessageSquare, FolderOpen, ChevronDown, MoreHorizontal, Users, FileText } from "lucide-react";
+import { LogOut, User, Globe, Lightbulb, MessageSquare, FolderOpen, ChevronDown, MoreHorizontal, Users, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -353,10 +353,6 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
                   <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     <span>{t('nav.profile')}</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/admin")} className="cursor-pointer">
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Admin</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                 </>
