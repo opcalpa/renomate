@@ -39,6 +39,7 @@ interface OverviewTabProps {
   project: OverviewProject;
   userType?: string | null;
   isGuest?: boolean;
+  isProjectOwner?: boolean;
   onProjectUpdate?: () => void;
   onNavigateToEntity?: (comment: FeedComment) => void;
   onNavigateToPurchases?: (materialId?: string) => void;
@@ -53,6 +54,7 @@ const OverviewTab = ({
   project,
   userType,
   isGuest,
+  isProjectOwner = false,
   onProjectUpdate,
   onNavigateToEntity,
   onNavigateToPurchases,
@@ -65,6 +67,7 @@ const OverviewTab = ({
   const { t } = useTranslation();
   const { lockStatus } = useProjectLock(isGuest ? undefined : project.id);
   const isHomeowner = userType === "homeowner";
+  const isInvitedClient = isHomeowner && !isProjectOwner;
   const projectStatus = normalizeStatus(project.status);
   const isPlanning = projectStatus === "planning" || isQuotePhase(projectStatus);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -204,8 +207,8 @@ const OverviewTab = ({
         />
       )}
 
-      {/* Scope / Planning section — always visible */}
-      {planningSection}
+      {/* Scope / Planning section — hidden for invited clients */}
+      {!isInvitedClient && planningSection}
 
       {/* Contextual tips */}
       {tips.length > 0 && (

@@ -1180,6 +1180,7 @@ const ProjectDetail = () => {
                 project={effectiveProject!}
                 userType={effectiveUserType}
                 isGuest={isGuest}
+                isProjectOwner={permissions.isOwner}
                 onProjectUpdate={isGuest ? loadGuestData : loadData}
                 onNavigateToEntity={handleFeedNavigate}
                 onNavigateToPurchases={(materialId?: string) => {

@@ -92,10 +92,10 @@ interface ExtraColumnDef {
 const EXTRA_COLUMNS: ExtraColumnDef[] = [
   { key: "description", labelKey: "tasks.description", defaultOn: false },
   { key: "room", labelKey: "planningTasks.room", defaultOn: true },
-  { key: "hours", labelKey: "taskCost.estimatedHours", defaultOn: true },
+  { key: "hours", labelKey: "taskCost.estimatedHours", defaultOn: true, builderOnly: true },
   { key: "hourlyRate", labelKey: "taskCost.hourlyRate", defaultOn: true, builderOnly: true },
   { key: "costType", labelKey: "planningTasks.costType", defaultOn: false, builderOnly: true },
-  { key: "material", labelKey: "taskCost.materialEstimate", defaultOn: true },
+  { key: "material", labelKey: "taskCost.materialEstimate", defaultOn: true, builderOnly: true },
   { key: "profit", labelKey: "taskCost.result", defaultOn: true, builderOnly: true },
 ];
 
@@ -694,7 +694,7 @@ export function PlanningTaskList({
                   {formatCurrency(totalBudget, currency)}
                 </span>
               </div>
-              {totalProfit > 0 && (
+              {!isHomeowner && totalProfit > 0 && (
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-xs text-muted-foreground">
                     {t("planningTasks.estimatedProfit", "Est. profit")}
