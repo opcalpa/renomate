@@ -33,6 +33,7 @@ import { UnifiedTableTab } from "@/components/project/unified-table";
 import type { FeedComment } from "@/components/project/feed/types";
 import { getContextType } from "@/components/project/feed/utils";
 import { MobileBottomNav } from "@/components/project/MobileBottomNav";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1150,6 +1151,7 @@ const ProjectDetail = () => {
         )}
 
         <TabsContent value="overview" className="m-0 pb-8">
+          <ErrorBoundary>
           {isTabBlocked("overview") ? null : activeSubTab === 'feed' ? (
             <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
               <ProjectFeedTab projectId={project.id} onNavigateToEntity={handleFeedNavigate} />
@@ -1206,9 +1208,11 @@ const ProjectDetail = () => {
               />
             </div>
           )}
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="spaceplanner" className="m-0 h-screen">
+          <ErrorBoundary>
           {isTabBlocked("spaceplanner") ? (
             <NoAccessPlaceholder />
           ) : (
@@ -1254,9 +1258,11 @@ const ProjectDetail = () => {
               )}
             </>
           )}
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="files" className="m-0 pb-8">
+          <ErrorBoundary>
           {isTabBlocked("files") ? (
             <NoAccessPlaceholder />
           ) : (
@@ -1273,9 +1279,11 @@ const ProjectDetail = () => {
               onUseAsBackground={handleUseAsBackground}
             />
           )}
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="tasks" className="m-0 pb-8">
+          <ErrorBoundary>
           {isTabBlocked("tasks") ? (
             <NoAccessPlaceholder />
           ) : (
@@ -1294,9 +1302,11 @@ const ProjectDetail = () => {
               />
             </div>
           )}
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="purchases" className="m-0 pb-8">
+          <ErrorBoundary>
           {isTabBlocked("purchases") ? (
             <NoAccessPlaceholder />
           ) : (
@@ -1304,9 +1314,11 @@ const ProjectDetail = () => {
               <PurchaseRequestsTab projectId={project.id} openEntityId={activeTab === "purchases" ? openEntityId : null} onEntityOpened={() => setOpenEntityId(null)} currency={project?.currency} />
             </div>
           )}
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="budget" className="m-0 pb-8">
+          <ErrorBoundary>
           {isTabBlocked("budget") ? (
             <NoAccessPlaceholder />
           ) : (
@@ -1319,9 +1331,11 @@ const ProjectDetail = () => {
               />
             </div>
           )}
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="table" className="m-0 pb-8">
+          <ErrorBoundary>
           {isTabBlocked("table") ? (
             <NoAccessPlaceholder />
           ) : (
@@ -1334,9 +1348,11 @@ const ProjectDetail = () => {
               />
             </div>
           )}
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="planning" className="m-0 pb-8">
+          <ErrorBoundary>
           {isTabBlocked("planning") ? (
             <NoAccessPlaceholder />
           ) : (
@@ -1349,9 +1365,11 @@ const ProjectDetail = () => {
               />
             </div>
           )}
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="customer" className="m-0 pb-8">
+          <ErrorBoundary>
           {isTabBlocked("customer") ? (
             <NoAccessPlaceholder />
           ) : (
@@ -1366,9 +1384,11 @@ const ProjectDetail = () => {
               />
             </div>
           )}
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="chat" className="m-0 pb-8">
+          <ErrorBoundary>
           <div className="container mx-auto px-3 md:px-4 py-4 md:py-8 max-w-2xl">
             <div className="space-y-2 mb-4">
               <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -1384,9 +1404,11 @@ const ProjectDetail = () => {
               chatMode
             />
           </div>
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="team" className="m-0 pb-8">
+          <ErrorBoundary>
           {isTabBlocked("team") || isGuest ? (
             isGuest ? (
               <div className="container mx-auto px-4 py-16 flex flex-col items-center justify-center text-center">
@@ -1405,6 +1427,7 @@ const ProjectDetail = () => {
               <TeamManagement projectId={project.id} isOwner={permissions.isOwner} />
             </div>
           )}
+          </ErrorBoundary>
         </TabsContent>
       </Tabs>
 
