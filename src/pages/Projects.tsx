@@ -86,6 +86,7 @@ const Projects = () => {
   const [newProjectCity, setNewProjectCity] = useState("");
   const [newProjectType, setNewProjectType] = useState("");
   const [newProjectStartDate, setNewProjectStartDate] = useState("");
+  const [newProjectFinishDate, setNewProjectFinishDate] = useState("");
   const [newProjectBudget, setNewProjectBudget] = useState("");
   const [createStep, setCreateStep] = useState(1);
   const [createMethod, setCreateMethod] = useState<"choose" | "upload" | "manual">("choose");
@@ -270,6 +271,7 @@ const Projects = () => {
           city: newProjectCity || null,
           project_type: newProjectType || null,
           start_date: newProjectStartDate || null,
+          finish_goal_date: newProjectFinishDate || null,
           total_budget: newProjectBudget ? Number(newProjectBudget) : null,
         });
 
@@ -291,6 +293,7 @@ const Projects = () => {
         setNewProjectCity("");
         setNewProjectType("");
         setNewProjectStartDate("");
+        setNewProjectFinishDate("");
         setNewProjectBudget("");
         refreshStorageUsage();
         navigate(`/projects/${guestProject.id}`);
@@ -353,6 +356,7 @@ const Projects = () => {
       setNewProjectCity("");
       setNewProjectType("");
       setNewProjectStartDate("");
+      setNewProjectFinishDate("");
       setNewProjectBudget("");
       navigate(`/projects/${data.id}`);
     } catch (error: unknown) {
@@ -602,7 +606,7 @@ const Projects = () => {
                 </span>
                 <span className="sm:hidden">{t('common.create', 'Skapa')}</span>
               </Button>
-            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setCreateStep(1); setCreateMethod("choose"); setNewProjectName(""); setNewProjectDescription(""); setNewProjectAddress(""); setNewProjectPostalCode(""); setNewProjectCity(""); setNewProjectType(""); setNewProjectStartDate(""); setNewProjectBudget(""); setUploadedFile(null); setUseAI(true); if (fileInputRef.current) fileInputRef.current.value = ""; } }}>
+            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setCreateStep(1); setCreateMethod("choose"); setNewProjectName(""); setNewProjectDescription(""); setNewProjectAddress(""); setNewProjectPostalCode(""); setNewProjectCity(""); setNewProjectType(""); setNewProjectStartDate(""); setNewProjectFinishDate(""); setNewProjectBudget(""); setUploadedFile(null); setUseAI(true); if (fileInputRef.current) fileInputRef.current.value = ""; } }}>
             <DialogContent className={createMethod === "choose" ? "sm:max-w-lg" : undefined}>
               <DialogHeader>
                 <DialogTitle>
@@ -841,26 +845,28 @@ const Projects = () => {
                   </>
                 ) : (
                   <>
-                    <div className="space-y-2">
-                      <Label>{t('projects.projectType')}</Label>
-                      <Select value={newProjectType} onValueChange={setNewProjectType}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={t('projects.selectProjectType')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="kitchen_renovation">{t('projects.types.kitchenRenovation')}</SelectItem>
-                          <SelectItem value="bathroom_renovation">{t('projects.types.bathroomRenovation')}</SelectItem>
-                          <SelectItem value="full_renovation">{t('projects.types.fullRenovation')}</SelectItem>
-                          <SelectItem value="extension">{t('projects.types.extension')}</SelectItem>
-                          <SelectItem value="new_construction">{t('projects.types.newConstruction')}</SelectItem>
-                          <SelectItem value="facade">{t('projects.types.facade')}</SelectItem>
-                          <SelectItem value="roof">{t('projects.types.roof')}</SelectItem>
-                          <SelectItem value="plumbing">{t('projects.types.plumbing')}</SelectItem>
-                          <SelectItem value="electrical">{t('projects.types.electrical')}</SelectItem>
-                          <SelectItem value="other">{t('projects.types.other')}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {!isGuest && (
+                      <div className="space-y-2">
+                        <Label>{t('projects.projectType')}</Label>
+                        <Select value={newProjectType} onValueChange={setNewProjectType}>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('projects.selectProjectType')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="kitchen_renovation">{t('projects.types.kitchenRenovation')}</SelectItem>
+                            <SelectItem value="bathroom_renovation">{t('projects.types.bathroomRenovation')}</SelectItem>
+                            <SelectItem value="full_renovation">{t('projects.types.fullRenovation')}</SelectItem>
+                            <SelectItem value="extension">{t('projects.types.extension')}</SelectItem>
+                            <SelectItem value="new_construction">{t('projects.types.newConstruction')}</SelectItem>
+                            <SelectItem value="facade">{t('projects.types.facade')}</SelectItem>
+                            <SelectItem value="roof">{t('projects.types.roof')}</SelectItem>
+                            <SelectItem value="plumbing">{t('projects.types.plumbing')}</SelectItem>
+                            <SelectItem value="electrical">{t('projects.types.electrical')}</SelectItem>
+                            <SelectItem value="other">{t('projects.types.other')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label>{t('projects.startDate')}</Label>
@@ -871,14 +877,22 @@ const Projects = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>{t('projects.totalBudget')}</Label>
+                        <Label>{t('projects.goalDate', 'Goal date')}</Label>
                         <Input
-                          type="number"
-                          placeholder="0 kr"
-                          value={newProjectBudget}
-                          onChange={(e) => setNewProjectBudget(e.target.value)}
+                          type="date"
+                          value={newProjectFinishDate}
+                          onChange={(e) => setNewProjectFinishDate(e.target.value)}
                         />
                       </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{t('projects.totalBudget')}</Label>
+                      <Input
+                        type="number"
+                        placeholder="0 kr"
+                        value={newProjectBudget}
+                        onChange={(e) => setNewProjectBudget(e.target.value)}
+                      />
                     </div>
                     <div className="flex gap-2">
                       <Button type="button" variant="outline" onClick={() => setCreateStep(1)}>

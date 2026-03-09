@@ -15,6 +15,7 @@ export interface GuestProject {
   project_type?: string | null;
   total_budget?: number | null;
   start_date?: string | null;
+  finish_goal_date?: string | null;
 }
 
 export interface GuestRoom {
