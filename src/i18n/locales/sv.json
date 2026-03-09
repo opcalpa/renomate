@@ -3618,6 +3618,12 @@
     "floorArea": "golvyta",
     "pickWorkType": "Vilken typ av arbete?"
   },
+  "planningSmartImport": {
+    "title": "Smart import",
+    "description": "Ladda upp ett dokument så tolkar AI rum och arbeten till din planeringstabell.",
+    "tooltip": "Importera rum och arbeten från dokument (PDF, DOCX, TXT)",
+    "guestTooltip": "Skapa ett konto för att importera rum och arbeten från dokument"
+  },
   "planningRooms": {
     "title": "Rumsplanering",
     "description": "Lägg till rum och mått för att underlätta estimering",

@@ -3620,6 +3620,12 @@
     "floorArea": "floor area",
     "pickWorkType": "What type of work?"
   },
+  "planningSmartImport": {
+    "title": "Smart Import",
+    "description": "Upload a document and AI will extract rooms and tasks into your planning table.",
+    "tooltip": "Import rooms & tasks from a document (PDF, DOCX, TXT)",
+    "guestTooltip": "Create an account to import rooms & tasks from documents"
+  },
   "planningRooms": {
     "title": "Room planning",
     "description": "Add rooms and dimensions to help estimate work",

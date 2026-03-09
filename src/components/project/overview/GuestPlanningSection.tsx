@@ -31,7 +31,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
-import { Plus, ClipboardList, Home, Trash2, Cloud, Columns3, Info, Sparkles, Rocket } from "lucide-react";
+import { Plus, ClipboardList, Home, Trash2, Cloud, Columns3, Info, Sparkles, Rocket, FileUp } from "lucide-react";
 import { GuestTaskEstimateSheet } from "./GuestTaskEstimateSheet";
 import { detectWorkType } from "@/lib/materialRecipes";
 import {
@@ -589,6 +589,22 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
                   <Plus className="h-3.5 w-3.5" />
                   {t("planningTasks.addTask", "Add task")}
                 </Button>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <a href="/auth">
+                        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+                          <FileUp className="h-3.5 w-3.5" />
+                          <Sparkles className="h-3 w-3 text-amber-500" />
+                        </Button>
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {t("planningSmartImport.guestTooltip", "Create an account to import rooms & tasks from documents")}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
 
                 <Popover>
                   <PopoverTrigger asChild>

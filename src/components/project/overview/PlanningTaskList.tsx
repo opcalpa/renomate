@@ -19,7 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle, FileUp } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -34,6 +34,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { formatCurrency } from "@/lib/currency";
 import { useToast } from "@/hooks/use-toast";
 import { TaskEditDialog } from "../TaskEditDialog";
+import { PlanningSmartImportDialog } from "./PlanningSmartImportDialog";
 import {
   suggestMaterials,
   suggestMaterialsMultiRoom,
@@ -147,6 +148,9 @@ export function PlanningTaskList({
 
   // Edit dialog state
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
+
+  // Smart import dialog state
+  const [smartImportOpen, setSmartImportOpen] = useState(false);
 
   // Inline cell editing state
   const [editingCell, setEditingCell] = useState<{
@@ -1232,15 +1236,35 @@ export function PlanningTaskList({
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mt-4">
               <div className="flex items-center gap-2">
                 {!effectiveLock && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsAdding(true)}
-                    disabled={isAdding}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    {t("planningTasks.addTask", "Add task")}
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsAdding(true)}
+                      disabled={isAdding}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      {t("planningTasks.addTask", "Add task")}
+                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSmartImportOpen(true)}
+                            className="gap-1"
+                          >
+                            <FileUp className="h-4 w-4" />
+                            <Sparkles className="h-3 w-3 text-amber-500" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {t("planningSmartImport.tooltip", "Import rooms & tasks from a document (PDF, DOCX, TXT)")}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </>
                 )}
 
                 {/* Column visibility toggle */}
@@ -1296,6 +1320,13 @@ export function PlanningTaskList({
         onSaved={() => fetchData()}
         currency={currency}
         projectStatus="planning"
+      />
+
+      <PlanningSmartImportDialog
+        projectId={projectId}
+        open={smartImportOpen}
+        onOpenChange={setSmartImportOpen}
+        onImportComplete={() => fetchData()}
       />
 
       {/* Estimate feedback dialog — centered, impossible to miss */}
