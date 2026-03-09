@@ -28,6 +28,7 @@ import { ProjectHeader } from "./overview/ProjectHeader";
 import { RotDetailsCard } from "./overview/RotDetailsCard";
 import { normalizeStatus, isQuotePhase } from "@/lib/projectStatus";
 import { supabase } from "@/integrations/supabase/client";
+import { updateGuestProject } from "@/services/guestStorageService";
 import type { OverviewProject, OverviewNavigation } from "./overview/types";
 import type { FeedComment } from "./feed/types";
 
@@ -121,10 +122,19 @@ const OverviewTab = ({
 
   // ----- Guest: show planning tools (localStorage-backed) -----
   if (isGuest) {
+    const handleActivateProject = () => {
+      updateGuestProject(project.id, { status: "active" });
+      handleProjectUpdate();
+    };
+
     return (
       <div className="space-y-6">
         <ProjectHeader project={project} onOpenSettings={() => setSettingsOpen(true)} />
-        <GuestPlanningSection projectId={project.id} />
+        <GuestPlanningSection
+          projectId={project.id}
+          projectStatus={project.status}
+          onActivate={handleActivateProject}
+        />
         <ProjectSettingsDialog
           open={settingsOpen}
           onOpenChange={setSettingsOpen}

@@ -31,7 +31,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
-import { Plus, ClipboardList, Home, Trash2, Cloud, Columns3, Info, Sparkles } from "lucide-react";
+import { Plus, ClipboardList, Home, Trash2, Cloud, Columns3, Info, Sparkles, Rocket } from "lucide-react";
 import { GuestTaskEstimateSheet } from "./GuestTaskEstimateSheet";
 import { detectWorkType } from "@/lib/materialRecipes";
 import {
@@ -122,9 +122,11 @@ function formatMm(val: number | null | undefined): string {
 
 interface GuestPlanningSectionProps {
   projectId: string;
+  projectStatus?: string;
+  onActivate?: () => void;
 }
 
-export function GuestPlanningSection({ projectId }: GuestPlanningSectionProps) {
+export function GuestPlanningSection({ projectId, projectStatus, onActivate }: GuestPlanningSectionProps) {
   const { t } = useTranslation();
 
   // Tasks
@@ -334,8 +336,35 @@ export function GuestPlanningSection({ projectId }: GuestPlanningSectionProps) {
     return map[s] || s;
   };
 
+  const isPlanning = !projectStatus || projectStatus === "planning";
+  const canActivate = isPlanning && tasks.length >= 1 && rooms.length >= 1;
+
   return (
     <>
+      {/* Activate project button — shown in planning phase when ready */}
+      {isPlanning && (
+        <div className="flex items-center justify-end gap-3">
+          {!canActivate && (
+            <p className="text-xs text-muted-foreground">
+              {tasks.length === 0 && rooms.length === 0
+                ? t("guestEstimate.activateHintBoth", "Add at least 1 task and 1 room to activate")
+                : tasks.length === 0
+                  ? t("guestEstimate.activateHintTask", "Add at least 1 task to activate")
+                  : t("guestEstimate.activateHintRoom", "Add at least 1 room to activate")}
+            </p>
+          )}
+          <Button
+            size="sm"
+            disabled={!canActivate}
+            className="gap-1.5"
+            onClick={onActivate}
+          >
+            <Rocket className="h-4 w-4" />
+            {t("guestEstimate.activateProject", "Activate project")}
+          </Button>
+        </div>
+      )}
+
       {/* Task planning card */}
       <Card className="border-l-4 border-l-primary">
         <CardHeader className="pb-3">

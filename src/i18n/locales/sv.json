@@ -132,7 +132,11 @@
     "tipCoverage": "Täckningsgrad: hur många m² en liter färg räcker till per strykning",
     "tipCoats": "Antal strykningar — normalt 2 för bra täckning",
     "tipWaste": "Spillfaktor: extra material för tillskärning och spill — 1.1 innebär 10% extra",
-    "tipUnitPrice": "Genomsnittligt pris per enhet — varierar beroende på märke och kvalitet"
+    "tipUnitPrice": "Genomsnittligt pris per enhet — varierar beroende på märke och kvalitet",
+    "activateProject": "Aktivera projekt",
+    "activateHintBoth": "Lägg till minst 1 arbete och 1 rum för att aktivera",
+    "activateHintTask": "Lägg till minst 1 arbete för att aktivera",
+    "activateHintRoom": "Lägg till minst 1 rum för att aktivera"
   },
   "nav": {
     "home": "Hem",

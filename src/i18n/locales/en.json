@@ -132,7 +132,11 @@
     "tipCoverage": "Coverage: how many m² one liter of paint covers in one coat",
     "tipCoats": "Number of coats of paint — typically 2 for good coverage",
     "tipWaste": "Waste factor: extra material for cuts and waste — 1.1 means 10% extra",
-    "tipUnitPrice": "Average price per unit — varies by brand and quality"
+    "tipUnitPrice": "Average price per unit — varies by brand and quality",
+    "activateProject": "Activate project",
+    "activateHintBoth": "Add at least 1 task and 1 room to activate",
+    "activateHintTask": "Add at least 1 task to activate",
+    "activateHintRoom": "Add at least 1 room to activate"
   },
   "nav": {
     "home": "Home",

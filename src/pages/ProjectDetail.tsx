@@ -134,12 +134,13 @@ const ProjectDetail = () => {
   }, []);
 
   // Map tab keys to permission keys
-  // Guest users get overview access (planning sub-section) — no DB permissions exist for them
+  // Guest users: planning-only when status=planning, more tabs when active
+  const guestProjectActive = isGuest && project?.status && project.status !== "planning";
   const tabPermissionMap: Record<string, string> = isGuest ? {
     overview: "edit",
-    spaceplanner: "none",
+    spaceplanner: guestProjectActive ? "edit" : "none",
     files: "none",
-    tasks: "none",
+    tasks: guestProjectActive ? "edit" : "none",
     purchases: "none",
     budget: "none",
     table: "none",
