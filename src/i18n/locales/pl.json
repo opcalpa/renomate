@@ -2933,5 +2933,68 @@
     "tabTitle": "Widok klienta",
     "timeline": "Harmonogram",
     "timelineDescription": "Śledź postęp swojego projektu remontowego"
+  },
+  "contextTips": {
+    "bearingWall": {
+      "title": "Ściana nośna — wymagane pozwolenie",
+      "body": "Usunięcie lub modyfikacja ściany nośnej wymaga oceny inżyniera konstrukcyjnego i pozwolenia na budowę. Zawsze skonsultuj się z gminą przed rozpoczęciem prac."
+    },
+    "buildingPermit": {
+      "title": "Może być wymagane pozwolenie na budowę",
+      "body": "Rozbudowy, zmiany elewacji, balkony i zadaszone tarasy zazwyczaj wymagają pozwolenia na budowę. Skontaktuj się z gminą — czas rozpatrywania to 6–10 tygodni."
+    },
+    "wetRoom": {
+      "title": "Pomieszczenie mokre — zatrudnij certyfikowanego wykonawcę",
+      "body": "Hydroizolacja łazienki (tätskikt) musi być wykonana przez certyfikowanego wykonawcę GVK lub BKR, aby gwarancja była ważna. Zawsze pytaj o certyfikat przed zatrudnieniem."
+    },
+    "electrical": {
+      "title": "Prace elektryczne — wymagany licencjonowany elektryk",
+      "body": "W Szwecji wszystkie instalacje elektryczne muszą być wykonywane przez licencjonowanego elektryka. Samodzielne prace elektryczne są nielegalne i unieważniają ubezpieczenie."
+    },
+    "plumbing": {
+      "title": "Hydraulika — zatrudnij certyfikowanego instalatora",
+      "body": "Prace hydrauliczne (woda i kanalizacja) powinny być wykonywane przez instalatora z certyfikatem Säker Vatten, aby zapewnić ważność gwarancji i ubezpieczenia."
+    },
+    "rot": {
+      "title": "Odliczenie ROT — oszczędź do 50 000 SEK/rok",
+      "body": "Jako właściciel domu możesz odliczyć 30% kosztów robocizny za prace remontowe (ROT). Maks. 50 000 SEK na osobę rocznie. Wykonawca stosuje odliczenie na fakturze.",
+      "link": "Więcej na Skatteverket"
+    },
+    "rotBuilder": {
+      "title": "Pamiętaj o odliczeniu ROT w wycenach",
+      "body": "Wielu właścicieli domów oczekuje, że odliczenie ROT będzie widoczne na wycenach i fakturach. Pokazanie ceny przed i po ROT czyni Twoją ofertę bardziej konkurencyjną."
+    },
+    "planningChecklist": {
+      "title": "Planowanie remontu",
+      "body": "Zacznij od listy wszystkich pomieszczeń i zadań. Zbierz co najmniej 3 wyceny, sprawdź referencje wykonawcy i zawsze podpisz pisemną umowę przed rozpoczęciem prac."
+    },
+    "planningBuilder": {
+      "title": "Faza planowania — zdefiniuj zakres projektu",
+      "body": "Pomóż właścicielowi zdefiniować jasne wyniki dla każdego zadania. Szczegółowe opisy zakresu zmniejszają liczbę zmian i sporów w przyszłości."
+    },
+    "compareQuotes": {
+      "title": "Porównuj wyceny dokładnie",
+      "body": "Patrz dalej niż łączna cena. Porównaj co jest zawarte (materiały, wywóz odpadów, pozwolenia), warunki płatności, harmonogram i warunki gwarancji."
+    },
+    "quoteSpecificity": {
+      "title": "Bądź szczegółowy w swoich wycenach",
+      "body": "Szczegółowe wyceny z pozycjami za robociznę, materiały i harmonogram budują zaufanie i zmniejszają ilość pytań. Podaj co nie jest zawarte, aby uniknąć rozszerzenia zakresu."
+    },
+    "condo": {
+      "title": "Mieszkanie — sprawdź ze wspólnotą",
+      "body": "Remonty w mieszkaniach (bostadsrätt) często wymagają zgody zarządu wspólnoty (BRF), szczególnie w przypadku łazienek, hydrauliki i zmian konstrukcyjnych."
+    },
+    "paintingPrep": {
+      "title": "Malowanie — przygotowanie to podstawa",
+      "body": "Dobre rezultaty malowania zależą od przygotowania powierzchni. Zaplanuj czas na szpachlowanie, szlifowanie, gruntowanie i maskowanie. Zazwyczaj 60–70% pracy to przygotowanie."
+    },
+    "firstProject": {
+      "title": "Witamy w Twoim pierwszym projekcie!",
+      "body": "Zacznij od dodania pomieszczeń i zadań, aby zdefiniować zakres remontu. Następnie możesz udostępnić go wykonawcom, aby otrzymać wyceny, lub śledzić postęp prac."
+    },
+    "insurance": {
+      "title": "Sprawdź swoje ubezpieczenie",
+      "body": "Przed rozpoczęciem remontu sprawdź, czy Twoje ubezpieczenie domu pokrywa szkody budowlane i czy Twój wykonawca ma ubezpieczenie OC. Poproś o potwierdzenie."
+    }
   }
 }
