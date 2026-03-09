@@ -133,7 +133,7 @@ function PaintFormulaPopover({ settings, onSettingsChange, room, children }: Pai
   return (
     <Popover>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent className="w-72 p-3" align="start">
+      <PopoverContent className="w-[calc(100vw-2rem)] sm:w-72 p-3" align="start">
         <div className="space-y-3">
           <div>
             <p className="text-xs font-medium mb-1">{t("estimation.paintFormula", "Paint formula")}</p>
@@ -535,15 +535,16 @@ export function PlanningRoomList({ projectId, locked = false }: PlanningRoomList
           </div>
         ) : (
           <>
+            <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="text-xs font-medium w-[180px]">{t("planningRooms.roomName", "Room")}</TableHead>
-                  {show.width && <TableHead className="text-xs font-medium w-[90px]">{t("rooms.width")}</TableHead>}
-                  {show.depth && <TableHead className="text-xs font-medium w-[90px]">{t("rooms.depth")}</TableHead>}
-                  {show.ceilingHeight && <TableHead className="text-xs font-medium w-[90px]">{t("rooms.ceilingHeight")}</TableHead>}
+                  {show.width && <TableHead className="text-xs font-medium w-[90px] hidden sm:table-cell">{t("rooms.width")}</TableHead>}
+                  {show.depth && <TableHead className="text-xs font-medium w-[90px] hidden sm:table-cell">{t("rooms.depth")}</TableHead>}
+                  {show.ceilingHeight && <TableHead className="text-xs font-medium w-[90px] hidden sm:table-cell">{t("rooms.ceilingHeight")}</TableHead>}
                   <TableHead className="text-xs font-medium w-[90px]">{t("rooms.area")}</TableHead>
-                  {show.wallArea && <TableHead className="text-xs font-medium w-[90px]">{t("rooms.wallArea")}</TableHead>}
+                  {show.wallArea && <TableHead className="text-xs font-medium w-[90px] hidden md:table-cell">{t("rooms.wallArea")}</TableHead>}
                   {show.paintEstimate && (
                     <TableHead className="text-xs font-medium w-[100px]">
                       <div className="flex items-center gap-1">
@@ -584,17 +585,17 @@ export function PlanningRoomList({ projectId, locked = false }: PlanningRoomList
                         {renderEditableCell(room, "name", room.name, "font-medium")}
                       </TableCell>
                       {show.width && (
-                        <TableCell className="py-1.5">
+                        <TableCell className="py-1.5 hidden sm:table-cell">
                           {renderEditableCell(room, "width", formatMm(room.dimensions?.width_mm), "tabular-nums")}
                         </TableCell>
                       )}
                       {show.depth && (
-                        <TableCell className="py-1.5">
+                        <TableCell className="py-1.5 hidden sm:table-cell">
                           {renderEditableCell(room, "depth", formatMm(room.dimensions?.height_mm), "tabular-nums")}
                         </TableCell>
                       )}
                       {show.ceilingHeight && (
-                        <TableCell className="py-1.5">
+                        <TableCell className="py-1.5 hidden sm:table-cell">
                           {renderEditableCell(room, "ceilingHeight", formatMm(room.ceiling_height_mm), "tabular-nums")}
                         </TableCell>
                       )}
@@ -602,7 +603,7 @@ export function PlanningRoomList({ projectId, locked = false }: PlanningRoomList
                         {renderEditableCell(room, "area", area !== null ? area.toFixed(1) : "", "tabular-nums")}
                       </TableCell>
                       {show.wallArea && (
-                        <TableCell className="py-1.5">
+                        <TableCell className="py-1.5 hidden md:table-cell">
                           <span className="text-sm tabular-nums text-muted-foreground">
                             {wallArea !== null ? `${wallArea.toFixed(1)} m²` : "–"}
                           </span>
@@ -652,7 +653,7 @@ export function PlanningRoomList({ projectId, locked = false }: PlanningRoomList
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={visibleColCount} className="py-1.5">
                       <form
-                        className="flex items-center gap-2"
+                        className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
                         onSubmit={(e) => {
                           e.preventDefault();
                           handleQuickAdd();
@@ -690,6 +691,7 @@ export function PlanningRoomList({ projectId, locked = false }: PlanningRoomList
                 )}
               </TableBody>
             </Table>
+            </div>
 
             <div className="flex items-center gap-2 mt-2 pt-2 border-t">
               {!locked && (

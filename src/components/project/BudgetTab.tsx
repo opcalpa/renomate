@@ -1369,8 +1369,8 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
     const materialTotal = rows.filter(r => r.type === "material").reduce((s, r) => s + r.budget, 0);
 
     return (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold">{t('budget.title')}</h2>
+      <div className="space-y-4 sm:space-y-6">
+        <h2 className="text-xl sm:text-2xl font-bold">{t('budget.title')}</h2>
 
         <div className="rounded-xl border bg-card p-6 space-y-4">
           <div className="flex items-end justify-between">

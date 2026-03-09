@@ -131,7 +131,7 @@ const OverviewTab = ({
     };
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <ProjectHeader project={project} onOpenSettings={() => setSettingsOpen(true)} />
         <GuestPlanningSection
           projectId={project.id}
@@ -177,7 +177,7 @@ const OverviewTab = ({
 
   // ----- All phases: unified dashboard view -----
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Status CTA - only in active phases */}
       {!isHomeowner && !isPlanning && (
         <ProjectStatusCTA

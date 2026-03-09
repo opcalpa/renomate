@@ -395,6 +395,7 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
             </div>
           ) : (
             <>
+              <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -556,13 +557,13 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
                     <TableRow className="hover:bg-transparent">
                       <TableCell colSpan={colCount} className="py-1.5">
                         <form
-                          className="flex items-center gap-2"
+                          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
                           onSubmit={(e) => { e.preventDefault(); handleAddTask(); }}
                         >
                           <Input
                             autoFocus
                             placeholder={t("planningTasks.taskPlaceholder", "e.g. Paint living room")}
-                            className="h-7 text-sm flex-1 max-w-[300px]"
+                            className="h-7 text-sm flex-1 sm:max-w-[300px]"
                             value={newTaskTitle}
                             onChange={(e) => setNewTaskTitle(e.target.value)}
                             onKeyDown={(e) => {
@@ -582,6 +583,7 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
                   )}
                 </TableBody>
               </Table>
+              </div>
 
               {/* Footer: add + column chooser */}
               <div className="flex items-center gap-2 mt-2 pt-2 border-t">
@@ -682,6 +684,7 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
             </div>
           ) : (
             <>
+              <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -847,13 +850,13 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
                     <TableRow className="hover:bg-transparent">
                       <TableCell colSpan={roomColCount} className="py-1.5">
                         <form
-                          className="flex items-center gap-2"
+                          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
                           onSubmit={(e) => { e.preventDefault(); handleAddRoom(); }}
                         >
                           <Input
                             autoFocus
                             placeholder={t("rooms.roomNamePlaceholder", "e.g. Kitchen")}
-                            className="h-7 text-sm flex-1 max-w-[240px]"
+                            className="h-7 text-sm flex-1 sm:max-w-[240px]"
                             value={newRoomName}
                             onChange={(e) => setNewRoomName(e.target.value)}
                             onKeyDown={(e) => {
@@ -873,6 +876,7 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
                   )}
                 </TableBody>
               </Table>
+              </div>
 
               <div className="flex items-center gap-2 mt-2 pt-2 border-t">
                 <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setAddingRoom(true)}>

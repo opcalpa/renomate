@@ -268,11 +268,11 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
   const sentInvoices = invoices.filter((inv) => inv.status !== "draft");
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">{t("budget.title")}</h2>
+    <div className="space-y-4 sm:space-y-6">
+      <h2 className="text-xl sm:text-2xl font-bold">{t("budget.title")}</h2>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-6 md:gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 md:gap-3">
         {/* Min budget */}
         <div className="bg-muted/50 rounded-lg p-4 text-center space-y-1">
           <div className="flex items-center justify-center gap-1.5">
@@ -336,7 +336,7 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
             </div>
           </PopoverTrigger>
           {quoteItems.length > 0 && (
-            <PopoverContent align="center" className="w-96 p-0">
+            <PopoverContent align="center" className="w-[calc(100vw-2rem)] sm:w-96 p-0">
               <div className="px-3 py-2.5 border-b">
                 <h4 className="text-sm font-semibold">{t("homeownerBudget.quoteOverview", "Offertöversikt")}</h4>
               </div>
@@ -387,7 +387,7 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
             </div>
           </PopoverTrigger>
           {sentInvoices.length > 0 && (
-            <PopoverContent align="center" className="w-96 p-0">
+            <PopoverContent align="center" className="w-[calc(100vw-2rem)] sm:w-96 p-0">
               <div className="px-3 py-2.5 border-b">
                 <h4 className="text-sm font-semibold">{t("homeownerBudget.invoices", "Fakturor")}</h4>
               </div>
