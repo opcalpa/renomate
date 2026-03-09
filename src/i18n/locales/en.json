@@ -97,7 +97,9 @@
     "migrationSuccess": "Projects migrated successfully",
     "migrationSuccessDescription": "{{count}} project(s) have been saved to your account.",
     "migrationPartial": "Some projects migrated",
-    "migrationPartialDescription": "{{count}} project(s) were migrated. Some errors occurred."
+    "migrationPartialDescription": "{{count}} project(s) were migrated. Some errors occurred.",
+    "signUpNudge": "Create a free account to save your project, get estimates, and invite collaborators.",
+    "signUpLink": "Sign up"
   },
   "nav": {
     "home": "Home",
@@ -3544,9 +3546,9 @@
   },
   "planningTasks": {
     "title": "Scope of work",
-    "description": "Define tasks to include in your quote",
+    "description": "Define the tasks included in your renovation, e.g. painting, demolition, tiling",
     "empty": "No tasks yet",
-    "emptyHint": "Add the work items that will make up your quote",
+    "emptyHint": "Add the work items included in your renovation",
     "addFirst": "Add first task",
     "addTask": "Add task",
     "taskName": "Task",

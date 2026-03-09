@@ -549,14 +549,13 @@ const Projects = () => {
         avatarUrl={isGuest ? undefined : profile?.avatar_url}
         onSignOut={isGuest ? undefined : handleSignOut}
         isGuest={isGuest}
+        guestUserType={isGuest ? localStorage.getItem("guest_user_type") : null}
       />
 
       {/* Guest mode banner - sticky below header */}
       {isGuest && <GuestBanner compact />}
 
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        {/* Full guest banner at top of content */}
-        {isGuest && <GuestBanner className="mb-6" />}
 
         {!isGuest && !onboarding.loading && !onboarding.isDismissed && !onboarding.isComplete && onboarding.steps.length > 0 && (
           <OnboardingChecklist

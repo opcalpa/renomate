@@ -3,7 +3,7 @@
  * Provides guest mode state and actions throughout the app
  */
 
-import { createContext, useCallback, useEffect, useState, ReactNode } from 'react';
+import { createContext, useCallback, useState, ReactNode } from 'react';
 import {
   getGuestModeState,
   enterGuestMode as enterGuestModeStorage,
@@ -29,23 +29,13 @@ interface GuestProviderProps {
 }
 
 export function GuestProvider({ children }: GuestProviderProps) {
-  const [isGuest, setIsGuest] = useState(false);
-  const [guestId, setGuestId] = useState<string | null>(null);
-  const [storageUsage, setStorageUsage] = useState<GuestStorageUsage>({
-    used: 0,
-    limit: 5 * 1024 * 1024,
-    percentage: 0,
-  });
-
-  // Initialize from localStorage on mount
-  useEffect(() => {
+  // Initialize synchronously from localStorage to avoid race conditions
+  const [isGuest, setIsGuest] = useState(() => getGuestModeState().isGuest);
+  const [guestId, setGuestId] = useState<string | null>(() => getGuestModeState().guestId);
+  const [storageUsage, setStorageUsage] = useState<GuestStorageUsage>(() => {
     const state = getGuestModeState();
-    setIsGuest(state.isGuest);
-    setGuestId(state.guestId);
-    if (state.isGuest) {
-      setStorageUsage(getStorageUsage());
-    }
-  }, []);
+    return state.isGuest ? getStorageUsage() : { used: 0, limit: 5 * 1024 * 1024, percentage: 0 };
+  });
 
   const enterGuestMode = useCallback(() => {
     const newGuestId = enterGuestModeStorage();

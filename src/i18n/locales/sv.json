@@ -97,7 +97,9 @@
     "migrationSuccess": "Projekt migrerade",
     "migrationSuccessDescription": "{{count}} projekt har sparats till ditt konto.",
     "migrationPartial": "Vissa projekt migrerade",
-    "migrationPartialDescription": "{{count}} projekt migrerades. Vissa fel uppstod."
+    "migrationPartialDescription": "{{count}} projekt migrerades. Vissa fel uppstod.",
+    "signUpNudge": "Skapa ett gratis konto för att spara ditt projekt, få kostnadsuppskattningar och bjuda in samarbetspartners.",
+    "signUpLink": "Skapa konto"
   },
   "nav": {
     "home": "Hem",
@@ -3542,9 +3544,9 @@
   },
   "planningTasks": {
     "title": "Arbetsomfattning",
-    "description": "Definiera arbeten att inkludera i din offert",
+    "description": "Definiera arbeten som ingår i din renovering, t.ex. målning, rivning, plattsättning",
     "empty": "Inga arbeten än",
-    "emptyHint": "Lägg till arbetsmoment som ska ingå i offerten",
+    "emptyHint": "Lägg till arbetsmoment som ingår i din renovering",
     "addFirst": "Lägg till första arbetet",
     "addTask": "Lägg till arbete",
     "taskName": "Arbete",

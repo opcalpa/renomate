@@ -53,9 +53,10 @@ interface AppHeaderProps {
   onSignOut?: () => void;
   children?: React.ReactNode;
   isGuest?: boolean;
+  guestUserType?: string | null;
 }
 
-export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children, isGuest = false }: AppHeaderProps) => {
+export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children, isGuest = false, guestUserType }: AppHeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { i18n, t } = useTranslation();
@@ -331,6 +332,11 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
                 <p className="text-xs leading-none text-muted-foreground">
                   {userEmail || ''}
                 </p>
+                {isGuest && guestUserType && (
+                  <p className="text-xs leading-none text-muted-foreground/70">
+                    {guestUserType === 'homeowner' ? t('roles.homeowner', 'Homeowner') : t('roles.contractor', 'Contractor')}
+                  </p>
+                )}
               </div>
               <DropdownMenuSeparator />
               {!isGuest && (

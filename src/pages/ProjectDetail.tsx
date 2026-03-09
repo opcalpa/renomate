@@ -126,7 +126,20 @@ const ProjectDetail = () => {
     : profile?.onboarding_user_type || (isGuest ? localStorage.getItem("guest_user_type") : undefined);
 
   // Map tab keys to permission keys
-  const tabPermissionMap: Record<string, string> = {
+  // Guest users get overview access (planning sub-section) — no DB permissions exist for them
+  const tabPermissionMap: Record<string, string> = isGuest ? {
+    overview: "edit",
+    spaceplanner: "none",
+    files: "none",
+    tasks: "none",
+    purchases: "none",
+    budget: "none",
+    table: "none",
+    team: "none",
+    customer: "none",
+    planning: "none",
+    chat: "none",
+  } : {
     overview: permissions.overview,
     spaceplanner: permissions.spacePlanner,
     files: permissions.files,
@@ -841,6 +854,7 @@ const ProjectDetail = () => {
           avatarUrl={(!user || isGuest) ? undefined : profile?.avatar_url}
           onSignOut={(!user || isGuest) ? undefined : handleSignOut}
           isGuest={isGuest || (isPublicDemoProject && !user)}
+          guestUserType={isGuest ? localStorage.getItem("guest_user_type") : null}
         >
           {/* Mobile: Back button + project name */}
           <div className="flex items-center gap-2 md:hidden">
@@ -1178,7 +1192,7 @@ const ProjectDetail = () => {
                 project={effectiveProject!}
                 userType={effectiveUserType}
                 isGuest={isGuest}
-                onProjectUpdate={loadData}
+                onProjectUpdate={isGuest ? loadGuestData : loadData}
                 onNavigateToEntity={handleFeedNavigate}
                 onNavigateToPurchases={(materialId?: string) => {
                   setActiveTab('purchases');

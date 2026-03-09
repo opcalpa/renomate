@@ -31,6 +31,7 @@ import {
 } from "@/lib/projectStatus";
 import type { OverviewProject } from "./types";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
+import { updateGuestProject } from "@/services/guestStorageService";
 
 const CURRENCY_OPTIONS = Object.entries(CURRENCIES).map(([code, config]) => ({
   value: code,
@@ -41,6 +42,7 @@ interface ProjectSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   project: OverviewProject;
+  isGuest?: boolean;
   onProjectUpdate?: () => void;
 }
 
@@ -48,6 +50,7 @@ export function ProjectSettingsDialog({
   open,
   onOpenChange,
   project,
+  isGuest,
   onProjectUpdate,
 }: ProjectSettingsDialogProps) {
   const { t } = useTranslation();
@@ -82,6 +85,7 @@ export function ProjectSettingsDialog({
       setProjectStatusValue(normalizeStatus(project.status));
 
       // Check if project has an accepted quote (budget is derived from quote)
+      if (isGuest) return;
       supabase
         .from("quotes")
         .select("id, total_amount")
@@ -110,26 +114,39 @@ export function ProjectSettingsDialog({
     setSaving(true);
     try {
       const budgetNumber = budgetValue ? parseFloat(budgetValue) : null;
-      const updateData: Record<string, unknown> = {
-        name: projectName.trim(),
-        description: projectDescription.trim() || null,
-        address: projectAddress.trim() || null,
-        property_designation: propertyDesignation.trim() || null,
-        start_date: startDate || null,
-        finish_goal_date: goalDate || null,
-        currency,
-        status: projectStatusValue,
-      };
-      // Only allow budget editing if not derived from an accepted quote
-      if (!hasAcceptedQuote) {
-        updateData.total_budget = budgetNumber;
-      }
-      const { error } = await supabase
-        .from("projects")
-        .update(updateData)
-        .eq("id", project.id);
 
-      if (error) throw error;
+      if (isGuest) {
+        // Guest mode: save to localStorage
+        updateGuestProject(project.id, {
+          name: projectName.trim(),
+          description: projectDescription.trim() || null,
+          address: projectAddress.trim() || null,
+          status: projectStatusValue,
+          total_budget: budgetNumber,
+          start_date: startDate || null,
+        });
+      } else {
+        const updateData: Record<string, unknown> = {
+          name: projectName.trim(),
+          description: projectDescription.trim() || null,
+          address: projectAddress.trim() || null,
+          property_designation: propertyDesignation.trim() || null,
+          start_date: startDate || null,
+          finish_goal_date: goalDate || null,
+          currency,
+          status: projectStatusValue,
+        };
+        // Only allow budget editing if not derived from an accepted quote
+        if (!hasAcceptedQuote) {
+          updateData.total_budget = budgetNumber;
+        }
+        const { error } = await supabase
+          .from("projects")
+          .update(updateData)
+          .eq("id", project.id);
+
+        if (error) throw error;
+      }
 
       toast({
         title: t("overview.settings.saved"),

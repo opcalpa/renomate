@@ -10,9 +10,33 @@ import {
   hasGuestProjectsToMigrate,
   exitGuestMode,
 } from './guestStorageService';
-import type { MigrationResult, GuestProject, GuestRoom, GuestTask } from '@/types/guest.types';
+import type { MigrationResult, GuestProject } from '@/types/guest.types';
 
 export { hasGuestProjectsToMigrate };
+
+/**
+ * Migrate guest onboarding settings (language + user type) to the user's profile.
+ * Called after successful login/signup, before project migration.
+ */
+export async function migrateGuestOnboardingToProfile(profileId: string): Promise<void> {
+  const guestUserType = localStorage.getItem("guest_user_type");
+  const guestLanguage = localStorage.getItem("i18nextLng");
+
+  const updates: Record<string, unknown> = {};
+  if (guestUserType) updates.onboarding_user_type = guestUserType;
+  if (guestLanguage) updates.preferred_language = guestLanguage;
+
+  if (Object.keys(updates).length === 0) return;
+
+  const { error } = await supabase
+    .from("profiles")
+    .update(updates)
+    .eq("id", profileId);
+
+  if (error) {
+    console.error("Failed to migrate guest onboarding settings:", error);
+  }
+}
 
 export async function migrateGuestProjects(
   profileId: string,
@@ -27,6 +51,13 @@ export async function migrateGuestProjects(
   };
 
   try {
+    // First migrate onboarding settings
+    await migrateGuestOnboardingToProfile(profileId);
+
+    // Get the auth user ID for created_by_user_id
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
+
     const guestData = getAllGuestData();
 
     // Filter projects if specific IDs are provided
@@ -51,7 +82,7 @@ export async function migrateGuestProjects(
           .insert({
             name: guestProject.name,
             description: guestProject.description,
-            status: guestProject.status || 'active',
+            status: guestProject.status || 'planning',
             owner_id: profileId,
             address: guestProject.address,
             postal_code: guestProject.postal_code,
@@ -59,6 +90,7 @@ export async function migrateGuestProjects(
             project_type: guestProject.project_type,
             start_date: guestProject.start_date,
             total_budget: guestProject.total_budget,
+            currency: 'SEK',
           })
           .select()
           .single();
@@ -72,19 +104,24 @@ export async function migrateGuestProjects(
         result.migratedProjects++;
 
         // Migrate rooms for this project
+        // Supabase rooms table only has: name, description, dimensions, floor_plan_position
+        // Guest rooms have: name, room_type, status, area_sqm, floor_number, notes
+        // We map area_sqm into dimensions JSONB and notes into description
         const guestRooms = guestData.rooms[guestProject.id] || [];
         for (const guestRoom of guestRooms) {
           try {
+            const dimensions: Record<string, unknown> = {};
+            if (guestRoom.area_sqm) {
+              dimensions.area_sqm = guestRoom.area_sqm;
+            }
+
             const { data: newRoom, error: roomError } = await supabase
               .from('rooms')
               .insert({
                 project_id: newProject.id,
                 name: guestRoom.name,
-                room_type: guestRoom.room_type,
-                status: guestRoom.status || 'existing',
-                area_sqm: guestRoom.area_sqm,
-                floor_number: guestRoom.floor_number,
-                notes: guestRoom.notes,
+                description: guestRoom.notes,
+                dimensions: Object.keys(dimensions).length > 0 ? dimensions : null,
               })
               .select()
               .single();
@@ -118,6 +155,7 @@ export async function migrateGuestProjects(
                 status: guestTask.status || 'to_do',
                 priority: guestTask.priority || 'medium',
                 due_date: guestTask.due_date,
+                created_by_user_id: profileId,
               });
 
             if (taskError) {

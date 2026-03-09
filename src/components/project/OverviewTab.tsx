@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings2, Receipt, FileText, Mail, MessageSquare, ChevronDown, ClipboardList } from "lucide-react";
+import { Settings2, Receipt, FileText, Mail, MessageSquare, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useOverviewData } from "./overview/useOverviewData";
 import { PulseCards } from "./overview/PulseCards";
@@ -23,6 +23,7 @@ import { CommentsSection } from "@/components/comments/CommentsSection";
 import { ProjectStatusCTA } from "./overview/ProjectStatusCTA";
 import { PlanningTaskList } from "./overview/PlanningTaskList";
 import { PlanningRoomList } from "./overview/PlanningRoomList";
+import { GuestPlanningSection } from "./overview/GuestPlanningSection";
 import { ProjectHeader } from "./overview/ProjectHeader";
 import { RotDetailsCard } from "./overview/RotDetailsCard";
 import { normalizeStatus, isQuotePhase } from "@/lib/projectStatus";
@@ -118,52 +119,17 @@ const OverviewTab = ({
     refetch();
   };
 
-  // ----- Guest: show welcome + sign-in to unlock full features -----
+  // ----- Guest: show planning tools (localStorage-backed) -----
   if (isGuest) {
     return (
       <div className="space-y-6">
         <ProjectHeader project={project} onOpenSettings={() => setSettingsOpen(true)} />
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-primary" />
-              {t('overview.guestWelcomeTitle', 'Welcome to your project!')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground text-sm">
-              {t('overview.guestWelcomeDesc', 'Create a free account to unlock all planning tools — add rooms, tasks, materials, invite collaborators, and much more.')}
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {[
-                { icon: "1", titleKey: "overview.guestStep1", title: "Add rooms", descKey: "overview.guestStep1Desc", desc: "Define the spaces in your home" },
-                { icon: "2", titleKey: "overview.guestStep2", title: "Add tasks", descKey: "overview.guestStep2Desc", desc: "List what work needs to be done" },
-                { icon: "3", titleKey: "overview.guestStep3", title: "Get estimates", descKey: "overview.guestStep3Desc", desc: "See cost ranges and invite builders" },
-              ].map((step) => (
-                <div key={step.icon} className="flex gap-3 p-3 rounded-lg border bg-muted/30">
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary font-bold text-sm flex items-center justify-center">
-                    {step.icon}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">{t(step.titleKey, step.title)}</p>
-                    <p className="text-xs text-muted-foreground">{t(step.descKey, step.desc)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-center pt-2">
-              <Button onClick={() => window.location.href = "/auth"}>
-                {t('overview.guestSignUp', 'Create free account')}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
+        <GuestPlanningSection projectId={project.id} />
         <ProjectSettingsDialog
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
           project={project}
+          isGuest={isGuest}
           onProjectUpdate={handleProjectUpdate}
         />
       </div>
@@ -176,6 +142,7 @@ const OverviewTab = ({
       <PlanningTaskList
         projectId={project.id}
         currency={project.currency}
+        isHomeowner={isHomeowner}
         onNavigateToTasks={(taskId) => onNavigateToTasks?.(taskId)}
         onCreateQuote={() => setQuoteDialogOpen(true)}
         locked={lockStatus.isLocked}

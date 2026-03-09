@@ -80,23 +80,40 @@ interface Room {
 
 type ExtraColumnKey = "hours" | "hourlyRate" | "room" | "costType" | "material" | "profit" | "description";
 
-const EXTRA_COLUMNS: { key: ExtraColumnKey; labelKey: string; defaultOn: boolean }[] = [
+interface ExtraColumnDef {
+  key: ExtraColumnKey;
+  labelKey: string;
+  defaultOn: boolean;
+  /** Only visible for builders (hidden from homeowners) */
+  builderOnly?: boolean;
+}
+
+const EXTRA_COLUMNS: ExtraColumnDef[] = [
   { key: "description", labelKey: "tasks.description", defaultOn: false },
-  { key: "hours", labelKey: "taskCost.estimatedHours", defaultOn: true },
-  { key: "hourlyRate", labelKey: "taskCost.hourlyRate", defaultOn: true },
   { key: "room", labelKey: "planningTasks.room", defaultOn: true },
-  { key: "costType", labelKey: "planningTasks.costType", defaultOn: false },
+  { key: "hours", labelKey: "taskCost.estimatedHours", defaultOn: true },
+  { key: "hourlyRate", labelKey: "taskCost.hourlyRate", defaultOn: true, builderOnly: true },
+  { key: "costType", labelKey: "planningTasks.costType", defaultOn: false, builderOnly: true },
   { key: "material", labelKey: "taskCost.materialEstimate", defaultOn: true },
-  { key: "profit", labelKey: "taskCost.result", defaultOn: true },
+  { key: "profit", labelKey: "taskCost.result", defaultOn: true, builderOnly: true },
 ];
 
-const DEFAULT_EXTRAS = new Set<ExtraColumnKey>(
-  EXTRA_COLUMNS.filter((c) => c.defaultOn).map((c) => c.key)
-);
+function getDefaultExtras(isHomeowner: boolean): Set<ExtraColumnKey> {
+  return new Set(
+    EXTRA_COLUMNS
+      .filter((c) => c.defaultOn && !(isHomeowner && c.builderOnly))
+      .map((c) => c.key)
+  );
+}
+
+function getAvailableColumns(isHomeowner: boolean): ExtraColumnDef[] {
+  return EXTRA_COLUMNS.filter((c) => !(isHomeowner && c.builderOnly));
+}
 
 interface PlanningTaskListProps {
   projectId: string;
   currency?: string | null;
+  isHomeowner?: boolean;
   onNavigateToTasks?: (taskId?: string) => void;
   onCreateQuote?: () => void;
   locked?: boolean;
@@ -105,6 +122,7 @@ interface PlanningTaskListProps {
 export function PlanningTaskList({
   projectId,
   currency,
+  isHomeowner = false,
   onNavigateToTasks,
   onCreateQuote,
   locked = false,
@@ -140,9 +158,10 @@ export function PlanningTaskList({
   // Inline new room creation
   const [newRoomName, setNewRoomName] = useState("");
 
-  // Column visibility
+  // Column visibility — homeowners get a filtered set
+  const availableColumns = getAvailableColumns(isHomeowner);
   const [visibleExtras, setVisibleExtras] = useState<Set<ExtraColumnKey>>(
-    () => new Set(DEFAULT_EXTRAS)
+    () => getDefaultExtras(isHomeowner)
   );
 
   const toggleColumn = (key: ExtraColumnKey) => {
@@ -781,7 +800,9 @@ export function PlanningTaskList({
                       </TableHead>
                     )}
                     <TableHead className="text-right w-[120px]">
-                      {t("planningTasks.customerPrice", "Customer price")}
+                      {isHomeowner
+                        ? t("planningTasks.estimatedBudget", "Budget")
+                        : t("planningTasks.customerPrice", "Customer price")}
                     </TableHead>
                     {show.profit && (
                       <TableHead className="hidden sm:table-cell text-right w-[110px]">
@@ -1235,7 +1256,7 @@ export function PlanningTaskList({
                       <p className="text-sm font-medium mb-2">
                         {t("planningTasks.showColumns", "Show columns")}
                       </p>
-                      {EXTRA_COLUMNS.map((col) => (
+                      {availableColumns.map((col) => (
                         <label
                           key={col.key}
                           className="flex items-center gap-2 text-sm cursor-pointer"
