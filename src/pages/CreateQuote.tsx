@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Maximize2, Plus, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +12,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { QuoteItemRow, type QuoteItem } from "@/components/quotes/QuoteItemRow";
 import { QuoteSummary } from "@/components/quotes/QuoteSummary";
 import { QuotePreview } from "@/components/quotes/QuotePreview";
+import { QuoteDocument } from "@/components/quotes/QuoteDocument";
 import { ImportRoomDialog } from "@/components/quotes/ImportRoomDialog";
 import { CreateClientDialog, type Client } from "@/components/quotes/CreateClientDialog";
 import { Input } from "@/components/ui/input";
@@ -83,6 +84,18 @@ export default function CreateQuote() {
   const [createClientOpen, setCreateClientOpen] = useState(false);
   const [freeText, setFreeText] = useState("");
   const [quoteNumber, setQuoteNumber] = useState("");
+  const [previewScale, setPreviewScale] = useState(0.75);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+
+  const fitToWidth = useCallback(() => {
+    const container = previewContainerRef.current;
+    if (!container) return;
+    // A4 width = 210mm. The QuoteDocument renders at max-w-[210mm] ≈ 794px.
+    const containerWidth = container.clientWidth - 32; // subtract padding (p-4 = 16px * 2)
+    const a4Width = 794;
+    const scale = Math.min(containerWidth / a4Width, 1);
+    setPreviewScale(Math.round(scale * 100) / 100);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -183,6 +196,8 @@ export default function CreateQuote() {
             roomId: item.room_id ?? undefined,
             comment: item.comment || "",
             discountPercent: item.discount_percent ?? 0,
+            sourceTaskId: (item as Record<string, unknown>).source_task_id as string | undefined,
+            source: (item as Record<string, unknown>).source_type as QuoteItem["source"],
           }))
         );
       }
@@ -297,6 +312,7 @@ export default function CreateQuote() {
                   roomId: task.room_id || undefined,
                   roomName,
                   source: "hours",
+                  sourceTaskId: task.id,
                   comment: task.description || "",
                 });
               }
@@ -315,6 +331,7 @@ export default function CreateQuote() {
                   roomId: task.room_id || undefined,
                   roomName,
                   source: "subcontractor",
+                  sourceTaskId: task.id,
                 });
               }
 
@@ -330,6 +347,7 @@ export default function CreateQuote() {
                   roomId: task.room_id || undefined,
                   roomName,
                   source: "material",
+                  sourceTaskId: task.id,
                 });
               }
 
@@ -346,6 +364,7 @@ export default function CreateQuote() {
                     roomId: task.room_id || undefined,
                     roomName,
                     source: "fixed",
+                    sourceTaskId: task.id,
                     comment: task.description || "",
                   });
                 } else {
@@ -359,6 +378,7 @@ export default function CreateQuote() {
                     roomId: task.room_id || undefined,
                     roomName,
                     source: "missing",
+                    sourceTaskId: task.id,
                     comment: task.description || "",
                   });
                 }
@@ -375,6 +395,7 @@ export default function CreateQuote() {
                 roomId: task.room_id || undefined,
                 roomName,
                 source: "fixed",
+                sourceTaskId: task.id,
                 comment: task.description || "",
               });
             }
@@ -519,6 +540,8 @@ export default function CreateQuote() {
         sort_order: idx,
         comment: item.comment || null,
         discount_percent: item.discountPercent || null,
+        source_task_id: item.sourceTaskId || null,
+        source_type: item.source || null,
       }));
 
     const titlePrefix = isAta
@@ -606,111 +629,186 @@ export default function CreateQuote() {
         onSignOut={handleSignOut}
       />
 
-      <main className="container mx-auto px-4 py-6 max-w-2xl space-y-4">
-        {urlProjectId && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
-            onClick={() => navigate(`/projects/${urlProjectId}`)}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {t("quotes.backToPlanning")}
-          </Button>
-        )}
-        <h1 className="text-2xl font-bold">{t("quotes.newQuote")}</h1>
+      <main className="container mx-auto px-4 py-6">
+        <div className="lg:grid lg:grid-cols-[minmax(0,45fr)_minmax(0,55fr)] lg:gap-6 lg:items-start">
+          {/* ── Left column: form fields ── */}
+          <div className="max-w-2xl lg:max-w-none space-y-4 mx-auto lg:mx-0">
+            {urlProjectId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
+                onClick={() => navigate(`/projects/${urlProjectId}`)}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                {t("quotes.backToPlanning")}
+              </Button>
+            )}
+            <h1 className="text-2xl font-bold">{t("quotes.newQuote")}</h1>
 
-        <Select value={projectId} onValueChange={setProjectId}>
-          <SelectTrigger className="min-h-[48px]">
-            <SelectValue placeholder={t("quotes.selectProject")} />
-          </SelectTrigger>
-          <SelectContent>
-            {projects.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            <Select value={projectId} onValueChange={setProjectId}>
+              <SelectTrigger className="min-h-[48px]">
+                <SelectValue placeholder={t("quotes.selectProject")} />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-        <Select
-          value={clientId}
-          onValueChange={(val) => {
-            if (val === "__new__") {
-              setCreateClientOpen(true);
-            } else {
-              setClientId(val);
-            }
-          }}
-        >
-          <SelectTrigger className="min-h-[48px]">
-            <SelectValue placeholder={t("quotes.selectRecipient")} />
-          </SelectTrigger>
-          <SelectContent>
-            {clients.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-            <SelectItem value="__new__">{t("quotes.createNewClient")}</SelectItem>
-          </SelectContent>
-        </Select>
+            <Select
+              value={clientId}
+              onValueChange={(val) => {
+                if (val === "__new__") {
+                  setCreateClientOpen(true);
+                } else {
+                  setClientId(val);
+                }
+              }}
+            >
+              <SelectTrigger className="min-h-[48px]">
+                <SelectValue placeholder={t("quotes.selectRecipient")} />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+                <SelectItem value="__new__">{t("quotes.createNewClient")}</SelectItem>
+              </SelectContent>
+            </Select>
 
-        <div className="space-y-1">
-          <Label className="text-sm text-muted-foreground">{t("quotes.quoteNumberLabel", "Offertnr")}</Label>
-          <Input
-            value={quoteNumber}
-            onChange={(e) => setQuoteNumber(e.target.value)}
-            placeholder="OFF-2026-001"
-            className="min-h-[48px]"
-          />
-        </div>
+            <div className="space-y-1">
+              <Label className="text-sm text-muted-foreground">{t("quotes.quoteNumberLabel", "Offertnr")}</Label>
+              <Input
+                value={quoteNumber}
+                onChange={(e) => setQuoteNumber(e.target.value)}
+                placeholder="OFF-2026-001"
+                className="min-h-[48px]"
+              />
+            </div>
 
-        <Textarea
-          placeholder={t("quotes.freeTextPlaceholder")}
-          value={freeText}
-          onChange={(e) => setFreeText(e.target.value)}
-          rows={3}
-          className="min-h-[80px]"
-        />
-
-        <div className="space-y-3">
-          {items.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">{t("quotes.noItems")}</p>
-          )}
-          {items.map((item) => (
-            <QuoteItemRow
-              key={item.id}
-              item={item}
-              onChange={handleChange}
-              onDelete={handleDelete}
-              onImportRoom={handleImportRoom}
+            <Textarea
+              placeholder={t("quotes.freeTextPlaceholder")}
+              value={freeText}
+              onChange={(e) => setFreeText(e.target.value)}
+              rows={3}
+              className="min-h-[80px]"
             />
-          ))}
-        </div>
 
-        <Button
-          variant="outline"
-          className="w-full min-h-[48px]"
-          onClick={() => setItems((prev) => [...prev, newItem()])}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          {t("quotes.addItem")}
-        </Button>
+            <div className="space-y-3">
+              {items.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">{t("quotes.noItems")}</p>
+              )}
+              {items.map((item) => (
+                <QuoteItemRow
+                  key={item.id}
+                  item={item}
+                  onChange={handleChange}
+                  onDelete={handleDelete}
+                  onImportRoom={handleImportRoom}
+                />
+              ))}
+            </div>
 
-        <QuoteSummary items={items} />
+            <Button
+              variant="outline"
+              className="w-full min-h-[48px]"
+              onClick={() => setItems((prev) => [...prev, newItem()])}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {t("quotes.addItem")}
+            </Button>
 
-        <div className="flex gap-2 pb-8">
-          <Button
-            variant="outline"
-            className="flex-1 min-h-[48px]"
-            onClick={() => setPreviewOpen(true)}
+            <QuoteSummary items={items} />
+
+            <div className="flex gap-2 pb-8">
+              {/* Preview button only on mobile — desktop has live preview */}
+              <Button
+                variant="outline"
+                className="flex-1 min-h-[48px] lg:hidden"
+                onClick={() => setPreviewOpen(true)}
+              >
+                {t("quotes.preview")}
+              </Button>
+              <Button
+                className="flex-1 min-h-[48px]"
+                onClick={handleSaveDraft}
+                disabled={saving}
+              >
+                {saving ? t("common.saving") : t("quotes.saveDraft")}
+              </Button>
+            </div>
+          </div>
+
+          {/* ── Right column: live preview (desktop only) ── */}
+          <div
+            ref={previewContainerRef}
+            className="hidden lg:flex lg:flex-col sticky top-6 max-h-[calc(100vh-3rem)] rounded-lg border bg-neutral-100 dark:bg-neutral-900"
           >
-            {t("quotes.preview")}
-          </Button>
-          <Button
-            className="flex-1 min-h-[48px]"
-            onClick={handleSaveDraft}
-            disabled={saving}
-          >
-            {saving ? t("common.saving") : t("quotes.saveDraft")}
-          </Button>
+            {/* Toolbar */}
+            <div className="flex items-center gap-1.5 px-4 py-2 border-b bg-background/60 backdrop-blur-sm rounded-t-lg flex-shrink-0">
+              <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs text-muted-foreground mr-auto">
+                {t("quotes.livePreview", "Förhandsgranskning")}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setPreviewScale((s) => Math.max(0.3, Math.round((s - 0.1) * 100) / 100))}
+                title={t("common.zoomOut", "Zoom out")}
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-xs tabular-nums text-muted-foreground w-10 text-center">
+                {Math.round(previewScale * 100)}%
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setPreviewScale((s) => Math.min(1.5, Math.round((s + 0.1) * 100) / 100))}
+                title={t("common.zoomIn", "Zoom in")}
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </Button>
+              <div className="w-px h-4 bg-border mx-1" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={fitToWidth}
+                title={t("quotes.fitPage", "Fyll sida")}
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+
+            {/* Scrollable preview area */}
+            <div className="flex-1 overflow-auto p-4">
+              <div
+                style={{
+                  transform: `scale(${previewScale})`,
+                  transformOrigin: "top left",
+                  width: `${100 / previewScale}%`,
+                }}
+              >
+                <QuoteDocument
+                  projectName={projectName}
+                  items={items}
+                  freeText={freeText}
+                  company={{
+                    name: companyName,
+                    logoUrl: companyLogoUrl,
+                    ...companyInfo,
+                  }}
+                  clientName={clients.find((c) => c.id === clientId)?.name}
+                  quoteNumber={quoteNumber}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </main>
 

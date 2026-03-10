@@ -186,9 +186,9 @@ export default function ViewInvoice() {
         .from("clients")
         .select("name")
         .eq("id", inv.client_id_ref)
-        .single()
+        .maybeSingle()
         .then(({ data: cd }) => {
-          if (cd) setClientName(cd.name);
+          if (cd?.name) setClientName(cd.name);
         });
     }
 

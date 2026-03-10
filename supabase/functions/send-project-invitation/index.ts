@@ -1,20 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
-// 1. Hämta variablerna först
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-// 2. Kontrollera dem sen
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !RESEND_API_KEY) {
-  console.error("Saknade variabler:", { 
-    url: !!SUPABASE_URL, 
-    role: !!SUPABASE_SERVICE_ROLE_KEY, 
-    resend: !!RESEND_API_KEY 
+  console.error("Missing env vars:", {
+    url: !!SUPABASE_URL,
+    role: !!SUPABASE_SERVICE_ROLE_KEY,
+    resend: !!RESEND_API_KEY,
   });
-  // Vi kastar inte Error här ute för då dör hela servern, 
-  // vi loggar det så vi ser det i Supabase-loggarna.
 }
 
 interface InvitationData {
@@ -23,134 +19,202 @@ interface InvitationData {
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
+// ---------------------------------------------------------------------------
+// Email templates
+// ---------------------------------------------------------------------------
+
+function buildRfqEmail(
+  invitation: Record<string, unknown>,
+  invitationUrl: string
+): { subject: string; html: string } {
+  const project = invitation.project as { id: string; name: string };
+  const inviter = invitation.inviter as { name: string; email: string };
+  const perms = (invitation.permissions_snapshot || {}) as Record<string, unknown>;
+  const personalMessage = perms.message as string | null;
+  const inviterName = inviter.name || inviter.email;
+
+  const subject = `Offertförfrågan: ${project.name} — Renomate`;
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1a1a1a;max-width:560px;margin:0 auto;padding:20px;background:#fff}
+  .card{background:#f8faf8;border:1px solid #e5e7eb;border-radius:12px;padding:28px;margin:16px 0}
+  h1{font-size:20px;font-weight:600;margin:0 0 4px}
+  .subtitle{color:#666;font-size:14px;margin:0 0 20px}
+  .msg{background:#fff;border-left:3px solid #10b981;padding:12px 16px;border-radius:0 8px 8px 0;margin:16px 0;font-size:14px;color:#374151}
+  .steps{margin:20px 0;padding:0;list-style:none;counter-reset:step}
+  .steps li{position:relative;padding:0 0 12px 32px;font-size:14px;color:#374151}
+  .steps li::before{counter-increment:step;content:counter(step);position:absolute;left:0;top:0;width:22px;height:22px;background:#10b981;color:#fff;border-radius:50%;font-size:12px;font-weight:600;text-align:center;line-height:22px}
+  .btn{display:inline-block;padding:14px 32px;background:#10b981;color:#fff!important;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;margin:20px 0}
+  .link{color:#666;font-size:12px;word-break:break-all;margin:8px 0}
+  .footer{text-align:center;color:#999;font-size:12px;margin-top:28px;padding-top:16px;border-top:1px solid #e5e7eb}
+</style></head><body>
+<div class="card">
+  <h1>Offertförfrågan</h1>
+  <p class="subtitle">${inviterName} vill ha en offert på sitt renoveringsprojekt <strong>${project.name}</strong></p>
+  ${personalMessage ? `<div class="msg">"${personalMessage}"<br><span style="color:#999;font-size:12px">— ${inviterName}</span></div>` : ""}
+  <ol class="steps">
+    <li>Klicka på länken nedan och logga in (eller skapa konto)</li>
+    <li>Se hemägarens arbetsomfattning, rum och önskemål</li>
+    <li>Skapa din offert baserat på underlaget</li>
+    <li>Hemägaren kan godkänna eller ställa frågor direkt i appen</li>
+  </ol>
+  <a href="${invitationUrl}" class="btn">Visa offertförfrågan</a>
+  <p class="link">${invitationUrl}</p>
+</div>
+<div class="footer">
+  <p>Inbjudan gäller i 7 dagar.</p>
+  <p>Renomate — Renovering, enklare.</p>
+</div>
+</body></html>`;
+
+  return { subject, html };
+}
+
+function buildStandardEmail(
+  invitation: Record<string, unknown>,
+  invitationUrl: string
+): { subject: string; html: string } {
+  const project = invitation.project as { id: string; name: string };
+  const inviter = invitation.inviter as { name: string; email: string };
+  const inviterName = inviter.name || inviter.email;
+
+  const subject = `You're invited to ${project.name} — Renomate`;
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px}
+  .container{background:#f9f9f9;border-radius:8px;padding:30px;margin:20px 0}
+  .button{display:inline-block;padding:12px 24px;background:#10b981;color:white!important;text-decoration:none;border-radius:6px;font-weight:600;margin:20px 0}
+  .details{background:white;padding:15px;border-radius:6px;margin:15px 0}
+  .footer{text-align:center;color:#666;font-size:14px;margin-top:30px}
+</style></head><body>
+<div class="container">
+  <h2>Project Invitation — ${project.name}</h2>
+  <p>Hi!</p>
+  <p><strong>${inviterName}</strong> has invited you to collaborate on their renovation project: <strong>${project.name}</strong></p>
+  <div class="details">
+    <h3>Your Access Level</h3>
+    <ul>
+      <li><strong>Role:</strong> ${invitation.role || "viewer"}</li>
+      <li><strong>Tasks:</strong> ${invitation.tasks_access || "view"}</li>
+      <li><strong>Overview:</strong> ${invitation.overview_access || "view"}</li>
+    </ul>
+  </div>
+  <p>Click the button below to accept the invitation:</p>
+  <a href="${invitationUrl}" class="button">Accept Invitation</a>
+  <p style="color:#666;font-size:14px">Or copy this link:<br>
+    <code style="background:#eee;padding:4px 8px;border-radius:4px;display:inline-block;margin-top:5px">${invitationUrl}</code>
+  </p>
+</div>
+<div class="footer">
+  <p>This invitation will expire in 7 days.</p>
+  <p>If you didn't expect this invitation, you can safely ignore this email.</p>
+</div>
+</body></html>`;
+
+  return { subject, html };
+}
+
+function buildPlanningContributorEmail(
+  invitation: Record<string, unknown>,
+  invitationUrl: string
+): { subject: string; html: string } {
+  const project = invitation.project as { id: string; name: string };
+  const inviter = invitation.inviter as { name: string; email: string };
+  const inviterName = inviter.name || inviter.email;
+
+  const subject = `Beskriv din renovering — ${project.name} — Renomate`;
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1a1a1a;max-width:560px;margin:0 auto;padding:20px;background:#fff}
+  .card{background:#f8faf8;border:1px solid #e5e7eb;border-radius:12px;padding:28px;margin:16px 0}
+  h1{font-size:20px;font-weight:600;margin:0 0 4px}
+  .subtitle{color:#666;font-size:14px;margin:0 0 20px}
+  .steps{margin:20px 0;padding:0;list-style:none;counter-reset:step}
+  .steps li{position:relative;padding:0 0 12px 32px;font-size:14px;color:#374151}
+  .steps li::before{counter-increment:step;content:counter(step);position:absolute;left:0;top:0;width:22px;height:22px;background:#6366f1;color:#fff;border-radius:50%;font-size:12px;font-weight:600;text-align:center;line-height:22px}
+  .btn{display:inline-block;padding:14px 32px;background:#6366f1;color:#fff!important;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;margin:20px 0}
+  .link{color:#666;font-size:12px;word-break:break-all;margin:8px 0}
+  .footer{text-align:center;color:#999;font-size:12px;margin-top:28px;padding-top:16px;border-top:1px solid #e5e7eb}
+</style></head><body>
+<div class="card">
+  <h1>Beskriv din renovering</h1>
+  <p class="subtitle"><strong>${inviterName}</strong> har bjudit in dig att beskriva vad som behöver göras i projektet <strong>${project.name}</strong></p>
+  <ol class="steps">
+    <li>Klicka på länken nedan och logga in (eller skapa konto)</li>
+    <li>Lägg till vilka arbeten som behöver utföras</li>
+    <li>Lägg till rum med mått</li>
+    <li>Koppla ihop arbeten med rum — så kan din byggare ge dig en exakt offert</li>
+  </ol>
+  <a href="${invitationUrl}" class="btn">Börja planera</a>
+  <p class="link">${invitationUrl}</p>
+</div>
+<div class="footer">
+  <p>Inbjudan gäller i 7 dagar.</p>
+  <p>Renomate — Renovering, enklare.</p>
+</div>
+</body></html>`;
+
+  return { subject, html };
+}
+
+// ---------------------------------------------------------------------------
+// Handler
+// ---------------------------------------------------------------------------
+
 serve(async (req) => {
-  // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     const { invitationId }: InvitationData = await req.json();
+    if (!invitationId) throw new Error("Missing invitationId");
 
-    if (!invitationId) {
-      throw new Error("Missing invitationId");
-    }
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
-    // Create Supabase client with service role key
-    const supabase = createClient(
-      SUPABASE_URL!,
-      SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
-
-    // Fetch invitation details
     const { data: invitation, error: invitationError } = await supabase
       .from("project_invitations")
-      .select(`
-        *,
-        project:projects(id, name),
-        inviter:profiles!invited_by_user_id(name, email)
-      `)
+      .select(
+        `*, project:projects(id, name), inviter:profiles!invited_by_user_id(name, email)`
+      )
       .eq("id", invitationId)
       .single();
 
     if (invitationError || !invitation) {
-      throw new Error(`Failed to fetch invitation: ${invitationError?.message}`);
+      throw new Error(
+        `Failed to fetch invitation: ${invitationError?.message}`
+      );
     }
 
-    // Build invitation URL
-    const invitationUrl = `${req.headers.get("origin") || "https://your-app.com"}/invitation?token=${invitation.token}`;
+    const origin =
+      req.headers.get("origin") || "https://app.letsrenomate.com";
+    const invitationUrl = `${origin}/invitation?token=${invitation.token || invitation.invitation_token}`;
 
-    // Prepare email content
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-              line-height: 1.6;
-              color: #333;
-              max-width: 600px;
-              margin: 0 auto;
-              padding: 20px;
-            }
-            .container {
-              background: #f9f9f9;
-              border-radius: 8px;
-              padding: 30px;
-              margin: 20px 0;
-            }
-            .button {
-              display: inline-block;
-              padding: 12px 24px;
-              background: #10b981;
-              color: white !important;
-              text-decoration: none;
-              border-radius: 6px;
-              font-weight: 600;
-              margin: 20px 0;
-            }
-            .details {
-              background: white;
-              padding: 15px;
-              border-radius: 6px;
-              margin: 15px 0;
-            }
-            .footer {
-              text-align: center;
-              color: #666;
-              font-size: 14px;
-              margin-top: 30px;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h2>🏠 Project Invitation - ${invitation.project.name}</h2>
-            <p>Hi!</p>
-            <p><strong>${invitation.inviter.name || invitation.inviter.email}</strong> has invited you to collaborate on their renovation project: <strong>${invitation.project.name}</strong></p>
-            
-            <div class="details">
-              <h3>Your Access Level</h3>
-              <ul>
-                <li><strong>Role:</strong> ${invitation.role}</li>
-                <li><strong>Timeline:</strong> ${invitation.timeline_access || 'view'}</li>
-                <li><strong>Tasks:</strong> ${invitation.tasks_access || 'view'} ${invitation.tasks_scope ? `(${invitation.tasks_scope})` : ''}</li>
-                <li><strong>Space Planner:</strong> ${invitation.space_planner_access || 'view'}</li>
-                <li><strong>Purchase Orders:</strong> ${invitation.purchases_access || 'view'} ${invitation.purchases_scope ? `(${invitation.purchases_scope})` : ''}</li>
-                <li><strong>Overview:</strong> ${invitation.overview_access || 'view'}</li>
-              </ul>
-            </div>
+    // Detect invitation type
+    const perms = (invitation.permissions_snapshot || {}) as Record<string, unknown>;
+    const roleType = invitation.role_type || perms.role_type;
 
-            <p>Click the button below to accept the invitation and start collaborating:</p>
-            
-            <a href="${invitationUrl}" class="button">Accept Invitation</a>
-            
-            <p style="color: #666; font-size: 14px;">
-              Or copy this link: <br>
-              <code style="background: #eee; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 5px;">${invitationUrl}</code>
-            </p>
-          </div>
-          
-          <div class="footer">
-            <p>This invitation will expire in 7 days.</p>
-            <p>If you didn't expect this invitation, you can safely ignore this email.</p>
-          </div>
-        </body>
-      </html>
-    `;
+    const { subject, html } = roleType === "rfq_builder"
+      ? buildRfqEmail(invitation, invitationUrl)
+      : roleType === "planning_contributor"
+        ? buildPlanningContributorEmail(invitation, invitationUrl)
+        : buildStandardEmail(invitation, invitationUrl);
 
-    // Send email via Resend
+    const recipientEmail =
+      invitation.invited_email || invitation.email;
+
     const resendResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -158,10 +222,10 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Renomate <hello@letsrenomate.com>", // Change this after verifying your domain
-        to: [invitation.email],
-        subject: `You're invited to ${invitation.project.name} - Renomate`,
-        html: emailHtml,
+        from: "Renomate <hello@letsrenomate.com>",
+        to: [recipientEmail],
+        subject,
+        html,
       }),
     });
 
@@ -173,10 +237,7 @@ serve(async (req) => {
     const resendData = await resendResponse.json();
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        messageId: resendData.id,
-      }),
+      JSON.stringify({ success: true, messageId: resendData.id }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -184,14 +245,9 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Error sending invitation:", error);
-    return new Response(
-      JSON.stringify({
-        error: error.message,
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
-      }
-    );
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400,
+    });
   }
 });

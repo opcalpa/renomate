@@ -54,30 +54,36 @@ export async function cloneRfqForBuilder(
   const newProjectId = newProject.id;
 
   // 3. Clone rooms — map old IDs to new IDs for task linking
-  const { data: rooms } = await supabase
+  const { data: rooms, error: roomReadErr } = await supabase
     .from("rooms")
-    .select("id, name, dimensions, ceiling_height_mm, room_type, room_status")
+    .select("id, name, dimensions, description, floor_plan_position")
     .eq("project_id", sourceProjectId)
     .order("created_at", { ascending: true });
+
+  if (roomReadErr) {
+    console.error("RFQ clone: failed to read rooms", roomReadErr);
+  }
 
   const roomIdMap = new Map<string, string>();
   let roomsCloned = 0;
 
   if (rooms && rooms.length > 0) {
     for (const room of rooms) {
-      const { data: newRoom } = await supabase
+      const { data: newRoom, error: roomInsertErr } = await supabase
         .from("rooms")
         .insert({
           project_id: newProjectId,
           name: room.name,
           dimensions: room.dimensions,
-          ceiling_height_mm: room.ceiling_height_mm,
-          room_type: room.room_type,
-          room_status: room.room_status,
+          description: room.description,
+          floor_plan_position: room.floor_plan_position,
         })
         .select("id")
         .single();
 
+      if (roomInsertErr) {
+        console.error("RFQ clone: failed to insert room", room.name, roomInsertErr);
+      }
       if (newRoom) {
         roomIdMap.set(room.id, newRoom.id);
         roomsCloned++;
@@ -88,9 +94,9 @@ export async function cloneRfqForBuilder(
   // 4. Clone tasks — scope only (title, description, room links, cost_center)
   const { data: tasks } = await supabase
     .from("tasks")
-    .select("id, title, description, room_id, room_ids, cost_center, sort_order")
+    .select("id, title, description, room_id, room_ids, cost_center")
     .eq("project_id", sourceProjectId)
-    .order("sort_order", { ascending: true });
+    .order("created_at", { ascending: true });
 
   let tasksCloned = 0;
 
@@ -105,12 +111,12 @@ export async function cloneRfqForBuilder(
         .from("tasks")
         .insert({
           project_id: newProjectId,
+          created_by_user_id: builderProfileId,
           title: task.title,
           description: task.description,
           room_id: newRoomId,
           room_ids: newRoomIds,
           cost_center: task.cost_center,
-          sort_order: task.sort_order,
           status: "to_do",
         });
 
@@ -118,17 +124,9 @@ export async function cloneRfqForBuilder(
     }
   }
 
-  // 5. Add homeowner as client share on builder's project
-  await supabase.from("project_shares").insert({
-    project_id: newProjectId,
-    shared_with_user_id: source.owner_id,
-    role: "viewer",
-    role_type: "client",
-    customer_view_access: "view",
-    budget_access: "none",
-    tasks_access: "view",
-    tasks_scope: "all",
-  });
+  // 5. Homeowner is NOT added here — builder works privately.
+  // When builder sends the quote, the existing quote-sending flow
+  // (intakeService.inviteCustomerAsClient) adds the homeowner at that point.
 
   return { projectId: newProjectId, tasksCloned, roomsCloned };
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -12,13 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Send, Mail, Download, CheckCircle2, ClipboardList, Home, Loader2 } from "lucide-react";
+import { Send, Mail, Download, CheckCircle2, Loader2, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import {
-  detectWorkType,
-  WORK_TYPE_LABEL_KEYS,
-} from "@/lib/materialRecipes";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -29,7 +24,6 @@ interface RfqTask {
   title: string;
   description: string | null;
   room_names: string[];
-  cost_center: string | null;
 }
 
 interface RfqRoom {
@@ -72,30 +66,36 @@ export function ShareRfqDialog({
       setMessage("");
       return;
     }
-    // Fetch summary data
     const fetchData = async () => {
       const [{ data: taskData }, { data: roomData }] = await Promise.all([
         supabase
           .from("tasks")
-          .select("id, title, description, room_id, room_ids, cost_center, rooms!tasks_room_id_fkey(name)")
+          .select("id, title, description, room_id, room_ids")
           .eq("project_id", projectId)
-          .order("sort_order", { ascending: true }),
+          .order("created_at", { ascending: true }),
         supabase
           .from("rooms")
-          .select("name, dimensions")
+          .select("id, name, dimensions")
           .eq("project_id", projectId)
           .order("created_at", { ascending: true }),
       ]);
 
+      const roomMap = new Map<string, string>();
+      if (roomData) {
+        for (const r of roomData) roomMap.set(r.id, r.name);
+      }
+
       if (taskData) {
         setTasks(
-          taskData.map((t) => ({
-            id: t.id,
-            title: t.title,
-            description: t.description,
-            room_names: [],
-            cost_center: t.cost_center,
-          }))
+          taskData.map((task) => {
+            const ids = (task.room_ids as string[] | null) ?? (task.room_id ? [task.room_id] : []);
+            return {
+              id: task.id,
+              title: task.title,
+              description: task.description,
+              room_names: ids.map((id) => roomMap.get(id)).filter(Boolean) as string[],
+            };
+          })
         );
       }
       if (roomData) {
@@ -118,25 +118,55 @@ export function ShareRfqDialog({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Create invitation
-      const { error } = await supabase.from("project_invitations").insert({
-        project_id: projectId,
-        email: email.trim().toLowerCase(),
-        role: "editor",
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+      if (!profile) throw new Error("Profile not found");
+
+      const rfqPerms = {
         role_type: "rfq_builder",
-        status: "pending",
-        delivery_method: "email",
-        notes: message || null,
-        // Grant builder-level access on accept
+        timeline_access: "view",
         tasks_access: "edit",
         tasks_scope: "all",
         overview_access: "view",
         budget_access: "edit",
         files_access: "view",
         space_planner_access: "view",
-      });
+        purchases_access: "none",
+        teams_access: "none",
+      };
+
+      const { data: invitationData, error } = await supabase
+        .from("project_invitations")
+        .insert({
+          project_id: projectId,
+          invited_by_user_id: profile.id,
+          email: email.trim().toLowerCase(),
+          role: "editor",
+          contractor_role: "general_contractor",
+          delivery_method: "email",
+          status: "pending",
+          ...rfqPerms,
+          permissions_snapshot: {
+            ...rfqPerms,
+            message: message || null,
+          },
+        } as Record<string, unknown>)
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Send email via Edge Function
+      try {
+        await supabase.functions.invoke("send-project-invitation", {
+          body: { invitationId: invitationData.id },
+        });
+      } catch (sendErr) {
+        console.error("Email send failed:", sendErr);
+      }
 
       setSent(true);
       toast({ description: t("shareRfq.inviteSent", "Invitation sent!") });
@@ -146,11 +176,67 @@ export function ShareRfqDialog({
     setSending(false);
   };
 
+  const totalArea = rooms.reduce((sum, r) => sum + (r.area_sqm ?? 0), 0);
+
+  const handleDownloadPdf = useCallback(() => {
+    const title = projectName || t("common.project", "Project");
+    const html = `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<title>${title} — ${t("shareRfq.title")}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,system-ui,sans-serif;color:#1a1a1a;padding:40px;max-width:700px;margin:auto;font-size:13px;line-height:1.5}
+  h1{font-size:20px;font-weight:600;margin-bottom:2px}
+  .addr{color:#666;font-size:13px;margin-bottom:24px}
+  h2{font-size:14px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:.5px;margin:20px 0 8px;padding-bottom:4px;border-bottom:1px solid #e5e5e5}
+  .task{margin-bottom:10px}
+  .task-title{font-weight:500;font-size:13px}
+  .task-desc{color:#666;font-size:12px;margin-top:1px}
+  .task-rooms{color:#888;font-size:11px;margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-weight:500;color:#666;padding:6px 12px 6px 0;border-bottom:1px solid #e5e5e5}
+  td{padding:5px 12px 5px 0;border-bottom:1px solid #f0f0f0}
+  .total{font-weight:500;color:#444}
+  .footer{margin-top:32px;padding-top:12px;border-top:1px solid #e5e5e5;color:#999;font-size:11px}
+  @media print{body{padding:20px}}
+</style></head><body>
+<h1>${title}</h1>
+${projectAddress ? `<p class="addr">${projectAddress}</p>` : ""}
+<h2>${t("shareRfq.scopeOfWork", "Scope of work")} (${tasks.length})</h2>
+${tasks.map((task) => `<div class="task">
+  <div class="task-title">${task.title}</div>
+  ${task.description ? `<div class="task-desc">${task.description}</div>` : ""}
+  ${task.room_names.length ? `<div class="task-rooms">${task.room_names.join(", ")}</div>` : ""}
+</div>`).join("")}
+${rooms.length ? `
+<h2>${t("shareRfq.rooms", "Rooms")} (${rooms.length})</h2>
+<table>
+  <thead><tr><th>${t("common.name", "Name")}</th><th>${t("homeownerPlanning.area", "Area")}</th></tr></thead>
+  <tbody>
+    ${rooms.map((r) => `<tr><td>${r.name}</td><td>${r.area_sqm ? r.area_sqm + " m²" : "—"}</td></tr>`).join("")}
+    <tr><td class="total">${t("common.total", "Total")}</td><td class="total">${totalArea ? totalArea + " m²" : "—"}</td></tr>
+  </tbody>
+</table>` : ""}
+<div class="footer">${t("shareRfq.generatedBy", "Generated by Renomate")} — ${new Date().toLocaleDateString()}</div>
+</body></html>`;
+
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, "_blank");
+    if (w) {
+      w.onload = () => {
+        w.print();
+        URL.revokeObjectURL(url);
+      };
+    }
+  }, [tasks, rooms, totalArea, projectName, projectAddress, t]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-lg">
             <Send className="h-5 w-5 text-primary" />
             {t("shareRfq.title", "Share quote request")}
           </DialogTitle>
@@ -159,62 +245,89 @@ export function ShareRfqDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* RFQ Preview */}
-        <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-          <div>
-            <p className="font-medium text-sm">{projectName || t("common.project", "Project")}</p>
-            {projectAddress && <p className="text-xs text-muted-foreground">{projectAddress}</p>}
+        {/* ── RFQ Preview ── */}
+        <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
+          {/* Project header */}
+          <div className="flex items-start gap-2">
+            {projectAddress && <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />}
+            <div className="min-w-0">
+              <p className="font-semibold text-sm leading-tight">{projectName || t("common.project", "Project")}</p>
+              {projectAddress && (
+                <p className="text-xs text-muted-foreground">{projectAddress}</p>
+              )}
+            </div>
           </div>
 
-          {/* Tasks summary */}
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-              <ClipboardList className="h-3 w-3" />
+          <Separator />
+
+          {/* Tasks */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               {t("shareRfq.scopeOfWork", "Scope of work")} ({tasks.length})
             </p>
-            <div className="flex flex-wrap gap-1">
-              {tasks.map((task) => {
-                const wt = detectWorkType(task);
-                return (
-                  <Badge key={task.id} variant="secondary" className="text-xs font-normal">
-                    {wt && (
-                      <span className="text-muted-foreground mr-1">
-                        {t(WORK_TYPE_LABEL_KEYS[wt], wt)}:
-                      </span>
-                    )}
-                    {task.title}
-                  </Badge>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Rooms summary */}
-          {rooms.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Home className="h-3 w-3" />
-                {t("shareRfq.rooms", "Rooms")} ({rooms.length})
+            {tasks.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">
+                {t("shareRfq.noTasks", "No tasks added yet")}
               </p>
-              <div className="flex flex-wrap gap-1">
-                {rooms.map((room, i) => (
-                  <Badge key={i} variant="outline" className="text-xs font-normal">
-                    {room.name}
-                    {room.area_sqm && <span className="text-muted-foreground ml-1">{room.area_sqm} m²</span>}
-                  </Badge>
+            ) : (
+              <div className="space-y-2">
+                {tasks.map((task, i) => (
+                  <div key={task.id} className="flex gap-2">
+                    <span className="text-xs text-muted-foreground/60 w-4 shrink-0 text-right pt-px">{i + 1}.</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium leading-tight">{task.title}</p>
+                      {task.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{task.description}</p>
+                      )}
+                      {task.room_names.length > 0 && (
+                        <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                          {task.room_names.join(", ")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
-            </div>
+            )}
+          </div>
+
+          {/* Rooms */}
+          {rooms.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {t("shareRfq.rooms", "Rooms")} ({rooms.length})
+                </p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                  {rooms.map((room, i) => (
+                    <div key={i} className="flex items-baseline justify-between text-sm py-0.5">
+                      <span className="truncate">{room.name}</span>
+                      <span className="text-xs text-muted-foreground ml-2 tabular-nums shrink-0">
+                        {room.area_sqm ? `${room.area_sqm} m²` : "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {totalArea > 0 && (
+                  <p className="text-xs text-muted-foreground pt-1 border-t">
+                    {t("common.total", "Total")}: <span className="font-medium tabular-nums">{totalArea} m²</span>
+                  </p>
+                )}
+              </div>
+            </>
           )}
         </div>
 
         <Separator />
 
-        {/* Invite builder */}
+        {/* ── Invite builder / Success ── */}
         {sent ? (
           <div className="flex flex-col items-center gap-2 py-4">
             <CheckCircle2 className="h-8 w-8 text-green-600" />
-            <p className="text-sm font-medium">{t("shareRfq.sentConfirmation", "Invitation sent to {{email}}", { email })}</p>
+            <p className="text-sm font-medium">
+              {t("shareRfq.sentConfirmation", "Invitation sent to {{email}}", { email })}
+            </p>
             <p className="text-xs text-muted-foreground text-center">
               {t("shareRfq.sentDescription", "The builder will receive an email with a link to view your renovation plan and create a quote.")}
             </p>
@@ -224,7 +337,7 @@ export function ShareRfqDialog({
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Label className="text-sm font-medium flex items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5" />
                 {t("shareRfq.inviteBuilder", "Invite a builder")}
@@ -254,7 +367,12 @@ export function ShareRfqDialog({
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 {t("shareRfq.sendInvitation", "Send invitation")}
               </Button>
-              <Button variant="outline" disabled className="gap-1.5">
+              <Button
+                variant="outline"
+                className="gap-1.5"
+                onClick={handleDownloadPdf}
+                disabled={tasks.length === 0}
+              >
                 <Download className="h-4 w-4" />
                 {t("shareRfq.downloadPdf", "PDF")}
               </Button>

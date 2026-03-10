@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { EntityPhotoGallery } from "@/components/shared/EntityPhotoGallery";
+import { TaskFilesList } from "./TaskFilesList";
 
 interface Material {
   id: string;
@@ -423,9 +424,10 @@ export const MaterialEditDialog = ({
                 </TooltipProvider>
               </div>
 
-              {/* Photos */}
+              {/* Photos & Documents */}
               <Separator className="my-4" />
-              <EntityPhotoGallery entityId={material.id} entityType="material" />
+              <EntityPhotoGallery entityId={material.id} entityType="material" projectId={projectId} />
+              <TaskFilesList materialId={material.id} projectId={projectId} />
 
               {/* Comments Section */}
               <Separator className="my-4" />

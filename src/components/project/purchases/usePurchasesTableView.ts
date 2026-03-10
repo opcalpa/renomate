@@ -1,28 +1,34 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   PurchaseColumnKey,
   PurchaseColumnDef,
-  PurchaseSavedView,
   EXTRA_COLUMN_KEYS,
   DEFAULT_VISIBLE_EXTRAS,
 } from "./purchasesTypes";
 
-const VIEWS_STORAGE_KEY = (projectId: string) =>
-  `purchases-table-views-${projectId}`;
+const PREFS_KEY = (projectId: string) => `purchases-table-prefs-${projectId}`;
 
-function loadSavedViews(projectId: string): PurchaseSavedView[] {
+interface TablePrefs {
+  columnOrder: PurchaseColumnKey[];
+  visibleExtras: PurchaseColumnKey[];
+  sortKey: PurchaseColumnKey | null;
+  sortDir: "asc" | "desc";
+  compactRows: boolean;
+}
+
+function loadPrefs(projectId: string): TablePrefs | null {
   try {
-    const raw = localStorage.getItem(VIEWS_STORAGE_KEY(projectId));
-    if (!raw) return [];
-    return JSON.parse(raw) as PurchaseSavedView[];
+    const raw = localStorage.getItem(PREFS_KEY(projectId));
+    if (!raw) return null;
+    return JSON.parse(raw) as TablePrefs;
   } catch {
-    return [];
+    return null;
   }
 }
 
-function persistSavedViews(projectId: string, views: PurchaseSavedView[]) {
-  localStorage.setItem(VIEWS_STORAGE_KEY(projectId), JSON.stringify(views));
+function persistPrefs(projectId: string, prefs: TablePrefs) {
+  localStorage.setItem(PREFS_KEY(projectId), JSON.stringify(prefs));
 }
 
 export function usePurchasesTableView(projectId: string) {
@@ -49,10 +55,47 @@ export function usePurchasesTableView(projectId: string) {
     [t]
   );
 
-  const [columns, setColumns] = useState<PurchaseColumnDef[]>(ALL_COLUMNS);
+  const saved = useRef(loadPrefs(projectId));
+
+  const [columns, setColumns] = useState<PurchaseColumnDef[]>(() => {
+    if (saved.current?.columnOrder) {
+      const ordered = saved.current.columnOrder
+        .map((key) => ALL_COLUMNS.find((c) => c.key === key))
+        .filter((c): c is PurchaseColumnDef => c !== undefined);
+      for (const col of ALL_COLUMNS) {
+        if (!ordered.some((c) => c.key === col.key)) ordered.push(col);
+      }
+      return ordered;
+    }
+    return ALL_COLUMNS;
+  });
+
   const [visibleExtras, setVisibleExtras] = useState<Set<PurchaseColumnKey>>(
-    () => new Set(DEFAULT_VISIBLE_EXTRAS)
+    () => saved.current?.visibleExtras
+      ? new Set(saved.current.visibleExtras)
+      : new Set(DEFAULT_VISIBLE_EXTRAS)
   );
+
+  const [sortKey, setSortKey] = useState<PurchaseColumnKey | null>(
+    () => saved.current?.sortKey ?? null
+  );
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(
+    () => saved.current?.sortDir ?? "asc"
+  );
+  const [compactRows, setCompactRows] = useState(
+    () => saved.current?.compactRows ?? false
+  );
+
+  // Auto-persist on every change
+  useEffect(() => {
+    persistPrefs(projectId, {
+      columnOrder: columns.map((c) => c.key),
+      visibleExtras: Array.from(visibleExtras),
+      sortKey,
+      sortDir,
+      compactRows,
+    });
+  }, [columns, visibleExtras, sortKey, sortDir, compactRows, projectId]);
 
   const visibleColumns = useMemo(
     () => columns.filter((c) => !c.extra || visibleExtras.has(c.key)),
@@ -67,10 +110,6 @@ export function usePurchasesTableView(projectId: string) {
       return next;
     });
   }, []);
-
-  // Sort state
-  const [sortKey, setSortKey] = useState<PurchaseColumnKey | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const handleSort = useCallback(
     (key: PurchaseColumnKey) => {
@@ -125,61 +164,6 @@ export function usePurchasesTableView(projectId: string) {
     setDragOverIdx(null);
   }, [dragColIdx, dragOverIdx, visibleColumns]);
 
-  // Compact rows
-  const [compactRows, setCompactRows] = useState(false);
-
-  // Saved views
-  const [savedViews, setSavedViews] = useState<PurchaseSavedView[]>(() =>
-    loadSavedViews(projectId)
-  );
-
-  const saveView = useCallback(
-    (name: string) => {
-      const newView: PurchaseSavedView = {
-        id: crypto.randomUUID(),
-        name,
-        columnOrder: columns.map((c) => c.key),
-        visibleExtras: Array.from(visibleExtras),
-        sortKey,
-        sortDir,
-        compactRows,
-      };
-      const updated = [...savedViews, newView];
-      setSavedViews(updated);
-      persistSavedViews(projectId, updated);
-      return newView;
-    },
-    [columns, visibleExtras, sortKey, sortDir, compactRows, savedViews, projectId]
-  );
-
-  const loadView = useCallback(
-    (view: PurchaseSavedView) => {
-      const orderedColumns = view.columnOrder
-        .map((key) => ALL_COLUMNS.find((c) => c.key === key))
-        .filter((c): c is PurchaseColumnDef => c !== undefined);
-      for (const col of ALL_COLUMNS) {
-        if (!orderedColumns.some((c) => c.key === col.key)) {
-          orderedColumns.push(col);
-        }
-      }
-      setColumns(orderedColumns);
-      setVisibleExtras(new Set(view.visibleExtras));
-      setSortKey(view.sortKey);
-      setSortDir(view.sortDir);
-      setCompactRows(view.compactRows ?? false);
-    },
-    [ALL_COLUMNS]
-  );
-
-  const deleteView = useCallback(
-    (viewId: string) => {
-      const updated = savedViews.filter((v) => v.id !== viewId);
-      setSavedViews(updated);
-      persistSavedViews(projectId, updated);
-    },
-    [savedViews, projectId]
-  );
-
   return {
     ALL_COLUMNS,
     columns,
@@ -197,10 +181,6 @@ export function usePurchasesTableView(projectId: string) {
     dragOverIdx,
     compactRows,
     setCompactRows,
-    savedViews,
-    saveView,
-    loadView,
-    deleteView,
   };
 }
 

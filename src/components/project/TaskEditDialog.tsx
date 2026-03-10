@@ -559,7 +559,6 @@ export const TaskEditDialog = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const permissions = useProjectPermissions(projectId);
-  const isBuilder = permissions.isOwner;
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -571,6 +570,9 @@ export const TaskEditDialog = ({
   const [perRowMarkup, setPerRowMarkup] = useState(false);
   const [profileDefaultRate, setProfileDefaultRate] = useState<number | null>(null);
   const [profileLaborCostPercent, setProfileLaborCostPercent] = useState<number | null>(null);
+  const [userType, setUserType] = useState<string | null>(null);
+  const isBuilder = permissions.isOwner && userType !== "homeowner";
+  const isHomeowner = userType === "homeowner";
   const hasAutoFilledRef = useRef(false);
   const [materialSpent, setMaterialSpent] = useState(0);
   const [estimationSettings, setEstimationSettings] = useState<RecipeEstimationSettings | null>(null);
@@ -695,11 +697,12 @@ export const TaskEditDialog = ({
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("default_hourly_rate, default_labor_cost_percent, estimation_settings")
+        .select("default_hourly_rate, default_labor_cost_percent, estimation_settings, onboarding_user_type")
         .eq("user_id", user.id)
         .single();
       setProfileDefaultRate(data?.default_hourly_rate ?? null);
       setProfileLaborCostPercent(data?.default_labor_cost_percent ?? null);
+      setUserType(data?.onboarding_user_type ?? null);
       if (data?.estimation_settings) {
         setEstimationSettings(
           parseEstimationSettings(data.estimation_settings as Record<string, unknown>)
@@ -805,7 +808,16 @@ export const TaskEditDialog = ({
       // Sync material items → materials table rows (status: "planned")
       const items: MaterialItem[] = task.material_items || [];
       const { data: { user: authUser } } = await supabase.auth.getUser();
+      let materialProfileId: string | null = null;
       if (authUser) {
+        const { data: matProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", authUser.id)
+          .single();
+        materialProfileId = matProfile?.id ?? null;
+      }
+      if (authUser && materialProfileId) {
         // Get existing planned materials for this task
         const { data: existingPlanned } = await supabase
           .from("materials")
@@ -837,7 +849,7 @@ export const TaskEditDialog = ({
             project_id: task.project_id,
             status: "planned",
             exclude_from_budget: false,
-            created_by_user_id: authUser.id,
+            created_by_user_id: materialProfileId!,
           };
           if (existingIds.has(item.id)) {
             const { id: _id, created_by_user_id: _c, ...updateFields } = materialRow;
@@ -1033,7 +1045,25 @@ export const TaskEditDialog = ({
               )}
 
               {/* Cost estimation — planning mode gets the pricing form */}
-              {isPlanning ? (
+              {isPlanning && isHomeowner ? (
+              <div className="space-y-2">
+                <Label htmlFor="edit-task-budget">{t("taskCost.budget", "Budget")}</Label>
+                <Input
+                  id="edit-task-budget"
+                  type="number"
+                  step="1"
+                  min="0"
+                  placeholder="SEK"
+                  value={task.budget?.toString() || ""}
+                  onChange={(e) =>
+                    setTask({ ...task, budget: e.target.value ? parseFloat(e.target.value) : null })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("taskCost.homeownerBudgetHint", "Your estimated budget or quote amount for this task")}
+                </p>
+              </div>
+              ) : isPlanning ? (
               (() => {
                 const laborTotal = (task.estimated_hours || 0) * (task.hourly_rate || 0);
                 const ueWithMarkup = (task.subcontractor_cost || 0) * (1 + (task.markup_percent || 0) / 100);
@@ -1525,6 +1555,7 @@ export const TaskEditDialog = ({
               </div>
               )}
 
+              {!isPlanning && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-task-start-date">{t("tasks.startDate")}</Label>
@@ -1547,6 +1578,7 @@ export const TaskEditDialog = ({
                   />
                 </div>
               </div>
+              )}
 
               {/* ── Collapsible sections ── */}
               {!isPlanning && (
@@ -2069,7 +2101,7 @@ export const TaskEditDialog = ({
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="pl-6 pb-3">
-                      <EntityPhotoGallery entityId={task.id} entityType="task" />
+                      <EntityPhotoGallery entityId={task.id} entityType="task" projectId={projectId} />
                     </div>
                   </CollapsibleContent>
                 </Collapsible>

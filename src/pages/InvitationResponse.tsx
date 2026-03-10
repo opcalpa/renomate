@@ -6,8 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, CheckCircle, XCircle, Home, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { cloneRfqForBuilder } from "@/lib/rfqClone";
 
 interface PermissionsSnapshot {
+  role_type?: string;
   timeline_access?: string;
   tasks_access?: string;
   tasks_scope?: string;
@@ -24,11 +26,16 @@ interface InvitationDetails {
   id: string;
   email: string;
   role: string;
+  role_type?: string | null;
   status: string;
   project: {
     id: string;
     name: string;
   };
+  inviter?: {
+    name: string | null;
+    email: string;
+  } | null;
   related_quote_id?: string | null;
   related_invoice_id?: string | null;
   timeline_access?: string;
@@ -93,6 +100,7 @@ const InvitationResponse = () => {
           id,
           email,
           role,
+          role_type,
           status,
           project_id,
           related_quote_id,
@@ -108,7 +116,10 @@ const InvitationResponse = () => {
           budget_access,
           files_access,
           permissions_snapshot,
-          project:projects(id, name)
+          invited_by_user_id,
+          invited_name,
+          project:projects(id, name),
+          inviter:profiles!invited_by_user_id(name, email)
         `)
         .eq("token", token)
         .single();
@@ -187,11 +198,21 @@ const InvitationResponse = () => {
       }
 
       const isContractor = contractorRole && contractorRole !== 'other';
-      const roleType = invitation.role === "client" ? "client" : (isContractor ? 'contractor' : 'other');
-      const contractorCategory = isContractor ? contractorRole : null;
 
       // Use permissions_snapshot if available, fallback to individual columns
       const perms = invitation.permissions_snapshot || {};
+
+      // Detect special invitation types
+      const isRfqBuilder = perms.role_type === "rfq_builder" || invitation.role_type === "rfq_builder";
+      const isPlanningContributor = perms.role_type === "planning_contributor" || invitation.role_type === "planning_contributor";
+      const roleType = isRfqBuilder
+        ? "rfq_builder"
+        : isPlanningContributor
+          ? "planning_contributor"
+          : invitation.role === "client"
+            ? "client"
+            : (isContractor ? 'contractor' : 'other');
+      const contractorCategory = isContractor ? contractorRole : null;
 
       const isClientInvite = invitation.role === "client";
 
@@ -211,28 +232,30 @@ const InvitationResponse = () => {
         files_access: perms.files_access || invitation.files_access || 'none',
       };
 
-      // Check if share already exists (re-invited user)
-      const { data: existingShare } = await supabase
-        .from("project_shares")
-        .select("id")
-        .eq("project_id", invitation.project.id)
-        .eq("shared_with_user_id", profile.id)
-        .maybeSingle();
+      // RFQ builders: skip share on homeowner's project — they only get the clone
+      if (!isRfqBuilder) {
+        const { data: existingShare } = await supabase
+          .from("project_shares")
+          .select("id")
+          .eq("project_id", invitation.project.id)
+          .eq("shared_with_user_id", profile.id)
+          .maybeSingle();
 
-      const { error: shareError } = existingShare
-        ? await supabase
-            .from("project_shares")
-            .update(sharePayload)
-            .eq("id", existingShare.id)
-        : await supabase
-            .from("project_shares")
-            .insert({
-              project_id: invitation.project.id,
-              shared_with_user_id: profile.id,
-              ...sharePayload,
-            });
+        const { error: shareError } = existingShare
+          ? await supabase
+              .from("project_shares")
+              .update(sharePayload)
+              .eq("id", existingShare.id)
+          : await supabase
+              .from("project_shares")
+              .insert({
+                project_id: invitation.project.id,
+                shared_with_user_id: profile.id,
+                ...sharePayload,
+              });
 
-      if (shareError) throw shareError;
+        if (shareError) throw shareError;
+      }
 
       // Update invitation status
       const { error: updateError } = await supabase
@@ -242,27 +265,49 @@ const InvitationResponse = () => {
 
       if (updateError) throw updateError;
 
-      // Flag profile as invited client — skip WelcomeModal and adapt onboarding
-      await supabase
-        .from("profiles")
-        .update({
-          onboarding_welcome_completed: true,
-          onboarding_user_type: "invited_client",
-        })
-        .eq("id", profile.id);
+      // Flag profile onboarding — skip WelcomeModal
+      if (!isRfqBuilder) {
+        await supabase
+          .from("profiles")
+          .update({
+            onboarding_welcome_completed: true,
+            onboarding_user_type: isPlanningContributor ? "homeowner" : "invited_client",
+          })
+          .eq("id", profile.id);
+      }
 
       setAccepted(true);
-      toast({
-        title: t("invitation.accepted", "Invitation accepted!"),
-        description: t("invitation.acceptedDescription", "You now have access to the project."),
-      });
 
-      // Redirect to quote, invoice, or project
-      const redirectTarget = invitation.related_quote_id
-        ? `/quotes/${invitation.related_quote_id}?returnTo=/projects/${invitation.project.id}`
-        : invitation.related_invoice_id
-          ? `/invoices/${invitation.related_invoice_id}?returnTo=/projects/${invitation.project.id}`
-          : `/projects/${invitation.project.id}?welcome=invited`;
+      // RFQ builder: clone homeowner's project into builder's own workspace
+      let redirectTarget: string;
+      if (isRfqBuilder) {
+        try {
+          const cloneResult = await cloneRfqForBuilder(invitation.project.id, profile.id);
+          toast({
+            title: t("invitation.rfqAccepted", "Quote request received!"),
+            description: t("invitation.rfqAcceptedDescription", "The homeowner's scope has been copied to your workspace. Add your pricing and create a quote."),
+          });
+          redirectTarget = `/projects/${cloneResult.projectId}?welcome=rfq`;
+        } catch (cloneErr) {
+          console.error("RFQ clone failed:", cloneErr);
+          toast({
+            title: t("invitation.accepted", "Invitation accepted!"),
+            description: t("invitation.acceptedDescription", "You now have access to the project."),
+          });
+          redirectTarget = `/projects/${invitation.project.id}?welcome=invited`;
+        }
+      } else {
+        toast({
+          title: t("invitation.accepted", "Invitation accepted!"),
+          description: t("invitation.acceptedDescription", "You now have access to the project."),
+        });
+        redirectTarget = invitation.related_quote_id
+          ? `/quotes/${invitation.related_quote_id}?returnTo=/projects/${invitation.project.id}`
+          : invitation.related_invoice_id
+            ? `/invoices/${invitation.related_invoice_id}?returnTo=/projects/${invitation.project.id}`
+            : `/projects/${invitation.project.id}?welcome=invited`;
+      }
+
       setTimeout(() => {
         navigate(redirectTarget);
       }, 2000);
@@ -358,30 +403,63 @@ const InvitationResponse = () => {
 
   if (!invitation) return null;
 
+  const permsForDisplay = invitation.permissions_snapshot || {};
+  const isRfqInvite = permsForDisplay.role_type === "rfq_builder";
+  const isPlanningInvite = permsForDisplay.role_type === "planning_contributor";
   const abilities = getAccessAbilities(invitation, t);
+
+  const rfqAbilities = [
+    t("invitation.rfqAbilities.viewScope", "View the homeowner's scope of work and rooms"),
+    t("invitation.rfqAbilities.createQuote", "Create your quote based on their requirements"),
+    t("invitation.rfqAbilities.communicate", "Communicate and ask questions"),
+  ];
+
+  const planningAbilities = [
+    t("invitation.planningAbilities.addTasks", "Add and describe what work needs to be done"),
+    t("invitation.planningAbilities.addRooms", "Add rooms with dimensions"),
+    t("invitation.planningAbilities.linkRooms", "Connect tasks to rooms"),
+    t("invitation.planningAbilities.communicate", "Comment and communicate"),
+  ];
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">
-            {t("invitation.youreInvited", "You're invited!")}
+            {isRfqInvite
+              ? t("invitation.rfqTitle", "Quote request")
+              : isPlanningInvite
+                ? t("invitation.planningTitle", "Help plan a renovation")
+                : t("invitation.youreInvited", "You're invited!")}
           </CardTitle>
           <CardDescription>
-            {t("invitation.invitedToProject", "You've been invited to follow a renovation project")}
+            {isRfqInvite
+              ? t("invitation.rfqDescription", "A homeowner wants a quote for their renovation project")
+              : isPlanningInvite
+                ? t("invitation.planningDescription", "You've been invited to describe what work needs to be done")
+                : t("invitation.invitedToProject", "You've been invited to follow a renovation project")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="text-center">
             <h3 className="text-lg font-semibold">{invitation.project?.name || "Project"}</h3>
+            {invitation.inviter && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("invitation.from", "From")} {invitation.inviter.name || invitation.inviter.email}
+              </p>
+            )}
           </div>
 
           <div className="bg-muted/50 p-4 rounded-lg space-y-3">
             <p className="text-sm text-muted-foreground">
-              {t("invitation.youCan", "In this project you can:")}
+              {isRfqInvite
+                ? t("invitation.rfqYouCan", "When you accept, you'll be able to:")
+                : isPlanningInvite
+                  ? t("invitation.planningYouCan", "You'll be able to:")
+                  : t("invitation.youCan", "In this project you can:")}
             </p>
             <ul className="space-y-2">
-              {abilities.map((ability, i) => (
+              {(isRfqInvite ? rfqAbilities : isPlanningInvite ? planningAbilities : abilities).map((ability, i) => (
                 <li key={i} className="flex items-center gap-2 text-sm">
                   <Check className="h-4 w-4 text-green-500 shrink-0" />
                   {ability}
@@ -400,12 +478,18 @@ const InvitationResponse = () => {
               {accepting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t("invitation.accepting", "Accepting...")}
+                  {isRfqInvite
+                    ? t("invitation.rfqAccepting", "Setting up workspace...")
+                    : t("invitation.accepting", "Accepting...")}
                 </>
               ) : (
                 <>
                   <CheckCircle className="h-4 w-4 mr-2" />
-                  {t("invitation.accept", "Accept Invitation")}
+                  {isRfqInvite
+                    ? t("invitation.rfqAccept", "View & create quote")
+                    : isPlanningInvite
+                      ? t("invitation.planningAccept", "Start planning")
+                      : t("invitation.accept", "Accept Invitation")}
                 </>
               )}
             </Button>

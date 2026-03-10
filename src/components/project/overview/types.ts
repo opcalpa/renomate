@@ -70,6 +70,7 @@ export interface OverviewProject {
   currency?: string | null;
   address?: string | null;
   property_designation?: string | null;
+  source_rfq_project_id?: string | null;
 }
 
 export interface OverviewData {

@@ -27,6 +27,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { HomeownerAnalysisSection } from "./HomeownerAnalysisSection";
 
 // --- Interfaces ---
 
@@ -501,6 +502,9 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
           </Button>
         </div>
       )}
+
+      {/* Deklarationsunderlag & analys */}
+      <HomeownerAnalysisSection projectId={projectId} currency={currency} />
 
       {/* Egna inköp */}
       {ownPurchases.length > 0 && (

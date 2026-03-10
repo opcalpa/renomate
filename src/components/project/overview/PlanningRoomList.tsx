@@ -84,9 +84,17 @@ function computePaintLiters(room: Room, settings: EstimationSettings): number | 
   return Math.ceil((paintable / settings.paint_coverage_sqm_per_liter) * settings.paint_coats);
 }
 
-function formatMm(val: number | null | undefined): string {
+function mmToM(val: number | null | undefined): string {
   if (val === null || val === undefined) return "";
-  return String(val);
+  return (val / 1000).toFixed(1);
+}
+
+function mToMm(val: string): number | null {
+  const trimmed = val.trim();
+  if (trimmed === "") return null;
+  const num = Number(trimmed.replace(",", "."));
+  if (isNaN(num)) return null;
+  return Math.round(num * 1000);
 }
 
 // ---------------------------------------------------------------------------
@@ -215,9 +223,10 @@ function PaintFormulaPopover({ settings, onSettingsChange, room, children }: Pai
 interface PlanningRoomListProps {
   projectId: string;
   locked?: boolean;
+  onRoomChange?: () => void;
 }
 
-export function PlanningRoomList({ projectId, locked = false }: PlanningRoomListProps) {
+export function PlanningRoomList({ projectId, locked = false, onRoomChange }: PlanningRoomListProps) {
   const { t } = useTranslation();
   const { user } = useAuthSession();
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -336,7 +345,8 @@ export function PlanningRoomList({ projectId, locked = false }: PlanningRoomList
     setIsAdding(false);
     setAddingLoading(false);
     fetchRooms();
-  }, [newName, projectId, t, fetchRooms]);
+    onRoomChange?.();
+  }, [newName, projectId, t, fetchRooms, onRoomChange]);
 
   // ---- Delete ----
   const handleDelete = useCallback(async (roomId: string) => {
@@ -345,7 +355,8 @@ export function PlanningRoomList({ projectId, locked = false }: PlanningRoomList
       toast.error(t("common.error", "Error"));
     }
     fetchRooms();
-  }, [t, fetchRooms]);
+    onRoomChange?.();
+  }, [t, fetchRooms, onRoomChange]);
 
   // ---- Inline edit ----
   const startEdit = useCallback((roomId: string, field: string, currentValue: string) => {
@@ -364,7 +375,6 @@ export function PlanningRoomList({ projectId, locked = false }: PlanningRoomList
     const room = rooms.find((r) => r.id === roomId);
     if (!room) return;
 
-    const numVal = rawValue.trim() === "" ? null : Number(rawValue);
     let updatePayload: Record<string, unknown> = {};
 
     if (field === "name") {
@@ -372,20 +382,27 @@ export function PlanningRoomList({ projectId, locked = false }: PlanningRoomList
       if (!trimmed) return;
       updatePayload = { name: trimmed };
     } else if (field === "ceilingHeight") {
-      updatePayload = { ceiling_height_mm: numVal };
+      // Input is in meters, store as mm
+      const mmVal = mToMm(rawValue);
+      updatePayload = { ceiling_height_mm: mmVal };
     } else if (field === "width") {
-      const dims = { ...(room.dimensions || {}), width_mm: numVal };
-      if (numVal && dims.height_mm) {
-        dims.area_sqm = (numVal / 1000) * (dims.height_mm / 1000);
+      // Input is in meters, store as mm
+      const mmVal = mToMm(rawValue);
+      const dims = { ...(room.dimensions || {}), width_mm: mmVal };
+      if (mmVal && dims.height_mm) {
+        dims.area_sqm = (mmVal / 1000) * (dims.height_mm / 1000);
       }
       updatePayload = { dimensions: dims };
     } else if (field === "depth") {
-      const dims = { ...(room.dimensions || {}), height_mm: numVal };
-      if (numVal && dims.width_mm) {
-        dims.area_sqm = (dims.width_mm / 1000) * (numVal / 1000);
+      // Input is in meters, store as mm
+      const mmVal = mToMm(rawValue);
+      const dims = { ...(room.dimensions || {}), height_mm: mmVal };
+      if (mmVal && dims.width_mm) {
+        dims.area_sqm = (dims.width_mm / 1000) * (mmVal / 1000);
       }
       updatePayload = { dimensions: dims };
     } else if (field === "area") {
+      const numVal = rawValue.trim() === "" ? null : Number(rawValue.replace(",", "."));
       const dims = { ...(room.dimensions || {}), area_sqm: numVal };
       updatePayload = { dimensions: dims };
     }
@@ -396,7 +413,7 @@ export function PlanningRoomList({ projectId, locked = false }: PlanningRoomList
       prev.map((r) => {
         if (r.id !== roomId) return r;
         if (field === "name") return { ...r, name: rawValue.trim() };
-        if (field === "ceilingHeight") return { ...r, ceiling_height_mm: numVal };
+        if (field === "ceilingHeight") return { ...r, ceiling_height_mm: updatePayload.ceiling_height_mm as number | null };
         if (field === "width" || field === "depth" || field === "area") {
           return { ...r, dimensions: updatePayload.dimensions as Room["dimensions"] };
         }
@@ -586,17 +603,17 @@ export function PlanningRoomList({ projectId, locked = false }: PlanningRoomList
                       </TableCell>
                       {show.width && (
                         <TableCell className="py-1.5 hidden sm:table-cell">
-                          {renderEditableCell(room, "width", formatMm(room.dimensions?.width_mm), "tabular-nums")}
+                          {renderEditableCell(room, "width", mmToM(room.dimensions?.width_mm), "tabular-nums")}
                         </TableCell>
                       )}
                       {show.depth && (
                         <TableCell className="py-1.5 hidden sm:table-cell">
-                          {renderEditableCell(room, "depth", formatMm(room.dimensions?.height_mm), "tabular-nums")}
+                          {renderEditableCell(room, "depth", mmToM(room.dimensions?.height_mm), "tabular-nums")}
                         </TableCell>
                       )}
                       {show.ceilingHeight && (
                         <TableCell className="py-1.5 hidden sm:table-cell">
-                          {renderEditableCell(room, "ceilingHeight", formatMm(room.ceiling_height_mm), "tabular-nums")}
+                          {renderEditableCell(room, "ceilingHeight", mmToM(room.ceiling_height_mm), "tabular-nums")}
                         </TableCell>
                       )}
                       <TableCell className="py-1.5">

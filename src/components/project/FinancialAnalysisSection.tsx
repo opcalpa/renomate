@@ -410,13 +410,13 @@ export function FinancialAnalysisSection({
   );
 
   return (
-    <section className="mt-8 border rounded-lg">
+    <section className="border rounded-lg bg-card">
       {/* Collapsible header */}
       <button
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <span className="flex items-center gap-2 font-medium">
+        <span className="flex items-center gap-2 text-sm font-semibold">
           <BarChart3 className="h-4 w-4" />
           {t("financialAnalysis.title")}
           {!isExpanded && hasData && (

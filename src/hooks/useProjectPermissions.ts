@@ -9,6 +9,8 @@ export interface ProjectPermissions {
   isSystemAdmin: boolean;
   isDemoProject: boolean;
   isClient: boolean;
+  isPlanningContributor: boolean;
+  roleType: string | null;
   customerView: string;
   overview: string;
   timeline: string;
@@ -28,6 +30,8 @@ const ALL_EDIT: Omit<ProjectPermissions, "loading"> = {
   isSystemAdmin: false,
   isDemoProject: false,
   isClient: false,
+  isPlanningContributor: false,
+  roleType: null,
   customerView: "none",
   overview: "edit",
   timeline: "edit",
@@ -48,6 +52,8 @@ const DEMO_VIEW_ONLY: Omit<ProjectPermissions, "loading"> = {
   isSystemAdmin: false,
   isDemoProject: true,
   isClient: false,
+  isPlanningContributor: false,
+  roleType: null,
   customerView: "none",
   overview: "view",
   timeline: "view",
@@ -66,6 +72,8 @@ const ALL_NONE: Omit<ProjectPermissions, "loading"> = {
   isSystemAdmin: false,
   isDemoProject: false,
   isClient: false,
+  isPlanningContributor: false,
+  roleType: null,
   customerView: "none",
   overview: "none",
   timeline: "none",
@@ -145,7 +153,7 @@ export function useProjectPermissions(projectId: string | undefined): ProjectPer
       // Check for project_shares (works for both demo and regular projects)
       const { data: share } = await supabase
         .from("project_shares")
-        .select("role, customer_view_access, overview_access, timeline_access, tasks_access, tasks_scope, space_planner_access, purchases_access, purchases_scope, budget_access, files_access, teams_access")
+        .select("role, role_type, customer_view_access, overview_access, timeline_access, tasks_access, tasks_scope, space_planner_access, purchases_access, purchases_scope, budget_access, files_access, teams_access")
         .eq("project_id", projectId)
         .eq("shared_with_user_id", profile.id)
         .maybeSingle();
@@ -155,11 +163,14 @@ export function useProjectPermissions(projectId: string | undefined): ProjectPer
       if (share) {
         // User is invited - use their share permissions
         const customerView = share.customer_view_access || "none";
+        const shareRoleType = (share as Record<string, unknown>).role_type as string | null;
         setPerms({
           isOwner: false,
           isSystemAdmin: false,
           isDemoProject: isDemo,
           isClient: customerView !== "none",
+          isPlanningContributor: shareRoleType === "planning_contributor",
+          roleType: shareRoleType || null,
           customerView,
           overview: share.overview_access || "none",
           timeline: share.timeline_access || "none",

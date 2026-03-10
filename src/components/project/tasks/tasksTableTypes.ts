@@ -67,12 +67,3 @@ export const DEFAULT_VISIBLE_EXTRAS: TaskColumnKey[] = [
   "budget",
 ];
 
-export interface TaskSavedView {
-  id: string;
-  name: string;
-  columnOrder: TaskColumnKey[];
-  visibleExtras: TaskColumnKey[];
-  sortKey: TaskColumnKey | null;
-  sortDir: "asc" | "desc";
-  compactRows?: boolean;
-}

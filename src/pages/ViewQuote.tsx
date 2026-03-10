@@ -204,8 +204,8 @@ export default function ViewQuote() {
         .from("clients")
         .select("name")
         .eq("id", clientIdRef)
-        .single();
-      if (clientData) setClientName(clientData.name);
+        .maybeSingle();
+      if (clientData?.name) setClientName(clientData.name);
     }
 
     // Fetch revision chain

@@ -489,6 +489,7 @@ export type Database = {
           id: string
           linked_to_id: string
           linked_to_type: string
+          mime_type: string | null
           uploaded_by_user_id: string
           url: string
         }
@@ -498,6 +499,7 @@ export type Database = {
           id?: string
           linked_to_id: string
           linked_to_type: string
+          mime_type?: string | null
           uploaded_by_user_id: string
           url: string
         }
@@ -507,6 +509,7 @@ export type Database = {
           id?: string
           linked_to_id?: string
           linked_to_type?: string
+          mime_type?: string | null
           uploaded_by_user_id?: string
           url?: string
         }
@@ -535,6 +538,8 @@ export type Database = {
           room_id: string | null
           comment: string | null
           discount_percent: number | null
+          source_task_id: string | null
+          source_type: string | null
           created_at: string
         }
         Insert: {
@@ -551,6 +556,8 @@ export type Database = {
           room_id?: string | null
           comment?: string | null
           discount_percent?: number | null
+          source_task_id?: string | null
+          source_type?: string | null
           created_at?: string
         }
         Update: {
@@ -567,6 +574,8 @@ export type Database = {
           room_id?: string | null
           comment?: string | null
           discount_percent?: number | null
+          source_task_id?: string | null
+          source_type?: string | null
           created_at?: string
         }
         Relationships: [

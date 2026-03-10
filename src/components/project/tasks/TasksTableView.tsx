@@ -191,10 +191,6 @@ export function TasksTableView({
     dragOverIdx,
     compactRows,
     setCompactRows,
-    savedViews,
-    saveView,
-    loadView,
-    deleteView,
   } = externalState || internalState;
 
   // Inline editing state
@@ -203,11 +199,6 @@ export function TasksTableView({
     col: TaskColumnKey;
   } | null>(null);
   const [editValue, setEditValue] = useState("");
-
-  // Save view UI state
-  const [saveViewOpen, setSaveViewOpen] = useState(false);
-  const [saveViewName, setSaveViewName] = useState("");
-  const [loadViewOpen, setLoadViewOpen] = useState(false);
 
   // Sort tasks
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -715,18 +706,6 @@ export function TasksTableView({
     }
   };
 
-  const handleSaveView = () => {
-    const name = saveViewName.trim();
-    if (!name) return;
-    saveView(name);
-    setSaveViewName("");
-    setSaveViewOpen(false);
-    toast({
-      title: t("tasksTable.viewSaved"),
-      description: t("tasksTable.viewSavedDescription", { name }),
-    });
-  };
-
   return (
     <div className="space-y-2">
       {/* Toolbar */}
@@ -774,81 +753,6 @@ export function TasksTableView({
           {t("tasksTable.compactRows")}
         </Button>
 
-        {/* Save view */}
-        <Popover open={saveViewOpen} onOpenChange={setSaveViewOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1">
-              <Save className="h-4 w-4" />
-              {t("tasksTable.saveView")}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-56" align="start">
-            <div className="space-y-2">
-              <Input
-                placeholder={t("tasksTable.viewName")}
-                value={saveViewName}
-                onChange={(e) => setSaveViewName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSaveView();
-                }}
-                className="h-8"
-              />
-              <Button
-                size="sm"
-                className="w-full"
-                onClick={handleSaveView}
-                disabled={!saveViewName.trim()}
-              >
-                {t("tasksTable.saveView")}
-              </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        {/* Load saved views */}
-        {savedViews.length > 0 && (
-          <Popover open={loadViewOpen} onOpenChange={setLoadViewOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1">
-                {t("tasksTable.savedViews")} ({savedViews.length})
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56" align="start">
-              <div className="space-y-1">
-                {savedViews.map((view) => (
-                  <div
-                    key={view.id}
-                    className="flex items-center justify-between"
-                  >
-                    <button
-                      className="text-sm hover:bg-muted px-2 py-1 rounded flex-1 text-left"
-                      onClick={() => {
-                        loadView(view);
-                        setLoadViewOpen(false);
-                        toast({
-                          title: t("tasksTable.viewLoaded"),
-                          description: t("tasksTable.viewLoadedDescription", {
-                            name: view.name,
-                          }),
-                        });
-                      }}
-                    >
-                      {view.name}
-                    </button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      onClick={() => deleteView(view.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
       </div>}
 
       {/* Table */}

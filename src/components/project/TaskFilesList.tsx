@@ -17,7 +17,8 @@ interface TaskFileLink {
 }
 
 interface TaskFilesListProps {
-  taskId: string;
+  taskId?: string;
+  materialId?: string;
   projectId: string;
   readonly?: boolean;
 }
@@ -53,22 +54,26 @@ const fileTypeBadgeVariant = (fileType: string): "default" | "secondary" | "outl
   }
 };
 
-export const TaskFilesList = ({ taskId, projectId, readonly }: TaskFilesListProps) => {
+export const TaskFilesList = ({ taskId, materialId, projectId, readonly }: TaskFilesListProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [files, setFiles] = useState<TaskFileLink[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const entityId = taskId || materialId;
+  const entityColumn = taskId ? "task_id" : "material_id";
+
   useEffect(() => {
-    fetchFiles();
-  }, [taskId]);
+    if (entityId) fetchFiles();
+  }, [entityId]);
 
   const fetchFiles = async () => {
+    if (!entityId) return;
     setLoading(true);
     const { data, error } = await supabase
       .from("task_file_links")
       .select("id, file_path, file_name, file_type, file_size, mime_type, created_at")
-      .eq("task_id", taskId)
+      .eq(entityColumn, entityId)
       .order("created_at", { ascending: false });
 
     if (error) {

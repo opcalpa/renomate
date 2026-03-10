@@ -80,7 +80,7 @@ export async function createQuote(projectId: string, title: string, creatorId: s
   return data;
 }
 
-export async function addQuoteItem(quoteId: string, item: { description: string; quantity: number; unit_price: number; unit?: string; is_rot_eligible?: boolean; room_id?: string; sort_order?: number; comment?: string | null; discount_percent?: number | null }) {
+export async function addQuoteItem(quoteId: string, item: { description: string; quantity: number; unit_price: number; unit?: string; is_rot_eligible?: boolean; room_id?: string; sort_order?: number; comment?: string | null; discount_percent?: number | null; source_task_id?: string | null; source_type?: string | null }) {
   const discountedTotal = item.quantity * item.unit_price * (1 - (item.discount_percent ?? 0) / 100);
   const rotDeduction = calculateRotDeduction(discountedTotal, item.is_rot_eligible ?? false);
   const { data, error } = await supabase
@@ -111,7 +111,7 @@ export async function updateQuoteDraft(quoteId: string, updates: { title?: strin
   return data;
 }
 
-export async function replaceQuoteItems(quoteId: string, items: { description: string; quantity: number; unit_price: number; unit?: string; is_rot_eligible?: boolean; room_id?: string; sort_order?: number; comment?: string | null; discount_percent?: number | null }[]) {
+export async function replaceQuoteItems(quoteId: string, items: { description: string; quantity: number; unit_price: number; unit?: string; is_rot_eligible?: boolean; room_id?: string; sort_order?: number; comment?: string | null; discount_percent?: number | null; source_task_id?: string | null; source_type?: string | null }[]) {
   // Delete existing items
   const { error: delErr } = await supabase
     .from("quote_items")
@@ -416,7 +416,7 @@ export async function reviseQuote(originalQuoteId: string): Promise<string | nul
     .update({ revised_from: originalQuoteId })
     .eq("id", newQuote.id);
 
-  // Copy all items
+  // Copy all items (preserve source lineage)
   for (const item of items) {
     await addQuoteItem(newQuote.id, {
       description: item.description,
@@ -428,6 +428,8 @@ export async function reviseQuote(originalQuoteId: string): Promise<string | nul
       sort_order: item.sort_order ?? undefined,
       comment: item.comment ?? null,
       discount_percent: item.discount_percent ?? null,
+      source_task_id: (item as Record<string, unknown>).source_task_id as string | null ?? null,
+      source_type: (item as Record<string, unknown>).source_type as string | null ?? null,
     });
   }
 
@@ -459,42 +461,122 @@ export async function createTasksFromQuote(quoteId: string) {
     .single();
   if (!profile) return;
 
-  // Fetch existing project tasks to match against
-  const { data: existingTasks } = await supabase
-    .from("tasks")
-    .select("id, title, room_id")
-    .eq("project_id", result.quote.project_id);
+  const projectId = result.quote.project_id;
 
-  const tasksByTitle = new Map(
-    (existingTasks || []).map((t) => [t.title.toLowerCase(), t])
-  );
-
-  let updated = 0;
-  let created = 0;
+  // Group items by source_task_id for smart merging
+  const itemsBySourceTask = new Map<string, typeof result.items>();
+  const orphanItems: typeof result.items = [];
 
   for (const item of result.items) {
     if (!item.description) continue;
+    const sourceId = (item as Record<string, unknown>).source_task_id as string | null;
+    if (sourceId) {
+      const group = itemsBySourceTask.get(sourceId) || [];
+      group.push(item);
+      itemsBySourceTask.set(sourceId, group);
+    } else {
+      orphanItems.push(item);
+    }
+  }
 
-    // Skip material line items — material is tracked via purchase orders
-    if (item.description.endsWith("— material")) continue;
+  let updated = 0;
+  let created = 0;
+  let materialsCreated = 0;
 
-    const matchKey = item.description.toLowerCase();
+  // ── 1. Smart-merge items that have a source task ──
+  // First verify which source tasks still exist
+  const sourceTaskIds = Array.from(itemsBySourceTask.keys());
+  const existingSourceIds = new Set<string>();
+  if (sourceTaskIds.length > 0) {
+    const { data: found } = await supabase
+      .from("tasks")
+      .select("id")
+      .in("id", sourceTaskIds);
+    for (const t of found || []) existingSourceIds.add(t.id);
+  }
+
+  for (const [sourceTaskId, items] of itemsBySourceTask) {
+    // If source task was deleted, treat items as orphans
+    if (!existingSourceIds.has(sourceTaskId)) {
+      orphanItems.push(...items);
+      continue;
+    }
+
+    const taskUpdates: Record<string, unknown> = {
+      status: "to_do",
+    };
+
+    for (const item of items) {
+      const sourceType = (item as Record<string, unknown>).source_type as string | null;
+
+      if (sourceType === "material") {
+        // Create as material record under the source task
+        const { error } = await supabase.from("materials").insert({
+          task_id: sourceTaskId,
+          project_id: projectId,
+          name: item.description,
+          quantity: item.quantity ?? 1,
+          unit: item.unit || "st",
+          price_per_unit: item.unit_price ?? 0,
+          price_total: item.total_price ?? 0,
+          status: "to_order",
+          created_by_user_id: profile.id,
+        });
+        if (!error) materialsCreated++;
+      } else if (sourceType === "subcontractor") {
+        // Set subcontractor cost on the source task
+        taskUpdates.subcontractor_cost = item.total_price ?? 0;
+      } else {
+        // hours / fixed — set budget from this line's total
+        taskUpdates.budget = item.total_price ?? null;
+        if (sourceType === "hours") {
+          taskUpdates.estimated_hours = item.quantity;
+          taskUpdates.hourly_rate = item.unit_price;
+        }
+      }
+    }
+
+    const { error } = await supabase
+      .from("tasks")
+      .update(taskUpdates)
+      .eq("id", sourceTaskId);
+    if (!error) updated++;
+  }
+
+  // ── 2. Orphan items (manually added in quote, no source task) ──
+  // Fall back to title matching against existing tasks, then create new
+  const { data: existingTasks } = await supabase
+    .from("tasks")
+    .select("id, title")
+    .eq("project_id", projectId);
+
+  const tasksByTitle = new Map(
+    (existingTasks || []).map((t) => [t.title.toLowerCase().trim(), t])
+  );
+
+  // Track which existing tasks were already updated via source_task_id
+  const alreadyUpdatedIds = new Set(itemsBySourceTask.keys());
+
+  for (const item of orphanItems) {
+    // Strip room suffix like "(kök)" for matching
+    const cleanDesc = item.description.replace(/\s*\([^)]+\)\s*$/, "").trim();
+    const matchKey = cleanDesc.toLowerCase();
     const existing = tasksByTitle.get(matchKey);
 
-    if (existing) {
-      // Update existing planning task: set budget from quote + activate
+    if (existing && !alreadyUpdatedIds.has(existing.id)) {
+      // Update existing task
       const { error } = await supabase
         .from("tasks")
-        .update({
-          budget: item.total_price ?? null,
-          status: "to_do",
-        })
+        .update({ budget: item.total_price ?? null, status: "to_do" })
         .eq("id", existing.id);
-      if (!error) updated++;
+      if (!error) {
+        updated++;
+        alreadyUpdatedIds.add(existing.id);
+      }
     } else {
-      // Create new task for quote items with no matching planning task
+      // Create new task
       const { error } = await supabase.from("tasks").insert({
-        project_id: result.quote.project_id,
+        project_id: projectId,
         title: item.description,
         status: "to_do",
         priority: "medium",
@@ -506,8 +588,33 @@ export async function createTasksFromQuote(quoteId: string) {
     }
   }
 
-  const total = updated + created;
-  if (total > 0) {
-    toast.success(`${updated ? `${updated} updated` : ""}${updated && created ? ", " : ""}${created ? `${created} created` : ""}`);
+  // ── 3. Archive leftover planning tasks that weren't in the quote ──
+  if (existingTasks) {
+    const planningLeftovers = existingTasks.filter(
+      (t) => !alreadyUpdatedIds.has(t.id)
+    );
+    if (planningLeftovers.length > 0) {
+      // Check which ones are still in "planned" status
+      const { data: planned } = await supabase
+        .from("tasks")
+        .select("id")
+        .in("id", planningLeftovers.map((t) => t.id))
+        .eq("status", "planned");
+
+      if (planned && planned.length > 0) {
+        await supabase
+          .from("tasks")
+          .update({ status: "archived" })
+          .in("id", planned.map((t) => t.id));
+      }
+    }
+  }
+
+  const parts = [];
+  if (updated) parts.push(`${updated} uppdaterade`);
+  if (created) parts.push(`${created} skapade`);
+  if (materialsCreated) parts.push(`${materialsCreated} material`);
+  if (parts.length > 0) {
+    toast.success(parts.join(", "));
   }
 }

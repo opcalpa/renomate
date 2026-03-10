@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Save, FolderOpen, Trash2, Plus, Rows3, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart } from "lucide-react";
+import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart } from "lucide-react";
 import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
 import { getStatusBadgeColor } from "@/lib/statusColors";
 import { BudgetChartsSection } from "./BudgetChartsSection";
@@ -126,11 +126,9 @@ interface BudgetTabProps {
   userType?: string | null;
 }
 
-// --- Saved Views ---
+// --- Auto-persist table prefs ---
 
-interface SavedView {
-  id: string;
-  name: string;
+interface BudgetTablePrefs {
   columnOrder: ColumnKey[];
   visibleExtras: ColumnKey[];
   sortKey: ColumnKey | null;
@@ -138,20 +136,20 @@ interface SavedView {
   compactRows?: boolean;
 }
 
-const VIEWS_STORAGE_KEY = (projectId: string) => `budget-saved-views-${projectId}`;
+const BUDGET_PREFS_KEY = (projectId: string) => `budget-table-prefs-${projectId}`;
 
-function loadSavedViews(projectId: string): SavedView[] {
+function loadBudgetPrefs(projectId: string): BudgetTablePrefs | null {
   try {
-    const raw = localStorage.getItem(VIEWS_STORAGE_KEY(projectId));
-    if (!raw) return [];
-    return JSON.parse(raw) as SavedView[];
+    const raw = localStorage.getItem(BUDGET_PREFS_KEY(projectId));
+    if (!raw) return null;
+    return JSON.parse(raw) as BudgetTablePrefs;
   } catch {
-    return [];
+    return null;
   }
 }
 
-function persistSavedViews(projectId: string, views: SavedView[]) {
-  localStorage.setItem(VIEWS_STORAGE_KEY(projectId), JSON.stringify(views));
+function persistBudgetPrefs(projectId: string, prefs: BudgetTablePrefs) {
+  localStorage.setItem(BUDGET_PREFS_KEY(projectId), JSON.stringify(prefs));
 }
 
 // --- Cost helpers ---
@@ -227,7 +225,12 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
   const [filterAttachment, setFilterAttachment] = useState<"all" | "has" | "missing">("all");
 
   // Collapsible columns
-  const [visibleExtras, setVisibleExtras] = useState<Set<ColumnKey>>(new Set());
+  const budgetPrefs = useRef(loadBudgetPrefs(projectId));
+  const [visibleExtras, setVisibleExtras] = useState<Set<ColumnKey>>(
+    () => budgetPrefs.current?.visibleExtras
+      ? new Set(budgetPrefs.current.visibleExtras)
+      : new Set()
+  );
 
   // Translated column/status definitions
   const ALL_COLUMNS: ColumnDef[] = useMemo(() => [
@@ -271,7 +274,18 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
   const effectiveExtraKeys = isBuilder ? EXTRA_COLUMN_KEYS : HOMEOWNER_EXTRA_KEYS;
 
   // Column order (drag reorder)
-  const [columns, setColumns] = useState<ColumnDef[]>(ALL_COLUMNS);
+  const [columns, setColumns] = useState<ColumnDef[]>(() => {
+    if (budgetPrefs.current?.columnOrder) {
+      const ordered = budgetPrefs.current.columnOrder
+        .map((key) => ALL_COLUMNS.find((c) => c.key === key))
+        .filter((c): c is ColumnDef => c !== undefined);
+      for (const col of ALL_COLUMNS) {
+        if (!ordered.some((c) => c.key === col.key)) ordered.push(col);
+      }
+      return ordered;
+    }
+    return ALL_COLUMNS;
+  });
   const dragCol = useRef<number | null>(null);
   const dragOverCol = useRef<number | null>(null);
 
@@ -292,8 +306,12 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
   }, [ALL_COLUMNS]);
 
   // Sorting
-  const [sortKey, setSortKey] = useState<ColumnKey | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortKey, setSortKey] = useState<ColumnKey | null>(
+    () => budgetPrefs.current?.sortKey ?? null
+  );
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(
+    () => budgetPrefs.current?.sortDir ?? "asc"
+  );
 
   // Inline editing
   const [editingCell, setEditingCell] = useState<{ rowId: string; col: string } | null>(null);
@@ -304,12 +322,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
   const [editMaterialId, setEditMaterialId] = useState<string | null>(null);
   const [invoiceMethodOpen, setInvoiceMethodOpen] = useState(false);
 
-  // Saved views
-  const [savedViews, setSavedViews] = useState<SavedView[]>(() => loadSavedViews(projectId));
-  const [saveViewName, setSaveViewName] = useState("");
-  const [saveViewOpen, setSaveViewOpen] = useState(false);
-  const [loadViewOpen, setLoadViewOpen] = useState(false);
-  const [compactRows, setCompactRows] = useState(true);
+  const [compactRows, setCompactRows] = useState(
+    () => budgetPrefs.current?.compactRows ?? true
+  );
 
   // Task → material grouping
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
@@ -332,55 +347,16 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
   const [allRooms, setAllRooms] = useState<{ id: string; name: string }[]>([]);
   const newRowNameRef = useRef<HTMLInputElement>(null);
 
-  const handleSaveView = () => {
-    const name = saveViewName.trim();
-    if (!name) return;
-
-    const newView: SavedView = {
-      id: crypto.randomUUID(),
-      name,
+  // Auto-persist table prefs
+  useEffect(() => {
+    persistBudgetPrefs(projectId, {
       columnOrder: columns.map((c) => c.key),
       visibleExtras: Array.from(visibleExtras),
       sortKey,
       sortDir,
       compactRows,
-    };
-
-    const updated = [...savedViews, newView];
-    setSavedViews(updated);
-    persistSavedViews(projectId, updated);
-    setSaveViewName("");
-    setSaveViewOpen(false);
-    toast({ title: t('budget.viewSaved'), description: t('budget.viewSavedDescription', { name }) });
-  };
-
-  const handleLoadView = (view: SavedView) => {
-    // Restore column order, filtering out removed columns from old saved views
-    const removedKeys = new Set(["ordered"]);
-    const orderedColumns = view.columnOrder
-      .filter((key) => !removedKeys.has(key))
-      .map((key) => ALL_COLUMNS.find((c) => c.key === key))
-      .filter((c): c is ColumnDef => c !== undefined);
-    // Append any new columns that didn't exist when the view was saved
-    for (const col of ALL_COLUMNS) {
-      if (!orderedColumns.some((c) => c.key === col.key)) {
-        orderedColumns.push(col);
-      }
-    }
-    setColumns(orderedColumns);
-    setVisibleExtras(new Set(view.visibleExtras));
-    setSortKey(view.sortKey);
-    setSortDir(view.sortDir);
-    setCompactRows(view.compactRows ?? false);
-    setLoadViewOpen(false);
-    toast({ title: t('budget.viewLoaded'), description: t('budget.viewLoadedDescription', { name: view.name }) });
-  };
-
-  const handleDeleteView = (viewId: string) => {
-    const updated = savedViews.filter((v) => v.id !== viewId);
-    setSavedViews(updated);
-    persistSavedViews(projectId, updated);
-  };
+    });
+  }, [columns, visibleExtras, sortKey, sortDir, compactRows, projectId]);
 
   // Visible columns (filter out hidden extras)
   const visibleColumns = useMemo(
@@ -1528,80 +1504,6 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
           {t('budget.compactRows', 'Compact')}
         </Button>
 
-        {/* Save View */}
-        <Popover open={saveViewOpen} onOpenChange={setSaveViewOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1">
-              <Save className="h-4 w-4" />
-              {t('budget.saveView')}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-64" align="end">
-            <div className="space-y-3">
-              <p className="text-sm font-medium">{t('budget.saveCurrentView')}</p>
-              <p className="text-xs text-muted-foreground">
-                {t('budget.saveViewDescription')}
-              </p>
-              <Input
-                placeholder={t('budget.viewName')}
-                value={saveViewName}
-                onChange={(e) => setSaveViewName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSaveView();
-                }}
-              />
-              <Button
-                size="sm"
-                className="w-full"
-                disabled={!saveViewName.trim()}
-                onClick={handleSaveView}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                {t('common.save')}
-              </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        {/* Load View */}
-        {savedViews.length > 0 && (
-          <Popover open={loadViewOpen} onOpenChange={setLoadViewOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1">
-                <FolderOpen className="h-4 w-4" />
-                {t('budget.views', { count: savedViews.length })}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64" align="end">
-              <div className="space-y-1">
-                <p className="text-sm font-medium mb-2">{t('budget.savedViews')}</p>
-                {savedViews.map((view) => (
-                  <div
-                    key={view.id}
-                    className="flex items-center justify-between gap-2 px-2 py-1.5 rounded hover:bg-muted group"
-                  >
-                    <button
-                      className="flex-1 text-left text-sm truncate"
-                      onClick={() => handleLoadView(view)}
-                    >
-                      {view.name}
-                    </button>
-                    <button
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteView(view.id);
-                      }}
-                      title={t('budget.deleteView')}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
 
         {(searchQuery || filterType !== "all" || hasAdvancedFilter) && (
           <Button

@@ -35,7 +35,7 @@ export function HelpBot() {
       const { data } = await supabase
         .from("profiles")
         .select("onboarding_user_type")
-        .eq("id", user.id)
+        .eq("user_id", user.id)
         .maybeSingle();
       if (data?.onboarding_user_type) {
         setUserType(data.onboarding_user_type);

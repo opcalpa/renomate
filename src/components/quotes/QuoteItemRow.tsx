@@ -23,6 +23,8 @@ export interface QuoteItem {
   discountPercent?: number;
   /** Origin type — set during prepopulation to give visual context */
   source?: QuoteItemSource;
+  /** Planning task this item was generated from */
+  sourceTaskId?: string;
 }
 
 interface QuoteItemRowProps {

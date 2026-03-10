@@ -17,7 +17,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map as MapIcon, Loader2, AlertTriangle, Link2, ImageIcon, MessageSquare, Columns3, Save, ToggleLeft } from "lucide-react";
+import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map as MapIcon, Loader2, AlertTriangle, Link2, ImageIcon, MessageSquare, Columns3, ToggleLeft } from "lucide-react";
 import { TaskListSkeleton } from "@/components/ui/skeleton-screens";
 import { DEFAULT_COST_CENTERS, getCostCenterIcon, getCostCenterLabel } from "@/lib/costCenters";
 import { formatCurrency } from "@/lib/currency";
@@ -163,11 +163,6 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
 
   // Table view state (lifted so toolbar can render in parent)
   const tableViewState = useTasksTableView(projectId);
-
-  // Save view UI state (for toolbar in parent)
-  const [saveViewOpen, setSaveViewOpen] = useState(false);
-  const [saveViewName, setSaveViewName] = useState("");
-  const [loadViewOpen, setLoadViewOpen] = useState(false);
 
   // Timeline visibility
   const [timelineOpen, setTimelineOpen] = useState(true);
@@ -1289,81 +1284,6 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                 {t("tasksTable.compactRows")}
               </Button>
 
-              {/* Save view */}
-              <Popover open={saveViewOpen} onOpenChange={setSaveViewOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1 h-9">
-                    <Save className="h-4 w-4" />
-                    {t("tasksTable.saveView")}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-56" align="start">
-                  <div className="space-y-2">
-                    <Input
-                      placeholder={t("tasksTable.viewName")}
-                      value={saveViewName}
-                      onChange={(e) => setSaveViewName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && saveViewName.trim()) {
-                          tableViewState.saveView(saveViewName.trim());
-                          setSaveViewName("");
-                          setSaveViewOpen(false);
-                        }
-                      }}
-                      className="h-8"
-                    />
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      onClick={() => {
-                        if (!saveViewName.trim()) return;
-                        tableViewState.saveView(saveViewName.trim());
-                        setSaveViewName("");
-                        setSaveViewOpen(false);
-                      }}
-                      disabled={!saveViewName.trim()}
-                    >
-                      {t("tasksTable.saveView")}
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              {/* Load saved views */}
-              {tableViewState.savedViews.length > 0 && (
-                <Popover open={loadViewOpen} onOpenChange={setLoadViewOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-1 h-9">
-                      {t("tasksTable.savedViews")} ({tableViewState.savedViews.length})
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-56" align="start">
-                    <div className="space-y-1">
-                      {tableViewState.savedViews.map((view) => (
-                        <div key={view.id} className="flex items-center justify-between">
-                          <button
-                            className="text-sm hover:bg-muted px-2 py-1 rounded flex-1 text-left"
-                            onClick={() => {
-                              tableViewState.loadView(view);
-                              setLoadViewOpen(false);
-                            }}
-                          >
-                            {view.name}
-                          </button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => tableViewState.deleteView(view.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              )}
             </>
           )}
 
@@ -2547,7 +2467,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                   {t('taskPanel.photosAndFiles', 'Photos & Files')}
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pt-3 space-y-4">
-                <EntityPhotoGallery entityId={editingTask.id} entityType="task" />
+                <EntityPhotoGallery entityId={editingTask.id} entityType="task" projectId={projectId} />
                 <TaskFilesList taskId={editingTask.id} projectId={projectId} />
                 </CollapsibleContent>
                 </Collapsible>

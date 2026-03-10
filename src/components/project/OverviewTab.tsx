@@ -7,7 +7,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings2, Receipt, FileText, Mail, MessageSquare, ChevronDown } from "lucide-react";
+import { Settings2, Receipt, FileText, Mail, MessageSquare, ChevronDown, ChevronRight, ExternalLink, UserPlus } from "lucide-react";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
 import { useOverviewData } from "./overview/useOverviewData";
 import { PulseCards } from "./overview/PulseCards";
@@ -23,6 +24,7 @@ import { CommentsSection } from "@/components/comments/CommentsSection";
 import { ProjectStatusCTA } from "./overview/ProjectStatusCTA";
 import { PlanningTaskList } from "./overview/PlanningTaskList";
 import { PlanningRoomList } from "./overview/PlanningRoomList";
+import { HomeownerPlanningView } from "./overview/HomeownerPlanningView";
 import { GuestPlanningSection } from "./overview/GuestPlanningSection";
 import { ProjectHeader } from "./overview/ProjectHeader";
 import { RotDetailsCard } from "./overview/RotDetailsCard";
@@ -32,14 +34,39 @@ import { updateGuestProject } from "@/services/guestStorageService";
 import { useContextualTips } from "@/hooks/useContextualTips";
 import { TipList } from "@/components/ui/TipCard";
 import type { TipContext } from "@/lib/contextualTips";
+import { InviteCustomerPlanningDialog } from "./overview/InviteCustomerPlanningDialog";
 import type { OverviewProject, OverviewNavigation } from "./overview/types";
 import type { FeedComment } from "./feed/types";
+
+function CollapsiblePlanningSection({ planningSection }: { planningSection: React.ReactNode }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button className="flex items-center gap-2 w-full text-left py-2 group">
+          <ChevronRight
+            className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`}
+          />
+          <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+            {t("overview.planningReference", "Planning reference")}
+          </span>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-4 sm:space-y-6 pt-2">
+        {planningSection}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 interface OverviewTabProps {
   project: OverviewProject;
   userType?: string | null;
   isGuest?: boolean;
   isProjectOwner?: boolean;
+  isPlanningContributor?: boolean;
   onProjectUpdate?: () => void;
   onNavigateToEntity?: (comment: FeedComment) => void;
   onNavigateToPurchases?: (materialId?: string) => void;
@@ -55,6 +82,7 @@ const OverviewTab = ({
   userType,
   isGuest,
   isProjectOwner = false,
+  isPlanningContributor = false,
   onProjectUpdate,
   onNavigateToEntity,
   onNavigateToPurchases,
@@ -75,6 +103,7 @@ const OverviewTab = ({
   const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
   const [customerFormOpen, setCustomerFormOpen] = useState(false);
   const [invoiceMethodOpen, setInvoiceMethodOpen] = useState(false);
+  const [inviteCustomerOpen, setInviteCustomerOpen] = useState(false);
   const [rotPersonnummer, setRotPersonnummer] = useState<string | null>(null);
 
   // Fetch client personnummer for ROT card (builder view)
@@ -96,7 +125,7 @@ const OverviewTab = ({
         .from("profiles")
         .select("personnummer")
         .eq("id", clientProfileId)
-        .single();
+        .maybeSingle();
 
       if (clientProfile?.personnummer) {
         setRotPersonnummer(clientProfile.personnummer);
@@ -160,8 +189,19 @@ const OverviewTab = ({
   };
   const { tips, dismiss } = useContextualTips(tipContext);
 
+  const isRfqProject = !!project.source_rfq_project_id;
+
   // ----- Scope / Planning section (always available for authenticated users) -----
-  const planningSection = (
+  const planningSection = (isHomeowner && isProjectOwner) || isPlanningContributor ? (
+    <HomeownerPlanningView
+      projectId={project.id}
+      projectName={project.name}
+      projectAddress={project.address}
+      currency={project.currency}
+      onActivate={isPlanningContributor ? undefined : handleProjectUpdate}
+      contributorMode={isPlanningContributor}
+    />
+  ) : (
     <>
       <PlanningTaskList
         projectId={project.id}
@@ -197,6 +237,30 @@ const OverviewTab = ({
 
       <ProjectHeader project={project} onOpenSettings={() => setSettingsOpen(true)} />
 
+      {/* RFQ banner — builder working on a homeowner's quote request */}
+      {isRfqProject && !isHomeowner && isPlanning && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="py-3 px-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">
+                {t("rfqBanner.title", "Quote request from homeowner")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("rfqBanner.description", "Review the scope below, add your pricing, then create a quote.")}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              className="gap-1.5 shrink-0"
+              onClick={() => setQuoteDialogOpen(true)}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              {t("rfqBanner.createQuote", "Create quote")}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Documents card - contractors in planning/quote phases */}
       {!isHomeowner && isPlanning && (
         <ProjectDocumentsCard
@@ -207,8 +271,23 @@ const OverviewTab = ({
         />
       )}
 
-      {/* Scope / Planning section — hidden for invited clients */}
-      {!isInvitedClient && planningSection}
+      {/* Invite customer to fill in planning — builder only, planning phase */}
+      {!isHomeowner && isPlanning && !isRfqProject && (
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => setInviteCustomerOpen(true)}
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            {t("inviteCustomerPlanning.button", "Invite customer")}
+          </Button>
+        </div>
+      )}
+
+      {/* Scope / Planning section — during planning: prominent; after planning: moved to bottom */}
+      {isPlanning && (!isInvitedClient || isPlanningContributor) && planningSection}
 
       {/* Contextual tips */}
       {tips.length > 0 && (
@@ -343,6 +422,11 @@ const OverviewTab = ({
         />
       )}
 
+      {/* Collapsible planning reference — after planning phase, at bottom */}
+      {!isPlanning && (!isInvitedClient || isPlanningContributor) && (
+        <CollapsiblePlanningSection planningSection={planningSection} />
+      )}
+
       <ProjectSettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
@@ -378,6 +462,13 @@ const OverviewTab = ({
         projectId={project.id}
         open={invoiceMethodOpen}
         onOpenChange={setInvoiceMethodOpen}
+      />
+
+      <InviteCustomerPlanningDialog
+        projectId={project.id}
+        projectName={project.name}
+        open={inviteCustomerOpen}
+        onOpenChange={setInviteCustomerOpen}
       />
     </div>
   );

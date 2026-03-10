@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Home, Plus, Search, Trash2, MapPin, Calendar, X, ArrowUpDown, LayoutGrid, Table as TableIcon, Settings2, Save, FolderOpen } from "lucide-react";
+import { Loader2, Home, Plus, Search, Trash2, MapPin, Calendar, X, ArrowUpDown, LayoutGrid, Table as TableIcon, Settings2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -12,8 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "react-i18next";
 import { RoomsTableView } from "./rooms-table/RoomsTableView";
-import { FIELD_DEFINITIONS, DEFAULT_VISIBLE_FIELDS, loadSavedViews, persistSavedViews } from "./rooms-table/types";
-import type { Room, FieldKey, RoomSavedView } from "./rooms-table/types";
+import { FIELD_DEFINITIONS, DEFAULT_VISIBLE_FIELDS } from "./rooms-table/types";
+import type { Room, FieldKey } from "./rooms-table/types";
 
 type SortOption = 'name_asc' | 'name_desc' | 'area_desc' | 'area_asc' | 'created_desc' | 'created_asc';
 type ViewMode = 'cards' | 'table';
@@ -73,12 +73,6 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
     }
     return new Set(DEFAULT_VISIBLE_FIELDS);
   });
-
-  // Saved views
-  const [savedViews, setSavedViews] = useState<RoomSavedView[]>(() => loadSavedViews(projectId));
-  const [saveViewName, setSaveViewName] = useState("");
-  const [saveViewOpen, setSaveViewOpen] = useState(false);
-  const [loadViewOpen, setLoadViewOpen] = useState(false);
 
   const [isDesktop, setIsDesktop] = useState(false);
   useEffect(() => {
@@ -147,45 +141,6 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
       return next;
     });
   }, []);
-
-  const handleSaveView = useCallback(() => {
-    const name = saveViewName.trim();
-    if (!name) return;
-    const newView: RoomSavedView = {
-      id: crypto.randomUUID(),
-      name,
-      visibleFields: Array.from(visibleFields),
-      sortOption,
-      viewMode,
-    };
-    const updated = [...savedViews, newView];
-    setSavedViews(updated);
-    persistSavedViews(projectId, updated);
-    setSaveViewName("");
-    setSaveViewOpen(false);
-    toast.success(t('rooms.viewSaved', 'Vy sparad'), {
-      description: t('rooms.viewSavedDescription', { name }),
-    });
-  }, [saveViewName, visibleFields, sortOption, viewMode, savedViews, projectId, t]);
-
-  const handleLoadView = useCallback((view: RoomSavedView) => {
-    setVisibleFields(new Set(view.visibleFields));
-    setSortOption(view.sortOption as SortOption);
-    setViewMode(view.viewMode);
-    localStorage.setItem(VISIBLE_FIELDS_STORAGE_KEY, JSON.stringify(view.visibleFields));
-    localStorage.setItem(SORT_STORAGE_KEY, view.sortOption);
-    localStorage.setItem(VIEW_MODE_STORAGE_KEY, view.viewMode);
-    setLoadViewOpen(false);
-    toast.success(t('rooms.viewLoaded', 'Vy laddad'), {
-      description: t('rooms.viewLoadedDescription', { name: view.name }),
-    });
-  }, [t]);
-
-  const handleDeleteView = useCallback((viewId: string) => {
-    const updated = savedViews.filter(v => v.id !== viewId);
-    setSavedViews(updated);
-    persistSavedViews(projectId, updated);
-  }, [savedViews, projectId]);
 
   const filteredRooms = useMemo(() => {
     const filtered = rooms.filter(room =>
@@ -502,69 +457,6 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
           </PopoverContent>
         </Popover>
 
-        {/* Save View */}
-        <Popover open={saveViewOpen} onOpenChange={setSaveViewOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1">
-              <Save className="h-4 w-4" />
-              <span className="hidden sm:inline">{t('rooms.saveView', 'Spara vy')}</span>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-64" align="end">
-            <div className="space-y-3">
-              <p className="text-sm font-medium">{t('rooms.saveCurrentView', 'Spara aktuell vy')}</p>
-              <p className="text-xs text-muted-foreground">
-                {t('rooms.saveViewDescription', 'Sparar synliga fält, sortering och visningsläge.')}
-              </p>
-              <Input
-                placeholder={t('rooms.viewName', 'Vyns namn...')}
-                value={saveViewName}
-                onChange={(e) => setSaveViewName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleSaveView(); }}
-              />
-              <Button size="sm" className="w-full" disabled={!saveViewName.trim()} onClick={handleSaveView}>
-                <Plus className="h-3 w-3 mr-1" />
-                {t('common.save')}
-              </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        {/* Load View */}
-        {savedViews.length > 0 && (
-          <Popover open={loadViewOpen} onOpenChange={setLoadViewOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1">
-                <FolderOpen className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('rooms.loadView', 'Ladda vy')}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64" align="end">
-              <div className="space-y-2">
-                <p className="text-sm font-medium mb-2">{t('rooms.savedViews', 'Sparade vyer')}</p>
-                {savedViews.map((view) => (
-                  <div key={view.id} className="flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      className="flex-1 text-left text-sm px-2 py-1.5 rounded hover:bg-muted truncate"
-                      onClick={() => handleLoadView(view)}
-                    >
-                      {view.name}
-                    </button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500"
-                      onClick={() => handleDeleteView(view.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
       </div>
 
       {/* Rooms List */}

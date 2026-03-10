@@ -1,28 +1,34 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   TaskColumnKey,
   TaskColumnDef,
-  TaskSavedView,
   EXTRA_COLUMN_KEYS,
   DEFAULT_VISIBLE_EXTRAS,
 } from "./tasksTableTypes";
 
-const VIEWS_STORAGE_KEY = (projectId: string) =>
-  `tasks-table-views-${projectId}`;
+const PREFS_KEY = (projectId: string) => `tasks-table-prefs-${projectId}`;
 
-function loadSavedViews(projectId: string): TaskSavedView[] {
+interface TablePrefs {
+  columnOrder: TaskColumnKey[];
+  visibleExtras: TaskColumnKey[];
+  sortKey: TaskColumnKey | null;
+  sortDir: "asc" | "desc";
+  compactRows: boolean;
+}
+
+function loadPrefs(projectId: string): TablePrefs | null {
   try {
-    const raw = localStorage.getItem(VIEWS_STORAGE_KEY(projectId));
-    if (!raw) return [];
-    return JSON.parse(raw) as TaskSavedView[];
+    const raw = localStorage.getItem(PREFS_KEY(projectId));
+    if (!raw) return null;
+    return JSON.parse(raw) as TablePrefs;
   } catch {
-    return [];
+    return null;
   }
 }
 
-function persistSavedViews(projectId: string, views: TaskSavedView[]) {
-  localStorage.setItem(VIEWS_STORAGE_KEY(projectId), JSON.stringify(views));
+function persistPrefs(projectId: string, prefs: TablePrefs) {
+  localStorage.setItem(PREFS_KEY(projectId), JSON.stringify(prefs));
 }
 
 export function useTasksTableView(projectId: string) {
@@ -54,10 +60,48 @@ export function useTasksTableView(projectId: string) {
     [t]
   );
 
-  const [columns, setColumns] = useState<TaskColumnDef[]>(ALL_COLUMNS);
+  // Restore saved prefs or use defaults
+  const saved = useRef(loadPrefs(projectId));
+
+  const [columns, setColumns] = useState<TaskColumnDef[]>(() => {
+    if (saved.current?.columnOrder) {
+      const ordered = saved.current.columnOrder
+        .map((key) => ALL_COLUMNS.find((c) => c.key === key))
+        .filter((c): c is TaskColumnDef => c !== undefined);
+      for (const col of ALL_COLUMNS) {
+        if (!ordered.some((c) => c.key === col.key)) ordered.push(col);
+      }
+      return ordered;
+    }
+    return ALL_COLUMNS;
+  });
+
   const [visibleExtras, setVisibleExtras] = useState<Set<TaskColumnKey>>(
-    () => new Set(DEFAULT_VISIBLE_EXTRAS)
+    () => saved.current?.visibleExtras
+      ? new Set(saved.current.visibleExtras)
+      : new Set(DEFAULT_VISIBLE_EXTRAS)
   );
+
+  const [sortKey, setSortKey] = useState<TaskColumnKey | null>(
+    () => saved.current?.sortKey ?? null
+  );
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(
+    () => saved.current?.sortDir ?? "asc"
+  );
+  const [compactRows, setCompactRows] = useState(
+    () => saved.current?.compactRows ?? false
+  );
+
+  // Auto-persist on every change
+  useEffect(() => {
+    persistPrefs(projectId, {
+      columnOrder: columns.map((c) => c.key),
+      visibleExtras: Array.from(visibleExtras),
+      sortKey,
+      sortDir,
+      compactRows,
+    });
+  }, [columns, visibleExtras, sortKey, sortDir, compactRows, projectId]);
 
   const visibleColumns = useMemo(
     () => columns.filter((c) => !c.extra || visibleExtras.has(c.key)),
@@ -72,10 +116,6 @@ export function useTasksTableView(projectId: string) {
       return next;
     });
   }, []);
-
-  // Sort state
-  const [sortKey, setSortKey] = useState<TaskColumnKey | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const handleSort = useCallback(
     (key: TaskColumnKey) => {
@@ -113,7 +153,6 @@ export function useTasksTableView(projectId: string) {
       setDragOverIdx(null);
       return;
     }
-    // Map visible indices → column keys to fix hidden-column index bug
     const fromKey = visibleColumns[dragColIdx]?.key;
     const toKey = visibleColumns[dragOverIdx]?.key;
     if (!fromKey || !toKey) return;
@@ -130,61 +169,6 @@ export function useTasksTableView(projectId: string) {
     setDragColIdx(null);
     setDragOverIdx(null);
   }, [dragColIdx, dragOverIdx, visibleColumns]);
-
-  // Compact rows
-  const [compactRows, setCompactRows] = useState(false);
-
-  // Saved views
-  const [savedViews, setSavedViews] = useState<TaskSavedView[]>(() =>
-    loadSavedViews(projectId)
-  );
-
-  const saveView = useCallback(
-    (name: string) => {
-      const newView: TaskSavedView = {
-        id: crypto.randomUUID(),
-        name,
-        columnOrder: columns.map((c) => c.key),
-        visibleExtras: Array.from(visibleExtras),
-        sortKey,
-        sortDir,
-        compactRows,
-      };
-      const updated = [...savedViews, newView];
-      setSavedViews(updated);
-      persistSavedViews(projectId, updated);
-      return newView;
-    },
-    [columns, visibleExtras, sortKey, sortDir, compactRows, savedViews, projectId]
-  );
-
-  const loadView = useCallback(
-    (view: TaskSavedView) => {
-      const orderedColumns = view.columnOrder
-        .map((key) => ALL_COLUMNS.find((c) => c.key === key))
-        .filter((c): c is TaskColumnDef => c !== undefined);
-      for (const col of ALL_COLUMNS) {
-        if (!orderedColumns.some((c) => c.key === col.key)) {
-          orderedColumns.push(col);
-        }
-      }
-      setColumns(orderedColumns);
-      setVisibleExtras(new Set(view.visibleExtras));
-      setSortKey(view.sortKey);
-      setSortDir(view.sortDir);
-      setCompactRows(view.compactRows ?? false);
-    },
-    [ALL_COLUMNS]
-  );
-
-  const deleteView = useCallback(
-    (viewId: string) => {
-      const updated = savedViews.filter((v) => v.id !== viewId);
-      setSavedViews(updated);
-      persistSavedViews(projectId, updated);
-    },
-    [savedViews, projectId]
-  );
 
   return {
     ALL_COLUMNS,
@@ -203,10 +187,6 @@ export function useTasksTableView(projectId: string) {
     dragOverIdx,
     compactRows,
     setCompactRows,
-    savedViews,
-    saveView,
-    loadView,
-    deleteView,
   };
 }
 

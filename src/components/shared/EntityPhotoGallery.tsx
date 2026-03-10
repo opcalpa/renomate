@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Upload, Image as ImageIcon, XCircle, Maximize2, Camera } from "lucide-react";
+import { Loader2, Upload, Image as ImageIcon, XCircle, Maximize2, Camera, FileText, Paperclip, Download } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -13,12 +13,18 @@ interface Photo {
   url: string;
   caption: string | null;
   source?: string;
+  mime_type?: string;
   created_at: string;
 }
+
+const isImageFile = (file: File) => file.type.startsWith("image/");
+const isImageUrl = (photo: Photo) =>
+  !photo.mime_type || photo.mime_type.startsWith("image/");
 
 interface EntityPhotoGalleryProps {
   entityId: string;
   entityType: "task" | "room" | "material" | "shape";
+  projectId?: string;
   storagePath?: string;
 }
 
@@ -61,7 +67,7 @@ const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 
   });
 };
 
-export function EntityPhotoGallery({ entityId, entityType, storagePath }: EntityPhotoGalleryProps) {
+export function EntityPhotoGallery({ entityId, entityType, projectId, storagePath }: EntityPhotoGalleryProps) {
   const { t } = useTranslation();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
@@ -72,14 +78,15 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const bucket = storagePath || "project-files";
-  const folder = `${entityType}-photos`;
+  const useProjectPath = !!projectId;
+  const legacyFolder = `${entityType}-photos`;
 
   const loadPhotos = useCallback(async () => {
     setLoadingPhotos(true);
     try {
       const { data, error } = await supabase
         .from("photos")
-        .select("*")
+        .select("id, url, caption, source, mime_type, created_at")
         .eq("linked_to_type", entityType)
         .eq("linked_to_id", entityId)
         .order("created_at", { ascending: false });
@@ -122,8 +129,11 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
       }
 
       for (const file of fileArray) {
-        if (!file.type.startsWith("image/")) {
-          toast.error(t('entityPhotos.notAnImage', { name: file.name }));
+        const isImage = isImageFile(file);
+        const isDocument = file.type === "application/pdf" || file.type.includes("word") || file.type === "text/plain";
+
+        if (!isImage && !isDocument) {
+          toast.error(t('entityPhotos.unsupportedFormat', { name: file.name }));
           continue;
         }
         if (file.size > 10 * 1024 * 1024) {
@@ -131,13 +141,16 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
           continue;
         }
 
-        const compressed = await compressImage(file);
-        const fileExt = file.name.split(".").pop() || "jpg";
-        const fileName = `${folder}/${entityId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const uploadFile = isImage ? await compressImage(file) : file;
+        const fileExt = file.name.split(".").pop() || (isImage ? "jpg" : "pdf");
+        const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const fileName = useProjectPath
+          ? `projects/${projectId}/attachments/${entityType}/${uniqueName}`
+          : `${legacyFolder}/${entityId}/${uniqueName}`;
 
         const { error: uploadError } = await supabase.storage
           .from(bucket)
-          .upload(fileName, compressed);
+          .upload(fileName, uploadFile);
 
         if (uploadError) {
           console.error("Upload error:", uploadError);
@@ -152,6 +165,7 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
           linked_to_id: entityId,
           url: publicUrl,
           caption: file.name,
+          mime_type: file.type,
           uploaded_by_user_id: profile.id,
         });
 
@@ -160,9 +174,26 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
           toast.error(t('entityPhotos.saveError', { name: file.name }));
           continue;
         }
+
+        // Create task_file_links record so file appears in Files tab
+        if (useProjectPath) {
+          const linkRecord: Record<string, unknown> = {
+            project_id: projectId,
+            file_path: fileName,
+            file_name: file.name,
+            file_type: "other",
+            file_size: uploadFile.size,
+            mime_type: file.type,
+            linked_by_user_id: profile.id,
+          };
+          if (entityType === "task") linkRecord.task_id = entityId;
+          else if (entityType === "material") linkRecord.material_id = entityId;
+
+          await supabase.from("task_file_links").insert(linkRecord);
+        }
       }
 
-      toast.success(t('entityPhotos.photosUploaded'));
+      toast.success(t('entityPhotos.filesUploaded'));
       loadPhotos();
     } catch (error) {
       console.error("Error uploading files:", error);
@@ -204,15 +235,29 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
     }
   };
 
+  const imagePhotos = photos.filter((p) => isImageUrl(p));
+  const docPhotos = photos.filter((p) => !isImageUrl(p));
+
+  const handleDownloadDoc = (photo: Photo) => {
+    const a = document.createElement("a");
+    a.href = photo.url;
+    a.download = photo.caption || "document";
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <ImageIcon className="h-4 w-4 text-gray-600" />
-          <Label>{t('entityPhotos.photos')}</Label>
+          <Paperclip className="h-4 w-4 text-gray-600" />
+          <Label>{t('entityPhotos.photosAndDocuments')}</Label>
         </div>
         <div className="text-xs text-gray-500">
-          {photos.length} {photos.length === 1 ? "bild" : "bilder"}
+          {photos.length} {t('entityPhotos.fileCount', { count: photos.length })}
         </div>
       </div>
 
@@ -240,7 +285,7 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.pdf,.doc,.docx"
           multiple
           onChange={handleFileUpload}
           className="hidden"
@@ -254,7 +299,7 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
           onClick={() => fileInputRef.current?.click()}
         >
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {t('entityPhotos.upload')}
+          {t('entityPhotos.uploadFile')}
         </Button>
       </div>
 
@@ -263,55 +308,93 @@ export function EntityPhotoGallery({ entityId, entityType, storagePath }: Entity
           <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
         </div>
       ) : photos.length > 0 ? (
-        <ScrollArea className="h-48">
-          <div className="grid grid-cols-2 gap-3">
-            {photos.map((photo, index) => (
-              <div
-                key={photo.id}
-                className="relative group cursor-pointer"
-                onClick={() => {
-                  setCarouselIndex(index);
-                  setCarouselOpen(true);
-                }}
-              >
-                <img
-                  src={photo.url}
-                  alt={photo.caption || "Bild"}
-                  className="w-full h-32 object-cover rounded-lg border border-gray-200 transition-all group-hover:brightness-90"
-                />
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="bg-black/50 rounded-full p-2">
-                    <Maximize2 className="h-5 w-5 text-white" />
+        <div className="space-y-3">
+          {/* Document files */}
+          {docPhotos.length > 0 && (
+            <div className="space-y-1.5">
+              {docPhotos.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="flex items-center justify-between bg-muted px-3 py-2 rounded-lg group"
+                >
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <FileText className="h-4 w-4 text-red-500 shrink-0" />
+                    <span className="text-sm truncate">{doc.caption || "Document"}</span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => handleDownloadDoc(doc)}
+                      className="p-1.5 rounded-md hover:bg-background transition-colors"
+                      title={t('common.download', 'Download')}
+                    >
+                      <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                    <button
+                      onClick={() => handleDeletePhoto(doc.id, doc.url)}
+                      className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors"
+                      title={t('entityPhotos.removeFile')}
+                    >
+                      <XCircle className="h-3.5 w-3.5 text-destructive" />
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeletePhoto(photo.id, photo.url);
-                  }}
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 z-10"
-                  title={t('entityPhotos.removePhoto')}
-                >
-                  <XCircle className="h-4 w-4" />
-                </button>
-                {photo.caption && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2 rounded-b-lg truncate">
-                    {photo.caption}
+              ))}
+            </div>
+          )}
+
+          {/* Image gallery */}
+          {imagePhotos.length > 0 && (
+            <ScrollArea className="h-48">
+              <div className="grid grid-cols-2 gap-3">
+                {imagePhotos.map((photo, index) => (
+                  <div
+                    key={photo.id}
+                    className="relative group cursor-pointer"
+                    onClick={() => {
+                      setCarouselIndex(index);
+                      setCarouselOpen(true);
+                    }}
+                  >
+                    <img
+                      src={photo.url}
+                      alt={photo.caption || "Bild"}
+                      className="w-full h-32 object-cover rounded-lg border border-gray-200 transition-all group-hover:brightness-90"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="bg-black/50 rounded-full p-2">
+                        <Maximize2 className="h-5 w-5 text-white" />
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeletePhoto(photo.id, photo.url);
+                      }}
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 z-10"
+                      title={t('entityPhotos.removePhoto')}
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </button>
+                    {photo.caption && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2 rounded-b-lg truncate">
+                        {photo.caption}
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
-        </ScrollArea>
+            </ScrollArea>
+          )}
+        </div>
       ) : (
         <div className="text-center py-6 text-gray-400 text-sm">
-          <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p>{t('entityPhotos.noPhotos')}</p>
+          <Paperclip className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p>{t('entityPhotos.noFiles')}</p>
         </div>
       )}
 
       <PhotoCarousel
-        photos={photos}
+        photos={imagePhotos}
         initialIndex={carouselIndex}
         open={carouselOpen}
         onOpenChange={setCarouselOpen}

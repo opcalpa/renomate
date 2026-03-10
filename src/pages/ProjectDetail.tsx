@@ -220,6 +220,13 @@ const ProjectDetail = () => {
     }
   }, [permissions.loading, permissions.isClient, isQuotePhase, leadQuoteId]);
 
+  // Planning contributor → force overview tab only
+  useEffect(() => {
+    if (!permissions.loading && permissions.isPlanningContributor && activeTab !== "overview") {
+      setActiveTab("overview");
+    }
+  }, [permissions.loading, permissions.isPlanningContributor, activeTab]);
+
   // Client on active project → redirect blocked tabs to default client tab (preserve pendingSection)
   useEffect(() => {
     if (!permissions.loading && permissions.isClient && !isQuotePhase) {
@@ -1181,6 +1188,7 @@ const ProjectDetail = () => {
                 userType={effectiveUserType}
                 isGuest={isGuest}
                 isProjectOwner={permissions.isOwner}
+                isPlanningContributor={permissions.isPlanningContributor}
                 onProjectUpdate={isGuest ? loadGuestData : loadData}
                 onNavigateToEntity={handleFeedNavigate}
                 onNavigateToPurchases={(materialId?: string) => {

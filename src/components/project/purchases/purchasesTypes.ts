@@ -55,16 +55,6 @@ export const DEFAULT_VISIBLE_EXTRAS: PurchaseColumnKey[] = [
   "task",
 ];
 
-export interface PurchaseSavedView {
-  id: string;
-  name: string;
-  columnOrder: PurchaseColumnKey[];
-  visibleExtras: PurchaseColumnKey[];
-  sortKey: PurchaseColumnKey | null;
-  sortDir: "asc" | "desc";
-  compactRows?: boolean;
-}
-
 export const KANBAN_STATUS_ORDER = [
   "submitted",
   "approved",

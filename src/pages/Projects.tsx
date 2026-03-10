@@ -5,13 +5,13 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { analytics, AnalyticsEvents } from "@/lib/analytics";
 import { useProfileLanguage } from "@/hooks/useProfileLanguage";
-import { useOnboarding } from "@/hooks/useOnboarding";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ChevronRight, ChevronLeft, Users, User, BookOpen, Trash2, Upload, FileText, X, Loader2, Sparkles, ChevronDown, ChevronUp, MessageSquare, Mail } from "lucide-react";
+import { Plus, ChevronRight, ChevronLeft, Users, User, BookOpen, Trash2, Upload, FileText, X, Loader2, Sparkles, ChevronDown, ChevronUp, MessageSquare, Mail, LayoutGrid, List, Settings2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -29,7 +29,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
 import { WelcomeModal, QuickStartChoice } from "@/components/onboarding/WelcomeModal";
 import { GuidedSetupWizard } from "@/components/onboarding/GuidedSetupWizard";
 import { PageLoadingSkeleton } from "@/components/ui/skeleton-screens";
@@ -38,6 +37,7 @@ import { normalizeStatus, STATUS_META } from "@/lib/projectStatus";
 import { formatCurrency } from "@/lib/currency";
 import { LeadsPipelineSection } from "@/components/pipeline";
 import { FinancialAnalysisSection } from "@/components/project/FinancialAnalysisSection";
+import { HomeownerYearlyAnalysis } from "@/components/project/HomeownerYearlyAnalysis";
 import { GuestBanner } from "@/components/guest";
 import { CreateIntakeDialog } from "@/components/intake/CreateIntakeDialog";
 import {
@@ -66,7 +66,6 @@ const Projects = () => {
   const { isGuest, refreshStorageUsage } = useGuestMode();
   useProfileLanguage();
   const { t } = useTranslation();
-  const onboarding = useOnboarding();
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,6 +99,42 @@ const Projects = () => {
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() =>
+    (localStorage.getItem("projects_view_mode") as "grid" | "list") || "grid"
+  );
+  const ALL_LIST_COLS = ["address", "description", "budget", "status", "date", "owner"] as const;
+  type ListColKey = typeof ALL_LIST_COLS[number];
+  const [listColumnOrder, setListColumnOrder] = useState<ListColKey[]>(() => {
+    try {
+      const saved = localStorage.getItem("projects_list_cols_v2");
+      if (saved) {
+        const parsed = JSON.parse(saved) as { order: string[]; hidden: string[] };
+        const order = (parsed.order || []).filter((k: string) => ALL_LIST_COLS.includes(k as ListColKey)) as ListColKey[];
+        // Append any new keys not in saved order
+        ALL_LIST_COLS.forEach((k) => { if (!order.includes(k)) order.push(k); });
+        return order;
+      }
+    } catch { /* ignore */ }
+    return [...ALL_LIST_COLS];
+  });
+  const [hiddenListCols, setHiddenListCols] = useState<Set<ListColKey>>(() => {
+    try {
+      const saved = localStorage.getItem("projects_list_cols_v2");
+      if (saved) {
+        const parsed = JSON.parse(saved) as { order: string[]; hidden: string[] };
+        return new Set((parsed.hidden || []).filter((k: string) => ALL_LIST_COLS.includes(k as ListColKey)) as ListColKey[]);
+      }
+    } catch { /* ignore */ }
+    return new Set<ListColKey>();
+  });
+  const [draggedCol, setDraggedCol] = useState<ListColKey | null>(null);
+
+  const saveListColPrefs = (order: ListColKey[], hidden: Set<ListColKey>) => {
+    localStorage.setItem("projects_list_cols_v2", JSON.stringify({ order, hidden: [...hidden] }));
+  };
+
+  const visibleListCols = listColumnOrder.filter((k) => !hiddenListCols.has(k));
+
   const [createIntakeOpen, setCreateIntakeOpen] = useState(false);
   const [projectFinancials, setProjectFinancials] = useState<Record<string, { budget: number; profit: number }>>({});
   const [ownerNames, setOwnerNames] = useState<Record<string, string>>({});
@@ -344,9 +379,6 @@ const Projects = () => {
         description: t('projects.projectCreatedDescription'),
       });
 
-      // Mark onboarding step as complete
-      onboarding.markStepComplete("project");
-
       setDialogOpen(false);
       setCreateStep(1);
       setNewProjectName("");
@@ -479,8 +511,6 @@ const Projects = () => {
     } else {
       // Refresh projects - fetchProjects() already handles demo seeding
       await fetchProjects();
-      // Refresh onboarding state
-      onboarding.refresh();
     }
 
     // Handle quick start choice
@@ -570,19 +600,6 @@ const Projects = () => {
 
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
 
-        {!isGuest && !onboarding.loading && !onboarding.isDismissed && !onboarding.isComplete && onboarding.steps.length > 0 && (
-          <OnboardingChecklist
-            steps={onboarding.steps}
-            completedCount={onboarding.completedCount}
-            totalSteps={onboarding.totalSteps}
-            isComplete={onboarding.isComplete}
-            onDismiss={onboarding.dismiss}
-            onCreateProject={() => setDialogOpen(true)}
-            firstProjectId={projects[0]?.id}
-            currentStepKey={onboarding.currentStepKey}
-          />
-        )}
-
         {/* Pipeline Section - Leads & Quotes (hidden in guest mode and for homeowners) */}
         {!isGuest && (
           <section id="pipeline">
@@ -594,11 +611,31 @@ const Projects = () => {
         )}
 
         <section id="projekt" className="scroll-mt-20">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-semibold">{t('projects.title')}</h2>
+            <h2 className="text-xl font-semibold">{t('projects.title')}</h2>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+              {projects.length > 0 && (
+                <div className="hidden sm:flex items-center border rounded-md">
+                  <button
+                    type="button"
+                    onClick={() => { setViewMode("grid"); localStorage.setItem("projects_view_mode", "grid"); }}
+                    className={`p-1.5 rounded-l-md transition-colors ${viewMode === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    title={t("projects.gridView", "Card view")}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setViewMode("list"); localStorage.setItem("projects_view_mode", "list"); }}
+                    className={`p-1.5 rounded-r-md transition-colors ${viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    title={t("projects.listView", "List view")}
+                  >
+                    <List className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
               <Button onClick={() => setDialogOpen(true)} className="flex-1 sm:flex-none">
                 <Plus className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">
@@ -942,8 +979,180 @@ const Projects = () => {
               </Button>
             </div>
           </div>
+        ) : viewMode === "list" ? (
+          /* ---- List view ---- */
+          (() => {
+            const colLabels: Record<ListColKey, string> = {
+              address: t("projects.address"),
+              description: t("projects.colDescription", "Beskrivning"),
+              budget: t("projects.totalBudget"),
+              status: t("projects.colStatus", "Status"),
+              date: t("projects.colDate", "Skapad"),
+              owner: t("projects.colOwner", "Ägare"),
+            };
+            const colAlign: Partial<Record<ListColKey, "right">> = { budget: "right" };
+
+            const renderListCell = (col: ListColKey, project: Project) => {
+              const fin = projectFinancials[project.id];
+              const projectStatus = normalizeStatus(project.status);
+              const statusMeta = STATUS_META[projectStatus];
+              switch (col) {
+                case "address":
+                  return <span className="truncate block max-w-[180px]">{[project.address, project.city].filter(Boolean).join(", ") || "—"}</span>;
+                case "description":
+                  return (
+                    <span className="truncate block max-w-[200px] text-muted-foreground">
+                      {project.description ? (project.description.length > 60 ? project.description.slice(0, 60).trim() + "..." : project.description) : "—"}
+                    </span>
+                  );
+                case "budget":
+                  return fin && fin.budget > 0
+                    ? <span className="font-medium tabular-nums">{formatCurrency(fin.budget)}</span>
+                    : <span className="text-muted-foreground">—</span>;
+                case "status":
+                  return (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusMeta.color}`}>
+                      {t(statusMeta.labelKey)}
+                    </span>
+                  );
+                case "date":
+                  return <span className="tabular-nums text-muted-foreground">{new Date(project.created_at).toLocaleDateString()}</span>;
+                case "owner":
+                  return (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <User className="h-3 w-3" />
+                      {project.owner_id === profileId ? t("projects.ownerYou", "You") : project.owner_id ? ownerNames[project.owner_id] || "..." : "—"}
+                    </span>
+                  );
+                default: return null;
+              }
+            };
+
+            const handleColDragStart = (col: ListColKey) => { setDraggedCol(col); };
+            const handleColDragOver = (e: React.DragEvent) => { e.preventDefault(); };
+            const handleColDrop = (targetCol: ListColKey) => {
+              if (!draggedCol || draggedCol === targetCol) { setDraggedCol(null); return; }
+              const newOrder = listColumnOrder.filter((k) => k !== draggedCol);
+              const targetIdx = newOrder.indexOf(targetCol);
+              newOrder.splice(targetIdx, 0, draggedCol);
+              setListColumnOrder(newOrder);
+              saveListColPrefs(newOrder, hiddenListCols);
+              setDraggedCol(null);
+            };
+
+            return (
+              <div className="space-y-2">
+                <div className="flex justify-end">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
+                        <Settings2 className="h-3 w-3" />
+                        {t("declaration.columns", "Kolumner")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-52 p-2">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                        {t("declaration.toggleColumns", "Visa/dölj kolumner")}
+                      </p>
+                      <div className="space-y-1">
+                        {listColumnOrder.map((key) => (
+                          <label
+                            key={key}
+                            className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted cursor-pointer text-sm"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!hiddenListCols.has(key)}
+                              onChange={() => {
+                                setHiddenListCols((prev) => {
+                                  const next = new Set(prev);
+                                  next.has(key) ? next.delete(key) : next.add(key);
+                                  saveListColPrefs(listColumnOrder, next);
+                                  return next;
+                                });
+                              }}
+                              className="h-3.5 w-3.5 rounded border-gray-300"
+                            />
+                            {colLabels[key]}
+                          </label>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="overflow-x-auto rounded-lg border bg-card">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/50 border-b">
+                        <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">{t("projects.colName", "Namn")}</th>
+                        {visibleListCols.map((col) => (
+                          <th
+                            key={col}
+                            draggable
+                            onDragStart={() => handleColDragStart(col)}
+                            onDragOver={handleColDragOver}
+                            onDrop={() => handleColDrop(col)}
+                            onDragEnd={() => setDraggedCol(null)}
+                            className={`px-3 py-2.5 text-xs font-medium text-muted-foreground whitespace-nowrap select-none cursor-grab active:cursor-grabbing ${
+                              colAlign[col] === "right" ? "text-right" : "text-left"
+                            } ${draggedCol === col ? "opacity-40" : ""}`}
+                          >
+                            {colLabels[col]}
+                          </th>
+                        ))}
+                        <th className="px-2 py-2.5 w-10" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {projects.map((project) => {
+                        const isDemo = isDemoProject(project.project_type);
+                        return (
+                          <tr
+                            key={project.id}
+                            className={`border-b last:border-b-0 hover:bg-muted/30 transition-colors cursor-pointer ${isDemo ? "bg-primary/5" : ""}`}
+                            onClick={() => navigate(`/projects/${project.id}`)}
+                          >
+                            <td className="px-3 py-2.5">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {isDemo && <BookOpen className="h-3.5 w-3.5 text-primary shrink-0" />}
+                                <span className="font-medium truncate">{project.name}</span>
+                              </div>
+                            </td>
+                            {visibleListCols.map((col) => (
+                              <td
+                                key={col}
+                                className={`px-3 py-2.5 ${colAlign[col] === "right" ? "text-right" : "text-left"}`}
+                              >
+                                {renderListCell(col, project)}
+                              </td>
+                            ))}
+                            <td className="px-2 py-2.5">
+                              {(isGuest || (profileId && project.owner_id === profileId)) && !isDemo && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteTarget(project);
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          /* ---- Grid / card view ---- */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {projects.map((project) => {
               const isDemo = isDemoProject(project.project_type);
               const projectStatus = normalizeStatus(project.status);
@@ -961,8 +1170,8 @@ const Projects = () => {
                       <span className="text-primary-foreground/70 font-normal">– {t("demoProject.description")}</span>
                     </div>
                   )}
-                  <CardHeader>
-                    <CardTitle>{project.name}</CardTitle>
+                  <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-2">
+                    <CardTitle className="text-base font-semibold">{project.name}</CardTitle>
                     <CardDescription className="space-y-1">
                       {project.address && (
                         <span className="block">
@@ -1014,7 +1223,7 @@ const Projects = () => {
                       )}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 sm:p-5 pt-0 sm:pt-0">
                     {(() => {
                       const fin = projectFinancials[project.id];
                       if (!fin || fin.budget <= 0) return null;
@@ -1052,7 +1261,6 @@ const Projects = () => {
                           </>
                         )}
                       </div>
-                      {/* Show delete button for guest projects or owned projects */}
                       {(isGuest || (profileId && project.owner_id === profileId)) && !isDemo && (
                         <Button
                           variant="ghost"
@@ -1077,11 +1285,22 @@ const Projects = () => {
 
         {/* Financial Analysis - contractors only, at the bottom */}
         {isContractor && !isGuest && projects.length > 0 && (
-          <FinancialAnalysisSection
-            projects={projects}
-            financials={projectFinancials}
-            currency={(profile?.currency as string) ?? null}
-          />
+          <section className="mt-10 sm:mt-14">
+            <FinancialAnalysisSection
+              projects={projects}
+              financials={projectFinancials}
+              currency={(profile?.currency as string) ?? null}
+            />
+          </section>
+        )}
+
+        {!isContractor && !isGuest && projects.length > 0 && (
+          <section id="deklaration" className="mt-10 sm:mt-14 scroll-mt-20">
+            <HomeownerYearlyAnalysis
+              projects={projects}
+              currency={(profile?.currency as string) ?? null}
+            />
+          </section>
         )}
       </main>
 

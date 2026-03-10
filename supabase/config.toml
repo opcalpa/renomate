@@ -25,6 +25,11 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/translate-comments/index.ts"
 
+[functions.send-project-invitation]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/send-project-invitation/index.ts"
+
 [functions.send-quote-email]
 enabled = true
 verify_jwt = false

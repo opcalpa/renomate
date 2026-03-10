@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { EntityPhotoGallery } from "@/components/shared/EntityPhotoGallery";
+import { TaskFilesList } from "./TaskFilesList";
 import {
   Select,
   SelectContent,
@@ -1609,7 +1610,10 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                   {t('purchases.photos', 'Photos')}
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pt-3">
-                  <EntityPhotoGallery entityId={editingMaterial.id} entityType="material" />
+                  <EntityPhotoGallery entityId={editingMaterial.id} entityType="material" projectId={projectId} />
+                  <div className="mt-3">
+                    <TaskFilesList materialId={editingMaterial.id} projectId={projectId} />
+                  </div>
                 </CollapsibleContent>
               </Collapsible>
 

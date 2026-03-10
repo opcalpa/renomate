@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, User, Globe, Lightbulb, MessageSquare, FolderOpen, ChevronDown, MoreHorizontal, Users, FileText } from "lucide-react";
+import { LogOut, User, Globe, Lightbulb, MessageSquare, FolderOpen, ChevronDown, MoreHorizontal, Users, FileText, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -167,22 +167,35 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
         {projects.length > 0 && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => navigate("/start#projekt")}
-              className="cursor-pointer text-xs text-muted-foreground uppercase tracking-wide"
-            >
-              {t('nav.myProjects')}
-            </DropdownMenuItem>
-            {projects.map((proj) => (
-              <DropdownMenuItem
-                key={proj.id}
-                onClick={() => navigate(`/projects/${proj.id}`)}
-                className="cursor-pointer pl-4"
-              >
-                <span className="truncate">{proj.name}</span>
-              </DropdownMenuItem>
-            ))}
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="cursor-pointer">
+                <FolderOpen className="mr-2 h-4 w-4" />
+                <span>{t('nav.myProjects')}</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-64">
+                {projects.map((proj) => (
+                  <DropdownMenuItem
+                    key={proj.id}
+                    onClick={() => navigate(`/projects/${proj.id}`)}
+                    className="cursor-pointer"
+                  >
+                    <span className="truncate">{proj.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
           </>
+        )}
+
+        {/* Deklarationsunderlag - homeowners only */}
+        {!isProfessional && projects.length > 0 && (
+          <DropdownMenuItem
+            onClick={() => navigate("/start#deklaration")}
+            className="cursor-pointer"
+          >
+            <BarChart3 className="mr-2 h-4 w-4" />
+            <span>{t('nav.declaration', 'Deklarationsunderlag')}</span>
+          </DropdownMenuItem>
         )}
 
         {/* Mina Offerter */}

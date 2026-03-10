@@ -88,12 +88,20 @@ export function ClientTaskSheet({ taskId, projectId, open, onOpenChange }: Clien
     setLoading(true);
     const { data } = await supabase
       .from("tasks")
-      .select("id, title, description, status, progress, start_date, due_date, checklists, rooms!tasks_room_id_fkey(name)")
+      .select("id, title, description, status, progress, start_date, due_date, checklists, room_id")
       .eq("id", taskId)
       .single();
 
     if (data) {
-      const roomRow = data.rooms as unknown as { name: string } | null;
+      let roomName: string | null = null;
+      if (data.room_id) {
+        const { data: room } = await supabase
+          .from("rooms")
+          .select("name")
+          .eq("id", data.room_id)
+          .single();
+        roomName = room?.name ?? null;
+      }
       setTask({
         id: data.id,
         title: data.title,
@@ -102,7 +110,7 @@ export function ClientTaskSheet({ taskId, projectId, open, onOpenChange }: Clien
         progress: data.progress ?? 0,
         start_date: data.start_date,
         due_date: data.due_date,
-        room_name: roomRow?.name ?? null,
+        room_name: roomName,
         checklists: data.checklists as ChecklistData[] | null,
       });
     }
@@ -220,6 +228,7 @@ export function ClientTaskSheet({ taskId, projectId, open, onOpenChange }: Clien
                 <EntityPhotoGallery
                   entityId={task.id}
                   entityType="task"
+                  projectId={projectId}
                 />
               </div>
 

@@ -917,7 +917,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated, o
             {taskId && (
               <>
                 <Separator className="my-4" />
-                <EntityPhotoGallery entityId={taskId} entityType="task" />
+                <EntityPhotoGallery entityId={taskId} entityType="task" projectId={projectId} />
               </>
             )}
 
