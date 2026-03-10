@@ -555,8 +555,8 @@
     "paymentStatus": "Betalningsstatus",
     "estimatedHours": "Uppsk. timmar",
     "hourlyRate": "Timpris",
-    "subcontractorCost": "Underentreprenör",
-    "materialEstimate": "Materialuppsk.",
+    "subcontractorCost": "UE-kostnad",
+    "materialEstimate": "Materialkalkyl",
     "markupPercent": "Påslag %"
   },
   "purchasesTable": {
@@ -2290,7 +2290,7 @@
     "unassigned": "Ej tilldelad"
   },
   "aiFloorPlan": {
-    "title": "AI Floor Plan Import",
+    "title": "AI Planritningsimport",
     "description": "Ladda upp en planritning och låt AI konvertera den till redigerbara canvas-objekt",
     "stepUpload": "1. Ladda upp",
     "stepCalibrate": "2. Kalibrera",
@@ -2509,7 +2509,7 @@
     "rectangleLabel": "Rektangel",
     "circleLabel": "Cirkel",
     "lineLabel": "Linje",
-    "floorPlan": "Floor Plan",
+    "floorPlan": "Planritning",
     "elevationLabel": "Elevation",
     "wallDescription": "Visa och redigera väggens egenskaper och materialuppgifter",
     "objectDescription": "Visa och redigera objektets egenskaper",
@@ -3654,7 +3654,7 @@
     "unlock": "Lås upp",
     "relock": "Lås",
     "autoPriceEnabled": "Kundpris beräknas nu automatiskt från timmar \u00d7 timpris",
-    "estimatedProfit": "Est. resultat",
+    "estimatedProfit": "Beräknat resultat",
     "profitTooltip": "Beräknad vinst per arbete, baserat på din kostnad %",
     "newRoom": "Nytt rum...",
     "autoEstimate": "Auto-estimera",
@@ -3721,7 +3721,7 @@
   "taskCost": {
     "pricing": "Prissättning",
     "ownLabor": "Eget arbete",
-    "subcontractor": "Underleverantör",
+    "subcontractor": "Underentreprenör",
     "estimatedHours": "Timmar",
     "hourlyRate": "Timpris",
     "laborTotal": "Arbete",
@@ -3746,7 +3746,7 @@
     "perTask": "Per uppgift",
     "standard": "Standard",
     "quantity": "Antal",
-    "unitPrice": "Pris/st",
+    "unitPrice": "Enhetspris",
     "budget": "Budget",
     "homeownerBudgetHint": "Din uppskattade budget eller offertbelopp för detta arbetsmoment"
   },
@@ -3810,7 +3810,7 @@
     "ataQuote": "Tilläggsarbete (ÄTA)",
     "noAcceptedQuotes": "Inga godkända offerter ännu.",
     "qty": "Antal",
-    "unitPrice": "A-pris",
+    "unitPrice": "Enhetspris",
     "total": "Totalt",
     "invoicedCol": "Fakturerat",
     "subtotal": "Delsumma",
@@ -3887,8 +3887,8 @@
   "financialAnalysis": {
     "title": "Finansiell analys",
     "totalBudget": "Total budget",
-    "totalProfit": "Est. resultat",
-    "margin": "Marginal",
+    "totalProfit": "Beräknat resultat",
+    "margin": "Vinstmarginal",
     "projects": "projekt",
     "budgetVsProfit": "Budget vs Resultat per projekt",
     "period1": "1 mån",
