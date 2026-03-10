@@ -16,6 +16,7 @@ import type { OverviewNavigation } from "./types";
 interface OverviewFeedSectionProps {
   projectId: string;
   navigation: OverviewNavigation;
+  userType?: string | null;
   onNavigateToEntity?: (comment: FeedComment) => void;
   onNavigateToFiles?: () => void;
   onNavigateToTask?: (taskId: string) => void;
@@ -153,15 +154,21 @@ async function fetchProjectPhotos(projectId: string): Promise<PhotoFeedItem[]> {
   return photos;
 }
 
+// Activities safe for homeowner/client view (no internal team management)
+const CLIENT_SAFE_ACTIONS = new Set(["created", "status_changed", "deleted"]);
+const CLIENT_SAFE_ENTITY_TYPES = new Set(["task", "room"]);
+
 export function OverviewFeedSection({
   projectId,
   navigation,
+  userType,
   onNavigateToEntity,
   onNavigateToFiles,
   onNavigateToTask,
   onNavigateToMaterial,
   onNavigateToRoom,
 }: OverviewFeedSectionProps) {
+  const isClient = userType === "homeowner";
   const { t, i18n } = useTranslation();
   const [comments, setComments] = useState<FeedComment[]>([]);
   const [activities, setActivities] = useState<ActivityLogItem[]>([]);
@@ -221,13 +228,26 @@ export function OverviewFeedSection({
     );
   }
 
+  // Filter for client view: only project-level comments, safe activities, no material info
+  const visibleComments = isClient
+    ? comments.filter((c) => !!c.project_id && !c.task_id && !c.material_id && !c.drawing_object_id)
+    : comments;
+  const visibleActivities = isClient
+    ? activities.filter((a) => CLIENT_SAFE_ACTIONS.has(a.action) && CLIENT_SAFE_ENTITY_TYPES.has(a.entity_type))
+    : activities;
+
   // Merge comments + activities into unified feed
-  const unifiedFeed = mergeIntoUnifiedFeed(comments, activities);
+  const unifiedFeed = mergeIntoUnifiedFeed(visibleComments, visibleActivities);
+
+  // Filter photos for client: hide material photos (may contain pricing info in captions)
+  const visiblePhotos = isClient
+    ? photos.filter((p) => p.source !== "material")
+    : photos;
 
   // Add photos to unified feed (only for "all" and "photos" views)
   const fullFeed: UnifiedFeedItem[] = [
     ...unifiedFeed,
-    ...photos.map((p) => ({
+    ...visiblePhotos.map((p) => ({
       type: "photo" as const,
       created_at: p.createdAt,
       photo: p,

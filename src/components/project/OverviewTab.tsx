@@ -426,6 +426,7 @@ const OverviewTab = ({
       <OverviewFeedSection
         projectId={project.id}
         navigation={navigation}
+        userType={userType}
         onNavigateToEntity={onNavigateToEntity}
         onNavigateToFiles={onNavigateToFiles}
         onNavigateToTask={(taskId) => onNavigateToTasks?.(taskId)}
