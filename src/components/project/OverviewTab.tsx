@@ -38,9 +38,18 @@ import { InviteCustomerPlanningDialog } from "./overview/InviteCustomerPlanningD
 import type { OverviewProject, OverviewNavigation } from "./overview/types";
 import type { FeedComment } from "./feed/types";
 
-function CollapsiblePlanningSection({ planningSection }: { planningSection: React.ReactNode }) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
+function CollapsibleSection({
+  title,
+  icon,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  icon?: React.ReactNode;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -49,13 +58,14 @@ function CollapsiblePlanningSection({ planningSection }: { planningSection: Reac
           <ChevronRight
             className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`}
           />
+          {icon}
           <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-            {t("overview.planningReference", "Planning reference")}
+            {title}
           </span>
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-4 sm:space-y-6 pt-2">
-        {planningSection}
+        {children}
       </CollapsibleContent>
     </Collapsible>
   );
@@ -263,12 +273,18 @@ const OverviewTab = ({
 
       {/* Documents card - contractors in planning/quote phases */}
       {!isHomeowner && isPlanning && (
-        <ProjectDocumentsCard
-          projectId={project.id}
-          currency={project.currency}
-          onCreateQuote={() => setQuoteDialogOpen(true)}
-          onCreateInvoice={() => setInvoiceMethodOpen(true)}
-        />
+        <CollapsibleSection
+          title={t("overview.documents", "Documents")}
+          icon={<FileText className="h-4 w-4" />}
+          defaultOpen
+        >
+          <ProjectDocumentsCard
+            projectId={project.id}
+            currency={project.currency}
+            onCreateQuote={() => setQuoteDialogOpen(true)}
+            onCreateInvoice={() => setInvoiceMethodOpen(true)}
+          />
+        </CollapsibleSection>
       )}
 
       {/* Invite customer to fill in planning — builder only, planning phase */}
@@ -370,25 +386,22 @@ const OverviewTab = ({
         />
       )}
 
-      <Card id="project-chat">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            {t("overview.projectChat.title", "Project chat")}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {t("overview.projectChat.description", "Write a message to your project team")}
-          </p>
-        </CardHeader>
-        <CardContent>
-          <CommentsSection
-            projectId={project.id}
-            entityId={project.id}
-            entityType="project"
-            chatMode
-          />
-        </CardContent>
-      </Card>
+      <CollapsibleSection
+        title={t("overview.projectChat.title", "Project chat")}
+        icon={<MessageSquare className="h-4 w-4" />}
+        defaultOpen
+      >
+        <Card id="project-chat">
+          <CardContent className="pt-4">
+            <CommentsSection
+              projectId={project.id}
+              entityId={project.id}
+              entityType="project"
+              chatMode
+            />
+          </CardContent>
+        </Card>
+      </CollapsibleSection>
 
       {/* Quotes & Invoices unified card - contractors, active phases */}
       {!isHomeowner && !isPlanning && (
@@ -410,21 +423,24 @@ const OverviewTab = ({
         />
       )}
 
-      {!isPlanning && (
-        <OverviewFeedSection
-          projectId={project.id}
-          navigation={navigation}
-          onNavigateToEntity={onNavigateToEntity}
-          onNavigateToFiles={onNavigateToFiles}
-          onNavigateToTask={(taskId) => onNavigateToTasks?.(taskId)}
-          onNavigateToMaterial={(materialId) => onNavigateToPurchases?.(materialId)}
-          onNavigateToRoom={onNavigateToRoom}
-        />
-      )}
+      <OverviewFeedSection
+        projectId={project.id}
+        navigation={navigation}
+        onNavigateToEntity={onNavigateToEntity}
+        onNavigateToFiles={onNavigateToFiles}
+        onNavigateToTask={(taskId) => onNavigateToTasks?.(taskId)}
+        onNavigateToMaterial={(materialId) => onNavigateToPurchases?.(materialId)}
+        onNavigateToRoom={onNavigateToRoom}
+      />
 
       {/* Collapsible planning reference — after planning phase, at bottom */}
       {!isPlanning && (!isInvitedClient || isPlanningContributor) && (
-        <CollapsiblePlanningSection planningSection={planningSection} />
+        <CollapsibleSection
+          title={t("overview.planningReference", "Planning reference")}
+          icon={<FileText className="h-4 w-4" />}
+        >
+          {planningSection}
+        </CollapsibleSection>
       )}
 
       <ProjectSettingsDialog
