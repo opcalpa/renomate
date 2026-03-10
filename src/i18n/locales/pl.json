@@ -225,7 +225,10 @@
       "plumbing": "Hydraulika (rury/woda)",
       "electrical": "Elektryka",
       "other": "Inne"
-    }
+    },
+    "adminToggle": "Pokaż wszystkie projekty (admin)",
+    "adminOn": "Admin",
+    "adminOff": "Admin"
   },
   "projectDetail": {
     "overview": "Przegląd",

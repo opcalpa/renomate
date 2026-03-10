@@ -11,6 +11,10 @@
 
 import posthog from "posthog-js";
 
+interface GtagWindow extends Window {
+  gtag?: (...args: unknown[]) => void;
+}
+
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
 const IS_PRODUCTION = import.meta.env.PROD;
 
@@ -68,6 +72,14 @@ export const AnalyticsEvents = {
   QUOTE_CREATED: "quote_created",
   QUOTE_SENT: "quote_sent",
   QUOTE_ACCEPTED: "quote_accepted",
+  QUOTE_VIEWED_BY_CLIENT: "quote_viewed_by_client",
+
+  // Invoices
+  INVOICE_CREATED: "invoice_created",
+  INVOICE_SENT: "invoice_sent",
+
+  // Auth
+  SIGNUP_COMPLETED: "signup_completed",
 
   // Errors (supplement to Sentry)
   ERROR_BOUNDARY_TRIGGERED: "error_boundary_triggered",
@@ -161,9 +173,15 @@ function capture(
   event: AnalyticsEvent | string,
   properties?: Record<string, unknown>
 ): void {
-  if (!POSTHOG_KEY) return;
+  // Send to PostHog if configured
+  if (POSTHOG_KEY) {
+    posthog.capture(event, properties);
+  }
 
-  posthog.capture(event, properties);
+  // Send to GA4 if gtag is available
+  if (typeof window !== "undefined" && (window as GtagWindow).gtag) {
+    (window as GtagWindow).gtag("event", event, properties);
+  }
 }
 
 /**
@@ -190,7 +208,7 @@ function setPersonProperties(properties: Record<string, unknown>): void {
  * Check if analytics is enabled
  */
 function isEnabled(): boolean {
-  return Boolean(POSTHOG_KEY);
+  return Boolean(POSTHOG_KEY) || (typeof window !== "undefined" && !!(window as GtagWindow).gtag);
 }
 
 export const analytics: AnalyticsService = {

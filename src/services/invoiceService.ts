@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { calculateRotDeduction, recalculateQuoteTotals } from "./quoteService";
+import { analytics, AnalyticsEvents } from "@/lib/analytics";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   draft: ["sent"],
@@ -48,6 +49,13 @@ export async function createInvoice(
     toast.error("Kunde inte skapa faktura");
     return null;
   }
+
+  analytics.capture(AnalyticsEvents.INVOICE_CREATED, {
+    project_id: projectId,
+    is_ata: opts?.isAta ?? false,
+    from_quote: !!opts?.quoteId,
+  });
+
   return data;
 }
 

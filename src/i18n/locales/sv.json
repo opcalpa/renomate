@@ -302,7 +302,10 @@
       "plumbing": "VVS (rör/vatten)",
       "electrical": "El",
       "other": "Övrigt"
-    }
+    },
+    "adminToggle": "Visa alla projekt (admin)",
+    "adminOn": "Admin",
+    "adminOff": "Admin"
   },
   "onboarding": {
     "welcome": "Välkommen till Renomate!",

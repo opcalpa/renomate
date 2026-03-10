@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { analytics } from '@/lib/analytics';
+import { analytics, AnalyticsEvents } from '@/lib/analytics';
 
 interface AuthSession {
   user: User | null;
@@ -33,6 +33,14 @@ export const useAuthSession = (): AuthSession => {
             email_domain: currentSession.user.email?.split('@')[1],
             auth_provider: currentSession.user.app_metadata?.provider,
           });
+
+          // Track new signups (created_at within last 60 seconds = new user)
+          const createdAt = new Date(currentSession.user.created_at).getTime();
+          if (Date.now() - createdAt < 60_000) {
+            analytics.capture(AnalyticsEvents.SIGNUP_COMPLETED, {
+              auth_provider: currentSession.user.app_metadata?.provider,
+            });
+          }
         }
 
         // Reset analytics on sign out

@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { lockProject, unlockProject } from "./projectLockService";
 import { inviteCustomerAsClient } from "./intakeService";
+import { analytics, AnalyticsEvents } from "@/lib/analytics";
 
 const ROT_RATE = 0.3;
 
@@ -63,6 +64,11 @@ export async function createQuote(projectId: string, title: string, creatorId: s
     toast.error("Kunde inte skapa offert");
     return null;
   }
+
+  analytics.capture(AnalyticsEvents.QUOTE_CREATED, {
+    project_id: projectId,
+    is_ata: !!isAta,
+  });
 
   // Mark onboarding step for creating first quote
   await supabase
@@ -163,6 +169,13 @@ export async function updateQuoteStatus(quoteId: string, newStatus: string) {
     console.error("Failed to update quote status:", error);
     toast.error("Kunde inte uppdatera status");
     return null;
+  }
+
+  // Track status changes
+  if (newStatus === "sent") {
+    analytics.capture(AnalyticsEvents.QUOTE_SENT, { quote_id: quoteId, project_id: quote.project_id });
+  } else if (newStatus === "accepted") {
+    analytics.capture(AnalyticsEvents.QUOTE_ACCEPTED, { quote_id: quoteId, project_id: quote.project_id, total: quote.total_amount });
   }
 
   // Handle project locking and budget based on quote status

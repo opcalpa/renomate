@@ -302,7 +302,10 @@
       "plumbing": "Plumbing (pipes/water)",
       "electrical": "Electrical",
       "other": "Other"
-    }
+    },
+    "adminToggle": "Show all projects (admin)",
+    "adminOn": "Admin",
+    "adminOff": "Admin"
   },
   "onboarding": {
     "welcome": "Welcome to Renomate!",

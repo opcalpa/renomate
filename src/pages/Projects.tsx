@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ChevronRight, ChevronLeft, Users, User, BookOpen, Trash2, Upload, FileText, X, Loader2, Sparkles, ChevronDown, ChevronUp, MessageSquare, Mail, LayoutGrid, List, Settings2 } from "lucide-react";
+import { Plus, ChevronRight, ChevronLeft, Users, User, BookOpen, Trash2, Upload, FileText, X, Loader2, Sparkles, ChevronDown, ChevronUp, MessageSquare, Mail, LayoutGrid, List, Settings2, ShieldCheck } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -68,6 +68,8 @@ const Projects = () => {
   const { t } = useTranslation();
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [sharedProjectIds, setSharedProjectIds] = useState<Set<string>>(new Set());
+  const [showAdminProjects, setShowAdminProjects] = useState(false);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [guestRole, setGuestRole] = useState<string | null>(() =>
@@ -134,6 +136,17 @@ const Projects = () => {
   };
 
   const visibleListCols = listColumnOrder.filter((k) => !hiddenListCols.has(k));
+
+  const isAdmin = !!(profile as Record<string, unknown> | null)?.is_system_admin;
+  const profileId = (profile as Record<string, unknown> | null)?.id as string | undefined;
+
+  const visibleProjects = useMemo(() => {
+    if (!isAdmin || showAdminProjects) return projects;
+    // Filter to only own + shared projects
+    return projects.filter(
+      (p) => p.owner_id === profileId || sharedProjectIds.has(p.id)
+    );
+  }, [projects, isAdmin, showAdminProjects, profileId, sharedProjectIds]);
 
   const [createIntakeOpen, setCreateIntakeOpen] = useState(false);
   const [projectFinancials, setProjectFinancials] = useState<Record<string, { budget: number; profit: number }>>({});
@@ -223,6 +236,15 @@ const Projects = () => {
       if (error) throw error;
 
       setProjects(data || []);
+
+      // Fetch shared project IDs to distinguish own+shared from admin-visible
+      const { data: shares } = await supabase
+        .from("project_shares")
+        .select("project_id")
+        .eq("shared_with_user_id", profile.id);
+      if (shares) {
+        setSharedProjectIds(new Set(shares.map((s: { project_id: string }) => s.project_id)));
+      }
 
       // Fetch owner names
       const uniqueOwnerIds = [...new Set((data || []).map((p: Project) => p.owner_id).filter(Boolean))] as string[];
@@ -575,7 +597,6 @@ const Projects = () => {
     }
   };
 
-  const profileId = profile?.id as string | undefined;
   const isContractor = (profile?.onboarding_user_type as string) === "contractor";
 
   // Show loading while auth or data is loading
@@ -616,7 +637,7 @@ const Projects = () => {
             <h2 className="text-xl font-semibold">{t('projects.title')}</h2>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-              {projects.length > 0 && (
+              {visibleProjects.length > 0 && (
                 <div className="hidden sm:flex items-center border rounded-md">
                   <button
                     type="button"
@@ -635,6 +656,21 @@ const Projects = () => {
                     <List className="h-4 w-4" />
                   </button>
                 </div>
+              )}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setShowAdminProjects((v) => !v)}
+                  className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                    showAdminProjects
+                      ? "bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                  title={t("projects.adminToggle", "Show all projects (admin)")}
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  {showAdminProjects ? t("projects.adminOn", "Admin") : t("projects.adminOff", "Admin")}
+                </button>
               )}
               <Button onClick={() => setDialogOpen(true)} className="flex-1 sm:flex-none">
                 <Plus className="h-4 w-4 sm:mr-2" />
@@ -949,7 +985,7 @@ const Projects = () => {
           </div>
         </div>
 
-        {projects.length === 0 ? (
+        {visibleProjects.length === 0 && !showAdminProjects ? (
           <div className="max-w-lg mx-auto text-center py-12 space-y-8">
             <div>
               <h3 className="text-2xl font-semibold mb-2">{t('onboarding.welcome')}</h3>
@@ -1104,7 +1140,7 @@ const Projects = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {projects.map((project) => {
+                      {visibleProjects.map((project) => {
                         const isDemo = isDemoProject(project.project_type);
                         return (
                           <tr
@@ -1153,7 +1189,7 @@ const Projects = () => {
         ) : (
           /* ---- Grid / card view ---- */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-            {projects.map((project) => {
+            {visibleProjects.map((project) => {
               const isDemo = isDemoProject(project.project_type);
               const projectStatus = normalizeStatus(project.status);
               const statusMeta = STATUS_META[projectStatus];
@@ -1284,20 +1320,20 @@ const Projects = () => {
         </section>
 
         {/* Financial Analysis - contractors only, at the bottom */}
-        {isContractor && !isGuest && projects.length > 0 && (
+        {isContractor && !isGuest && visibleProjects.length > 0 && (
           <section className="mt-10 sm:mt-14">
             <FinancialAnalysisSection
-              projects={projects}
+              projects={visibleProjects}
               financials={projectFinancials}
               currency={(profile?.currency as string) ?? null}
             />
           </section>
         )}
 
-        {!isContractor && !isGuest && projects.length > 0 && (
+        {!isContractor && !isGuest && visibleProjects.length > 0 && (
           <section id="deklaration" className="mt-10 sm:mt-14 scroll-mt-20">
             <HomeownerYearlyAnalysis
-              projects={projects}
+              projects={visibleProjects}
               currency={(profile?.currency as string) ?? null}
             />
           </section>
