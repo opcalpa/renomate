@@ -75,6 +75,7 @@ interface Project {
   project_type?: string | null;
   currency?: string | null;
   address?: string | null;
+  cover_image_url?: string | null;
 }
 
 const NoAccessPlaceholder = () => {

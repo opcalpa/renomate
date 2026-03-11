@@ -547,11 +547,15 @@ const Profile = () => {
 
   const handleRemoveAvatar = async () => {
     if (!avatarUrl || !profile) return;
-    const oldPath = avatarUrl.split("/avatars/")[1];
-    if (oldPath) await supabase.storage.from("avatars").remove([oldPath]);
-    setAvatarUrl(null);
-    await supabase.from("profiles").update({ avatar_url: null }).eq("user_id", user?.id);
-    toast({ title: t("profile.avatarRemoved", "Profile photo removed") });
+    try {
+      const oldPath = avatarUrl.split("/avatars/")[1];
+      if (oldPath) await supabase.storage.from("avatars").remove([oldPath]);
+      await supabase.from("profiles").update({ avatar_url: null }).eq("user_id", user?.id);
+      setAvatarUrl(null);
+      toast({ title: t("profile.avatarRemoved", "Profile photo removed") });
+    } catch {
+      toast({ title: t("errors.generic", "Something went wrong"), variant: "destructive" });
+    }
   };
 
   if (authLoading || loading) {
