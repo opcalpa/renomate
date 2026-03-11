@@ -28,7 +28,7 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
 
     try {
       const ext = file.name.split(".").pop() || "jpg";
-      const path = `${project.id}/${Date.now()}.${ext}`;
+      const path = `projects/${project.id}/${Date.now()}.${ext}`;
 
       // Delete old cover
       if (coverUrl) {
