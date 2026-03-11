@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Loader2, Save, BadgeCheck, Eye, ShieldCheck, Plus, X, Download, Home, Wrench, Upload, Calculator } from "lucide-react";
+import { Loader2, Save, BadgeCheck, Eye, ShieldCheck, Plus, X, Download, Home, Wrench, Upload, Calculator, ChevronRight } from "lucide-react";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { downloadUserDataAsJson } from "@/services/dataExportService";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CERTIFICATION_PRESETS } from "@/lib/professionalCertifications";
@@ -27,6 +28,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+function CollapsibleCard({
+  title,
+  description,
+  icon,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card>
+        <CardHeader>
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center gap-2 w-full text-left group">
+              <ChevronRight
+                className={`h-4 w-4 text-muted-foreground transition-transform shrink-0 ${open ? "rotate-90" : ""}`}
+              />
+              {icon}
+              <div>
+                <CardTitle className="group-hover:text-foreground/80 transition-colors">{title}</CardTitle>
+                {description && <CardDescription>{description}</CardDescription>}
+              </div>
+            </button>
+          </CollapsibleTrigger>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">{children}</CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
+  );
+}
 
 interface ProfileData {
   id: string;
@@ -650,12 +690,11 @@ const Profile = () => {
 
           {/* Company Details — visible for all contractors */}
           {userType === "contractor" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('profile.companyDetails')}</CardTitle>
-                <CardDescription>{t('profile.companyDetailsDescription')}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <CollapsibleCard
+              title={t('profile.companyDetails')}
+              description={t('profile.companyDetailsDescription')}
+              defaultOpen={!companyName}
+            >
                 <div className="flex items-center gap-4">
                   {companyLogoUrl ? (
                     <div className="relative group">
@@ -824,23 +863,16 @@ const Profile = () => {
                 <p className="text-xs text-muted-foreground">
                   {t('profile.companyDetailsHint')}
                 </p>
-              </CardContent>
-            </Card>
+            </CollapsibleCard>
           )}
 
           {/* Calculation Settings — contractor only */}
           {userType === "contractor" && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Calculator className="h-5 w-5 text-primary" />
-                  <div>
-                    <CardTitle>{t('estimation.title')}</CardTitle>
-                    <CardDescription>{t('estimation.description')}</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <CollapsibleCard
+              title={t('estimation.title')}
+              description={t('estimation.description')}
+              icon={<Calculator className="h-5 w-5 text-primary shrink-0" />}
+            >
                 <div>
                   <h4 className="text-sm font-medium mb-2">{t('estimation.paintFormula')}</h4>
                   <p className="text-xs text-muted-foreground mb-3">
@@ -932,8 +964,7 @@ const Profile = () => {
                     ))}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+            </CollapsibleCard>
           )}
 
           {/* Professional Profile — hidden for homeowners */}
