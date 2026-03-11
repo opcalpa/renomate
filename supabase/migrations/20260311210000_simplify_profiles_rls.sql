@@ -11,6 +11,7 @@ BEGIN;
 
 -- Drop the broken restrictive policy
 DROP POLICY IF EXISTS "Users can view relevant profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Users can view all profiles" ON public.profiles;
 
 -- Restore permissive policy (same as original)
 -- Safe for beta: all users are invited/known, no public signup
