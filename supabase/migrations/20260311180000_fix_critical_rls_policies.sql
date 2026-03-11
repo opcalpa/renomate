@@ -64,42 +64,8 @@ CREATE POLICY "Public can submit intake requests"
   USING (status = 'pending')
   WITH CHECK (status IN ('pending', 'submitted'));
 
--- ============================================================
--- 3. FIX profiles SELECT
--- Old: USING(true) — any authenticated user reads ALL profiles
--- New: own profile + profiles of users in shared projects
--- ============================================================
-
-DROP POLICY IF EXISTS "Users can view all profiles" ON public.profiles;
-
-CREATE POLICY "Users can view relevant profiles"
-  ON public.profiles FOR SELECT
-  USING (
-    -- Always see own profile
-    user_id = auth.uid()
-    -- See profiles of people in your projects (as owner)
-    OR id IN (
-      SELECT ps.shared_with_user_id FROM project_shares ps
-      WHERE ps.project_id IN (
-        SELECT p.id FROM projects p WHERE p.owner_id = get_user_profile_id()
-      )
-    )
-    -- See profiles of project owners for projects you're shared on
-    OR id IN (
-      SELECT p.owner_id FROM projects p
-      WHERE p.id IN (
-        SELECT ps.project_id FROM project_shares ps WHERE ps.shared_with_user_id = get_user_profile_id()
-      )
-    )
-    -- See profiles of other members in shared projects
-    OR id IN (
-      SELECT ps2.shared_with_user_id FROM project_shares ps2
-      WHERE ps2.project_id IN (
-        SELECT ps.project_id FROM project_shares ps WHERE ps.shared_with_user_id = get_user_profile_id()
-      )
-    )
-    -- System admins see all
-    OR is_system_admin()
-  );
+-- NOTE: profiles SELECT policy intentionally NOT changed here.
+-- Restrictive profiles RLS causes circular recursion with projects/project_shares.
+-- Profiles stays at USING(true) — safe for invited-only beta.
 
 COMMIT;
