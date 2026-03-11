@@ -1434,7 +1434,7 @@ const ProjectDetail = () => {
             )
           ) : (
             <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
-              <TeamManagement projectId={project.id} isOwner={permissions.isOwner} />
+              <TeamManagement projectId={project.id} isOwner={permissions.isOwner} canManageTeam={permissions.isOwner || permissions.teams === "invite"} />
             </div>
           )}
           </ErrorBoundary>

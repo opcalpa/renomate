@@ -96,6 +96,7 @@ interface ProjectOwner {
 interface TeamManagementProps {
   projectId: string;
   isOwner: boolean;
+  canManageTeam?: boolean;
 }
 
 const ROLE_TEMPLATES: Record<string, { access: FeatureAccess }> = {
@@ -233,7 +234,8 @@ function detectTemplate(access: FeatureAccess): string {
   return "custom";
 }
 
-const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
+const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: TeamManagementProps) => {
+  const canManageTeam = canManageProp ?? isOwner;
   const [projectOwner, setProjectOwner] = useState<ProjectOwner | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -638,7 +640,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
             {t("roles.description")}
           </p>
         </div>
-        {isOwner && (
+        {canManageTeam && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -707,22 +709,24 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                   </CollapsibleContent>
                 </Collapsible>
 
-                {/* Customize permissions - collapsible */}
-                <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-90" />
-                    {t("roles.customizeAccess")}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="pt-3">
-                      <FeatureAccessEditor
-                        featureAccess={featureAccess}
-                        onChange={handleFeatureAccessChange}
-                        idPrefix="invite"
-                      />
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
+                {/* Customize permissions - only for owners */}
+                {isOwner && (
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                      <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-90" />
+                      {t("roles.customizeAccess")}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="pt-3">
+                        <FeatureAccessEditor
+                          featureAccess={featureAccess}
+                          onChange={handleFeatureAccessChange}
+                          idPrefix="invite"
+                        />
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
 
                 <div className="flex justify-end pt-2">
                   <Button type="submit" disabled={inviting}>
@@ -792,7 +796,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                     </span>
                   )}
                 </span>
-                {isOwner && (
+                {canManageTeam && (
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
@@ -805,20 +809,22 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleDeleteMember(member.id)}
-                      disabled={deleting === member.id}
-                      title={t("roles.removeMember")}
-                    >
-                      {deleting === member.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <X className="h-3.5 w-3.5 text-destructive" />
-                      )}
-                    </Button>
+                    {isOwner && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleDeleteMember(member.id)}
+                        disabled={deleting === member.id}
+                        title={t("roles.removeMember")}
+                      >
+                        {deleting === member.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <X className="h-3.5 w-3.5 text-destructive" />
+                        )}
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -828,7 +834,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
       )}
 
       {/* Pending Invitations */}
-      {isOwner && invitations.length > 0 && (
+      {canManageTeam && invitations.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>{t("roles.pendingInvitations")}</CardTitle>
@@ -922,22 +928,24 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
               />
             </div>
 
-            {/* Customize permissions */}
-            <Collapsible defaultOpen={selectedTemplate === "custom"}>
-              <CollapsibleTrigger className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-90" />
-                {t("roles.customizeAccess")}
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="pt-3">
-                  <FeatureAccessEditor
-                    featureAccess={featureAccess}
-                    onChange={handleFeatureAccessChange}
-                    idPrefix="edit"
-                  />
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+            {/* Customize permissions - only for owners */}
+            {isOwner && (
+              <Collapsible defaultOpen={selectedTemplate === "custom"}>
+                <CollapsibleTrigger className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-90" />
+                  {t("roles.customizeAccess")}
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="pt-3">
+                    <FeatureAccessEditor
+                      featureAccess={featureAccess}
+                      onChange={handleFeatureAccessChange}
+                      idPrefix="edit"
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
           </div>
 
           <div className="flex gap-3 pt-4 border-t shrink-0">
@@ -967,7 +975,7 @@ const TeamManagement = ({ projectId, isOwner }: TeamManagementProps) => {
             <p className="text-muted-foreground mb-4">
               {t("roles.noMembersDescription")}
             </p>
-            {isOwner && (
+            {canManageTeam && (
               <Button onClick={() => setDialogOpen(true)}>
                 <UserPlus className="h-4 w-4 mr-2" />
                 {t("roles.inviteButton")}
@@ -999,10 +1007,10 @@ function RoleCardGrid({ selected, onSelect, t }: RoleCardGridProps) {
             key={key}
             type="button"
             onClick={() => onSelect(key)}
-            className={`p-3 rounded-lg border text-left transition-colors ${
+            className={`p-3 rounded-lg text-left transition-colors ${
               isSelected
-                ? "border-primary bg-primary/5 ring-1 ring-primary"
-                : "border-border hover:border-primary/50"
+                ? "border-2 border-primary bg-primary/5 shadow-sm"
+                : "border border-border hover:border-primary/50"
             }`}
           >
             <Icon
