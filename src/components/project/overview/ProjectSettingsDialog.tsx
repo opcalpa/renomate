@@ -199,15 +199,20 @@ export function ProjectSettingsDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label>{t("rot.propertyDesignation")}</Label>
+            <div className="flex items-center gap-1.5">
+              <Label>{t("rot.propertyDesignation")}</Label>
+              <span
+                className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-muted text-[10px] font-medium text-muted-foreground cursor-help"
+                title={t("rot.propertyDesignationRotInfo", "Required for ROT tax deduction applications. Found on your property tax notice (taxeringsbeslut).")}
+              >
+                ?
+              </span>
+            </div>
             <Input
               value={propertyDesignation}
               onChange={(e) => setPropertyDesignation(e.target.value)}
               placeholder={t("rot.propertyDesignationPlaceholder")}
             />
-            <p className="text-xs text-muted-foreground">
-              {t("rot.propertyDesignationHint")}
-            </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">

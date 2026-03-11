@@ -116,15 +116,6 @@ const Profile = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [certifications, setCertifications] = useState<Array<{ id: string; name: string; issuer: string; year: string; custom: boolean }>>([]);
 
-  // Homeowner: projects with property details
-  interface ProjectProperty {
-    id: string;
-    name: string;
-    address: string;
-    property_designation: string;
-  }
-  const [projectProperties, setProjectProperties] = useState<ProjectProperty[]>([]);
-  const [savingProjectId, setSavingProjectId] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -141,51 +132,6 @@ const Profile = () => {
     }
   }, [user]);
 
-  // Fetch project properties for homeowners
-  useEffect(() => {
-    if (!profile || userType !== "homeowner") return;
-    const fetchProjectProperties = async () => {
-      // Collect project IDs from two sources:
-      // 1. Projects shared with this user as client
-      const { data: shares } = await supabase
-        .from("project_shares")
-        .select("project_id")
-        .eq("shared_with_user_id", profile.id)
-        .eq("role", "client");
-
-      // 2. Projects owned by this user
-      const { data: owned } = await supabase
-        .from("projects")
-        .select("id")
-        .eq("owner_id", profile.id);
-
-      const projectIds = [
-        ...new Set([
-          ...(shares?.map((s) => s.project_id) || []),
-          ...(owned?.map((p) => p.id) || []),
-        ]),
-      ];
-
-      if (!projectIds.length) return;
-
-      const { data: projects } = await supabase
-        .from("projects")
-        .select("id, name, address, property_designation")
-        .in("id", projectIds);
-
-      if (projects) {
-        setProjectProperties(
-          projects.map((p) => ({
-            id: p.id,
-            name: p.name,
-            address: p.address || "",
-            property_designation: (p as Record<string, unknown>).property_designation as string || "",
-          }))
-        );
-      }
-    };
-    fetchProjectProperties();
-  }, [profile, userType]);
 
   const fetchProfile = async () => {
     try {
@@ -256,34 +202,6 @@ const Profile = () => {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSaveProjectProperty = async (projectId: string) => {
-    const proj = projectProperties.find((p) => p.id === projectId);
-    if (!proj) return;
-    setSavingProjectId(projectId);
-    try {
-      const { error } = await supabase
-        .from("projects")
-        .update({
-          address: proj.address.trim() || null,
-          property_designation: proj.property_designation.trim() || null,
-        })
-        .eq("id", projectId);
-      if (error) throw error;
-      toast({
-        title: t("rot.saved"),
-        description: t("rot.savedDescription"),
-      });
-    } catch (error: unknown) {
-      toast({
-        title: t("errors.generic"),
-        description: (error as Error).message,
-        variant: "destructive",
-      });
-    } finally {
-      setSavingProjectId(null);
     }
   };
 
@@ -729,68 +647,6 @@ const Profile = () => {
               </div>
             </CardContent>
           </Card>
-
-          {/* Property details per project — visible for homeowners */}
-          {userType === "homeowner" && projectProperties.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("profile.myProperties")}</CardTitle>
-                <CardDescription>{t("profile.myPropertiesDescription")}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {projectProperties.map((proj) => (
-                  <div key={proj.id} className="space-y-3 pb-4 border-b last:border-b-0 last:pb-0">
-                    <p className="text-sm font-medium">{proj.name}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs">{t("rot.propertyAddress")}</Label>
-                        <Input
-                          value={proj.address}
-                          onChange={(e) =>
-                            setProjectProperties((prev) =>
-                              prev.map((p) =>
-                                p.id === proj.id ? { ...p, address: e.target.value } : p
-                              )
-                            )
-                          }
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">{t("rot.propertyDesignation")}</Label>
-                        <Input
-                          value={proj.property_designation}
-                          onChange={(e) =>
-                            setProjectProperties((prev) =>
-                              prev.map((p) =>
-                                p.id === proj.id
-                                  ? { ...p, property_designation: e.target.value }
-                                  : p
-                              )
-                            )
-                          }
-                          placeholder={t("rot.propertyDesignationPlaceholder")}
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={savingProjectId === proj.id}
-                      onClick={() => handleSaveProjectProperty(proj.id)}
-                    >
-                      {savingProjectId === proj.id ? (
-                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                      ) : (
-                        <Save className="mr-1 h-3 w-3" />
-                      )}
-                      {t("common.save")}
-                    </Button>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
 
           {/* Company Details — visible for all contractors */}
           {userType === "contractor" && (

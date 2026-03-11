@@ -3877,6 +3877,7 @@
     "propertyDesignation": "Fastighetsbeteckning",
     "propertyDesignationPlaceholder": "t.ex. Stockholm Södermalm 1:23",
     "propertyDesignationHint": "Finns på ditt taxeringsbeslut",
+    "propertyDesignationRotInfo": "Behövs vid ansökan om ROT-avdrag. Finns på ditt taxeringsbeslut.",
     "saved": "ROT-uppgifter sparade",
     "savedDescription": "Byggaren kan nu ansöka om ROT-avdrag åt dig",
     "skipForNow": "Hoppa över",
