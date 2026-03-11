@@ -212,7 +212,7 @@ const OverviewTab = ({
     userRole: isHomeowner ? "homeowner" : "contractor",
     contexts: isPlanning ? ["planningPhase"] : [],
   };
-  const { tips, dismiss } = useContextualTips(tipContext);
+  const { tips, dismiss, isDismissed } = useContextualTips(tipContext);
 
   const isRfqProject = !!project.source_rfq_project_id;
 
@@ -320,9 +320,24 @@ const OverviewTab = ({
       {/* Scope / Planning section — during planning: prominent; after planning: moved to bottom */}
       {isPlanning && (!isInvitedClient || isPlanningContributor) && planningSection}
 
-      {/* Contextual tips */}
-      {tips.length > 0 && (
-        <TipList tips={tips} onDismiss={dismiss} maxTips={2} compact />
+      {/* Contextual tips + ROT readiness — unified hints section */}
+      {(tips.length > 0 || (!isGuest && !isPlanningContributor)) && (
+        <div className="space-y-2">
+          <TipList tips={tips} onDismiss={dismiss} maxTips={2} compact />
+          {!isGuest && !isPlanningContributor && (
+            <RotDetailsCard
+              personnummer={rotPersonnummer}
+              propertyAddress={project.address}
+              propertyDesignation={project.property_designation}
+              isHomeowner={isHomeowner}
+              hasClient={hasClient}
+              dismissed={isDismissed("rot_readiness")}
+              onDismiss={() => dismiss("rot_readiness")}
+              onOpenSettings={() => setSettingsOpen(true)}
+              onNavigateToProfile={() => window.location.assign("/profile")}
+            />
+          )}
+        </div>
       )}
 
       {/* Dashboard toolbar + pulse cards — hidden during pure planning phase */}
@@ -426,19 +441,6 @@ const OverviewTab = ({
           onCreateQuote={() => setQuoteDialogOpen(true)}
           onCreateInvoice={() => setInvoiceMethodOpen(true)}
           estimatedProfit={budgetStats.estimatedProfit}
-        />
-      )}
-
-      {/* ROT readiness card — visible to both builders and homeowners */}
-      {!isGuest && !isPlanningContributor && (
-        <RotDetailsCard
-          personnummer={rotPersonnummer}
-          propertyAddress={project.address}
-          propertyDesignation={project.property_designation}
-          isHomeowner={isHomeowner}
-          hasClient={hasClient}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onNavigateToProfile={() => window.location.assign("/profile")}
         />
       )}
 
