@@ -59,6 +59,7 @@ interface Project {
   city?: string | null;
   project_type?: string | null;
   owner_id?: string | null;
+  cover_image_url?: string | null;
 }
 
 const Projects = () => {
@@ -1204,6 +1205,15 @@ const Projects = () => {
                       <BookOpen className="h-4 w-4" />
                       <span>Demo</span>
                       <span className="text-primary-foreground/70 font-normal">– {t("demoProject.description")}</span>
+                    </div>
+                  )}
+                  {project.cover_image_url && (
+                    <div className="h-32 overflow-hidden">
+                      <img
+                        src={project.cover_image_url}
+                        alt={project.name}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   )}
                   <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-2">
