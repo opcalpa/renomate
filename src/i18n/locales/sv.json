@@ -3883,7 +3883,17 @@
     "skipForNow": "Hoppa över",
     "cardTitle": "ROT-avdrag",
     "customerPersonnummer": "Kundens personnummer",
-    "masked": "Dolt av integritetsskäl"
+    "masked": "Dolt av integritetsskäl",
+    "readiness": {
+      "ready": "ROT-avdrag — redo",
+      "incomplete": "ROT-avdrag — uppgifter saknas",
+      "personnummer": "Personnummer",
+      "designation": "Fastighetsbeteckning",
+      "homeownerAddPersonnummer": "Lägg till personnummer i profilinställningar",
+      "homeownerAddDesignation": "Lägg till fastighetsbeteckning i projektinställningar",
+      "builderAskClient": "Be kunden fylla i de saknade uppgifterna",
+      "builderInviteClient": "Bjud in hemägaren till projektet för att samla ROT-uppgifter"
+    }
   },
   "financialAnalysis": {
     "title": "Finansiell analys",

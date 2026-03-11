@@ -3886,7 +3886,17 @@
     "skipForNow": "Skip for now",
     "cardTitle": "ROT Deduction",
     "customerPersonnummer": "Customer personnummer",
-    "masked": "Masked for privacy"
+    "masked": "Masked for privacy",
+    "readiness": {
+      "ready": "ROT deduction — ready",
+      "incomplete": "ROT deduction — details missing",
+      "personnummer": "Personnummer",
+      "designation": "Property designation",
+      "homeownerAddPersonnummer": "Add your personnummer in profile settings",
+      "homeownerAddDesignation": "Add property designation in project settings",
+      "builderAskClient": "Ask your customer to fill in the missing details",
+      "builderInviteClient": "Invite the homeowner to the project to collect ROT details"
+    }
   },
   "financialAnalysis": {
     "title": "Financial Analysis",

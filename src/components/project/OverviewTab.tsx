@@ -115,34 +115,49 @@ const OverviewTab = ({
   const [invoiceMethodOpen, setInvoiceMethodOpen] = useState(false);
   const [inviteCustomerOpen, setInviteCustomerOpen] = useState(false);
   const [rotPersonnummer, setRotPersonnummer] = useState<string | null>(null);
+  const [hasClient, setHasClient] = useState(false);
 
-  // Fetch client personnummer for ROT card (builder view)
+  // Fetch personnummer for ROT card
   useEffect(() => {
-    if (isHomeowner || isGuest) return;
-    const fetchClientPersonnummer = async () => {
-      // Find client share for this project
-      const { data: shares } = await supabase
-        .from("project_shares")
-        .select("shared_with_user_id")
-        .eq("project_id", project.id)
-        .eq("role", "client")
-        .limit(1);
+    if (isGuest) return;
+    const fetchRotData = async () => {
+      if (isHomeowner) {
+        // Homeowner: fetch own personnummer
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) return;
+        const { data: ownProfile } = await supabase
+          .from("profiles")
+          .select("personnummer")
+          .eq("user_id", authUser.id)
+          .maybeSingle();
+        if (ownProfile?.personnummer) {
+          setRotPersonnummer(ownProfile.personnummer);
+        }
+      } else {
+        // Builder: fetch client's personnummer
+        const { data: shares } = await supabase
+          .from("project_shares")
+          .select("shared_with_user_id")
+          .eq("project_id", project.id)
+          .eq("role", "client")
+          .limit(1);
 
-      const clientProfileId = shares?.[0]?.shared_with_user_id;
-      if (!clientProfileId) return;
-
-      const { data: clientProfile } = await supabase
-        .from("profiles")
-        .select("personnummer")
-        .eq("id", clientProfileId)
-        .maybeSingle();
-
-      if (clientProfile?.personnummer) {
-        setRotPersonnummer(clientProfile.personnummer);
+        const clientProfileId = shares?.[0]?.shared_with_user_id;
+        if (clientProfileId) {
+          setHasClient(true);
+          const { data: clientProfile } = await supabase
+            .from("profiles")
+            .select("personnummer")
+            .eq("id", clientProfileId)
+            .maybeSingle();
+          if (clientProfile?.personnummer) {
+            setRotPersonnummer(clientProfile.personnummer);
+          }
+        }
       }
     };
-    fetchClientPersonnummer();
-  }, [project.id, isHomeowner]);
+    fetchRotData();
+  }, [project.id, isHomeowner, isGuest]);
 
   const {
     taskStats,
@@ -414,12 +429,16 @@ const OverviewTab = ({
         />
       )}
 
-      {/* ROT details card - contractors, active phases */}
-      {!isHomeowner && !isPlanning && (
+      {/* ROT readiness card — visible to both builders and homeowners */}
+      {!isGuest && !isPlanningContributor && (
         <RotDetailsCard
           personnummer={rotPersonnummer}
           propertyAddress={project.address}
           propertyDesignation={project.property_designation}
+          isHomeowner={isHomeowner}
+          hasClient={hasClient}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onNavigateToProfile={() => window.location.assign("/profile")}
         />
       )}
 
