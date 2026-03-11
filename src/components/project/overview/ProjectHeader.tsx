@@ -36,11 +36,12 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
         if (oldPath) await supabase.storage.from("project-files").remove([oldPath]);
       }
 
-      const { error } = await supabase.storage.from("project-files").upload(path, file, {
+      const { error, data } = await supabase.storage.from("project-files").upload(path, file, {
         cacheControl: "3600",
         upsert: false,
       });
       if (error) {
+        console.error("Cover upload failed:", { error, path, fileType: file.type, fileSize: file.size });
         toast.error(error.message);
         return;
       }
