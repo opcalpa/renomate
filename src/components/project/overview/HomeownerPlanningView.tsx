@@ -384,6 +384,10 @@ export function HomeownerPlanningView({
     return ids.length > 0;
   }).length;
   const totalQuoted = quoteAssignments.reduce((sum, a) => sum + (Number(a.allocated_amount) || 0), 0);
+  const totalAreaSqm = rooms.reduce((sum, room) => {
+    const area = computeFloorAreaSqm(room as RecipeRoom);
+    return sum + (area ?? 0);
+  }, 0);
 
   // ---------- Render ----------
   if (loading) {
@@ -433,18 +437,24 @@ export function HomeownerPlanningView({
               )}
             </div>
 
-            <div className={`grid gap-4 mt-4 ${externalQuotes.length > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
-              <div className="rounded-lg border bg-white p-3 text-center">
-                <div className="text-2xl font-bold tabular-nums">{totalTasks}</div>
+            <div className="flex flex-wrap gap-3 mt-4">
+              <div className="rounded-lg border bg-white px-4 py-2 text-center">
+                <div className="text-lg font-bold tabular-nums">{totalTasks}</div>
                 <div className="text-xs text-muted-foreground">{t("homeownerPlanning.tasks", "Tasks")}</div>
               </div>
-              <div className="rounded-lg border bg-white p-3 text-center">
-                <div className="text-2xl font-bold tabular-nums">{rooms.length}</div>
+              <div className="rounded-lg border bg-white px-4 py-2 text-center">
+                <div className="text-lg font-bold tabular-nums">{rooms.length}</div>
                 <div className="text-xs text-muted-foreground">{t("homeownerPlanning.rooms", "Rooms")}</div>
               </div>
+              {totalAreaSqm > 0 && (
+                <div className="rounded-lg border bg-white px-4 py-2 text-center">
+                  <div className="text-lg font-bold tabular-nums">{Math.round(totalAreaSqm)} m²</div>
+                  <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalArea", "Floor area")}</div>
+                </div>
+              )}
               {externalQuotes.length > 0 && (
-                <div className="rounded-lg border bg-white p-3 text-center">
-                  <div className="text-2xl font-bold tabular-nums">{formatCurrency(totalQuoted, currency)}</div>
+                <div className="rounded-lg border bg-white px-4 py-2 text-center">
+                  <div className="text-lg font-bold tabular-nums">{formatCurrency(totalQuoted, currency)}</div>
                   <div className="text-xs text-muted-foreground">{t("homeownerPlanning.quoted", "Quoted")}</div>
                 </div>
               )}

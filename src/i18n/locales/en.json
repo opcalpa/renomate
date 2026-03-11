@@ -4142,7 +4142,8 @@
     "extractedAmount": "Detected amount: {{amount}}",
     "activateProject": "Activate project",
     "projectActivated": "Project activated! Your tasks and rooms are now live.",
-    "quoted": "Quoted"
+    "quoted": "Quoted",
+    "totalArea": "Floor area"
   },
   "externalQuotes": {
     "importQuote": "Import quote",

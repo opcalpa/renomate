@@ -4139,7 +4139,8 @@
     "extractedAmount": "Detekterat belopp: {{amount}}",
     "activateProject": "Aktivera projekt",
     "projectActivated": "Projektet aktiverat! Dina arbetsmoment och rum är nu live.",
-    "quoted": "Offererat"
+    "quoted": "Offererat",
+    "totalArea": "Golvyta"
   },
   "externalQuotes": {
     "importQuote": "Importera offert",

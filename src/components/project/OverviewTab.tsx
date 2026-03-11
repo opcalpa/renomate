@@ -321,10 +321,10 @@ const OverviewTab = ({
       {isPlanning && (!isInvitedClient || isPlanningContributor) && planningSection}
 
       {/* Contextual tips + ROT readiness — unified hints section */}
-      {(tips.length > 0 || (!isGuest && !isPlanningContributor)) && (
+      {(tips.length > 0 || (!isGuest && !isPlanningContributor && !isPlanning)) && (
         <div className="space-y-2">
           <TipList tips={tips} onDismiss={dismiss} maxTips={2} compact />
-          {!isGuest && !isPlanningContributor && (
+          {!isGuest && !isPlanningContributor && !isPlanning && (
             <RotDetailsCard
               personnummer={rotPersonnummer}
               propertyAddress={project.address}
