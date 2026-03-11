@@ -759,7 +759,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       }
       
       return data.id;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving room:", error);
       toast.error("Kunde inte spara rum");
       return null;

@@ -147,7 +147,7 @@ const MaterialsList = ({ taskId, currency }: MaterialsListProps) => {
       }));
 
       setMaterials(materialsWithCreators);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -214,7 +214,7 @@ const MaterialsList = ({ taskId, currency }: MaterialsListProps) => {
         exclude_from_budget: false,
       });
       fetchMaterials();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message || t('purchases.failedToAdd', 'Failed to add purchase order'),
@@ -254,7 +254,7 @@ const MaterialsList = ({ taskId, currency }: MaterialsListProps) => {
       setEditDialogOpen(false);
       setEditingMaterial(null);
       fetchMaterials();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message || t('purchases.failedToUpdate', 'Failed to update purchase order'),
@@ -280,7 +280,7 @@ const MaterialsList = ({ taskId, currency }: MaterialsListProps) => {
       });
 
       fetchMaterials();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,

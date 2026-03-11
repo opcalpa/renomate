@@ -146,7 +146,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
         
         setFolders(foldersOnly);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching folders:', error);
     }
   };
@@ -203,7 +203,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
         setFiles(filesWithDetails);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching files:', error);
       toast({
         title: t('files.error'),
@@ -235,7 +235,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
       setNewFolderName('');
       setShowNewFolderDialog(false);
       await fetchFolders();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating folder:', error);
       toast({
         title: t('files.error'),
@@ -341,7 +341,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
       // For other files, download
       handleDownload(file);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error previewing file:', error);
       toast({
         title: t('files.error'),
@@ -373,7 +373,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
         title: t('files.downloadStarted'),
         description: file.name,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error downloading file:', error);
       toast({
         title: t('files.downloadError'),
@@ -407,7 +407,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
       await fetchFiles();
       setFileToDelete(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting file:', error);
       toast({
         title: t('files.deleteError'),

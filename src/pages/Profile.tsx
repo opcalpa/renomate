@@ -237,7 +237,7 @@ const Profile = () => {
         setMaterialPrices(loadedPrices);
       }
       setCertifications(data.certifications || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -364,7 +364,7 @@ const Profile = () => {
       });
 
       fetchProfile();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: t('errors.generic'),
         description: error.message,
@@ -412,7 +412,7 @@ const Profile = () => {
       
       setNewPassword("");
       setConfirmPassword("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: t('errors.generic'),
         description: error.message,

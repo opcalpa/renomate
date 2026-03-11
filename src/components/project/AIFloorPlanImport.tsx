@@ -432,7 +432,7 @@ export const AIFloorPlanImport = ({
         description: `${shapes.length} objekt skapade i nytt plan: "${newPlan.name}"`,
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('AI conversion error:', error);
       toast({
         title: t('aiFloorPlan.conversionError'),

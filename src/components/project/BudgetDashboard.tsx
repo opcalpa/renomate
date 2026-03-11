@@ -156,7 +156,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount, currency }: Budg
 
       setPayments(allPayments);
       setFilteredPayments(allPayments);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching payments:", error);
       toast({
         title: t('common.error'),
@@ -201,7 +201,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount, currency }: Budg
 
       setOngoingCosts(allCosts);
       setFilteredOngoingCosts(allCosts);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching ongoing costs:", error);
       toast({
         title: t('common.error'),
@@ -409,7 +409,7 @@ const BudgetDashboard = ({ projectId, totalBudget, spentAmount, currency }: Budg
       setPendingCount(pendingCnt);
       setOngoingCostsTotal(ongoing);
       setOngoingCostsCount(ongoingCnt);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: t('common.error'),
         description: error.message,

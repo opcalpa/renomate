@@ -70,7 +70,7 @@ const MaterialRequestButton = ({
       
       // Refresh the page to show updated status
       window.location.reload();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,

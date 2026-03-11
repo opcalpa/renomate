@@ -242,7 +242,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
 
       if (error) throw error;
       setRooms(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching rooms:", error);
     }
   };
@@ -289,7 +289,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
 
       if (error) throw error;
       setStakeholders((data || []) as unknown as Stakeholder[]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching stakeholders:", error);
     }
   };
@@ -341,7 +341,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
       }));
 
       setTasks(mappedTasks as Task[]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: t('common.error'),
         description: error.message,
@@ -391,7 +391,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
       }
 
       setTeamMembers(members);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching team members:", error);
     }
   };
@@ -412,7 +412,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
       });
 
       setTaskDependencies(deps);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching dependencies:", error);
     }
   };
@@ -486,7 +486,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
       setNewTaskIsAta(false);
       setNewTaskParentId(null);
       fetchTasks();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: t('common.error'),
         description: error.message,
@@ -546,7 +546,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
       setEditDialogOpen(false);
       setEditingTask(null);
       fetchTasks();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: t('common.error'),
         description: error.message,
@@ -574,7 +574,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
       });
 
       fetchTaskDependencies();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: t('common.error'),
         description: error.message,
@@ -598,7 +598,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
       });
 
       fetchTaskDependencies();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: t('common.error'),
         description: error.message,
@@ -684,7 +684,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
         title: t('tasks.statusUpdated'),
         description: t('tasks.statusUpdatedDescription', { status: newStatus.replace('_', ' ') }),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: t('common.error'),
         description: error.message,
@@ -912,7 +912,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
       });
 
       fetchTasks();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: t('common.error'),
         description: error.message,

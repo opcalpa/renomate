@@ -299,7 +299,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated, o
       }
 
       setDependencies(formattedDeps);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching task details:", error);
       toast({
         title: t('common.error'),
@@ -422,7 +422,7 @@ const TaskSidePanel = ({ taskId, projectId, open, onOpenChange, onTaskUpdated, o
 
       // Refresh materials list
       await fetchTaskDetails();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating purchase order:", error);
       toast({
         title: t('common.error'),

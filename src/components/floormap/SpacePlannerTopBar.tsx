@@ -115,7 +115,7 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, backLabel, 
         title: t('floormap.newPlanCreated', 'New plan created!'),
         description: t('floormap.planCreatedDescription', { name: newPlan.name, defaultValue: `"${newPlan.name}" has been created and is now active` }),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating plan:', error);
       toast({
         title: t('floormap.errorCreating', 'Error creating plan'),
@@ -161,7 +161,7 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, backLabel, 
         title: t('floormap.planDeleted', 'Plan deleted'),
         description: t('floormap.planDeletedDescription', { name: deletedPlan?.name, defaultValue: `"${deletedPlan?.name}" has been deleted` }),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting plan:', error);
       toast({
         title: t('floormap.errorDeleting', 'Error deleting plan'),

@@ -145,7 +145,7 @@ const InvitationResponse = () => {
       }
 
       setInvitation(data as any);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching invitation:", err);
       setError(err.message);
     } finally {
@@ -311,7 +311,7 @@ const InvitationResponse = () => {
       setTimeout(() => {
         navigate(redirectTarget);
       }, 2000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error accepting invitation:", err);
       toast({
         title: "Error",
@@ -340,7 +340,7 @@ const InvitationResponse = () => {
       });
 
       navigate("/");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error declining invitation:", err);
       toast({
         title: "Error",

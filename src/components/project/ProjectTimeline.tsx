@@ -235,7 +235,7 @@ const ProjectTimeline = ({
       if (!unschedError) {
         setUnscheduledTasks(unschedData || []);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -253,7 +253,7 @@ const ProjectTimeline = ({
       } = await supabase.from("task_dependencies").select("*");
       if (error) throw error;
       setDependencies(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching dependencies:", error);
     }
   };
@@ -288,7 +288,7 @@ const ProjectTimeline = ({
       }
 
       setTeamMembers(members);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching team members:", error);
     }
   };
@@ -301,7 +301,7 @@ const ProjectTimeline = ({
         .order("name");
       if (error) throw error;
       setRooms(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching rooms:", error);
     }
   };
@@ -773,7 +773,7 @@ const ProjectTimeline = ({
       setEditDialogOpen(false);
       setEditingTask(null);
       fetchTasks();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,

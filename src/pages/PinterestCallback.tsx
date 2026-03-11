@@ -84,7 +84,7 @@ export default function PinterestCallback() {
         window.close();
       }, 1500);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Pinterest OAuth error:', error);
       setStatus('error');
       setMessage(error.message || 'Ett fel uppstod');

@@ -266,7 +266,7 @@ const Projects = () => {
       const laborCostPct = (profile as { default_labor_cost_percent?: number | null })?.default_labor_cost_percent ?? 50;
       const ids = (data || []).map((p: Project) => p.id);
       fetchProjectFinancials(ids, laborCostPct);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,

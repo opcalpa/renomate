@@ -178,7 +178,7 @@ const Auth = () => {
       });
 
       if (error) throw error;
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
