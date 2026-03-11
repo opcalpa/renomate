@@ -71,6 +71,7 @@ export interface OverviewProject {
   address?: string | null;
   property_designation?: string | null;
   source_rfq_project_id?: string | null;
+  cover_image_url?: string | null;
 }
 
 export interface OverviewData {

@@ -153,6 +153,8 @@ const Profile = () => {
     plumbing_sqm_per_hour: "2",
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [certifications, setCertifications] = useState<Array<{ id: string; name: string; issuer: string; year: string; custom: boolean }>>([]);
 
@@ -198,6 +200,7 @@ const Profile = () => {
       setCompanyWebsite(data.company_website || "");
       setOrgNumber(data.org_number || "");
       setCompanyLogoUrl(data.company_logo_url || null);
+      setAvatarUrl(data.avatar_url || null);
       setBankgiro(data.bankgiro || "");
       setBankAccountNumber(data.bank_account_number || "");
       setPersonnummer(data.personnummer || "");
@@ -509,6 +512,48 @@ const Profile = () => {
     toast({ title: t("profile.logoRemoved") });
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile) return;
+    setUploadingAvatar(true);
+
+    try {
+      const compressed = await compressLogo(file, 256);
+      const ext = file.name.split(".").pop() || "png";
+      const path = `${profile.id}/${Date.now()}.${ext}`;
+
+      if (avatarUrl) {
+        const oldPath = avatarUrl.split("/avatars/")[1];
+        if (oldPath) await supabase.storage.from("avatars").remove([oldPath]);
+      }
+
+      const { error } = await supabase.storage.from("avatars").upload(path, compressed);
+      if (error) {
+        toast({ title: t("errors.generic"), description: error.message, variant: "destructive" });
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      setAvatarUrl(publicUrl);
+      await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("user_id", user?.id);
+      toast({ title: t("profile.avatarUploaded", "Profile photo updated") });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : t("errors.generic");
+      toast({ title: t("errors.generic"), description: message, variant: "destructive" });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!avatarUrl || !profile) return;
+    const oldPath = avatarUrl.split("/avatars/")[1];
+    if (oldPath) await supabase.storage.from("avatars").remove([oldPath]);
+    setAvatarUrl(null);
+    await supabase.from("profiles").update({ avatar_url: null }).eq("user_id", user?.id);
+    toast({ title: t("profile.avatarRemoved", "Profile photo removed") });
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -540,6 +585,47 @@ const Profile = () => {
               <CardDescription>{t('profile.profileInfoDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+                {/* Avatar upload */}
+                <div className="flex items-center gap-4">
+                  <div className="relative group">
+                    {avatarUrl ? (
+                      <>
+                        <img
+                          src={avatarUrl}
+                          alt={name}
+                          className="h-16 w-16 rounded-full object-cover border"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleRemoveAvatar}
+                          className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </>
+                    ) : (
+                      <label className="h-16 w-16 rounded-full border-2 border-dashed flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
+                        <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+                        {uploadingAvatar ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        ) : (
+                          <Upload className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </label>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{t("profile.profilePhoto", "Profile photo")}</p>
+                    <p className="text-xs text-muted-foreground">{t("profile.profilePhotoHint", "Visible in comments and activity")}</p>
+                    {avatarUrl && (
+                      <label className="text-xs text-primary hover:underline cursor-pointer">
+                        <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+                        {t("common.change", "Change")}
+                      </label>
+                    )}
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="name">{t('common.name')}</Label>
                   <Input
