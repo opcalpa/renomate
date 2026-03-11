@@ -37,6 +37,7 @@ import {
   Crown,
 } from "lucide-react";
 import { z } from "zod";
+import { getAvatarColor } from "@/lib/avatarColor";
 import { FeatureAccessEditor } from "./team/FeatureAccessEditor";
 import type { FeatureAccess } from "./team/FeatureAccessEditor";
 
@@ -775,7 +776,7 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
                 key={member.id}
                 className="flex items-center gap-3 p-3 border border-border rounded-lg"
               >
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium shrink-0">
+                <div className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-medium shrink-0 ${getAvatarColor(member.user_name)}`}>
                   {member.user_name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">

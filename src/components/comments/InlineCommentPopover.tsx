@@ -15,6 +15,7 @@ import { X, Send, Check, MessageCircle, Camera, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { getAvatarColor } from '@/lib/avatarColor';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { getDateLocale } from '@/lib/dateFnsLocale';
@@ -354,7 +355,7 @@ export const InlineCommentPopover: React.FC<InlineCommentPopoverProps> = ({
               )}
             >
               <Avatar className="h-7 w-7 flex-shrink-0">
-                <AvatarFallback className="text-xs bg-blue-100 text-blue-700">
+                <AvatarFallback className={`text-xs font-medium ${getAvatarColor(comment.creator?.name || "")}`}>
                   {comment.creator?.name?.charAt(0).toUpperCase() || '?'}
                 </AvatarFallback>
               </Avatar>

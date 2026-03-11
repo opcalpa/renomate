@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getAvatarColor } from "@/lib/avatarColor";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Send, Trash2, MessageSquare, Camera, X, Languages, Lock, Reply, ChevronDown } from "lucide-react";
 import { useCommentTranslation } from "@/hooks/useCommentTranslation";
@@ -761,7 +762,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
                   onClick={() => insertMention(member)}
                 >
                   <Avatar className="h-6 w-6">
-                    <AvatarFallback className="text-xs">
+                    <AvatarFallback className={`text-xs font-medium ${getAvatarColor(member.name)}`}>
                       {member.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -837,7 +838,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
       <div key={comment.id}>
         <div className={`flex gap-3 group ${isReply ? 'ml-8 border-l-2 border-muted pl-3' : ''}`}>
           <Avatar className="h-8 w-8 flex-shrink-0">
-            <AvatarFallback className="text-xs">
+            <AvatarFallback className={`text-xs font-medium ${getAvatarColor(comment.author_display_name || comment.creator?.name || "")}`}>
               {(comment.author_display_name || comment.creator?.name)?.charAt(0) || '?'}
             </AvatarFallback>
           </Avatar>
@@ -985,7 +986,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
                 onClick={() => insertMention(member)}
               >
                 <Avatar className="h-6 w-6">
-                  <AvatarFallback className="text-xs">
+                  <AvatarFallback className={`text-xs font-medium ${getAvatarColor(member.name)}`}>
                     {member.name.charAt(0)}
                   </AvatarFallback>
                 </Avatar>

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getAvatarColor } from "@/lib/avatarColor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -83,7 +84,7 @@ export function PublicProfileSheet({ profileId, open, onOpenChange, showContact 
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
                 <AvatarImage src={profile.avatar_url || undefined} alt={profile.name} />
-                <AvatarFallback className="text-lg bg-primary text-primary-foreground">{initials}</AvatarFallback>
+                <AvatarFallback className={`text-lg font-medium ${getAvatarColor(profile.name || "")}`}>{initials}</AvatarFallback>
               </Avatar>
               <div className="space-y-1">
                 <h3 className="text-lg font-semibold flex items-center gap-2">

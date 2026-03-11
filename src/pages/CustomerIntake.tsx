@@ -5,6 +5,7 @@ import { Loader2, AlertCircle, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getAvatarColor } from "@/lib/avatarColor";
 import { IntakeWizard } from "@/components/intake";
 import {
   getIntakeRequestByToken,
@@ -104,7 +105,7 @@ export default function CustomerIntake() {
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
               <AvatarImage src={intakeRequest.creator.avatar_url || undefined} />
-              <AvatarFallback className="bg-primary/10 text-primary">
+              <AvatarFallback className={`font-medium ${getAvatarColor(intakeRequest.creator.name || "")}`}>
                 {creatorInitials}
               </AvatarFallback>
             </Avatar>

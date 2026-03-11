@@ -20,6 +20,7 @@ import {
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getAvatarColor } from "@/lib/avatarColor";
 import { useIsProfessional } from "@/hooks/useIsProfessional";
 
 const LANGUAGES = [
@@ -334,7 +335,7 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
               <Button variant="ghost" className="relative h-10 w-10 md:h-9 md:w-9 rounded-full">
                 <Avatar className="h-10 w-10 md:h-9 md:w-9">
                   <AvatarImage src={avatarUrl} alt={userName} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                  <AvatarFallback className={`text-sm font-medium ${getAvatarColor(userName || userEmail || "")}`}>
                     {initials}
                   </AvatarFallback>
                 </Avatar>

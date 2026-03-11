@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getAvatarColor } from "@/lib/avatarColor";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -192,7 +193,7 @@ const FindProfessionals = () => {
                     <div className="flex items-center gap-3">
                       <Avatar className="h-12 w-12">
                         <AvatarImage src={pro.avatar_url || undefined} />
-                        <AvatarFallback className="bg-primary text-primary-foreground">{initials}</AvatarFallback>
+                        <AvatarFallback className={`font-medium ${getAvatarColor(pro.name || "")}`}>{initials}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-sm truncate flex items-center gap-1">
