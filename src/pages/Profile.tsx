@@ -332,31 +332,37 @@ const Profile = () => {
         language_preference: languagePreference,
         onboarding_user_type: userType,
         is_professional: isProfessional,
-        company_name: isContractor ? companyName : null,
-        org_number: isContractor ? orgNumber : null,
-        company_address: isContractor ? companyAddress : null,
-        company_city: isContractor ? companyCity : null,
-        company_postal_code: isContractor ? companyPostalCode : null,
-        company_website: isContractor ? companyWebsite : null,
-        company_logo_url: isContractor ? companyLogoUrl : null,
-        bankgiro: isContractor ? (bankgiro.trim() || null) : null,
-        bank_account_number: isContractor ? (bankAccountNumber.trim() || null) : null,
-        default_payment_terms_days: isContractor ? (parseInt(defaultPaymentTermsDays) || 30) : null,
-        default_hourly_rate: isContractor ? (defaultHourlyRate ? parseFloat(defaultHourlyRate) : null) : null,
-        default_labor_cost_percent: isContractor ? (parseFloat(defaultLaborCostPercent) || 50) : null,
-        estimation_settings: isContractor ? {
-          paint_coverage_sqm_per_liter: parseFloat(paintCoverage) || 10,
-          paint_coats: parseInt(paintCoats) || 2,
-          ...Object.fromEntries(
-            Object.entries(productivityRates).map(([k, v]) => [k, parseFloat(v) || 0])
-          ),
-          ...Object.fromEntries(
-            Object.entries(materialPrices).map(([k, v]) => [k, parseFloat(v) || 0])
-          ),
-        } : null,
-        contractor_category: isProfessional ? contractorCategory : null,
-        company_description: isProfessional ? companyDescription : null,
-        certifications: isProfessional ? certifications : [],
+        // Only update contractor fields when in contractor mode — preserve existing values when switching to homeowner
+        ...(isContractor ? {
+          company_name: companyName,
+          org_number: orgNumber,
+          company_address: companyAddress,
+          company_city: companyCity,
+          company_postal_code: companyPostalCode,
+          company_website: companyWebsite,
+          company_logo_url: companyLogoUrl,
+          bankgiro: bankgiro.trim() || null,
+          bank_account_number: bankAccountNumber.trim() || null,
+          default_payment_terms_days: parseInt(defaultPaymentTermsDays) || 30,
+          default_hourly_rate: defaultHourlyRate ? parseFloat(defaultHourlyRate) : null,
+          default_labor_cost_percent: parseFloat(defaultLaborCostPercent) || 50,
+          estimation_settings: {
+            paint_coverage_sqm_per_liter: parseFloat(paintCoverage) || 10,
+            paint_coats: parseInt(paintCoats) || 2,
+            ...Object.fromEntries(
+              Object.entries(productivityRates).map(([k, v]) => [k, parseFloat(v) || 0])
+            ),
+            ...Object.fromEntries(
+              Object.entries(materialPrices).map(([k, v]) => [k, parseFloat(v) || 0])
+            ),
+          },
+        } : {}),
+        // Only update professional listing fields when in professional mode — preserve when switching away
+        ...(isProfessional ? {
+          contractor_category: contractorCategory,
+          company_description: companyDescription,
+          certifications: certifications,
+        } : {}),
       };
 
       if (lat !== null && lng !== null) {
