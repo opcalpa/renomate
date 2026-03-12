@@ -921,52 +921,28 @@ const ProjectTimeline = ({
                     {/* Start date */}
                     <div className="space-y-1">
                       <Label className="text-xs">{t('common.startDate')}</Label>
-                      {effectiveStartDate ? (
-                        <Input
-                          type="date"
-                          className="h-8 text-sm"
-                          value={effectiveStartDate}
-                          disabled={savingProjectDate}
-                          onChange={(e) => {
-                            if (e.target.value) saveProjectDate("start_date", e.target.value);
-                          }}
-                        />
-                      ) : (
-                        <Input
-                          type="date"
-                          className="h-8 text-sm border-amber-300 bg-amber-50/50"
-                          placeholder={t('timeline.setDate', 'Set date')}
-                          disabled={savingProjectDate}
-                          onChange={(e) => {
-                            if (e.target.value) saveProjectDate("start_date", e.target.value);
-                          }}
-                        />
-                      )}
+                      <Input
+                        type="date"
+                        className={`h-8 text-sm ${!effectiveStartDate ? "border-amber-300 bg-amber-50/50" : ""}`}
+                        value={effectiveStartDate || ""}
+                        disabled={savingProjectDate}
+                        onChange={(e) => {
+                          if (e.target.value) saveProjectDate("start_date", e.target.value);
+                        }}
+                      />
                     </div>
                     {/* Finish date */}
                     <div className="space-y-1">
                       <Label className="text-xs">{t('timeline.goalDate', 'Goal date')}</Label>
-                      {effectiveFinishDate ? (
-                        <Input
-                          type="date"
-                          className="h-8 text-sm"
-                          value={effectiveFinishDate}
-                          disabled={savingProjectDate}
-                          onChange={(e) => {
-                            if (e.target.value) saveProjectDate("finish_goal_date", e.target.value);
-                          }}
-                        />
-                      ) : (
-                        <Input
-                          type="date"
-                          className="h-8 text-sm border-amber-300 bg-amber-50/50"
-                          placeholder={t('timeline.setDate', 'Set date')}
-                          disabled={savingProjectDate}
-                          onChange={(e) => {
-                            if (e.target.value) saveProjectDate("finish_goal_date", e.target.value);
-                          }}
-                        />
-                      )}
+                      <Input
+                        type="date"
+                        className={`h-8 text-sm ${!effectiveFinishDate ? "border-amber-300 bg-amber-50/50" : ""}`}
+                        value={effectiveFinishDate || ""}
+                        disabled={savingProjectDate}
+                        onChange={(e) => {
+                          if (e.target.value) saveProjectDate("finish_goal_date", e.target.value);
+                        }}
+                      />
                     </div>
                     {/* Zoom to project span */}
                     {effectiveStartDate && effectiveFinishDate && (

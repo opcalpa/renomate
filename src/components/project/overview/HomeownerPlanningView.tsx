@@ -477,9 +477,8 @@ export function HomeownerPlanningView({
             {/* Column toggle */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1 shrink-0">
+                <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" title={t("budget.columns", "Columns")}>
                   <Columns3 className="h-4 w-4" />
-                  <span className="hidden sm:inline">{t("budget.columns", "Columns")}</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-52" align="end">

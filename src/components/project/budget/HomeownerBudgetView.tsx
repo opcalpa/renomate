@@ -273,7 +273,7 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
       <h2 className="text-xl sm:text-2xl font-bold">{t("budget.title")}</h2>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 md:gap-3">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-6 md:gap-3">
         {/* Min budget */}
         <div className="bg-muted/50 rounded-lg p-4 text-center space-y-1">
           <div className="flex items-center justify-center gap-1.5">
@@ -502,9 +502,6 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
           </Button>
         </div>
       )}
-
-      {/* Deklarationsunderlag & analys */}
-      <HomeownerAnalysisSection projectId={projectId} currency={currency} />
 
       {/* Egna inköp */}
       {ownPurchases.length > 0 && (

@@ -139,6 +139,33 @@
     "activateHintTask": "Add at least 1 task to activate",
     "activateHintRoom": "Add at least 1 room to activate"
   },
+  "planningTour": {
+    "taskTable": {
+      "title": "Your scope of work",
+      "description": "Start by listing everything that needs to be done — big or small. Painting, tiling, demolition, electrical... just type and add."
+    },
+    "addTask": {
+      "title": "Add tasks here",
+      "description": "Click this button to add a new task. You can edit names inline by clicking on them."
+    },
+    "roomTable": {
+      "title": "Rooms & spaces",
+      "description": "Add all the rooms involved in your renovation. Each room can be linked to tasks for better organization."
+    },
+    "addRoom": {
+      "title": "Add rooms",
+      "description": "Add rooms like Kitchen, Bathroom, Living room. You can enter dimensions to get automatic area calculations."
+    },
+    "columns": {
+      "title": "Customize columns",
+      "description": "Show or hide columns to see room assignments, descriptions, and status for each task."
+    },
+    "signUp": {
+      "title": "Save your work",
+      "description": "Everything you add is saved locally. Create a free account to save permanently, get cost estimates, and invite collaborators."
+    },
+    "finish": "Get started!"
+  },
   "nav": {
     "home": "Home",
     "start": "Start",
@@ -221,7 +248,12 @@
     "signUpSuccess": "Account created successfully!",
     "welcomeBack": "Welcome back!",
     "accountCreated": "Account created!",
-    "accountCreatedDescription": "You can now sign in with your credentials."
+    "accountCreatedDescription": "You can now sign in with your credentials.",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "passwordMismatch": "Passwords do not match",
+    "checkEmail": "Check your email",
+    "confirmEmailDescription": "We sent a confirmation link to {{email}}. Click it to activate your account."
   },
   "projects": {
     "title": "My Projects",
@@ -291,6 +323,9 @@
     "methodIntake": "Send customer form",
     "methodIntakeDesc": "Let the customer describe their needs",
     "leadDescription": "Quote not accepted yet",
+    "defaultGuestProjectName": "My renovation",
+    "aiImportSuccess": "Document analyzed",
+    "aiImportSuccessDesc": "{{tasks}} tasks and {{rooms}} rooms extracted",
     "types": {
       "kitchenRenovation": "Kitchen renovation",
       "bathroomRenovation": "Bathroom renovation",
@@ -2097,7 +2132,7 @@
     "documents": "Documents",
     "noDocuments": "No quotes or invoices yet",
     "projectChat": {
-      "title": "Project chat",
+      "title": "Chat",
       "description": "Write a message to your project team"
     },
     "planningReference": "Planning reference"
@@ -2206,6 +2241,7 @@
     "materials": "Materials",
     "allStatuses": "All Statuses",
     "allRooms": "All Rooms",
+    "allStatuses": "All Statuses",
     "allAssignees": "All Assignees",
     "all": "All",
     "startDateFrom": "Start Date (from)",
@@ -2315,7 +2351,7 @@
     }
   },
   "budgetCharts": {
-    "title": "Budget Overview",
+    "title": "Charts",
     "distribution": "Distribution",
     "comparison": "Comparison",
     "byType": "By type",
@@ -2453,7 +2489,7 @@
     "taskDetails": "Task details"
   },
   "feed": {
-    "title": "Project Feed",
+    "title": "Feed",
     "description": "All comments across tasks, materials, rooms, and drawings in one place",
     "noComments": "No comments yet. Post the first comment to get started!",
     "noCommentsHint": "Comments and activity from your team will appear here",
@@ -4273,7 +4309,7 @@
     }
   },
   "analysis": {
-    "title": "Cost summary",
+    "title": "ROT deduction",
     "totalExpenses": "Total",
     "totalInvoiced": "Contractors",
     "ownPurchases": "Own purchases",

@@ -605,13 +605,13 @@ export function QuickReceiptCaptureModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col !inset-auto !bottom-0 !left-0 !right-0 !rounded-t-2xl !rounded-b-none md:!inset-auto md:!left-[50%] md:!top-[50%] md:!translate-x-[-50%] md:!translate-y-[-50%] md:!rounded-lg">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{t("document.title")}</DialogTitle>
           <DialogDescription>{t("document.description")}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 py-4">
+        <div className="overflow-y-auto space-y-4 py-4">
           {/* Image capture section */}
           {!previewUrl ? (
             <div className="space-y-3">

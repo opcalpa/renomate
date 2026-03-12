@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings2, Receipt, FileText, Mail, MessageSquare, ChevronDown, ChevronRight, ExternalLink, UserPlus } from "lucide-react";
+import { Settings2, ShoppingCart, FileText, Mail, MessageSquare, ChevronDown, ChevronRight, ExternalLink, UserPlus, Activity } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
 import { useOverviewData } from "./overview/useOverviewData";
@@ -21,7 +21,6 @@ import { SendCustomerFormDialog } from "./SendCustomerFormDialog";
 import { InvoiceMethodDialog } from "@/components/invoices/InvoiceMethodDialog";
 import { useProjectLock } from "@/hooks/useProjectLock";
 import { CommentsSection } from "@/components/comments/CommentsSection";
-import { ProjectStatusCTA } from "./overview/ProjectStatusCTA";
 import { PlanningTaskList } from "./overview/PlanningTaskList";
 import { PlanningRoomList } from "./overview/PlanningRoomList";
 import { HomeownerPlanningView } from "./overview/HomeownerPlanningView";
@@ -246,20 +245,6 @@ const OverviewTab = ({
   // ----- All phases: unified dashboard view -----
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Status CTA - only in active phases */}
-      {!isHomeowner && !isPlanning && (
-        <ProjectStatusCTA
-          status={project.status}
-          taskCount={taskStats.total}
-          currency={project.currency}
-          onNavigateToTasks={() => onNavigateToTasks?.()}
-          onCreateQuote={() => setQuoteDialogOpen(true)}
-          onViewQuote={() => setQuoteDialogOpen(true)}
-          onCreateInvoice={() => setInvoiceMethodOpen(true)}
-          onReviseQuote={() => setQuoteDialogOpen(true)}
-        />
-      )}
-
       <ProjectHeader project={project} onOpenSettings={() => setSettingsOpen(true)} />
 
       {/* RFQ banner — builder working on a homeowner's quote request */}
@@ -389,12 +374,13 @@ const OverviewTab = ({
                 onClick={() => setReceiptModalOpen(true)}
                 className="flex-1 sm:flex-none"
               >
-                <Receipt className="h-4 w-4 sm:mr-2" />
+                <ShoppingCart className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">{t("overview.addPurchase")}</span>
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
+                className="hidden md:flex"
                 onClick={() => setSettingsOpen(true)}
               >
                 <Settings2 className="h-5 w-5" />
@@ -444,16 +430,22 @@ const OverviewTab = ({
         />
       )}
 
-      <OverviewFeedSection
-        projectId={project.id}
-        navigation={navigation}
-        userType={userType}
-        onNavigateToEntity={onNavigateToEntity}
-        onNavigateToFiles={onNavigateToFiles}
-        onNavigateToTask={(taskId) => onNavigateToTasks?.(taskId)}
-        onNavigateToMaterial={(materialId) => onNavigateToPurchases?.(materialId)}
-        onNavigateToRoom={onNavigateToRoom}
-      />
+      <CollapsibleSection
+        title={t("feed.title", "Feed")}
+        icon={<Activity className="h-4 w-4" />}
+        defaultOpen
+      >
+        <OverviewFeedSection
+          projectId={project.id}
+          navigation={navigation}
+          userType={userType}
+          onNavigateToEntity={onNavigateToEntity}
+          onNavigateToFiles={onNavigateToFiles}
+          onNavigateToTask={(taskId) => onNavigateToTasks?.(taskId)}
+          onNavigateToMaterial={(materialId) => onNavigateToPurchases?.(materialId)}
+          onNavigateToRoom={onNavigateToRoom}
+        />
+      </CollapsibleSection>
 
       {/* Collapsible planning reference — after planning phase, at bottom */}
       {!isPlanning && (!isInvitedClient || isPlanningContributor) && (

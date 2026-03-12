@@ -76,10 +76,13 @@ Analysera dokumentet och extrahera:
 3. SAMMANFATTNING - En kort sammanfattning av dokumentet (2-3 meningar)
 
 VIKTIGT:
-- Extrahera ALLA rum och uppgifter du hittar, även om de bara nämns kort
+- Extrahera BARA det som TYDLIGT och EXPLICIT nämns i dokumentet
+- Gissa ALDRIG rum eller uppgifter som inte direkt framgår av texten
+- Det är bättre att missa något än att hitta på något som inte stod i dokumentet
 - Använd svenska namn och beskrivningar
 - Var specifik med uppgifter - "måla väggar" ska specificeras till vilket rum
 - Om samma rum nämns flera gånger, slå ihop informationen
+- Confidence ska vara max 0.7 om det inte ordagrant nämns i texten
 - Confidence ska vara:
   * 0.9-1.0: Tydligt specificerat i dokumentet
   * 0.7-0.9: Rimlig tolkning baserat på kontext
@@ -136,6 +139,50 @@ async function extractTextFromDocx(fileUrl: string): Promise<string> {
     console.error('DOCX parse error:', docxError);
     throw new Error('Kunde inte läsa Word-filen. Försök med PDF eller TXT istället.');
   }
+}
+
+async function extractTextFromBase64(fileBase64: string, mimeType: string, fileName: string): Promise<string> {
+  console.log('Processing base64 document:', fileName, 'type:', mimeType);
+
+  const binaryStr = atob(fileBase64);
+  const bytes = new Uint8Array(binaryStr.length);
+  for (let i = 0; i < binaryStr.length; i++) {
+    bytes[i] = binaryStr.charCodeAt(i);
+  }
+
+  const extension = fileName.toLowerCase().split('.').pop();
+
+  // Handle PDF
+  if (mimeType.includes('pdf') || extension === 'pdf') {
+    try {
+      const data = await pdf(bytes);
+      console.log('PDF parsed from base64, text length:', data.text?.length || 0);
+      return data.text || '';
+    } catch (pdfError) {
+      console.error('PDF parse error:', pdfError);
+      throw new Error('Kunde inte läsa PDF-filen. Försök med en annan fil.');
+    }
+  }
+
+  // Handle DOCX
+  if (mimeType.includes('openxmlformats') || extension === 'docx') {
+    try {
+      const result = await mammoth.extractRawText({ arrayBuffer: bytes.buffer });
+      console.log('DOCX parsed from base64, text length:', result.value?.length || 0);
+      return result.value || '';
+    } catch (docxError) {
+      console.error('DOCX parse error:', docxError);
+      throw new Error('Kunde inte läsa Word-filen. Försök med PDF eller TXT istället.');
+    }
+  }
+
+  // Handle text files
+  if (mimeType.includes('text') || mimeType.includes('plain') || extension === 'txt') {
+    return new TextDecoder().decode(bytes);
+  }
+
+  // Default: try as text
+  return new TextDecoder().decode(bytes);
 }
 
 async function fetchDocumentContent(fileUrl: string, fileType: string, fileName: string): Promise<string> {
@@ -260,16 +307,18 @@ serve(async (req) => {
   }
 
   try {
-    const { fileUrl, fileType, fileName } = await req.json();
+    const { fileUrl, fileBase64, fileType, mimeType, fileName } = await req.json();
 
-    console.log('Processing request:', { fileName, fileType, fileUrl: fileUrl?.substring(0, 50) });
+    console.log('Processing request:', { fileName, fileType, mimeType, hasBase64: !!fileBase64, fileUrl: fileUrl?.substring(0, 50) });
 
-    if (!fileUrl) {
-      throw new Error('fileUrl is required');
+    if (!fileUrl && !fileBase64) {
+      throw new Error('fileUrl or fileBase64 is required');
     }
 
     // Fetch and extract document content
-    const documentContent = await fetchDocumentContent(fileUrl, fileType || '', fileName || '');
+    const documentContent = fileBase64
+      ? await extractTextFromBase64(fileBase64, mimeType || fileType || '', fileName || '')
+      : await fetchDocumentContent(fileUrl, fileType || '', fileName || '');
 
     // Extract with OpenAI
     const result = await extractWithOpenAI(documentContent);

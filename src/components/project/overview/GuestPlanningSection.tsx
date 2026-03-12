@@ -33,6 +33,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Plus, ClipboardList, Home, Trash2, Cloud, Columns3, Info, Sparkles, Rocket, FileUp } from "lucide-react";
 import { GuestTaskEstimateSheet } from "./GuestTaskEstimateSheet";
+import { PlanningTour } from "@/components/onboarding/PlanningTour";
 import { detectWorkType } from "@/lib/materialRecipes";
 import {
   getGuestTasks,
@@ -366,7 +367,7 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
       )}
 
       {/* Task planning card */}
-      <Card className="border-l-4 border-l-primary">
+      <Card className="border-l-4 border-l-primary" data-tour="task-table">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" />
@@ -587,7 +588,7 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
 
               {/* Footer: add + column chooser */}
               <div className="flex items-center gap-2 mt-2 pt-2 border-t">
-                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setAddingTask(true)}>
+                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setAddingTask(true)} data-tour="add-task">
                   <Plus className="h-3.5 w-3.5" />
                   {t("planningTasks.addTask", "Add task")}
                 </Button>
@@ -610,9 +611,8 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
 
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 ml-auto">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto" data-tour="task-columns" title={t("planningTasks.showColumns", "Columns")}>
                       <Columns3 className="h-3.5 w-3.5" />
-                      {t("planningTasks.showColumns", "Columns")}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-48 p-2" align="end">
@@ -637,7 +637,7 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
       </Card>
 
       {/* Room planning card */}
-      <Card className="border-l-4 border-l-blue-400">
+      <Card className="border-l-4 border-l-blue-400" data-tour="room-table">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
@@ -879,16 +879,15 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
               </div>
 
               <div className="flex items-center gap-2 mt-2 pt-2 border-t">
-                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setAddingRoom(true)}>
+                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setAddingRoom(true)} data-tour="add-room">
                   <Plus className="h-3.5 w-3.5" />
                   {t("planningRooms.addRoom", "Add room")}
                 </Button>
 
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 ml-auto">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto" title={t("planningTasks.showColumns", "Columns")}>
                       <Columns3 className="h-3.5 w-3.5" />
-                      {t("planningTasks.showColumns")}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-48 p-2" align="end">
@@ -913,13 +912,16 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
       </Card>
 
       {/* Soft sign-up nudge */}
-      <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+      <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-muted/50 text-sm text-muted-foreground" data-tour="signup-nudge">
         <Cloud className="h-4 w-4 shrink-0" />
         <span>{t("guest.signUpNudge", "Create a free account to save your project, get estimates, and invite collaborators.")}</span>
         <Button variant="link" size="sm" className="shrink-0 h-auto p-0 text-sm" onClick={() => window.location.href = "/auth"}>
           {t("guest.signUpLink", "Sign up")}
         </Button>
       </div>
+
+      {/* Planning tour for first-time guests */}
+      <PlanningTour />
 
       {/* Task estimate sheet */}
       {selectedTaskId && (

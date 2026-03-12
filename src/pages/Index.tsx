@@ -25,15 +25,17 @@ const Index = () => {
   const { enterGuestMode } = useGuestMode();
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    // Skip auto-redirect if user is in guest mode — they should
+    // be able to return to the landing page by clicking the logo
+    const guestState = localStorage.getItem("renomate_guest_mode");
+    if (guestState) return;
 
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      navigate("/start");
-    }
-  };
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate("/start");
+      }
+    });
+  }, [navigate]);
 
   const handleDemoProject = () => {
     navigate(`/projects/${PUBLIC_DEMO_PROJECT_ID}`);

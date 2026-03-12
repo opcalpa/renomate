@@ -1270,9 +1270,8 @@ export function PlanningTaskList({
                 {/* Column visibility toggle */}
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-1">
+                    <Button variant="outline" size="icon" className="h-8 w-8" title={t("budget.columns", "Columns")}>
                       <Columns3 className="h-4 w-4" />
-                      {t("budget.columns", "Columns")}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-52" align="start">

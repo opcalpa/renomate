@@ -149,65 +149,66 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
     </>
   );
 
-  const projectsDropdown = (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-1.5 text-sm font-medium">
-          <FolderOpen className="h-4 w-4" />
-          <span className="hidden sm:inline">{t('nav.start')}</span>
-          <ChevronDown className="h-3 w-3" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64 bg-popover z-[100]">
-        {/* Min startsida */}
-        <DropdownMenuItem onClick={() => navigate("/start")} className="cursor-pointer font-medium">
-          {t('nav.myStart')}
-        </DropdownMenuItem>
+  const hasDropdownItems = projects.length > 0 || quotes.length > 0;
 
-        {/* Mina Projekt */}
-        {projects.length > 0 && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="cursor-pointer">
-                <FolderOpen className="mr-2 h-4 w-4" />
-                <span>{t('nav.myProjects')}</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="w-64">
-                {projects.map((proj) => (
-                  <DropdownMenuItem
-                    key={proj.id}
-                    onClick={() => navigate(`/projects/${proj.id}`)}
-                    className="cursor-pointer"
-                  >
-                    <span className="truncate">{proj.name}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          </>
-        )}
+  const projectsDropdown = hasDropdownItems ? (
+    <div className="flex items-center">
+      <Button
+        variant="ghost"
+        size="sm"
+        className={`gap-1.5 text-sm font-medium rounded-r-none pr-1.5 ${isActive("/start") ? "bg-accent" : ""}`}
+        onClick={() => navigate("/start")}
+      >
+        <FolderOpen className="h-4 w-4" />
+        <span className="hidden sm:inline">{t('nav.start')}</span>
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="rounded-l-none px-1 h-8">
+            <ChevronDown className="h-3 w-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-64 bg-popover z-[100]">
+          {/* Mina Projekt */}
+          {projects.length > 0 && (
+            <>
+              <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                {t('nav.myProjects')}
+              </DropdownMenuLabel>
+              {projects.map((proj) => (
+                <DropdownMenuItem
+                  key={proj.id}
+                  onClick={() => navigate(`/projects/${proj.id}`)}
+                  className="cursor-pointer"
+                >
+                  <FolderOpen className="mr-2 h-4 w-4" />
+                  <span className="truncate">{proj.name}</span>
+                </DropdownMenuItem>
+              ))}
+            </>
+          )}
 
-        {/* Deklarationsunderlag - homeowners only */}
-        {!isProfessional && projects.length > 0 && (
-          <DropdownMenuItem
-            onClick={() => navigate("/start#deklaration")}
-            className="cursor-pointer"
-          >
-            <BarChart3 className="mr-2 h-4 w-4" />
-            <span>{t('nav.declaration', 'Deklarationsunderlag')}</span>
-          </DropdownMenuItem>
-        )}
+          {/* Deklarationsunderlag - homeowners only */}
+          {!isProfessional && projects.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => navigate("/start#deklaration")}
+                className="cursor-pointer"
+              >
+                <BarChart3 className="mr-2 h-4 w-4" />
+                <span>{t('nav.declaration', 'Deklarationsunderlag')}</span>
+              </DropdownMenuItem>
+            </>
+          )}
 
-        {/* Mina Offerter */}
-        <DropdownMenuSeparator />
-        {quotes.length > 0 ? (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="cursor-pointer">
-              <FileText className="mr-2 h-4 w-4" />
-              <span>{t('nav.myQuotes')}</span>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-64">
+          {/* Mina Offerter */}
+          {quotes.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                {t('nav.myQuotes')}
+              </DropdownMenuLabel>
               {quotes.map((quote) => (
                 <DropdownMenuItem
                   key={quote.id}
@@ -222,19 +223,21 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
                   )}
                 </DropdownMenuItem>
               ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        ) : (
-          <DropdownMenuItem
-            onClick={() => navigate("/start#pipeline")}
-            className="cursor-pointer"
-          >
-            <FileText className="mr-2 h-4 w-4" />
-            <span>{t('nav.myQuotes')}</span>
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  ) : (
+    <Button
+      variant="ghost"
+      size="sm"
+      className={`gap-1.5 text-sm font-medium ${isActive("/start") ? "bg-accent" : ""}`}
+      onClick={() => navigate("/start")}
+    >
+      <FolderOpen className="h-4 w-4" />
+      <span className="hidden sm:inline">{t('nav.start')}</span>
+    </Button>
   );
 
   return (
@@ -242,7 +245,7 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
       <div className="container mx-auto px-4 py-2 flex items-center gap-2 md:gap-4">
         <div
           className="flex items-center cursor-pointer shrink-0"
-          onClick={() => navigate(user ? "/start" : "/")}
+          onClick={() => navigate(user && !isGuest ? "/start" : "/")}
         >
           <img
             src="/logo.png"

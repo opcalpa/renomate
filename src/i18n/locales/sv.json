@@ -139,6 +139,33 @@
     "activateHintTask": "Lägg till minst 1 arbete för att aktivera",
     "activateHintRoom": "Lägg till minst 1 rum för att aktivera"
   },
+  "planningTour": {
+    "taskTable": {
+      "title": "Ditt arbetsomfång",
+      "description": "Börja med att lista allt som ska göras — stort som smått. Målning, kakling, rivning, el... skriv och lägg till."
+    },
+    "addTask": {
+      "title": "Lägg till arbeten här",
+      "description": "Klicka här för att lägga till ett nytt arbete. Du kan redigera namn direkt genom att klicka på dem."
+    },
+    "roomTable": {
+      "title": "Rum & utrymmen",
+      "description": "Lägg till alla rum som ingår i renoveringen. Varje rum kan kopplas till arbeten för bättre organisation."
+    },
+    "addRoom": {
+      "title": "Lägg till rum",
+      "description": "Lägg till rum som Kök, Badrum, Vardagsrum. Ange mått för att få automatisk ytberäkning."
+    },
+    "columns": {
+      "title": "Anpassa kolumner",
+      "description": "Visa eller dölj kolumner för att se rumskopplingar, beskrivningar och status för varje arbete."
+    },
+    "signUp": {
+      "title": "Spara ditt arbete",
+      "description": "Allt du lägger till sparas lokalt. Skapa ett gratis konto för att spara permanent, få kostnadsuppskattningar och bjuda in samarbetspartners."
+    },
+    "finish": "Sätt igång!"
+  },
   "nav": {
     "home": "Hem",
     "start": "Start",
@@ -221,7 +248,12 @@
     "signUpSuccess": "Kontot har skapats!",
     "welcomeBack": "Välkommen tillbaka!",
     "accountCreated": "Konto skapat!",
-    "accountCreatedDescription": "Du kan nu logga in med dina uppgifter."
+    "accountCreatedDescription": "Du kan nu logga in med dina uppgifter.",
+    "password": "Lösenord",
+    "confirmPassword": "Bekräfta lösenord",
+    "passwordMismatch": "Lösenorden matchar inte",
+    "checkEmail": "Kolla din e-post",
+    "confirmEmailDescription": "Vi har skickat en bekräftelselänk till {{email}}. Klicka på den för att aktivera ditt konto."
   },
   "projects": {
     "title": "Mina projekt",
@@ -291,6 +323,9 @@
     "methodIntake": "Skicka kundformulär",
     "methodIntakeDesc": "Låt kunden beskriva sitt behov",
     "leadDescription": "Offert ej accepterad än",
+    "defaultGuestProjectName": "Min renovering",
+    "aiImportSuccess": "Dokument analyserat",
+    "aiImportSuccessDesc": "{{tasks}} arbeten och {{rooms}} rum extraherade",
     "types": {
       "kitchenRenovation": "Köksrenovering",
       "bathroomRenovation": "Badrumsrenovering",
@@ -1660,7 +1695,7 @@
     "documents": "Dokument",
     "noDocuments": "Inga offerter eller fakturor ännu",
     "projectChat": {
-      "title": "Projektchatt",
+      "title": "Chatt",
       "description": "Skriv ett meddelande till ditt projektteam"
     },
     "planningReference": "Planeringsunderlag"
@@ -1769,6 +1804,7 @@
     "materials": "Material",
     "allStatuses": "Alla statusar",
     "allRooms": "Alla rum",
+    "allStatuses": "Alla statusar",
     "allAssignees": "Alla tilldelade",
     "all": "Alla",
     "startDateFrom": "Startdatum (från)",
@@ -1878,7 +1914,7 @@
     }
   },
   "budgetCharts": {
-    "title": "Budgetöversikt",
+    "title": "Diagram",
     "distribution": "Fördelning",
     "comparison": "Jämförelse",
     "byType": "Per typ",
@@ -2450,7 +2486,7 @@
     "resolve": "Markera som löst"
   },
   "feed": {
-    "title": "Projektflöde",
+    "title": "Feed",
     "description": "Alla kommentarer från arbeten, material, rum och ritningar på ett ställe",
     "noComments": "Inga kommentarer ännu. Skriv den första kommentaren!",
     "noCommentsHint": "Kommentarer och aktivitet från ditt team visas här",
@@ -4270,7 +4306,7 @@
     }
   },
   "analysis": {
-    "title": "Kostnadssammanställning",
+    "title": "Rotavdrag",
     "totalExpenses": "Totalt",
     "totalInvoiced": "Hantverkare",
     "ownPurchases": "Egna inköp",

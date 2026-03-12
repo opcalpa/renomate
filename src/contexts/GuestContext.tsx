@@ -3,7 +3,7 @@
  * Provides guest mode state and actions throughout the app
  */
 
-import { createContext, useCallback, useState, ReactNode } from 'react';
+import { createContext, useCallback, useEffect, useState, ReactNode } from 'react';
 import {
   getGuestModeState,
   enterGuestMode as enterGuestModeStorage,
@@ -11,6 +11,7 @@ import {
   getStorageUsage,
   clearAllGuestData,
 } from '@/services/guestStorageService';
+import { supabase } from '@/integrations/supabase/client';
 import type { GuestStorageUsage } from '@/types/guest.types';
 
 export interface GuestContextType {
@@ -57,6 +58,20 @@ export function GuestProvider({ children }: GuestProviderProps) {
   const refreshStorageUsage = useCallback(() => {
     setStorageUsage(getStorageUsage());
   }, []);
+
+  // Auto-exit guest mode when user signs in via OAuth or other auth method
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' && isGuest) {
+        exitGuestModeStorage();
+        setIsGuest(false);
+        setGuestId(null);
+        setStorageUsage({ used: 0, limit: 5 * 1024 * 1024, percentage: 0 });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [isGuest]);
 
   return (
     <GuestContext.Provider

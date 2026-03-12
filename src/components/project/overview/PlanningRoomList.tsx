@@ -720,9 +720,8 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 ml-auto">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto" title={t("planningTasks.showColumns", "Columns")}>
                     <Columns3 className="h-3.5 w-3.5" />
-                    {t("planningTasks.showColumns")}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-48 p-2" align="end">

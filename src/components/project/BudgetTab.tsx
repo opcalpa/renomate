@@ -9,19 +9,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart } from "lucide-react";
+import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2 } from "lucide-react";
 import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
 import { getStatusBadgeColor } from "@/lib/statusColors";
 import { BudgetChartsSection } from "./BudgetChartsSection";
 import { BuilderSummaryCards } from "./budget/BuilderSummaryCards";
 import { HomeownerBudgetView } from "./budget/HomeownerBudgetView";
+import { HomeownerAnalysisSection } from "./budget/HomeownerAnalysisSection";
 import { InvoiceMethodDialog } from "@/components/invoices/InvoiceMethodDialog";
 import { TaskEditDialog } from "./TaskEditDialog";
 import { MaterialEditDialog } from "./MaterialEditDialog";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -223,6 +226,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterFinishDate, setFilterFinishDate] = useState("");
   const [filterAttachment, setFilterAttachment] = useState<"all" | "has" | "missing">("all");
+  const [filterStatus, setFilterStatus] = useState("all");
 
   // Collapsible columns
   const budgetPrefs = useRef(loadBudgetPrefs(projectId));
@@ -803,6 +807,19 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
     return Array.from(set);
   }, [rows]);
 
+  const distinctStatuses = useMemo(() => {
+    const taskStatuses = new Set<string>();
+    const materialStatuses = new Set<string>();
+    for (const r of rows) {
+      if (r.type === "task" && r.status) taskStatuses.add(r.status);
+      if (r.type === "material" && r.status) materialStatuses.add(r.status);
+    }
+    return {
+      task: Array.from(taskStatuses),
+      material: Array.from(materialStatuses),
+    };
+  }, [rows]);
+
   // --- Inline cell save ---
 
   const handleCellSave = async (row: BudgetRow, col: string, value: string) => {
@@ -888,10 +905,11 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
 
   // --- Filtering & Sorting ---
 
-  const hasAdvancedFilter = filterRoom !== "all" || filterAssignee !== "all" || filterCostCenter !== "all" || filterStartDate !== "" || filterFinishDate !== "" || filterAttachment !== "all";
+  const hasAdvancedFilter = filterRoom !== "all" || filterAssignee !== "all" || filterCostCenter !== "all" || filterStartDate !== "" || filterFinishDate !== "" || filterAttachment !== "all" || filterStatus !== "all";
 
   const filtered = rows.filter((r) => {
     if (filterType !== "all" && r.type !== filterType) return false;
+    if (filterStatus !== "all" && r.status !== filterStatus) return false;
     if (searchQuery && !r.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (filterRoom !== "all" && r.roomId !== filterRoom) return false;
     if (filterAssignee !== "all" && r.assigneeId !== filterAssignee) return false;
@@ -1036,6 +1054,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
     setFilterStartDate("");
     setFilterFinishDate("");
     setFilterAttachment("all");
+    setFilterStatus("all");
   };
 
   const formatDate = (dateStr?: string) => {
@@ -1468,9 +1487,8 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
         {/* Columns toggle */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1">
+            <Button variant="outline" size="icon" className="h-8 w-8" title={t('budget.columns')}>
               <Columns3 className="h-4 w-4" />
-              {t('budget.columns')}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-48" align="end">
@@ -1495,13 +1513,12 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
         {/* Compact rows toggle */}
         <Button
           variant={compactRows ? "default" : "outline"}
-          size="sm"
-          className="gap-1"
+          size="icon"
+          className="h-8 w-8"
           onClick={() => setCompactRows((prev) => !prev)}
           title={t('budget.compactRows', 'Compact rows')}
         >
           <Rows3 className="h-4 w-4" />
-          {t('budget.compactRows', 'Compact')}
         </Button>
 
 
@@ -1531,6 +1548,39 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
                   {distinctRooms.map((r) => (
                     <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {(distinctStatuses.task.length > 0 || distinctStatuses.material.length > 0) && (
+            <div className="w-[180px]">
+              <Label className="text-sm mb-1.5 block">{t('budget.status', 'Status')}</Label>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('budget.allStatuses', 'Alla statusar')}</SelectItem>
+                  {distinctStatuses.task.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>{t('budget.task')}</SelectLabel>
+                      {distinctStatuses.task.map((s) => (
+                        <SelectItem key={`task-${s}`} value={s}>
+                          {t(`statuses.${budgetStatusKey(s)}`, s)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                  {distinctStatuses.material.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>{t('budget.material')}</SelectLabel>
+                      {distinctStatuses.material.map((s) => (
+                        <SelectItem key={`mat-${s}`} value={s}>
+                          {t(`materialStatuses.${s}`, s)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -1606,7 +1656,6 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
 
       {/* Table Section */}
       <div className="mt-6 mb-2 flex items-center justify-between">
-        <h3 className="text-lg font-semibold">{t('budget.detailedView', 'Detaljerad vy')}</h3>
         <span className="text-xs text-muted-foreground md:hidden flex items-center gap-1">
           ← {t('budget.swipeToSeeMore', 'Svep för mer')} →
         </span>
@@ -1827,6 +1876,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
 
       {/* Budget Charts Section (builder only) */}
       {isBuilder && <BudgetChartsSection rows={rows} currency={currency} />}
+
+      {/* ROT deduction section (homeowner only) */}
+      {!isBuilder && <div className="mt-6"><HomeownerAnalysisSection projectId={projectId} currency={currency} /></div>}
 
       {/* Task Edit Dialog */}
       <TaskEditDialog

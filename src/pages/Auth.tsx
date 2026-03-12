@@ -20,6 +20,7 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -58,6 +59,16 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
+    if (password !== confirmPassword) {
+      toast({
+        title: t('common.error'),
+        description: t('auth.passwordMismatch', 'Passwords do not match'),
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
       const { error, data } = await supabase.auth.signUp({
         email,
@@ -72,6 +83,16 @@ const Auth = () => {
 
       if (error) throw error;
 
+      // Email confirmation required — no session returned
+      if (data.user && !data.session) {
+        toast({
+          title: t('auth.checkEmail', 'Check your email'),
+          description: t('auth.confirmEmailDescription', 'We sent a confirmation link to {{email}}. Click it to activate your account.', { email }),
+        });
+        setLoading(false);
+        return;
+      }
+
       toast({
         title: t('auth.accountCreated', 'Account created!'),
         description: t('auth.accountCreatedDescription', 'You can now sign in with your credentials.'),
@@ -80,7 +101,6 @@ const Auth = () => {
       // Auto sign in after signup - check for migration
       if (data.user) {
         if (hasGuestProjectsToMigrate()) {
-          // Get profile ID (may need to wait for trigger to create it)
           const { data: profile } = await supabase
             .from("profiles")
             .select("id")
@@ -391,12 +411,23 @@ const Auth = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
+                    <Label htmlFor="signup-password">{t('auth.password', 'Password')}</Label>
                     <Input
                       id="signup-password"
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-confirm-password">{t('auth.confirmPassword', 'Confirm password')}</Label>
+                    <Input
+                      id="signup-confirm-password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                       required
                       minLength={6}
                     />

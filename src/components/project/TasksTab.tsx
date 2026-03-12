@@ -1244,9 +1244,8 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
               {/* Columns toggle */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1 h-9">
+                  <Button variant="outline" size="icon" className="h-8 w-8" title={t("tasksTable.columns")}>
                     <Columns3 className="h-4 w-4" />
-                    {t("tasksTable.columns")}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-52" align="start">

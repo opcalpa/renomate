@@ -43,6 +43,8 @@ import { CreateIntakeDialog } from "@/components/intake/CreateIntakeDialog";
 import {
   getGuestProjects,
   saveGuestProject,
+  saveGuestRoom,
+  saveGuestTask,
   deleteGuestProject,
   canCreateGuestProject,
 } from "@/services/guestStorageService";
@@ -425,6 +427,137 @@ const Projects = () => {
     }
   };
 
+  const handleGuestAIUpload = async (file: File) => {
+    setExtractingText(true);
+    try {
+      if (!canCreateGuestProject()) {
+        toast({
+          title: t('common.error'),
+          description: t('guest.projectLimit', 'Guest mode is limited to {{max}} projects.', { max: GUEST_MAX_PROJECTS }),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          resolve(result.split(",")[1]);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // Call edge function directly (no auth session for guests)
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const response = await fetch(`${supabaseUrl}/functions/v1/process-document`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'apikey': supabaseAnonKey,
+        },
+        body: JSON.stringify({
+          fileBase64: base64,
+          mimeType: file.type,
+          fileName: file.name,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Edge function error: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      // Filter by confidence >= 0.7
+      const rooms = (result.rooms || []).filter((r: { confidence: number }) => r.confidence >= 0.7);
+      const tasks = (result.tasks || []).filter((t: { confidence: number }) => t.confidence >= 0.7);
+
+      // Create guest project
+      const suggestedName = result.documentSummary
+        ? result.documentSummary.substring(0, 60)
+        : file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+      const guestProject = saveGuestProject({
+        name: suggestedName || t('projects.defaultGuestProjectName', 'My renovation'),
+        description: result.documentSummary || null,
+        status: "planning",
+        address: null,
+        postal_code: null,
+        city: null,
+        project_type: null,
+        start_date: null,
+        finish_goal_date: null,
+        total_budget: null,
+      });
+
+      if (!guestProject) {
+        throw new Error("Failed to save guest project");
+      }
+
+      // Create rooms and build name→id map
+      const roomNameToId: Record<string, string> = {};
+      for (const room of rooms) {
+        const savedRoom = saveGuestRoom(guestProject.id, {
+          name: room.name,
+          room_type: null,
+          status: "existing",
+          area_sqm: room.estimatedAreaSqm || null,
+          floor_number: null,
+          notes: room.description || null,
+          width_mm: null,
+          height_mm: null,
+          ceiling_height_mm: null,
+        });
+        if (savedRoom) {
+          roomNameToId[room.name.toLowerCase()] = savedRoom.id;
+        }
+      }
+
+      // Create tasks with room linking
+      for (const task of tasks) {
+        const roomId = task.roomName
+          ? roomNameToId[task.roomName.toLowerCase()] || null
+          : null;
+        saveGuestTask(guestProject.id, {
+          room_id: roomId,
+          title: task.title,
+          description: task.description || null,
+          status: "to_do",
+          priority: null,
+          due_date: null,
+        });
+      }
+
+      setDialogOpen(false);
+      refreshStorageUsage();
+      navigate(`/projects/${guestProject.id}`);
+
+      toast({
+        title: t('projects.aiImportSuccess', 'Document analyzed'),
+        description: t('projects.aiImportSuccessDesc', '{{tasks}} tasks and {{rooms}} rooms extracted', {
+          tasks: tasks.length,
+          rooms: rooms.length,
+        }),
+      });
+    } catch (err) {
+      console.error("Guest AI upload error:", err);
+      toast({
+        title: t("common.error"),
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setExtractingText(false);
+    }
+  };
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -437,6 +570,11 @@ const Projects = () => {
         variant: "destructive",
       });
       return;
+    }
+
+    // Guest mode: use AI extraction flow directly
+    if (isGuest) {
+      return handleGuestAIUpload(file);
     }
 
     setUploadedFile(file);
@@ -713,7 +851,8 @@ const Projects = () => {
                     </div>
                   </button>
 
-                  {/* Customer form — fill yourself or send to client */}
+                  {/* Customer form — fill yourself or send to client (requires profile, hidden for guests) */}
+                  {!isGuest && (
                   <div className="rounded-xl border-2 border-border p-4">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -750,11 +889,47 @@ const Projects = () => {
                       )}
                     </div>
                   </div>
+                  )}
 
                   {/* Blank project option */}
                   <button
                     type="button"
-                    onClick={() => setCreateMethod("manual")}
+                    onClick={() => {
+                      if (isGuest) {
+                        // Instant creation for guests — skip form
+                        if (!canCreateGuestProject()) {
+                          toast({
+                            title: t('common.error'),
+                            description: t('guest.projectLimit', 'Guest mode is limited to {{max}} projects.', { max: GUEST_MAX_PROJECTS }),
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        const guestProject = saveGuestProject({
+                          name: t('projects.defaultGuestProjectName', 'My renovation'),
+                          description: null,
+                          status: "planning",
+                          address: null,
+                          postal_code: null,
+                          city: null,
+                          project_type: null,
+                          start_date: null,
+                          finish_goal_date: null,
+                          total_budget: null,
+                        });
+                        if (guestProject) {
+                          setDialogOpen(false);
+                          refreshStorageUsage();
+                          navigate(`/projects/${guestProject.id}`);
+                          toast({
+                            title: t('projects.projectCreated'),
+                            description: t('projects.projectCreatedDescription'),
+                          });
+                        }
+                      } else {
+                        setCreateMethod("manual");
+                      }
+                    }}
                     className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98] border-border"
                   >
                     <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
@@ -778,69 +953,155 @@ const Projects = () => {
                     {/* AI File Upload Section - only show for upload method */}
                     {createMethod === "upload" && (
                       <>
-                        <div className="space-y-2 p-3 rounded-lg bg-muted/50 border border-dashed border-muted-foreground/30">
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            <Sparkles className="h-4 w-4 text-purple-500" />
-                            {t('projects.aiImportTitle', 'Upload document')}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {t('projects.aiImportHint', 'Upload a quote request, description, or other document to auto-fill the form.')}
-                          </p>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept=".txt,.pdf,image/*"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                        />
 
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".txt,.pdf,image/*"
-                            onChange={handleFileSelect}
-                            className="hidden"
-                          />
-
-                          {uploadedFile ? (
-                            <div className="flex items-center gap-2 p-2 rounded-md bg-background text-sm">
-                              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <span className="truncate flex-1">{uploadedFile.name}</span>
-                              {extractingText ? (
-                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                              ) : (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={handleRemoveFile}
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              )}
+                        {!uploadedFile && !extractingText ? (
+                          /* Upload prompt — clean, focused on one action */
+                          <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                            <div className="rounded-full bg-purple-100 dark:bg-purple-900/30 p-4">
+                              <Sparkles className="h-8 w-8 text-purple-500" />
                             </div>
-                          ) : (
+                            <div className="text-center space-y-1">
+                              <p className="font-medium">{t('projects.aiImportTitle', 'Upload document')}</p>
+                              <p className="text-sm text-muted-foreground max-w-sm">
+                                {t('projects.aiImportHint', 'Upload a quote request, description, or other document to auto-fill the form.')}
+                              </p>
+                            </div>
                             <Button
                               type="button"
                               variant="outline"
-                              size="sm"
-                              className="w-full"
+                              className="min-h-[44px]"
                               onClick={() => fileInputRef.current?.click()}
-                              disabled={extractingText}
                             >
                               <Upload className="h-4 w-4 mr-2" />
                               {t('projects.selectFile', 'Select file')}
                             </Button>
-                          )}
-                        </div>
+                            <div className="flex gap-2 pt-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs text-muted-foreground"
+                                onClick={() => setCreateMethod("choose")}
+                              >
+                                <ChevronLeft className="h-3 w-3 mr-1" />
+                                {t('projects.back')}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : extractingText ? (
+                          /* Extracting spinner */
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <Loader2 className="h-10 w-10 animate-spin text-purple-500 mb-4" />
+                            <p className="font-medium">{t('aiDocumentImport.analyzing', 'Analyzing document...')}</p>
+                            <p className="text-sm text-muted-foreground mt-1">{t('aiDocumentImport.analyzingTime', 'This takes 10-30 seconds')}</p>
+                          </div>
+                        ) : (
+                          /* Post-extraction: show file + form fields pre-filled */
+                          <>
+                            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 text-sm">
+                              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="truncate flex-1">{uploadedFile?.name}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={handleRemoveFile}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
 
-                        <div className="relative">
-                          <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t" />
-                          </div>
-                          <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-background px-2 text-muted-foreground">
-                              {t('projects.thenFillDetails', 'then fill in details')}
-                            </span>
-                          </div>
-                        </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="name">{t('projects.projectName')} *</Label>
+                              <Input
+                                id="name"
+                                placeholder={t('projects.projectNamePlaceholder')}
+                                value={newProjectName}
+                                onChange={(e) => setNewProjectName(e.target.value)}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="address">{t('projects.address')}</Label>
+                              <Input
+                                id="address"
+                                placeholder={t('projects.addressPlaceholder')}
+                                value={newProjectAddress}
+                                onChange={(e) => setNewProjectAddress(e.target.value)}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-2">
+                                <Label htmlFor="postalCode">{t('projects.postalCode')}</Label>
+                                <Input
+                                  id="postalCode"
+                                  placeholder="123 45"
+                                  value={newProjectPostalCode}
+                                  onChange={(e) => setNewProjectPostalCode(e.target.value)}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="city">{t('projects.city')}</Label>
+                                <Input
+                                  id="city"
+                                  placeholder={t('projects.cityPlaceholder')}
+                                  value={newProjectCity}
+                                  onChange={(e) => setNewProjectCity(e.target.value)}
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="description">{t('projects.projectDescription')}</Label>
+                              <Textarea
+                                id="description"
+                                placeholder={t('projects.projectDescriptionPlaceholder')}
+                                value={newProjectDescription}
+                                onChange={(e) => setNewProjectDescription(e.target.value)}
+                                rows={2}
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setCreateMethod("choose")}
+                              >
+                                <ChevronLeft className="h-4 w-4 mr-1" />
+                                {t('projects.back')}
+                              </Button>
+                              <Button
+                                type="button"
+                                className="flex-1"
+                                onClick={() => setCreateStep(2)}
+                                disabled={!newProjectName.trim()}
+                              >
+                                {t('projects.next')}
+                                <ChevronRight className="h-4 w-4 ml-1" />
+                              </Button>
+                              <Button
+                                type="submit"
+                                variant="ghost"
+                                disabled={creating || !newProjectName.trim()}
+                              >
+                                {creating ? t('projects.creating') : t('projects.skipAndCreate')}
+                              </Button>
+                            </div>
+                          </>
+                        )}
                       </>
                     )}
 
+                    {/* Manual method — form fields shown immediately */}
+                    {createMethod === "manual" && (
+                    <>
                     <div className="space-y-2">
                       <Label htmlFor="name">{t('projects.projectName')} *</Label>
                       <Input
@@ -916,6 +1177,8 @@ const Projects = () => {
                         {creating ? t('projects.creating') : t('projects.skipAndCreate')}
                       </Button>
                     </div>
+                    </>
+                    )}
                   </>
                 ) : (
                   <>

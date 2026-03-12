@@ -539,9 +539,8 @@ export function PurchasesTableView({
         {/* Columns toggle */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1">
+            <Button variant="outline" size="icon" className="h-8 w-8" title={t("purchasesTable.columns")}>
               <Columns3 className="h-4 w-4" />
-              {t("purchasesTable.columns")}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-52" align="start">
