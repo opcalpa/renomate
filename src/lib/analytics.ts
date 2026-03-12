@@ -110,8 +110,7 @@ function init(): void {
   }
 
   posthog.init(POSTHOG_KEY, {
-    // Use EU data center for GDPR compliance
-    api_host: "https://eu.i.posthog.com",
+    api_host: "https://us.i.posthog.com",
 
     // Capture page views automatically
     capture_pageview: true,
