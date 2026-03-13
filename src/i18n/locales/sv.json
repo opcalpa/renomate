@@ -2520,7 +2520,10 @@
     "noMentionResults": "Inga teammedlemmar hittades",
     "noActivity": "Ingen aktivitet ännu",
     "viewFullFeed": "Gå till fullständigt flöde",
-    "showMore": "Visa alla ({{count}})"
+    "showMore": "Visa alla ({{count}})",
+    "replyingToLabel": "Svarar på:",
+    "writeReply": "Skriv ett svar...",
+    "sendReply": "Svara"
   },
   "activity": {
     "created": "skapade",

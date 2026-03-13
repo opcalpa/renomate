@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Activity, Lock, X, Send, Loader2, ImageIcon, Camera, MessageSquare } from "lucide-react";
 import { FeedCommentCard } from "../feed/FeedCommentCard";
 import { ActivityCard } from "../feed/ActivityCard";
-import { FeedReplyInput } from "../feed/FeedReplyInput";
+
 import { MentionTextarea } from "../feed/MentionTextarea";
 import { fetchAllProjectComments, fetchProjectActivities, mergeIntoUnifiedFeed, parseMentions } from "../feed/utils";
 import { useDirectMessages, useUnreadDmCounts } from "@/hooks/useDirectMessages";
@@ -289,7 +289,6 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
   }, [dmInput, dmRecipient, sendDm]);
 
   const handleReply = (comment: FeedComment) => setReplyingTo(comment);
-  const handleReplyPosted = () => { setReplyingTo(null); loadData(); };
   const handleCancelReply = () => setReplyingTo(null);
 
   const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -331,12 +330,33 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
       }
 
       const trimmedContent = chatInput.trim();
-      const { data: commentData, error } = await supabase.from("comments").insert({
+
+      // Build insert payload — route to entity if replying, else project-level
+      const insertData: Record<string, unknown> = {
         content: trimmedContent,
         created_by_user_id: currentProfileId,
-        project_id: projectId,
         images: uploadedImages.length > 0 ? uploadedImages : null,
-      }).select("id").single();
+      };
+
+      if (replyingTo) {
+        // Post on the same entity as the original comment
+        if (replyingTo.task_id) {
+          insertData.task_id = replyingTo.task_id;
+        } else if (replyingTo.material_id) {
+          insertData.material_id = replyingTo.material_id;
+        } else if (replyingTo.entity_id) {
+          insertData.entity_id = replyingTo.entity_id;
+          insertData.entity_type = replyingTo.entity_type;
+        } else if (replyingTo.drawing_object_id) {
+          insertData.drawing_object_id = replyingTo.drawing_object_id;
+        } else {
+          insertData.project_id = projectId;
+        }
+      } else {
+        insertData.project_id = projectId;
+      }
+
+      const { data: commentData, error } = await supabase.from("comments").insert(insertData).select("id").single();
       if (error) throw error;
 
       const mentions = parseMentions(trimmedContent);
@@ -347,17 +367,22 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
       }
 
       setChatInput("");
+      setReplyingTo(null);
       imagePreviews.forEach((p) => URL.revokeObjectURL(p));
       setSelectedImages([]);
       setImagePreviews([]);
       loadData();
+
+      if (replyingTo) {
+        toast({ title: t("comments.commentPosted"), description: t("comments.commentPostedDescription") });
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : t("comments.postError");
       toast({ title: t("errors.generic"), description: message, variant: "destructive" });
     } finally {
       setPosting(false);
     }
-  }, [chatInput, currentProfileId, projectId, selectedImages, imagePreviews, loadData, t, toast]);
+  }, [chatInput, currentProfileId, projectId, replyingTo, selectedImages, imagePreviews, loadData, t, toast]);
 
   // --- Build feed ---
 
@@ -403,23 +428,13 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
 
   const renderFeedItem = (item: UnifiedFeedItem) => {
     if (item.type === "comment" && item.comment) {
-      const isReplyingToThis = replyingTo?.id === item.comment.id;
       return (
-        <div key={`c-${item.comment.id}`} className="space-y-2">
-          <FeedCommentCard
-            comment={item.comment}
-            onNavigate={onNavigateToEntity}
-            onReply={handleReply}
-          />
-          {isReplyingToThis && (
-            <FeedReplyInput
-              projectId={projectId}
-              replyTarget={item.comment}
-              onPosted={handleReplyPosted}
-              onCancel={handleCancelReply}
-            />
-          )}
-        </div>
+        <FeedCommentCard
+          key={`c-${item.comment.id}`}
+          comment={item.comment}
+          onNavigate={onNavigateToEntity}
+          onReply={handleReply}
+        />
       );
     }
     if (item.type === "activity" && item.activity) {
@@ -450,6 +465,14 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
   const filterModes: FeedFilterMode[] = ["all", "comments", "activity", "photos"];
 
   const showDmFeed = !!dmRecipient;
+  const chatInputRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to input when reply is set
+  useEffect(() => {
+    if (replyingTo && chatInputRef.current) {
+      chatInputRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [replyingTo]);
 
   return (
     <div className="space-y-3">
@@ -566,39 +589,26 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
             ))}
           </div>
 
-          {/* Feed items */}
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : displayedItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-              {filterMode === "photos" ? <ImageIcon className="h-6 w-6 mb-2" /> : <Activity className="h-6 w-6 mb-2" />}
-              <p className="text-sm">
-                {filterMode === "comments" ? t("feed.noComments") : filterMode === "photos" ? t("overview.recentPhotos.noPhotos", "No photos yet") : t("feed.noActivity", "No activity yet")}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {displayedItems.map(renderFeedItem)}
-            </div>
-          )}
-
-          {hasMore && (
-            <Button variant="ghost" size="sm" className="w-full text-muted-foreground text-xs" onClick={() => setShowAll(true)}>
-              {t("feed.showMore", "Show all ({{count}})").replace("{{count}}", String(filteredFeed.length))}
-            </Button>
-          )}
-
-          {/* Chat input */}
+          {/* Chat input — always visible at top */}
           {currentProfileId && (
-            <div className="pt-3 border-t space-y-2">
+            <div ref={chatInputRef} className="space-y-2 pb-2 border-b">
+              {/* Reply preview */}
+              {replyingTo && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/60 rounded-md text-xs">
+                  <MessageSquare className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground shrink-0">{t("feed.replyingToLabel", "Replying to:")}</span>
+                  <span className="truncate font-medium">{replyingTo.content?.slice(0, 60)}{(replyingTo.content?.length || 0) > 60 ? "..." : ""}</span>
+                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0 ml-auto shrink-0" onClick={handleCancelReply}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
               <MentionTextarea
                 projectId={projectId}
-                placeholder={t("feed.generalCommentPlaceholder")}
+                placeholder={replyingTo ? t("feed.writeReply", "Write a reply...") : t("feed.generalCommentPlaceholder")}
                 value={chatInput}
                 onChange={setChatInput}
-                className="min-h-12 resize-none text-sm"
+                className="min-h-10 resize-none text-sm"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handlePostComment(); }
                 }}
@@ -630,10 +640,34 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
                 </div>
                 <Button onClick={handlePostComment} disabled={posting || !chatInput.trim()} size="sm" className="h-7 text-xs">
                   {posting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Send className="h-3 w-3 mr-1" />}
-                  {t("feed.postGeneral")}
+                  {replyingTo ? t("feed.sendReply", "Reply") : t("feed.postGeneral")}
                 </Button>
               </div>
             </div>
+          )}
+
+          {/* Feed items */}
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : displayedItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+              {filterMode === "photos" ? <ImageIcon className="h-6 w-6 mb-2" /> : <Activity className="h-6 w-6 mb-2" />}
+              <p className="text-sm">
+                {filterMode === "comments" ? t("feed.noComments") : filterMode === "photos" ? t("overview.recentPhotos.noPhotos", "No photos yet") : t("feed.noActivity", "No activity yet")}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {displayedItems.map(renderFeedItem)}
+            </div>
+          )}
+
+          {hasMore && (
+            <Button variant="ghost" size="sm" className="w-full text-muted-foreground text-xs" onClick={() => setShowAll(true)}>
+              {t("feed.showMore", "Show all ({{count}})").replace("{{count}}", String(filteredFeed.length))}
+            </Button>
           )}
         </>
       )}

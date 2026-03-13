@@ -2523,7 +2523,10 @@
     "noMentionResults": "No team members found",
     "noActivity": "No activity yet",
     "viewFullFeed": "Go to full feed",
-    "showMore": "Show all ({{count}})"
+    "showMore": "Show all ({{count}})",
+    "replyingToLabel": "Replying to:",
+    "writeReply": "Write a reply...",
+    "sendReply": "Reply"
   },
   "activity": {
     "created": "created",
