@@ -6,7 +6,6 @@ import { Activity, MessageSquare, Loader2, ImageIcon } from "lucide-react";
 import { FeedCommentCard } from "../feed/FeedCommentCard";
 import { ActivityCard } from "../feed/ActivityCard";
 import { FeedReplyInput } from "../feed/FeedReplyInput";
-import { DirectMessageSheet } from "../DirectMessageSheet";
 import { fetchAllProjectComments, fetchProjectActivities, mergeIntoUnifiedFeed } from "../feed/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
@@ -165,9 +164,6 @@ export function OverviewFeedSection({
   userType,
   onNavigateToEntity,
   onNavigateToFiles,
-  onNavigateToTask,
-  onNavigateToMaterial,
-  onNavigateToRoom,
 }: OverviewFeedSectionProps) {
   const isClient = userType === "homeowner";
   const { t, i18n } = useTranslation();
@@ -177,8 +173,6 @@ export function OverviewFeedSection({
   const [loading, setLoading] = useState(true);
   const [filterMode, setFilterMode] = useState<FeedFilterMode>("all");
   const [replyingTo, setReplyingTo] = useState<FeedComment | null>(null);
-  const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
-  const [dmRecipient, setDmRecipient] = useState<{ id: string; name: string } | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -200,26 +194,6 @@ export function OverviewFeedSection({
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  // Fetch current user's profile ID for DM
-  useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-      if (profile) setCurrentProfileId(profile.id);
-    })();
-  }, []);
-
-  const handleAvatarClick = useCallback((profileId: string, name: string) => {
-    if (currentProfileId && profileId !== currentProfileId) {
-      setDmRecipient({ id: profileId, name });
-    }
-  }, [currentProfileId]);
 
   const handleReply = (comment: FeedComment) => {
     setReplyingTo(comment);
@@ -316,13 +290,12 @@ export function OverviewFeedSection({
             comment={item.comment}
             onNavigate={onNavigateToEntity}
             onReply={handleReply}
-            onAvatarClick={handleAvatarClick}
           />
           {isReplyingToThis && (
             <div className="ml-11">
               <FeedReplyInput
                 projectId={projectId}
-                parentComment={item.comment}
+                replyTarget={item.comment}
                 onPosted={handleReplyPosted}
                 onCancel={handleCancelReply}
               />
@@ -333,7 +306,7 @@ export function OverviewFeedSection({
     }
     if (item.type === "activity" && item.activity) {
       return (
-        <ActivityCard key={`a-${item.activity.id}`} activity={item.activity} onAvatarClick={handleAvatarClick} />
+        <ActivityCard key={`a-${item.activity.id}`} activity={item.activity} />
       );
     }
     return null;
@@ -356,7 +329,6 @@ export function OverviewFeedSection({
           const photo = item.photo!;
           return (
             <div key={photo.id} className="relative group cursor-pointer" onClick={() => {
-              // Navigate to files tab for now
               onNavigateToFiles?.();
             }}>
               <div className="aspect-square rounded-md overflow-hidden bg-muted">
@@ -430,7 +402,6 @@ export function OverviewFeedSection({
   };
 
   return (
-    <>
     <Card>
       <CardHeader className="pb-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -491,15 +462,5 @@ export function OverviewFeedSection({
         </div>
       </CardContent>
     </Card>
-    {currentProfileId && dmRecipient && (
-      <DirectMessageSheet
-        open={!!dmRecipient}
-        onOpenChange={(o) => { if (!o) setDmRecipient(null); }}
-        projectId={projectId}
-        currentUserId={currentProfileId}
-        recipient={dmRecipient}
-      />
-    )}
-    </>
   );
 }

@@ -21,6 +21,7 @@ import { SendCustomerFormDialog } from "./SendCustomerFormDialog";
 import { InvoiceMethodDialog } from "@/components/invoices/InvoiceMethodDialog";
 import { useProjectLock } from "@/hooks/useProjectLock";
 import { CommentsSection } from "@/components/comments/CommentsSection";
+import { ProjectChatSection } from "./overview/ProjectChatSection";
 import { PlanningTaskList } from "./overview/PlanningTaskList";
 import { PlanningRoomList } from "./overview/PlanningRoomList";
 import { HomeownerPlanningView } from "./overview/HomeownerPlanningView";
@@ -409,12 +410,7 @@ const OverviewTab = ({
       >
         <Card id="project-chat">
           <CardContent className="pt-4">
-            <CommentsSection
-              projectId={project.id}
-              entityId={project.id}
-              entityType="project"
-              chatMode
-            />
+            <ProjectChatSection projectId={project.id} />
           </CardContent>
         </Card>
       </CollapsibleSection>

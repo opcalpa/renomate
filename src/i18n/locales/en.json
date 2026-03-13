@@ -4468,6 +4468,9 @@
   "dm": {
     "openChat": "Send message",
     "privateNotice": "Private conversation",
+    "privateTo": "Private message to {{name}}",
+    "onlyVisibleToTwo": "Only visible to you and {{name}}",
+    "teamLabel": "DM",
     "empty": "No messages yet.",
     "emptyHint": "Messages here are only visible to you two.",
     "placeholder": "Write a message...",
