@@ -197,6 +197,67 @@ export type Database = {
           },
         ]
       }
+      direct_messages: {
+        Row: {
+          id: string
+          project_id: string
+          from_user_id: string
+          to_user_id: string
+          content: string
+          images: Json
+          is_read: boolean
+          read_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          from_user_id: string
+          to_user_id: string
+          content: string
+          images?: Json
+          is_read?: boolean
+          read_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          from_user_id?: string
+          to_user_id?: string
+          content?: string
+          images?: Json
+          is_read?: boolean
+          read_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_messages_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_messages_to_user_id_fkey"
+            columns: ["to_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           author_display_name: string | null

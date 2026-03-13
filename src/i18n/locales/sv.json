@@ -4458,5 +4458,13 @@
     "material": "Material",
     "tasksSelected": "arbeten",
     "roomsSelected": "rum"
+  },
+  "dm": {
+    "openChat": "Skicka meddelande",
+    "privateNotice": "Privat konversation",
+    "empty": "Inga meddelanden ännu.",
+    "emptyHint": "Meddelanden här är bara synliga för er två.",
+    "placeholder": "Skriv ett meddelande...",
+    "delete": "Ta bort"
   }
 }

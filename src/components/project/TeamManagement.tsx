@@ -41,9 +41,12 @@ import { z } from "zod";
 import { getAvatarColor } from "@/lib/avatarColor";
 import { FeatureAccessEditor } from "./team/FeatureAccessEditor";
 import type { FeatureAccess } from "./team/FeatureAccessEditor";
+import { DirectMessageSheet } from "./DirectMessageSheet";
+import { MessageCircle } from "lucide-react";
 
 interface TeamMember {
   id: string;
+  profile_id: string;
   user_name: string;
   user_email: string;
   role: string;
@@ -269,6 +272,8 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
   const [saving, setSaving] = useState(false);
   const [resending, setResending] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
+  const [dmRecipient, setDmRecipient] = useState<{ id: string; name: string } | null>(null);
 
   // Invite form state
   const [inviteName, setInviteName] = useState("");
@@ -309,6 +314,17 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
 
       if (projectError) throw projectError;
 
+      // Fetch current user profile ID for DM
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        const { data: myProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", authUser.id)
+          .single();
+        if (myProfile) setCurrentProfileId(myProfile.id);
+      }
+
       if (projectData?.profiles) {
         const ownerProfile = projectData.profiles as unknown as { id: string; name: string; email: string; phone: string | null; company_name: string | null };
         setProjectOwner({
@@ -324,7 +340,7 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
       const { data: sharesData, error: sharesError } = await supabase
         .from("project_shares")
         .select(
-          `id, role, role_type, contractor_category, phone, company, notes,
+          `id, shared_with_user_id, role, role_type, contractor_category, phone, company, notes,
           display_name, display_email,
           customer_view_access, timeline_access, tasks_access, tasks_scope,
           space_planner_access, purchases_access, purchases_scope,
@@ -344,6 +360,7 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
             const displayEmail = share.display_email as string | null;
             return {
               id: share.id as string,
+              profile_id: (share.shared_with_user_id as string) || "",
               user_name: displayName || profiles?.name || "Unknown",
               user_email: displayEmail || profiles?.email || "",
               role: share.role as string,
@@ -793,9 +810,21 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
                 key={member.id}
                 className="flex items-center gap-3 p-3 border border-border rounded-lg"
               >
-                <div className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-medium shrink-0 ${getAvatarColor(member.user_name)}`}>
+                <button
+                  onClick={() => {
+                    if (currentProfileId && member.profile_id && member.profile_id !== currentProfileId) {
+                      setDmRecipient({ id: member.profile_id, name: member.user_name });
+                    }
+                  }}
+                  className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-medium shrink-0 ${getAvatarColor(member.user_name)} ${
+                    currentProfileId && member.profile_id && member.profile_id !== currentProfileId
+                      ? "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                      : ""
+                  }`}
+                  title={currentProfileId && member.profile_id !== currentProfileId ? t("dm.openChat", "Skicka meddelande") : undefined}
+                >
                   {member.user_name.charAt(0).toUpperCase()}
-                </div>
+                </button>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{member.user_name}</p>
                   <p className="text-xs text-muted-foreground truncate">{member.user_email}</p>
@@ -814,8 +843,20 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
                     </span>
                   )}
                 </span>
+                <div className="flex items-center gap-1">
+                  {currentProfileId && member.profile_id && member.profile_id !== currentProfileId && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setDmRecipient({ id: member.profile_id, name: member.user_name })}
+                      title={t("dm.openChat", "Skicka meddelande")}
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 {canManageTeam && (
-                  <div className="flex items-center gap-1">
+                  <>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -843,8 +884,9 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
                         )}
                       </Button>
                     )}
-                  </div>
+                  </>
                 )}
+                </div>
               </div>
             ))}
           </CardContent>
@@ -1001,6 +1043,16 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
             )}
           </CardContent>
         </Card>
+      )}
+      {/* Direct Message Sheet */}
+      {currentProfileId && dmRecipient && (
+        <DirectMessageSheet
+          open={!!dmRecipient}
+          onOpenChange={(o) => { if (!o) setDmRecipient(null); }}
+          projectId={projectId}
+          currentUserId={currentProfileId}
+          recipient={dmRecipient}
+        />
       )}
     </div>
   );

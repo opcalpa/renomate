@@ -4461,5 +4461,13 @@
     "material": "Material",
     "tasksSelected": "tasks",
     "roomsSelected": "rooms"
+  },
+  "dm": {
+    "openChat": "Send message",
+    "privateNotice": "Private conversation",
+    "empty": "No messages yet.",
+    "emptyHint": "Messages here are only visible to you two.",
+    "placeholder": "Write a message...",
+    "delete": "Delete"
   }
 }
