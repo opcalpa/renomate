@@ -201,6 +201,10 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
   const [dmRecipient, setDmRecipient] = useState<TeamMemberInfo | null>(null);
   const [dmInput, setDmInput] = useState("");
   const [dmSending, setDmSending] = useState(false);
+  const [dmImages, setDmImages] = useState<File[]>([]);
+  const [dmImagePreviews, setDmImagePreviews] = useState<string[]>([]);
+  const [dmEmojiOpen, setDmEmojiOpen] = useState(false);
+  const dmFileInputRef = useRef<HTMLInputElement>(null);
 
   const unreadCounts = useUnreadDmCounts(projectId, currentProfileId || "");
 
@@ -302,11 +306,52 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
     setDmInput("");
   }, []);
 
+  const handleDmImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].type.startsWith("image/")) {
+        newFiles.push(files[i]);
+        newPreviews.push(URL.createObjectURL(files[i]));
+      }
+    }
+    setDmImages((prev) => [...prev, ...newFiles]);
+    setDmImagePreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  const removeDmImage = (index: number) => {
+    URL.revokeObjectURL(dmImagePreviews[index]);
+    setDmImages((prev) => prev.filter((_, i) => i !== index));
+    setDmImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSendDm = useCallback(async () => {
-    if (!dmInput.trim() || !dmRecipient) return;
+    if ((!dmInput.trim() && dmImages.length === 0) || !dmRecipient) return;
     setDmSending(true);
-    try { await sendDm(dmInput.trim()); setDmInput(""); } finally { setDmSending(false); }
-  }, [dmInput, dmRecipient, sendDm]);
+    try {
+      let uploadedImages: { id: string; url: string; filename: string }[] = [];
+      if (dmImages.length > 0) {
+        for (const image of dmImages) {
+          const fileName = `${Date.now()}-${image.name}`;
+          const filePath = `projects/${projectId}/dm-images/${fileName}`;
+          const { error } = await supabase.storage.from("project-files").upload(filePath, image);
+          if (error) { console.error("DM image upload error:", error); continue; }
+          const { data: { publicUrl } } = supabase.storage.from("project-files").getPublicUrl(filePath);
+          uploadedImages.push({ id: Date.now().toString(), url: publicUrl, filename: image.name });
+        }
+      }
+      const content = dmInput.trim() || (uploadedImages.length > 0 ? "📷" : "");
+      await sendDm(content, uploadedImages);
+      setDmInput("");
+      dmImagePreviews.forEach((p) => URL.revokeObjectURL(p));
+      setDmImages([]);
+      setDmImagePreviews([]);
+    } finally {
+      setDmSending(false);
+    }
+  }, [dmInput, dmImages, dmImagePreviews, dmRecipient, projectId, sendDm]);
 
   const handleReply = (comment: FeedComment) => setReplyingTo(comment);
   const handleCancelReply = () => setReplyingTo(null);
@@ -563,7 +608,14 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
                       "max-w-[80%] rounded-2xl px-3 py-1.5 text-sm whitespace-pre-wrap break-words",
                       isOwn ? "bg-blue-600 text-white rounded-br-sm" : "bg-white dark:bg-blue-900/40 rounded-bl-sm"
                     )}>
-                      {msg.content}
+                      {msg.images && Array.isArray(msg.images) && msg.images.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-1">
+                          {(msg.images as { url: string; filename?: string }[]).map((img, i) => (
+                            <img key={i} src={img.url} alt={img.filename || "Image"} className="max-w-[200px] max-h-40 rounded-lg object-cover" loading="lazy" />
+                          ))}
+                        </div>
+                      )}
+                      {msg.content !== "📷" && msg.content}
                       <div className={cn("text-[9px] mt-0.5", isOwn ? "text-blue-200" : "text-muted-foreground/60")}>
                         {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale })}
                       </div>
@@ -574,20 +626,63 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
             )}
           </div>
 
-          <div className="border-t border-blue-200 dark:border-blue-800/40 px-3 py-2 flex gap-2">
-            <input
-              type="text"
-              value={dmInput}
-              onChange={(e) => setDmInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendDm(); } }}
-              placeholder={t("dm.placeholder")}
-              className="flex-1 rounded-full border bg-white dark:bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
-            />
-            <Button size="icon" className="h-8 w-8 shrink-0 rounded-full bg-blue-600 hover:bg-blue-700" onClick={handleSendDm} disabled={!dmInput.trim() || dmSending}>
-              {dmSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-            </Button>
+          <div className="border-t border-blue-200 dark:border-blue-800/40 px-3 py-2 space-y-2">
+            {dmImagePreviews.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {dmImagePreviews.map((preview, index) => (
+                  <div key={index} className="relative group">
+                    <img src={preview} alt={`Preview ${index + 1}`} className="w-14 h-14 object-cover rounded border" />
+                    <button
+                      type="button"
+                      onClick={() => removeDmImage(index)}
+                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-1">
+              <input ref={dmFileInputRef} type="file" accept="image/*" multiple onChange={handleDmImageSelect} className="hidden" />
+              <Button type="button" variant="ghost" size="icon" onClick={() => dmFileInputRef.current?.click()} className="h-8 w-8 shrink-0 text-blue-500 hover:text-blue-700">
+                <Camera className="h-4 w-4" />
+              </Button>
+              <Popover open={dmEmojiOpen} onOpenChange={setDmEmojiOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-blue-500 hover:text-blue-700">
+                    <Smile className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 border-none shadow-xl" side="top" align="start">
+                  <EmojiPicker
+                    onEmojiClick={(emojiData: EmojiClickData) => {
+                      setDmInput((prev) => prev + emojiData.emoji);
+                      setDmEmojiOpen(false);
+                    }}
+                    theme={Theme.AUTO}
+                    height={350}
+                    width={320}
+                    searchPlaceHolder={t("feed.emojiSearch", "Search emoji...")}
+                    previewConfig={{ showPreview: false }}
+                    lazyLoadEmojis
+                  />
+                </PopoverContent>
+              </Popover>
+              <input
+                type="text"
+                value={dmInput}
+                onChange={(e) => setDmInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendDm(); } }}
+                placeholder={t("dm.placeholder")}
+                className="flex-1 rounded-full border bg-white dark:bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
+              />
+              <Button size="icon" className="h-8 w-8 shrink-0 rounded-full bg-blue-600 hover:bg-blue-700" onClick={handleSendDm} disabled={(!dmInput.trim() && dmImages.length === 0) || dmSending}>
+                {dmSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
+            <p className="text-[10px] text-blue-400">{t("dm.onlyVisibleToTwo", { name: dmRecipient.name })}</p>
           </div>
-          <p className="text-[10px] text-blue-400 px-3 pb-2">{t("dm.onlyVisibleToTwo", { name: dmRecipient.name })}</p>
         </div>
       ) : (
         /* Unified feed + chat — mini chat-app layout */

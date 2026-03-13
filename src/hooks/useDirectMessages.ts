@@ -103,7 +103,7 @@ export function useDirectMessages({
   }, [enabled, projectId, currentUserId, recipientId, fetchMessages]);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, images?: { id: string; url: string; filename: string }[]) => {
       if (!content.trim() || !projectId || !currentUserId || !recipientId) return null;
 
       const { data, error } = await supabase
@@ -113,6 +113,7 @@ export function useDirectMessages({
           from_user_id: currentUserId,
           to_user_id: recipientId,
           content: content.trim(),
+          images: images && images.length > 0 ? images : [],
         })
         .select()
         .single();
