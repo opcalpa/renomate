@@ -61,6 +61,7 @@ import { AIDocumentImportModal } from "./AIDocumentImportModal";
 import { LinkFileToTaskDialog } from "./LinkFileToTaskDialog";
 import { SmartUploadDialog, type SmartUploadAction } from "./SmartUploadDialog";
 import { QuoteReviewDialog } from "./QuoteReviewDialog";
+import { LinkPurchaseDialog } from "./LinkPurchaseDialog";
 import { isDocumentFile } from "@/services/aiDocumentService";
 
 interface ProjectFile {
@@ -111,6 +112,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   const [linkFile, setLinkFile] = useState<ProjectFile | null>(null);
   const [showSmartUpload, setShowSmartUpload] = useState(false);
   const [quoteReviewFile, setQuoteReviewFile] = useState<File | null>(null);
+  const [purchaseFile, setPurchaseFile] = useState<{ file: File; type: "invoice" | "receipt" } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -1098,6 +1100,16 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
         />
       )}
 
+      {/* Link Purchase Dialog (invoice/receipt) */}
+      <LinkPurchaseDialog
+        projectId={projectId}
+        open={!!purchaseFile}
+        onOpenChange={(o) => { if (!o) setPurchaseFile(null); }}
+        file={purchaseFile?.file || null}
+        documentType={purchaseFile?.type || "receipt"}
+        onComplete={() => fetchFiles()}
+      />
+
       {/* Quote Review Dialog */}
       <QuoteReviewDialog
         projectId={projectId}
@@ -1124,20 +1136,36 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
               setQuoteReviewFile(action.file);
               break;
             case "extract_purchase":
-              // TODO: Open link-to-existing or create-new purchase flow
-              toast({
-                title: action.classification.type === "invoice"
-                  ? t("smartUpload.types.invoice")
-                  : t("smartUpload.types.receipt"),
-                description: action.classification.summary,
+              setPurchaseFile({
+                file: action.file,
+                type: action.classification.type === "invoice" ? "invoice" : "receipt",
               });
               break;
             case "import_to_canvas":
-              // Use existing background image flow
-              if (onUseAsBackground) {
-                const url = URL.createObjectURL(action.file);
-                onUseAsBackground(url, action.file.name);
-              }
+              // Upload to storage first for permanent URL, then use as canvas background
+              (async () => {
+                try {
+                  const ts = Date.now();
+                  const safeName = action.file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+                  const path = `projects/${projectId}/floor-plans/${ts}-${safeName}`;
+                  await supabase.storage.from("project-files").upload(path, action.file);
+                  const { data: urlData } = supabase.storage.from("project-files").getPublicUrl(path);
+                  if (onUseAsBackground) {
+                    onUseAsBackground(urlData.publicUrl, action.file.name);
+                  }
+                  toast({
+                    title: t("smartUpload.actions.importCanvas"),
+                    description: t("linkPurchase.canvasAdded", "Ritningen har lagts till på canvas-ytan."),
+                  });
+                  fetchFiles();
+                } catch (err) {
+                  console.error("Canvas upload error:", err);
+                  // Fallback to blob URL
+                  if (onUseAsBackground) {
+                    onUseAsBackground(URL.createObjectURL(action.file), action.file.name);
+                  }
+                }
+              })();
               break;
             case "store_only":
             default:
