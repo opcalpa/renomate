@@ -15,7 +15,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Activity, Lock, X, Send, Loader2, ImageIcon, Camera, MessageSquare } from "lucide-react";
+import { Activity, Lock, X, Send, Loader2, ImageIcon, Camera, MessageSquare, Smile } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FeedCommentCard } from "../feed/FeedCommentCard";
 import { ActivityCard } from "../feed/ActivityCard";
 
@@ -48,6 +49,12 @@ interface ProjectChatSectionProps {
 
 const ITEMS_LIMIT = 15;
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"];
+
+const EMOJI_GRID = [
+  "👍", "❤️", "😊", "😂", "🎉", "🔥", "👏", "💪",
+  "✅", "⭐", "🙏", "👀", "💡", "🚀", "📸", "🏠",
+  "🔨", "🪚", "🎨", "🧱", "📐", "🪣", "🛠️", "📦",
+];
 
 // Activities safe for homeowner/client view
 const CLIENT_SAFE_ACTIONS = new Set(["created", "status_changed", "deleted"]);
@@ -643,11 +650,32 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
                   ))}
                 </div>
               )}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
                 <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} className="h-8 w-8 shrink-0">
                   <Camera className="h-4 w-4" />
                 </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                      <Smile className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-2" side="top" align="start">
+                    <div className="grid grid-cols-8 gap-1">
+                      {EMOJI_GRID.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          className="h-8 w-8 flex items-center justify-center rounded hover:bg-muted text-lg"
+                          onClick={() => setChatInput((prev) => prev + emoji)}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
                 <div className="flex-1 min-w-0">
                   <MentionTextarea
                     projectId={projectId}
