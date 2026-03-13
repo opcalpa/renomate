@@ -103,6 +103,13 @@ const Projects = () => {
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteCounts, setDeleteCounts] = useState<{
+    quotes: number;
+    invoices: number;
+    teamMembers: number;
+    hasNonDraftInvoices: boolean;
+  } | null>(null);
+  const [loadingCounts, setLoadingCounts] = useState(false);
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<"grid" | "list">(() =>
     (localStorage.getItem("projects_view_mode") as "grid" | "list") || "list"
@@ -694,8 +701,36 @@ const Projects = () => {
     }
   };
 
+  // Fetch entity counts when delete target is set
+  useEffect(() => {
+    if (!deleteTarget || isGuest) {
+      setDeleteCounts(null);
+      return;
+    }
+    setLoadingCounts(true);
+    setDeleteCounts(null);
+
+    Promise.all([
+      supabase.from("quotes").select("id", { count: "exact", head: true }).eq("project_id", deleteTarget.id),
+      supabase.from("invoices").select("id, status").eq("project_id", deleteTarget.id),
+      supabase.from("project_shares").select("id", { count: "exact", head: true }).eq("project_id", deleteTarget.id),
+    ]).then(([quotesRes, invoicesRes, sharesRes]) => {
+      const invoices = invoicesRes.data || [];
+      const hasNonDraft = invoices.some((inv) => inv.status !== "draft");
+      setDeleteCounts({
+        quotes: quotesRes.count ?? 0,
+        invoices: invoices.length,
+        teamMembers: sharesRes.count ?? 0,
+        hasNonDraftInvoices: hasNonDraft,
+      });
+      setLoadingCounts(false);
+    });
+  }, [deleteTarget, isGuest]);
+
   const handleDeleteProject = async () => {
     if (!deleteTarget) return;
+    // Block deletion if non-draft invoices exist
+    if (deleteCounts?.hasNonDraftInvoices) return;
     setDeleting(true);
     try {
       // Guest mode: delete from localStorage
@@ -712,10 +747,10 @@ const Projects = () => {
         return;
       }
 
-      // Authenticated mode: delete from Supabase
+      // Authenticated mode: soft delete (set deleted_at)
       const { error } = await supabase
         .from("projects")
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq("id", deleteTarget.id);
 
       if (error) throw error;
@@ -1618,20 +1653,42 @@ const Projects = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("projects.deleteTitle")}</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <span className="block">
-                {t("projects.deleteWarning", { name: deleteTarget?.name })}
-              </span>
-              <span className="block font-medium text-destructive">
-                {t("projects.deleteIrreversible")}
-              </span>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <span className="block">
+                  {t("projects.deleteWarning", { name: deleteTarget?.name })}
+                </span>
+                {loadingCounts && (
+                  <span className="block text-muted-foreground text-sm">
+                    {t("projects.deleteCountsLoading", "Checking project contents...")}
+                  </span>
+                )}
+                {deleteCounts && (deleteCounts.quotes > 0 || deleteCounts.invoices > 0 || deleteCounts.teamMembers > 0) && (
+                  <span className="block text-sm">
+                    {t("projects.deleteCounts", {
+                      quotes: deleteCounts.quotes,
+                      invoices: deleteCounts.invoices,
+                      members: deleteCounts.teamMembers,
+                    })}
+                  </span>
+                )}
+                {deleteCounts?.hasNonDraftInvoices ? (
+                  <span className="block font-medium text-destructive">
+                    {t("projects.deleteBlockedByInvoices", "Cannot delete: this project has sent or paid invoices. Cancel or revert them to draft first.")}
+                  </span>
+                ) : (
+                  <span className="block text-sm text-muted-foreground">
+                    {t("projects.deleteConfirmSoftDelete", "The project will be archived and hidden from all views.")}
+                  </span>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteProject}
-              disabled={deleting}
+              disabled={deleting || loadingCounts || !!deleteCounts?.hasNonDraftInvoices}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? t("common.loading") : t("common.delete")}

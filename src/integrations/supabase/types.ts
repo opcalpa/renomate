@@ -1623,6 +1623,7 @@ export type Database = {
           cover_image_url: string | null
           created_at: string
           currency: string | null
+          deleted_at: string | null
           description: string | null
           finish_goal_date: string | null
           floor_plan_data: Json | null
@@ -1649,6 +1650,7 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           currency?: string | null
+          deleted_at?: string | null
           description?: string | null
           finish_goal_date?: string | null
           floor_plan_data?: Json | null
@@ -1675,6 +1677,7 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           currency?: string | null
+          deleted_at?: string | null
           description?: string | null
           finish_goal_date?: string | null
           floor_plan_data?: Json | null
