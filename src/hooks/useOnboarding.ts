@@ -190,7 +190,7 @@ export function useOnboarding(): OnboardingState {
       setTotalSteps(stepsConfig.filter(s => !s.optional).length);
 
       // Auto-detect completion based on actual data
-      const projectsRes = await supabase.from("projects").select("id").eq("owner_id", profile.id).limit(50);
+      const projectsRes = await supabase.from("projects").select("id").eq("owner_id", profile.id).is("deleted_at", null).limit(50);
 
       // For invited clients, check shared projects
       let hasSharedProject = false;

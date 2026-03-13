@@ -41,7 +41,8 @@ export async function exportUserData(): Promise<ExportedData> {
   const { data: projects } = await supabase
     .from("projects")
     .select("*")
-    .eq("owner_id", profileId);
+    .eq("owner_id", profileId)
+    .is("deleted_at", null);
 
   const projectIds = projects?.map(p => p.id) || [];
 

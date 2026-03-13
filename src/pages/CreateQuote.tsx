@@ -102,6 +102,7 @@ export default function CreateQuote() {
     supabase
       .from("projects")
       .select("id, name")
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .then(({ data }) => {
         if (data) setProjects(data);

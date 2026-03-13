@@ -77,7 +77,7 @@ export function useNotifications() {
 
     // Get user's project IDs (owned + shared)
     const [ownedRes, sharedRes] = await Promise.all([
-      supabase.from("projects").select("id, name").eq("owner_id", userId),
+      supabase.from("projects").select("id, name").eq("owner_id", userId).is("deleted_at", null),
       supabase.from("project_shares").select("project_id, project:projects(id, name)").eq("shared_with_user_id", userId),
     ]);
 
