@@ -35,6 +35,7 @@ import {
   User,
   Eye,
   Crown,
+  Ruler,
 } from "lucide-react";
 import { z } from "zod";
 import { getAvatarColor } from "@/lib/avatarColor";
@@ -146,6 +147,21 @@ const ROLE_TEMPLATES: Record<string, { access: FeatureAccess }> = {
       files: "view",
     },
   },
+  architect: {
+    access: {
+      customerView: "none",
+      timeline: "view",
+      tasks: "view",
+      tasksScope: "all",
+      spacePlanner: "view",
+      purchases: "none",
+      purchasesScope: "all",
+      overview: "view",
+      teams: "none",
+      budget: "none",
+      files: "upload",
+    },
+  },
   viewer: {
     access: {
       customerView: "none",
@@ -166,6 +182,7 @@ const ROLE_TEMPLATES: Record<string, { access: FeatureAccess }> = {
 const ROLE_ICONS: Record<string, typeof Wrench> = {
   contractor: Wrench,
   project_manager: ClipboardList,
+  architect: Ruler,
   client: User,
   viewer: Eye,
 };

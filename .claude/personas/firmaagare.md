@@ -165,7 +165,7 @@ STEG 5: AVSLUT & FAKTURERING
                │                           │
                ▼                           ▼
 ┌──────────────────────────┐   ┌──────────────────────────────┐
-│       HUSÄGAREN          │   │       FÄLTARBETAREN          │
+│       HEMÄGAREN          │   │       FÄLTARBETAREN          │
 │   (bjuds in som kund)    │   │   (bjuds in som contractor)  │
 │                          │   │                              │
 │   - Ser framsteg         │   │   - Ser sina uppgifter       │

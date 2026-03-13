@@ -79,7 +79,7 @@ VANLIGASTE VÄGEN (80%):
 OVANLIGARE VÄGEN (20%):
 ┌──────────────────────┐     ┌─────────────────────────────┐
 │ Du googlar           │     │ Hamnar på renomate.se       │
-│ "planera renovering" │ ──► │ Signupar som "Husägare"     │
+│ "planera renovering" │ ──► │ Signupar som "Hemägare"     │
 │ eller ser en reklam  │     │ Vill skapa eget projekt     │
 └──────────────────────┘     └─────────────────────────────┘
 ```
@@ -161,7 +161,7 @@ STEG 1: SIGNUP
 ┌─────────────────────────────────────────────────────────┐
 │ Välj språk: 🇸🇪 Svenska                                 │
 │                                                          │
-│ Jag är: [Husägare/privatperson]                          │
+│ Jag är: [Hemägare/privatperson]                          │
 │                                                          │
 │ Vad vill du göra?                                        │
 │ ┌───────────────────────────────────────────────────┐   │

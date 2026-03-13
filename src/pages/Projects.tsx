@@ -105,9 +105,10 @@ const Projects = () => {
   const [deleting, setDeleting] = useState(false);
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<"grid" | "list">(() =>
-    (localStorage.getItem("projects_view_mode") as "grid" | "list") || "grid"
+    (localStorage.getItem("projects_view_mode") as "grid" | "list") || "list"
   );
-  const ALL_LIST_COLS = ["address", "description", "budget", "status", "date", "owner"] as const;
+  const ALL_LIST_COLS = ["status", "description", "budget", "date", "owner", "address"] as const;
+  const DEFAULT_HIDDEN_COLS: ListColKey[] = ["address"];
   type ListColKey = typeof ALL_LIST_COLS[number];
   const [listColumnOrder, setListColumnOrder] = useState<ListColKey[]>(() => {
     try {
@@ -130,7 +131,7 @@ const Projects = () => {
         return new Set((parsed.hidden || []).filter((k: string) => ALL_LIST_COLS.includes(k as ListColKey)) as ListColKey[]);
       }
     } catch { /* ignore */ }
-    return new Set<ListColKey>();
+    return new Set<ListColKey>(DEFAULT_HIDDEN_COLS);
   });
   const [draggedCol, setDraggedCol] = useState<ListColKey | null>(null);
 

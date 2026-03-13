@@ -221,7 +221,7 @@
     "ctaTitle": "Redo att starta din renovering?",
     "ctaDescription": "Skapa ett gratis konto och börja organisera ditt projekt idag",
     "createAccount": "Skapa gratis konto",
-    "footer": "Byggt med omsorg för husägare.",
+    "footer": "Byggt med omsorg för hemägare.",
     "demoProject": "Se demo",
     "featuresTitle": "Kraftfulla verktyg för din renovering",
     "featuresDesc": "Från planritning till tidslinjehantering, allt du behöver på ett ställe",
@@ -1035,6 +1035,7 @@
     "roleTemplates": {
       "contractor": "Entreprenör",
       "project_manager": "Projektledare",
+      "architect": "Arkitekt",
       "client": "Kund",
       "viewer": "Betraktare",
       "custom": "Anpassad"
@@ -3219,7 +3220,7 @@
     "moreLanguages": "+6 fler språk",
     "title": "Välkommen till Renomate!",
     "subtitle": "Vad beskriver dig bäst?",
-    "homeowner": "Husägare",
+    "homeowner": "Hemägare",
     "homeownerDesc": "Jag renoverar mitt eget hem",
     "contractor": "Byggföretag",
     "contractorDesc": "Jag driver ett byggföretag",
@@ -4295,12 +4296,12 @@
     },
     "rot": {
       "title": "ROT-avdrag — spara upp till 50 000 kr/år",
-      "body": "Som husägare kan du göra avdrag på 30% av arbetskostnaden för renoveringsarbete (ROT). Max 50 000 kr per person och år. Hantverkaren gör avdraget på fakturan.",
+      "body": "Som hemägare kan du göra avdrag på 30% av arbetskostnaden för renoveringsarbete (ROT). Max 50 000 kr per person och år. Hantverkaren gör avdraget på fakturan.",
       "link": "Läs mer på Skatteverket"
     },
     "rotBuilder": {
       "title": "Glöm inte ROT-avdrag på offerter",
-      "body": "Många husägare förväntar sig att ROT-avdrag visas på offerter och fakturor. Att visa priset både före och efter ROT gör din offert mer konkurrenskraftig."
+      "body": "Många hemägare förväntar sig att ROT-avdrag visas på offerter och fakturor. Att visa priset både före och efter ROT gör din offert mer konkurrenskraftig."
     },
     "planningChecklist": {
       "title": "Planera din renovering",
@@ -4308,7 +4309,7 @@
     },
     "planningBuilder": {
       "title": "Planeringsfas — definiera projektets omfattning",
-      "body": "Hjälp husägaren att definiera tydliga leverabler för varje arbetsmoment. Detaljerade beskrivningar minskar ÄTA-arbeten och tvister senare."
+      "body": "Hjälp hemägaren att definiera tydliga leverabler för varje arbetsmoment. Detaljerade beskrivningar minskar ÄTA-arbeten och tvister senare."
     },
     "compareQuotes": {
       "title": "Jämför offerter noggrant",
@@ -4384,5 +4385,37 @@
     "columns": "Kolumner",
     "toggleColumns": "Visa/dölj kolumner",
     "categoryMaterial": "Material"
+  },
+  "smartUpload": {
+    "title": "Smart uppladdning",
+    "dropHere": "Dra & släpp eller klicka för att välja",
+    "supportedTypes": "Offert, faktura, kvitto, planritning, avtal, bilder...",
+    "analyzing": "Analyserar dokument...",
+    "fileTooLarge": "Filen är för stor",
+    "maxSize": "Max 10 MB",
+    "classifyError": "Kunde inte analysera dokumentet. Försök igen.",
+    "vendor": "Leverantör",
+    "suggestedAction": "Föreslagen åtgärd",
+    "orChoose": "Eller välj annat:",
+    "uploadAnother": "Ladda upp annan fil",
+    "types": {
+      "quote": "Offert",
+      "invoice": "Faktura",
+      "receipt": "Kvitto",
+      "floorPlan": "Planritning",
+      "contract": "Avtal",
+      "specification": "Specifikation",
+      "productImage": "Produktbild",
+      "other": "Övrigt"
+    },
+    "actions": {
+      "extractTasks": "Extrahera arbeten & budget",
+      "extractPurchase": "Koppla till inköp/arbete",
+      "importCanvas": "Lägg på ritningsytan",
+      "storeOnly": "Spara i projektfiler"
+    },
+    "linkExisting": "Koppla till befintlig",
+    "createNew": "Skapa ny",
+    "linkPrompt": "Är detta en befintlig post eller vill du skapa en ny?"
   }
 }

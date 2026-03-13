@@ -587,6 +587,7 @@
     "roleTemplates": {
       "contractor": "Підрядник",
       "project_manager": "Менеджер проєкту",
+      "architect": "Архітектор",
       "client": "Клієнт / Замовник",
       "viewer": "Переглядач",
       "custom": "Користувацька"

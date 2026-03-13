@@ -277,6 +277,14 @@
       "admin": "Admin - Acceso completo excepto eliminar proyecto",
       "material_requester": "Solicitante de materiales - Ver plano y gestionar órdenes de compra"
     },
+    "roleTemplates": {
+      "contractor": "Contratista",
+      "project_manager": "Director de proyecto",
+      "architect": "Arquitecto",
+      "client": "Cliente / Ordenante",
+      "viewer": "Observador",
+      "custom": "Personalizado"
+    },
     "selectRole": "Seleccionar un rol",
     "moreInfo": "Más información",
     "customizeAccess": "Personalizar permisos",

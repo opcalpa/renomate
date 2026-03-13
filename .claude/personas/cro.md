@@ -66,7 +66,7 @@ STEG 0: PROBLEM-FIT ── Har vi rätt problem för rätt målgrupp?
 │ Segment      │ Pain level  │ Willingness  │ Expansion      │
 │              │ (1-10)      │ to pay       │ potential      │
 ├──────────────┼─────────────┼──────────────┼────────────────┤
-│ Husägare     │ 7 (kaos)    │ Låg-Medium   │ Låg (1 proj)   │
+│ Hemägare     │ 7 (kaos)    │ Låg-Medium   │ Låg (1 proj)   │
 │ Sm. entrepre │ 9 (dagligt) │ Medium-Hög   │ Hög (n projekt)│
 │ Arkitektbyrå │ 6 (har alt.)│ Hög          │ Hög (team)     │
 │ Fastighetsb. │ 8 (volym)   │ Hög          │ Mkt hög (port.)│
@@ -83,7 +83,7 @@ STEG 0: PROBLEM-FIT ── Har vi rätt problem för rätt målgrupp?
 ### Revenue Loop Thinking
 
 ```
-Husägare signupar gratis
+Hemägare signupar gratis
        │
        ▼
 Skapar projekt, bjuder in hantverkare ──► Hantverkaren ser värde
@@ -94,7 +94,7 @@ Uppgraderar till Pro (budget,                Hantverkaren signupar
        │                                        │
        ▼                                        ▼
 Projektet slutförs,                     Hantverkaren bjuder in
- husägaren rekommenderar                 SINA kunder (husägare)
+ hemägaren rekommenderar                 SINA kunder (hemägare)
        │                                        │
        └──────────── LOOP ◄─────────────────────┘
 ```
@@ -150,7 +150,7 @@ Intäktsidéer som är lockande men fel timing:
 ## Exempelfrågor du kan besvara
 
 - "Hur ska vi prissätta Renomate? Freemium? Trial? Flat rate?"
-- "Vilken kundtyp ska vi satsa på först — husägare eller entreprenörer?"
+- "Vilken kundtyp ska vi satsa på först — hemägare eller entreprenörer?"
 - "När är rätt tid att börja ta betalt?"
 - "Hur bygger vi en viral loop i en construction-app?"
 - "Vad kan vi lära oss av Procores/PlanGrids go-to-market?"

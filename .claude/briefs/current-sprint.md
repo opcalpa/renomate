@@ -143,11 +143,11 @@ De stora UX-problemen från onboarding-analysen (W08) är delvis adresserade:
 
 **Nya observationer:**
 
-1. **Unified table med sub-rader** — Bra! Kundvagnsikonen som expand-toggle är kompakt och intuitiv. Dubbelräkningsproblemet löst. Men: testning behövs med riktiga data för att se om hierarkin är begriplig för husägare.
+1. **Unified table med sub-rader** — Bra! Kundvagnsikonen som expand-toggle är kompakt och intuitiv. Dubbelräkningsproblemet löst. Men: testning behövs med riktiga data för att se om hierarkin är begriplig för hemägare.
 
 2. **TaskEditDialog sticky footer** — Korrekt fix. Viktigt mönster: alla dialoger med scrollbart innehåll bör ha sticky action-knappar.
 
-3. **Kundvy (CustomerViewTab)** — Kritiskt viktigt! Husägaren behöver en förenklad vy. Måste granskas separat: är den tillräckligt enkel?
+3. **Kundvy (CustomerViewTab)** — Kritiskt viktigt! Hemägaren behöver en förenklad vy. Måste granskas separat: är den tillräckligt enkel?
 
 4. **Faktura/Offert-flöde** — Stor funktion för entreprenörer. UX-granskning behövs: är flödet skapa offert → skicka → kund godkänner → konvertera till projekt → fakturera intuitivt?
 
@@ -234,7 +234,7 @@ STEG 0: PROBLEM-FIT                              ● (validerat)
 
 1. **Offert→Faktura = betalningsvilja-signal.** Ingen entreprenör betalar för ett "projektverktyg." Men ett system som hanterar offerter, spårar godkännanden, genererar fakturor? Det sparar dem 5+ timmar/vecka. DET betalar de för.
 
-2. **Kundvy (CustomerViewTab) = viral loop i praktiken.** Varje offert som skickas till en husägare = en ny användare som ser Renomate. Om upplevelsen är bra: word-of-mouth. Om den är dålig: entreprenören slutar använda appen.
+2. **Kundvy (CustomerViewTab) = viral loop i praktiken.** Varje offert som skickas till en hemägare = en ny användare som ser Renomate. Om upplevelsen är bra: word-of-mouth. Om den är dålig: entreprenören slutar använda appen.
 
 3. **Budget-hierarki löser "dubbelräkning" som blockerade trovärdighet.** En entreprenör som visar en felaktig budget för sin kund tappar förtroendet för verktyget omedelbart.
 

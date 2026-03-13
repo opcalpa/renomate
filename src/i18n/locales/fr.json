@@ -277,6 +277,14 @@
       "admin": "Admin - Accès complet sauf supprimer le projet",
       "material_requester": "Demandeur de matériaux - Voir le plan & gérer les commandes"
     },
+    "roleTemplates": {
+      "contractor": "Entrepreneur",
+      "project_manager": "Chef de projet",
+      "architect": "Architecte",
+      "client": "Client / Commanditaire",
+      "viewer": "Observateur",
+      "custom": "Personnalisé"
+    },
     "selectRole": "Sélectionner un rôle",
     "moreInfo": "Plus d'infos",
     "customizeAccess": "Personnaliser les permissions",

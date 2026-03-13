@@ -59,6 +59,7 @@ import { CommentsSection } from "@/components/comments/CommentsSection";
 import { AIFloorPlanImport } from "./AIFloorPlanImport";
 import { AIDocumentImportModal } from "./AIDocumentImportModal";
 import { LinkFileToTaskDialog } from "./LinkFileToTaskDialog";
+import { SmartUploadDialog, type SmartUploadAction } from "./SmartUploadDialog";
 import { isDocumentFile } from "@/services/aiDocumentService";
 
 interface ProjectFile {
@@ -107,6 +108,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   const [showImageUploadSuggestion, setShowImageUploadSuggestion] = useState<ProjectFile | null>(null);
   const [floorPlanImportFile, setFloorPlanImportFile] = useState<ProjectFile | null>(null);
   const [linkFile, setLinkFile] = useState<ProjectFile | null>(null);
+  const [showSmartUpload, setShowSmartUpload] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -505,9 +507,19 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                 <span className="hidden sm:inline">{t('files.newFolder')}</span>
               </Button>
               <Button
+                onClick={() => setShowSmartUpload(true)}
+                size="sm"
+                variant="default"
+                className="flex-1 sm:flex-none"
+              >
+                <Sparkles className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">{t('smartUpload.title')}</span>
+              </Button>
+              <Button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
                 size="sm"
+                variant="outline"
                 className="flex-1 sm:flex-none"
               >
                 {uploading ? (
@@ -1083,6 +1095,50 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
           }}
         />
       )}
+
+      {/* Smart Upload Dialog */}
+      <SmartUploadDialog
+        open={showSmartUpload}
+        onOpenChange={setShowSmartUpload}
+        projectId={projectId}
+        onAction={(action: SmartUploadAction) => {
+          switch (action.type) {
+            case "extract_tasks":
+              // TODO: Open quote/scope extraction review dialog
+              toast({
+                title: t("smartUpload.types.quote"),
+                description: action.classification.summary,
+              });
+              break;
+            case "extract_purchase":
+              // TODO: Open link-to-existing or create-new purchase flow
+              toast({
+                title: action.classification.type === "invoice"
+                  ? t("smartUpload.types.invoice")
+                  : t("smartUpload.types.receipt"),
+                description: action.classification.summary,
+              });
+              break;
+            case "import_to_canvas":
+              // Use existing background image flow
+              if (onUseAsBackground) {
+                const url = URL.createObjectURL(action.file);
+                onUseAsBackground(url, action.file.name);
+              }
+              break;
+            case "store_only":
+            default:
+              // Upload to current folder via existing flow
+              if (fileInputRef.current) {
+                const dt = new DataTransfer();
+                dt.items.add(action.file);
+                fileInputRef.current.files = dt.files;
+                fileInputRef.current.dispatchEvent(new Event("change", { bubbles: true }));
+              }
+              break;
+          }
+        }}
+      />
     </div>
   );
 };

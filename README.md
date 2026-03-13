@@ -1,6 +1,6 @@
 # 🏠 Renomate
 
-En modern, komplett plattform för hantering av renoveringsprojekt. Perfekt för husägare som vill ha full kontroll över sina byggprojekt med ett professionellt verktyg.
+En modern, komplett plattform för hantering av renoveringsprojekt. Perfekt för hemägare som vill ha full kontroll över sina byggprojekt med ett professionellt verktyg.
 
 📖 **Ny här?** Börja med [SNABBSTART.md](./SNABBSTART.md) för snabb installation!
 

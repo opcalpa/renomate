@@ -271,6 +271,7 @@
     "roleTemplates": {
       "contractor": "Auftragnehmer",
       "project_manager": "Projektmanager",
+      "architect": "Architekt",
       "client": "Auftraggeber / Besteller",
       "viewer": "Betrachter",
       "custom": "Benutzerdefiniert"

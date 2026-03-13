@@ -386,6 +386,7 @@
     "roleTemplates": {
       "contractor": "Rangovas",
       "project_manager": "Projekto vadovas",
+      "architect": "Architektas",
       "client": "Klientas / Užsakovas",
       "viewer": "Stebėtojas",
       "custom": "Pasirinktinis"

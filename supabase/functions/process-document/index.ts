@@ -36,12 +36,30 @@ interface ExtractedTask {
   roomName: string | null;
   confidence: number;
   sourceText: string;
+  // Quote mode fields (null in scope mode)
+  estimatedCost: number | null;
+  laborCost: number | null;
+  materialCost: number | null;
+  startDate: string | null;
+  endDate: string | null;
+}
+
+interface QuoteMetadata {
+  vendorName: string | null;
+  totalAmount: number | null;
+  vatAmount: number | null;
+  validUntil: string | null;
+  paymentTerms: string | null;
+  quoteDate: string | null;
+  quoteNumber: string | null;
 }
 
 interface ExtractionResult {
   rooms: ExtractedRoom[];
   tasks: ExtractedTask[];
   documentSummary: string;
+  // Quote mode metadata (null in scope mode)
+  quoteMetadata: QuoteMetadata | null;
 }
 
 const SYSTEM_PROMPT = `Du är en expert på att analysera svenska renoveringsdokument och uppdragsbeskrivningar.
@@ -93,6 +111,57 @@ Svara ENDAST med giltig JSON i detta format:
 {
   "rooms": [...],
   "tasks": [...],
+  "documentSummary": "..."
+}`;
+
+const QUOTE_PROMPT = `Du är en expert på att analysera svenska bygofferter, prisförslag och anbud.
+
+Analysera dokumentet och extrahera ALL information:
+
+1. RUM - Alla rum som nämns
+   - name: Rumsnamn (t.ex. "Kök", "Badrum")
+   - estimatedAreaSqm: Storlek i m² om det nämns, annars null
+   - description: Kort beskrivning baserat på dokumentet
+   - confidence: Din konfidens (0.0-1.0)
+   - sourceText: Exakt text från dokumentet
+
+2. ARBETEN/POSTER - Varje arbetsmoment eller offertrad
+   - title: Kort titel (t.ex. "Rivning av befintligt kök")
+   - description: Detaljerad beskrivning av arbetet
+   - category: En av: rivning, el, vvs, malning, golv, kok, badrum, snickeri, kakel, ovrigt
+   - roomName: Vilket rum uppgiften gäller (null om generellt)
+   - confidence: Din konfidens (0.0-1.0)
+   - sourceText: Exakt text från dokumentet
+   - estimatedCost: Totalkostnad för denna post i SEK (inkl. moms om angivet), null om okänt
+   - laborCost: Arbetskostnad separat i SEK om angivet, annars null
+   - materialCost: Materialkostnad separat i SEK om angivet, annars null
+   - startDate: Planerat startdatum (YYYY-MM-DD) om angivet, annars null
+   - endDate: Planerat slutdatum (YYYY-MM-DD) om angivet, annars null
+
+3. OFFERTMETADATA - Övergripande information om offerten
+   - vendorName: Företagsnamn som lämnar offerten
+   - totalAmount: Totalsumma i SEK
+   - vatAmount: Momsbelopp i SEK om angivet, annars null
+   - validUntil: Offertens giltighetstid (YYYY-MM-DD) om angivet, annars null
+   - paymentTerms: Betalningsvillkor (t.ex. "30 dagar netto", "Delbetalning per etapp")
+   - quoteDate: Offertdatum (YYYY-MM-DD) om angivet, annars null
+   - quoteNumber: Offertnummer om angivet, annars null
+
+4. SAMMANFATTNING - Kort sammanfattning (2-3 meningar)
+
+VIKTIGT:
+- Extrahera ALLA prisposter, även om de saknar detaljerad beskrivning
+- Om priset inkluderar arbete + material men inte specificeras separat, sätt estimatedCost och lämna laborCost/materialCost som null
+- Om ROT-avdrag nämns, extrahera priset FÖRE avdrag (bruttopris)
+- Belopp ska vara tal (number), INTE strängar
+- Var noga med att skilja på ex. moms och inkl. moms — extrahera det som anges
+- Confidence max 0.7 om det inte ordagrant nämns i texten
+
+Svara ENDAST med giltig JSON:
+{
+  "rooms": [...],
+  "tasks": [...],
+  "quoteMetadata": { ... },
   "documentSummary": "..."
 }`;
 
@@ -223,7 +292,7 @@ async function fetchDocumentContent(fileUrl: string, fileType: string, fileName:
   return await response.text();
 }
 
-async function extractWithOpenAI(documentContent: string): Promise<ExtractionResult> {
+async function extractWithOpenAI(documentContent: string, mode: 'scope' | 'quote' = 'scope'): Promise<ExtractionResult> {
   const apiKey = Deno.env.get('OPENAI_API_KEY');
 
   if (!apiKey) {
@@ -234,17 +303,22 @@ async function extractWithOpenAI(documentContent: string): Promise<ExtractionRes
     throw new Error('Dokumentet verkar vara tomt eller kunde inte läsas.');
   }
 
-  console.log('Sending to OpenAI, content length:', documentContent.length);
+  const isQuote = mode === 'quote';
+  const systemPrompt = isQuote ? QUOTE_PROMPT : SYSTEM_PROMPT;
+  // Use gpt-4o for quotes (more complex extraction), gpt-4o-mini for scope
+  const model = isQuote ? 'gpt-4o' : 'gpt-4o-mini';
+  const maxTokens = isQuote ? 8192 : 4096;
 
-  // Always use text-based approach (no vision needed)
+  console.log('Sending to OpenAI, mode:', mode, 'model:', model, 'content length:', documentContent.length);
+
   const messages = [
     {
       role: 'system',
-      content: SYSTEM_PROMPT,
+      content: systemPrompt,
     },
     {
       role: 'user',
-      content: `Analysera följande dokument:\n\n${documentContent.substring(0, 30000)}`, // Limit to ~30k chars
+      content: `Analysera följande dokument:\n\n${documentContent.substring(0, 30000)}`,
     },
   ];
 
@@ -255,9 +329,9 @@ async function extractWithOpenAI(documentContent: string): Promise<ExtractionRes
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model,
       messages,
-      max_tokens: 4096,
+      max_tokens: maxTokens,
       temperature: 0.2,
     }),
   });
@@ -270,7 +344,6 @@ async function extractWithOpenAI(documentContent: string): Promise<ExtractionRes
 
   const data = await response.json();
 
-  // Extract content from response
   const content = data.choices?.[0]?.message?.content;
   if (!content) {
     throw new Error('No content in OpenAI response');
@@ -278,10 +351,7 @@ async function extractWithOpenAI(documentContent: string): Promise<ExtractionRes
 
   console.log('OpenAI response received, length:', content.length);
 
-  // Parse JSON from response
   let jsonText = content;
-
-  // Try to extract JSON from markdown code blocks if present
   const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (jsonMatch) {
     jsonText = jsonMatch[1].trim();
@@ -289,10 +359,42 @@ async function extractWithOpenAI(documentContent: string): Promise<ExtractionRes
 
   try {
     const result = JSON.parse(jsonText);
+
+    // Normalize tasks with quote fields
+    const tasks: ExtractedTask[] = (result.tasks || []).map((t: Record<string, unknown>) => ({
+      title: t.title || '',
+      description: t.description || null,
+      category: t.category || 'ovrigt',
+      roomName: t.roomName || null,
+      confidence: typeof t.confidence === 'number' ? t.confidence : 0.5,
+      sourceText: t.sourceText || '',
+      estimatedCost: typeof t.estimatedCost === 'number' ? t.estimatedCost : (typeof t.estimatedCost === 'string' ? parseFloat(t.estimatedCost) || null : null),
+      laborCost: typeof t.laborCost === 'number' ? t.laborCost : (typeof t.laborCost === 'string' ? parseFloat(t.laborCost) || null : null),
+      materialCost: typeof t.materialCost === 'number' ? t.materialCost : (typeof t.materialCost === 'string' ? parseFloat(t.materialCost) || null : null),
+      startDate: t.startDate || null,
+      endDate: t.endDate || null,
+    }));
+
+    // Normalize quote metadata
+    let quoteMetadata: QuoteMetadata | null = null;
+    if (isQuote && result.quoteMetadata) {
+      const qm = result.quoteMetadata;
+      quoteMetadata = {
+        vendorName: qm.vendorName || null,
+        totalAmount: typeof qm.totalAmount === 'number' ? qm.totalAmount : (typeof qm.totalAmount === 'string' ? parseFloat(qm.totalAmount) || null : null),
+        vatAmount: typeof qm.vatAmount === 'number' ? qm.vatAmount : (typeof qm.vatAmount === 'string' ? parseFloat(qm.vatAmount) || null : null),
+        validUntil: qm.validUntil || null,
+        paymentTerms: qm.paymentTerms || null,
+        quoteDate: qm.quoteDate || null,
+        quoteNumber: qm.quoteNumber || null,
+      };
+    }
+
     return {
       rooms: result.rooms || [],
-      tasks: result.tasks || [],
+      tasks,
       documentSummary: result.documentSummary || '',
+      quoteMetadata,
     };
   } catch (parseError) {
     console.error('Failed to parse OpenAI response:', jsonText.substring(0, 500));
@@ -307,9 +409,11 @@ serve(async (req) => {
   }
 
   try {
-    const { fileUrl, fileBase64, fileType, mimeType, fileName } = await req.json();
+    const { fileUrl, fileBase64, fileType, mimeType, fileName, mode } = await req.json();
 
-    console.log('Processing request:', { fileName, fileType, mimeType, hasBase64: !!fileBase64, fileUrl: fileUrl?.substring(0, 50) });
+    const extractionMode: 'scope' | 'quote' = mode === 'quote' ? 'quote' : 'scope';
+
+    console.log('Processing request:', { fileName, fileType, mimeType, mode: extractionMode, hasBase64: !!fileBase64, fileUrl: fileUrl?.substring(0, 50) });
 
     if (!fileUrl && !fileBase64) {
       throw new Error('fileUrl or fileBase64 is required');
@@ -321,9 +425,9 @@ serve(async (req) => {
       : await fetchDocumentContent(fileUrl, fileType || '', fileName || '');
 
     // Extract with OpenAI
-    const result = await extractWithOpenAI(documentContent);
+    const result = await extractWithOpenAI(documentContent, extractionMode);
 
-    console.log('Success! Rooms:', result.rooms.length, 'Tasks:', result.tasks.length);
+    console.log('Success! Mode:', extractionMode, 'Rooms:', result.rooms.length, 'Tasks:', result.tasks.length);
 
     return new Response(JSON.stringify(result), {
       headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
@@ -337,6 +441,7 @@ serve(async (req) => {
         rooms: [],
         tasks: [],
         documentSummary: '',
+        quoteMetadata: null,
       }),
       {
         headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },

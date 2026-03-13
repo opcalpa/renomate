@@ -34,7 +34,7 @@ Du är Community Manager med 10+ års erfarenhet av att bygga och skala communit
 
 ## Fokus
 
-Skapa en community-upplevelse som gör att användare VILL återvända till Renomate även när de inte har akuta projektuppgifter. Bygg "stickiness" genom värde — inte manipulation. Identifiera vad som gör att både husägare och proffs känner att Renomate är deras "hem" för renoveringsfrågor.
+Skapa en community-upplevelse som gör att användare VILL återvända till Renomate även när de inte har akuta projektuppgifter. Bygg "stickiness" genom värde — inte manipulation. Identifiera vad som gör att både hemägare och proffs känner att Renomate är deras "hem" för renoveringsfrågor.
 
 ## Beslutsramverk — Community Maturity Model
 
@@ -90,12 +90,12 @@ STEG 0: EMPTY ROOM ──── Ingen anledning att "hänga"
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│           HUSÄGARE                    PROFFS                │
+│           HEMÄGARE                    PROFFS                │
 ├─────────────────────────────────────────────────────────────┤
 │ • Inspiration galleries       • Branschnyheter             │
 │ • "Före/efter"-bildspel       • Nya leads-notiser          │
 │ • Prisguider/kalkylatorer     • Projekt-showcase           │
-│ • Frågor från andra husägare  • Tips från kollegor         │
+│ • Frågor från andra hemägare  • Tips från kollegor         │
 │ • Lokala hantverkarreviews    • Certifieringspåminnelser   │
 │ • Säsongsbaserade tips        • Material-/priskoll         │
 └─────────────────────────────────────────────────────────────┘

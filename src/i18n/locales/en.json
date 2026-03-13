@@ -1037,6 +1037,7 @@
     "roleTemplates": {
       "contractor": "Contractor",
       "project_manager": "Project Manager",
+      "architect": "Architect",
       "client": "Client / Orderer",
       "viewer": "Viewer",
       "custom": "Custom"
@@ -4387,5 +4388,37 @@
     "columns": "Columns",
     "toggleColumns": "Show/hide columns",
     "categoryMaterial": "Material"
+  },
+  "smartUpload": {
+    "title": "Smart Upload",
+    "dropHere": "Drag & drop or click to select",
+    "supportedTypes": "Quote, invoice, receipt, floor plan, contract, images...",
+    "analyzing": "Analyzing document...",
+    "fileTooLarge": "File too large",
+    "maxSize": "Max 10 MB",
+    "classifyError": "Could not analyze the document. Please try again.",
+    "vendor": "Vendor",
+    "suggestedAction": "Suggested action",
+    "orChoose": "Or choose another action:",
+    "uploadAnother": "Upload another file",
+    "types": {
+      "quote": "Quote",
+      "invoice": "Invoice",
+      "receipt": "Receipt",
+      "floorPlan": "Floor plan",
+      "contract": "Contract",
+      "specification": "Specification",
+      "productImage": "Product image",
+      "other": "Other"
+    },
+    "actions": {
+      "extractTasks": "Extract tasks & budget",
+      "extractPurchase": "Link to purchase/task",
+      "importCanvas": "Place on drawing canvas",
+      "storeOnly": "Save to project files"
+    },
+    "linkExisting": "Link to existing",
+    "createNew": "Create new",
+    "linkPrompt": "Is this an existing item or do you want to create a new one?"
   }
 }

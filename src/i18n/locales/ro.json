@@ -386,6 +386,7 @@
     "roleTemplates": {
       "contractor": "Antreprenor",
       "project_manager": "Manager de proiect",
+      "architect": "Arhitect",
       "client": "Client / Comanditar",
       "viewer": "Vizualizator",
       "custom": "Personalizat"

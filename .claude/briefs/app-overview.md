@@ -2,13 +2,13 @@
 
 ## Vad är Renomate?
 
-Renomate är en svensk SaaS-plattform för husägare och entreprenörer som planerar och genomför renoveringsprojekt. Målet är att vara "Notion för renovering" — ett ställe där allt samlas.
+Renomate är en svensk SaaS-plattform för hemägare och entreprenörer som planerar och genomför renoveringsprojekt. Målet är att vara "Notion för renovering" — ett ställe där allt samlas.
 
 ## Målgrupper
 
 | Segment | Beskrivning | Behov |
 |---------|-------------|-------|
-| **Husägare (primär)** | Privatpersoner som renoverar sin bostad | Överblick, budgetkontroll, kommunikation med hantverkare |
+| **Hemägare (primär)** | Privatpersoner som renoverar sin bostad | Överblick, budgetkontroll, kommunikation med hantverkare |
 | **Entreprenörer (sekundär)** | Hantverkare, platschefer, projektledare | Effektiv projekthantering, materialbeställning, dokumentation |
 | **Bostadsrättsföreningar** | Styrelser som planerar stambyten etc. | Koordinering, beslutsstöd, medlemskommunikation |
 
@@ -104,12 +104,12 @@ Renomate är en svensk SaaS-plattform för husägare och entreprenörer som plan
 
 1. **Svensk byggkunskap inbyggd** — ROT, bygglov, BBR i HelpBot
 2. **Visuellt först** — Space Planner som nav, inte bara listor
-3. **Både husägare OCH hantverkare** — samma plattform
+3. **Både hemägare OCH hantverkare** — samma plattform
 4. **AI-import** — dokument → uppgifter, ritning → canvas
 
 ## Kritiska frågor att besvara
 
-1. Är appen för komplex för husägare?
+1. Är appen för komplex för hemägare?
 2. Är appen för enkel för proffs?
 3. Var tappar vi användare? (activation, retention)
 4. Vad är "aha-ögonblicket" — när känner användaren värde?

@@ -277,6 +277,14 @@
       "admin": "Admin - Voller Zugriff außer Projekt löschen",
       "material_requester": "Materialanforderer - Raumplan anzeigen & Bestellungen verwalten"
     },
+    "roleTemplates": {
+      "contractor": "Auftragnehmer",
+      "project_manager": "Projektmanager",
+      "architect": "Architekt",
+      "client": "Auftraggeber / Besteller",
+      "viewer": "Betrachter",
+      "custom": "Benutzerdefiniert"
+    },
     "selectRole": "Rolle auswählen",
     "moreInfo": "Mehr Infos",
     "customizeAccess": "Berechtigungen anpassen",
