@@ -122,6 +122,14 @@ export function useDirectMessages({
         return null;
       }
 
+      // Optimistically add to local state immediately
+      if (data) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === data.id)) return prev;
+          return [...prev, data as DirectMessage];
+        });
+      }
+
       return data;
     },
     [projectId, currentUserId, recipientId]
