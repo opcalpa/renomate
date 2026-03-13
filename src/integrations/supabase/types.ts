@@ -2503,7 +2503,7 @@ export type Database = {
         Returns: string
       }
       seed_demo_project_for_user: {
-        Args: { p_owner_id: string }
+        Args: { p_owner_id: string; p_language?: string }
         Returns: string
       }
       user_can_invite_to_project: {

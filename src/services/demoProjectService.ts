@@ -26,11 +26,12 @@ export async function hasDemoProject(ownerId: string): Promise<boolean> {
  * Uses a database function for reliable seeding that bypasses RLS
  * Returns the project ID if successful, null otherwise
  */
-export async function seedDemoProject(ownerId: string): Promise<string | null> {
+export async function seedDemoProject(ownerId: string, language?: string): Promise<string | null> {
   try {
     // Call the database function to seed the demo project
     const { data, error } = await supabase.rpc("seed_demo_project_for_user", {
       p_owner_id: ownerId,
+      p_language: language || navigator.language?.split("-")[0] || "sv",
     });
 
     if (error) {
