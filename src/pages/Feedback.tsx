@@ -43,8 +43,16 @@ const Feedback = () => {
 
     setSending(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.functions.invoke("send-feedback", {
-        body: { message: message.trim(), email: email.trim() || undefined },
+        body: {
+          message: message.trim(),
+          email: email.trim() || user?.email || undefined,
+          type: "other",
+          pageUrl: window.location.href,
+          userAgent: navigator.userAgent,
+          userId: user?.id,
+        },
       });
 
       if (error) throw error;

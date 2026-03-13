@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
@@ -46,6 +49,21 @@ serve(async (req) => {
 
     const replyTo = email && typeof email === "string" && email.includes("@") ? email : undefined;
     const feedbackType = type === "bug" ? "🐛 Bug Report" : type === "suggestion" ? "💡 Suggestion" : "💬 Feedback";
+
+    // Persist to user_feedback table (best-effort, don't block email)
+    try {
+      const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      await sb.from("user_feedback").insert({
+        user_id: userId || null,
+        email: replyTo || null,
+        type: type === "bug" ? "bug" : type === "suggestion" ? "suggestion" : "other",
+        message: message.trim(),
+        page_url: pageUrl || null,
+        user_agent: userAgent || null,
+      });
+    } catch (dbErr) {
+      console.error("Failed to persist feedback to DB:", dbErr);
+    }
 
     const contextRows = [
       replyTo ? `<p><strong>From:</strong> ${replyTo}</p>` : "<p><em>Anonymous (no email provided)</em></p>",
