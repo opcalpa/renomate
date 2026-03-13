@@ -30,9 +30,10 @@ interface FeedCommentCardProps {
   translatedContent?: string;
   onReply?: (comment: FeedComment) => void;
   onNavigate?: (comment: FeedComment) => void;
+  onAvatarClick?: (profileId: string, name: string) => void;
 }
 
-export const FeedCommentCard = ({ comment, compact, translatedContent, onReply, onNavigate }: FeedCommentCardProps) => {
+export const FeedCommentCard = ({ comment, compact, translatedContent, onReply, onNavigate, onAvatarClick }: FeedCommentCardProps) => {
   const { t, i18n } = useTranslation();
   const contextType = getContextType(comment);
   const contextLabel = getContextLabel(comment);
@@ -40,7 +41,14 @@ export const FeedCommentCard = ({ comment, compact, translatedContent, onReply, 
 
   return (
     <div className="flex gap-3 p-3 rounded-lg border bg-card">
-      <Avatar className="h-8 w-8 flex-shrink-0">
+      <Avatar
+        className={`h-8 w-8 flex-shrink-0 ${onAvatarClick && comment.created_by_user_id ? "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" : ""}`}
+        onClick={() => {
+          if (onAvatarClick && comment.created_by_user_id && comment.creator?.name) {
+            onAvatarClick(comment.created_by_user_id, comment.creator.name);
+          }
+        }}
+      >
         <AvatarFallback className="text-xs">
           {comment.creator?.name?.charAt(0) || "?"}
         </AvatarFallback>

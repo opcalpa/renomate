@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface NotificationItem {
   id: string;
-  type: "comment" | "mention" | "task" | "material" | "quote_accepted" | "quote_rejected";
+  type: "comment" | "mention" | "task" | "material" | "quote_accepted" | "quote_rejected" | "dm";
   title: string;
   preview: string;
   projectId: string;
@@ -367,7 +367,36 @@ export function useNotifications() {
       }
     }
 
-    // 5. Quote activity notifications from activity_log (accepted, rejected, viewed)
+    // 5. Unread DMs
+    const { data: unreadDms } = await supabase
+      .from("direct_messages")
+      .select("id, content, created_at, project_id, from_user_id, from_user:profiles!direct_messages_from_user_id_fkey(name)")
+      .eq("to_user_id", userId)
+      .eq("is_read", false)
+      .gte("created_at", sevenDaysAgo)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (unreadDms) {
+      for (const dm of unreadDms as unknown as Array<{
+        id: string; content: string; created_at: string; project_id: string;
+        from_user_id: string; from_user: { name: string } | null;
+      }>) {
+        items.push({
+          id: `dm-${dm.id}`,
+          type: "dm",
+          title: dm.from_user?.name || "Someone",
+          preview: truncate(dm.content),
+          projectId: dm.project_id,
+          projectName: projectMap.get(dm.project_id) || "",
+          createdAt: dm.created_at,
+          isUnread: !readIds.has(`dm-${dm.id}`),
+          entityType: "project",
+        });
+      }
+    }
+
+    // 6. Quote activity notifications from activity_log (accepted, rejected, viewed)
     const quoteStatusEntityIds = new Set<string>();
 
     const { data: quoteActivity } = await supabase

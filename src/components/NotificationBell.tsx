@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, MessageSquare, AtSign, CheckSquare, Package, CheckCheck, PartyPopper, XCircle } from "lucide-react";
+import { Bell, MessageSquare, AtSign, CheckSquare, Package, CheckCheck, PartyPopper, XCircle, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { useNotifications, NotificationItem } from "@/hooks/useNotifications";
@@ -32,6 +32,8 @@ function NotificationIcon({ type }: { type: NotificationItem["type"] }) {
       return <PartyPopper className={cn(cls, "text-green-600")} />;
     case "quote_rejected":
       return <XCircle className={cn(cls, "text-red-500")} />;
+    case "dm":
+      return <Lock className={cn(cls, "text-indigo-500")} />;
   }
 }
 
@@ -50,6 +52,8 @@ function notificationLabel(item: NotificationItem, t: (key: string, fallback?: s
       return `${t("notifications.quoteAccepted", "Quote accepted!")} — ${item.title}`;
     case "quote_rejected":
       return `${t("notifications.quoteRejected", "Quote declined")} — ${item.title}`;
+    case "dm":
+      return `${t("notifications.newDm", "Private message")} — ${item.title}`;
   }
 }
 
@@ -84,6 +88,10 @@ export function NotificationBell() {
     // Quote comments → navigate directly to quote page
     if (item.entityType === "quote" && item.entityId) {
       navigate(`/quotes/${item.entityId}`);
+      return;
+    }
+    if (item.type === "dm") {
+      navigate(`/projects/${item.projectId}?tab=teams`);
       return;
     }
     const base = `/projects/${item.projectId}`;

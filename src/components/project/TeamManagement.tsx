@@ -42,6 +42,7 @@ import { getAvatarColor } from "@/lib/avatarColor";
 import { FeatureAccessEditor } from "./team/FeatureAccessEditor";
 import type { FeatureAccess } from "./team/FeatureAccessEditor";
 import { DirectMessageSheet } from "./DirectMessageSheet";
+import { useUnreadDmCounts } from "@/hooks/useDirectMessages";
 import { MessageCircle } from "lucide-react";
 
 interface TeamMember {
@@ -274,6 +275,7 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
   const [deleting, setDeleting] = useState<string | null>(null);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [dmRecipient, setDmRecipient] = useState<{ id: string; name: string } | null>(null);
+  const unreadCounts = useUnreadDmCounts(projectId, currentProfileId || "");
 
   // Invite form state
   const [inviteName, setInviteName] = useState("");
@@ -810,21 +812,28 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
                 key={member.id}
                 className="flex items-center gap-3 p-3 border border-border rounded-lg"
               >
-                <button
-                  onClick={() => {
-                    if (currentProfileId && member.profile_id && member.profile_id !== currentProfileId) {
-                      setDmRecipient({ id: member.profile_id, name: member.user_name });
-                    }
-                  }}
-                  className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-medium shrink-0 ${getAvatarColor(member.user_name)} ${
-                    currentProfileId && member.profile_id && member.profile_id !== currentProfileId
-                      ? "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-                      : ""
-                  }`}
-                  title={currentProfileId && member.profile_id !== currentProfileId ? t("dm.openChat", "Skicka meddelande") : undefined}
-                >
-                  {member.user_name.charAt(0).toUpperCase()}
-                </button>
+                <div className="relative shrink-0">
+                  <button
+                    onClick={() => {
+                      if (currentProfileId && member.profile_id && member.profile_id !== currentProfileId) {
+                        setDmRecipient({ id: member.profile_id, name: member.user_name });
+                      }
+                    }}
+                    className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-medium ${getAvatarColor(member.user_name)} ${
+                      currentProfileId && member.profile_id && member.profile_id !== currentProfileId
+                        ? "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                        : ""
+                    }`}
+                    title={currentProfileId && member.profile_id !== currentProfileId ? t("dm.openChat", "Skicka meddelande") : undefined}
+                  >
+                    {member.user_name.charAt(0).toUpperCase()}
+                  </button>
+                  {unreadCounts[member.profile_id] > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                      {unreadCounts[member.profile_id] > 9 ? "9+" : unreadCounts[member.profile_id]}
+                    </span>
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{member.user_name}</p>
                   <p className="text-xs text-muted-foreground truncate">{member.user_email}</p>

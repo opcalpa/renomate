@@ -36,9 +36,10 @@ const statusKey = (s: string) => {
 
 interface ActivityCardProps {
   activity: ActivityLogItem;
+  onAvatarClick?: (profileId: string, name: string) => void;
 }
 
-export const ActivityCard = ({ activity }: ActivityCardProps) => {
+export const ActivityCard = ({ activity, onAvatarClick }: ActivityCardProps) => {
   const { t, i18n } = useTranslation();
   const actorName = activity.actor?.name || t("common.unassigned");
   const entityName = activity.entity_name || "";
@@ -48,7 +49,14 @@ export const ActivityCard = ({ activity }: ActivityCardProps) => {
 
   return (
     <div className={`flex items-start gap-3 px-3 py-2 rounded-lg border-l-2 bg-muted/40 ${borderColors[activity.entity_type] || "border-l-gray-400"}`}>
-      <Avatar className="h-6 w-6 flex-shrink-0 mt-0.5">
+      <Avatar
+        className={`h-6 w-6 flex-shrink-0 mt-0.5 ${onAvatarClick && activity.actor?.id ? "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" : ""}`}
+        onClick={() => {
+          if (onAvatarClick && activity.actor?.id) {
+            onAvatarClick(activity.actor.id, actorName);
+          }
+        }}
+      >
         <AvatarFallback className="text-[10px]">
           {actorName.charAt(0)}
         </AvatarFallback>
