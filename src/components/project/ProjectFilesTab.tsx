@@ -60,6 +60,7 @@ import { AIFloorPlanImport } from "./AIFloorPlanImport";
 import { AIDocumentImportModal } from "./AIDocumentImportModal";
 import { LinkFileToTaskDialog } from "./LinkFileToTaskDialog";
 import { SmartUploadDialog, type SmartUploadAction } from "./SmartUploadDialog";
+import { QuoteReviewDialog } from "./QuoteReviewDialog";
 import { isDocumentFile } from "@/services/aiDocumentService";
 
 interface ProjectFile {
@@ -109,6 +110,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   const [floorPlanImportFile, setFloorPlanImportFile] = useState<ProjectFile | null>(null);
   const [linkFile, setLinkFile] = useState<ProjectFile | null>(null);
   const [showSmartUpload, setShowSmartUpload] = useState(false);
+  const [quoteReviewFile, setQuoteReviewFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -1096,6 +1098,21 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
         />
       )}
 
+      {/* Quote Review Dialog */}
+      <QuoteReviewDialog
+        projectId={projectId}
+        open={!!quoteReviewFile}
+        onOpenChange={(o) => { if (!o) setQuoteReviewFile(null); }}
+        file={quoteReviewFile}
+        onImportComplete={() => {
+          fetchFiles();
+          toast({
+            title: t("quoteReview.importDone", "Offert importerad"),
+            description: t("quoteReview.importDoneDesc", "Arbeten och rum har skapats i projektet."),
+          });
+        }}
+      />
+
       {/* Smart Upload Dialog */}
       <SmartUploadDialog
         open={showSmartUpload}
@@ -1104,11 +1121,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
         onAction={(action: SmartUploadAction) => {
           switch (action.type) {
             case "extract_tasks":
-              // TODO: Open quote/scope extraction review dialog
-              toast({
-                title: t("smartUpload.types.quote"),
-                description: action.classification.summary,
-              });
+              setQuoteReviewFile(action.file);
               break;
             case "extract_purchase":
               // TODO: Open link-to-existing or create-new purchase flow
