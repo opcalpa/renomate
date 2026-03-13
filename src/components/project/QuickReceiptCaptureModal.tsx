@@ -56,18 +56,23 @@ interface QuickReceiptCaptureModalProps {
   currency?: string | null;
 }
 
-// Check if file is an image (including HEIC/HEIF)
-const isImageFile = (file: File): boolean => {
+// Check if file is a supported receipt file (images + PDF)
+const isSupportedFile = (file: File): boolean => {
   const type = file.type.toLowerCase();
   const name = file.name.toLowerCase();
 
-  // Check MIME type
+  // Images
   if (type.startsWith("image/")) return true;
-
-  // Check file extension for HEIC/HEIF (MIME type may be empty or wrong)
+  // HEIC/HEIF (MIME type may be empty or wrong)
   if (name.endsWith(".heic") || name.endsWith(".heif")) return true;
+  // PDF
+  if (type === "application/pdf" || name.endsWith(".pdf")) return true;
 
   return false;
+};
+
+const isPdfFile = (file: File): boolean => {
+  return file.type.toLowerCase() === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 };
 
 // Check if file is HEIC/HEIF format
@@ -319,9 +324,9 @@ export function QuickReceiptCaptureModal({
     // Clear the input value so the same file can be selected again
     event.target.value = "";
 
-    // Validate file type (including HEIC/HEIF)
-    if (!isImageFile(file)) {
-      toast.error(t("receipt.notAnImage"));
+    // Validate file type (images + PDF)
+    if (!isSupportedFile(file)) {
+      toast.error(t("receipt.unsupportedFile", "Unsupported file type. Use images or PDF."));
       return;
     }
 
@@ -333,24 +338,30 @@ export function QuickReceiptCaptureModal({
 
     let processedFile = file;
 
-    // Convert HEIC to JPEG if needed
-    if (isHeicFile(file)) {
-      try {
-        toast.info(t("receipt.convertingImage"));
-        processedFile = await convertHeicToJpeg(file);
-      } catch {
-        toast.error(t("receipt.conversionFailed"));
-        return;
+    if (isPdfFile(file)) {
+      // PDF — skip compression, use directly
+      setSelectedFile(file);
+      setPreviewUrl("pdf");
+    } else {
+      // Convert HEIC to JPEG if needed
+      if (isHeicFile(file)) {
+        try {
+          toast.info(t("receipt.convertingImage"));
+          processedFile = await convertHeicToJpeg(file);
+        } catch {
+          toast.error(t("receipt.conversionFailed"));
+          return;
+        }
       }
+
+      // Compress image
+      const compressed = await compressImage(processedFile);
+      setSelectedFile(compressed);
+
+      // Create preview
+      const url = URL.createObjectURL(compressed);
+      setPreviewUrl(url);
     }
-
-    // Compress image
-    const compressed = await compressImage(processedFile);
-    setSelectedFile(compressed);
-
-    // Create preview
-    const url = URL.createObjectURL(compressed);
-    setPreviewUrl(url);
 
     // Reset form fields when new image is selected
     setAnalysisResult(null);
@@ -618,7 +629,7 @@ export function QuickReceiptCaptureModal({
               <input
                 ref={cameraInputRef}
                 type="file"
-                accept="image/*,.heic,.heif"
+                accept="image/*,.heic,.heif,application/pdf,.pdf"
                 capture="environment"
                 onChange={handleFileSelect}
                 className="hidden"
@@ -626,7 +637,7 @@ export function QuickReceiptCaptureModal({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*,.heic,.heif"
+                accept="image/*,.heic,.heif,application/pdf,.pdf"
                 onChange={handleFileSelect}
                 className="hidden"
               />
@@ -653,13 +664,20 @@ export function QuickReceiptCaptureModal({
             </div>
           ) : (
             <>
-              {/* Image preview */}
+              {/* Document preview */}
               <div className="relative">
-                <img
-                  src={previewUrl}
-                  alt="Document preview"
-                  className="w-full max-h-40 object-contain rounded-lg border"
-                />
+                {previewUrl === "pdf" ? (
+                  <div className="w-full h-32 flex flex-col items-center justify-center rounded-lg border bg-muted gap-2">
+                    <FileText className="h-10 w-10 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">{selectedFile?.name}</span>
+                  </div>
+                ) : (
+                  <img
+                    src={previewUrl!}
+                    alt="Document preview"
+                    className="w-full max-h-40 object-contain rounded-lg border"
+                  />
+                )}
                 <button
                   onClick={clearImage}
                   className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5"

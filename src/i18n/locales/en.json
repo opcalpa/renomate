@@ -2167,6 +2167,7 @@
     "uploadError": "Failed to upload receipt image",
     "receiptPurchase": "Receipt Purchase",
     "notAnImage": "Selected file is not an image",
+    "unsupportedFile": "Unsupported file type. Use images or PDF.",
     "fileTooLarge": "File is too large (max 10MB)",
     "convertingImage": "Converting image...",
     "conversionFailed": "Failed to convert image. Please try a different file."
@@ -2240,8 +2241,9 @@
     "tasks": "Tasks",
     "materials": "Materials",
     "allStatuses": "All Statuses",
+    "statusesSelected": "selected",
+    "clearFilter": "Clear filter",
     "allRooms": "All Rooms",
-    "allStatuses": "All Statuses",
     "allAssignees": "All Assignees",
     "all": "All",
     "startDateFrom": "Start Date (from)",
@@ -2752,8 +2754,29 @@
     "title": "Renomate",
     "placeholder": "Ask about renovations or how to use the app...",
     "disclaimer": "NOTE: For building regulations I provide general guidance — always contact your municipality's building committee for final decisions.",
-    "greeting": "Hi! I'm Renomate — your renovation expert and platform guide. Ask me about building regulations, renovation tips, or how to get the most out of the app!",
+    "greeting": "Hi! I'm Renomate — your renovation expert and platform guide. Ask me about building regulations, renovation tips, or how to get the most out of the app!\n\nNOTE: For building regulations I provide general guidance — always contact your municipality's building committee for final decisions.",
     "errorMessage": "Something went wrong. Please try again.",
+    "bugPrompt": "Oh no, something's not working right? 🐛\n\nTell me what happened — for example:\n• What did you click or do?\n• What did you expect to happen?\n• What happened instead?\n\nThe more details, the faster we can fix it! I'll automatically include which page you're on.",
+    "suggestionPrompt": "Love that you want to help us improve! 💡\n\nTell me freely — is there a feature you're missing? Something that could work better? A workflow that feels clunky?\n\nAll ideas are welcome, big or small. We read every single one.",
+    "otherPrompt": "Of course! ✉️ Write whatever's on your mind — feedback, questions, or just a thought. I'll make sure the team sees it.",
+    "bugSentConfirm": "Got it! 🙏 Your bug report has been sent straight to the development team. We take these seriously and will look into it.\n\nIs there anything else you noticed?",
+    "suggestionSentConfirm": "Thanks for the great input! 💡 Your suggestion has been forwarded to the team. We love hearing how we can make Renomate better.\n\nGot more ideas?",
+    "otherSentConfirm": "Message received! ✉️ The team will read it. Thanks for taking the time to write.\n\nAnything else on your mind?",
+    "feedbackError": "Hmm, something went wrong sending your report. You can also email us directly at hello@letsrenomate.com — we read every message!",
+    "feedbackCancelled": "No worries, report cancelled. I'm still here if you need help with anything else!",
+    "feedbackTypePicker": "What would you like to share? Pick one below:",
+    "addMore": "Add more details",
+    "addMorePrompt": "Sure! Write away — I'll add it to your previous report.",
+    "backToChat": "Back to chat",
+    "backToChatMsg": "Back to normal! Ask me anything about renovations or the app. 😊",
+    "goBack": "Back",
+    "cancelFeedback": "Cancel",
+    "bugModeLabel": "Bug report — goes straight to the team",
+    "suggestionModeLabel": "Suggestion — goes straight to the team",
+    "otherModeLabel": "Message — goes straight to the team",
+    "bugPlaceholder": "What happened? What did you expect?",
+    "suggestionPlaceholder": "Your idea or improvement...",
+    "otherPlaceholder": "Write your message...",
     "send": "Send",
     "quick": {
       "getStarted": "Getting started",
@@ -2761,7 +2784,10 @@
       "spacePlanner": "Space Planner guide",
       "budgetTips": "Budget & costs",
       "projectManagement": "Project management",
-      "teamBudget": "Team & budget"
+      "teamBudget": "Team & budget",
+      "reportBug": "Report a bug",
+      "suggestion": "Suggestion",
+      "otherFeedback": "Other feedback"
     },
     "quickMessage": {
       "getStarted": "I'm new — what's the best way to set up my first renovation project?",
@@ -4031,6 +4057,10 @@
       "homeowner": "Demo - Homeowner",
       "changeRole": "Change role",
       "signUp": "Create account"
+    },
+    "roles": {
+      "builder": "Builder",
+      "homeowner": "Homeowner"
     },
     "phases": {
       "planning": "Planning",

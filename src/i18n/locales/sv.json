@@ -1730,6 +1730,7 @@
     "uploadError": "Kunde inte ladda upp kvittobilden",
     "receiptPurchase": "Kvittoinköp",
     "notAnImage": "Vald fil är inte en bild",
+    "unsupportedFile": "Filtypen stöds inte. Använd bilder eller PDF.",
     "fileTooLarge": "Filen är för stor (max 10MB)",
     "convertingImage": "Konverterar bild...",
     "conversionFailed": "Kunde inte konvertera bilden. Försök med en annan fil."
@@ -1803,8 +1804,9 @@
     "tasks": "Arbeten",
     "materials": "Material",
     "allStatuses": "Alla statusar",
+    "statusesSelected": "valda",
+    "clearFilter": "Rensa filter",
     "allRooms": "Alla rum",
-    "allStatuses": "Alla statusar",
     "allAssignees": "Alla tilldelade",
     "all": "Alla",
     "startDateFrom": "Startdatum (från)",
@@ -2749,8 +2751,29 @@
     "title": "Renomate",
     "placeholder": "Fråga om renovering eller hur appen fungerar...",
     "disclaimer": "OBS: För byggregler ger jag allmän vägledning — kontakta alltid din kommuns byggnadsnämnd för slutgiltigt besked.",
-    "greeting": "Hej! Jag är Renomate — din renoveringsexpert och plattformsguide. Fråga mig om byggregler, renoveringstips eller hur du får ut mest av appen!",
+    "greeting": "Hej! Jag är Renomate — din renoveringsexpert och plattformsguide. Fråga mig om byggregler, renoveringstips eller hur du får ut mest av appen!\n\nOBS: För byggregler ger jag allmän vägledning — kontakta alltid din kommuns byggnadsnämnd för slutgiltigt besked.",
     "errorMessage": "Något gick fel. Försök igen.",
+    "bugPrompt": "Ojdå, något krånglar? 🐛\n\nBerätta vad som hände — till exempel:\n• Vad klickade du på?\n• Vad förväntade du dig?\n• Vad hände istället?\n\nJu mer detaljer, desto snabbare kan vi fixa det! Jag fångar automatiskt vilken sida du är på.",
+    "suggestionPrompt": "Kul att du vill hjälpa oss bli bättre! 💡\n\nBerätta fritt — saknar du en funktion? Vill du att något fungerar annorlunda? Något som känns krångligt?\n\nAlla idéer är välkomna, stora som små. Vi läser varenda en.",
+    "otherPrompt": "Absolut! ✉️ Skriv vad du har på hjärtat — feedback, frågor eller bara en tanke. Jag ser till att teamet ser det.",
+    "bugSentConfirm": "Tack! 🙏 Din buggrapport har skickats rakt till utvecklingsteamet. Vi tar dessa på allvar och tittar på det.\n\nSåg du något mer?",
+    "suggestionSentConfirm": "Tack för bra input! 💡 Ditt förslag har skickats vidare till teamet. Vi älskar att höra hur vi kan göra Renomate bättre.\n\nHar du fler idéer?",
+    "otherSentConfirm": "Meddelande mottaget! ✉️ Teamet kommer läsa det. Tack för att du tog dig tid att skriva.\n\nNågot annat du funderar på?",
+    "feedbackError": "Hmm, något gick fel när rapporten skulle skickas. Du kan också maila oss direkt på hello@letsrenomate.com — vi läser alla meddelanden!",
+    "feedbackCancelled": "Inga problem, rapporten avbröts. Jag finns kvar om du behöver hjälp med något annat!",
+    "feedbackTypePicker": "Vad vill du dela med dig av? Välj nedan:",
+    "addMore": "Lägg till detaljer",
+    "addMorePrompt": "Visst! Skriv på — jag lägger till det till din föregående rapport.",
+    "backToChat": "Tillbaka till chatten",
+    "backToChatMsg": "Tillbaka till det vanliga! Fråga mig vad som helst om renovering eller appen. 😊",
+    "goBack": "Tillbaka",
+    "cancelFeedback": "Avbryt",
+    "bugModeLabel": "Buggrapport — skickas direkt till teamet",
+    "suggestionModeLabel": "Förslag — skickas direkt till teamet",
+    "otherModeLabel": "Meddelande — skickas direkt till teamet",
+    "bugPlaceholder": "Vad hände? Vad förväntade du dig?",
+    "suggestionPlaceholder": "Din idé eller förbättring...",
+    "otherPlaceholder": "Skriv ditt meddelande...",
     "send": "Skicka",
     "quick": {
       "getStarted": "Kom igång",
@@ -2758,7 +2781,10 @@
       "spacePlanner": "Planlösningsguide",
       "budgetTips": "Budget & kostnader",
       "projectManagement": "Projekthantering",
-      "teamBudget": "Team & budget"
+      "teamBudget": "Team & budget",
+      "reportBug": "Rapportera bugg",
+      "suggestion": "Förslag",
+      "otherFeedback": "Annan feedback"
     },
     "quickMessage": {
       "getStarted": "Jag är ny — vad är bästa sättet att sätta upp mitt första renoveringsprojekt?",
@@ -4028,6 +4054,10 @@
       "homeowner": "Demo - Hemägare",
       "changeRole": "Byt roll",
       "signUp": "Skapa konto"
+    },
+    "roles": {
+      "builder": "Byggare",
+      "homeowner": "Hemägare"
     },
     "phases": {
       "planning": "Planering",

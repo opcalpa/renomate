@@ -38,22 +38,31 @@ serve(async (req) => {
       throw new Error("Missing RESEND_API_KEY");
     }
 
-    const { message, email } = await req.json();
+    const { message, email, type, pageUrl, userAgent, userId } = await req.json();
 
     if (!message || typeof message !== "string" || message.trim().length === 0) {
       throw new Error("Message is required");
     }
 
     const replyTo = email && typeof email === "string" && email.includes("@") ? email : undefined;
+    const feedbackType = type === "bug" ? "🐛 Bug Report" : type === "suggestion" ? "💡 Suggestion" : "💬 Feedback";
+
+    const contextRows = [
+      replyTo ? `<p><strong>From:</strong> ${replyTo}</p>` : "<p><em>Anonymous (no email provided)</em></p>",
+      userId ? `<p><strong>User ID:</strong> <code>${userId}</code></p>` : "",
+      pageUrl ? `<p><strong>Page:</strong> <a href="${pageUrl}">${pageUrl}</a></p>` : "",
+      userAgent ? `<p><strong>Browser:</strong> ${userAgent}</p>` : "",
+    ].filter(Boolean).join("\n");
 
     const emailHtml = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>New Feedback / Bug Report</h2>
-        ${replyTo ? `<p><strong>From:</strong> ${replyTo}</p>` : "<p><em>Anonymous (no email provided)</em></p>"}
+        <h2>${feedbackType}</h2>
+        ${contextRows}
         <hr style="border: none; border-top: 1px solid #eee; margin: 16px 0;" />
         <div style="white-space: pre-wrap; background: #f9f9f9; padding: 16px; border-radius: 8px;">
 ${message.trim()}
         </div>
+        <p style="color: #999; font-size: 12px; margin-top: 16px;">Sent from Renomate chatbot at ${new Date().toISOString()}</p>
       </div>
     `;
 
@@ -66,7 +75,7 @@ ${message.trim()}
       body: JSON.stringify({
         from: "Renomate Feedback <hello@letsrenomate.com>",
         to: ["hello@letsrenomate.com"],
-        subject: "Feedback / Bug Report — Renomate",
+        subject: `${feedbackType} — Renomate`,
         html: emailHtml,
         ...(replyTo ? { reply_to: replyTo } : {}),
       }),

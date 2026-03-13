@@ -226,7 +226,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterFinishDate, setFilterFinishDate] = useState("");
   const [filterAttachment, setFilterAttachment] = useState<"all" | "has" | "missing">("all");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set());
 
   // Collapsible columns
   const budgetPrefs = useRef(loadBudgetPrefs(projectId));
@@ -905,11 +905,11 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
 
   // --- Filtering & Sorting ---
 
-  const hasAdvancedFilter = filterRoom !== "all" || filterAssignee !== "all" || filterCostCenter !== "all" || filterStartDate !== "" || filterFinishDate !== "" || filterAttachment !== "all" || filterStatus !== "all";
+  const hasAdvancedFilter = filterRoom !== "all" || filterAssignee !== "all" || filterCostCenter !== "all" || filterStartDate !== "" || filterFinishDate !== "" || filterAttachment !== "all";
 
   const filtered = rows.filter((r) => {
     if (filterType !== "all" && r.type !== filterType) return false;
-    if (filterStatus !== "all" && r.status !== filterStatus) return false;
+    if (filterStatuses.size > 0 && (!r.status || !filterStatuses.has(r.status))) return false;
     if (searchQuery && !r.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (filterRoom !== "all" && r.roomId !== filterRoom) return false;
     if (filterAssignee !== "all" && r.assigneeId !== filterAssignee) return false;
@@ -1446,8 +1446,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
 
       {/* Filters */}
       <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-end md:gap-4 mb-4">
-        <div className="flex-1 min-w-[200px] max-w-sm">
-          <Label htmlFor="budget-search" className="text-sm mb-1.5 block">{t('common.search')}</Label>
+        <div className="min-w-[140px] max-w-[200px]">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -1455,14 +1454,13 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
               placeholder={t('budget.filterByName')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="pl-9 h-8"
             />
           </div>
         </div>
-        <div className="w-full md:w-[150px]">
-          <Label className="text-sm mb-1.5 block">{t('budget.type')}</Label>
+        <div className="w-full md:w-[130px]">
           <Select value={filterType} onValueChange={(v) => setFilterType(v as "all" | "task" | "material")}>
-            <SelectTrigger>
+            <SelectTrigger className="h-8">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1473,15 +1471,72 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
           </Select>
         </div>
 
+        {/* Status filter - multiselect */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="h-8 gap-1.5 text-sm font-normal">
+              {filterStatuses.size === 0
+                ? t('budget.status', 'Status')
+                : filterStatuses.size === 1
+                  ? t(`statuses.${budgetStatusKey([...filterStatuses][0])}`, t(`materialStatuses.${[...filterStatuses][0]}`, [...filterStatuses][0]))
+                  : `${filterStatuses.size} ${t('budget.statusesSelected', 'valda')}`}
+              <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[200px] p-2" align="start">
+            {filterStatuses.size > 0 && (
+              <Button variant="ghost" size="sm" className="w-full justify-start text-xs mb-1" onClick={() => setFilterStatuses(new Set())}>
+                {t('budget.clearFilter', 'Rensa filter')}
+              </Button>
+            )}
+            {distinctStatuses.task.length > 0 && (
+              <>
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">{t('budget.task')}</div>
+                {distinctStatuses.task.map((s) => (
+                  <label key={`task-${s}`} className="flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-accent cursor-pointer">
+                    <Checkbox
+                      checked={filterStatuses.has(s)}
+                      onCheckedChange={(checked) => {
+                        const next = new Set(filterStatuses);
+                        checked ? next.add(s) : next.delete(s);
+                        setFilterStatuses(next);
+                      }}
+                    />
+                    <span className="text-sm">{t(`statuses.${budgetStatusKey(s)}`, s)}</span>
+                  </label>
+                ))}
+              </>
+            )}
+            {distinctStatuses.material.length > 0 && (
+              <>
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">{t('budget.material')}</div>
+                {distinctStatuses.material.map((s) => (
+                  <label key={`mat-${s}`} className="flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-accent cursor-pointer">
+                    <Checkbox
+                      checked={filterStatuses.has(s)}
+                      onCheckedChange={(checked) => {
+                        const next = new Set(filterStatuses);
+                        checked ? next.add(s) : next.delete(s);
+                        setFilterStatuses(next);
+                      }}
+                    />
+                    <span className="text-sm">{t(`materialStatuses.${s}`, s)}</span>
+                  </label>
+                ))}
+              </>
+            )}
+          </PopoverContent>
+        </Popover>
+
         {/* Filter+ button */}
         <Button
           variant={hasAdvancedFilter ? "default" : "outline"}
-          size="sm"
+          size="icon"
+          className="h-8 w-8"
           onClick={() => setShowAdvancedFilters((prev) => !prev)}
-          className="gap-1"
+          title={t('budget.advancedFilter')}
         >
           <SlidersHorizontal className="h-4 w-4" />
-          {t('budget.advancedFilter')}
         </Button>
 
         {/* Columns toggle */}
@@ -1548,39 +1603,6 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
                   {distinctRooms.map((r) => (
                     <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          {(distinctStatuses.task.length > 0 || distinctStatuses.material.length > 0) && (
-            <div className="w-[180px]">
-              <Label className="text-sm mb-1.5 block">{t('budget.status', 'Status')}</Label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('budget.allStatuses', 'Alla statusar')}</SelectItem>
-                  {distinctStatuses.task.length > 0 && (
-                    <SelectGroup>
-                      <SelectLabel>{t('budget.task')}</SelectLabel>
-                      {distinctStatuses.task.map((s) => (
-                        <SelectItem key={`task-${s}`} value={s}>
-                          {t(`statuses.${budgetStatusKey(s)}`, s)}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  )}
-                  {distinctStatuses.material.length > 0 && (
-                    <SelectGroup>
-                      <SelectLabel>{t('budget.material')}</SelectLabel>
-                      {distinctStatuses.material.map((s) => (
-                        <SelectItem key={`mat-${s}`} value={s}>
-                          {t(`materialStatuses.${s}`, s)}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  )}
                 </SelectContent>
               </Select>
             </div>

@@ -1108,10 +1108,7 @@ const ProjectDetail = () => {
             role={demoPrefs.preferences.role}
             phase={demoPrefs.preferences.phase}
             onPhaseChange={demoPrefs.setPhase}
-            onChangeRole={() => {
-              demoPrefs.resetPreferences();
-              setShowDemoRoleModal(true);
-            }}
+            onRoleChange={demoPrefs.setRole}
           />
         )}
         {/* Demo context info bar for homeowners — explains which view they're seeing */}
@@ -1138,10 +1135,7 @@ const ProjectDetail = () => {
             role={demoPrefs.preferences.role}
             phase={demoPrefs.preferences.phase}
             onPhaseChange={demoPrefs.setPhase}
-            onChangeRole={() => {
-              demoPrefs.resetPreferences();
-              setShowDemoRoleModal(true);
-            }}
+            onRoleChange={demoPrefs.setRole}
           />
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { HelpCircle, Send, X, Lightbulb, BookOpen, Wrench, FileText } from "lucide-react";
+import { HelpCircle, Send, X, Lightbulb, BookOpen, Wrench, FileText, Bug, MessageSquarePlus, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,14 +7,26 @@ import { supabase } from "@/integrations/supabase/client";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  /** Optional inline quick-action buttons rendered below this message */
+  actions?: InlineAction[];
+}
+
+interface InlineAction {
+  labelKey: string;
+  fallback: string;
+  action: string;
+  icon?: React.ReactNode;
 }
 
 interface QuickPrompt {
   icon: React.ReactNode;
   labelKey: string;
   fallback: string;
-  message: string;
+  message?: string;
+  action?: string;
 }
+
+type FeedbackMode = null | "bug" | "suggestion" | "other";
 
 export function HelpBot() {
   const { t, i18n } = useTranslation();
@@ -23,6 +35,7 @@ export function HelpBot() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [userType, setUserType] = useState<string | null>(null);
+  const [feedbackMode, setFeedbackMode] = useState<FeedbackMode>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -44,10 +57,11 @@ export function HelpBot() {
     fetchUserType();
   }, []);
 
-  // Reset conversation when language changes so greeting appears in new language
+  // Reset conversation when language changes
   const currentLang = i18n.language;
   useEffect(() => {
     setMessages([]);
+    setFeedbackMode(null);
   }, [currentLang]);
 
   useEffect(() => {
@@ -55,9 +69,7 @@ export function HelpBot() {
       setMessages([
         {
           role: "assistant",
-          content: t("helpBot.greeting", "Hi! I'm Renomate — your renovation expert and platform guide. Ask me about building regulations, renovation tips, or how to get the most out of the app!") +
-            "\n\n" +
-            t("helpBot.disclaimer", "NOTE: I provide general guidance — always contact your municipality's building committee for final decisions."),
+          content: t("helpBot.greeting"),
         },
       ]);
     }
@@ -81,12 +93,68 @@ export function HelpBot() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
+  const submitFeedback = useCallback(async (text: string, type: "bug" | "suggestion" | "other") => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error } = await supabase.functions.invoke("send-feedback", {
+        body: {
+          message: text,
+          email: user?.email,
+          type,
+          pageUrl: window.location.href,
+          userAgent: navigator.userAgent,
+          userId: user?.id,
+        },
+      });
+
+      if (error) throw error;
+
+      const confirmMsg = type === "bug"
+        ? t("helpBot.bugSentConfirm")
+        : type === "suggestion"
+          ? t("helpBot.suggestionSentConfirm")
+          : t("helpBot.otherSentConfirm");
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: confirmMsg,
+          actions: [
+            { labelKey: "helpBot.addMore", fallback: "Add more details", action: "add_more" },
+            { labelKey: "helpBot.backToChat", fallback: "Back to chat", action: "back_to_chat" },
+          ],
+        },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: t("helpBot.feedbackError"),
+        },
+      ]);
+    } finally {
+      setFeedbackMode(null);
+      setLoading(false);
+    }
+  }, [t]);
+
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || loading) return;
 
     const userMsg: Message = { role: "user", content: text.trim() };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
+
+    // If in feedback mode, submit as feedback
+    if (feedbackMode) {
+      await submitFeedback(text.trim(), feedbackMode);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -97,7 +165,6 @@ export function HelpBot() {
         allConversation.push({ role: userMsg.role, content: userMsg.content });
       }
 
-      // Trim to last 8 messages to reduce token usage
       const conversationMessages = allConversation.slice(-8);
 
       const { data, error } = await supabase.functions.invoke("help-bot", {
@@ -108,82 +175,153 @@ export function HelpBot() {
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: data.reply || t("helpBot.errorMessage", "Something went wrong. Please try again.") },
+        { role: "assistant", content: data.reply || t("helpBot.errorMessage") },
       ]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: t("helpBot.errorMessage", "Something went wrong. Please try again.") },
+        { role: "assistant", content: t("helpBot.errorMessage") },
       ]);
     } finally {
       setLoading(false);
     }
-  }, [loading, messages, t, i18n.language, userType]);
+  }, [loading, messages, t, i18n.language, userType, feedbackMode, submitFeedback]);
 
   const handleSend = useCallback(() => {
     sendMessage(input);
   }, [input, sendMessage]);
 
+  const startFeedbackMode = useCallback((type: FeedbackMode) => {
+    if (!type) return;
+    setFeedbackMode(type);
+
+    const prompts: Record<string, string> = {
+      bug: t("helpBot.bugPrompt"),
+      suggestion: t("helpBot.suggestionPrompt"),
+      other: t("helpBot.otherPrompt"),
+    };
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: prompts[type],
+        actions: [
+          { labelKey: "helpBot.goBack", fallback: "Back", action: "reset_chat", icon: <ArrowLeft className="h-3 w-3" /> },
+        ],
+      },
+    ]);
+    inputRef.current?.focus();
+  }, [t]);
+
+  const handleInlineAction = useCallback((action: string) => {
+    if (action === "bug") {
+      startFeedbackMode("bug");
+    } else if (action === "suggestion") {
+      startFeedbackMode("suggestion");
+    } else if (action === "other") {
+      startFeedbackMode("other");
+    } else if (action === "add_more") {
+      // Re-enter the same feedback mode type for follow-up
+      setFeedbackMode("other");
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: t("helpBot.addMorePrompt") },
+      ]);
+      inputRef.current?.focus();
+    } else if (action === "back_to_chat") {
+      setFeedbackMode(null);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: t("helpBot.backToChatMsg") },
+      ]);
+    } else if (action === "reset_chat") {
+      // Reset to initial state — show greeting + quick prompts again
+      setFeedbackMode(null);
+      setMessages([
+        {
+          role: "assistant",
+          content: t("helpBot.greeting"),
+        },
+      ]);
+    } else if (action === "start_feedback") {
+      // Show the feedback type picker
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: t("helpBot.feedbackTypePicker"),
+          actions: [
+            { labelKey: "helpBot.quick.reportBug", fallback: "Report a bug", action: "bug" },
+            { labelKey: "helpBot.quick.suggestion", fallback: "Suggestion", action: "suggestion" },
+            { labelKey: "helpBot.quick.otherFeedback", fallback: "Other", action: "other" },
+          ],
+        },
+      ]);
+    }
+  }, [startFeedbackMode, t]);
+
   const handleQuickPrompt = useCallback((prompt: QuickPrompt) => {
-    sendMessage(prompt.message);
-  }, [sendMessage]);
+    if (prompt.action) {
+      handleInlineAction(prompt.action);
+    } else if (prompt.message) {
+      sendMessage(prompt.message);
+    }
+  }, [sendMessage, handleInlineAction]);
 
   // Quick prompts shown before first user message
-  const quickPrompts: QuickPrompt[] = userType === "contractor"
-    ? [
-        {
-          icon: <Wrench className="h-3.5 w-3.5 shrink-0" />,
-          labelKey: "helpBot.quick.projectManagement",
-          fallback: "Project management tips",
-          message: t("helpBot.quickMessage.projectManagement", "How can I manage my renovation projects more efficiently in the app?"),
-        },
-        {
-          icon: <FileText className="h-3.5 w-3.5 shrink-0" />,
-          labelKey: "helpBot.quick.permits",
-          fallback: "Building permits & regulations",
-          message: t("helpBot.quickMessage.permits", "What building permits and regulations should I be aware of for renovation work?"),
-        },
-        {
-          icon: <Lightbulb className="h-3.5 w-3.5 shrink-0" />,
-          labelKey: "helpBot.quick.spacePlanner",
-          fallback: "Space Planner guide",
-          message: t("helpBot.quickMessage.spacePlanner", "How do I use the Space Planner to create floor plans and link rooms to tasks?"),
-        },
-        {
-          icon: <BookOpen className="h-3.5 w-3.5 shrink-0" />,
-          labelKey: "helpBot.quick.teamBudget",
-          fallback: "Team & budget tracking",
-          message: t("helpBot.quickMessage.teamBudget", "How do I invite team members and track costs across projects?"),
-        },
-      ]
-    : [
-        {
-          icon: <Lightbulb className="h-3.5 w-3.5 shrink-0" />,
-          labelKey: "helpBot.quick.getStarted",
-          fallback: "Getting started",
-          message: t("helpBot.quickMessage.getStarted", "I'm new — what's the best way to set up my first renovation project?"),
-        },
-        {
-          icon: <FileText className="h-3.5 w-3.5 shrink-0" />,
-          labelKey: "helpBot.quick.permits",
-          fallback: "Building permits & regulations",
-          message: t("helpBot.quickMessage.permits", "What building permits and regulations should I be aware of for renovation work?"),
-        },
-        {
-          icon: <Wrench className="h-3.5 w-3.5 shrink-0" />,
-          labelKey: "helpBot.quick.spacePlanner",
-          fallback: "Space Planner guide",
-          message: t("helpBot.quickMessage.spacePlanner", "How do I use the Space Planner to create floor plans and link rooms to tasks?"),
-        },
-        {
-          icon: <BookOpen className="h-3.5 w-3.5 shrink-0" />,
-          labelKey: "helpBot.quick.budgetTips",
-          fallback: "Budget & cost tracking",
-          message: t("helpBot.quickMessage.budgetTips", "How do I track renovation costs and manage my budget in the app?"),
-        },
-      ];
+  const quickPrompts: QuickPrompt[] = [
+    {
+      icon: <Lightbulb className="h-3.5 w-3.5 shrink-0" />,
+      labelKey: "helpBot.quick.getStarted",
+      fallback: "Getting started",
+      message: t("helpBot.quickMessage.getStarted"),
+    },
+    {
+      icon: <FileText className="h-3.5 w-3.5 shrink-0" />,
+      labelKey: "helpBot.quick.permits",
+      fallback: "Building permits & regulations",
+      message: t("helpBot.quickMessage.permits"),
+    },
+    {
+      icon: <Wrench className="h-3.5 w-3.5 shrink-0" />,
+      labelKey: "helpBot.quick.spacePlanner",
+      fallback: "Space Planner guide",
+      message: t("helpBot.quickMessage.spacePlanner"),
+    },
+    {
+      icon: <BookOpen className="h-3.5 w-3.5 shrink-0" />,
+      labelKey: "helpBot.quick.budgetTips",
+      fallback: "Budget & cost tracking",
+      message: t("helpBot.quickMessage.budgetTips"),
+    },
+  ];
 
-  const showQuickPrompts = messages.length <= 1 && !loading;
+  // Feedback entry point
+  const feedbackPrompts: QuickPrompt[] = [
+    {
+      icon: <Bug className="h-3.5 w-3.5 shrink-0" />,
+      labelKey: "helpBot.quick.reportBug",
+      fallback: "Report a bug",
+      action: "bug",
+    },
+    {
+      icon: <MessageSquarePlus className="h-3.5 w-3.5 shrink-0" />,
+      labelKey: "helpBot.quick.suggestion",
+      fallback: "Suggestion",
+      action: "suggestion",
+    },
+  ];
+
+  const showQuickPrompts = messages.length <= 1 && !loading && !feedbackMode;
+
+  const placeholderText = feedbackMode === "bug"
+    ? t("helpBot.bugPlaceholder")
+    : feedbackMode === "suggestion"
+      ? t("helpBot.suggestionPlaceholder")
+      : feedbackMode === "other"
+        ? t("helpBot.otherPlaceholder", "Write your message...")
+        : t("helpBot.placeholder");
 
   return (
     <>
@@ -201,39 +339,89 @@ export function HelpBot() {
       {open && (
         <div
           ref={panelRef}
-          className="fixed bottom-20 right-2 md:bottom-6 md:right-6 z-50 flex h-[500px] max-h-[calc(100vh-10rem)] md:max-h-none w-[400px] max-w-[calc(100vw-1rem)] md:max-w-[calc(100vw-2rem)] flex-col rounded-xl border bg-background shadow-2xl"
+          className="fixed inset-0 z-50 flex flex-col bg-background md:inset-auto md:bottom-6 md:right-6 md:h-[500px] md:w-[400px] md:max-w-[calc(100vw-2rem)] md:rounded-xl md:border md:shadow-2xl"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b px-4 py-3">
             <h3 className="font-semibold text-sm">
               {t("helpBot.title", "Renomate")}
             </h3>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {feedbackMode && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-muted-foreground"
+                  onClick={() => {
+                    setFeedbackMode(null);
+                    setMessages((prev) => [
+                      ...prev,
+                      { role: "assistant", content: t("helpBot.feedbackCancelled") },
+                    ]);
+                  }}
+                >
+                  {t("helpBot.cancelFeedback")}
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
+
+          {/* Feedback mode indicator */}
+          {feedbackMode && (
+            <div className={`px-4 py-1.5 text-xs font-medium flex items-center gap-1.5 ${
+              feedbackMode === "bug" ? "bg-red-50 text-red-700" :
+              feedbackMode === "suggestion" ? "bg-blue-50 text-blue-700" :
+              "bg-amber-50 text-amber-700"
+            }`}>
+              {feedbackMode === "bug" && "🐛"}
+              {feedbackMode === "suggestion" && "💡"}
+              {feedbackMode === "other" && "✉️"}
+              {feedbackMode === "bug"
+                ? t("helpBot.bugModeLabel")
+                : feedbackMode === "suggestion"
+                  ? t("helpBot.suggestionModeLabel")
+                  : t("helpBot.otherModeLabel", "Your message will be sent to the team")}
+            </div>
+          )}
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                  }`}
-                >
-                  {msg.content}
+              <div key={i}>
+                <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={`max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                      msg.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
                 </div>
+                {/* Inline action buttons below a message */}
+                {msg.actions && msg.actions.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2 ml-1">
+                    {msg.actions.map((action, j) => (
+                      <button
+                        key={j}
+                        onClick={() => handleInlineAction(action.action)}
+                        className="inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                      >
+                        {action.icon}
+                        {t(action.labelKey, action.fallback)}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
 
@@ -250,12 +438,23 @@ export function HelpBot() {
                     {t(prompt.labelKey, prompt.fallback)}
                   </button>
                 ))}
+                <div className="w-full" />
+                {feedbackPrompts.map((prompt, i) => (
+                  <button
+                    key={`fb-${i}`}
+                    onClick={() => handleQuickPrompt(prompt)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-dashed bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                  >
+                    {prompt.icon}
+                    {t(prompt.labelKey, prompt.fallback)}
+                  </button>
+                ))}
               </div>
             )}
 
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-muted rounded-lg px-3 py-2 text-sm text-muted-foreground">
+                <div className="bg-muted rounded-lg px-3 py-2 text-sm text-muted-foreground animate-pulse">
                   ...
                 </div>
               </div>
@@ -276,7 +475,7 @@ export function HelpBot() {
                   handleSend();
                 }
               }}
-              placeholder={t("helpBot.placeholder", "Ask about renovations or how to use the app...")}
+              placeholder={placeholderText}
               className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
               disabled={loading}
             />

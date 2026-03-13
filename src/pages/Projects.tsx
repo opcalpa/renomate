@@ -1651,7 +1651,7 @@ const Projects = () => {
 
       {/* Guided Setup Wizard */}
       <Dialog open={showGuidedSetup} onOpenChange={setShowGuidedSetup}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="md:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("guidedSetup.title")}</DialogTitle>
             <DialogDescription>
