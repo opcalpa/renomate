@@ -2522,7 +2522,8 @@
     "mentionPlaceholder": "Type to search...",
     "noMentionResults": "No team members found",
     "noActivity": "No activity yet",
-    "viewFullFeed": "Go to full feed"
+    "viewFullFeed": "Go to full feed",
+    "showMore": "Show all ({{count}})"
   },
   "activity": {
     "created": "created",

@@ -1,15 +1,37 @@
-import { useState, useEffect, useCallback } from "react";
+/**
+ * ProjectChatSection — Unified Chat + Feed component.
+ *
+ * Merges the old separate "Chatt" (CommentsSection) and "Feed" (OverviewFeedSection)
+ * into a single section. Features:
+ * - DM avatar bar: click a team member → private DM mode
+ * - Unified feed: project comments, entity comments, activities, photos
+ * - Filter tabs: All, Messages, Activity, Photos
+ * - Reply on entity comments (posts reply on the original entity)
+ * - Navigate to entity by clicking the context badge
+ * - General comment input at bottom (project-level)
+ */
+
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Lock, X, Send, Loader2 } from "lucide-react";
-import { CommentsSection } from "@/components/comments/CommentsSection";
-import { DirectMessageSheet } from "../DirectMessageSheet";
+import { Activity, Lock, X, Send, Loader2, ImageIcon, Camera, MessageSquare } from "lucide-react";
+import { FeedCommentCard } from "../feed/FeedCommentCard";
+import { ActivityCard } from "../feed/ActivityCard";
+import { FeedReplyInput } from "../feed/FeedReplyInput";
+import { MentionTextarea } from "../feed/MentionTextarea";
+import { fetchAllProjectComments, fetchProjectActivities, mergeIntoUnifiedFeed, parseMentions } from "../feed/utils";
 import { useDirectMessages, useUnreadDmCounts } from "@/hooks/useDirectMessages";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { getDateLocale } from "@/lib/dateFnsLocale";
+import type { FeedComment, UnifiedFeedItem, FeedFilterMode, PhotoFeedItem, ActivityLogItem } from "../feed/types";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface TeamMemberInfo {
   id: string;
@@ -19,15 +41,160 @@ interface TeamMemberInfo {
 
 interface ProjectChatSectionProps {
   projectId: string;
+  userType?: string | null;
+  onNavigateToEntity?: (comment: FeedComment) => void;
+  onNavigateToFiles?: () => void;
 }
 
-export function ProjectChatSection({ projectId }: ProjectChatSectionProps) {
+const ITEMS_LIMIT = 15;
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"];
+
+// Activities safe for homeowner/client view
+const CLIENT_SAFE_ACTIONS = new Set(["created", "status_changed", "deleted"]);
+const CLIENT_SAFE_ENTITY_TYPES = new Set(["task", "room"]);
+
+// ---------------------------------------------------------------------------
+// Photo fetcher (extracted from OverviewFeedSection)
+// ---------------------------------------------------------------------------
+
+async function fetchProjectPhotos(projectId: string): Promise<PhotoFeedItem[]> {
+  const [roomsRes, tasksRes, materialsRes] = await Promise.all([
+    supabase.from("rooms").select("id, name").eq("project_id", projectId),
+    supabase.from("tasks").select("id, title").eq("project_id", projectId),
+    supabase.from("materials").select("id, name").eq("project_id", projectId),
+  ]);
+
+  const roomMap = new Map<string, string>();
+  (roomsRes.data || []).forEach((r) => roomMap.set(r.id, r.name));
+  const taskMap = new Map<string, string>();
+  (tasksRes.data || []).forEach((t) => taskMap.set(t.id, t.title));
+  const materialMap = new Map<string, string>();
+  (materialsRes.data || []).forEach((m) => materialMap.set(m.id, m.name));
+
+  const roomIds = Array.from(roomMap.keys());
+  const taskIds = Array.from(taskMap.keys());
+  const materialIds = Array.from(materialMap.keys());
+
+  const photos: PhotoFeedItem[] = [];
+
+  type PhotoRow = { id: string; url: string; caption: string | null; created_at: string; linked_to_id: string };
+  const photoQueries: Promise<{ data: PhotoRow[] | null }>[] = [
+    supabase.from("photos").select("id, url, caption, created_at, linked_to_id")
+      .eq("linked_to_type", "project").eq("linked_to_id", projectId)
+      .order("created_at", { ascending: false }).limit(10),
+  ];
+
+  if (roomIds.length > 0) {
+    photoQueries.push(
+      supabase.from("photos").select("id, url, caption, created_at, linked_to_id")
+        .eq("linked_to_type", "room").in("linked_to_id", roomIds)
+        .order("created_at", { ascending: false }).limit(10)
+    );
+  }
+  if (taskIds.length > 0) {
+    photoQueries.push(
+      supabase.from("photos").select("id, url, caption, created_at, linked_to_id")
+        .eq("linked_to_type", "task").in("linked_to_id", taskIds)
+        .order("created_at", { ascending: false }).limit(10)
+    );
+  }
+  if (materialIds.length > 0) {
+    photoQueries.push(
+      supabase.from("photos").select("id, url, caption, created_at, linked_to_id")
+        .eq("linked_to_type", "material").in("linked_to_id", materialIds)
+        .order("created_at", { ascending: false }).limit(10)
+    );
+  }
+
+  const photoResults = await Promise.all(photoQueries);
+
+  const sources: { data: PhotoRow[] | null; source: PhotoFeedItem["source"]; map?: Map<string, string> }[] = [
+    { data: photoResults[0]?.data, source: "project" },
+  ];
+  let idx = 1;
+  if (roomIds.length > 0) { sources.push({ data: photoResults[idx]?.data, source: "room", map: roomMap }); idx++; }
+  if (taskIds.length > 0) { sources.push({ data: photoResults[idx]?.data, source: "task", map: taskMap }); idx++; }
+  if (materialIds.length > 0) { sources.push({ data: photoResults[idx]?.data, source: "material", map: materialMap }); }
+
+  for (const s of sources) {
+    for (const p of s.data || []) {
+      photos.push({ id: p.id, url: p.url, caption: p.caption, createdAt: p.created_at, source: s.source, sourceName: s.map?.get(p.linked_to_id) });
+    }
+  }
+
+  // Comment images
+  const { data: commentsData } = await supabase
+    .from("comments")
+    .select("id, images, created_at, task_id, material_id")
+    .eq("project_id", projectId)
+    .not("images", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (commentsData) {
+    for (const comment of commentsData) {
+      if (!comment.images || !Array.isArray(comment.images)) continue;
+      for (const img of comment.images as { id?: string; url: string; filename?: string }[]) {
+        if (!img.url) continue;
+        const parentName = comment.task_id ? taskMap.get(comment.task_id) : comment.material_id ? materialMap.get(comment.material_id) : undefined;
+        photos.push({
+          id: img.id || `comment-${comment.id}-${img.url}`,
+          url: img.url, caption: img.filename || null, createdAt: comment.created_at, source: "comment", sourceName: parentName,
+        });
+      }
+    }
+  }
+
+  // Storage images
+  const { data: storageFiles } = await supabase.storage
+    .from("project-files")
+    .list(`projects/${projectId}`, { limit: 50, sortBy: { column: "created_at", order: "desc" } });
+
+  if (storageFiles) {
+    for (const file of storageFiles) {
+      if (!file.name || file.id === null) continue;
+      const isImage = IMAGE_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext));
+      if (!isImage) continue;
+      const { data: { publicUrl } } = supabase.storage.from("project-files").getPublicUrl(`projects/${projectId}/${file.name}`);
+      photos.push({ id: `file-${file.id}`, url: publicUrl, caption: file.name, createdAt: file.created_at || new Date().toISOString(), source: "file", sourceName: file.name });
+    }
+  }
+
+  photos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return photos;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export function ProjectChatSection({ projectId, userType, onNavigateToEntity, onNavigateToFiles }: ProjectChatSectionProps) {
+  const isClient = userType === "homeowner";
   const { t, i18n } = useTranslation();
+  const { toast } = useToast();
+
+  // Feed state
+  const [comments, setComments] = useState<FeedComment[]>([]);
+  const [activities, setActivities] = useState<ActivityLogItem[]>([]);
+  const [photos, setPhotos] = useState<PhotoFeedItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterMode, setFilterMode] = useState<FeedFilterMode>("all");
+  const [replyingTo, setReplyingTo] = useState<FeedComment | null>(null);
+  const [showAll, setShowAll] = useState(false);
+
+  // Chat input state
+  const [chatInput, setChatInput] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // DM state
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMemberInfo[]>([]);
   const [dmRecipient, setDmRecipient] = useState<TeamMemberInfo | null>(null);
   const [dmInput, setDmInput] = useState("");
-  const [sending, setSending] = useState(false);
+  const [dmSending, setDmSending] = useState(false);
 
   const unreadCounts = useUnreadDmCounts(projectId, currentProfileId || "");
 
@@ -44,37 +211,54 @@ export function ProjectChatSection({ projectId }: ProjectChatSectionProps) {
 
   // Mark DMs as read when viewing
   useEffect(() => {
-    if (dmRecipient && dmMessages.length > 0) {
-      markDmRead();
-    }
+    if (dmRecipient && dmMessages.length > 0) markDmRead();
   }, [dmRecipient, dmMessages.length, markDmRead]);
+
+  // Load feed data
+  const loadData = useCallback(async () => {
+    try {
+      const [commentsData, activitiesData, photosData] = await Promise.all([
+        fetchAllProjectComments(projectId),
+        fetchProjectActivities(projectId),
+        fetchProjectPhotos(projectId),
+      ]);
+      setComments(commentsData);
+      setActivities(activitiesData);
+      setPhotos(photosData);
+    } catch (error) {
+      console.error("Failed to load feed data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // Realtime subscription for comments
+  useEffect(() => {
+    const channel = supabase
+      .channel(`project-chat-${projectId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "comments", filter: `project_id=eq.${projectId}` }, () => loadData())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_log", filter: `project_id=eq.${projectId}` }, () => loadData())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [projectId, loadData]);
 
   // Fetch current user + team members
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
+      const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
       if (!profile) return;
       setCurrentProfileId(profile.id);
 
-      const { data: project } = await supabase
-        .from("projects")
-        .select("owner_id")
-        .eq("id", projectId)
-        .single();
+      const { data: project } = await supabase.from("projects").select("owner_id").eq("id", projectId).single();
       if (!project) return;
 
       const [ownerRes, sharesRes] = await Promise.all([
         supabase.from("profiles").select("id, name, avatar_url").eq("id", project.owner_id).single(),
-        supabase
-          .from("project_shares")
-          .select("shared_with_user_id, profiles:shared_with_user_id(id, name, avatar_url)")
-          .eq("project_id", projectId),
+        supabase.from("project_shares").select("shared_with_user_id, profiles:shared_with_user_id(id, name, avatar_url)").eq("project_id", projectId),
       ]);
 
       const members: TeamMemberInfo[] = [];
@@ -87,10 +271,11 @@ export function ProjectChatSection({ projectId }: ProjectChatSectionProps) {
           members.push({ id: p.id, name: p.name || share.shared_with_user_id, avatar_url: p.avatar_url });
         }
       }
-      // Exclude self
       setTeamMembers(members.filter((m) => m.id !== profile.id));
     })();
   }, [projectId]);
+
+  // --- Handlers ---
 
   const handleToggleDm = useCallback((member: TeamMemberInfo) => {
     setDmRecipient((prev) => (prev?.id === member.id ? null : member));
@@ -99,20 +284,176 @@ export function ProjectChatSection({ projectId }: ProjectChatSectionProps) {
 
   const handleSendDm = useCallback(async () => {
     if (!dmInput.trim() || !dmRecipient) return;
-    setSending(true);
-    try {
-      await sendDm(dmInput.trim());
-      setDmInput("");
-    } finally {
-      setSending(false);
-    }
+    setDmSending(true);
+    try { await sendDm(dmInput.trim()); setDmInput(""); } finally { setDmSending(false); }
   }, [dmInput, dmRecipient, sendDm]);
+
+  const handleReply = (comment: FeedComment) => setReplyingTo(comment);
+  const handleReplyPosted = () => { setReplyingTo(null); loadData(); };
+  const handleCancelReply = () => setReplyingTo(null);
+
+  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].type.startsWith("image/")) {
+        newFiles.push(files[i]);
+        newPreviews.push(URL.createObjectURL(files[i]));
+      }
+    }
+    setSelectedImages((prev) => [...prev, ...newFiles]);
+    setImagePreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  const removeImage = (index: number) => {
+    URL.revokeObjectURL(imagePreviews[index]);
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handlePostComment = useCallback(async () => {
+    if (!chatInput.trim() || !currentProfileId) return;
+    setPosting(true);
+    try {
+      // Upload images if any
+      let uploadedImages: { id: string; url: string; filename: string }[] = [];
+      if (selectedImages.length > 0) {
+        for (const image of selectedImages) {
+          const fileName = `${Date.now()}-${image.name}`;
+          const filePath = `projects/${projectId}/comment-images/${fileName}`;
+          const { error } = await supabase.storage.from("project-files").upload(filePath, image);
+          if (error) { console.error("Upload error:", error); continue; }
+          const { data: { publicUrl } } = supabase.storage.from("project-files").getPublicUrl(filePath);
+          uploadedImages.push({ id: Date.now().toString(), url: publicUrl, filename: image.name });
+        }
+      }
+
+      const trimmedContent = chatInput.trim();
+      const { data: commentData, error } = await supabase.from("comments").insert({
+        content: trimmedContent,
+        created_by_user_id: currentProfileId,
+        project_id: projectId,
+        images: uploadedImages.length > 0 ? uploadedImages : null,
+      }).select("id").single();
+      if (error) throw error;
+
+      const mentions = parseMentions(trimmedContent);
+      if (mentions.length > 0 && commentData) {
+        await supabase.from("comment_mentions").insert(
+          mentions.map((m) => ({ comment_id: commentData.id, mentioned_user_id: m.profileId }))
+        );
+      }
+
+      setChatInput("");
+      imagePreviews.forEach((p) => URL.revokeObjectURL(p));
+      setSelectedImages([]);
+      setImagePreviews([]);
+      loadData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t("comments.postError");
+      toast({ title: t("errors.generic"), description: message, variant: "destructive" });
+    } finally {
+      setPosting(false);
+    }
+  }, [chatInput, currentProfileId, projectId, selectedImages, imagePreviews, loadData, t, toast]);
+
+  // --- Build feed ---
+
+  const visibleComments = isClient
+    ? comments.filter((c) => !!c.project_id && !c.task_id && !c.material_id && !c.drawing_object_id)
+    : comments;
+  const visibleActivities = isClient
+    ? activities.filter((a) => CLIENT_SAFE_ACTIONS.has(a.action) && CLIENT_SAFE_ENTITY_TYPES.has(a.entity_type))
+    : activities;
+  const visiblePhotos = isClient
+    ? photos.filter((p) => p.source !== "material")
+    : photos;
+
+  const unifiedFeed = mergeIntoUnifiedFeed(visibleComments, visibleActivities);
+  const fullFeed: UnifiedFeedItem[] = [
+    ...unifiedFeed,
+    ...visiblePhotos.map((p) => ({ type: "photo" as const, created_at: p.createdAt, photo: p })),
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  let filteredFeed: UnifiedFeedItem[];
+  if (filterMode === "comments") filteredFeed = fullFeed.filter((i) => i.type === "comment");
+  else if (filterMode === "activity") filteredFeed = fullFeed.filter((i) => i.type === "activity");
+  else if (filterMode === "photos") filteredFeed = fullFeed.filter((i) => i.type === "photo");
+  else filteredFeed = fullFeed;
+
+  const displayedItems = showAll ? filteredFeed : filteredFeed.slice(0, ITEMS_LIMIT);
+  const hasMore = filteredFeed.length > ITEMS_LIMIT && !showAll;
 
   const locale = getDateLocale(i18n.language);
 
+  const getSourceLabel = (source: PhotoFeedItem["source"]) => {
+    switch (source) {
+      case "room": return t("overview.recentPhotos.sourceRoom", "Room");
+      case "task": return t("overview.recentPhotos.sourceTask", "Task");
+      case "material": return t("overview.recentPhotos.sourceMaterial", "Purchase");
+      case "comment": return t("overview.recentPhotos.sourceComment", "Comment");
+      case "file": return t("overview.recentPhotos.sourceFile", "File");
+      default: return null;
+    }
+  };
+
+  // --- Render helpers ---
+
+  const renderFeedItem = (item: UnifiedFeedItem) => {
+    if (item.type === "comment" && item.comment) {
+      const isReplyingToThis = replyingTo?.id === item.comment.id;
+      return (
+        <div key={`c-${item.comment.id}`} className="space-y-2">
+          <FeedCommentCard
+            comment={item.comment}
+            onNavigate={onNavigateToEntity}
+            onReply={handleReply}
+          />
+          {isReplyingToThis && (
+            <FeedReplyInput
+              projectId={projectId}
+              replyTarget={item.comment}
+              onPosted={handleReplyPosted}
+              onCancel={handleCancelReply}
+            />
+          )}
+        </div>
+      );
+    }
+    if (item.type === "activity" && item.activity) {
+      return <ActivityCard key={`a-${item.activity.id}`} activity={item.activity} />;
+    }
+    if (item.type === "photo" && item.photo) {
+      return (
+        <div key={item.photo.id} className="flex items-center gap-3 py-1.5">
+          <div className="h-10 w-10 shrink-0 rounded-md overflow-hidden bg-muted cursor-pointer" onClick={() => onNavigateToFiles?.()}>
+            <img src={item.photo.url} alt={item.photo.caption || "Photo"} className="w-full h-full object-cover" loading="lazy" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-muted-foreground">
+              <ImageIcon className="h-3 w-3 inline mr-1" />
+              {item.photo.sourceName
+                ? `${getSourceLabel(item.photo.source)}: ${item.photo.sourceName}`
+                : t("overview.recentPhotos.photoUploaded", "Photo uploaded")}
+              {" · "}
+              {formatDistanceToNow(new Date(item.photo.createdAt), { addSuffix: true, locale })}
+            </p>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const filterModes: FeedFilterMode[] = ["all", "comments", "activity", "photos"];
+
+  const showDmFeed = !!dmRecipient;
+
   return (
     <div className="space-y-3">
-      {/* Team member avatars */}
+      {/* Team member avatars for DM */}
       {teamMembers.length > 0 && (
         <div className="flex items-center gap-2 px-1">
           <span className="text-[10px] text-muted-foreground shrink-0 uppercase tracking-wide font-medium">
@@ -152,26 +493,19 @@ export function ProjectChatSection({ projectId }: ProjectChatSectionProps) {
         </div>
       )}
 
-      {/* DM mode: show DM conversation */}
-      {dmRecipient ? (
+      {/* DM mode */}
+      {showDmFeed && dmRecipient ? (
         <div className="rounded-lg border border-blue-200 dark:border-blue-800/40 bg-blue-50/50 dark:bg-blue-950/20">
-          {/* DM header */}
           <div className="flex items-center gap-2 px-3 py-2 border-b border-blue-200 dark:border-blue-800/40">
             <Lock className="h-3.5 w-3.5 text-blue-500 shrink-0" />
             <span className="text-xs font-medium text-blue-700 dark:text-blue-300 flex-1">
               {t("dm.privateTo", { name: dmRecipient.name })}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-5 w-5 p-0 text-blue-500 hover:text-blue-700"
-              onClick={() => setDmRecipient(null)}
-            >
+            <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-blue-500 hover:text-blue-700" onClick={() => setDmRecipient(null)}>
               <X className="h-3 w-3" />
             </Button>
           </div>
 
-          {/* DM messages */}
           <div className="max-h-64 overflow-y-auto p-3 space-y-2">
             {dmMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-4 text-muted-foreground">
@@ -186,9 +520,7 @@ export function ProjectChatSection({ projectId }: ProjectChatSectionProps) {
                   <div key={msg.id} className={cn("flex", isOwn ? "justify-end" : "justify-start")}>
                     <div className={cn(
                       "max-w-[80%] rounded-2xl px-3 py-1.5 text-sm whitespace-pre-wrap break-words",
-                      isOwn
-                        ? "bg-blue-600 text-white rounded-br-sm"
-                        : "bg-white dark:bg-blue-900/40 rounded-bl-sm"
+                      isOwn ? "bg-blue-600 text-white rounded-br-sm" : "bg-white dark:bg-blue-900/40 rounded-bl-sm"
                     )}>
                       {msg.content}
                       <div className={cn("text-[9px] mt-0.5", isOwn ? "text-blue-200" : "text-muted-foreground/60")}>
@@ -201,43 +533,109 @@ export function ProjectChatSection({ projectId }: ProjectChatSectionProps) {
             )}
           </div>
 
-          {/* DM input */}
           <div className="border-t border-blue-200 dark:border-blue-800/40 px-3 py-2 flex gap-2">
             <input
               type="text"
               value={dmInput}
               onChange={(e) => setDmInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendDm();
-                }
-              }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendDm(); } }}
               placeholder={t("dm.placeholder")}
               className="flex-1 rounded-full border bg-white dark:bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
             />
-            <Button
-              size="icon"
-              className="h-8 w-8 shrink-0 rounded-full bg-blue-600 hover:bg-blue-700"
-              onClick={handleSendDm}
-              disabled={!dmInput.trim() || sending}
-            >
-              {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            <Button size="icon" className="h-8 w-8 shrink-0 rounded-full bg-blue-600 hover:bg-blue-700" onClick={handleSendDm} disabled={!dmInput.trim() || dmSending}>
+              {dmSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             </Button>
           </div>
-
-          <p className="text-[10px] text-blue-400 px-3 pb-2">
-            {t("dm.onlyVisibleToTwo", { name: dmRecipient.name })}
-          </p>
+          <p className="text-[10px] text-blue-400 px-3 pb-2">{t("dm.onlyVisibleToTwo", { name: dmRecipient.name })}</p>
         </div>
       ) : (
-        /* Normal project chat */
-        <CommentsSection
-          projectId={projectId}
-          entityId={projectId}
-          entityType="project"
-          chatMode
-        />
+        /* Unified feed + chat input */
+        <>
+          {/* Filter tabs */}
+          <div className="flex gap-1">
+            {filterModes.map((mode) => (
+              <Button
+                key={mode}
+                variant={filterMode === mode ? "default" : "outline"}
+                size="sm"
+                className="h-7 px-3 text-xs"
+                onClick={() => { setFilterMode(mode); setShowAll(false); }}
+              >
+                {t(`feed.filter${mode.charAt(0).toUpperCase() + mode.slice(1)}`)}
+              </Button>
+            ))}
+          </div>
+
+          {/* Feed items */}
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : displayedItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+              {filterMode === "photos" ? <ImageIcon className="h-6 w-6 mb-2" /> : <Activity className="h-6 w-6 mb-2" />}
+              <p className="text-sm">
+                {filterMode === "comments" ? t("feed.noComments") : filterMode === "photos" ? t("overview.recentPhotos.noPhotos", "No photos yet") : t("feed.noActivity", "No activity yet")}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {displayedItems.map(renderFeedItem)}
+            </div>
+          )}
+
+          {hasMore && (
+            <Button variant="ghost" size="sm" className="w-full text-muted-foreground text-xs" onClick={() => setShowAll(true)}>
+              {t("feed.showMore", "Show all ({{count}})").replace("{{count}}", String(filteredFeed.length))}
+            </Button>
+          )}
+
+          {/* Chat input */}
+          {currentProfileId && (
+            <div className="pt-3 border-t space-y-2">
+              <MentionTextarea
+                projectId={projectId}
+                placeholder={t("feed.generalCommentPlaceholder")}
+                value={chatInput}
+                onChange={setChatInput}
+                className="min-h-12 resize-none text-sm"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handlePostComment(); }
+                }}
+              />
+              {imagePreviews.length > 0 && (
+                <div className="flex flex-wrap gap-2 p-2 bg-muted rounded-md">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative group">
+                      <img src={preview} alt={`Preview ${index + 1}`} className="w-14 h-14 object-cover rounded border" />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
+                  <Button type="button" variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} className="h-7 px-2 text-xs">
+                    <Camera className="h-3 w-3 mr-1" />
+                    {t("comments.addImage", "Add image")}
+                  </Button>
+                  <span className="text-[10px] text-muted-foreground">{t("comments.cmdEnterToPost", "⌘+Enter to post")}</span>
+                </div>
+                <Button onClick={handlePostComment} disabled={posting || !chatInput.trim()} size="sm" className="h-7 text-xs">
+                  {posting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Send className="h-3 w-3 mr-1" />}
+                  {t("feed.postGeneral")}
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

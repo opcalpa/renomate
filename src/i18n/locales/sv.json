@@ -2519,7 +2519,8 @@
     "mentionPlaceholder": "Skriv för att söka...",
     "noMentionResults": "Inga teammedlemmar hittades",
     "noActivity": "Ingen aktivitet ännu",
-    "viewFullFeed": "Gå till fullständigt flöde"
+    "viewFullFeed": "Gå till fullständigt flöde",
+    "showMore": "Visa alla ({{count}})"
   },
   "activity": {
     "created": "skapade",

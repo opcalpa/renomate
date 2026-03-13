@@ -7,13 +7,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings2, ShoppingCart, FileText, Mail, MessageSquare, ChevronDown, ChevronRight, ExternalLink, UserPlus, Activity } from "lucide-react";
+import { Settings2, ShoppingCart, FileText, Mail, MessageSquare, ChevronDown, ChevronRight, ExternalLink, UserPlus } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
 import { useOverviewData } from "./overview/useOverviewData";
 import { PulseCards } from "./overview/PulseCards";
 import { ProjectDocumentsCard } from "./overview/ProjectDocumentsCard";
-import { OverviewFeedSection } from "./overview/OverviewFeedSection";
+// OverviewFeedSection removed — unified into ProjectChatSection
 import { ProjectSettingsDialog } from "./overview/ProjectSettingsDialog";
 import { QuickReceiptCaptureModal } from "./QuickReceiptCaptureModal";
 import { CreateQuoteDialog } from "./CreateQuoteDialog";
@@ -410,7 +410,12 @@ const OverviewTab = ({
       >
         <Card id="project-chat">
           <CardContent className="pt-4">
-            <ProjectChatSection projectId={project.id} />
+            <ProjectChatSection
+              projectId={project.id}
+              userType={userType}
+              onNavigateToEntity={onNavigateToEntity}
+              onNavigateToFiles={onNavigateToFiles}
+            />
           </CardContent>
         </Card>
       </CollapsibleSection>
@@ -425,23 +430,6 @@ const OverviewTab = ({
           estimatedProfit={budgetStats.estimatedProfit}
         />
       )}
-
-      <CollapsibleSection
-        title={t("feed.title", "Feed")}
-        icon={<Activity className="h-4 w-4" />}
-        defaultOpen
-      >
-        <OverviewFeedSection
-          projectId={project.id}
-          navigation={navigation}
-          userType={userType}
-          onNavigateToEntity={onNavigateToEntity}
-          onNavigateToFiles={onNavigateToFiles}
-          onNavigateToTask={(taskId) => onNavigateToTasks?.(taskId)}
-          onNavigateToMaterial={(materialId) => onNavigateToPurchases?.(materialId)}
-          onNavigateToRoom={onNavigateToRoom}
-        />
-      </CollapsibleSection>
 
       {/* Collapsible planning reference — after planning phase, at bottom */}
       {!isPlanning && (!isInvitedClient || isPlanningContributor) && (
