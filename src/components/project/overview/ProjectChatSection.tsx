@@ -654,7 +654,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
                     placeholder={replyingTo ? t("feed.writeReply", "Write a reply...") : t("feed.generalCommentPlaceholder")}
                     value={chatInput}
                     onChange={setChatInput}
-                    className="min-h-9 max-h-24 resize-none text-sm"
+                    className="min-h-9 max-h-24 resize-none text-sm bg-white dark:bg-background"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handlePostComment(); }
                     }}
