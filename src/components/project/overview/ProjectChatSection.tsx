@@ -572,10 +572,10 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
           <p className="text-[10px] text-blue-400 px-3 pb-2">{t("dm.onlyVisibleToTwo", { name: dmRecipient.name })}</p>
         </div>
       ) : (
-        /* Unified feed + chat input */
-        <>
-          {/* Filter tabs */}
-          <div className="flex gap-1">
+        /* Unified feed + chat — mini chat-app layout */
+        <div className="flex flex-col rounded-lg border bg-background max-h-[500px]">
+          {/* Sticky header: filter tabs */}
+          <div className="flex gap-1 px-3 py-2 border-b bg-muted/30 shrink-0">
             {filterModes.map((mode) => (
               <Button
                 key={mode}
@@ -589,12 +589,38 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
             ))}
           </div>
 
-          {/* Chat input — always visible at top */}
+          {/* Scrollable feed area */}
+          <div className="flex-1 overflow-y-auto px-3 py-2 min-h-0">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : displayedItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+                {filterMode === "photos" ? <ImageIcon className="h-6 w-6 mb-2" /> : <Activity className="h-6 w-6 mb-2" />}
+                <p className="text-sm">
+                  {filterMode === "comments" ? t("feed.noComments") : filterMode === "photos" ? t("overview.recentPhotos.noPhotos", "No photos yet") : t("feed.noActivity", "No activity yet")}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {displayedItems.map(renderFeedItem)}
+              </div>
+            )}
+
+            {hasMore && (
+              <Button variant="ghost" size="sm" className="w-full text-muted-foreground text-xs mt-1" onClick={() => setShowAll(true)}>
+                {t("feed.showMore", "Show all ({{count}})").replace("{{count}}", String(filteredFeed.length))}
+              </Button>
+            )}
+          </div>
+
+          {/* Sticky footer: chat input */}
           {currentProfileId && (
-            <div ref={chatInputRef} className="space-y-2 pb-2 border-b">
+            <div ref={chatInputRef} className="shrink-0 border-t bg-background px-3 py-2 space-y-2">
               {/* Reply preview */}
               {replyingTo && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/60 rounded-md text-xs">
+                <div className="flex items-center gap-2 px-2 py-1.5 bg-muted/60 rounded-md text-xs">
                   <MessageSquare className="h-3 w-3 text-muted-foreground shrink-0" />
                   <span className="text-muted-foreground shrink-0">{t("feed.replyingToLabel", "Replying to:")}</span>
                   <span className="truncate font-medium">{replyingTo.content?.slice(0, 60)}{(replyingTo.content?.length || 0) > 60 ? "..." : ""}</span>
@@ -603,16 +629,6 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
                   </Button>
                 </div>
               )}
-              <MentionTextarea
-                projectId={projectId}
-                placeholder={replyingTo ? t("feed.writeReply", "Write a reply...") : t("feed.generalCommentPlaceholder")}
-                value={chatInput}
-                onChange={setChatInput}
-                className="min-h-10 resize-none text-sm"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handlePostComment(); }
-                }}
-              />
               {imagePreviews.length > 0 && (
                 <div className="flex flex-wrap gap-2 p-2 bg-muted rounded-md">
                   {imagePreviews.map((preview, index) => (
@@ -629,47 +645,35 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
                   ))}
                 </div>
               )}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
-                  <Button type="button" variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} className="h-7 px-2 text-xs">
-                    <Camera className="h-3 w-3 mr-1" />
-                    {t("comments.addImage", "Add image")}
-                  </Button>
-                  <span className="text-[10px] text-muted-foreground">{t("comments.cmdEnterToPost", "⌘+Enter to post")}</span>
+              <div className="flex items-center gap-2">
+                <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
+                <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} className="h-8 w-8 shrink-0">
+                  <Camera className="h-4 w-4" />
+                </Button>
+                <div className="flex-1 min-w-0">
+                  <MentionTextarea
+                    projectId={projectId}
+                    placeholder={replyingTo ? t("feed.writeReply", "Write a reply...") : t("feed.generalCommentPlaceholder")}
+                    value={chatInput}
+                    onChange={setChatInput}
+                    className="min-h-9 max-h-24 resize-none text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handlePostComment(); }
+                    }}
+                  />
                 </div>
-                <Button onClick={handlePostComment} disabled={posting || !chatInput.trim()} size="sm" className="h-7 text-xs">
-                  {posting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Send className="h-3 w-3 mr-1" />}
-                  {replyingTo ? t("feed.sendReply", "Reply") : t("feed.postGeneral")}
+                <Button
+                  onClick={handlePostComment}
+                  disabled={posting || !chatInput.trim()}
+                  size="icon"
+                  className="h-8 w-8 shrink-0 rounded-full"
+                >
+                  {posting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                 </Button>
               </div>
             </div>
           )}
-
-          {/* Feed items */}
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : displayedItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-              {filterMode === "photos" ? <ImageIcon className="h-6 w-6 mb-2" /> : <Activity className="h-6 w-6 mb-2" />}
-              <p className="text-sm">
-                {filterMode === "comments" ? t("feed.noComments") : filterMode === "photos" ? t("overview.recentPhotos.noPhotos", "No photos yet") : t("feed.noActivity", "No activity yet")}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {displayedItems.map(renderFeedItem)}
-            </div>
-          )}
-
-          {hasMore && (
-            <Button variant="ghost" size="sm" className="w-full text-muted-foreground text-xs" onClick={() => setShowAll(true)}>
-              {t("feed.showMore", "Show all ({{count}})").replace("{{count}}", String(filteredFeed.length))}
-            </Button>
-          )}
-        </>
+        </div>
       )}
     </div>
   );
