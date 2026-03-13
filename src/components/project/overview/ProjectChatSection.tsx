@@ -442,20 +442,18 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
     }
     if (item.type === "photo" && item.photo) {
       return (
-        <div key={item.photo.id} className="flex items-center gap-3 py-1.5">
-          <div className="h-10 w-10 shrink-0 rounded-md overflow-hidden bg-muted cursor-pointer" onClick={() => onNavigateToFiles?.()}>
-            <img src={item.photo.url} alt={item.photo.caption || "Photo"} className="w-full h-full object-cover" loading="lazy" />
+        <div key={item.photo.id} className="space-y-1 py-1.5">
+          <div className="rounded-lg overflow-hidden bg-muted cursor-pointer max-w-sm" onClick={() => onNavigateToFiles?.()}>
+            <img src={item.photo.url} alt={item.photo.caption || "Photo"} className="w-full h-auto max-h-64 object-cover" loading="lazy" />
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground">
-              <ImageIcon className="h-3 w-3 inline mr-1" />
-              {item.photo.sourceName
-                ? `${getSourceLabel(item.photo.source)}: ${item.photo.sourceName}`
-                : t("overview.recentPhotos.photoUploaded", "Photo uploaded")}
-              {" · "}
-              {formatDistanceToNow(new Date(item.photo.createdAt), { addSuffix: true, locale })}
-            </p>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            <ImageIcon className="h-3 w-3 inline mr-1" />
+            {item.photo.sourceName
+              ? `${getSourceLabel(item.photo.source)}: ${item.photo.sourceName}`
+              : t("overview.recentPhotos.photoUploaded", "Photo uploaded")}
+            {" · "}
+            {formatDistanceToNow(new Date(item.photo.createdAt), { addSuffix: true, locale })}
+          </p>
         </div>
       );
     }
