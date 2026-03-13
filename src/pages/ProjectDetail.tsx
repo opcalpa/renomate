@@ -29,6 +29,7 @@ import ProjectFilesTab from "@/components/project/ProjectFilesTab";
 import CustomerViewTab from "@/components/project/CustomerViewTab";
 import { HomeownerPlanningView } from "@/components/project/overview/HomeownerPlanningView";
 import { CommentsSection } from "@/components/comments/CommentsSection";
+import { ProjectChatSection } from "@/components/project/overview/ProjectChatSection";
 import { UnifiedTableTab } from "@/components/project/unified-table";
 import type { FeedComment } from "@/components/project/feed/types";
 import { getContextType } from "@/components/project/feed/utils";
@@ -1394,18 +1395,10 @@ const ProjectDetail = () => {
         <TabsContent value="chat" className="m-0 pb-8">
           <ErrorBoundary>
           <div className="container mx-auto px-3 md:px-4 py-4 md:py-8 max-w-2xl">
-            <div className="space-y-2 mb-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                {t("projectDetail.chat", "Chat")}
-              </h2>
-              <p className="text-sm text-muted-foreground">{t("projectDetail.chatDescription", "Messages between you and the project team")}</p>
-            </div>
-            <CommentsSection
+            <ProjectChatSection
               projectId={project.id}
-              entityId={project.id}
-              entityType="project"
-              chatMode
+              userType={effectiveUserType}
+              onNavigateToEntity={handleFeedNavigate}
             />
           </div>
           </ErrorBoundary>
