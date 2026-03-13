@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Activity, Lock, X, Send, Loader2, ImageIcon, Camera, MessageSquare, Smile } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 import { FeedCommentCard } from "../feed/FeedCommentCard";
 import { ActivityCard } from "../feed/ActivityCard";
 
@@ -50,11 +51,6 @@ interface ProjectChatSectionProps {
 const ITEMS_LIMIT = 15;
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"];
 
-const EMOJI_GRID = [
-  "👍", "❤️", "😊", "😂", "🎉", "🔥", "👏", "💪",
-  "✅", "⭐", "🙏", "👀", "💡", "🚀", "📸", "🏠",
-  "🔨", "🪚", "🎨", "🧱", "📐", "🪣", "🛠️", "📦",
-];
 
 // Activities safe for homeowner/client view
 const CLIENT_SAFE_ACTIONS = new Set(["created", "status_changed", "deleted"]);
@@ -194,6 +190,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
   const [posting, setPosting] = useState(false);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // DM state
@@ -655,25 +652,25 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
                 <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} className="h-8 w-8 shrink-0">
                   <Camera className="h-4 w-4" />
                 </Button>
-                <Popover>
+                <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
                   <PopoverTrigger asChild>
                     <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0">
                       <Smile className="h-4 w-4" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-2" side="top" align="start">
-                    <div className="grid grid-cols-8 gap-1">
-                      {EMOJI_GRID.map((emoji) => (
-                        <button
-                          key={emoji}
-                          type="button"
-                          className="h-8 w-8 flex items-center justify-center rounded hover:bg-muted text-lg"
-                          onClick={() => setChatInput((prev) => prev + emoji)}
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
+                  <PopoverContent className="w-auto p-0 border-none shadow-xl" side="top" align="start">
+                    <EmojiPicker
+                      onEmojiClick={(emojiData: EmojiClickData) => {
+                        setChatInput((prev) => prev + emojiData.emoji);
+                        setEmojiOpen(false);
+                      }}
+                      theme={Theme.AUTO}
+                      height={350}
+                      width={320}
+                      searchPlaceHolder={t("feed.emojiSearch", "Search emoji...")}
+                      previewConfig={{ showPreview: false }}
+                      lazyLoadEmojis
+                    />
                   </PopoverContent>
                 </Popover>
                 <div className="flex-1 min-w-0">
