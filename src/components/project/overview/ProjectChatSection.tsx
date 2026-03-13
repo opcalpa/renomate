@@ -192,6 +192,8 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const feedScrollRef = useRef<HTMLDivElement>(null);
+  const dmScrollRef = useRef<HTMLDivElement>(null);
 
   // DM state
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
@@ -247,6 +249,20 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [projectId, loadData]);
+
+  // Auto-scroll feed to bottom (newest items)
+  useEffect(() => {
+    if (feedScrollRef.current) {
+      feedScrollRef.current.scrollTop = feedScrollRef.current.scrollHeight;
+    }
+  }, [comments, activities, photos, filterMode]);
+
+  // Auto-scroll DM to bottom
+  useEffect(() => {
+    if (dmScrollRef.current) {
+      dmScrollRef.current.scrollTop = dmScrollRef.current.scrollHeight;
+    }
+  }, [dmMessages]);
 
   // Fetch current user + team members
   useEffect(() => {
@@ -404,7 +420,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
   const fullFeed: UnifiedFeedItem[] = [
     ...unifiedFeed,
     ...visiblePhotos.map((p) => ({ type: "photo" as const, created_at: p.createdAt, photo: p })),
-  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   let filteredFeed: UnifiedFeedItem[];
   if (filterMode === "comments") filteredFeed = fullFeed.filter((i) => i.type === "comment");
@@ -412,7 +428,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
   else if (filterMode === "photos") filteredFeed = fullFeed.filter((i) => i.type === "photo");
   else filteredFeed = fullFeed;
 
-  const displayedItems = showAll ? filteredFeed : filteredFeed.slice(0, ITEMS_LIMIT);
+  const displayedItems = showAll ? filteredFeed : filteredFeed.slice(-ITEMS_LIMIT);
   const hasMore = filteredFeed.length > ITEMS_LIMIT && !showAll;
 
   const locale = getDateLocale(i18n.language);
@@ -531,7 +547,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
             </Button>
           </div>
 
-          <div className="max-h-64 overflow-y-auto p-3 space-y-2">
+          <div ref={dmScrollRef} className="max-h-64 overflow-y-auto p-3 space-y-2">
             {dmMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-4 text-muted-foreground">
                 <Lock className="h-5 w-5 mb-1.5 opacity-40" />
@@ -592,7 +608,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
           </div>
 
           {/* Scrollable feed area */}
-          <div className="flex-1 overflow-y-auto px-3 py-2 min-h-0">
+          <div ref={feedScrollRef} className="flex-1 overflow-y-auto px-3 py-2 min-h-0">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -606,14 +622,13 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
               </div>
             ) : (
               <div className="space-y-2">
+                {hasMore && (
+                  <Button variant="ghost" size="sm" className="w-full text-muted-foreground text-xs mb-2" onClick={() => setShowAll(true)}>
+                    {t("feed.showOlder", "Show older ({{count}})").replace("{{count}}", String(filteredFeed.length))}
+                  </Button>
+                )}
                 {displayedItems.map(renderFeedItem)}
               </div>
-            )}
-
-            {hasMore && (
-              <Button variant="ghost" size="sm" className="w-full text-muted-foreground text-xs mt-1" onClick={() => setShowAll(true)}>
-                {t("feed.showMore", "Show all ({{count}})").replace("{{count}}", String(filteredFeed.length))}
-              </Button>
             )}
           </div>
 

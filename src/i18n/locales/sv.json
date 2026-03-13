@@ -2521,6 +2521,7 @@
     "noActivity": "Ingen aktivitet ännu",
     "viewFullFeed": "Gå till fullständigt flöde",
     "showMore": "Visa alla ({{count}})",
+    "showOlder": "Visa äldre ({{count}})",
     "replyingToLabel": "Svarar på:",
     "writeReply": "Skriv ett svar...",
     "sendReply": "Svara"

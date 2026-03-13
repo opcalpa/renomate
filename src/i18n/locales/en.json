@@ -2524,6 +2524,7 @@
     "noActivity": "No activity yet",
     "viewFullFeed": "Go to full feed",
     "showMore": "Show all ({{count}})",
+    "showOlder": "Show older ({{count}})",
     "replyingToLabel": "Replying to:",
     "writeReply": "Write a reply...",
     "sendReply": "Reply"
