@@ -576,7 +576,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
       {teamMembers.length > 0 && (
         <div className="flex items-center gap-2 px-1">
           <span className="text-[10px] text-muted-foreground shrink-0 uppercase tracking-wide font-medium">
-            {t("dm.teamLabel", "DM")}
+            {t("dm.teamLabel", "Team")}
           </span>
           <div className="flex items-center gap-1.5 overflow-x-auto">
             {teamMembers.map((member) => {

@@ -4475,7 +4475,7 @@
     "privateNotice": "Privat konversation",
     "privateTo": "Privat meddelande till {{name}}",
     "onlyVisibleToTwo": "Bara synligt för dig och {{name}}",
-    "teamLabel": "DM",
+    "teamLabel": "Team",
     "empty": "Inga meddelanden ännu.",
     "emptyHint": "Meddelanden här är bara synliga för er två.",
     "placeholder": "Skriv ett meddelande...",
