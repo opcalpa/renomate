@@ -906,12 +906,12 @@ const ProjectDetail = () => {
               <ArrowLeft className="h-4 w-4" />
               <span className="hidden lg:inline">{t('projectDetail.backToStart')}</span>
             </Button>
-            <div className="flex items-center space-x-4 lg:space-x-6">
+            <div className="flex items-center space-x-5 lg:space-x-7">
               {/* Client-only: Kundvy tab */}
               {!isTabBlocked("customer") && (
                 <div
                   className={cn(
-                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
                     activeTab === "customer" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"
                   )}
                   onClick={() => handleMenuSelect('customer', 'customer')}
@@ -947,7 +947,7 @@ const ProjectDetail = () => {
               <HoverTabMenu
                 trigger={
                   <div className={cn(
-                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
                     activeTab === "overview" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
                     isTabBlocked("overview") && "opacity-40 pointer-events-none cursor-default"
                   )}>
@@ -964,7 +964,7 @@ const ProjectDetail = () => {
               <HoverTabMenu
                 trigger={
                   <div className={cn(
-                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
                     activeTab === "tasks" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
                     isTabBlocked("tasks") && "opacity-40 pointer-events-none cursor-default"
                   )}>
@@ -981,7 +981,7 @@ const ProjectDetail = () => {
               <HoverTabMenu
                 trigger={
                   <div className={cn(
-                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
                     activeTab === "purchases" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
                     isTabBlocked("purchases") && "opacity-40 pointer-events-none cursor-default"
                   )}>
@@ -998,7 +998,7 @@ const ProjectDetail = () => {
               <HoverTabMenu
                 trigger={
                   <div className={cn(
-                    "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
                     activeTab === "budget" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
                     isTabBlocked("budget") && "opacity-40 pointer-events-none cursor-default"
                   )}>
@@ -1017,7 +1017,7 @@ const ProjectDetail = () => {
                 <HoverTabMenu
                   trigger={
                     <div className={cn(
-                      "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                      "py-1.5 text-sm font-medium cursor-pointer transition-colors",
                       activeTab === "spaceplanner" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
                       isTabBlocked("spaceplanner") && "opacity-40 pointer-events-none cursor-default"
                     )}>
@@ -1034,7 +1034,7 @@ const ProjectDetail = () => {
                 <HoverTabMenu
                   trigger={
                     <div className={cn(
-                      "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                      "py-1.5 text-sm font-medium cursor-pointer transition-colors",
                       activeTab === "files" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
                       isTabBlocked("files") && "opacity-40 pointer-events-none cursor-default"
                     )}>
@@ -1051,7 +1051,7 @@ const ProjectDetail = () => {
                 <HoverTabMenu
                   trigger={
                     <div className={cn(
-                      "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                      "py-1.5 text-sm font-medium cursor-pointer transition-colors",
                       activeTab === "team" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
                       isTabBlocked("team") && "opacity-40 pointer-events-none cursor-default"
                     )}>
