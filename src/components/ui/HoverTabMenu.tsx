@@ -75,7 +75,7 @@ export const HoverTabMenu: React.FC<HoverTabMenuProps> = ({
         {trigger}
         {hasSubmenu && (
           <ChevronDown className={cn(
-            "h-3 w-3 ml-0.5 -mr-1 text-muted-foreground transition-transform duration-200",
+            "h-3 w-3 -ml-1.5 text-muted-foreground transition-transform duration-200",
             isOpen && "rotate-180"
           )} />
         )}
