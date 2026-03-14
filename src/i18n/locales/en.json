@@ -2528,7 +2528,8 @@
     "replyingToLabel": "Replying to:",
     "writeReply": "Write a reply...",
     "sendReply": "Reply",
-    "searchPlaceholder": "Search messages..."
+    "searchPlaceholder": "Search messages...",
+    "emojiSearch": "Search emoji..."
   },
   "activity": {
     "created": "created",

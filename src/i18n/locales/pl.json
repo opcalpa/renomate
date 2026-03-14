@@ -249,7 +249,8 @@
     "floorPlanDesc": "Projektuj i planuj układ piętra",
     "feedDesc": "Komentarze i aktywność",
     "allProjects": "Wszystkie projekty",
-    "backToStart": "Wróć do startu",
+    "backToStart": "Wstecz",
+    "chat": "Czat",
     "files": "Pliki",
     "purchases": "Zakupy",
     "team": "Zespół",
@@ -1620,7 +1621,15 @@
     "noMentionResults": "Nie znaleziono członków zespołu",
     "filterAll": "Wszystko",
     "filterComments": "Komentarze",
-    "filterActivity": "Aktywność"
+    "filterActivity": "Aktywność",
+    "filterPhotos": "Zdjęcia",
+    "noActivity": "Brak aktywności",
+    "showOlder": "Pokaż starsze ({{count}})",
+    "replyingToLabel": "Odpowiadasz na:",
+    "writeReply": "Napisz odpowiedź...",
+    "sendReply": "Odpowiedz",
+    "searchPlaceholder": "Szukaj w wiadomościach...",
+    "emojiSearch": "Szukaj emoji..."
   },
   "notifications": {
     "title": "Powiadomienia",
