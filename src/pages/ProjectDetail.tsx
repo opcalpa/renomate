@@ -1345,7 +1345,7 @@ const ProjectDetail = () => {
 
         <TabsContent value="chat" className="m-0 pb-8">
           <ErrorBoundary>
-          <div className="container mx-auto px-3 md:px-4 py-4 md:py-8 max-w-2xl">
+          <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
             <ProjectChatSection
               projectId={project.id}
               userType={effectiveUserType}
