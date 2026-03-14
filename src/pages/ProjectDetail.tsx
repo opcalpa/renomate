@@ -8,10 +8,9 @@ import { PUBLIC_DEMO_PROJECT_ID, PUBLIC_DEMO_PROJECT_TYPE } from "@/constants/pu
 import { useProjectPermissions } from "@/hooks/useProjectPermissions";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ChevronDown, FolderOpen, Lock, BookOpen, Loader2, MessageSquare, PartyPopper, X, Zap, FileText, LayoutGrid, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, ChevronDown, FolderOpen, Lock, BookOpen, Loader2, MessageSquare, PartyPopper, X, Zap, FileText, LayoutGrid } from "lucide-react";
 import { isDemoProject, refreshDemoProjectDates } from "@/services/demoProjectService";
 import { normalizeStatus } from "@/lib/projectStatus";
 import { ProjectDetailSkeleton } from "@/components/ui/skeleton-screens";
@@ -35,12 +34,6 @@ import type { FeedComment } from "@/components/project/feed/types";
 import { getContextType } from "@/components/project/feed/utils";
 import { MobileBottomNav } from "@/components/project/MobileBottomNav";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { HoverTabMenu } from "@/components/ui/HoverTabMenu";
 import { RoomsList } from "@/components/floormap/RoomsList";
 import { RoomDetailDialog } from "@/components/floormap/RoomDetailDialog";
@@ -906,7 +899,7 @@ const ProjectDetail = () => {
               <ArrowLeft className="h-4 w-4" />
               <span className="hidden lg:inline">{t('projectDetail.backToStart')}</span>
             </Button>
-            <div className="flex items-center space-x-5 lg:space-x-7">
+            <div className="flex items-center gap-5 lg:gap-7 overflow-x-auto whitespace-nowrap">
               {/* Client-only: Kundvy tab */}
               {!isTabBlocked("customer") && (
                 <div
@@ -1011,108 +1004,56 @@ const ProjectDetail = () => {
                 activeValue={activeTab === "budget" ? "budget" : undefined}
               />
 
-              {/* Secondary tabs - visible on large screens, hidden on medium */}
-              <div className="hidden xl:contents">
-                {/* 5. Yta */}
-                <HoverTabMenu
-                  trigger={
-                    <div className={cn(
-                      "py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                      activeTab === "spaceplanner" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
-                      isTabBlocked("spaceplanner") && "opacity-40 pointer-events-none cursor-default"
-                    )}>
-                      {t('projectDetail.spacePlanner')}
-                    </div>
-                  }
-                  items={menuConfigs.spaceplanner}
-                  onSelect={(value) => handleMenuSelect('spaceplanner', value)}
-                  onMainClick={() => handleMenuSelect('spaceplanner', 'rooms')}
-                  activeValue={activeTab === "spaceplanner" ? activeSubTab || "rooms" : undefined}
-                />
+              {/* 5. Yta */}
+              <HoverTabMenu
+                trigger={
+                  <div className={cn(
+                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    activeTab === "spaceplanner" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    isTabBlocked("spaceplanner") && "opacity-40 pointer-events-none cursor-default"
+                  )}>
+                    {t('projectDetail.spacePlanner')}
+                  </div>
+                }
+                items={menuConfigs.spaceplanner}
+                onSelect={(value) => handleMenuSelect('spaceplanner', value)}
+                onMainClick={() => handleMenuSelect('spaceplanner', 'rooms')}
+                activeValue={activeTab === "spaceplanner" ? activeSubTab || "rooms" : undefined}
+              />
 
-                {/* 6. Filer */}
-                <HoverTabMenu
-                  trigger={
-                    <div className={cn(
-                      "py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                      activeTab === "files" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
-                      isTabBlocked("files") && "opacity-40 pointer-events-none cursor-default"
-                    )}>
-                      {t('projectDetail.files')}
-                    </div>
-                  }
-                  items={menuConfigs.files}
-                  onSelect={(value) => handleMenuSelect('files', value)}
-                  onMainClick={() => handleMenuSelect('files', 'files')}
-                  activeValue={activeTab === "files" ? "files" : undefined}
-                />
+              {/* 6. Filer */}
+              <HoverTabMenu
+                trigger={
+                  <div className={cn(
+                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    activeTab === "files" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    isTabBlocked("files") && "opacity-40 pointer-events-none cursor-default"
+                  )}>
+                    {t('projectDetail.files')}
+                  </div>
+                }
+                items={menuConfigs.files}
+                onSelect={(value) => handleMenuSelect('files', value)}
+                onMainClick={() => handleMenuSelect('files', 'files')}
+                activeValue={activeTab === "files" ? "files" : undefined}
+              />
 
-                {/* 7. Team */}
-                <HoverTabMenu
-                  trigger={
-                    <div className={cn(
-                      "py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                      activeTab === "team" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
-                      isTabBlocked("team") && "opacity-40 pointer-events-none cursor-default"
-                    )}>
-                      {t('projectDetail.team')}
-                    </div>
-                  }
-                  items={menuConfigs.team}
-                  onSelect={(value) => handleMenuSelect('team', value)}
-                  onMainClick={() => handleMenuSelect('team', 'team')}
-                  activeValue={activeTab === "team" ? activeSubTab || "team" : undefined}
-                />
-              </div>
-
-              {/* Overflow menu - visible on medium screens, hidden on large */}
-              <div className="xl:hidden">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "px-2 py-1.5 h-auto",
-                        (activeTab === "spaceplanner" || activeTab === "files" || activeTab === "team") && "text-foreground border-b-2 border-foreground"
-                      )}
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem
-                      onClick={() => handleMenuSelect('spaceplanner', 'floorplan')}
-                      className={cn("cursor-pointer", activeTab === "spaceplanner" && "bg-accent")}
-                      disabled={isTabBlocked("spaceplanner")}
-                    >
-                      {t('projectDetail.spacePlanner')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleMenuSelect('files', 'files')}
-                      className={cn("cursor-pointer", activeTab === "files" && "bg-accent")}
-                      disabled={isTabBlocked("files")}
-                    >
-                      {t('projectDetail.files')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleMenuSelect('team', 'team')}
-                      className={cn("cursor-pointer", activeTab === "team" && "bg-accent")}
-                      disabled={isTabBlocked("team")}
-                    >
-                      {t('projectDetail.team')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleMenuSelect('table', 'table')}
-                      className={cn("cursor-pointer", activeTab === "table" && "bg-accent")}
-                      disabled={isTabBlocked("table")}
-                    >
-                      {t('unifiedTable.tabTitle')}
-                      <Badge variant="outline" className="ml-1 text-[10px]">Sandbox</Badge>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              {/* 7. Team */}
+              <HoverTabMenu
+                trigger={
+                  <div className={cn(
+                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    activeTab === "team" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    isTabBlocked("team") && "opacity-40 pointer-events-none cursor-default"
+                  )}>
+                    {t('projectDetail.team')}
+                  </div>
+                }
+                items={menuConfigs.team}
+                onSelect={(value) => handleMenuSelect('team', value)}
+                onMainClick={() => handleMenuSelect('team', 'team')}
+                activeValue={activeTab === "team" ? activeSubTab || "team" : undefined}
+              />
             </div>
           </div>
         </AppHeader>
