@@ -61,7 +61,7 @@ export const HoverTabMenu: React.FC<HoverTabMenuProps> = ({
       {/* Trigger with optional chevron */}
       <div
         className={cn(
-          "cursor-pointer transition-colors duration-200 flex items-center gap-0.5",
+          "cursor-pointer transition-colors duration-200 flex items-center",
           activeValue && "font-semibold"
         )}
         onClick={(e) => {
@@ -75,7 +75,7 @@ export const HoverTabMenu: React.FC<HoverTabMenuProps> = ({
         {trigger}
         {hasSubmenu && (
           <ChevronDown className={cn(
-            "h-3 w-3 text-muted-foreground transition-transform duration-200",
+            "h-3 w-3 ml-0.5 -mr-1 text-muted-foreground transition-transform duration-200",
             isOpen && "rotate-180"
           )} />
         )}
