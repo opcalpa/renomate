@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, ArrowRight, ChevronDown, Check } from "lucide-react";
+import { ArrowRight, ChevronDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -40,8 +40,7 @@ export function DemoBanner({ role, phase, onPhaseChange, onRoleChange }: DemoBan
       <div className="flex items-center justify-center gap-x-3 gap-y-1.5 text-sm">
         {/* "Demo" label + role dropdown */}
         <div className="flex items-center gap-1.5 font-medium">
-          <BookOpen className="h-4 w-4 shrink-0" />
-          <span>Demo</span>
+          <span className="border border-primary-foreground/60 rounded px-1.5 py-0.5 text-xs">Demo</span>
           <Popover>
             <PopoverTrigger asChild>
               <button className="inline-flex items-center gap-1 rounded-full bg-primary-foreground/20 text-primary-foreground px-2.5 py-0.5 text-xs font-medium hover:bg-primary-foreground/30 transition-colors">
