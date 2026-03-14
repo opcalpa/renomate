@@ -15,7 +15,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Activity, Lock, X, Send, Loader2, ImageIcon, Camera, MessageSquare, Smile } from "lucide-react";
+import { Activity, Lock, X, Send, Loader2, ImageIcon, Camera, MessageSquare, Smile, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 import { FeedCommentCard } from "../feed/FeedCommentCard";
@@ -184,6 +184,9 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
   const [filterMode, setFilterMode] = useState<FeedFilterMode>("all");
   const [replyingTo, setReplyingTo] = useState<FeedComment | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Chat input state
   const [chatInput, setChatInput] = useState("");
@@ -473,8 +476,38 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
   else if (filterMode === "photos") filteredFeed = fullFeed.filter((i) => i.type === "photo");
   else filteredFeed = fullFeed;
 
-  const displayedItems = showAll ? filteredFeed : filteredFeed.slice(-ITEMS_LIMIT);
-  const hasMore = filteredFeed.length > ITEMS_LIMIT && !showAll;
+  // Search filter
+  const searchedFeed = searchQuery.trim()
+    ? filteredFeed.filter((item) => {
+        const q = searchQuery.toLowerCase();
+        if (item.comment) {
+          return (
+            item.comment.content.toLowerCase().includes(q) ||
+            item.comment.creator?.name.toLowerCase().includes(q) ||
+            item.comment.task?.title.toLowerCase().includes(q) ||
+            item.comment.material?.name.toLowerCase().includes(q) ||
+            item.comment.room?.name.toLowerCase().includes(q)
+          );
+        }
+        if (item.activity) {
+          return (
+            item.activity.entity_name?.toLowerCase().includes(q) ||
+            item.activity.actor?.name.toLowerCase().includes(q) ||
+            item.activity.action.toLowerCase().includes(q)
+          );
+        }
+        if (item.photo) {
+          return (
+            item.photo.caption?.toLowerCase().includes(q) ||
+            item.photo.sourceName?.toLowerCase().includes(q)
+          );
+        }
+        return false;
+      })
+    : filteredFeed;
+
+  const displayedItems = showAll ? searchedFeed : searchedFeed.slice(-ITEMS_LIMIT);
+  const hasMore = searchedFeed.length > ITEMS_LIMIT && !showAll;
 
   const locale = getDateLocale(i18n.language);
 
@@ -687,9 +720,9 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
       ) : (
         /* Unified feed + chat — mini chat-app layout */
         <div className="flex flex-col rounded-lg border bg-background max-h-[500px]">
-          {/* Sticky header: filter tabs */}
-          <div className="flex gap-1 px-3 py-2 border-b bg-muted/30 shrink-0">
-            {filterModes.map((mode) => (
+          {/* Sticky header: filter tabs + search */}
+          <div className="flex items-center gap-1 px-3 py-2 border-b bg-muted/30 shrink-0">
+            {!searchOpen && filterModes.map((mode) => (
               <Button
                 key={mode}
                 variant={filterMode === mode ? "default" : "outline"}
@@ -700,6 +733,42 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
                 {t(`feed.filter${mode.charAt(0).toUpperCase() + mode.slice(1)}`)}
               </Button>
             ))}
+            {searchOpen ? (
+              <div className="flex items-center gap-1 flex-1">
+                <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setShowAll(true); }}
+                  placeholder={t("feed.searchPlaceholder", "Search messages...")}
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  onKeyDown={(e) => { if (e.key === "Escape") { setSearchOpen(false); setSearchQuery(""); setShowAll(false); } }}
+                />
+                {searchQuery && (
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {searchedFeed.length}
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={() => { setSearchOpen(false); setSearchQuery(""); setShowAll(false); }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 ml-auto"
+                onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+              >
+                <Search className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
 
           {/* Scrollable feed area */}

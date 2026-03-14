@@ -2524,7 +2524,8 @@
     "showOlder": "Visa äldre ({{count}})",
     "replyingToLabel": "Svarar på:",
     "writeReply": "Skriv ett svar...",
-    "sendReply": "Svara"
+    "sendReply": "Svara",
+    "searchPlaceholder": "Sök i meddelanden..."
   },
   "activity": {
     "created": "skapade",

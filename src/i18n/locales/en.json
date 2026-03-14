@@ -2527,7 +2527,8 @@
     "showOlder": "Show older ({{count}})",
     "replyingToLabel": "Replying to:",
     "writeReply": "Write a reply...",
-    "sendReply": "Reply"
+    "sendReply": "Reply",
+    "searchPlaceholder": "Search messages..."
   },
   "activity": {
     "created": "created",
