@@ -923,14 +923,11 @@ const ProjectDetail = () => {
                 {t("projectDetail.chat", "Chat")}
               </div>
               <div
-                className="hidden md:flex items-center py-1.5 cursor-pointer transition-colors text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  setActiveTab("overview");
-                  setActiveSubTab(null);
-                  setTimeout(() => {
-                    document.getElementById("project-chat")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }, 100);
-                }}
+                className={cn(
+                  "hidden md:flex items-center py-1.5 cursor-pointer transition-colors",
+                  activeTab === "chat" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => handleMenuSelect('chat', 'chat')}
                 title={t("projectDetail.chat", "Chat")}
               >
                 <MessageSquare className="h-4 w-4" />
