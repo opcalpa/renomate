@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getAvatarColor } from "@/lib/avatarColor";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Send, Trash2, MessageSquare, Camera, X, Languages, Lock, Reply, ChevronDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCommentTranslation } from "@/hooks/useCommentTranslation";
 import { formatDistanceToNow } from "date-fns";
 import { getDateLocale } from "@/lib/dateFnsLocale";
@@ -1040,26 +1041,35 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
               ref={(el) => { if (el) el.dataset.camera = "true"; }}
               id="camera-capture-input"
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => document.getElementById("camera-capture-input")?.click()}
-              className="h-7 px-2 text-xs"
-            >
-              <Camera className="h-3 w-3 mr-1" />
-              {t('comments.takePhoto')}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              className="h-7 px-2 text-xs"
-            >
-              <Camera className="h-3 w-3 mr-1" />
-              {t('comments.addImage')}
-            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                >
+                  <Camera className="h-3 w-3 mr-1" />
+                  {t('comments.addImage')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-40 p-1" align="start">
+                <button
+                  type="button"
+                  className="w-full text-left px-3 py-2 text-sm rounded hover:bg-muted"
+                  onClick={() => { document.getElementById("camera-capture-input")?.click(); }}
+                >
+                  {t('comments.takePhoto')}
+                </button>
+                <button
+                  type="button"
+                  className="w-full text-left px-3 py-2 text-sm rounded hover:bg-muted"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {t('comments.chooseFiles', 'Välj filer')}
+                </button>
+              </PopoverContent>
+            </Popover>
           </div>
           <Button
             onClick={handlePostComment}

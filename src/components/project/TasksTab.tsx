@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { analytics, AnalyticsEvents } from "@/lib/analytics";
@@ -1034,28 +1035,29 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
 
       {/* Collapsible Timeline Section */}
       {showTimeline && (
-        <Collapsible open={timelineOpen} onOpenChange={setTimelineOpen}>
-          <div className="flex items-center justify-between mb-2">
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2 -ml-2 hover:bg-accent">
-                <Calendar className="h-4 w-4" />
-                <span className="font-medium">{t('projectDetail.timeline')}</span>
-                {timelineOpen ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
+        <Card>
+          {/* Mobile-only compact toggle header */}
+          <button
+            className="flex items-center justify-between w-full px-4 py-3 md:hidden hover:bg-accent/50 transition-colors rounded-t-lg"
+            onClick={() => setTimelineOpen(!timelineOpen)}
+          >
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium text-sm">{t('projectDetail.timeline')}</span>
+            </div>
+            {timelineOpen ? (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            )}
+          </button>
+          {/* On mobile: toggled by button. On desktop: always visible */}
+          <div className={cn(!timelineOpen && "hidden md:block")}>
+            <CardContent className="p-0">
+              <ProjectTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} />
+            </CardContent>
           </div>
-          <CollapsibleContent className="mb-6">
-            <Card>
-              <CardContent className="p-0">
-                <ProjectTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} />
-              </CardContent>
-            </Card>
-          </CollapsibleContent>
-        </Collapsible>
+        </Card>
       )}
 
       <div className="flex flex-col gap-4">
@@ -1084,13 +1086,12 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
           {/* Unified Filter Popover */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9">
-                <Filter className="h-3 w-3 mr-2" />
-                {t('tasks.filter', 'Filter')}
+              <Button variant="outline" size="icon" className="h-9 w-9 relative">
+                <Filter className="h-4 w-4" />
                 {(filterStatuses.size + filterAssignees.size + filterRooms.size + filterCostCenters.size) > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-medium flex items-center justify-center">
                     {filterStatuses.size + filterAssignees.size + filterRooms.size + filterCostCenters.size}
-                  </Badge>
+                  </span>
                 )}
               </Button>
             </PopoverTrigger>
@@ -1292,9 +1293,10 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
           {/* Add Task button */}
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                {t('tasks.addTask')}
+              <Button size="sm" className="h-9">
+                <Plus className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">{t('tasks.addTask')}</span>
+                <span className="sm:hidden">{t('tasks.taskShort', 'Arbete')}</span>
               </Button>
             </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">

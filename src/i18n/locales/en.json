@@ -517,6 +517,7 @@
     "costCenter": "Cost Center",
     "description": "Description",
     "addTask": "Add Task",
+    "taskShort": "Task",
     "addTaskTitle": "Add New Task",
     "addTaskDescription": "Create a new task for your renovation project",
     "editTask": "Edit Task",

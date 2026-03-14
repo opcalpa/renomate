@@ -815,12 +815,11 @@ const ProjectTimeline = ({
             <div className="flex items-center gap-1">
               <Button
                 variant={mobileFiltersOpen ? "secondary" : "outline"}
-                size="sm"
-                className="h-8"
+                size="icon"
+                className="h-8 w-8"
                 onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
               >
-                <SlidersHorizontal className="h-4 w-4 mr-1" />
-                {t('timeline.filters', 'Filter')}
+                <SlidersHorizontal className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -832,9 +831,6 @@ const ProjectTimeline = ({
               <Button variant="outline" size="icon" onClick={zoomOut} disabled={daysVisible >= maxDays} className="h-7 w-7">
                 <ZoomOut className="h-3.5 w-3.5" />
               </Button>
-              <span className="text-xs text-muted-foreground min-w-[50px] text-center">
-                {daysVisible} {t('timeline.days', 'd')}
-              </span>
               <Button variant="outline" size="icon" onClick={zoomIn} disabled={daysVisible <= minDays} className="h-7 w-7">
                 <ZoomIn className="h-3.5 w-3.5" />
               </Button>
@@ -842,8 +838,85 @@ const ProjectTimeline = ({
                 <RotateCcw className="h-3.5 w-3.5" />
               </Button>
             </div>
-            {/* Navigation */}
+            {/* Navigation + Calendar */}
             <div className="flex items-center gap-1">
+              {(() => {
+                const missingStart = !effectiveStartDate;
+                const missingFinish = !effectiveFinishDate;
+                const warningCount = unscheduledTasks.length + (missingStart ? 1 : 0) + (missingFinish ? 1 : 0);
+                return (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="icon" className="h-7 w-7 relative">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {warningCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-0.5 rounded-full bg-orange-500 text-white text-[10px] font-medium flex items-center justify-center">
+                            {warningCount}
+                          </span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 p-0" align="end">
+                      <div className="p-3 space-y-2 border-b">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {t('timeline.projectDatesTitle', 'Project dates')}
+                        </p>
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t('common.startDate')}</Label>
+                          <Input
+                            type="date"
+                            className={`h-8 text-sm ${!effectiveStartDate ? "border-amber-300 bg-amber-50/50" : ""}`}
+                            value={effectiveStartDate || ""}
+                            disabled={savingProjectDate}
+                            onChange={(e) => {
+                              if (e.target.value) saveProjectDate("start_date", e.target.value);
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t('timeline.goalDate', 'Goal date')}</Label>
+                          <Input
+                            type="date"
+                            className={`h-8 text-sm ${!effectiveFinishDate ? "border-amber-300 bg-amber-50/50" : ""}`}
+                            value={effectiveFinishDate || ""}
+                            disabled={savingProjectDate}
+                            onChange={(e) => {
+                              if (e.target.value) saveProjectDate("finish_goal_date", e.target.value);
+                            }}
+                          />
+                        </div>
+                        {effectiveStartDate && effectiveFinishDate && (
+                          <button
+                            type="button"
+                            className="w-full text-left text-xs text-primary hover:underline pt-1"
+                            onClick={zoomToProjectSpan}
+                          >
+                            {t('timeline.showFullProject', 'Show full project period')}
+                          </button>
+                        )}
+                      </div>
+                      {unscheduledTasks.length > 0 && (
+                        <div className="p-3">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">
+                            {t('timeline.unscheduledTasksTitle', 'Unscheduled tasks')}
+                          </p>
+                          <ul className="space-y-1">
+                            {unscheduledTasks.map((ut) => (
+                              <li
+                                key={ut.id}
+                                className="text-sm truncate text-primary hover:underline cursor-pointer"
+                                onClick={() => onTaskClick?.(ut.id)}
+                              >
+                                {ut.title}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                );
+              })()}
               <Button variant="outline" size="sm" onClick={handleToday} className="h-7 px-2 text-xs">
                 {t('timeline.today', 'Idag')}
               </Button>
@@ -895,89 +968,6 @@ const ProjectTimeline = ({
             </div>
           )}
 
-          {/* Timeline info popover (mobile) */}
-          {(() => {
-            const missingStart = !effectiveStartDate;
-            const missingFinish = !effectiveFinishDate;
-            const warningCount = unscheduledTasks.length + (missingStart ? 1 : 0) + (missingFinish ? 1 : 0);
-            return (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Badge variant="secondary" className="text-xs w-fit cursor-pointer">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    {warningCount > 0
-                      ? (warningCount === 1
-                        ? t('timeline.reminderSingular', '1 reminder')
-                        : t('timeline.reminders', '{{count}} reminders', { count: warningCount }))
-                      : t('timeline.projectDates', 'Project dates')}
-                  </Badge>
-                </PopoverTrigger>
-                <PopoverContent className="w-72 p-0" align="start">
-                  {/* Project dates — always visible */}
-                  <div className="p-3 space-y-2 border-b">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      {t('timeline.projectDatesTitle', 'Project dates')}
-                    </p>
-                    {/* Start date */}
-                    <div className="space-y-1">
-                      <Label className="text-xs">{t('common.startDate')}</Label>
-                      <Input
-                        type="date"
-                        className={`h-8 text-sm ${!effectiveStartDate ? "border-amber-300 bg-amber-50/50" : ""}`}
-                        value={effectiveStartDate || ""}
-                        disabled={savingProjectDate}
-                        onChange={(e) => {
-                          if (e.target.value) saveProjectDate("start_date", e.target.value);
-                        }}
-                      />
-                    </div>
-                    {/* Finish date */}
-                    <div className="space-y-1">
-                      <Label className="text-xs">{t('timeline.goalDate', 'Goal date')}</Label>
-                      <Input
-                        type="date"
-                        className={`h-8 text-sm ${!effectiveFinishDate ? "border-amber-300 bg-amber-50/50" : ""}`}
-                        value={effectiveFinishDate || ""}
-                        disabled={savingProjectDate}
-                        onChange={(e) => {
-                          if (e.target.value) saveProjectDate("finish_goal_date", e.target.value);
-                        }}
-                      />
-                    </div>
-                    {/* Zoom to project span */}
-                    {effectiveStartDate && effectiveFinishDate && (
-                      <button
-                        type="button"
-                        className="w-full text-left text-xs text-primary hover:underline pt-1"
-                        onClick={zoomToProjectSpan}
-                      >
-                        {t('timeline.showFullProject', 'Show full project period')}
-                      </button>
-                    )}
-                  </div>
-                  {/* Unscheduled tasks */}
-                  {unscheduledTasks.length > 0 && (
-                    <div className="p-3">
-                      <p className="text-xs font-medium text-muted-foreground mb-2">
-                        {t('timeline.unscheduledTasksTitle', 'Unscheduled tasks')}
-                      </p>
-                      <ul className="space-y-1">
-                        {unscheduledTasks.map((ut) => (
-                          <li
-                            key={ut.id}
-                            className="text-sm truncate text-primary hover:underline cursor-pointer"
-                            onClick={() => onTaskClick?.(ut.id)}
-                          >
-                            {ut.title}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </PopoverContent>
-              </Popover>
-            );
-          })()}
         </div>
 
         {/* === DESKTOP HEADER (full controls) === */}

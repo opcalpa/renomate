@@ -517,6 +517,7 @@
     "costCenter": "Kostnadsställe",
     "description": "Beskrivning",
     "addTask": "Lägg till arbete",
+    "taskShort": "Arbete",
     "addTaskTitle": "Lägg till nytt arbete",
     "addTaskDescription": "Skapa ett nytt arbete för ditt renoveringsprojekt",
     "editTask": "Redigera arbete",

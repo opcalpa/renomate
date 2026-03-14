@@ -719,7 +719,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
         </div>
       ) : (
         /* Unified feed + chat — mini chat-app layout */
-        <div className="flex flex-col rounded-lg border bg-background max-h-[500px] md:max-h-[70vh]">
+        <div className="flex flex-col rounded-lg border bg-background max-h-[calc(100dvh-12rem)] md:max-h-[70vh]">
           {/* Sticky header: filter tabs + search */}
           <div className="flex items-center gap-1 px-3 py-2 border-b bg-muted/30 shrink-0">
             {!searchOpen && filterModes.map((mode) => (
