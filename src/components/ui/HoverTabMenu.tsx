@@ -61,7 +61,7 @@ export const HoverTabMenu: React.FC<HoverTabMenuProps> = ({
       {/* Trigger with optional chevron */}
       <div
         className={cn(
-          "cursor-pointer transition-colors duration-200 flex items-center gap-1",
+          "cursor-pointer transition-colors duration-200 flex items-center gap-0.5",
           activeValue && "font-semibold"
         )}
         onClick={(e) => {
