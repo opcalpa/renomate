@@ -919,7 +919,7 @@ const ProjectDetail = () => {
                   {t("customerView.tabTitle")}
                 </div>
               )}
-              {/* Chat tab — mobile only (on desktop, chat lives on the Overview page) */}
+              {/* Chat tab — mobile: own tab; desktop: navigate to Overview + scroll to chat */}
               <div
                 className={cn(
                   "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors md:hidden",
@@ -928,6 +928,18 @@ const ProjectDetail = () => {
                 onClick={() => handleMenuSelect('chat', 'chat')}
               >
                 {t("projectDetail.chat", "Chat")}
+              </div>
+              <div
+                className="hidden md:flex items-center gap-1 px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setActiveTab("overview");
+                  setActiveSubTab(null);
+                  setTimeout(() => {
+                    document.getElementById("project-chat")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 100);
+                }}
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
               </div>
               {/* Primary tabs */}
               {/* 1. Översikt */}

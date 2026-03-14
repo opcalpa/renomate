@@ -538,7 +538,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
   }, [replyingTo]);
 
   return (
-    <div className="space-y-3">
+    <div id="project-chat" className="space-y-3">
       {/* Team member avatars for DM */}
       {teamMembers.length > 0 && (
         <div className="flex items-center gap-2 px-1">
