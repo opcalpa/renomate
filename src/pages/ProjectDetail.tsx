@@ -930,7 +930,7 @@ const ProjectDetail = () => {
                 {t("projectDetail.chat", "Chat")}
               </div>
               <div
-                className="hidden md:flex items-center gap-1 px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors text-muted-foreground hover:text-foreground"
+                className="hidden md:flex items-center py-1.5 cursor-pointer transition-colors text-muted-foreground hover:text-foreground"
                 onClick={() => {
                   setActiveTab("overview");
                   setActiveSubTab(null);
@@ -938,8 +938,9 @@ const ProjectDetail = () => {
                     document.getElementById("project-chat")?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }, 100);
                 }}
+                title={t("projectDetail.chat", "Chat")}
               >
-                <MessageSquare className="h-3.5 w-3.5" />
+                <MessageSquare className="h-4 w-4" />
               </div>
               {/* Primary tabs */}
               {/* 1. Översikt */}
