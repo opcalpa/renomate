@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings2, ShoppingCart, FileText, Mail, MessageSquare, ChevronDown, ChevronRight, ExternalLink, UserPlus } from "lucide-react";
+import { Settings2, ShoppingCart, FileText, Mail, ChevronDown, ChevronRight, ExternalLink, UserPlus } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
 import { useOverviewData } from "./overview/useOverviewData";
@@ -403,22 +403,12 @@ const OverviewTab = ({
         />
       )}
 
-      <CollapsibleSection
-        title={t("overview.projectChat.title", "Project chat")}
-        icon={<MessageSquare className="h-4 w-4" />}
-        defaultOpen
-      >
-        <Card id="project-chat">
-          <CardContent className="pt-4">
-            <ProjectChatSection
-              projectId={project.id}
-              userType={userType}
-              onNavigateToEntity={onNavigateToEntity}
-              onNavigateToFiles={onNavigateToFiles}
-            />
-          </CardContent>
-        </Card>
-      </CollapsibleSection>
+      <ProjectChatSection
+        projectId={project.id}
+        userType={userType}
+        onNavigateToEntity={onNavigateToEntity}
+        onNavigateToFiles={onNavigateToFiles}
+      />
 
       {/* Quotes & Invoices unified card - contractors, active phases */}
       {!isHomeowner && !isPlanning && (
