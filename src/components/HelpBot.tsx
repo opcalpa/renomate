@@ -326,14 +326,13 @@ export function HelpBot() {
   return (
     <>
       {!open && (
-        <Button
+        <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 h-14 w-14 rounded-full shadow-lg"
-          size="icon"
-          aria-label={t("helpBot.title", "Renomate")}
+          className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 h-14 w-14 rounded-full shadow-lg bg-white border-2 border-primary/20 hover:border-primary/40 transition-colors flex items-center justify-center"
+          aria-label={t("helpBot.title", "Renomate Junior")}
         >
-          <HelpCircle className="h-6 w-6" />
-        </Button>
+          <img src="/chatbot-avatar.jpg" alt="Renomate Junior" className="h-10 w-10 rounded-full object-cover" />
+        </button>
       )}
 
       {open && (
@@ -343,9 +342,12 @@ export function HelpBot() {
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b px-4 py-3">
-            <h3 className="font-semibold text-sm">
-              {t("helpBot.title", "Renomate")}
-            </h3>
+            <div className="flex items-center gap-2">
+              <img src="/chatbot-avatar.jpg" alt="Renomate Junior" className="h-7 w-7 rounded-full object-cover" />
+              <h3 className="font-semibold text-sm">
+                {t("helpBot.title", "Renomate Junior")}
+              </h3>
+            </div>
             <div className="flex items-center gap-1">
               {feedbackMode && (
                 <Button
