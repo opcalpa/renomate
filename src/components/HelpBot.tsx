@@ -306,12 +306,24 @@ export function HelpBot() {
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: data.reply || t("helpBot.errorMessage") },
+        {
+          role: "assistant",
+          content: data.reply || t("helpBot.errorMessage"),
+          actions: [
+            { labelKey: "helpBot.goBack", fallback: "Back", action: "reset_chat", icon: <ArrowLeft className="h-3 w-3" /> },
+          ],
+        },
       ]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: t("helpBot.errorMessage") },
+        {
+          role: "assistant",
+          content: t("helpBot.errorMessage"),
+          actions: [
+            { labelKey: "helpBot.goBack", fallback: "Back", action: "reset_chat", icon: <ArrowLeft className="h-3 w-3" /> },
+          ],
+        },
       ]);
     } finally {
       setLoading(false);
