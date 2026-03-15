@@ -1613,8 +1613,8 @@ const ProjectTimeline = ({
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{t('tasks.editTask', 'Edit Task')}</DialogTitle>
-            <DialogDescription className="sr-only">{t('tasks.editTask', 'Edit Task')}</DialogDescription>
+            <DialogTitle className="truncate">{editingTask?.title || t('tasks.editTask', 'Edit Task')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('tasks.editTaskDescription', 'Edit task details')}</DialogDescription>
           </DialogHeader>
           {editingTask && (
             <form onSubmit={handleEditTask} className="space-y-4">

@@ -1607,8 +1607,8 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent className="max-w-2xl lg:max-w-5xl max-h-[90vh] h-[90vh] flex flex-col p-0">
             <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-2">
-              <DialogTitle>{t('tasks.editTask')}</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="truncate">{editingTask?.title || t('tasks.editTask')}</DialogTitle>
+              <DialogDescription className="sr-only">
                 {t('tasks.editTaskDescription')}
               </DialogDescription>
             </DialogHeader>
