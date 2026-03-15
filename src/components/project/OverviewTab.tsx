@@ -256,15 +256,21 @@ const OverviewTab = ({
     }
   }, [onNavigateToTasks, onNavigateToBudget, onNavigateToFeed, onNavigateToRoom]);
 
-  // Listen for Junior navigation events
+  // Listen for Junior navigation and dismiss events
   useEffect(() => {
-    const handler = (e: Event) => {
-      const target = (e as CustomEvent).detail;
-      handleTipAction(target);
+    const navHandler = (e: Event) => {
+      handleTipAction((e as CustomEvent).detail);
     };
-    window.addEventListener("junior-navigate", handler);
-    return () => window.removeEventListener("junior-navigate", handler);
-  }, [handleTipAction]);
+    const dismissHandler = (e: Event) => {
+      dismissReminder((e as CustomEvent).detail);
+    };
+    window.addEventListener("junior-navigate", navHandler);
+    window.addEventListener("junior-dismiss-reminder", dismissHandler);
+    return () => {
+      window.removeEventListener("junior-navigate", navHandler);
+      window.removeEventListener("junior-dismiss-reminder", dismissHandler);
+    };
+  }, [handleTipAction, dismissReminder]);
 
   const isRfqProject = !!project.source_rfq_project_id;
 

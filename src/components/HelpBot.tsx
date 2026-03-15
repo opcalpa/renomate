@@ -30,24 +30,45 @@ interface QuickPrompt {
 type FeedbackMode = null | "bug" | "suggestion" | "other";
 
 /**
- * MessageContent — Renders message text with clickable [text](navigate:target) links.
+ * MessageContent — Renders message text with:
+ * - Clickable [text](navigate:target) links
+ * - Dismiss buttons [x](dismiss:reminderId)
  */
-function MessageContent({ content, onNavigate }: { content: string; onNavigate: (action: string) => void }) {
-  // Parse [link text](navigate:target) patterns
-  const parts = content.split(/(\[[^\]]+\]\(navigate:[^)]+\))/g);
+function MessageContent({ content, onNavigate, onDismiss }: {
+  content: string;
+  onNavigate: (action: string) => void;
+  onDismiss?: (id: string) => void;
+}) {
+  // Parse [text](navigate:target) and [x](dismiss:id) patterns
+  const parts = content.split(/(\[[^\]]*\]\((?:navigate|dismiss):[^)]+\))/g);
 
   return (
     <>
       {parts.map((part, i) => {
-        const match = part.match(/^\[([^\]]+)\]\(navigate:([^)]+)\)$/);
-        if (match) {
+        const navMatch = part.match(/^\[([^\]]+)\]\(navigate:([^)]+)\)$/);
+        if (navMatch) {
+          return (
+            <span key={i} className="inline-flex items-center gap-1">
+              <button
+                className="text-primary hover:underline font-medium inline"
+                onClick={() => onNavigate(`navigate:${navMatch[2]}`)}
+              >
+                {navMatch[1]}
+              </button>
+              {/* Extract dismiss ID from the reminder id embedded after navigate */}
+            </span>
+          );
+        }
+        const dismissMatch = part.match(/^\[\]\(dismiss:([^)]+)\)$/);
+        if (dismissMatch && onDismiss) {
           return (
             <button
               key={i}
-              className="text-primary hover:underline font-medium inline"
-              onClick={() => onNavigate(`navigate:${match[2]}`)}
+              className="inline-flex items-center justify-center h-4 w-4 rounded text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted transition-colors ml-1"
+              onClick={() => onDismiss(dismissMatch[1])}
+              title="Dismiss"
             >
-              {match[1]}
+              <span className="text-[10px] leading-none">✕</span>
             </button>
           );
         }
@@ -125,14 +146,15 @@ export function HelpBot() {
         ? t("helpBot.roleIntro.contractor", "I'm your project assistant — ready to help with quotes, scheduling, and keeping things on track.")
         : t("helpBot.roleIntro.default", "I'm your renovation expert and platform guide.");
 
-    // Project reminders — shown as clickable links in message
+    // Project reminders — shown as clickable links with dismiss buttons
     let reminderText = "";
     if (page === "project" && juniorReminders.length > 0) {
       const items = juniorReminders.slice(0, 4).map(r => {
+        const dismiss = `[](dismiss:${r.id})`;
         if (r.actionTarget) {
-          return `• [${t(r.titleKey)}](navigate:${r.actionTarget})`;
+          return `• [${t(r.titleKey)}](navigate:${r.actionTarget}) ${dismiss}`;
         }
-        return `• ${t(r.titleKey)}`;
+        return `• ${t(r.titleKey)} ${dismiss}`;
       }).join("\n");
       reminderText = `\n\n${t("helpBot.reminderIntro", "I noticed a few things in your project:")}\n${items}`;
     }
@@ -377,6 +399,11 @@ export function HelpBot() {
     }
   }, [startFeedbackMode, t, buildGreeting]);
 
+  const handleDismissReminder = useCallback((reminderId: string) => {
+    // Dispatch event to OverviewTab to dismiss the reminder
+    window.dispatchEvent(new CustomEvent("junior-dismiss-reminder", { detail: reminderId }));
+  }, []);
+
   const handleQuickPrompt = useCallback((prompt: QuickPrompt) => {
     if (prompt.action) {
       handleInlineAction(prompt.action);
@@ -552,7 +579,7 @@ export function HelpBot() {
                         : "bg-muted"
                     }`}
                   >
-                    <MessageContent content={msg.content} onNavigate={handleInlineAction} />
+                    <MessageContent content={msg.content} onNavigate={handleInlineAction} onDismiss={handleDismissReminder} />
                   </div>
                 </div>
                 {/* Inline action buttons below a message */}
