@@ -29,6 +29,34 @@ interface QuickPrompt {
 
 type FeedbackMode = null | "bug" | "suggestion" | "other";
 
+/**
+ * MessageContent — Renders message text with clickable [text](navigate:target) links.
+ */
+function MessageContent({ content, onNavigate }: { content: string; onNavigate: (action: string) => void }) {
+  // Parse [link text](navigate:target) patterns
+  const parts = content.split(/(\[[^\]]+\]\(navigate:[^)]+\))/g);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        const match = part.match(/^\[([^\]]+)\]\(navigate:([^)]+)\)$/);
+        if (match) {
+          return (
+            <button
+              key={i}
+              className="text-primary hover:underline font-medium inline"
+              onClick={() => onNavigate(`navigate:${match[2]}`)}
+            >
+              {match[1]}
+            </button>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 function getTimeOfDayKey(): "morning" | "afternoon" | "evening" {
   const h = new Date().getHours();
   if (h < 12) return "morning";
@@ -97,22 +125,16 @@ export function HelpBot() {
         ? t("helpBot.roleIntro.contractor", "I'm your project assistant — ready to help with quotes, scheduling, and keeping things on track.")
         : t("helpBot.roleIntro.default", "I'm your renovation expert and platform guide.");
 
-    // Project reminders — shown as text + action buttons
+    // Project reminders — shown as clickable links in message
     let reminderText = "";
-    const reminderActions: InlineAction[] = [];
     if (page === "project" && juniorReminders.length > 0) {
-      const items = juniorReminders.slice(0, 4).map(r => `• ${t(r.titleKey)}`).join("\n");
-      reminderText = `\n\n${t("helpBot.reminderIntro", "I noticed a few things in your project:")}\n${items}`;
-      // Add action buttons for reminders that have actionTarget
-      for (const r of juniorReminders.slice(0, 4)) {
-        if (r.actionTarget && r.actionKey) {
-          reminderActions.push({
-            labelKey: r.actionKey,
-            fallback: r.actionTarget,
-            action: `navigate:${r.actionTarget}`,
-          });
+      const items = juniorReminders.slice(0, 4).map(r => {
+        if (r.actionTarget) {
+          return `• [${t(r.titleKey)}](navigate:${r.actionTarget})`;
         }
-      }
+        return `• ${t(r.titleKey)}`;
+      }).join("\n");
+      reminderText = `\n\n${t("helpBot.reminderIntro", "I noticed a few things in your project:")}\n${items}`;
     }
 
     // Page-specific nudge (only if no reminders)
@@ -129,7 +151,6 @@ export function HelpBot() {
 
     return {
       content: `${hello}${nameGreeting}! 👋\n\n${roleIntro}${reminderText}\n\n${nudge ? nudge + "\n\n" : ""}${disclaimer}`,
-      actions: reminderActions.length > 0 ? reminderActions : undefined,
     };
   }, [t, userType, userName, juniorReminders]);
 
@@ -531,7 +552,7 @@ export function HelpBot() {
                         : "bg-muted"
                     }`}
                   >
-                    {msg.content}
+                    <MessageContent content={msg.content} onNavigate={handleInlineAction} />
                   </div>
                 </div>
                 {/* Inline action buttons below a message */}
