@@ -4350,6 +4350,55 @@
       "body": "Before renovation starts, verify that your home insurance covers construction damage and that your contractor has liability insurance. Ask for proof."
     }
   },
+  "nextSteps": {
+    "addTasks": {
+      "title": "Start by adding your renovation tasks",
+      "body": "List everything that needs to be done — painting, tiling, plumbing, electrical. This forms the foundation of your project plan.",
+      "action": "Add tasks"
+    },
+    "setDeadline": {
+      "title": "Set a project deadline",
+      "body": "A target completion date helps you plan the work sequence and track whether the project is on schedule.",
+      "action": "Set deadline"
+    },
+    "inviteBuilder": {
+      "title": "Ready to invite a builder?",
+      "body": "You have tasks listed — consider sending a quote request (RFQ) to builders to get price estimates for the work."
+    },
+    "setBudget": {
+      "title": "Set your project budget",
+      "body": "Track your spending against a budget to avoid surprises. You can adjust it anytime as quotes come in.",
+      "action": "Go to budget"
+    },
+    "reviewBudget": {
+      "title": "Time to review your budget",
+      "body": "Your project is over halfway done. Check how actual spending compares to your budget and make adjustments if needed.",
+      "action": "Review budget"
+    },
+    "builderAddTasks": {
+      "title": "Define the scope of work",
+      "body": "Add the tasks you'll be performing on this project. This helps create accurate quotes and track progress.",
+      "action": "Add tasks"
+    },
+    "inviteCustomer": {
+      "title": "Invite the customer to collaborate",
+      "body": "Share the project with your customer so they can review scope, provide input, and stay updated on progress."
+    },
+    "updateProgress": {
+      "title": "Update task progress",
+      "body": "Keep your project status current by marking completed tasks. This keeps all stakeholders informed.",
+      "action": "View tasks"
+    },
+    "sendUpdate": {
+      "title": "Send a status update",
+      "body": "Your customer will appreciate a quick update on how the project is progressing. Photos are always welcome!",
+      "action": "Open chat"
+    }
+  },
+  "tips": {
+    "showMore": "Show {{count}} more",
+    "showLess": "Show less"
+  },
   "analysis": {
     "title": "ROT deduction",
     "totalExpenses": "Total",

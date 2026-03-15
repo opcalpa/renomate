@@ -4347,6 +4347,55 @@
       "body": "Innan renoveringen börjar, verifiera att din hemförsäkring täcker byggskador och att din hantverkare har ansvarsförsäkring. Be om intyg."
     }
   },
+  "nextSteps": {
+    "addTasks": {
+      "title": "Börja med att lägga till arbeten",
+      "body": "Lista allt som behöver göras — målning, kakling, VVS, el. Det blir grunden i din projektplan.",
+      "action": "Lägg till arbeten"
+    },
+    "setDeadline": {
+      "title": "Sätt ett slutdatum",
+      "body": "Ett måldatum hjälper dig planera arbetsordningen och följa om projektet ligger i fas.",
+      "action": "Sätt datum"
+    },
+    "inviteBuilder": {
+      "title": "Dags att bjuda in en byggare?",
+      "body": "Du har arbeten listade — skicka en offertförfrågan till byggare för att få prisuppskattningar."
+    },
+    "setBudget": {
+      "title": "Sätt en projektbudget",
+      "body": "Följ dina utgifter mot en budget för att undvika överraskningar. Du kan justera den när som helst.",
+      "action": "Gå till budget"
+    },
+    "reviewBudget": {
+      "title": "Dags att granska budgeten",
+      "body": "Projektet är mer än halvvägs. Kolla hur faktiska kostnader stämmer mot budget och justera vid behov.",
+      "action": "Granska budget"
+    },
+    "builderAddTasks": {
+      "title": "Definiera arbetets omfattning",
+      "body": "Lägg till de arbeten du ska utföra i projektet. Det hjälper dig skapa korrekta offerter och följa framsteg.",
+      "action": "Lägg till arbeten"
+    },
+    "inviteCustomer": {
+      "title": "Bjud in kunden att samarbeta",
+      "body": "Dela projektet med din kund så de kan granska omfattningen, ge input och följa framstegen."
+    },
+    "updateProgress": {
+      "title": "Uppdatera arbetsstatusar",
+      "body": "Håll projektet uppdaterat genom att markera avklarade arbeten. Det håller alla informerade.",
+      "action": "Visa arbeten"
+    },
+    "sendUpdate": {
+      "title": "Skicka en statusuppdatering",
+      "body": "Din kund uppskattar en snabb uppdatering om hur projektet går. Bilder är alltid välkomna!",
+      "action": "Öppna chatt"
+    }
+  },
+  "tips": {
+    "showMore": "Visa {{count}} till",
+    "showLess": "Visa färre"
+  },
   "analysis": {
     "title": "Rotavdrag",
     "totalExpenses": "Totalt",

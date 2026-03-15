@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -211,8 +211,22 @@ const OverviewTab = ({
     projectStatus: projectStatus || undefined,
     userRole: isHomeowner ? "homeowner" : "contractor",
     contexts: isPlanning ? ["planningPhase"] : [],
+    taskCount: taskStats?.total ?? 0,
+    completionPct: taskStats?.percentage ?? 0,
+    hasBudget: (project.total_budget ?? 0) > 0,
+    hasDeadline: !!project.finish_goal_date,
+    hasTeam: hasClient,
   };
   const { tips, dismiss, isDismissed } = useContextualTips(tipContext);
+
+  const handleTipAction = useCallback((target: string) => {
+    switch (target) {
+      case "tasks": onNavigateToTasks?.(); break;
+      case "budget": onNavigateToBudget?.(); break;
+      case "chat": onNavigateToFeed?.(); break;
+      case "settings": setSettingsOpen(true); break;
+    }
+  }, [onNavigateToTasks, onNavigateToBudget, onNavigateToFeed]);
 
   const isRfqProject = !!project.source_rfq_project_id;
 
@@ -309,7 +323,7 @@ const OverviewTab = ({
       {/* Contextual tips + ROT readiness — unified hints section */}
       {(tips.length > 0 || (!isGuest && !isPlanningContributor && !isPlanning)) && (
         <div className="space-y-2">
-          <TipList tips={tips} onDismiss={dismiss} maxTips={2} compact />
+          <TipList tips={tips} onDismiss={dismiss} onAction={handleTipAction} maxTips={3} compact />
           {!isGuest && !isPlanningContributor && !isPlanning && (
             <RotDetailsCard
               personnummer={rotPersonnummer}

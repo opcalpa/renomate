@@ -23,7 +23,12 @@ export type TipTriggerType =
   | "roomType"       // room type string match
   | "projectStatus"  // project status match
   | "costCenter"     // cost_center field match
-  | "context";       // named context (e.g. "budgetTab", "firstProject")
+  | "context"        // named context (e.g. "budgetTab", "firstProject")
+  | "taskCount"      // numeric comparison: "0", "<3", ">10"
+  | "hasBudget"      // "true" or "false"
+  | "hasDeadline"    // "true" or "false"
+  | "hasTeam"        // "true" or "false"
+  | "completionPct"; // numeric comparison: "<25", ">75"
 
 export interface TipTrigger {
   type: TipTriggerType;
@@ -32,7 +37,8 @@ export interface TipTrigger {
 
 export interface ContextualTip {
   id: string;
-  triggers: TipTrigger[];    // ANY trigger match = show tip
+  triggers: TipTrigger[];    // ANY trigger match = show tip (unless matchAll is true)
+  matchAll?: boolean;        // if true, ALL triggers must match
   role: TipRole;
   titleKey: string;          // i18n key
   bodyKey: string;           // i18n key
@@ -41,6 +47,9 @@ export interface ContextualTip {
   dismissible: boolean;
   linkKey?: string;          // i18n key for "Read more" link text
   linkUrl?: string;          // external URL or internal route
+  actionKey?: string;        // i18n key for action button text
+  actionTarget?: string;     // navigation target: "tasks", "budget", "settings", "team", "chat"
+  icon?: "rocket" | "target" | "users" | "calendar" | "piggybank" | "zap"; // optional icon override
 }
 
 // ---------------------------------------------------------------------------
@@ -265,6 +274,170 @@ export const CONTEXTUAL_TIPS: ContextualTip[] = [
     priority: 5,
     dismissible: true,
   },
+
+  // ====================================================================
+  // NEXT STEP TIPS — contextual onboarding based on project state
+  // ====================================================================
+
+  // -- Homeowner: Planning phase --
+  {
+    id: "next_add_tasks",
+    triggers: [
+      { type: "projectStatus", value: "planning" },
+      { type: "taskCount", value: "0" },
+    ],
+    matchAll: true,
+    role: "homeowner",
+    titleKey: "nextSteps.addTasks.title",
+    bodyKey: "nextSteps.addTasks.body",
+    category: "nextStep",
+    priority: 9,
+    dismissible: true,
+    actionKey: "nextSteps.addTasks.action",
+    actionTarget: "tasks",
+    icon: "rocket",
+  },
+  {
+    id: "next_set_deadline",
+    triggers: [
+      { type: "hasDeadline", value: "false" },
+      { type: "taskCount", value: ">0" },
+    ],
+    matchAll: true,
+    role: "all",
+    titleKey: "nextSteps.setDeadline.title",
+    bodyKey: "nextSteps.setDeadline.body",
+    category: "nextStep",
+    priority: 7,
+    dismissible: true,
+    actionKey: "nextSteps.setDeadline.action",
+    actionTarget: "settings",
+    icon: "calendar",
+  },
+  {
+    id: "next_invite_builder",
+    triggers: [
+      { type: "projectStatus", value: "planning" },
+      { type: "taskCount", value: ">2" },
+    ],
+    matchAll: true,
+    role: "homeowner",
+    titleKey: "nextSteps.inviteBuilder.title",
+    bodyKey: "nextSteps.inviteBuilder.body",
+    category: "nextStep",
+    priority: 8,
+    dismissible: true,
+    icon: "users",
+  },
+  {
+    id: "next_set_budget",
+    triggers: [
+      { type: "hasBudget", value: "false" },
+      { type: "projectStatus", value: "active" },
+    ],
+    matchAll: true,
+    role: "all",
+    titleKey: "nextSteps.setBudget.title",
+    bodyKey: "nextSteps.setBudget.body",
+    category: "nextStep",
+    priority: 7,
+    dismissible: true,
+    actionKey: "nextSteps.setBudget.action",
+    actionTarget: "budget",
+    icon: "piggybank",
+  },
+
+  // -- Homeowner: Active phase --
+  {
+    id: "next_review_budget",
+    triggers: [
+      { type: "projectStatus", value: "active" },
+      { type: "hasBudget", value: "true" },
+      { type: "completionPct", value: ">50" },
+    ],
+    matchAll: true,
+    role: "homeowner",
+    titleKey: "nextSteps.reviewBudget.title",
+    bodyKey: "nextSteps.reviewBudget.body",
+    category: "nextStep",
+    priority: 5,
+    dismissible: true,
+    actionKey: "nextSteps.reviewBudget.action",
+    actionTarget: "budget",
+    icon: "piggybank",
+  },
+
+  // -- Builder: Planning phase --
+  {
+    id: "next_builder_add_tasks",
+    triggers: [
+      { type: "projectStatus", value: "planning" },
+      { type: "taskCount", value: "0" },
+    ],
+    matchAll: true,
+    role: "contractor",
+    titleKey: "nextSteps.builderAddTasks.title",
+    bodyKey: "nextSteps.builderAddTasks.body",
+    category: "nextStep",
+    priority: 9,
+    dismissible: true,
+    actionKey: "nextSteps.builderAddTasks.action",
+    actionTarget: "tasks",
+    icon: "rocket",
+  },
+  {
+    id: "next_invite_customer",
+    triggers: [
+      { type: "projectStatus", value: "planning" },
+      { type: "taskCount", value: ">0" },
+      { type: "hasTeam", value: "false" },
+    ],
+    matchAll: true,
+    role: "contractor",
+    titleKey: "nextSteps.inviteCustomer.title",
+    bodyKey: "nextSteps.inviteCustomer.body",
+    category: "nextStep",
+    priority: 8,
+    dismissible: true,
+    icon: "users",
+  },
+
+  // -- Builder: Active phase --
+  {
+    id: "next_update_progress",
+    triggers: [
+      { type: "projectStatus", value: "active" },
+      { type: "completionPct", value: "<100" },
+      { type: "taskCount", value: ">0" },
+    ],
+    matchAll: true,
+    role: "contractor",
+    titleKey: "nextSteps.updateProgress.title",
+    bodyKey: "nextSteps.updateProgress.body",
+    category: "nextStep",
+    priority: 4,
+    dismissible: true,
+    actionKey: "nextSteps.updateProgress.action",
+    actionTarget: "tasks",
+    icon: "target",
+  },
+  {
+    id: "next_send_update",
+    triggers: [
+      { type: "projectStatus", value: "active" },
+      { type: "hasTeam", value: "true" },
+    ],
+    matchAll: true,
+    role: "contractor",
+    titleKey: "nextSteps.sendUpdate.title",
+    bodyKey: "nextSteps.sendUpdate.body",
+    category: "nextStep",
+    priority: 3,
+    dismissible: true,
+    actionKey: "nextSteps.sendUpdate.action",
+    actionTarget: "chat",
+    icon: "zap",
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -279,6 +452,19 @@ export interface TipContext {
   projectStatus?: string | null;
   contexts?: string[];             // named contexts like "budgetTab", "firstProject"
   userRole?: "homeowner" | "contractor" | null;
+  // Extended context for smart next-step tips
+  taskCount?: number;
+  completionPct?: number;          // 0-100
+  hasBudget?: boolean;
+  hasDeadline?: boolean;
+  hasTeam?: boolean;
+}
+
+function matchesNumericComparison(value: number | undefined, comparison: string): boolean {
+  if (value === undefined) return false;
+  if (comparison.startsWith("<")) return value < Number(comparison.slice(1));
+  if (comparison.startsWith(">")) return value > Number(comparison.slice(1));
+  return value === Number(comparison);
 }
 
 function matchesTrigger(trigger: TipTrigger, ctx: TipContext): boolean {
@@ -300,6 +486,16 @@ function matchesTrigger(trigger: TipTrigger, ctx: TipContext): boolean {
       return ctx.projectStatus === trigger.value;
     case "context":
       return ctx.contexts?.includes(trigger.value) ?? false;
+    case "taskCount":
+      return matchesNumericComparison(ctx.taskCount, trigger.value);
+    case "completionPct":
+      return matchesNumericComparison(ctx.completionPct, trigger.value);
+    case "hasBudget":
+      return ctx.hasBudget !== undefined && String(ctx.hasBudget) === trigger.value;
+    case "hasDeadline":
+      return ctx.hasDeadline !== undefined && String(ctx.hasDeadline) === trigger.value;
+    case "hasTeam":
+      return ctx.hasTeam !== undefined && String(ctx.hasTeam) === trigger.value;
     default:
       return false;
   }
@@ -319,8 +515,10 @@ export function findMatchingTips(
       if (dismissedIds.has(tip.id)) return false;
       // Role filter
       if (tip.role !== "all" && ctx.userRole && tip.role !== ctx.userRole) return false;
-      // At least one trigger must match
-      return tip.triggers.some((trigger) => matchesTrigger(trigger, ctx));
+      // matchAll: ALL triggers must match. Otherwise: ANY trigger match = show tip
+      return tip.matchAll
+        ? tip.triggers.every((trigger) => matchesTrigger(trigger, ctx))
+        : tip.triggers.some((trigger) => matchesTrigger(trigger, ctx));
     })
     .sort((a, b) => b.priority - a.priority);
 }
