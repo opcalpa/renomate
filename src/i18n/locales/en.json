@@ -2782,6 +2782,7 @@
       "project": "I can see you're working on a project — ask me about next steps, building regulations, or how to use any feature."
     },
     "disclaimerShort": "PS: For building regs I give general guidance — always double-check with your municipality.",
+    "reminderIntro": "I noticed a few things in your project:",
     "errorMessage": "Something went wrong. Please try again.",
     "bugPrompt": "Oh no, something's not working right? 🐛\n\nTell me what happened — for example:\n• What did you click or do?\n• What did you expect to happen?\n• What happened instead?\n\nThe more details, the faster we can fix it! I'll automatically include which page you're on.",
     "suggestionPrompt": "Love that you want to help us improve! 💡\n\nTell me freely — is there a feature you're missing? Something that could work better? A workflow that feels clunky?\n\nAll ideas are welcome, big or small. We read every single one.",
@@ -4413,6 +4414,54 @@
   "tips": {
     "showMore": "Show {{count}} more",
     "showLess": "Show less"
+  },
+  "reminders": {
+    "sectionTitle": "Reminders",
+    "dismissAll": "Clear all",
+    "noTasks": {
+      "title": "No tasks created yet",
+      "body": "Start by listing the work that needs to be done.",
+      "action": "Add tasks"
+    },
+    "noRooms": {
+      "title": "No rooms added",
+      "body": "Add rooms to connect tasks to specific spaces.",
+      "action": "Add rooms"
+    },
+    "unlinkedTasks": {
+      "title": "Tasks not linked to rooms",
+      "body": "Connect tasks to rooms for better organization and estimates.",
+      "action": "Link tasks"
+    },
+    "noDeadline": {
+      "title": "No project deadline set",
+      "body": "Set a target completion date to track your schedule.",
+      "action": "Set deadline"
+    },
+    "noStartDate": {
+      "title": "No start date set",
+      "body": "Set when the project begins for timeline tracking.",
+      "action": "Set date"
+    },
+    "rotPersonnummer": {
+      "title": "ROT: Personal ID number missing",
+      "body": "Required for ROT tax deduction claims."
+    },
+    "rotProperty": {
+      "title": "ROT: Property designation missing",
+      "body": "Add your property designation (fastighetsbeteckning) for ROT eligibility.",
+      "action": "Add in settings"
+    },
+    "noBudget": {
+      "title": "No budget set",
+      "body": "Set a budget to track spending and avoid surprises.",
+      "action": "Set budget"
+    },
+    "budgetOver": {
+      "title": "Budget exceeded",
+      "body": "Your spending has exceeded the project budget.",
+      "action": "Review budget"
+    }
   },
   "analysis": {
     "title": "ROT deduction",

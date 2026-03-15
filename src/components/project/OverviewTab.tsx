@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useProjectReminders } from "@/hooks/useProjectReminders";
+import { useJuniorStore } from "@/stores/juniorStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -28,6 +30,7 @@ import { HomeownerPlanningView } from "./overview/HomeownerPlanningView";
 import { GuestPlanningSection } from "./overview/GuestPlanningSection";
 import { ProjectHeader } from "./overview/ProjectHeader";
 import { RotDetailsCard } from "./overview/RotDetailsCard";
+import { ReminderSection } from "./overview/ReminderSection";
 import { normalizeStatus, isQuotePhase } from "@/lib/projectStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { updateGuestProject } from "@/services/guestStorageService";
@@ -219,6 +222,30 @@ const OverviewTab = ({
   };
   const { tips, dismiss, isDismissed } = useContextualTips(tipContext);
 
+  // ----- Project reminders (grundfunktioner) -----
+  const reminderCtx = useMemo(() => ({
+    projectId: project.id,
+    taskCount: taskStats?.total ?? 0,
+    completionPct: taskStats?.percentage ?? 0,
+    hasBudget: (project.total_budget ?? 0) > 0,
+    budgetPct: budgetStats?.percentage ?? 0,
+    hasStartDate: !!project.start_date,
+    hasFinishDate: !!project.finish_goal_date,
+    hasTeam: hasClient,
+    isPlanning,
+    isHomeowner,
+    propertyDesignation: project.property_designation,
+    rotPersonnummer,
+  }), [project, taskStats, budgetStats, hasClient, isPlanning, isHomeowner, rotPersonnummer]);
+
+  const { reminders, dismissReminder, dismissAll: dismissAllReminders } = useProjectReminders(reminderCtx);
+
+  // Sync reminders to Junior store
+  useEffect(() => {
+    useJuniorStore.getState().setReminders(reminders, project.name);
+    return () => useJuniorStore.getState().clear();
+  }, [reminders, project.name]);
+
   const handleTipAction = useCallback((target: string) => {
     switch (target) {
       case "tasks": onNavigateToTasks?.(); break;
@@ -320,24 +347,16 @@ const OverviewTab = ({
       {/* Scope / Planning section — during planning: prominent; after planning: moved to bottom */}
       {isPlanning && (!isInvitedClient || isPlanningContributor) && planningSection}
 
-      {/* Contextual tips + ROT readiness — unified hints section */}
-      {(tips.length > 0 || (!isGuest && !isPlanningContributor && !isPlanning)) && (
-        <div className="space-y-2">
-          <TipList tips={tips} onDismiss={dismiss} onAction={handleTipAction} maxTips={3} compact />
-          {!isGuest && !isPlanningContributor && !isPlanning && (
-            <RotDetailsCard
-              personnummer={rotPersonnummer}
-              propertyAddress={project.address}
-              propertyDesignation={project.property_designation}
-              isHomeowner={isHomeowner}
-              hasClient={hasClient}
-              dismissed={isDismissed("rot_readiness")}
-              onDismiss={() => dismiss("rot_readiness")}
-              onOpenSettings={() => setSettingsOpen(true)}
-              onNavigateToProfile={() => window.location.assign("/profile")}
-            />
-          )}
-        </div>
+      {/* Reminders + contextual tips — collapsible section */}
+      {!isGuest && !isPlanningContributor && (reminders.length > 0 || tips.length > 0) && (
+        <ReminderSection
+          reminders={reminders}
+          tips={tips}
+          onDismissReminder={dismissReminder}
+          onDismissAllReminders={dismissAllReminders}
+          onDismissTip={dismiss}
+          onAction={handleTipAction}
+        />
       )}
 
       {/* Dashboard toolbar + pulse cards — hidden during pure planning phase */}

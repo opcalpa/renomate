@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { HelpCircle, Send, X, Lightbulb, BookOpen, Wrench, FileText, Bug, MessageSquarePlus, ArrowLeft } from "lucide-react";
+import { Send, X, Lightbulb, BookOpen, Wrench, FileText, Bug, MessageSquarePlus, ArrowLeft } from "lucide-react";
+import { useJuniorStore } from "@/stores/juniorStore";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,6 +46,9 @@ function getPageContext(): "projects" | "project" | "auth" | "other" {
 
 export function HelpBot() {
   const { t, i18n } = useTranslation();
+  const reminderCount = useJuniorStore((s) => s.reminderCount);
+  const juniorReminders = useJuniorStore((s) => s.reminders);
+  const juniorProjectName = useJuniorStore((s) => s.projectName);
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -93,18 +97,27 @@ export function HelpBot() {
         ? t("helpBot.roleIntro.contractor", "I'm your project assistant — ready to help with quotes, scheduling, and keeping things on track.")
         : t("helpBot.roleIntro.default", "I'm your renovation expert and platform guide.");
 
-    // Page-specific nudge
+    // Project reminders
+    let reminderBlock = "";
+    if (page === "project" && juniorReminders.length > 0) {
+      const items = juniorReminders.slice(0, 4).map(r => `• ${t(r.titleKey)}`).join("\n");
+      reminderBlock = `\n\n${t("helpBot.reminderIntro", "I noticed a few things in your project:")}\n${items}`;
+    }
+
+    // Page-specific nudge (only if no reminders)
     let nudge = "";
-    if (page === "projects") {
-      nudge = t("helpBot.nudge.projects", "Pick a project to dive into, or ask me anything about renovations!");
-    } else if (page === "project") {
-      nudge = t("helpBot.nudge.project", "I can see you're working on a project — ask me about next steps, building regulations, or how to use any feature.");
+    if (!reminderBlock) {
+      if (page === "projects") {
+        nudge = t("helpBot.nudge.projects", "Pick a project to dive into, or ask me anything about renovations!");
+      } else if (page === "project") {
+        nudge = t("helpBot.nudge.project", "I can see you're working on a project — ask me about next steps, building regulations, or how to use any feature.");
+      }
     }
 
     const disclaimer = t("helpBot.disclaimerShort", "PS: For building regs I give general guidance — always double-check with your municipality.");
 
-    return `${hello}${nameGreeting}! 👋\n\n${roleIntro}\n\n${nudge ? nudge + "\n\n" : ""}${disclaimer}`;
-  }, [t, userType, userName]);
+    return `${hello}${nameGreeting}! 👋\n\n${roleIntro}${reminderBlock}\n\n${nudge ? nudge + "\n\n" : ""}${disclaimer}`;
+  }, [t, userType, userName, juniorReminders]);
 
   // Reset conversation when language changes
   const currentLang = i18n.language;
@@ -406,6 +419,11 @@ export function HelpBot() {
           aria-label={t("helpBot.title", "Renomate Junior")}
         >
           <img src="/chatbot-avatar.jpg" alt="Renomate Junior" className="h-10 w-10 rounded-full object-cover" />
+          {reminderCount > 0 && (
+            <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-orange-500 text-white text-[11px] font-bold flex items-center justify-center shadow-sm">
+              {reminderCount}
+            </span>
+          )}
         </button>
       )}
 

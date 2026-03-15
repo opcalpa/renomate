@@ -2779,6 +2779,7 @@
       "project": "Jag ser att du jobbar i ett projekt — fråga mig om nästa steg, byggregler eller hur du använder en funktion."
     },
     "disclaimerShort": "PS: För byggregler ger jag allmän vägledning — dubbelkolla alltid med din kommun.",
+    "reminderIntro": "Jag noterade några saker i ditt projekt:",
     "errorMessage": "Något gick fel. Försök igen.",
     "bugPrompt": "Ojdå, något krånglar? 🐛\n\nBerätta vad som hände — till exempel:\n• Vad klickade du på?\n• Vad förväntade du dig?\n• Vad hände istället?\n\nJu mer detaljer, desto snabbare kan vi fixa det! Jag fångar automatiskt vilken sida du är på.",
     "suggestionPrompt": "Kul att du vill hjälpa oss bli bättre! 💡\n\nBerätta fritt — saknar du en funktion? Vill du att något fungerar annorlunda? Något som känns krångligt?\n\nAlla idéer är välkomna, stora som små. Vi läser varenda en.",
@@ -4410,6 +4411,54 @@
   "tips": {
     "showMore": "Visa {{count}} till",
     "showLess": "Visa färre"
+  },
+  "reminders": {
+    "sectionTitle": "Påminnelser",
+    "dismissAll": "Rensa alla",
+    "noTasks": {
+      "title": "Inga arbeten skapade",
+      "body": "Börja med att lista vad som behöver göras.",
+      "action": "Lägg till arbeten"
+    },
+    "noRooms": {
+      "title": "Inga rum tillagda",
+      "body": "Lägg till rum för att koppla arbeten till specifika utrymmen.",
+      "action": "Lägg till rum"
+    },
+    "unlinkedTasks": {
+      "title": "Arbeten ej kopplade till rum",
+      "body": "Koppla arbeten till rum för bättre organisation och uppskattningar.",
+      "action": "Koppla arbeten"
+    },
+    "noDeadline": {
+      "title": "Inget slutdatum satt",
+      "body": "Sätt ett måldatum för att följa tidsplanen.",
+      "action": "Sätt datum"
+    },
+    "noStartDate": {
+      "title": "Inget startdatum satt",
+      "body": "Ange när projektet börjar för tidslinjen.",
+      "action": "Sätt datum"
+    },
+    "rotPersonnummer": {
+      "title": "ROT: Personnummer saknas",
+      "body": "Krävs för att kunna ansöka om ROT-avdrag."
+    },
+    "rotProperty": {
+      "title": "ROT: Fastighetsbeteckning saknas",
+      "body": "Lägg till fastighetsbeteckning för ROT-berättigande.",
+      "action": "Lägg till i inställningar"
+    },
+    "noBudget": {
+      "title": "Ingen budget satt",
+      "body": "Sätt en budget för att följa utgifter och undvika överraskningar.",
+      "action": "Sätt budget"
+    },
+    "budgetOver": {
+      "title": "Budgeten överskriden",
+      "body": "Dina utgifter har överskridit projektbudgeten.",
+      "action": "Granska budget"
+    }
   },
   "analysis": {
     "title": "Rotavdrag",
