@@ -38,8 +38,8 @@ function getTimeOfDayKey(): "morning" | "afternoon" | "evening" {
 
 function getPageContext(): "projects" | "project" | "auth" | "other" {
   const path = window.location.pathname;
-  if (path.startsWith("/project/")) return "project";
-  if (path === "/start" || path === "/") return "projects";
+  if (path.startsWith("/projects/") || path.startsWith("/project/")) return "project";
+  if (path === "/start" || path === "/" || path === "/projects") return "projects";
   if (path.startsWith("/auth")) return "auth";
   return "other";
 }
