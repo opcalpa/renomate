@@ -576,6 +576,8 @@ export const TaskEditDialog = ({
   const hasAutoFilledRef = useRef(false);
   const [materialSpent, setMaterialSpent] = useState(0);
   const [estimationSettings, setEstimationSettings] = useState<RecipeEstimationSettings | null>(null);
+  const [dependencies, setDependencies] = useState<{ id: string; depends_on_task_id: string; title: string; status: string; finish_date: string | null }[]>([]);
+  const [allProjectTasks, setAllProjectTasks] = useState<{ id: string; title: string; status: string; finish_date: string | null }[]>([]);
 
   // Contextual tips based on task title, work type, room, etc.
   const taskTipContext = React.useMemo(() => ({
@@ -644,6 +646,35 @@ export const TaskEditDialog = ({
       const defaultIds = DEFAULT_COST_CENTERS.map((cc) => cc.id);
       const custom = existingCenters.filter((c: string) => !defaultIds.includes(c));
       setCustomCostCenters(custom);
+
+      // Fetch dependencies (what this task depends on)
+      const { data: deps } = await supabase
+        .from("task_dependencies")
+        .select("id, depends_on_task_id")
+        .eq("task_id", taskId);
+
+      // Fetch all project tasks for the dependency picker
+      const { data: projTasks } = await supabase
+        .from("tasks")
+        .select("id, title, status, finish_date")
+        .eq("project_id", projectId)
+        .neq("id", taskId);
+
+      const taskList = projTasks || [];
+      setAllProjectTasks(taskList);
+
+      // Enrich dependencies with task info
+      const enrichedDeps = (deps || []).map(d => {
+        const depTask = taskList.find(t => t.id === d.depends_on_task_id);
+        return {
+          id: d.id,
+          depends_on_task_id: d.depends_on_task_id,
+          title: depTask?.title || "Unknown",
+          status: depTask?.status || "to_do",
+          finish_date: depTask?.finish_date || null,
+        };
+      });
+      setDependencies(enrichedDeps);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Failed to load task";
       toast({ title: t("common.error"), description: msg, variant: "destructive" });
@@ -1983,6 +2014,88 @@ export const TaskEditDialog = ({
                           </Button>
                         </div>
                       )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Dependencies */}
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 text-sm font-medium hover:text-primary transition-colors group">
+                    <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
+                    {t("tasks.dependencies", "Dependencies")} {dependencies.length > 0 && `(${dependencies.length})`}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="pl-6 pb-3 space-y-2">
+                      {/* Existing dependencies */}
+                      {dependencies.map((dep) => {
+                        const isReady = dep.status === "done" || dep.status === "completed";
+                        return (
+                          <div key={dep.id} className={`flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm ${isReady ? "border-green-200 bg-green-50/50" : "border-amber-200 bg-amber-50/50"}`}>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`h-2 w-2 rounded-full shrink-0 ${isReady ? "bg-green-500" : "bg-amber-500"}`} />
+                              <span className="truncate">{dep.title}</span>
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                {isReady ? t("tasks.depReady", "Ready") : t("tasks.depWaiting", "Waiting")}
+                              </span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive shrink-0"
+                              onClick={async () => {
+                                await supabase.from("task_dependencies").delete().eq("id", dep.id);
+                                setDependencies(prev => prev.filter(d => d.id !== dep.id));
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                      {/* Add dependency */}
+                      {(() => {
+                        const availableTasks = allProjectTasks.filter(
+                          t => !dependencies.some(d => d.depends_on_task_id === t.id)
+                        );
+                        if (availableTasks.length === 0 && dependencies.length === 0) {
+                          return <p className="text-xs text-muted-foreground">{t("tasks.noDepsAvailable", "No other tasks to depend on")}</p>;
+                        }
+                        if (availableTasks.length === 0) return null;
+                        return (
+                          <Select
+                            value=""
+                            onValueChange={async (depTaskId) => {
+                              const { data, error } = await supabase
+                                .from("task_dependencies")
+                                .insert({ task_id: taskId!, depends_on_task_id: depTaskId })
+                                .select("id")
+                                .single();
+                              if (!error && data) {
+                                const depTask = allProjectTasks.find(t => t.id === depTaskId);
+                                setDependencies(prev => [...prev, {
+                                  id: data.id,
+                                  depends_on_task_id: depTaskId,
+                                  title: depTask?.title || "Unknown",
+                                  status: depTask?.status || "to_do",
+                                  finish_date: depTask?.finish_date || null,
+                                }]);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder={t("tasks.addDependency", "Add dependency...")} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableTasks.map(pt => (
+                                <SelectItem key={pt.id} value={pt.id}>
+                                  {pt.title}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        );
+                      })()}
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
