@@ -168,6 +168,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
 
   // Timeline visibility
   const [timelineOpen, setTimelineOpen] = useState(true);
+  const [tasksOpen, setTasksOpen] = useState(true);
   
   // Column order for Kanban view (filter out legacy 'done' status which is merged into 'completed')
   const [columnOrder, setColumnOrder] = useState<string[]>(() => {
@@ -1036,43 +1037,34 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
 
       {/* Collapsible Timeline Section */}
       {showTimeline && (
-        <Card>
-          {/* Mobile-only compact toggle header */}
+        <div>
           <button
-            className="flex items-center justify-between w-full px-4 py-3 md:hidden hover:bg-accent/50 transition-colors rounded-t-lg"
+            className="text-lg font-medium hover:text-primary transition-colors mb-2"
             onClick={() => setTimelineOpen(!timelineOpen)}
           >
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium text-sm">{t('projectDetail.timeline')}</span>
-            </div>
-            {timelineOpen ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
+            {t('projectDetail.timeline')}
           </button>
-          {/* On mobile: toggled by button. On desktop: always visible */}
-          <div className={cn(!timelineOpen && "hidden md:block")}>
-            <CardContent className="p-0">
-              <ProjectTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} />
-            </CardContent>
-          </div>
-        </Card>
+          {timelineOpen && (
+            <Card>
+              <CardContent className="p-0">
+                <ProjectTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} />
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
       <div className="flex flex-col gap-4">
-        {/* Header with title */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-medium">{t('tasks.tasks')}</h3>
-            <p className="text-sm text-muted-foreground">
-              {t('tasks.showingTasks', { filtered: filteredTasks.length, total: tasks.length })}
-            </p>
-          </div>
-        </div>
+        {/* Collapsible tasks header */}
+        <button
+          className="text-lg font-medium hover:text-primary transition-colors text-left"
+          onClick={() => setTasksOpen(!tasksOpen)}
+        >
+          {t('tasks.tasks')}
+        </button>
 
         {/* Filters, View Toggle, and Add Task button on same row */}
+        <div className={cn(!tasksOpen && "hidden")}>
         <div className="flex items-center gap-3 flex-wrap">
           {/* View Toggle */}
           <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'kanban' | 'table')}>
@@ -1773,6 +1765,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
           hideToolbar
         />
       )}
+      </div>
       {/* Create Purchase Order Dialog */}
       <Dialog open={poDialogOpen} onOpenChange={setPoDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
