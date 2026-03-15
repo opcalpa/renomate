@@ -1219,28 +1219,7 @@ const Projects = () => {
                   </>
                 ) : (
                   <>
-                    {!isGuest && (
-                      <div className="space-y-2">
-                        <Label>{t('projects.projectType')}</Label>
-                        <Select value={newProjectType} onValueChange={setNewProjectType}>
-                          <SelectTrigger>
-                            <SelectValue placeholder={t('projects.selectProjectType')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="kitchen_renovation">{t('projects.types.kitchenRenovation')}</SelectItem>
-                            <SelectItem value="bathroom_renovation">{t('projects.types.bathroomRenovation')}</SelectItem>
-                            <SelectItem value="full_renovation">{t('projects.types.fullRenovation')}</SelectItem>
-                            <SelectItem value="extension">{t('projects.types.extension')}</SelectItem>
-                            <SelectItem value="new_construction">{t('projects.types.newConstruction')}</SelectItem>
-                            <SelectItem value="facade">{t('projects.types.facade')}</SelectItem>
-                            <SelectItem value="roof">{t('projects.types.roof')}</SelectItem>
-                            <SelectItem value="plumbing">{t('projects.types.plumbing')}</SelectItem>
-                            <SelectItem value="electrical">{t('projects.types.electrical')}</SelectItem>
-                            <SelectItem value="other">{t('projects.types.other')}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                    {/* Project type dropdown removed — type is inferred from tasks/rooms */}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label>{t('projects.startDate')}</Label>
