@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import TaskDetailDialog from "@/components/project/TaskDetailDialog";
+import { TaskEditDialog } from "@/components/project/TaskEditDialog";
 
 interface Task {
   id: string;
@@ -198,14 +198,13 @@ export function RelatedTasksSection({ roomId, projectId }: RelatedTasksSectionPr
         )}
       </div>
 
-      {/* Task Detail Dialog */}
-      <TaskDetailDialog
+      {/* Task Edit Dialog */}
+      <TaskEditDialog
         taskId={selectedTaskId}
+        projectId={projectId}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        onEdit={() => {
-          // Could navigate to full task edit page if needed
-        }}
+        onSaved={() => fetchTasks()}
       />
 
       {/* Create Task Dialog */}
