@@ -2807,19 +2807,19 @@
       "permits": "Tillstånd & regler",
       "spacePlanner": "Planlösningsguide",
       "budgetTips": "Budget & kostnader",
-      "projectManagement": "Projekthantering",
-      "teamBudget": "Team & budget",
+      "planningHelp": "Planering & offerter",
+      "quotesTips": "Offerter & fakturor",
       "reportBug": "Rapportera bugg",
       "suggestion": "Förslag",
       "otherFeedback": "Annan feedback"
     },
     "quickMessage": {
-      "getStarted": "Jag är ny — vad är bästa sättet att sätta upp mitt första renoveringsprojekt?",
+      "getStarted": "Jag är ny — vad är bästa sättet att komma igång med mitt renoveringsprojekt?",
       "permits": "Vilka bygglov och regler bör jag känna till för renoveringsarbeten?",
       "spacePlanner": "Hur använder jag planlösningen för att skapa planritningar och koppla rum till arbeten?",
       "budgetTips": "Hur spårar jag renoveringskostnader och hanterar min budget i appen?",
-      "projectManagement": "Hur kan jag hantera mina renoveringsprojekt mer effektivt i appen?",
-      "teamBudget": "Hur bjuder jag in teammedlemmar och spårar kostnader mellan projekt?"
+      "planningHelp": "Hur planerar jag min renovering och skickar offertförfrågningar till byggare?",
+      "quotesTips": "Hur skapar jag offerter, hanterar ROT-avdrag och fakturerar kunder?"
     }
   },
   "feedback": {

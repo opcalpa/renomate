@@ -2810,19 +2810,19 @@
       "permits": "Permits & regulations",
       "spacePlanner": "Space Planner guide",
       "budgetTips": "Budget & costs",
-      "projectManagement": "Project management",
-      "teamBudget": "Team & budget",
+      "planningHelp": "Planning & quotes",
+      "quotesTips": "Quotes & invoicing",
       "reportBug": "Report a bug",
       "suggestion": "Suggestion",
       "otherFeedback": "Other feedback"
     },
     "quickMessage": {
-      "getStarted": "I'm new — what's the best way to set up my first renovation project?",
+      "getStarted": "I'm new — what's the best way to get started with my renovation project?",
       "permits": "What building permits and regulations should I be aware of for renovation work?",
       "spacePlanner": "How do I use the Space Planner to create floor plans and link rooms to tasks?",
       "budgetTips": "How do I track renovation costs and manage my budget in the app?",
-      "projectManagement": "How can I manage my renovation projects more efficiently in the app?",
-      "teamBudget": "How do I invite team members and track costs across projects?"
+      "planningHelp": "How do I plan my renovation and send quote requests to builders?",
+      "quotesTips": "How do I create quotes, handle ROT deductions, and invoice clients?"
     }
   },
   "feedback": {

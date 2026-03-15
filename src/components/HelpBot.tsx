@@ -290,7 +290,7 @@ export function HelpBot() {
       setMessages([
         {
           role: "assistant",
-          content: t("helpBot.greeting"),
+          content: buildGreeting(),
         },
       ]);
     } else if (action === "start_feedback") {
@@ -319,7 +319,32 @@ export function HelpBot() {
   }, [sendMessage, handleInlineAction]);
 
   // Quick prompts shown before first user message
-  const quickPrompts: QuickPrompt[] = [
+  const quickPrompts: QuickPrompt[] = userType === "contractor" ? [
+    {
+      icon: <Lightbulb className="h-3.5 w-3.5 shrink-0" />,
+      labelKey: "helpBot.quick.getStarted",
+      fallback: "Getting started",
+      message: t("helpBot.quickMessage.getStarted"),
+    },
+    {
+      icon: <FileText className="h-3.5 w-3.5 shrink-0" />,
+      labelKey: "helpBot.quick.quotesTips",
+      fallback: "Quotes & invoicing",
+      message: t("helpBot.quickMessage.quotesTips"),
+    },
+    {
+      icon: <Wrench className="h-3.5 w-3.5 shrink-0" />,
+      labelKey: "helpBot.quick.spacePlanner",
+      fallback: "Space Planner guide",
+      message: t("helpBot.quickMessage.spacePlanner"),
+    },
+    {
+      icon: <BookOpen className="h-3.5 w-3.5 shrink-0" />,
+      labelKey: "helpBot.quick.budgetTips",
+      fallback: "Budget & cost tracking",
+      message: t("helpBot.quickMessage.budgetTips"),
+    },
+  ] : [
     {
       icon: <Lightbulb className="h-3.5 w-3.5 shrink-0" />,
       labelKey: "helpBot.quick.getStarted",
@@ -334,9 +359,9 @@ export function HelpBot() {
     },
     {
       icon: <Wrench className="h-3.5 w-3.5 shrink-0" />,
-      labelKey: "helpBot.quick.spacePlanner",
-      fallback: "Space Planner guide",
-      message: t("helpBot.quickMessage.spacePlanner"),
+      labelKey: "helpBot.quick.planningHelp",
+      fallback: "Planning & quotes",
+      message: t("helpBot.quickMessage.planningHelp"),
     },
     {
       icon: <BookOpen className="h-3.5 w-3.5 shrink-0" />,
