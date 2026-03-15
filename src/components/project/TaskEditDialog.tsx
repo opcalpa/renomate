@@ -924,8 +924,8 @@ export const TaskEditDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl lg:max-w-5xl max-h-[90vh] h-[90vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-2">
-          <DialogTitle>{t("tasks.editTask")}</DialogTitle>
-          <DialogDescription>{t("tasks.editTaskDescription")}</DialogDescription>
+          <DialogTitle className="truncate">{task?.title || t("tasks.editTask")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("tasks.editTaskDescription")}</DialogDescription>
         </DialogHeader>
 
         {loading ? (
