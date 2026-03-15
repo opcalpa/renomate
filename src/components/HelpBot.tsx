@@ -28,6 +28,21 @@ interface QuickPrompt {
 
 type FeedbackMode = null | "bug" | "suggestion" | "other";
 
+function getTimeOfDayKey(): "morning" | "afternoon" | "evening" {
+  const h = new Date().getHours();
+  if (h < 12) return "morning";
+  if (h < 18) return "afternoon";
+  return "evening";
+}
+
+function getPageContext(): "projects" | "project" | "auth" | "other" {
+  const path = window.location.pathname;
+  if (path.startsWith("/project/")) return "project";
+  if (path === "/start" || path === "/") return "projects";
+  if (path.startsWith("/auth")) return "auth";
+  return "other";
+}
+
 export function HelpBot() {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -35,27 +50,61 @@ export function HelpBot() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [userType, setUserType] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const [feedbackMode, setFeedbackMode] = useState<FeedbackMode>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch user type from profile
+  // Fetch user type and name from profile
   useEffect(() => {
     const fetchUserType = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("onboarding_user_type")
+        .select("onboarding_user_type, name")
         .eq("user_id", user.id)
         .maybeSingle();
       if (data?.onboarding_user_type) {
         setUserType(data.onboarding_user_type);
       }
+      if (data?.name) {
+        setUserName(data.name.split(" ")[0]); // first name only
+      }
     };
     fetchUserType();
   }, []);
+
+  const buildGreeting = useCallback(() => {
+    const timeKey = getTimeOfDayKey();
+    const page = getPageContext();
+    const nameGreeting = userName ? `, ${userName}` : "";
+
+    // Time-based hello
+    const hello = t(`helpBot.timeGreeting.${timeKey}`, {
+      defaultValue: timeKey === "morning" ? "God morgon" : timeKey === "afternoon" ? "Hej" : "God kväll",
+    });
+
+    // Role-specific flavor
+    const roleIntro = userType === "homeowner"
+      ? t("helpBot.roleIntro.homeowner", "I'm your personal renovation sidekick — here to help with everything from planning to punch list.")
+      : userType === "contractor"
+        ? t("helpBot.roleIntro.contractor", "I'm your project assistant — ready to help with quotes, scheduling, and keeping things on track.")
+        : t("helpBot.roleIntro.default", "I'm your renovation expert and platform guide.");
+
+    // Page-specific nudge
+    let nudge = "";
+    if (page === "projects") {
+      nudge = t("helpBot.nudge.projects", "Pick a project to dive into, or ask me anything about renovations!");
+    } else if (page === "project") {
+      nudge = t("helpBot.nudge.project", "I can see you're working on a project — ask me about next steps, building regulations, or how to use any feature.");
+    }
+
+    const disclaimer = t("helpBot.disclaimerShort", "PS: For building regs I give general guidance — always double-check with your municipality.");
+
+    return `${hello}${nameGreeting}! 👋\n\n${roleIntro}\n\n${nudge ? nudge + "\n\n" : ""}${disclaimer}`;
+  }, [t, userType, userName]);
 
   // Reset conversation when language changes
   const currentLang = i18n.language;
@@ -69,14 +118,14 @@ export function HelpBot() {
       setMessages([
         {
           role: "assistant",
-          content: t("helpBot.greeting"),
+          content: buildGreeting(),
         },
       ]);
     }
     if (open) {
       inputRef.current?.focus();
     }
-  }, [open, messages.length, t]);
+  }, [open, messages.length, buildGreeting]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

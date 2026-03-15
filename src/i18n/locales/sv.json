@@ -2764,6 +2764,21 @@
     "placeholder": "Fråga om renovering eller hur appen fungerar...",
     "disclaimer": "OBS: För byggregler ger jag allmän vägledning — kontakta alltid din kommuns byggnadsnämnd för slutgiltigt besked.",
     "greeting": "Hej! Jag är Renomate Junior — din renoveringsexpert och plattformsguide. Fråga mig om byggregler, renoveringstips eller hur du får ut mest av appen!\n\nOBS: För byggregler ger jag allmän vägledning — kontakta alltid din kommuns byggnadsnämnd för slutgiltigt besked.",
+    "timeGreeting": {
+      "morning": "God morgon",
+      "afternoon": "Hej",
+      "evening": "God kväll"
+    },
+    "roleIntro": {
+      "homeowner": "Jag är din personliga renoveringskompis — här för att hjälpa med allt från planering till slutbesiktning.",
+      "contractor": "Jag är din projektassistent — redo att hjälpa med offerter, tidsplanering och att hålla koll på allt.",
+      "default": "Jag är din renoveringsexpert och plattformsguide."
+    },
+    "nudge": {
+      "projects": "Välj ett projekt att dyka in i, eller fråga mig vad som helst om renovering!",
+      "project": "Jag ser att du jobbar i ett projekt — fråga mig om nästa steg, byggregler eller hur du använder en funktion."
+    },
+    "disclaimerShort": "PS: För byggregler ger jag allmän vägledning — dubbelkolla alltid med din kommun.",
     "errorMessage": "Något gick fel. Försök igen.",
     "bugPrompt": "Ojdå, något krånglar? 🐛\n\nBerätta vad som hände — till exempel:\n• Vad klickade du på?\n• Vad förväntade du dig?\n• Vad hände istället?\n\nJu mer detaljer, desto snabbare kan vi fixa det! Jag fångar automatiskt vilken sida du är på.",
     "suggestionPrompt": "Kul att du vill hjälpa oss bli bättre! 💡\n\nBerätta fritt — saknar du en funktion? Vill du att något fungerar annorlunda? Något som känns krångligt?\n\nAlla idéer är välkomna, stora som små. Vi läser varenda en.",
