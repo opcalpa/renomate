@@ -2763,7 +2763,7 @@
     "title": "Renomate Junior",
     "placeholder": "Fråga om renovering eller hur appen fungerar...",
     "disclaimer": "OBS: För byggregler ger jag allmän vägledning — kontakta alltid din kommuns byggnadsnämnd för slutgiltigt besked.",
-    "greeting": "Hej! Jag är Renomate — din renoveringsexpert och plattformsguide. Fråga mig om byggregler, renoveringstips eller hur du får ut mest av appen!\n\nOBS: För byggregler ger jag allmän vägledning — kontakta alltid din kommuns byggnadsnämnd för slutgiltigt besked.",
+    "greeting": "Hej! Jag är Renomate Junior — din renoveringsexpert och plattformsguide. Fråga mig om byggregler, renoveringstips eller hur du får ut mest av appen!\n\nOBS: För byggregler ger jag allmän vägledning — kontakta alltid din kommuns byggnadsnämnd för slutgiltigt besked.",
     "errorMessage": "Något gick fel. Försök igen.",
     "bugPrompt": "Ojdå, något krånglar? 🐛\n\nBerätta vad som hände — till exempel:\n• Vad klickade du på?\n• Vad förväntade du dig?\n• Vad hände istället?\n\nJu mer detaljer, desto snabbare kan vi fixa det! Jag fångar automatiskt vilken sida du är på.",
     "suggestionPrompt": "Kul att du vill hjälpa oss bli bättre! 💡\n\nBerätta fritt — saknar du en funktion? Vill du att något fungerar annorlunda? Något som känns krångligt?\n\nAlla idéer är välkomna, stora som små. Vi läser varenda en.",

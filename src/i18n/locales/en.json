@@ -2766,7 +2766,7 @@
     "title": "Renomate Junior",
     "placeholder": "Ask about renovations or how to use the app...",
     "disclaimer": "NOTE: For building regulations I provide general guidance — always contact your municipality's building committee for final decisions.",
-    "greeting": "Hi! I'm Renomate — your renovation expert and platform guide. Ask me about building regulations, renovation tips, or how to get the most out of the app!\n\nNOTE: For building regulations I provide general guidance — always contact your municipality's building committee for final decisions.",
+    "greeting": "Hi! I'm Renomate Junior — your renovation expert and platform guide. Ask me about building regulations, renovation tips, or how to get the most out of the app!\n\nNOTE: For building regulations I provide general guidance — always contact your municipality's building committee for final decisions.",
     "errorMessage": "Something went wrong. Please try again.",
     "bugPrompt": "Oh no, something's not working right? 🐛\n\nTell me what happened — for example:\n• What did you click or do?\n• What did you expect to happen?\n• What happened instead?\n\nThe more details, the faster we can fix it! I'll automatically include which page you're on.",
     "suggestionPrompt": "Love that you want to help us improve! 💡\n\nTell me freely — is there a feature you're missing? Something that could work better? A workflow that feels clunky?\n\nAll ideas are welcome, big or small. We read every single one.",
