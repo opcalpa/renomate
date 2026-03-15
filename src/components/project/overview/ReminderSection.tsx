@@ -31,7 +31,7 @@ export function ReminderSection({
   onAction,
 }: ReminderSectionProps) {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const totalCount = reminders.length + tips.length;
 
   if (totalCount === 0) return null;
