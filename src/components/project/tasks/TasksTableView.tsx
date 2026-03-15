@@ -129,6 +129,7 @@ const DB_FIELD_MAP: Record<TaskColumnKey, string> = {
   subcontractorCost: "subcontractor_cost",
   materialEstimate: "material_estimate",
   markupPercent: "markup_percent",
+  dependencies: "",
 };
 
 const SORT_FIELD_MAP: Record<TaskColumnKey, keyof Task | null> = {
@@ -152,6 +153,7 @@ const SORT_FIELD_MAP: Record<TaskColumnKey, keyof Task | null> = {
   subcontractorCost: "subcontractor_cost",
   materialEstimate: "material_estimate",
   markupPercent: "markup_percent",
+  dependencies: null,
 };
 
 export function TasksTableView({
@@ -192,6 +194,29 @@ export function TasksTableView({
     compactRows,
     setCompactRows,
   } = externalState || internalState;
+
+  // Dependencies map: taskId → array of depends_on titles
+  const [depsMap, setDepsMap] = useState<Map<string, string[]>>(new Map());
+  useEffect(() => {
+    if (tasks.length === 0) return;
+    const fetchDeps = async () => {
+      const { data } = await supabase
+        .from("task_dependencies")
+        .select("task_id, depends_on_task_id")
+        .in("task_id", tasks.map(t => t.id));
+      if (!data) return;
+      const map = new Map<string, string[]>();
+      for (const dep of data) {
+        const depTask = tasks.find(t => t.id === dep.depends_on_task_id);
+        const title = depTask?.title || "?";
+        const existing = map.get(dep.task_id) || [];
+        existing.push(title);
+        map.set(dep.task_id, existing);
+      }
+      setDepsMap(map);
+    };
+    fetchDeps();
+  }, [tasks]);
 
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{
@@ -246,6 +271,41 @@ export function TasksTableView({
         .from("tasks")
         .update(updatePayload)
         .eq("id", taskId);
+
+      // Cascade date changes to dependent tasks (successors)
+      if (!error && value && (colKey === "startDate" || colKey === "finishDate")) {
+        const task = tasks.find(t => t.id === taskId);
+        const newFinishDate = colKey === "finishDate"
+          ? (value as string)
+          : (updatePayload.finish_date as string) || task?.finish_date;
+
+        if (newFinishDate) {
+          // Find tasks that depend on this one
+          const { data: successors } = await supabase
+            .from("task_dependencies")
+            .select("task_id")
+            .eq("depends_on_task_id", taskId);
+
+          if (successors && successors.length > 0) {
+            for (const dep of successors) {
+              const depTask = tasks.find(t => t.id === dep.task_id);
+              if (depTask?.start_date && depTask.start_date < newFinishDate) {
+                const daysDiff = Math.ceil(
+                  (new Date(newFinishDate).getTime() - new Date(depTask.start_date).getTime()) / 86400000
+                );
+                const newStart = newFinishDate;
+                const depUpdate: Record<string, string> = { start_date: newStart };
+                if (depTask.finish_date) {
+                  const oldFinish = new Date(depTask.finish_date);
+                  oldFinish.setDate(oldFinish.getDate() + daysDiff);
+                  depUpdate.finish_date = oldFinish.toISOString().split("T")[0];
+                }
+                await supabase.from("tasks").update(depUpdate).eq("id", dep.task_id);
+              }
+            }
+          }
+        }
+      }
 
       if (error) {
         const isDateConflict = error.code === "23514";
@@ -717,6 +777,18 @@ export function TasksTableView({
             <Pencil className="h-3 w-3" />
           </Button>
         );
+
+      case "dependencies": {
+        const deps = depsMap.get(task.id);
+        if (!deps || deps.length === 0) {
+          return <span className="text-muted-foreground text-xs">-</span>;
+        }
+        return (
+          <span className="text-xs truncate max-w-[150px] block" title={deps.join(", ")}>
+            {deps.length === 1 ? deps[0] : `${deps.length} ${t("tasks.dependencies", "dep.").toLowerCase()}`}
+          </span>
+        );
+      }
 
       default:
         return null;

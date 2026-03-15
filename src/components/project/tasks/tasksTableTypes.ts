@@ -20,7 +20,8 @@ export type TaskColumnKey =
   | "hourlyRate"
   | "subcontractorCost"
   | "materialEstimate"
-  | "markupPercent";
+  | "markupPercent"
+  | "dependencies";
 
 export interface TaskColumnDef {
   key: TaskColumnKey;
@@ -56,6 +57,7 @@ export const EXTRA_COLUMN_KEYS: TaskColumnKey[] = [
   "subcontractorCost",
   "materialEstimate",
   "markupPercent",
+  "dependencies",
 ];
 
 export const DEFAULT_VISIBLE_EXTRAS: TaskColumnKey[] = [

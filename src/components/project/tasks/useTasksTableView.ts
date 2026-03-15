@@ -55,6 +55,7 @@ export function useTasksTableView(projectId: string) {
       { key: "subcontractorCost", label: t("tasksTable.subcontractorCost"), width: "w-[130px]", align: "right", extra: true, editType: "numeric", dbField: "subcontractor_cost" },
       { key: "materialEstimate", label: t("tasksTable.materialEstimate"), width: "w-[130px]", align: "right", extra: true, editType: "numeric", dbField: "material_estimate" },
       { key: "markupPercent", label: t("tasksTable.markupPercent"), width: "w-[110px]", align: "right", extra: true, editType: "numeric", dbField: "markup_percent" },
+      { key: "dependencies", label: t("tasks.dependencies", "Dependencies"), width: "w-[150px]", extra: true, editType: "none" },
       { key: "actions", label: t("common.actions"), width: "w-[60px]", editType: "none" },
     ],
     [t]
