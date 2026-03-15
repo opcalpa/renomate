@@ -18,7 +18,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map as MapIcon, Loader2, AlertTriangle, Link2, ImageIcon, MessageSquare, Columns3, ToggleLeft } from "lucide-react";
+import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map as MapIcon, Loader2, AlertTriangle, Link2, ImageIcon, MessageSquare, Columns3, AlignJustify } from "lucide-react";
 import { TaskListSkeleton } from "@/components/ui/skeleton-screens";
 import { DEFAULT_COST_CENTERS, getCostCenterIcon, getCostCenterLabel } from "@/lib/costCenters";
 import { formatCurrency } from "@/lib/currency";
@@ -1277,12 +1277,12 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
               {/* Compact toggle */}
               <Button
                 variant={tableViewState.compactRows ? "secondary" : "outline"}
-                size="sm"
-                className="gap-1 h-9"
+                size="icon"
+                className="h-9 w-9"
                 onClick={() => tableViewState.setCompactRows(!tableViewState.compactRows)}
+                title={t("tasksTable.compactRows")}
               >
-                <ToggleLeft className="h-4 w-4" />
-                {t("tasksTable.compactRows")}
+                <AlignJustify className="h-4 w-4" />
               </Button>
 
             </>
