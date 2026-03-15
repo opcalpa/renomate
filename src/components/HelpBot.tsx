@@ -140,6 +140,16 @@ export function HelpBot() {
     }
   }, [open, messages.length, buildGreeting]);
 
+  // Update greeting when reminders change (if user hasn't sent any messages yet)
+  useEffect(() => {
+    if (open && messages.length === 1 && messages[0].role === "assistant") {
+      const newGreeting = buildGreeting();
+      if (newGreeting !== messages[0].content) {
+        setMessages([{ role: "assistant", content: newGreeting }]);
+      }
+    }
+  }, [juniorReminders.length]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
