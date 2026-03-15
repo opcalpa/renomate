@@ -1610,14 +1610,31 @@ const ProjectTimeline = ({
         </div>
       </CardContent>
 
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <TaskEditDialog
+        taskId={editingTask?.id ?? null}
+        projectId={projectId}
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          setEditDialogOpen(open);
+          if (!open) setEditingTask(null);
+        }}
+        onSaved={() => {
+          fetchTasks();
+          setEditDialogOpen(false);
+          setEditingTask(null);
+        }}
+        currency={currency}
+      />
+      {/* Legacy inline dialog removed — using shared TaskEditDialog */}
+      {false && (
+      <Dialog open={false} onOpenChange={() => {}}>
+        <DialogContent className="hidden">
           <DialogHeader>
-            <DialogTitle className="truncate">{editingTask?.title || t('tasks.editTask', 'Edit Task')}</DialogTitle>
-            <DialogDescription className="sr-only">{t('tasks.editTaskDescription', 'Edit task details')}</DialogDescription>
+            <DialogTitle>legacy</DialogTitle>
+            <DialogDescription className="sr-only">legacy</DialogDescription>
           </DialogHeader>
           {editingTask && (
-            <form onSubmit={handleEditTask} className="space-y-4">
+            <form onSubmit={() => {}} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-task-title">{t('tasks.taskTitle')}</Label>
                 <Input
@@ -1756,6 +1773,7 @@ const ProjectTimeline = ({
           )}
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Task detail — read-only sheet for homeowners, full edit dialog for builders */}
       {userType === "homeowner" ? (

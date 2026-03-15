@@ -30,6 +30,7 @@ import { CommentsSection } from "@/components/comments/CommentsSection";
 import { TaskFilesList } from "./TaskFilesList";
 import { Separator } from "@/components/ui/separator";
 import ProjectTimeline from "./ProjectTimeline";
+import { TaskEditDialog } from "./TaskEditDialog";
 import { ProjectLockBanner } from "./ProjectLockBanner";
 import { useProjectLock } from "@/hooks/useProjectLock";
 import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
@@ -1604,13 +1605,29 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
           </DialogContent>
         </Dialog>
 
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-2xl lg:max-w-5xl max-h-[90vh] h-[90vh] flex flex-col p-0">
-            <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-2">
-              <DialogTitle className="truncate">{editingTask?.title || t('tasks.editTask')}</DialogTitle>
-              <DialogDescription className="sr-only">
-                {t('tasks.editTaskDescription')}
-              </DialogDescription>
+        <TaskEditDialog
+          taskId={editingTask?.id ?? null}
+          projectId={projectId}
+          open={editDialogOpen}
+          onOpenChange={(open) => {
+            setEditDialogOpen(open);
+            if (!open) setEditingTask(null);
+          }}
+          onSaved={() => {
+            fetchTasks();
+            setEditDialogOpen(false);
+            setEditingTask(null);
+          }}
+          currency={currency}
+          projectStatus={projectStatus}
+        />
+        {/* Legacy inline dialog removed — using shared TaskEditDialog */}
+        {false && (
+          <Dialog open={false} onOpenChange={() => {}}>
+          <DialogContent className="hidden">
+            <DialogHeader>
+              <DialogTitle>legacy</DialogTitle>
+              <DialogDescription className="sr-only">legacy</DialogDescription>
             </DialogHeader>
             {editingTask && (
               <form onSubmit={handleEditTask} className="flex flex-col flex-1 min-h-0 px-6">
