@@ -252,8 +252,19 @@ const OverviewTab = ({
       case "budget": onNavigateToBudget?.(); break;
       case "chat": onNavigateToFeed?.(); break;
       case "settings": setSettingsOpen(true); break;
+      case "floormap": onNavigateToRoom?.(""); break;
     }
-  }, [onNavigateToTasks, onNavigateToBudget, onNavigateToFeed]);
+  }, [onNavigateToTasks, onNavigateToBudget, onNavigateToFeed, onNavigateToRoom]);
+
+  // Listen for Junior navigation events
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const target = (e as CustomEvent).detail;
+      handleTipAction(target);
+    };
+    window.addEventListener("junior-navigate", handler);
+    return () => window.removeEventListener("junior-navigate", handler);
+  }, [handleTipAction]);
 
   const isRfqProject = !!project.source_rfq_project_id;
 

@@ -97,16 +97,27 @@ export function HelpBot() {
         ? t("helpBot.roleIntro.contractor", "I'm your project assistant — ready to help with quotes, scheduling, and keeping things on track.")
         : t("helpBot.roleIntro.default", "I'm your renovation expert and platform guide.");
 
-    // Project reminders
-    let reminderBlock = "";
+    // Project reminders — shown as text + action buttons
+    let reminderText = "";
+    const reminderActions: InlineAction[] = [];
     if (page === "project" && juniorReminders.length > 0) {
       const items = juniorReminders.slice(0, 4).map(r => `• ${t(r.titleKey)}`).join("\n");
-      reminderBlock = `\n\n${t("helpBot.reminderIntro", "I noticed a few things in your project:")}\n${items}`;
+      reminderText = `\n\n${t("helpBot.reminderIntro", "I noticed a few things in your project:")}\n${items}`;
+      // Add action buttons for reminders that have actionTarget
+      for (const r of juniorReminders.slice(0, 4)) {
+        if (r.actionTarget && r.actionKey) {
+          reminderActions.push({
+            labelKey: r.actionKey,
+            fallback: r.actionTarget,
+            action: `navigate:${r.actionTarget}`,
+          });
+        }
+      }
     }
 
     // Page-specific nudge (only if no reminders)
     let nudge = "";
-    if (!reminderBlock) {
+    if (!reminderText) {
       if (page === "projects") {
         nudge = t("helpBot.nudge.projects", "Pick a project to dive into, or ask me anything about renovations!");
       } else if (page === "project") {
@@ -116,7 +127,10 @@ export function HelpBot() {
 
     const disclaimer = t("helpBot.disclaimerShort", "PS: For building regs I give general guidance — always double-check with your municipality.");
 
-    return `${hello}${nameGreeting}! 👋\n\n${roleIntro}${reminderBlock}\n\n${nudge ? nudge + "\n\n" : ""}${disclaimer}`;
+    return {
+      content: `${hello}${nameGreeting}! 👋\n\n${roleIntro}${reminderText}\n\n${nudge ? nudge + "\n\n" : ""}${disclaimer}`,
+      actions: reminderActions.length > 0 ? reminderActions : undefined,
+    };
   }, [t, userType, userName, juniorReminders]);
 
   // Reset conversation when language changes
@@ -128,10 +142,12 @@ export function HelpBot() {
 
   useEffect(() => {
     if (open && messages.length === 0) {
+      const greeting = buildGreeting();
       setMessages([
         {
           role: "assistant",
-          content: buildGreeting(),
+          content: greeting.content,
+          actions: greeting.actions,
         },
       ]);
     }
@@ -143,9 +159,9 @@ export function HelpBot() {
   // Update greeting when reminders change (if user hasn't sent any messages yet)
   useEffect(() => {
     if (open && messages.length === 1 && messages[0].role === "assistant") {
-      const newGreeting = buildGreeting();
-      if (newGreeting !== messages[0].content) {
-        setMessages([{ role: "assistant", content: newGreeting }]);
+      const greeting = buildGreeting();
+      if (greeting.content !== messages[0].content) {
+        setMessages([{ role: "assistant", content: greeting.content, actions: greeting.actions }]);
       }
     }
   }, [juniorReminders.length]);
@@ -310,10 +326,12 @@ export function HelpBot() {
     } else if (action === "reset_chat") {
       // Reset to initial state — show greeting + quick prompts again
       setFeedbackMode(null);
+      const greeting = buildGreeting();
       setMessages([
         {
           role: "assistant",
-          content: buildGreeting(),
+          content: greeting.content,
+          actions: greeting.actions,
         },
       ]);
     } else if (action === "start_feedback") {
@@ -330,8 +348,13 @@ export function HelpBot() {
           ],
         },
       ]);
+    } else if (action.startsWith("navigate:")) {
+      const target = action.replace("navigate:", "");
+      // Dispatch a custom event that OverviewTab listens to for navigation
+      window.dispatchEvent(new CustomEvent("junior-navigate", { detail: target }));
+      setOpen(false);
     }
-  }, [startFeedbackMode, t]);
+  }, [startFeedbackMode, t, buildGreeting]);
 
   const handleQuickPrompt = useCallback((prompt: QuickPrompt) => {
     if (prompt.action) {
