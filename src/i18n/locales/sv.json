@@ -588,6 +588,7 @@
     "noTasks": "Inga arbeten matchar aktuella filter",
     "noTasksHint": "Lägg till ditt första arbete med knappen ovan",
     "failedToUpdateField": "Kunde inte uppdatera fält",
+    "dateConflict": "Startdatum måste vara före eller lika med slutdatum",
     "dueDate": "Förfallodatum",
     "paidAmount": "Betalt",
     "remaining": "Kvarstår",

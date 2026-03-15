@@ -588,6 +588,7 @@
     "noTasks": "No tasks match current filters",
     "noTasksHint": "Add your first task using the button above",
     "failedToUpdateField": "Failed to update field",
+    "dateConflict": "Start date must be before or equal to finish date",
     "dueDate": "Due date",
     "paidAmount": "Paid",
     "remaining": "Remaining",

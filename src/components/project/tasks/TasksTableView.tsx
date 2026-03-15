@@ -228,15 +228,32 @@ export function TasksTableView({
       const dbField = DB_FIELD_MAP[colKey];
       if (!dbField) return;
 
+      // For date fields, auto-adjust the other date if needed to avoid constraint violation
+      let updatePayload: Record<string, unknown> = { [dbField]: value };
+      if (value && (colKey === "startDate" || colKey === "finishDate")) {
+        const task = tasks.find(t => t.id === taskId);
+        if (task) {
+          const newDate = value as string;
+          if (colKey === "startDate" && task.finish_date && newDate > task.finish_date) {
+            updatePayload.finish_date = newDate;
+          } else if (colKey === "finishDate" && task.start_date && newDate < task.start_date) {
+            updatePayload.start_date = newDate;
+          }
+        }
+      }
+
       const { error } = await supabase
         .from("tasks")
-        .update({ [dbField]: value })
+        .update(updatePayload)
         .eq("id", taskId);
 
       if (error) {
+        const isDateConflict = error.code === "23514";
         toast({
           title: t("common.error"),
-          description: t("tasksTable.failedToUpdateField"),
+          description: isDateConflict
+            ? t("tasksTable.dateConflict", "Start date must be before or equal to finish date")
+            : t("tasksTable.failedToUpdateField"),
           variant: "destructive",
         });
       } else {
@@ -244,7 +261,7 @@ export function TasksTableView({
       }
       setEditingCell(null);
     },
-    [onTaskUpdated, t, toast]
+    [onTaskUpdated, t, toast, tasks]
   );
 
   const handleNumericSave = useCallback(
