@@ -781,8 +781,19 @@ const ProjectTimeline = ({
       });
     }
   };
-  // Ref kept for potential future use (must be before early returns)
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // Keep gesture container scrollLeft at 1px (center of 2px overflow).
+  // This ensures Chrome macOS sees scrollable content in BOTH directions
+  // and doesn't intercept swipe gestures for browser navigation.
+  useEffect(() => {
+    const container = gestureContainerRef.current;
+    if (!container) return;
+    container.scrollLeft = 1;
+    const resetScroll = () => { container.scrollLeft = 1; };
+    container.addEventListener("scroll", resetScroll);
+    return () => container.removeEventListener("scroll", resetScroll);
+  });
 
   if (loading) {
     return <Card>
@@ -1183,11 +1194,11 @@ const ProjectTimeline = ({
         <div className="space-y-6">
           <div
               ref={gestureContainerRef}
-              className="overflow-x-hidden overflow-y-hidden -mx-3 px-3 md:mx-0 md:px-0 select-none rounded-lg"
-              style={{ maxHeight: '70vh', minHeight: '200px', cursor: isDragging ? 'grabbing' : 'grab' }}
+              className="overflow-x-auto overflow-y-hidden -mx-3 px-3 md:mx-0 md:px-0 select-none rounded-lg [&::-webkit-scrollbar]:hidden"
+              style={{ maxHeight: '70vh', minHeight: '200px', cursor: isDragging ? 'grabbing' : 'grab', scrollbarWidth: 'none' as unknown as undefined }}
             ><div
-              className="relative min-w-[800px]"
-              style={{ minHeight: '160px' }}
+              className="relative"
+              style={{ minHeight: '160px', width: 'calc(100% + 2px)', minWidth: '802px' }}
             >
               {/* Sticky date ruler — month / week / day rows */}
               <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm flex flex-col">
