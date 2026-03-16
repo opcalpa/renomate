@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
 import { Stage, Layer, Rect, Line, Text as KonvaText, Group } from "react-konva";
-import { addDays, format, getISOWeek, startOfWeek } from "date-fns";
+import { addDays, format, getISOWeek, getDay } from "date-fns";
 import { sv } from "date-fns/locale";
-import { dateToX, RULER_HEIGHT } from "./utils";
+import { dateToX, RULER_HEIGHT, isWeekend } from "./utils";
 
 interface TimelineDateRulerProps {
   originDate: Date;
@@ -12,14 +12,19 @@ interface TimelineDateRulerProps {
   daysToRender: number;
 }
 
-const MONTH_ROW_HEIGHT = 18;
-const WEEK_ROW_HEIGHT = 18;
-const DAY_ROW_HEIGHT = 20;
+const MONTH_ROW_H = 20;
+const WEEK_ROW_H = 18;
+const DAY_ROW_H = RULER_HEIGHT - MONTH_ROW_H - WEEK_ROW_H;
 const BG_COLOR = "#ffffff";
 const BORDER_COLOR = "#e2e8f0";
-const MONTH_TEXT_COLOR = "#334155";
-const WEEK_TEXT_COLOR = "#64748b";
-const DAY_TEXT_COLOR = "#94a3b8";
+const MONTH_TEXT_COLOR = "#1e293b";
+const WEEK_TEXT_COLOR = "#475569";
+const WEEK_BG_EVEN = "#f8fafc";
+const WEEK_BG_ODD = "#ffffff";
+const DAY_TEXT_COLOR = "#64748b";
+const WEEKEND_TEXT_COLOR = "#94a3b8";
+
+const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const TimelineDateRulerComponent: React.FC<TimelineDateRulerProps> = ({
   originDate,
@@ -28,9 +33,8 @@ const TimelineDateRulerComponent: React.FC<TimelineDateRulerProps> = ({
   stageWidth,
   daysToRender,
 }) => {
-  // Calculate visible day range
-  const firstVisibleDay = Math.floor(-panX / pixelsPerDay) - 1;
-  const lastVisibleDay = Math.ceil((stageWidth - panX) / pixelsPerDay) + 1;
+  const firstVisibleDay = Math.floor(-panX / pixelsPerDay) - 2;
+  const lastVisibleDay = Math.ceil((stageWidth - panX) / pixelsPerDay) + 2;
   const startDay = Math.max(0, firstVisibleDay);
   const endDay = Math.min(daysToRender, lastVisibleDay);
 
@@ -42,75 +46,104 @@ const TimelineDateRulerComponent: React.FC<TimelineDateRulerProps> = ({
     for (let i = startDay; i <= endDay; i++) {
       const date = addDays(originDate, i);
       const x = dateToX(date, originDate, pixelsPerDay, panX);
+      const dayOfWeek = getDay(date);
+      const weekend = isWeekend(date);
 
-      // Month labels (only render once per month)
+      // Month labels - Row 1
       const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
-      if (!renderedMonths.has(monthKey) || date.getDate() === 1) {
-        if (date.getDate() <= 7 || !renderedMonths.has(monthKey)) {
-          renderedMonths.add(monthKey);
-          if (date.getDate() === 1 || i === startDay) {
-            items.push(
-              <KonvaText
-                key={`m-${monthKey}`}
-                x={x + 4}
-                y={2}
-                text={format(date, "MMM yyyy", { locale: sv })}
-                fontSize={11}
-                fontStyle="bold"
-                fill={MONTH_TEXT_COLOR}
-                listening={false}
-              />
-            );
-          }
-        }
+      if (!renderedMonths.has(monthKey)) {
+        renderedMonths.add(monthKey);
+        const label = format(date, "MMMM yyyy", { locale: sv }).toUpperCase();
+        items.push(
+          <KonvaText
+            key={`m-${monthKey}`}
+            x={date.getDate() === 1 ? x + 6 : x + 6}
+            y={4}
+            text={label}
+            fontSize={11}
+            fontStyle="bold"
+            fill={MONTH_TEXT_COLOR}
+            listening={false}
+          />
+        );
       }
 
-      // Week numbers (render once per week)
+      // Week number blocks - Row 2
       const weekNum = getISOWeek(date);
-      const weekStart = startOfWeek(date, { weekStartsOn: 1 });
-      const weekKey = weekNum * 100 + date.getFullYear();
-      if (!renderedWeeks.has(weekKey) && date.getDay() === 1) {
+      const weekKey = weekNum * 10000 + date.getFullYear();
+      if (!renderedWeeks.has(weekKey) && dayOfWeek === 1) {
         renderedWeeks.add(weekKey);
-        const weekX = dateToX(weekStart, originDate, pixelsPerDay, panX);
+        const weekWidth = pixelsPerDay * 7;
+        items.push(
+          <Rect
+            key={`wb-${weekKey}`}
+            x={x}
+            y={MONTH_ROW_H}
+            width={weekWidth}
+            height={WEEK_ROW_H}
+            fill={weekNum % 2 === 0 ? WEEK_BG_EVEN : WEEK_BG_ODD}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        );
         items.push(
           <KonvaText
             key={`w-${weekKey}`}
-            x={weekX + 2}
-            y={MONTH_ROW_HEIGHT + 2}
-            text={`v${weekNum}`}
-            fontSize={10}
+            x={x + 4}
+            y={MONTH_ROW_H + 3}
+            text={`V${weekNum}`}
+            fontSize={11}
+            fontStyle="bold"
             fill={WEEK_TEXT_COLOR}
             listening={false}
           />
         );
       }
 
-      // Day labels (show if zoom is large enough)
-      if (pixelsPerDay >= 30) {
+      // Day labels - Row 3
+      if (pixelsPerDay >= 28) {
+        const dayLabel =
+          pixelsPerDay >= 50
+            ? `${date.getDate()} ${DAY_ABBR[dayOfWeek]}`
+            : `${date.getDate()}`;
         items.push(
           <KonvaText
             key={`d-${i}`}
-            x={x + 2}
-            y={MONTH_ROW_HEIGHT + WEEK_ROW_HEIGHT + 2}
-            text={format(date, "d")}
+            x={x + 3}
+            y={MONTH_ROW_H + WEEK_ROW_H + 4}
+            text={dayLabel}
             fontSize={10}
-            fill={DAY_TEXT_COLOR}
+            fill={weekend ? WEEKEND_TEXT_COLOR : DAY_TEXT_COLOR}
             listening={false}
           />
         );
       }
 
-      // Day separator lines in ruler
+      // Day separator lines in ruler (day row only)
       items.push(
         <Line
           key={`rl-${i}`}
-          points={[x, MONTH_ROW_HEIGHT + WEEK_ROW_HEIGHT, x, RULER_HEIGHT]}
+          points={[x, MONTH_ROW_H + WEEK_ROW_H, x, RULER_HEIGHT]}
           stroke={BORDER_COLOR}
           strokeWidth={0.5}
           listening={false}
           perfectDrawEnabled={false}
         />
       );
+
+      // Month boundary line (full height)
+      if (date.getDate() === 1) {
+        items.push(
+          <Line
+            key={`ml-${monthKey}`}
+            points={[x, 0, x, RULER_HEIGHT]}
+            stroke="#94a3b8"
+            strokeWidth={1.5}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        );
+      }
     }
 
     return items;
@@ -121,36 +154,26 @@ const TimelineDateRulerComponent: React.FC<TimelineDateRulerProps> = ({
       <Layer>
         {/* Background */}
         <Rect
-          x={0}
-          y={0}
-          width={stageWidth}
-          height={RULER_HEIGHT}
+          x={0} y={0}
+          width={stageWidth} height={RULER_HEIGHT}
           fill={BG_COLOR}
           listening={false}
         />
         {/* Row separators */}
         <Line
-          points={[0, MONTH_ROW_HEIGHT, stageWidth, MONTH_ROW_HEIGHT]}
-          stroke={BORDER_COLOR}
-          strokeWidth={0.5}
+          points={[0, MONTH_ROW_H, stageWidth, MONTH_ROW_H]}
+          stroke={BORDER_COLOR} strokeWidth={0.5}
           listening={false}
         />
         <Line
-          points={[
-            0,
-            MONTH_ROW_HEIGHT + WEEK_ROW_HEIGHT,
-            stageWidth,
-            MONTH_ROW_HEIGHT + WEEK_ROW_HEIGHT,
-          ]}
-          stroke={BORDER_COLOR}
-          strokeWidth={0.5}
+          points={[0, MONTH_ROW_H + WEEK_ROW_H, stageWidth, MONTH_ROW_H + WEEK_ROW_H]}
+          stroke={BORDER_COLOR} strokeWidth={0.5}
           listening={false}
         />
         {/* Bottom border */}
         <Line
           points={[0, RULER_HEIGHT - 1, stageWidth, RULER_HEIGHT - 1]}
-          stroke={BORDER_COLOR}
-          strokeWidth={1}
+          stroke={BORDER_COLOR} strokeWidth={1}
           listening={false}
         />
         <Group listening={false}>{elements}</Group>

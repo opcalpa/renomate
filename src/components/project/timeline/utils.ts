@@ -4,7 +4,7 @@ import { addDays, differenceInDays } from "date-fns";
 export const ROW_HEIGHT = 48;
 
 /** Height of the date ruler area */
-export const RULER_HEIGHT = 56;
+export const RULER_HEIGHT = 64;
 
 /** Vertical padding inside the task bar */
 export const BAR_PADDING_Y = 8;
@@ -82,4 +82,31 @@ export function isSameDay(a: Date, b: Date): boolean {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
   );
+}
+
+/** Lighten a hex color by a ratio (0-1) */
+export function lightenHex(hex: string, amount: number): string {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const r = Math.min(255, ((num >> 16) & 0xff) + Math.round(255 * amount));
+  const g = Math.min(255, ((num >> 8) & 0xff) + Math.round(255 * amount));
+  const b = Math.min(255, (num & 0xff) + Math.round(255 * amount));
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+}
+
+/** Recursively find all tasks downstream of a given task via dependencies */
+export function getDownstreamTasks(
+  taskId: string,
+  dependencies: { task_id: string; depends_on_task_id: string }[],
+  visited = new Set<string>()
+): string[] {
+  if (visited.has(taskId)) return [];
+  visited.add(taskId);
+  const directDependents = dependencies
+    .filter((d) => d.depends_on_task_id === taskId)
+    .map((d) => d.task_id);
+  const all = [...directDependents];
+  for (const depId of directDependents) {
+    all.push(...getDownstreamTasks(depId, dependencies, visited));
+  }
+  return all;
 }

@@ -9,6 +9,7 @@ import type {
 
 interface UseTimelineDataResult {
   tasks: TimelineTask[];
+  allTasks: TimelineTask[];
   dependencies: TimelineDependency[];
   teamMembers: TeamMember[];
   rooms: Room[];
@@ -18,27 +19,33 @@ interface UseTimelineDataResult {
 
 export function useTimelineData(projectId: string): UseTimelineDataResult {
   const [tasks, setTasks] = useState<TimelineTask[]>([]);
+  const [allTasks, setAllTasks] = useState<TimelineTask[]>([]);
   const [dependencies, setDependencies] = useState<TimelineDependency[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchTasks = useCallback(async () => {
-    const { data, error } = await supabase
+    // Fetch all tasks (for unscheduled count)
+    const { data: all, error: allError } = await supabase
       .from("tasks")
       .select(
         "id, title, status, priority, start_date, finish_date, progress, assigned_to_stakeholder_id, room_id"
       )
       .eq("project_id", projectId)
-      .not("start_date", "is", null)
-      .not("finish_date", "is", null)
       .order("start_date", { ascending: true });
 
-    if (error) {
-      console.error("Failed to fetch timeline tasks:", error);
+    if (allError) {
+      console.error("Failed to fetch timeline tasks:", allError);
       return;
     }
-    setTasks(data || []);
+
+    setAllTasks(all || []);
+    setTasks(
+      (all || []).filter(
+        (t) => t.start_date !== null && t.finish_date !== null
+      )
+    );
   }, [projectId]);
 
   const fetchDependencies = useCallback(async () => {
@@ -62,7 +69,10 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
 
     const members: TeamMember[] = [];
     if (projectData?.profiles) {
-      const p = projectData.profiles as unknown as { id: string; name: string };
+      const p = projectData.profiles as unknown as {
+        id: string;
+        name: string;
+      };
       members.push({ id: p.id, name: p.name });
     }
 
@@ -76,7 +86,10 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
     if (shares) {
       const existingIds = new Set(members.map((m) => m.id));
       for (const share of shares) {
-        const p = share.profiles as unknown as { id: string; name: string } | null;
+        const p = share.profiles as unknown as {
+          id: string;
+          name: string;
+        } | null;
         if (p && !existingIds.has(p.id)) {
           existingIds.add(p.id);
           members.push({ id: p.id, name: p.name });
@@ -118,6 +131,7 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
 
   return {
     tasks,
+    allTasks,
     dependencies,
     teamMembers,
     rooms,

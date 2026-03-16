@@ -1,15 +1,17 @@
 import React, { useMemo, useCallback, useEffect, useRef, useState } from "react";
-import { parseISO, addDays, subDays, differenceInDays } from "date-fns";
+import { parseISO, subDays, differenceInDays, format } from "date-fns";
+import { sv } from "date-fns/locale";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Calendar } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useTimelineData } from "./hooks/useTimelineData";
 import { useTimelineLayout } from "./hooks/useTimelineLayout";
 import { useTimelineStore } from "./store";
 import { TimelineDateRuler } from "./TimelineDateRuler";
 import { TimelineCanvas } from "./TimelineCanvas";
-import { DEFAULT_PIXELS_PER_DAY, RULER_HEIGHT } from "./utils";
+import { TimelineHoverCard } from "./TimelineHoverCard";
+import { TimelineToolbar } from "./TimelineToolbar";
+import { DEFAULT_PIXELS_PER_DAY } from "./utils";
+import type { GroupByOption } from "./types";
 
 interface KonvaTimelineProps {
   projectId: string;
@@ -25,13 +27,14 @@ interface KonvaTimelineProps {
 
 export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
   projectId,
+  projectName,
   onTaskClick,
 }) => {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(800);
 
-  const { tasks, dependencies, teamMembers, rooms, loading } =
+  const { tasks, allTasks, dependencies, teamMembers, rooms, loading, refetch } =
     useTimelineData(projectId);
 
   const {
@@ -41,7 +44,8 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
     selectedAssignee,
     collapsedGroups,
     setPan,
-    setZoom,
+    setGroupBy,
+    setSelectedAssignee,
   } = useTimelineStore();
 
   const { rows, totalRows } = useTimelineLayout({
@@ -53,81 +57,99 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
     teamMembers,
   });
 
-  // ResizeObserver for container width (shared with ruler)
+  const unscheduledTasks = useMemo(
+    () => allTasks.filter((tt) => !tt.start_date || !tt.finish_date),
+    [allTasks]
+  );
+
+  const daysVisible = useMemo(
+    () => Math.round(containerWidth / pixelsPerDay),
+    [containerWidth, pixelsPerDay]
+  );
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setContainerWidth(entry.contentRect.width);
-      }
+      for (const entry of entries) setContainerWidth(entry.contentRect.width);
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  // Compute origin date (earliest task start or today - 7 days)
   const originDate = useMemo(() => {
     if (tasks.length === 0) return subDays(new Date(), 7);
     const starts = tasks
-      .filter((t) => t.start_date)
-      .map((t) => parseISO(t.start_date!));
+      .filter((tt) => tt.start_date)
+      .map((tt) => parseISO(tt.start_date!));
     if (starts.length === 0) return subDays(new Date(), 7);
     const earliest = new Date(Math.min(...starts.map((d) => d.getTime())));
-    return subDays(earliest, 3); // 3 days padding
+    return subDays(earliest, 3);
   }, [tasks]);
 
-  // Days to render
   const daysToRender = useMemo(() => {
     if (tasks.length === 0) return 60;
     const ends = tasks
-      .filter((t) => t.finish_date)
-      .map((t) => parseISO(t.finish_date!));
+      .filter((tt) => tt.finish_date)
+      .map((tt) => parseISO(tt.finish_date!));
     if (ends.length === 0) return 60;
     const latest = new Date(Math.max(...ends.map((d) => d.getTime())));
-    return differenceInDays(latest, originDate) + 14; // 14 days padding
+    return differenceInDays(latest, originDate) + 14;
   }, [tasks, originDate]);
+
+  const dateRangeLabel = useMemo(() => {
+    if (tasks.length === 0) return "";
+    const starts = tasks.filter((tt) => tt.start_date).map((tt) => parseISO(tt.start_date!));
+    const ends = tasks.filter((tt) => tt.finish_date).map((tt) => parseISO(tt.finish_date!));
+    if (starts.length === 0 || ends.length === 0) return "";
+    const min = new Date(Math.min(...starts.map((d) => d.getTime())));
+    const max = new Date(Math.max(...ends.map((d) => d.getTime())));
+    const total = differenceInDays(max, min) + 1;
+    return `${format(min, "MMM d", { locale: sv })} - ${format(max, "MMM d, yyyy", { locale: sv })} (${total} ${t("timeline.days", "days")})`;
+  }, [tasks, t]);
 
   // Auto-center on first load
   const hasAutocentered = useRef(false);
   useEffect(() => {
     if (hasAutocentered.current || loading || tasks.length === 0) return;
     hasAutocentered.current = true;
-
-    // Center on today
     const today = new Date();
     const daysFromOrigin = differenceInDays(today, originDate);
     const centerX = -(daysFromOrigin * pixelsPerDay - containerWidth / 2);
     setPan(centerX, 0);
   }, [loading, tasks, originDate, pixelsPerDay, containerWidth, setPan]);
 
-  // Toolbar handlers
   const handleZoomIn = useCallback(() => {
-    const store = useTimelineStore.getState();
-    store.setZoom(store.pixelsPerDay * 1.25, containerWidth / 2);
+    const s = useTimelineStore.getState();
+    s.setZoom(s.pixelsPerDay * 1.25, containerWidth / 2);
   }, [containerWidth]);
 
   const handleZoomOut = useCallback(() => {
-    const store = useTimelineStore.getState();
-    store.setZoom(store.pixelsPerDay * 0.8, containerWidth / 2);
+    const s = useTimelineStore.getState();
+    s.setZoom(s.pixelsPerDay * 0.8, containerWidth / 2);
+  }, [containerWidth]);
+
+  const handleResetZoom = useCallback(() => {
+    const s = useTimelineStore.getState();
+    s.setZoom(DEFAULT_PIXELS_PER_DAY, containerWidth / 2);
   }, [containerWidth]);
 
   const handleToday = useCallback(() => {
-    const store = useTimelineStore.getState();
+    const s = useTimelineStore.getState();
     const today = new Date();
     const daysFromOrigin = differenceInDays(today, originDate);
-    const centerX = -(daysFromOrigin * store.pixelsPerDay - containerWidth / 2);
-    store.setPan(centerX, 0);
+    const centerX = -(daysFromOrigin * s.pixelsPerDay - containerWidth / 2);
+    s.setPan(centerX, 0);
   }, [originDate, containerWidth]);
 
   const handlePanLeft = useCallback(() => {
-    const store = useTimelineStore.getState();
-    store.setPan(store.panX + store.pixelsPerDay * 7, store.panY);
+    const s = useTimelineStore.getState();
+    s.setPan(s.panX + s.pixelsPerDay * 7, s.panY);
   }, []);
 
   const handlePanRight = useCallback(() => {
-    const store = useTimelineStore.getState();
-    store.setPan(store.panX - store.pixelsPerDay * 7, store.panY);
+    const s = useTimelineStore.getState();
+    s.setPan(s.panX - s.pixelsPerDay * 7, s.panY);
   }, []);
 
   const handleTaskClick = useCallback(
@@ -146,7 +168,7 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
     );
   }
 
-  if (tasks.length === 0) {
+  if (allTasks.length === 0) {
     return (
       <div className="flex items-center justify-center h-48 text-muted-foreground">
         {t("projectDetail.noScheduledTasks", "No scheduled tasks")}
@@ -155,31 +177,26 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
   }
 
   return (
-    <div ref={containerRef} className="w-full">
-      {/* Toolbar */}
-      <div className="flex items-center gap-1 px-3 py-2 border-b bg-background">
-        <Button variant="ghost" size="sm" onClick={handlePanLeft}>
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-        <Button variant="ghost" size="sm" onClick={handleToday}>
-          <Calendar className="w-4 h-4 mr-1" />
-          {t("projectDetail.today", "Today")}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={handlePanRight}>
-          <ChevronRight className="w-4 h-4" />
-        </Button>
+    <div ref={containerRef} className="w-full relative">
+      <TimelineToolbar
+        projectName={projectName}
+        dateRangeLabel={dateRangeLabel}
+        daysVisible={daysVisible}
+        unscheduledTasks={unscheduledTasks}
+        teamMembers={teamMembers}
+        groupBy={groupBy}
+        selectedAssignee={selectedAssignee}
+        onGroupByChange={setGroupBy}
+        onAssigneeChange={setSelectedAssignee}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onResetZoom={handleResetZoom}
+        onPanLeft={handlePanLeft}
+        onPanRight={handlePanRight}
+        onToday={handleToday}
+        onTaskClick={onTaskClick}
+      />
 
-        <div className="w-px h-5 bg-border mx-1" />
-
-        <Button variant="ghost" size="sm" onClick={handleZoomOut}>
-          <ZoomOut className="w-4 h-4" />
-        </Button>
-        <Button variant="ghost" size="sm" onClick={handleZoomIn}>
-          <ZoomIn className="w-4 h-4" />
-        </Button>
-      </div>
-
-      {/* Date ruler */}
       <TimelineDateRuler
         originDate={originDate}
         pixelsPerDay={pixelsPerDay}
@@ -188,16 +205,19 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
         daysToRender={daysToRender}
       />
 
-      {/* Main canvas */}
       <TimelineCanvas
         tasks={tasks}
+        allTasks={allTasks}
         dependencies={dependencies}
         rows={rows}
         totalRows={totalRows}
         originDate={originDate}
         daysToRender={daysToRender}
         onTaskClick={handleTaskClick}
+        onRefetch={refetch}
       />
+
+      <TimelineHoverCard tasks={allTasks} teamMembers={teamMembers} />
     </div>
   );
 };

@@ -4,6 +4,8 @@ export { TimelineDateRuler } from "./TimelineDateRuler";
 export { TimelineGrid } from "./TimelineGrid";
 export { TimelineTaskBar } from "./TimelineTaskBar";
 export { TimelineDependencyArrows } from "./TimelineDependencyArrows";
+export { TimelineHoverCard } from "./TimelineHoverCard";
+export { TimelineToolbar } from "./TimelineToolbar";
 export { useTimelineStore } from "./store";
 export { useTimelineData } from "./hooks/useTimelineData";
 export { useTimelineLayout } from "./hooks/useTimelineLayout";

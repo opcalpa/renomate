@@ -1,6 +1,6 @@
 import React from "react";
 import { Group, Rect, Line } from "react-konva";
-import { addDays, getDay } from "date-fns";
+import { addDays } from "date-fns";
 import { dateToX, isWeekend, isSameDay } from "./utils";
 
 interface TimelineGridProps {
@@ -12,9 +12,9 @@ interface TimelineGridProps {
   daysToRender: number;
 }
 
-const WEEKEND_COLOR = "#f8fafc";
-const DAY_LINE_COLOR = "#e2e8f0";
-const MONTH_LINE_COLOR = "#cbd5e1";
+const WEEKEND_COLOR = "#f1f5f9";
+const DAY_LINE_COLOR = "#e5e7eb";
+const MONTH_LINE_COLOR = "#94a3b8";
 const TODAY_LINE_COLOR = "#ef4444";
 
 const TimelineGridComponent: React.FC<TimelineGridProps> = ({
@@ -28,13 +28,24 @@ const TimelineGridComponent: React.FC<TimelineGridProps> = ({
   const today = new Date();
   const elements: React.ReactNode[] = [];
 
-  // Calculate visible day range to avoid rendering off-screen elements
   const firstVisibleDay = Math.floor(-panX / pixelsPerDay) - 1;
-  const lastVisibleDay =
-    Math.ceil((stageWidth - panX) / pixelsPerDay) + 1;
-
+  const lastVisibleDay = Math.ceil((stageWidth - panX) / pixelsPerDay) + 1;
   const startDay = Math.max(0, firstVisibleDay);
   const endDay = Math.min(daysToRender, lastVisibleDay);
+
+  // Background fill for full visible area
+  elements.push(
+    <Rect
+      key="bg"
+      x={0}
+      y={0}
+      width={stageWidth}
+      height={stageHeight}
+      fill="#ffffff"
+      listening={false}
+      perfectDrawEnabled={false}
+    />
+  );
 
   for (let i = startDay; i <= endDay; i++) {
     const date = addDays(originDate, i);
@@ -63,20 +74,34 @@ const TimelineGridComponent: React.FC<TimelineGridProps> = ({
         key={`dl-${i}`}
         points={[x, 0, x, stageHeight]}
         stroke={isFirstOfMonth ? MONTH_LINE_COLOR : DAY_LINE_COLOR}
-        strokeWidth={isFirstOfMonth ? 1.5 : 0.5}
+        strokeWidth={isFirstOfMonth ? 2 : 0.5}
         listening={false}
         perfectDrawEnabled={false}
       />
     );
 
-    // Today marker
+    // Today marker (rendered last below to be on top)
     if (isSameDay(date, today)) {
+      // Subtle background column for today
+      elements.push(
+        <Rect
+          key="today-bg"
+          x={x}
+          y={0}
+          width={pixelsPerDay}
+          height={stageHeight}
+          fill="rgba(239, 68, 68, 0.04)"
+          listening={false}
+          perfectDrawEnabled={false}
+        />
+      );
       elements.push(
         <Line
           key="today"
           points={[x, 0, x, stageHeight]}
           stroke={TODAY_LINE_COLOR}
           strokeWidth={2}
+          dash={[6, 3]}
           listening={false}
           perfectDrawEnabled={false}
         />

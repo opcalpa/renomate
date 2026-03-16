@@ -1,7 +1,14 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 import { Group, Rect, Text as KonvaText, Circle } from "react-konva";
 import { KonvaEventObject } from "konva/lib/Node";
-import { getTaskColor, darkenHex, BAR_PADDING_Y, ROW_HEIGHT } from "./utils";
+import {
+  getTaskColor,
+  darkenHex,
+  lightenHex,
+  BAR_PADDING_Y,
+  ROW_HEIGHT,
+} from "./utils";
+import { useTimelineStore } from "./store";
 
 interface TimelineTaskBarProps {
   taskId: string;
@@ -28,6 +35,7 @@ const BAR_HEIGHT = ROW_HEIGHT - BAR_PADDING_Y * 2;
 const CORNER_RADIUS = 6;
 const RESIZE_HANDLE_WIDTH = 8;
 const GRIP_DOT_RADIUS = 1.5;
+const CLICK_THRESHOLD = 5;
 
 const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
   taskId,
@@ -49,22 +57,105 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
   const color = getTaskColor(status);
   const progressWidth = Math.max(0, (width * (progress || 0)) / 100);
   const progressColor = darkenHex(color, 0.15);
+  const hoverColor = lightenHex(color, 0.08);
 
-  const handleClick = useCallback(() => {
-    onClick(taskId);
-  }, [onClick, taskId]);
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+  const didDrag = useRef(false);
+
+  const setCursor = useCallback((cursor: string) => {
+    const container = document.querySelector(
+      ".konva-timeline-canvas"
+    ) as HTMLElement | null;
+    if (container) container.style.cursor = cursor;
+  }, []);
+
+  const handleMouseEnter = useCallback(
+    (evt: KonvaEventObject<MouseEvent>) => {
+      const stage = evt.target.getStage();
+      if (!stage) return;
+      // Check if near resize handles
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return;
+
+      const relX = pointer.x - x;
+      if (relX < RESIZE_HANDLE_WIDTH || relX > width - RESIZE_HANDLE_WIDTH) {
+        setCursor("ew-resize");
+      } else {
+        setCursor("grab");
+      }
+
+      // Set hover state with delay handled by parent
+      const store = useTimelineStore.getState();
+      store.setHover(taskId, { x: pointer.x, y: pointer.y });
+    },
+    [taskId, x, width, setCursor]
+  );
+
+  const handleMouseMove = useCallback(
+    (evt: KonvaEventObject<MouseEvent>) => {
+      const stage = evt.target.getStage();
+      if (!stage) return;
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return;
+
+      const relX = pointer.x - x;
+      if (relX < RESIZE_HANDLE_WIDTH || relX > width - RESIZE_HANDLE_WIDTH) {
+        setCursor("ew-resize");
+      } else {
+        setCursor(isDragging ? "grabbing" : "grab");
+      }
+    },
+    [x, width, isDragging, setCursor]
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    setCursor("default");
+    useTimelineStore.getState().clearHover();
+  }, [setCursor]);
 
   const handleDragStart = useCallback(
-    (evt: KonvaEventObject<DragEvent>) => onDragStart(taskId, evt),
-    [onDragStart, taskId]
+    (evt: KonvaEventObject<DragEvent>) => {
+      const stage = evt.target.getStage();
+      const pointer = stage?.getPointerPosition();
+      dragStartPos.current = pointer
+        ? { x: pointer.x, y: pointer.y }
+        : null;
+      didDrag.current = false;
+      setCursor("grabbing");
+      onDragStart(taskId, evt);
+    },
+    [onDragStart, taskId, setCursor]
   );
+
   const handleDragMove = useCallback(
-    (evt: KonvaEventObject<DragEvent>) => onDragMove(taskId, evt),
+    (evt: KonvaEventObject<DragEvent>) => {
+      const stage = evt.target.getStage();
+      const pointer = stage?.getPointerPosition();
+      if (pointer && dragStartPos.current) {
+        const dx = Math.abs(pointer.x - dragStartPos.current.x);
+        const dy = Math.abs(pointer.y - dragStartPos.current.y);
+        if (dx > CLICK_THRESHOLD || dy > CLICK_THRESHOLD) {
+          didDrag.current = true;
+        }
+      }
+      onDragMove(taskId, evt);
+    },
     [onDragMove, taskId]
   );
+
   const handleDragEnd = useCallback(
-    (evt: KonvaEventObject<DragEvent>) => onDragEnd(taskId, evt),
-    [onDragEnd, taskId]
+    (evt: KonvaEventObject<DragEvent>) => {
+      setCursor("grab");
+      if (!didDrag.current) {
+        // Click - not a drag
+        onClick(taskId);
+      } else {
+        onDragEnd(taskId, evt);
+      }
+      dragStartPos.current = null;
+      didDrag.current = false;
+    },
+    [onDragEnd, onClick, taskId, setCursor]
   );
 
   const handleResizeLeft = useCallback(
@@ -83,7 +174,7 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
     [onResizeStart, taskId]
   );
 
-  // GripVertical dots (2 columns x 3 rows of small circles)
+  // GripVertical dots (2 columns x 3 rows)
   const gripDots: React.ReactNode[] = [];
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 2; col++) {
@@ -109,8 +200,9 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
-      onClick={handleClick}
-      onTap={handleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Selection highlight */}
       {isSelected && (
@@ -134,15 +226,15 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
         width={width}
         height={BAR_HEIGHT}
         cornerRadius={CORNER_RADIUS}
-        fill={color}
-        opacity={isDragging ? 0.7 : 1}
+        fill={isDragging ? hoverColor : color}
+        opacity={isDragging ? 0.85 : 1}
         shadowColor="rgba(0,0,0,0.15)"
         shadowBlur={isDragging ? 8 : 2}
         shadowOffsetY={isDragging ? 4 : 1}
         perfectDrawEnabled={false}
       />
 
-      {/* Progress overlay */}
+      {/* Progress overlay (white semi-transparent) */}
       {progressWidth > 0 && (
         <Rect
           x={0}
@@ -159,7 +251,7 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
       {/* Grip dots */}
       {gripDots}
 
-      {/* Title text */}
+      {/* Title text with ellipsis */}
       <KonvaText
         x={24}
         y={BAR_HEIGHT / 2 - 6}
@@ -175,6 +267,21 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
         perfectDrawEnabled={false}
       />
 
+      {/* Progress % text (if enough room) */}
+      {progress > 0 && width > 100 && (
+        <KonvaText
+          x={width - 38}
+          y={BAR_HEIGHT / 2 - 5}
+          width={30}
+          text={`${Math.round(progress)}%`}
+          fontSize={10}
+          fill="rgba(255,255,255,0.8)"
+          align="right"
+          listening={false}
+          perfectDrawEnabled={false}
+        />
+      )}
+
       {/* Left resize handle */}
       <Rect
         x={0}
@@ -183,7 +290,11 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
         height={BAR_HEIGHT}
         fill="transparent"
         onMouseDown={handleResizeLeft}
-        onTouchStart={handleResizeLeft as unknown as (evt: KonvaEventObject<TouchEvent>) => void}
+        onTouchStart={
+          handleResizeLeft as unknown as (
+            evt: KonvaEventObject<TouchEvent>
+          ) => void
+        }
       />
 
       {/* Right resize handle */}
@@ -194,7 +305,11 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
         height={BAR_HEIGHT}
         fill="transparent"
         onMouseDown={handleResizeRight}
-        onTouchStart={handleResizeRight as unknown as (evt: KonvaEventObject<TouchEvent>) => void}
+        onTouchStart={
+          handleResizeRight as unknown as (
+            evt: KonvaEventObject<TouchEvent>
+          ) => void
+        }
       />
     </Group>
   );
