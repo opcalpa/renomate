@@ -46,6 +46,7 @@ export function TipCard({ tip, onDismiss, onAction, compact = false }: TipCardPr
         <IconComponent className={`h-4 w-4 ${iconClass} mt-0.5 flex-shrink-0`} />
         <div className="flex-1 min-w-0">
           <button
+            type="button"
             className="flex items-center gap-1.5 text-sm font-medium text-foreground w-full text-left"
             onClick={() => setExpanded(!expanded)}
           >
