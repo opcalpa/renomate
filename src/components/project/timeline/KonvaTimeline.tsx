@@ -179,7 +179,7 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
   }
 
   return (
-    <div ref={containerRef} className="w-full relative">
+    <div ref={containerRef} className="w-full relative overflow-hidden">
       <TimelineToolbar
         projectName={projectName}
         dateRangeLabel={dateRangeLabel}

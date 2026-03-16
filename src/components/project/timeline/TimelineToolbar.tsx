@@ -67,23 +67,23 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
   const hasActiveFilters = groupBy !== "none" || selectedAssignee !== "all";
 
   return (
-    <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-background flex-wrap">
-      {/* Left: project name + date range */}
+    <div className="px-3 py-2 border-b bg-background space-y-2">
+      {/* Row 1: project name + date range */}
       <div className="flex items-center gap-2 min-w-0">
         {projectName && (
-          <span className="text-sm font-medium truncate max-w-[200px]">
+          <span className="text-sm font-medium truncate">
             {projectName}
           </span>
         )}
         {dateRangeLabel && (
-          <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
             {dateRangeLabel}
           </span>
         )}
       </div>
 
-      {/* Right: controls */}
-      <div className="flex items-center gap-1">
+      {/* Row 2: controls */}
+      <div className="flex items-center gap-1 flex-wrap">
         {/* Calendar popover with unscheduled badge */}
         <Popover>
           <PopoverTrigger asChild>
@@ -215,14 +215,14 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
           </PopoverContent>
         </Popover>
 
-        <div className="w-px h-5 bg-border mx-1" />
+        <div className="w-px h-5 bg-border mx-1 hidden sm:block" />
 
         {/* Zoom controls */}
         <div className="flex items-center gap-0.5 border rounded-md p-0.5">
           <Button variant="ghost" size="icon" onClick={onZoomOut} className="h-7 w-7">
             <ZoomOut className="h-3.5 w-3.5" />
           </Button>
-          <span className="text-xs text-muted-foreground min-w-[50px] text-center">
+          <span className="text-xs text-muted-foreground min-w-[50px] text-center hidden sm:inline">
             {daysVisible} {t("timeline.days", "days")}
           </span>
           <Button variant="ghost" size="icon" onClick={onZoomIn} className="h-7 w-7">
@@ -239,7 +239,7 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
           </Button>
         </div>
 
-        <div className="w-px h-5 bg-border mx-1" />
+        <div className="w-px h-5 bg-border mx-1 hidden sm:block" />
 
         {/* Navigation */}
         <Button variant="ghost" size="icon" onClick={onPanLeft} className="h-8 w-8">
