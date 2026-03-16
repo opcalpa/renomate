@@ -121,7 +121,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   const [quickMode, setQuickMode] = useState(true);
 
   // View mode
-  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
+  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('table');
 
   // Table view state (lifted so toolbar renders in parent row)
   const purchaseTableViewState = usePurchasesTableView(projectId);
