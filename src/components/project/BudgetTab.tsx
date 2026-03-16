@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2 } from "lucide-react";
+import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Package } from "lucide-react";
 import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
 import { getStatusBadgeColor } from "@/lib/statusColors";
 import { BudgetChartsSection } from "./BudgetChartsSection";
@@ -1016,9 +1016,12 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
   );
 
   // Group linked materials under their parent task for display
+  const [unlinkedExpanded, setUnlinkedExpanded] = useState(false);
+
   const displayRows = useMemo(() => {
     const childMap = new Map<string, BudgetRow[]>();
     const topLevel: BudgetRow[] = [];
+    const unlinkedMaterials: BudgetRow[] = [];
 
     for (const row of filtered) {
       if (row.type === "material" && row.taskId) {
@@ -1029,10 +1032,15 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
           continue;
         }
       }
+      // Separate unlinked materials
+      if (row.type === "material" && row.isUnlinked) {
+        unlinkedMaterials.push(row);
+        continue;
+      }
       topLevel.push(row);
     }
 
-    const result: Array<BudgetRow & { isChild?: boolean; childCount?: number }> = [];
+    const result: Array<BudgetRow & { isChild?: boolean; childCount?: number; isSectionHeader?: boolean }> = [];
     for (const row of topLevel) {
       const children = row.type === "task" ? (childMap.get(row.id) || []) : [];
       result.push({ ...row, childCount: children.length });
@@ -1042,8 +1050,32 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
         }
       }
     }
+
+    // Add unlinked materials section
+    if (unlinkedMaterials.length > 0) {
+      const unlinkedTotal = unlinkedMaterials.reduce((sum, m) => sum + (m.paid || m.estimatedCost || 0), 0);
+      result.push({
+        id: "__unlinked_header__",
+        name: t("budget.unlinkedMaterials", "Standalone materials"),
+        type: "material",
+        budget: 0,
+        paid: unlinkedTotal,
+        estimatedCost: unlinkedTotal,
+        isEstimated: false,
+        materialBudget: 0,
+        materialConsumed: 0,
+        childCount: unlinkedMaterials.length,
+        isSectionHeader: true,
+      } as BudgetRow & { isChild?: boolean; childCount?: number; isSectionHeader?: boolean });
+      if (unlinkedExpanded) {
+        for (const m of unlinkedMaterials) {
+          result.push({ ...m, isChild: true });
+        }
+      }
+    }
+
     return result;
-  }, [filtered, expandedTasks]);
+  }, [filtered, expandedTasks, unlinkedExpanded, t]);
 
   const clearAllFilters = () => {
     setSearchQuery("");
@@ -1725,7 +1757,23 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
                 </TableCell>
               </TableRow>
             ) : (
-              displayRows.map((row) => (
+              displayRows.map((row) => (row as unknown as { isSectionHeader?: boolean }).isSectionHeader ? (
+                <TableRow
+                  key="unlinked-header"
+                  className={`cursor-pointer hover:bg-muted/50 bg-amber-50/50 border-t-2 border-amber-200${compactRows ? " h-8" : ""}`}
+                  onClick={() => setUnlinkedExpanded(!unlinkedExpanded)}
+                >
+                  <TableCell colSpan={visibleColumns.length + (isBuilder ? 1 : 0)} className="py-2">
+                    <div className="flex items-center gap-2">
+                      <ChevronDown className={`h-4 w-4 text-amber-500 transition-transform ${unlinkedExpanded ? "" : "-rotate-90"}`} />
+                      <Package className="h-4 w-4 text-amber-500" />
+                      <span className="text-sm font-medium text-amber-700">{row.name}</span>
+                      <Badge variant="secondary" className="text-xs">{(row as unknown as { childCount?: number }).childCount}</Badge>
+                      <span className="text-xs text-muted-foreground ml-auto">{formatCurrency(row.estimatedCost, currency)}</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
                 <TableRow
                   key={`${row.type}-${row.id}`}
                   className={`cursor-pointer hover:bg-muted/50${compactRows ? " h-8" : ""}${row.isChild ? " bg-muted/30" : ""}`}

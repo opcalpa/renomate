@@ -1910,6 +1910,7 @@
     "financialSummary": "Ekonomisk sammanfattning",
     "priceChangedWarning": "Kundpriset avviker från ursprungligt offertbelopp. Offerten uppdateras inte.",
     "unlinkedWarning": "Inte kopplat till arbete — avräknas ej mot arbetsbudget",
+    "unlinkedMaterials": "Fristående material",
     "linkedMaterials": "{{count}} material",
     "builder": {
       "contract": "Kontrakt",

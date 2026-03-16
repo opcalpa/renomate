@@ -2347,6 +2347,7 @@
     "financialSummary": "Financial summary",
     "priceChangedWarning": "Customer price differs from original quote amount. This won't update the quote.",
     "unlinkedWarning": "Not linked to a task — won't be tracked against task budget",
+    "unlinkedMaterials": "Standalone materials",
     "linkedMaterials": "{{count}} material",
     "builder": {
       "contract": "Contract",
