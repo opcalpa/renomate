@@ -331,7 +331,7 @@ export function useTimelineGestures(options: UseTimelineGesturesOptions = {}) {
       // deltaY fallback handles Chrome macOS intercepting right-swipe deltaX.
       // deltaY from a horizontal swipe is much smaller, so we boost it 3x.
       const useY = e.deltaX === 0 && e.deltaY !== 0;
-      const delta = useY ? e.deltaY * 3 : e.deltaX;
+      const delta = useY ? e.deltaY * 8 : e.deltaX;
       if (delta === 0) return;
       e.preventDefault();
       const deltaDays = pixelsToDays(delta);
