@@ -312,9 +312,7 @@ export function useTimelineGestures(options: UseTimelineGesturesOptions = {}) {
     }
   }, [applyMomentum]);
 
-  // Mouse wheel/trackpad handling — only handles pinch-zoom here.
-  // Horizontal/vertical scroll panning is handled by the Card-level wheel listener
-  // in ProjectTimeline.tsx to ensure events from the header area are also captured.
+  // Mouse wheel/trackpad handling
   const handleWheel = useCallback((e: WheelEvent) => {
     // Cancel momentum
     if (momentumRef.current) {
@@ -328,9 +326,17 @@ export function useTimelineGestures(options: UseTimelineGesturesOptions = {}) {
       const zoomFactor = 1 + (e.deltaY * 0.01);
       const newDays = clampDays(daysVisibleRef.current * zoomFactor);
       setDaysVisible(newDays);
+    } else {
+      // Pan through time — use deltaX if available, otherwise deltaY
+      // deltaY fallback handles the case where Chrome macOS intercepts
+      // right-swipe deltaX for browser forward navigation
+      const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY;
+      if (delta === 0) return;
+      e.preventDefault();
+      const deltaDays = pixelsToDays(delta);
+      setCenterDate(prev => addDays(prev, deltaDays));
     }
-    // All other scroll events are handled by the Card-level handler
-  }, [clampDays]);
+  }, [clampDays, pixelsToDays]);
 
   // Attach event listeners
   useEffect(() => {

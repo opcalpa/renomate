@@ -781,28 +781,8 @@ const ProjectTimeline = ({
       });
     }
   };
-  // Capture horizontal wheel events on the entire card to prevent browser navigation
-  // Must be before any early returns (React hooks rule)
+  // Ref kept for potential future use (must be before early returns)
   const cardRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const card = cardRef.current;
-    if (!card) return;
-    const handler = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) return; // let pinch-zoom through
-      const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY;
-      if (delta === 0) return;
-      e.preventDefault();
-      e.stopPropagation();
-      // Smooth proportional scroll: map pixel delta to days using container width
-      // This gives a natural "drag the timeline" feel
-      const containerWidth = gestureContainerRef.current?.clientWidth || 1000;
-      const daysPerPixel = daysVisible / containerWidth;
-      const deltaDays = delta * daysPerPixel * 0.8; // 0.8 = slight dampening for smoother feel
-      setCenterDate(prev => addDays(prev, deltaDays));
-    };
-    card.addEventListener("wheel", handler, { passive: false });
-    return () => card.removeEventListener("wheel", handler);
-  }, [daysVisible, setCenterDate]);
 
   if (loading) {
     return <Card>
@@ -824,7 +804,7 @@ const ProjectTimeline = ({
       </Card>;
   }
 
-  return <Card ref={cardRef}>
+  return <Card>
       <CardHeader className="pb-3">
         {/* === MOBILE HEADER (compact) === */}
         <div className="md:hidden space-y-3">
