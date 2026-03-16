@@ -43,6 +43,8 @@ import {
   Trash2,
   ToggleLeft,
   ClipboardList,
+  CheckSquare,
+  Circle,
 } from "lucide-react";
 import { useTasksTableView, type TasksTableViewState } from "./useTasksTableView";
 import { TaskColumnKey, TaskColumnDef, EXTRA_COLUMN_KEYS } from "./tasksTableTypes";
@@ -195,28 +197,26 @@ export function TasksTableView({
     setCompactRows,
   } = externalState || internalState;
 
-  // Dependencies map: taskId → array of depends_on titles
-  const [depsMap, setDepsMap] = useState<Map<string, string[]>>(new Map());
-  useEffect(() => {
+  // Dependencies map: taskId → array of { id, depends_on_task_id, title }
+  const [depsMap, setDepsMap] = useState<Map<string, { depId: string; taskId: string; title: string }[]>>(new Map());
+  const refreshDeps = useCallback(async () => {
     if (tasks.length === 0) return;
-    const fetchDeps = async () => {
-      const { data } = await supabase
-        .from("task_dependencies")
-        .select("task_id, depends_on_task_id")
-        .in("task_id", tasks.map(t => t.id));
-      if (!data) return;
-      const map = new Map<string, string[]>();
-      for (const dep of data) {
-        const depTask = tasks.find(t => t.id === dep.depends_on_task_id);
-        const title = depTask?.title || "?";
-        const existing = map.get(dep.task_id) || [];
-        existing.push(title);
-        map.set(dep.task_id, existing);
-      }
-      setDepsMap(map);
-    };
-    fetchDeps();
+    const { data } = await supabase
+      .from("task_dependencies")
+      .select("id, task_id, depends_on_task_id")
+      .in("task_id", tasks.map(t => t.id));
+    if (!data) return;
+    const map = new Map<string, { depId: string; taskId: string; title: string }[]>();
+    for (const dep of data) {
+      const depTask = tasks.find(t => t.id === dep.depends_on_task_id);
+      const entry = { depId: dep.id, taskId: dep.depends_on_task_id, title: depTask?.title || "?" };
+      const existing = map.get(dep.task_id) || [];
+      existing.push(entry);
+      map.set(dep.task_id, existing);
+    }
+    setDepsMap(map);
   }, [tasks]);
+  useEffect(() => { refreshDeps(); }, [refreshDeps]);
 
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{
@@ -779,14 +779,68 @@ export function TasksTableView({
         );
 
       case "dependencies": {
-        const deps = depsMap.get(task.id);
-        if (!deps || deps.length === 0) {
-          return <span className="text-muted-foreground text-xs">-</span>;
+        const deps = depsMap.get(task.id) || [];
+        const depTitles = deps.map(d => d.title).join(", ");
+        const availableTasks = tasks.filter(
+          t => t.id !== task.id && !deps.some(d => d.taskId === t.id)
+        );
+
+        if (isReadOnly) {
+          return deps.length === 0
+            ? <span className="text-muted-foreground text-xs">-</span>
+            : <span className="text-xs truncate max-w-[150px] block" title={depTitles}>{depTitles}</span>;
         }
+
         return (
-          <span className="text-xs truncate max-w-[150px] block" title={deps.join(", ")}>
-            {deps.length === 1 ? deps[0] : `${deps.length} ${t("tasks.dependencies", "dep.").toLowerCase()}`}
-          </span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className="text-xs text-left truncate max-w-[180px] block hover:bg-muted px-1 rounded cursor-pointer min-h-[24px]"
+                onClick={(e) => e.stopPropagation()}
+                title={depTitles || undefined}
+              >
+                {deps.length === 0
+                  ? <span className="text-muted-foreground">-</span>
+                  : depTitles}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-0" align="start" onClick={(e) => e.stopPropagation()}>
+              <div className="max-h-[200px] overflow-y-auto">
+                {/* Current dependencies — click to remove */}
+                {deps.map((dep) => (
+                  <button
+                    key={dep.depId}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-destructive/10 text-left"
+                    onClick={async () => {
+                      await supabase.from("task_dependencies").delete().eq("id", dep.depId);
+                      refreshDeps();
+                    }}
+                  >
+                    <CheckSquare className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="truncate">{dep.title}</span>
+                  </button>
+                ))}
+                {deps.length > 0 && availableTasks.length > 0 && <div className="border-t" />}
+                {/* Available tasks — click to add */}
+                {availableTasks.map((t) => (
+                  <button
+                    key={t.id}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted text-left"
+                    onClick={async () => {
+                      await supabase.from("task_dependencies").insert({
+                        task_id: task.id,
+                        depends_on_task_id: t.id,
+                      });
+                      refreshDeps();
+                    }}
+                  >
+                    <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="truncate">{t.title}</span>
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         );
       }
 
