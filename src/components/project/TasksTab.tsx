@@ -1073,7 +1073,10 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
             <Card className="overflow-hidden">
               <CardContent className="p-0 overflow-hidden">
                 {new URLSearchParams(window.location.search).get("timeline") === "konva" ? (
-                  <KonvaTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} />
+                  <KonvaTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} onTaskClick={(taskId) => {
+                    const task = tasks.find(t => t.id === taskId);
+                    if (task) { setEditingTask(task); setEditDialogOpen(true); }
+                  }} />
                 ) : (
                   <ProjectTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} />
                 )}
