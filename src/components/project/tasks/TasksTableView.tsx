@@ -383,26 +383,50 @@ export function TasksTableView({
             </Badge>
           );
         }
-        return (
-          <Select
-            value={task.status}
-            onValueChange={(v) => handleCellSave(task.id, "status", v)}
-          >
-            <SelectTrigger
-              className={cn("h-8 w-[120px] text-xs border", getStatusBadgeColor(task.status))}
-              onClick={(e) => e.stopPropagation()}
+        {
+          const taskDeps = depsMap.get(task.id) || [];
+          const unresolvedDeps = taskDeps.filter(d => {
+            const depTask = tasks.find(t => t.id === d.taskId);
+            return depTask && depTask.status !== "done" && depTask.status !== "completed";
+          });
+          const isDepBlocked = unresolvedDeps.length > 0;
+          const blockedStatuses = ["in_progress", "completed", "done"];
+
+          const handleStatusSave = (v: string) => {
+            if (isDepBlocked && blockedStatuses.includes(v)) {
+              toast({
+                title: t("tasks.depBlockedTitle", "Dependencies not completed"),
+                description: t("tasks.depBlockedDesc", "{{tasks}} must be completed first", {
+                  tasks: unresolvedDeps.map(d => d.title).join(", "),
+                }),
+                variant: "destructive",
+              });
+              return;
+            }
+            handleCellSave(task.id, "status", v);
+          };
+
+          return (
+            <Select
+              value={task.status}
+              onValueChange={handleStatusSave}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(statusLabels).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
+              <SelectTrigger
+                className={cn("h-8 w-[120px] text-xs border", getStatusBadgeColor(task.status))}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(statusLabels).map(([value, label]) => (
+                  <SelectItem key={value} value={value} disabled={isDepBlocked && blockedStatuses.includes(value)}>
+                    {label}{isDepBlocked && blockedStatuses.includes(value) ? " 🔒" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+        }
 
       case "priority":
         if (isReadOnly) {

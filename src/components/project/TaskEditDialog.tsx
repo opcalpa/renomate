@@ -1626,22 +1626,47 @@ export const TaskEditDialog = ({
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="edit-task-status">{t("tasks.status")}</Label>
-                          <Select
-                            value={task.status}
-                            onValueChange={(value) => setTask({ ...task, status: value })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="planned">{t("statuses.planned", "Planned")}</SelectItem>
-                              <SelectItem value="to_do">{t("statuses.toDo")}</SelectItem>
-                              <SelectItem value="in_progress">{t("statuses.inProgress")}</SelectItem>
-                              <SelectItem value="waiting">{t("statuses.waiting")}</SelectItem>
-                              <SelectItem value="completed">{t("statuses.completed")}</SelectItem>
-                              <SelectItem value="cancelled">{t("statuses.cancelled")}</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          {(() => {
+                            const unresolvedDeps = dependencies.filter(d => d.status !== "done" && d.status !== "completed");
+                            const blockedStatuses = ["in_progress", "completed", "done"];
+                            const isBlocked = unresolvedDeps.length > 0;
+
+                            const handleStatusChange = (value: string) => {
+                              if (isBlocked && blockedStatuses.includes(value)) {
+                                toast({
+                                  title: t("tasks.depBlockedTitle", "Dependencies not completed"),
+                                  description: t("tasks.depBlockedDesc", "{{tasks}} must be completed first", {
+                                    tasks: unresolvedDeps.map(d => d.title).join(", "),
+                                  }),
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              setTask({ ...task, status: value });
+                            };
+
+                            return (
+                              <Select value={task.status} onValueChange={handleStatusChange}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="planned">{t("statuses.planned", "Planned")}</SelectItem>
+                                  <SelectItem value="to_do">{t("statuses.toDo")}</SelectItem>
+                                  <SelectItem value="in_progress" disabled={isBlocked}>
+                                    {t("statuses.inProgress")}
+                                    {isBlocked && " 🔒"}
+                                  </SelectItem>
+                                  <SelectItem value="waiting">{t("statuses.waiting")}</SelectItem>
+                                  <SelectItem value="completed" disabled={isBlocked}>
+                                    {t("statuses.completed")}
+                                    {isBlocked && " 🔒"}
+                                  </SelectItem>
+                                  <SelectItem value="cancelled">{t("statuses.cancelled")}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            );
+                          })()}
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="edit-task-priority">{t("tasks.priority")}</Label>

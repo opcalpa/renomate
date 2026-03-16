@@ -565,6 +565,8 @@
     "addDependency": "Lägg till beroende...",
     "depReady": "Klar",
     "depWaiting": "Väntar",
+    "depBlockedTitle": "Beroenden ej avslutade",
+    "depBlockedDesc": "{{tasks}} måste avslutas först",
     "noDepsAvailable": "Inga andra arbeten att skapa beroende mot",
     "checklists": "Checklistor",
     "checklist": "Checklista",

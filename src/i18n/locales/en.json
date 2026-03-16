@@ -565,6 +565,8 @@
     "addDependency": "Add dependency...",
     "depReady": "Ready",
     "depWaiting": "Waiting",
+    "depBlockedTitle": "Dependencies not completed",
+    "depBlockedDesc": "{{tasks}} must be completed first",
     "noDepsAvailable": "No other tasks to depend on",
     "checklists": "Checklists",
     "checklist": "Checklist",
