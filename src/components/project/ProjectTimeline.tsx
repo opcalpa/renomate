@@ -800,7 +800,29 @@ const ProjectTimeline = ({
         </CardContent>
       </Card>;
   }
-  return <Card>
+  // Capture horizontal wheel events on the entire card to prevent browser navigation
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    const handler = (e: WheelEvent) => {
+      if (e.deltaX !== 0 && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        const container = gestureContainerRef.current;
+        if (container) {
+          const containerWidth = container.clientWidth || 1;
+          const daysPerPixel = daysVisible / containerWidth;
+          const deltaDays = e.deltaX * daysPerPixel;
+          setCenterDate(prev => addDays(prev, deltaDays));
+        }
+      }
+    };
+    card.addEventListener("wheel", handler, { passive: false });
+    return () => card.removeEventListener("wheel", handler);
+  }, [daysVisible, setCenterDate]);
+
+  return <Card ref={cardRef}>
       <CardHeader className="pb-3">
         {/* === MOBILE HEADER (compact) === */}
         <div className="md:hidden space-y-3">
