@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { PhotoCarousel } from "@/components/ui/photo-carousel";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface Photo {
   id: string;
@@ -261,7 +262,7 @@ export function EntityPhotoGallery({ entityId, entityType, projectId, storagePat
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div>
         <input
           ref={cameraInputRef}
           type="file"
@@ -271,17 +272,6 @@ export function EntityPhotoGallery({ entityId, entityType, projectId, storagePat
           className="hidden"
           disabled={uploading}
         />
-        <Button
-          type="button"
-          variant="outline"
-          className="flex-1 gap-2"
-          disabled={uploading}
-          onClick={() => cameraInputRef.current?.click()}
-        >
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-          {t('entityPhotos.takePhoto')}
-        </Button>
-
         <input
           ref={fileInputRef}
           type="file"
@@ -291,16 +281,37 @@ export function EntityPhotoGallery({ entityId, entityType, projectId, storagePat
           className="hidden"
           disabled={uploading}
         />
-        <Button
-          type="button"
-          variant="outline"
-          className="flex-1 gap-2"
-          disabled={uploading}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {t('entityPhotos.uploadFile')}
-        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2"
+              disabled={uploading}
+            >
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+              {t('entityPhotos.photos', 'Photos')}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48 p-1" align="start">
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm rounded hover:bg-muted flex items-center gap-2"
+              onClick={() => cameraInputRef.current?.click()}
+            >
+              <Camera className="h-3.5 w-3.5" />
+              {t('entityPhotos.takePhoto')}
+            </button>
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm rounded hover:bg-muted flex items-center gap-2"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-3.5 w-3.5" />
+              {t('entityPhotos.uploadFile')}
+            </button>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {loadingPhotos ? (

@@ -2230,7 +2230,7 @@ export const TaskEditDialog = ({
                 <Collapsible>
                   <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 text-sm font-medium hover:text-primary transition-colors group">
                     <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
-                    {t("files.photos", "Photos")}
+                    {t("entityPhotos.photos", "Photos")}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="pl-6 pb-3">
@@ -2243,7 +2243,7 @@ export const TaskEditDialog = ({
                 <Collapsible>
                   <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 text-sm font-medium hover:text-primary transition-colors group">
                     <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
-                    {t("projectDetail.files", "Files")}
+                    {t("tasks.linkedFiles", "Linked files")}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="pl-6 pb-3">
