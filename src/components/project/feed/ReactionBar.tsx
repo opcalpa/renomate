@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SmilePlus } from "lucide-react";
 
-const QUICK_EMOJIS = ["❤️", "👍", "😂", "😮", "🎉", "👏"];
+const QUICK_EMOJIS = ["❤️", "👍", "😂", "😮", "🎉", "👏", "👎", "😢", "😡", "😤", "🤢"];
 
 interface Reaction {
   emoji: string;
