@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import { Stage, Layer, Rect, Line, Text as KonvaText, Group } from "react-konva";
 import { addDays, format, getISOWeek, getDay } from "date-fns";
 import { sv } from "date-fns/locale";
@@ -35,7 +35,7 @@ const TimelineDateRulerComponent: React.FC<TimelineDateRulerProps> = ({
 }) => {
   // Render only visible days — extends infinitely in both directions
   const firstVisibleDay = Math.floor(-panX / pixelsPerDay) - 2;
-  const lastVisibleDay = Math.ceil((stageWidth - panX) / pixelsPerDay) + 2;
+  const lastVisibleDay = Math.ceil((Math.max(stageWidth, 2000) - panX) / pixelsPerDay) + 2;
   const startDay = firstVisibleDay;
   const endDay = lastVisibleDay;
 
@@ -150,8 +150,24 @@ const TimelineDateRulerComponent: React.FC<TimelineDateRulerProps> = ({
     return items;
   }, [startDay, endDay, originDate, pixelsPerDay, panX]);
 
+  // Use own ResizeObserver for accurate width (parent may not re-render with updated width)
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [actualWidth, setActualWidth] = useState(stageWidth);
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) setActualWidth(entry.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const effectiveWidth = Math.max(actualWidth, stageWidth);
+
   return (
-    <Stage width={stageWidth} height={RULER_HEIGHT}>
+    <div ref={wrapperRef} className="w-full border-b">
+    <Stage width={effectiveWidth} height={RULER_HEIGHT}>
       <Layer>
         {/* Background */}
         <Rect
@@ -180,6 +196,7 @@ const TimelineDateRulerComponent: React.FC<TimelineDateRulerProps> = ({
         <Group listening={false}>{elements}</Group>
       </Layer>
     </Stage>
+    </div>
   );
 };
 
