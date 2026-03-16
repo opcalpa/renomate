@@ -781,14 +781,6 @@ const ProjectTimeline = ({
       });
     }
   };
-  if (loading) {
-    return <Card>
-        <CardContent className="py-12 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>;
-  }
-
   // Capture horizontal wheel events on the entire card to prevent browser navigation
   // Must be before any early returns (React hooks rule)
   const cardRef = useRef<HTMLDivElement>(null);
@@ -811,6 +803,14 @@ const ProjectTimeline = ({
     card.addEventListener("wheel", handler, { passive: false });
     return () => card.removeEventListener("wheel", handler);
   }, [daysVisible, setCenterDate]);
+
+  if (loading) {
+    return <Card>
+        <CardContent className="py-12 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>;
+  }
 
   if (tasks.length === 0) {
     return <Card className="border-dashed">
