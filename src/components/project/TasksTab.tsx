@@ -1087,16 +1087,13 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
       )}
 
       <div className="flex flex-col gap-4">
-        {/* Collapsible tasks header */}
-        <button
-          className="text-lg font-medium hover:text-primary transition-colors text-left"
-          onClick={() => setTasksOpen(!tasksOpen)}
-        >
+        {/* Tasks section header */}
+        <h3 className="text-lg font-medium">
           {t('tasks.tasks')}
-        </button>
+        </h3>
 
         {/* Filters, View Toggle, and Add Task button on same row */}
-        <div className={cn(!tasksOpen && "hidden")}>
+        <div>
         <div className="flex items-center gap-3 flex-wrap">
           {/* View Toggle */}
           <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'kanban' | 'table')}>
