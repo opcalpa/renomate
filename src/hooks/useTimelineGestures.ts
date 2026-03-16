@@ -314,6 +314,11 @@ export function useTimelineGestures(options: UseTimelineGesturesOptions = {}) {
 
   // Mouse wheel/trackpad handling
   const handleWheel = useCallback((e: WheelEvent) => {
+    // Prevent browser back/forward navigation on horizontal scroll
+    if (e.deltaX !== 0) {
+      e.preventDefault();
+    }
+
     // Cancel momentum
     if (momentumRef.current) {
       cancelAnimationFrame(momentumRef.current);

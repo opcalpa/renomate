@@ -1180,7 +1180,7 @@ const ProjectTimeline = ({
           <div
               ref={gestureContainerRef}
               className="overflow-x-hidden overflow-y-auto -mx-3 px-3 md:mx-0 md:px-0 select-none scrollbar-thin rounded-lg"
-              style={{ maxHeight: '70vh', minHeight: '200px', cursor: isDragging ? 'grabbing' : 'grab' }}
+              style={{ maxHeight: '70vh', minHeight: '200px', cursor: isDragging ? 'grabbing' : 'grab', overscrollBehaviorX: 'none' }}
             ><div
               className="relative min-w-[800px]"
               style={{ minHeight: '160px' }}
