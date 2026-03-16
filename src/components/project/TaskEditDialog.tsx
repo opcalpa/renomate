@@ -954,8 +954,17 @@ export const TaskEditDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl lg:max-w-5xl max-h-[90vh] h-[90vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-2">
-          <DialogTitle className="truncate">{task?.title || t("tasks.editTask")}</DialogTitle>
+        <DialogHeader className="flex-shrink-0 px-6 pt-4 pb-2">
+          {task ? (
+            <input
+              className="text-lg font-semibold bg-transparent border-0 border-b border-transparent hover:border-border focus:border-primary focus:outline-none w-full truncate transition-colors px-0 py-1"
+              value={task.title}
+              onChange={(e) => setTask({ ...task, title: e.target.value })}
+              required
+            />
+          ) : (
+            <DialogTitle className="truncate">{t("tasks.editTask")}</DialogTitle>
+          )}
           <DialogDescription className="sr-only">{t("tasks.editTaskDescription")}</DialogDescription>
         </DialogHeader>
 
@@ -966,17 +975,6 @@ export const TaskEditDialog = ({
         ) : task ? (
           <form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0">
             <div className="space-y-4 overflow-y-auto flex-1 py-4 px-6">
-              {/* ── Always-visible fields ── */}
-              <div className="space-y-2">
-                <Label htmlFor="edit-task-title">{t("tasks.taskTitle")}</Label>
-                <Input
-                  id="edit-task-title"
-                  value={task.title}
-                  onChange={(e) => setTask({ ...task, title: e.target.value })}
-                  required
-                />
-              </div>
-
               {/* Contextual tips based on task title */}
               {taskTips.length > 0 && (
                 <TipList tips={taskTips} onDismiss={dismissTip} maxTips={1} compact />
