@@ -340,14 +340,12 @@ export function useTimelineGestures(options: UseTimelineGesturesOptions = {}) {
       e.preventDefault();
       const deltaDays = pixelsToDays(e.deltaX);
       setCenterDate(prev => addDays(prev, deltaDays));
-    } else if (e.shiftKey) {
-      // Shift+scroll - pan through time using deltaY
+    } else {
+      // All vertical scroll on timeline = pan through time
+      // This works because Chrome doesn't intercept vertical scroll for navigation
       e.preventDefault();
       const deltaDays = pixelsToDays(e.deltaY);
       setCenterDate(prev => addDays(prev, deltaDays));
-    } else if (container) {
-      // Pure vertical scroll (deltaX === 0, no modifier) - scroll tasks vertically
-      // Let the browser handle it naturally via overflow-y-auto
     }
   }, [clampDays, pixelsToDays]);
 

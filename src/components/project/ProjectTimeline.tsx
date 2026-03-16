@@ -788,16 +788,18 @@ const ProjectTimeline = ({
     const card = cardRef.current;
     if (!card) return;
     const handler = (e: WheelEvent) => {
-      if (e.deltaX !== 0 && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        const container = gestureContainerRef.current;
-        if (container) {
-          const containerWidth = container.clientWidth || 1;
-          const daysPerPixel = daysVisible / containerWidth;
-          const deltaDays = e.deltaX * daysPerPixel;
-          setCenterDate(prev => addDays(prev, deltaDays));
-        }
+      if (e.ctrlKey || e.metaKey) return; // let pinch-zoom through
+      // Capture all scroll on timeline card and pan through time
+      const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY;
+      if (delta === 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const container = gestureContainerRef.current;
+      if (container) {
+        const containerWidth = container.clientWidth || 1;
+        const daysPerPixel = daysVisible / containerWidth;
+        const deltaDays = delta * daysPerPixel;
+        setCenterDate(prev => addDays(prev, deltaDays));
       }
     };
     card.addEventListener("wheel", handler, { passive: false });
