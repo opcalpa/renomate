@@ -789,18 +789,8 @@ const ProjectTimeline = ({
       </Card>;
   }
 
-  if (tasks.length === 0) {
-    return <Card className="border-dashed">
-        <CardContent className="py-12 text-center">
-          <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">{t('projectDetail.noScheduledTasks')}</h3>
-          <p className="text-muted-foreground">
-            {t('projectDetail.noScheduledTasksDescription')}
-          </p>
-        </CardContent>
-      </Card>;
-  }
   // Capture horizontal wheel events on the entire card to prevent browser navigation
+  // Must be before any early returns (React hooks rule)
   const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const card = cardRef.current;
@@ -821,6 +811,18 @@ const ProjectTimeline = ({
     card.addEventListener("wheel", handler, { passive: false });
     return () => card.removeEventListener("wheel", handler);
   }, [daysVisible, setCenterDate]);
+
+  if (tasks.length === 0) {
+    return <Card className="border-dashed">
+        <CardContent className="py-12 text-center">
+          <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium mb-2">{t('projectDetail.noScheduledTasks')}</h3>
+          <p className="text-muted-foreground">
+            {t('projectDetail.noScheduledTasksDescription')}
+          </p>
+        </CardContent>
+      </Card>;
+  }
 
   return <Card ref={cardRef}>
       <CardHeader className="pb-3">
