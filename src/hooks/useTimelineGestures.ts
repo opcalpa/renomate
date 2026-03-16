@@ -312,41 +312,25 @@ export function useTimelineGestures(options: UseTimelineGesturesOptions = {}) {
     }
   }, [applyMomentum]);
 
-  // Mouse wheel/trackpad handling
+  // Mouse wheel/trackpad handling — only handles pinch-zoom here.
+  // Horizontal/vertical scroll panning is handled by the Card-level wheel listener
+  // in ProjectTimeline.tsx to ensure events from the header area are also captured.
   const handleWheel = useCallback((e: WheelEvent) => {
-    // Prevent browser back/forward navigation on horizontal scroll
-    if (e.deltaX !== 0) {
-      e.preventDefault();
-    }
-
     // Cancel momentum
     if (momentumRef.current) {
       cancelAnimationFrame(momentumRef.current);
       momentumRef.current = null;
     }
 
-    const container = containerRef.current;
-
     // Pinch gesture on trackpad (ctrlKey is true)
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
-
-      // Zoom: deltaY > 0 means zoom out (more days), deltaY < 0 means zoom in (fewer days)
       const zoomFactor = 1 + (e.deltaY * 0.01);
       const newDays = clampDays(daysVisibleRef.current * zoomFactor);
       setDaysVisible(newDays);
-    } else {
-      // All scroll on timeline = pan through time
-      const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY;
-      if (delta === 0) return;
-      e.preventDefault();
-      // Fixed speed: ~3% of visible range per scroll tick, capped for smoothness
-      const direction = delta > 0 ? 1 : -1;
-      const intensity = Math.min(Math.abs(delta) / 10, 3);
-      const deltaDays = direction * Math.max(1, daysVisibleRef.current * 0.03) * intensity;
-      setCenterDate(prev => addDays(prev, deltaDays));
     }
-  }, [clampDays, pixelsToDays]);
+    // All other scroll events are handled by the Card-level handler
+  }, [clampDays]);
 
   // Attach event listeners
   useEffect(() => {

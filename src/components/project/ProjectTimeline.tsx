@@ -789,13 +789,15 @@ const ProjectTimeline = ({
     if (!card) return;
     const handler = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) return; // let pinch-zoom through
-      // Capture all scroll on timeline card and pan through time
       const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY;
       if (delta === 0) return;
       e.preventDefault();
       e.stopPropagation();
-      // Fixed scroll speed: ~2% of visible range per scroll tick
-      const deltaDays = (delta / Math.abs(delta)) * Math.max(1, daysVisible * 0.03) * Math.min(Math.abs(delta) / 10, 3);
+      // Smooth proportional scroll: map pixel delta to days using container width
+      // This gives a natural "drag the timeline" feel
+      const containerWidth = gestureContainerRef.current?.clientWidth || 1000;
+      const daysPerPixel = daysVisible / containerWidth;
+      const deltaDays = delta * daysPerPixel * 0.8; // 0.8 = slight dampening for smoother feel
       setCenterDate(prev => addDays(prev, deltaDays));
     };
     card.addEventListener("wheel", handler, { passive: false });
