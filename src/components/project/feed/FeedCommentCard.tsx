@@ -7,6 +7,7 @@ import { getDateLocale } from "@/lib/dateFnsLocale";
 import { CheckSquare, Package, Home, Pencil, MessageSquare, Reply } from "lucide-react";
 import type { FeedComment, FeedContextType } from "./types";
 import { getContextType, getContextLabel, renderContentWithMentions } from "./utils";
+import { ReactionBar } from "./ReactionBar";
 
 const contextIcons: Record<FeedContextType, React.ReactNode> = {
   task: <CheckSquare className="h-3 w-3" />,
@@ -31,9 +32,10 @@ interface FeedCommentCardProps {
   onReply?: (comment: FeedComment) => void;
   onNavigate?: (comment: FeedComment) => void;
   onAvatarClick?: (profileId: string, name: string) => void;
+  currentProfileId?: string | null;
 }
 
-export const FeedCommentCard = ({ comment, compact, translatedContent, onReply, onNavigate, onAvatarClick }: FeedCommentCardProps) => {
+export const FeedCommentCard = ({ comment, compact, translatedContent, onReply, onNavigate, onAvatarClick, currentProfileId }: FeedCommentCardProps) => {
   const { t, i18n } = useTranslation();
   const contextType = getContextType(comment);
   const contextLabel = getContextLabel(comment);
@@ -97,17 +99,20 @@ export const FeedCommentCard = ({ comment, compact, translatedContent, onReply, 
             ))}
           </div>
         )}
-        {isEntityComment && onReply && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => onReply(comment)}
-          >
-            <Reply className="h-3 w-3 mr-1" />
-            {t("feed.reply")}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {isEntityComment && onReply && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => onReply(comment)}
+            >
+              <Reply className="h-3 w-3 mr-1" />
+              {t("feed.reply")}
+            </Button>
+          )}
+          <ReactionBar commentId={comment.id} profileId={currentProfileId ?? null} />
+        </div>
       </div>
     </div>
   );

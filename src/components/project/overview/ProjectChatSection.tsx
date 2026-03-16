@@ -532,6 +532,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
           comment={item.comment}
           onNavigate={onNavigateToEntity}
           onReply={handleReply}
+          currentProfileId={currentProfileId}
         />
       );
     }
