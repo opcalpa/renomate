@@ -330,16 +330,19 @@ export function useTimelineGestures(options: UseTimelineGesturesOptions = {}) {
       const zoomFactor = 1 + (e.deltaY * 0.01);
       const newDays = clampDays(daysVisibleRef.current * zoomFactor);
       setDaysVisible(newDays);
-    } else if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-      // Horizontal scroll (shift+scroll or explicit horizontal scroll) - pan through time
+    } else if (e.deltaX !== 0) {
+      // Explicit horizontal scroll (trackpad swipe) - pan through time
       e.preventDefault();
-      const deltaPixels = e.deltaX !== 0 ? e.deltaX : e.deltaY;
-      const deltaDays = pixelsToDays(deltaPixels);
+      const deltaDays = pixelsToDays(e.deltaX);
+      setCenterDate(prev => addDays(prev, deltaDays));
+    } else if (e.shiftKey) {
+      // Shift+scroll - pan through time using deltaY
+      e.preventDefault();
+      const deltaDays = pixelsToDays(e.deltaY);
       setCenterDate(prev => addDays(prev, deltaDays));
     } else if (container) {
-      // Vertical scroll - let it scroll the container naturally
-      // Don't prevent default, let the browser handle it
-      // But we can enhance smoothness if needed
+      // Pure vertical scroll (deltaX === 0, no modifier) - scroll tasks vertically
+      // Let the browser handle it naturally via overflow-y-auto
     }
   }, [clampDays, pixelsToDays]);
 
