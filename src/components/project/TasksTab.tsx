@@ -35,6 +35,7 @@ import { TaskEditDialog } from "./TaskEditDialog";
 import { ProjectLockBanner } from "./ProjectLockBanner";
 import { useProjectLock } from "@/hooks/useProjectLock";
 import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
+import { getStatusSolidColor } from "@/lib/statusColors";
 import { TasksTableView, useTasksTableView, EXTRA_COLUMN_KEYS } from "./tasks";
 
 interface ChecklistItem {
@@ -941,9 +942,10 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
   };
 
   const TaskCard = ({ task }: { task: Task }) => {
+    const isCompact = tableViewState.compactRows;
     // Support both single and multiple cost centers
     const costCenters = task.cost_centers || (task.cost_center ? [task.cost_center] : []);
-    
+
     const getPriorityIcon = (priority: string) => {
       switch (priority) {
         case "high":
@@ -957,9 +959,31 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
       }
     };
 
+    const statusColor = getStatusSolidColor(task.status);
+
+    if (isCompact) {
+      return (
+        <div
+          className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-background border cursor-move hover:shadow-sm transition-all group"
+          draggable
+          onDragStart={() => handleDragStart(task)}
+          onDragEnd={() => setDraggedTask(null)}
+          onClick={() => { setEditingTask(task); setEditDialogOpen(true); }}
+        >
+          <div className="w-1 h-4 rounded-full shrink-0" style={{ backgroundColor: statusColor }} />
+          <span className={`text-xs font-medium truncate flex-1 ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
+            {task.title}
+          </span>
+          {getPriorityIcon(task.priority) && (
+            <span className="text-[10px] shrink-0">{getPriorityIcon(task.priority)}</span>
+          )}
+        </div>
+      );
+    }
+
     return (
-      <Card 
-        key={task.id} 
+      <Card
+        key={task.id}
         className="cursor-move hover:shadow-md transition-all bg-background p-3 group"
         draggable
         onDragStart={() => handleDragStart(task)}
@@ -994,7 +1018,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                 {getPriorityIcon(task.priority)}
               </span>
             )}
-            
+
             {/* Cost Center Icons - Multiple */}
             {costCenters.map((center, index) => {
               const CostCenterIcon = getCostCenterIcon(center);
@@ -1004,7 +1028,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                 </div>
               ) : null;
             })}
-            
+
             {/* Checklist indicator */}
             {(() => {
               const { total, completed } = getChecklistCounts(task);
@@ -1271,19 +1295,19 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                 </PopoverContent>
               </Popover>
 
-              {/* Compact toggle */}
-              <Button
-                variant={tableViewState.compactRows ? "secondary" : "outline"}
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => tableViewState.setCompactRows(!tableViewState.compactRows)}
-                title={t("tasksTable.compactRows")}
-              >
-                <AlignJustify className="h-4 w-4" />
-              </Button>
-
             </>
           )}
+
+          {/* Compact toggle — works for both kanban and table */}
+          <Button
+            variant={tableViewState.compactRows ? "secondary" : "outline"}
+            size="icon"
+            className="h-9 w-9"
+            onClick={() => tableViewState.setCompactRows(!tableViewState.compactRows)}
+            title={t("tasksTable.compactRows")}
+          >
+            <AlignJustify className="h-4 w-4" />
+          </Button>
 
           {/* Spacer to push Add Task to the right */}
           <div className="flex-1" />
@@ -1724,8 +1748,8 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                       {tasksForStatus.length}
                     </Badge>
                   </div>
-                  <div 
-                    className="space-y-3 min-h-[200px]"
+                  <div
+                    className={`${tableViewState.compactRows ? 'space-y-1' : 'space-y-3'} min-h-[100px]`}
                     onDragOver={(e) => {
                       e.stopPropagation();
                       handleDragOver(e);
