@@ -7,6 +7,7 @@ export interface FeedComment {
   creator: {
     name: string;
     email: string;
+    avatar_url?: string | null;
   } | null;
   // Context: which entity this comment belongs to
   task_id?: string | null;

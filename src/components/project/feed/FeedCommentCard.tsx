@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
@@ -49,6 +49,9 @@ export const FeedCommentCard = ({ comment, compact, translatedContent, onReply, 
           }
         }}
       >
+        {comment.creator?.avatar_url && (
+          <AvatarImage src={comment.creator.avatar_url} alt={comment.creator.name} />
+        )}
         <AvatarFallback className="text-xs">
           {comment.creator?.name?.charAt(0) || "?"}
         </AvatarFallback>
