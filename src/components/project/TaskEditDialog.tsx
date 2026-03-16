@@ -1633,14 +1633,11 @@ export const TaskEditDialog = ({
 
                             const handleStatusChange = (value: string) => {
                               if (isBlocked && blockedStatuses.includes(value)) {
+                                // Show warning toast but allow override
                                 toast({
                                   title: t("tasks.depBlockedTitle", "Dependencies not completed"),
-                                  description: t("tasks.depBlockedDesc", "{{tasks}} must be completed first", {
-                                    tasks: unresolvedDeps.map(d => d.title).join(", "),
-                                  }),
-                                  variant: "destructive",
+                                  description: `${unresolvedDeps.map(d => d.title).join(", ")} — ${t("tasks.depOverrideHint", "status changed anyway")}`,
                                 });
-                                return;
                               }
                               setTask({ ...task, status: value });
                             };
@@ -1653,14 +1650,14 @@ export const TaskEditDialog = ({
                                 <SelectContent>
                                   <SelectItem value="planned">{t("statuses.planned", "Planned")}</SelectItem>
                                   <SelectItem value="to_do">{t("statuses.toDo")}</SelectItem>
-                                  <SelectItem value="in_progress" disabled={isBlocked}>
+                                  <SelectItem value="in_progress">
                                     {t("statuses.inProgress")}
-                                    {isBlocked && " 🔒"}
+                                    {isBlocked && " ⚠️"}
                                   </SelectItem>
                                   <SelectItem value="waiting">{t("statuses.waiting")}</SelectItem>
-                                  <SelectItem value="completed" disabled={isBlocked}>
+                                  <SelectItem value="completed">
                                     {t("statuses.completed")}
-                                    {isBlocked && " 🔒"}
+                                    {isBlocked && " ⚠️"}
                                   </SelectItem>
                                   <SelectItem value="cancelled">{t("statuses.cancelled")}</SelectItem>
                                 </SelectContent>

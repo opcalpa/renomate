@@ -50,6 +50,16 @@ import { useTasksTableView, type TasksTableViewState } from "./useTasksTableView
 import { TaskColumnKey, TaskColumnDef, EXTRA_COLUMN_KEYS } from "./tasksTableTypes";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 import { getStatusBadgeColor } from "@/lib/statusColors";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Task {
   id: string;
@@ -224,6 +234,11 @@ export function TasksTableView({
     col: TaskColumnKey;
   } | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    taskId: string;
+    status: string;
+    depNames: string[];
+  } | null>(null);
 
   // Sort tasks
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -394,13 +409,8 @@ export function TasksTableView({
 
           const handleStatusSave = (v: string) => {
             if (isDepBlocked && blockedStatuses.includes(v)) {
-              toast({
-                title: t("tasks.depBlockedTitle", "Dependencies not completed"),
-                description: t("tasks.depBlockedDesc", "{{tasks}} must be completed first", {
-                  tasks: unresolvedDeps.map(d => d.title).join(", "),
-                }),
-                variant: "destructive",
-              });
+              // Set pending status for confirmation dialog
+              setPendingStatusChange({ taskId: task.id, status: v, depNames: unresolvedDeps.map(d => d.title) });
               return;
             }
             handleCellSave(task.id, "status", v);
@@ -419,8 +429,8 @@ export function TasksTableView({
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(statusLabels).map(([value, label]) => (
-                  <SelectItem key={value} value={value} disabled={isDepBlocked && blockedStatuses.includes(value)}>
-                    {label}{isDepBlocked && blockedStatuses.includes(value) ? " 🔒" : ""}
+                  <SelectItem key={value} value={value}>
+                    {label}{isDepBlocked && blockedStatuses.includes(value) ? " ⚠️" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -1003,6 +1013,39 @@ export function TasksTableView({
           </div>
         </CardContent>
       </Card>
+
+      {/* Dependency override confirmation dialog */}
+      <AlertDialog open={!!pendingStatusChange} onOpenChange={(open) => !open && setPendingStatusChange(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("tasks.depBlockedTitle", "Dependencies not completed")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("tasks.depOverrideDesc", "The following tasks are not yet completed:")}
+              <ul className="mt-2 space-y-1">
+                {pendingStatusChange?.depNames.map((name, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingStatusChange) {
+                  handleCellSave(pendingStatusChange.taskId, "status", pendingStatusChange.status);
+                }
+                setPendingStatusChange(null);
+              }}
+            >
+              {t("tasks.depOverrideConfirm", "Change anyway")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
