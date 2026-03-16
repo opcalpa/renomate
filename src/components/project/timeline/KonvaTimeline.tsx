@@ -84,17 +84,19 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
       .map((tt) => parseISO(tt.start_date!));
     if (starts.length === 0) return subDays(new Date(), 7);
     const earliest = new Date(Math.min(...starts.map((d) => d.getTime())));
-    return subDays(earliest, 3);
+    return subDays(earliest, 30); // 30 days buffer before first task
   }, [tasks]);
 
   const daysToRender = useMemo(() => {
-    if (tasks.length === 0) return 60;
+    // Render plenty of days in both directions so scrolling never hits blank space
+    if (tasks.length === 0) return 180;
     const ends = tasks
       .filter((tt) => tt.finish_date)
       .map((tt) => parseISO(tt.finish_date!));
-    if (ends.length === 0) return 60;
+    if (ends.length === 0) return 180;
     const latest = new Date(Math.max(...ends.map((d) => d.getTime())));
-    return differenceInDays(latest, originDate) + 14;
+    const taskSpan = differenceInDays(latest, originDate) + 14;
+    return Math.max(taskSpan, 180); // Always at least 180 days (6 months)
   }, [tasks, originDate]);
 
   const dateRangeLabel = useMemo(() => {
