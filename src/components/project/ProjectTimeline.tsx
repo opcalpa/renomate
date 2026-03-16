@@ -677,6 +677,8 @@ const ProjectTimeline = ({
   ) => {
     e.preventDefault();
     e.stopPropagation();
+    // Capture pointer so drag continues even if cursor leaves the bar
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
 
     let current = {
       mode,
@@ -1487,8 +1489,29 @@ const ProjectTimeline = ({
                           const targetTask = tasks.find(t => t.id === dep.task_id);
                           if (!sourceTask || !targetTask) return null;
 
-                          const sourcePos = getTaskPosition(sourceTask, minDate, totalDays);
-                          const targetPos = getTaskPosition(targetTask, minDate, totalDays);
+                          // Use drag preview dates for arrows during drag
+                          const getPreviewDates = (t: Task) => {
+                            if (dragInteraction?.taskId === t.id) {
+                              return { ...t, start_date: dragInteraction.previewStart, finish_date: dragInteraction.previewFinish };
+                            }
+                            if (dragInteraction?.mode === 'moving') {
+                              const delta = differenceInDays(parseISO(dragInteraction.previewStart), parseISO(dragInteraction.origStart));
+                              if (delta !== 0) {
+                                const downstreamIds = getDownstreamTasks(dragInteraction.taskId, dependencies);
+                                if (downstreamIds.includes(t.id) && t.start_date && t.finish_date) {
+                                  return {
+                                    ...t,
+                                    start_date: format(addDays(parseISO(t.start_date), delta), 'yyyy-MM-dd'),
+                                    finish_date: format(addDays(parseISO(t.finish_date), delta), 'yyyy-MM-dd'),
+                                  };
+                                }
+                              }
+                            }
+                            return t;
+                          };
+
+                          const sourcePos = getTaskPosition(getPreviewDates(sourceTask), minDate, totalDays);
+                          const targetPos = getTaskPosition(getPreviewDates(targetTask), minDate, totalDays);
                           const sourceRow = taskRowMap.get(dep.depends_on_task_id)!;
                           const targetRow = taskRowMap.get(dep.task_id)!;
 
