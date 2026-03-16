@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useEffect, useRef, useState } from "react";
-import { parseISO, subDays, differenceInDays, format } from "date-fns";
+import { parseISO, subDays, addDays, differenceInDays, format } from "date-fns";
 import { sv } from "date-fns/locale";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
@@ -110,16 +110,32 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
     return `${format(min, "MMM d", { locale: sv })} - ${format(max, "MMM d, yyyy", { locale: sv })} (${total} ${t("timeline.days", "days")})`;
   }, [tasks, t]);
 
-  // Auto-center on first load
+  // Auto-center on first load — show task span, not today
   const hasAutocentered = useRef(false);
   useEffect(() => {
     if (hasAutocentered.current || loading || tasks.length === 0) return;
     hasAutocentered.current = true;
-    const today = new Date();
-    const daysFromOrigin = differenceInDays(today, originDate);
-    const centerX = -(daysFromOrigin * pixelsPerDay - containerWidth / 2);
-    setPan(centerX, 0);
+    showProjectSpan();
   }, [loading, tasks, originDate, pixelsPerDay, containerWidth, setPan]);
+
+  // Show entire project span (zoom to fit all tasks)
+  const showProjectSpan = useCallback(() => {
+    if (tasks.length === 0) return;
+    const starts = tasks.filter(t => t.start_date).map(t => parseISO(t.start_date!));
+    const ends = tasks.filter(t => t.finish_date).map(t => parseISO(t.finish_date!));
+    if (starts.length === 0 || ends.length === 0) return;
+    const earliest = new Date(Math.min(...starts.map(d => d.getTime())));
+    const latest = new Date(Math.max(...ends.map(d => d.getTime())));
+    const span = differenceInDays(latest, earliest) + 7; // padding
+    const newPixelsPerDay = Math.max(20, containerWidth / span);
+    const s = useTimelineStore.getState();
+    s.setZoom(newPixelsPerDay, containerWidth / 2);
+    // Center on the middle of the task span
+    const midDate = addDays(earliest, Math.floor(span / 2));
+    const daysFromOrigin = differenceInDays(midDate, originDate);
+    const centerX = -(daysFromOrigin * newPixelsPerDay - containerWidth / 2);
+    setTimeout(() => useTimelineStore.getState().setPan(centerX, 0), 10);
+  }, [tasks, originDate, containerWidth]);
 
   const handleZoomIn = useCallback(() => {
     const s = useTimelineStore.getState();
@@ -196,6 +212,7 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
         onPanLeft={handlePanLeft}
         onPanRight={handlePanRight}
         onToday={handleToday}
+        onShowProject={showProjectSpan}
         onTaskClick={onTaskClick}
       />
 

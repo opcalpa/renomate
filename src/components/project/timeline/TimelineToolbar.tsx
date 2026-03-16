@@ -42,6 +42,7 @@ interface TimelineToolbarProps {
   onPanLeft: () => void;
   onPanRight: () => void;
   onToday: () => void;
+  onShowProject: () => void;
   onTaskClick?: (taskId: string) => void;
 }
 
@@ -61,6 +62,7 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
   onPanLeft,
   onPanRight,
   onToday,
+  onShowProject,
   onTaskClick,
 }) => {
   const { t } = useTranslation();
@@ -250,6 +252,9 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
         </Button>
         <Button variant="ghost" size="icon" onClick={onPanRight} className="h-8 w-8">
           <ChevronRight className="w-4 h-4" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={onShowProject} className="h-8 px-2 text-xs">
+          {t("timeline.showProject", "Project")}
         </Button>
       </div>
     </div>
