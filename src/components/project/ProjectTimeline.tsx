@@ -1543,8 +1543,23 @@ const ProjectTimeline = ({
                         {!group.isCollapsed && group.tasks.map((task) => {
                           // Use preview dates during drag for real-time feedback
                           const isDragging = dragInteraction?.taskId === task.id;
-                          const displayStart = isDragging ? dragInteraction.previewStart : task.start_date;
-                          const displayFinish = isDragging ? dragInteraction.previewFinish : task.finish_date;
+                          const cascadePreview = dragInteraction && dragInteraction.mode === 'moving'
+                            ? (() => {
+                                const delta = differenceInDays(
+                                  parseISO(dragInteraction.previewStart),
+                                  parseISO(dragInteraction.origStart)
+                                );
+                                if (delta === 0) return null;
+                                const downstreamIds = getDownstreamTasks(dragInteraction.taskId, dependencies);
+                                if (!downstreamIds.includes(task.id)) return null;
+                                return {
+                                  start: task.start_date ? format(addDays(parseISO(task.start_date), delta), 'yyyy-MM-dd') : task.start_date,
+                                  finish: task.finish_date ? format(addDays(parseISO(task.finish_date), delta), 'yyyy-MM-dd') : task.finish_date,
+                                };
+                              })()
+                            : null;
+                          const displayStart = isDragging ? dragInteraction.previewStart : cascadePreview?.start || task.start_date;
+                          const displayFinish = isDragging ? dragInteraction.previewFinish : cascadePreview?.finish || task.finish_date;
                           const { left, width } = getTaskPosition(
                             { ...task, start_date: displayStart, finish_date: displayFinish },
                             minDate, totalDays
@@ -1556,7 +1571,7 @@ const ProjectTimeline = ({
                                   <div
                                     className={`task-bar absolute h-11 rounded-md ${getStatusColor(task.status)} shadow-sm hover:shadow-md transition-shadow group border border-white/20 ${
                                       isDragging ? 'opacity-90 shadow-lg ring-2 ring-primary/30 z-30' : ''
-                                    }`}
+                                    } ${cascadePreview ? 'ring-1 ring-blue-400/50 opacity-80' : ''}`}
                                     style={{ left: `${left}%`, width: `${Math.max(width, 100 / totalDays * 0.5)}%`, overflow: 'clip' }}
                                   >
                                     {/* Left resize handle */}
