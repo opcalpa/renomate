@@ -30,6 +30,7 @@ import { CommentsSection } from "@/components/comments/CommentsSection";
 import { TaskFilesList } from "./TaskFilesList";
 import { Separator } from "@/components/ui/separator";
 import ProjectTimeline from "./ProjectTimeline";
+import { KonvaTimeline } from "./timeline/KonvaTimeline";
 import { TaskEditDialog } from "./TaskEditDialog";
 import { ProjectLockBanner } from "./ProjectLockBanner";
 import { useProjectLock } from "@/hooks/useProjectLock";
@@ -1047,7 +1048,11 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
           {timelineOpen && (
             <Card>
               <CardContent className="p-0">
-                <ProjectTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} />
+                {new URLSearchParams(window.location.search).get("timeline") === "konva" ? (
+                  <KonvaTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} />
+                ) : (
+                  <ProjectTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} />
+                )}
               </CardContent>
             </Card>
           )}
