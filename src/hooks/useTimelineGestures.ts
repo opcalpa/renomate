@@ -328,9 +328,10 @@ export function useTimelineGestures(options: UseTimelineGesturesOptions = {}) {
       setDaysVisible(newDays);
     } else {
       // Pan through time — use deltaX if available, otherwise deltaY
-      // deltaY fallback handles the case where Chrome macOS intercepts
-      // right-swipe deltaX for browser forward navigation
-      const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY;
+      // deltaY fallback handles Chrome macOS intercepting right-swipe deltaX.
+      // deltaY from a horizontal swipe is much smaller, so we boost it 3x.
+      const useY = e.deltaX === 0 && e.deltaY !== 0;
+      const delta = useY ? e.deltaY * 3 : e.deltaX;
       if (delta === 0) return;
       e.preventDefault();
       const deltaDays = pixelsToDays(delta);
