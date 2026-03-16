@@ -28,10 +28,11 @@ const TimelineGridComponent: React.FC<TimelineGridProps> = ({
   const today = new Date();
   const elements: React.ReactNode[] = [];
 
+  // Render only visible days — no limit, grid extends infinitely
   const firstVisibleDay = Math.floor(-panX / pixelsPerDay) - 1;
   const lastVisibleDay = Math.ceil((stageWidth - panX) / pixelsPerDay) + 1;
-  const startDay = Math.max(0, firstVisibleDay);
-  const endDay = Math.min(daysToRender, lastVisibleDay);
+  const startDay = firstVisibleDay;
+  const endDay = lastVisibleDay;
 
   // Background fill for full visible area
   elements.push(

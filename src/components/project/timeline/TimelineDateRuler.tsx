@@ -33,10 +33,11 @@ const TimelineDateRulerComponent: React.FC<TimelineDateRulerProps> = ({
   stageWidth,
   daysToRender,
 }) => {
+  // Render only visible days — extends infinitely in both directions
   const firstVisibleDay = Math.floor(-panX / pixelsPerDay) - 2;
   const lastVisibleDay = Math.ceil((stageWidth - panX) / pixelsPerDay) + 2;
-  const startDay = Math.max(0, firstVisibleDay);
-  const endDay = Math.min(daysToRender, lastVisibleDay);
+  const startDay = firstVisibleDay;
+  const endDay = lastVisibleDay;
 
   const elements = useMemo(() => {
     const items: React.ReactNode[] = [];
