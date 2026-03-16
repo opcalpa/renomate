@@ -65,26 +65,36 @@ export function TaskCostTable({
           <tr className="border-t hover:bg-muted/30">
             <td className="px-3 py-1.5 text-xs font-medium">{t("taskCost.ownLabor", "Own labor")}</td>
             <td className="px-1 py-1">
-              <Input
-                type="number"
-                step="0.5"
-                min="0"
-                placeholder="h"
-                className={inputClass}
-                value={estimatedHours?.toString() || ""}
-                onChange={(e) => onChange({ estimated_hours: e.target.value ? parseFloat(e.target.value) : null })}
-              />
+              <div className="relative">
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  placeholder="h"
+                  className={`${inputClass} pr-4`}
+                  value={estimatedHours?.toString() || ""}
+                  onChange={(e) => onChange({ estimated_hours: e.target.value ? parseFloat(e.target.value) : null })}
+                />
+                {estimatedHours != null && estimatedHours > 0 && (
+                  <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">h</span>
+                )}
+              </div>
             </td>
             <td className="px-1 py-1">
-              <Input
-                type="number"
-                step="1"
-                min="0"
-                placeholder="kr/h"
-                className={inputClass}
-                value={hourlyRate?.toString() || ""}
-                onChange={(e) => onChange({ hourly_rate: e.target.value ? parseFloat(e.target.value) : null })}
-              />
+              <div className="relative">
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  placeholder="kr/h"
+                  className={`${inputClass} pr-6`}
+                  value={hourlyRate?.toString() || ""}
+                  onChange={(e) => onChange({ hourly_rate: e.target.value ? parseFloat(e.target.value) : null })}
+                />
+                {hourlyRate != null && hourlyRate > 0 && (
+                  <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">kr/h</span>
+                )}
+              </div>
             </td>
             <td className="px-2 py-1.5 text-xs text-right text-muted-foreground">—</td>
             <td className="px-3 py-1.5 text-xs text-right tabular-nums font-medium">
