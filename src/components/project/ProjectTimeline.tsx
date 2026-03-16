@@ -636,15 +636,21 @@ const ProjectTimeline = ({
           parseISO(interaction.origStart)
         );
         let cascadedCount = 0;
-        if (delta !== 0) {
+        if (delta > 0) {
+          // Only cascade forward — moving backward should not pull dependents
+          const newFinish = parseISO(interaction.previewFinish);
           const downstreamIds = getDownstreamTasks(interaction.taskId, dependencies);
           for (const dt of tasks.filter(tt => downstreamIds.includes(tt.id))) {
             if (dt.start_date && dt.finish_date) {
-              const { error: ce } = await supabase.from("tasks").update({
-                start_date: format(addDays(parseISO(dt.start_date), delta), "yyyy-MM-dd"),
-                finish_date: format(addDays(parseISO(dt.finish_date), delta), "yyyy-MM-dd"),
-              }).eq("id", dt.id);
-              if (!ce) cascadedCount++;
+              const depStart = parseISO(dt.start_date);
+              if (depStart <= newFinish) {
+                const pushDays = differenceInDays(newFinish, depStart) + 1;
+                const { error: ce } = await supabase.from("tasks").update({
+                  start_date: format(addDays(depStart, pushDays), "yyyy-MM-dd"),
+                  finish_date: format(addDays(parseISO(dt.finish_date), pushDays), "yyyy-MM-dd"),
+                }).eq("id", dt.id);
+                if (!ce) cascadedCount++;
+              }
             }
           }
         }
@@ -1496,14 +1502,19 @@ const ProjectTimeline = ({
                             }
                             if (dragInteraction?.mode === 'moving') {
                               const delta = differenceInDays(parseISO(dragInteraction.previewStart), parseISO(dragInteraction.origStart));
-                              if (delta !== 0) {
+                              if (delta > 0) { // Only preview cascade forward
                                 const downstreamIds = getDownstreamTasks(dragInteraction.taskId, dependencies);
+                                const predNewFinish = parseISO(dragInteraction.previewFinish);
                                 if (downstreamIds.includes(t.id) && t.start_date && t.finish_date) {
-                                  return {
-                                    ...t,
-                                    start_date: format(addDays(parseISO(t.start_date), delta), 'yyyy-MM-dd'),
-                                    finish_date: format(addDays(parseISO(t.finish_date), delta), 'yyyy-MM-dd'),
-                                  };
+                                  const depStart = parseISO(t.start_date);
+                                  if (depStart <= predNewFinish) {
+                                    const pushDays = differenceInDays(predNewFinish, depStart) + 1;
+                                    return {
+                                      ...t,
+                                      start_date: format(addDays(depStart, pushDays), 'yyyy-MM-dd'),
+                                      finish_date: format(addDays(parseISO(t.finish_date), pushDays), 'yyyy-MM-dd'),
+                                    };
+                                  }
                                 }
                               }
                             }
@@ -1572,12 +1583,17 @@ const ProjectTimeline = ({
                                   parseISO(dragInteraction.previewStart),
                                   parseISO(dragInteraction.origStart)
                                 );
-                                if (delta === 0) return null;
+                                if (delta <= 0) return null; // Only preview cascade forward
                                 const downstreamIds = getDownstreamTasks(dragInteraction.taskId, dependencies);
                                 if (!downstreamIds.includes(task.id)) return null;
+                                // Only shift if dependent starts before predecessor's new finish
+                                const predNewFinish = parseISO(dragInteraction.previewFinish);
+                                const depStart = task.start_date ? parseISO(task.start_date) : null;
+                                if (!depStart || depStart > predNewFinish) return null;
+                                const pushDays = differenceInDays(predNewFinish, depStart) + 1;
                                 return {
-                                  start: task.start_date ? format(addDays(parseISO(task.start_date), delta), 'yyyy-MM-dd') : task.start_date,
-                                  finish: task.finish_date ? format(addDays(parseISO(task.finish_date), delta), 'yyyy-MM-dd') : task.finish_date,
+                                  start: task.start_date ? format(addDays(parseISO(task.start_date), pushDays), 'yyyy-MM-dd') : task.start_date,
+                                  finish: task.finish_date ? format(addDays(parseISO(task.finish_date), pushDays), 'yyyy-MM-dd') : task.finish_date,
                                 };
                               })()
                             : null;

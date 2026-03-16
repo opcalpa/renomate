@@ -171,29 +171,35 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
           .eq("id", taskId);
         if (error) throw error;
 
-        // Cascade dependent tasks
+        // Cascade dependent tasks — ONLY forward in time
+        // Moving a predecessor backward should NOT pull dependents back
+        // (the crew for the next job doesn't need to come earlier just
+        // because the previous job can start sooner)
         const delta = differenceInDays(newStartDate, origStart);
         let cascadedCount = 0;
-        if (delta !== 0) {
+        if (delta > 0) {
+          // Moving forward: push dependents whose start would now overlap
           const downstreamIds = getDownstreamTasks(taskId, dependencies);
           for (const dt of allTasks.filter((tt) =>
             downstreamIds.includes(tt.id)
           )) {
             if (dt.start_date && dt.finish_date) {
-              const { error: ce } = await supabase
-                .from("tasks")
-                .update({
-                  start_date: format(
-                    addDays(parseISO(dt.start_date), delta),
-                    "yyyy-MM-dd"
-                  ),
-                  finish_date: format(
-                    addDays(parseISO(dt.finish_date), delta),
-                    "yyyy-MM-dd"
-                  ),
-                })
-                .eq("id", dt.id);
-              if (!ce) cascadedCount++;
+              const depStart = parseISO(dt.start_date);
+              // Only push if the dependent starts before our new finish
+              if (depStart <= newFinishDate) {
+                const pushDays = differenceInDays(newFinishDate, depStart) + 1;
+                const { error: ce } = await supabase
+                  .from("tasks")
+                  .update({
+                    start_date: format(addDays(depStart, pushDays), "yyyy-MM-dd"),
+                    finish_date: format(
+                      addDays(parseISO(dt.finish_date), pushDays),
+                      "yyyy-MM-dd"
+                    ),
+                  })
+                  .eq("id", dt.id);
+                if (!ce) cascadedCount++;
+              }
             }
           }
         }
