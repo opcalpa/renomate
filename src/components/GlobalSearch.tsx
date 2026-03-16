@@ -216,14 +216,10 @@ export function GlobalSearch() {
       {/* Trigger button in header */}
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 h-8 px-3 rounded-md border bg-muted/50 text-muted-foreground text-sm hover:bg-muted transition-colors"
-        title="Cmd+K"
+        className="flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        title="⌘K"
       >
-        <Search className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">{t("globalSearch.placeholder", "Search...")}</span>
-        <kbd className="hidden md:inline-flex h-5 items-center gap-0.5 rounded border bg-background px-1.5 text-[10px] font-medium text-muted-foreground">
-          ⌘K
-        </kbd>
+        <Search className="h-4 w-4" />
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
