@@ -794,13 +794,9 @@ const ProjectTimeline = ({
       if (delta === 0) return;
       e.preventDefault();
       e.stopPropagation();
-      const container = gestureContainerRef.current;
-      if (container) {
-        const containerWidth = container.clientWidth || 1;
-        const daysPerPixel = daysVisible / containerWidth;
-        const deltaDays = delta * daysPerPixel;
-        setCenterDate(prev => addDays(prev, deltaDays));
-      }
+      // Fixed scroll speed: ~2% of visible range per scroll tick
+      const deltaDays = (delta / Math.abs(delta)) * Math.max(1, daysVisible * 0.03) * Math.min(Math.abs(delta) / 10, 3);
+      setCenterDate(prev => addDays(prev, deltaDays));
     };
     card.addEventListener("wheel", handler, { passive: false });
     return () => card.removeEventListener("wheel", handler);

@@ -335,16 +335,15 @@ export function useTimelineGestures(options: UseTimelineGesturesOptions = {}) {
       const zoomFactor = 1 + (e.deltaY * 0.01);
       const newDays = clampDays(daysVisibleRef.current * zoomFactor);
       setDaysVisible(newDays);
-    } else if (e.deltaX !== 0) {
-      // Explicit horizontal scroll (trackpad swipe) - pan through time
-      e.preventDefault();
-      const deltaDays = pixelsToDays(e.deltaX);
-      setCenterDate(prev => addDays(prev, deltaDays));
     } else {
-      // All vertical scroll on timeline = pan through time
-      // This works because Chrome doesn't intercept vertical scroll for navigation
+      // All scroll on timeline = pan through time
+      const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY;
+      if (delta === 0) return;
       e.preventDefault();
-      const deltaDays = pixelsToDays(e.deltaY);
+      // Fixed speed: ~3% of visible range per scroll tick, capped for smoothness
+      const direction = delta > 0 ? 1 : -1;
+      const intensity = Math.min(Math.abs(delta) / 10, 3);
+      const deltaDays = direction * Math.max(1, daysVisibleRef.current * 0.03) * intensity;
       setCenterDate(prev => addDays(prev, deltaDays));
     }
   }, [clampDays, pixelsToDays]);
