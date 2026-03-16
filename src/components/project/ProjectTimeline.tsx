@@ -677,8 +677,8 @@ const ProjectTimeline = ({
   ) => {
     e.preventDefault();
     e.stopPropagation();
-    // Capture pointer so drag continues even if cursor leaves the bar
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    // Capture pointer on the currentTarget (the div with the handler), not e.target (could be a child span)
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 
     let current = {
       mode,
