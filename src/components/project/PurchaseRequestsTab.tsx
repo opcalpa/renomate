@@ -1313,16 +1313,16 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                         </div>
                       </PopoverContent>
                     </Popover>
-                    {purchaseTableViewState.savedViews.length > 0 && (
+                    {purchaseTableViewState.savedViews?.length > 0 && (
                       <Popover open={pLoadViewOpen} onOpenChange={setPLoadViewOpen}>
                         <PopoverTrigger asChild>
                           <Button variant="outline" size="sm" className="gap-1 h-9">
-                            {t("purchasesTable.savedViews")} ({purchaseTableViewState.savedViews.length})
+                            {t("purchasesTable.savedViews")} ({purchaseTableViewState.savedViews?.length})
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-56" align="start">
                           <div className="space-y-1">
-                            {purchaseTableViewState.savedViews.map((view) => (
+                            {(purchaseTableViewState.savedViews || []).map((view) => (
                               <div key={view.id} className="flex items-center justify-between">
                                 <button
                                   className="text-sm hover:bg-muted px-2 py-1 rounded flex-1 text-left"
