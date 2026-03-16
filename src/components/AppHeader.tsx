@@ -4,6 +4,7 @@ import { LogOut, User, Globe, Lightbulb, MessageSquare, FolderOpen, ChevronDown,
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { NotificationBell } from "@/components/NotificationBell";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import {
@@ -271,6 +272,7 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
         )}
 
         <div className="flex items-center gap-1 shrink-0">
+          <GlobalSearch />
           <NotificationBell />
 
           {/* In project mode, show a "more" menu with site nav links */}

@@ -4469,6 +4469,14 @@
       "action": "Review budget"
     }
   },
+  "globalSearch": {
+    "placeholder": "Search...",
+    "inputPlaceholder": "Search tasks, purchases, rooms...",
+    "noResults": "No results found",
+    "navigate": "navigate",
+    "open": "open",
+    "close": "close"
+  },
   "analysis": {
     "title": "ROT deduction",
     "totalExpenses": "Total",

@@ -4466,6 +4466,14 @@
       "action": "Granska budget"
     }
   },
+  "globalSearch": {
+    "placeholder": "Sök...",
+    "inputPlaceholder": "Sök arbeten, inköp, rum...",
+    "noResults": "Inga resultat hittades",
+    "navigate": "navigera",
+    "open": "öppna",
+    "close": "stäng"
+  },
   "analysis": {
     "title": "Rotavdrag",
     "totalExpenses": "Totalt",
