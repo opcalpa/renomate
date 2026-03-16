@@ -41,9 +41,11 @@ export function ReminderSection({
   return (
     <div className="rounded-lg border bg-card">
       {/* Header — always visible */}
-      <button
-        className="flex items-center justify-between w-full px-4 py-2.5 hover:bg-accent/50 transition-colors rounded-lg"
+      <div
+        className="flex items-center justify-between w-full px-4 py-2.5 hover:bg-accent/50 transition-colors rounded-lg cursor-pointer"
         onClick={() => setExpanded(!expanded)}
+        role="button"
+        tabIndex={0}
       >
         <div className="flex items-center gap-2">
           <div className="relative">
@@ -81,7 +83,7 @@ export function ReminderSection({
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           )}
         </div>
-      </button>
+      </div>
 
       {/* Content — collapsible */}
       {expanded && (
