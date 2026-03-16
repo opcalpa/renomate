@@ -793,7 +793,7 @@ export const TaskEditDialog = ({
         room_ids: task.room_ids || [],
         progress: task.progress,
         assigned_to_stakeholder_id: task.assigned_to_stakeholder_id || null,
-        budget: task.budget || null,
+        budget: task.budget ? Math.round(task.budget) : null,
         ordered_amount: task.ordered_amount || null,
         payment_status: task.payment_status || null,
         paid_amount: task.paid_amount || null,
@@ -1085,7 +1085,7 @@ export const TaskEditDialog = ({
                   step="1"
                   min="0"
                   placeholder="SEK"
-                  value={task.budget?.toString() || ""}
+                  value={task.budget != null ? Math.round(task.budget).toString() : ""}
                   onChange={(e) =>
                     setTask({ ...task, budget: e.target.value ? parseFloat(e.target.value) : null })
                   }
@@ -1578,7 +1578,7 @@ export const TaskEditDialog = ({
                   type="number"
                   step="0.01"
                   placeholder="SEK"
-                  value={task.budget?.toString() || ""}
+                  value={task.budget != null ? Math.round(task.budget).toString() : ""}
                   onChange={(e) =>
                     setTask({ ...task, budget: e.target.value ? parseFloat(e.target.value) : null })
                   }

@@ -104,6 +104,7 @@ export function HelpBot() {
   const [loading, setLoading] = useState(false);
   const [userType, setUserType] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [feedbackMode, setFeedbackMode] = useState<FeedbackMode>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -116,7 +117,7 @@ export function HelpBot() {
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("onboarding_user_type, name")
+        .select("onboarding_user_type, name, avatar_url")
         .eq("user_id", user.id)
         .maybeSingle();
       if (data?.onboarding_user_type) {
@@ -124,6 +125,9 @@ export function HelpBot() {
       }
       if (data?.name) {
         setUserName(data.name.split(" ")[0]); // first name only
+      }
+      if (data?.avatar_url) {
+        setUserAvatar(data.avatar_url);
       }
     };
     fetchUserType();
@@ -583,9 +587,12 @@ export function HelpBot() {
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             {messages.map((msg, i) => (
               <div key={i}>
-                <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`flex items-end gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  {msg.role === "assistant" && (
+                    <img src="/chatbot-avatar.jpg" alt="Junior" className="h-6 w-6 rounded-full object-cover shrink-0 mb-0.5" />
+                  )}
                   <div
-                    className={`max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                    className={`max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
                       msg.role === "user"
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted"
@@ -593,6 +600,13 @@ export function HelpBot() {
                   >
                     <MessageContent content={msg.content} onNavigate={handleInlineAction} onDismiss={handleDismissReminder} />
                   </div>
+                  {msg.role === "user" && (
+                    userAvatar
+                      ? <img src={userAvatar} alt="" className="h-6 w-6 rounded-full object-cover shrink-0 mb-0.5" />
+                      : <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mb-0.5">
+                          <span className="text-[10px] font-medium text-primary">{userName?.[0]?.toUpperCase() || "?"}</span>
+                        </div>
+                  )}
                 </div>
                 {/* Inline action buttons below a message */}
                 {msg.actions && msg.actions.length > 0 && (
