@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Calendar, Loader2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ZoomIn, ZoomOut, RotateCcw, Layers, SlidersHorizontal, X } from "lucide-react";
+import { Calendar, Loader2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ZoomIn, ZoomOut, RotateCcw, Layers, SlidersHorizontal, X, GripVertical } from "lucide-react";
 import { useTimelineGestures } from "@/hooks/useTimelineGestures";
 import { Slider } from "@/components/ui/slider";
 import { format, differenceInDays, parseISO, addDays, getISOWeek } from "date-fns";
@@ -1599,15 +1599,18 @@ const ProjectTimeline = ({
                                   >
                                     {/* Left resize handle */}
                                     <div
-                                      className="absolute left-0 top-0 h-full w-2 cursor-ew-resize hover:bg-white/20 z-30 rounded-l-md touch-none"
+                                      className="absolute left-0 top-0 h-full w-1.5 cursor-ew-resize z-30 rounded-l-md touch-none group/left"
                                       onPointerDown={(e) => handleBarPointerDown(e, task, 'resize-left')}
-                                    />
+                                    >
+                                      <div className="absolute inset-y-2 left-0.5 w-0.5 rounded-full bg-white/0 group-hover/left:bg-white/60 transition-colors" />
+                                    </div>
 
                                     {/* Task content — drag to move, tap to open */}
                                     <div
-                                      className="sticky left-0 h-full w-fit max-w-full flex items-center px-2.5 py-0.5 relative z-10 touch-none cursor-grab active:cursor-grabbing"
+                                      className="sticky left-0 h-full w-fit max-w-full flex items-center gap-1 px-2 py-0.5 relative z-10 touch-none cursor-grab active:cursor-grabbing"
                                       onPointerDown={(e) => handleBarPointerDown(e, task, 'moving')}
                                     >
+                                      <GripVertical className="h-3 w-3 text-white/40 group-hover:text-white/80 shrink-0 transition-colors" />
                                       <span className="text-xs font-semibold text-white drop-shadow line-clamp-2 leading-tight min-w-0">
                                         {task.title}
                                       </span>
@@ -1628,9 +1631,11 @@ const ProjectTimeline = ({
 
                                     {/* Right resize handle */}
                                     <div
-                                      className="absolute right-0 top-0 h-full w-2 cursor-ew-resize hover:bg-white/20 z-30 rounded-r-md touch-none"
+                                      className="absolute right-0 top-0 h-full w-1.5 cursor-ew-resize z-30 rounded-r-md touch-none group/right"
                                       onPointerDown={(e) => handleBarPointerDown(e, task, 'resize-right')}
-                                    />
+                                    >
+                                      <div className="absolute inset-y-2 right-0.5 w-0.5 rounded-full bg-white/0 group-hover/right:bg-white/60 transition-colors" />
+                                    </div>
                                   </div>
                                 </HoverCardTrigger>
                                 <HoverCardContent className="w-72">
