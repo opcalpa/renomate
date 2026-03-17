@@ -136,12 +136,15 @@ export function QuoteDocument({
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => {
+            {items.map((item, idx) => {
               const discount = item.discountPercent ?? 0;
               const lineTotal = item.quantity * item.unitPrice * (1 - discount / 100);
+              const prevRoom = idx > 0 ? (items[idx - 1].roomId ?? "__none__") : null;
+              const currRoom = item.roomId ?? "__none__";
+              const isNewRoomGroup = idx > 0 && currRoom !== prevRoom;
               return (
-                <tr key={item.id} className="border-b border-foreground/8">
-                  <td className="py-2.5 pr-4">
+                <tr key={item.id} className={`border-b border-foreground/8 ${isNewRoomGroup ? "border-t border-foreground/8" : ""}`}>
+                  <td className={`pr-4 ${isNewRoomGroup ? "pt-6 pb-2.5" : "py-2.5"}`}>
                     {item.description || "—"}
                     {item.isRotEligible && (
                       <span className="text-[11px] text-muted-foreground ml-1.5">(ROT)</span>
@@ -152,16 +155,16 @@ export function QuoteDocument({
                       </p>
                     )}
                   </td>
-                  <td className="text-right py-2.5 px-3 whitespace-nowrap tabular-nums">
+                  <td className={`text-right px-3 whitespace-nowrap tabular-nums ${isNewRoomGroup ? "pt-6 pb-2.5" : "py-2.5"}`}>
                     {item.quantity} {item.unit}
                   </td>
-                  <td className="text-right py-2.5 px-3 whitespace-nowrap tabular-nums">{fmt(item.unitPrice)} kr</td>
+                  <td className={`text-right px-3 whitespace-nowrap tabular-nums ${isNewRoomGroup ? "pt-6 pb-2.5" : "py-2.5"}`}>{fmt(item.unitPrice)} kr</td>
                   {hasAnyDiscount && (
-                    <td className="text-right py-2.5 px-3 whitespace-nowrap tabular-nums">
+                    <td className={`text-right px-3 whitespace-nowrap tabular-nums ${isNewRoomGroup ? "pt-6 pb-2.5" : "py-2.5"}`}>
                       {discount > 0 ? `${discount}%` : "—"}
                     </td>
                   )}
-                  <td className="text-right py-2.5 pl-3 whitespace-nowrap tabular-nums font-medium">{fmt(lineTotal)} kr</td>
+                  <td className={`text-right pl-3 whitespace-nowrap tabular-nums font-medium ${isNewRoomGroup ? "pt-6 pb-2.5" : "py-2.5"}`}>{fmt(lineTotal)} kr</td>
                 </tr>
               );
             })}
