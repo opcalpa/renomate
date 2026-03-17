@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Package, Wrench, Info, Paperclip, FileText, X } from "lucide-react";
+import { ShoppingCart, Handshake, Info, Paperclip, FileText, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type RowKind = "material" | "subcontractor";
@@ -143,7 +143,7 @@ export function AddMaterialDialog({
               className="gap-1.5"
               onClick={() => setKind("material")}
             >
-              <Package className="h-3.5 w-3.5" />
+              <ShoppingCart className="h-3.5 w-3.5" />
               {t("planningTasks.typeMaterial")}
             </Button>
             <Button
@@ -153,7 +153,7 @@ export function AddMaterialDialog({
               className="gap-1.5"
               onClick={() => setKind("subcontractor")}
             >
-              <Wrench className="h-3.5 w-3.5" />
+              <Handshake className="h-3.5 w-3.5" />
               {t("planningTasks.typeSubcontractor")}
             </Button>
           </div>
