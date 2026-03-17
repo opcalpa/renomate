@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Package,
+  ShoppingCart,
   Loader2,
   Plus,
   Filter,
@@ -726,7 +726,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
+                <ShoppingCart className="h-5 w-5" />
                 {t('purchases.title')} ({materials.length})
               </CardTitle>
               <CardDescription>
@@ -1101,7 +1101,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         <CardContent>
           {materials.length === 0 ? (
             <div className="text-center py-12">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">{t('purchases.noPurchaseOrders')}</h3>
               <p className="text-muted-foreground mb-4">
                 {t('purchases.noPurchaseOrdersDescription')}</p>
