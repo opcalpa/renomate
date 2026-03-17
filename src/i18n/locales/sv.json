@@ -3808,6 +3808,8 @@
     "unlinkFromTask": "Gör fristående",
     "moveToTask": "Flytta till annat arbete",
     "attachFile": "Bifoga fil",
+    "quantity": "Antal",
+    "unitPrice": "Á-pris",
     "hoursQty": "Timmar / Antal",
     "rateUnitPrice": "Timpris / Á-pris",
     "addCost": "Lägg till kostnad",

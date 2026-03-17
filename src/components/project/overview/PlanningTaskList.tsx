@@ -829,6 +829,8 @@ export function PlanningTaskList({
 
   const handleDeleteMaterial = useCallback(
     async (materialId: string) => {
+      const mat = materials.find((m) => m.id === materialId);
+
       const { error } = await supabase
         .from("materials")
         .delete()
@@ -837,10 +839,26 @@ export function PlanningTaskList({
       if (error) {
         toast({ title: t("common.error"), description: error.message, variant: "destructive" });
       } else {
+        // If a planned material linked to a task was deleted, check remaining
+        // planned materials for that task. If none left, clear material_estimate
+        // on the task so the card stays in sync.
+        if (mat?.task_id && mat.status === "planned") {
+          const { data: remaining } = await supabase
+            .from("materials")
+            .select("id")
+            .eq("task_id", mat.task_id)
+            .eq("status", "planned");
+          if (!remaining || remaining.length === 0) {
+            await supabase
+              .from("tasks")
+              .update({ material_estimate: null, material_items: null })
+              .eq("id", mat.task_id);
+          }
+        }
         fetchData();
       }
     },
-    [fetchData, t, toast]
+    [materials, fetchData, t, toast]
   );
 
   const handleMaterialInlineSave = useCallback(

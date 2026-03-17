@@ -3811,6 +3811,8 @@
     "unlinkFromTask": "Make standalone",
     "moveToTask": "Move to another task",
     "attachFile": "Attach file",
+    "quantity": "Quantity",
+    "unitPrice": "Unit price",
     "hoursQty": "Hours / Qty",
     "rateUnitPrice": "Rate / Unit price",
     "addCost": "Add cost",

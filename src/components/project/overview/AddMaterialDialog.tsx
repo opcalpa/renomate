@@ -42,6 +42,8 @@ interface AddMaterialDialogProps {
     linkMode: LinkMode;
     existingTaskId?: string;
     newTaskTitle?: string;
+    quantity?: number;
+    priceTotal?: number;
     markupPercent?: number;
     file?: File;
   }) => Promise<void>;
@@ -59,6 +61,8 @@ export function AddMaterialDialog({
   const [kind, setKind] = useState<RowKind>(initialKind);
   const [selectedLink, setSelectedLink] = useState<string>("__none__");
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [priceTotal, setPriceTotal] = useState("");
   const [markupPercent, setMarkupPercent] = useState("");
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const attachRef = useRef<HTMLInputElement>(null);
@@ -73,6 +77,8 @@ export function AddMaterialDialog({
     setKind(initialKind);
     setSelectedLink(tasks.length > 0 ? tasks[0].id : "__none__");
     setNewTaskTitle("");
+    setQuantity("1");
+    setPriceTotal("");
     setMarkupPercent("");
     setAttachedFile(null);
   };
@@ -92,12 +98,16 @@ export function AddMaterialDialog({
     setSaving(true);
     try {
       const markup = markupPercent ? parseFloat(markupPercent) : undefined;
+      const qty = quantity ? parseFloat(quantity) : undefined;
+      const price = priceTotal ? parseFloat(priceTotal) : undefined;
       await onAdd({
         name: name.trim(),
         kind,
         linkMode,
         existingTaskId: linkMode === "existing" ? selectedLink : undefined,
         newTaskTitle: linkMode === "create" ? newTaskTitle.trim() : undefined,
+        quantity: qty && !isNaN(qty) ? qty : undefined,
+        priceTotal: price && !isNaN(price) ? price : undefined,
         markupPercent: markup && !isNaN(markup) ? markup : undefined,
         file: attachedFile || undefined,
       });
@@ -213,6 +223,30 @@ export function AddMaterialDialog({
                 onChange={(e) => setNewTaskTitle(e.target.value)}
               />
             )}
+          </div>
+
+          {/* Quantity + Price */}
+          <div className="flex gap-3">
+            <div className="space-y-1.5 w-24">
+              <Label>{t("planningTasks.quantity", "Quantity")}</Label>
+              <Input
+                type="number"
+                className="h-9 text-sm"
+                min={1}
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5 flex-1">
+              <Label>{t("planningTasks.unitPrice", "Unit price")}</Label>
+              <Input
+                type="number"
+                className="h-9 text-sm"
+                placeholder="0"
+                value={priceTotal}
+                onChange={(e) => setPriceTotal(e.target.value)}
+              />
+            </div>
           </div>
 
           {/* Markup */}
