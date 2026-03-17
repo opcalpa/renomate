@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/popover";
 import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle, FileUp, ChevronRight, ChevronDown, ShoppingCart, Package, Wrench, Link2, GripVertical } from "lucide-react";
 import { AddMaterialDialog } from "./AddMaterialDialog";
+import { MaterialFileAttachment } from "./MaterialFileAttachment";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -1292,6 +1293,7 @@ export function PlanningTaskList({
                               ? <Wrench className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                               : <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                             <span className="text-sm">{mat.name}</span>
+                            <MaterialFileAttachment materialId={mat.id} projectId={projectId} />
                             {!effectiveLock && tasks.length > 0 ? (
                               <Popover>
                                 <PopoverTrigger asChild>
@@ -1833,6 +1835,7 @@ export function PlanningTaskList({
                                 ? <Wrench className="h-3 w-3 text-muted-foreground shrink-0" />
                                 : <Package className="h-3 w-3 text-muted-foreground shrink-0" />}
                               <span className="text-sm">{mat.name}</span>
+                              <MaterialFileAttachment materialId={mat.id} projectId={projectId} />
                               {!effectiveLock && (
                                 <Popover>
                                   <PopoverTrigger asChild>

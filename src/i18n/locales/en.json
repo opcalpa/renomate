@@ -3808,7 +3808,8 @@
     "typeSubcontractor": "Subcontractor",
     "typeTask": "Task",
     "unlinkFromTask": "Make standalone",
-    "moveToTask": "Move to another task"
+    "moveToTask": "Move to another task",
+    "attachFile": "Attach file"
   },
   "planningSmartImport": {
     "title": "Smart Import",

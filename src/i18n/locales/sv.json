@@ -3805,7 +3805,8 @@
     "typeSubcontractor": "UE",
     "typeTask": "Arbete",
     "unlinkFromTask": "Gör fristående",
-    "moveToTask": "Flytta till annat arbete"
+    "moveToTask": "Flytta till annat arbete",
+    "attachFile": "Bifoga fil"
   },
   "planningSmartImport": {
     "title": "Smart import",
