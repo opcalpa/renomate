@@ -99,6 +99,7 @@ interface PlanningMaterial {
   price_total: number | null;
   markup_percent: number | null;
   task_id: string | null;
+  room_id: string | null;
   status: string;
   vendor_name: string | null;
   kind: "material" | "subcontractor";
@@ -187,7 +188,7 @@ export function PlanningTaskList({
     field: "estimated_hours" | "hourly_rate" | "material_estimate" | "budget" | "description" | "room_id";
   } | {
     taskId: string;
-    field: "mat_quantity" | "mat_price_per_unit" | "mat_markup_percent" | "mat_price_total";
+    field: "mat_quantity" | "mat_price_per_unit" | "mat_markup_percent" | "mat_price_total" | "mat_room_id";
     materialId: string;
   } | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -342,7 +343,7 @@ export function PlanningTaskList({
         .eq("project_id", projectId),
       supabase
         .from("materials")
-        .select("id, name, quantity, unit, price_per_unit, price_total, markup_percent, task_id, status, vendor_name, description")
+        .select("id, name, quantity, unit, price_per_unit, price_total, markup_percent, task_id, room_id, status, vendor_name, description")
         .eq("project_id", projectId),
     ]);
 
@@ -379,6 +380,7 @@ export function PlanningTaskList({
         price_total: m.price_total,
         markup_percent: m.markup_percent,
         task_id: m.task_id,
+        room_id: m.room_id ?? null,
         status: m.status,
         vendor_name: m.vendor_name,
         kind: (m.description === "__subcontractor__" ? "subcontractor" : "material") as "material" | "subcontractor",
@@ -614,6 +616,23 @@ export function PlanningTaskList({
       setNewRoomName("");
     },
     [projectId, handleRoomToggle, t, toast]
+  );
+
+  const handleMaterialRoomChange = useCallback(
+    async (materialId: string, roomId: string | null) => {
+      const { error } = await supabase
+        .from("materials")
+        .update({ room_id: roomId })
+        .eq("id", materialId);
+
+      if (error) {
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      } else {
+        fetchData();
+      }
+      setEditingCell(null);
+    },
+    [fetchData, t, toast]
   );
 
   const handleDeleteTask = useCallback(
@@ -1409,7 +1428,94 @@ export function PlanningTaskList({
                             {renderStandaloneInline2("mat_price_per_unit", "price_per_unit", mat.price_per_unit)}
                           </TableCell>
                         )}
-                        {show.room && <TableCell className="hidden sm:table-cell py-2.5" />}
+                        {show.room && (
+                          <TableCell className="hidden sm:table-cell py-2.5">
+                            {editingCell && "materialId" in editingCell && editingCell.materialId === mat.id && editingCell.field === "mat_room_id" && !effectiveLock ? (
+                              <Popover open onOpenChange={(isOpen) => { if (!isOpen) { setEditingCell(null); setNewRoomName(""); } }}>
+                                <PopoverTrigger asChild>
+                                  <button className="text-sm text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
+                                    {mat.room_id && rooms.find((r) => r.id === mat.room_id)?.name || "–"}
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-52 p-1" align="start">
+                                  <div className="space-y-0.5">
+                                    {rooms.map((r) => (
+                                      <label
+                                        key={r.id}
+                                        className="flex items-center gap-2 w-full text-sm px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                                      >
+                                        <Checkbox
+                                          checked={mat.room_id === r.id}
+                                          onCheckedChange={() => handleMaterialRoomChange(mat.id, mat.room_id === r.id ? null : r.id)}
+                                        />
+                                        {r.name}
+                                      </label>
+                                    ))}
+                                    {mat.room_id && (
+                                      <button
+                                        className="w-full text-left text-xs text-muted-foreground px-2 py-1 hover:bg-muted rounded"
+                                        onClick={() => handleMaterialRoomChange(mat.id, null)}
+                                      >
+                                        {t("common.clearAll", "Clear all")}
+                                      </button>
+                                    )}
+                                    <div className="border-t pt-1 mt-1">
+                                      <form
+                                        className="flex items-center gap-1 px-1"
+                                        onSubmit={async (e) => {
+                                          e.preventDefault();
+                                          const name = newRoomName.trim();
+                                          if (!name) return;
+                                          const { data: room } = await supabase
+                                            .from("rooms")
+                                            .insert({ project_id: projectId, name })
+                                            .select("id")
+                                            .single();
+                                          if (room) {
+                                            await handleMaterialRoomChange(mat.id, room.id);
+                                            setNewRoomName("");
+                                          }
+                                        }}
+                                      >
+                                        <Input
+                                          placeholder={t("planningTasks.newRoom", "New room...")}
+                                          value={newRoomName}
+                                          onChange={(e) => setNewRoomName(e.target.value)}
+                                          className="h-7 text-sm flex-1"
+                                          onClick={(e) => e.stopPropagation()}
+                                        />
+                                        <Button
+                                          type="submit"
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-7 w-7 shrink-0"
+                                          disabled={!newRoomName.trim()}
+                                        >
+                                          <Plus className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </form>
+                                    </div>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            ) : effectiveLock ? (
+                              <span className="text-sm text-muted-foreground">
+                                {mat.room_id && rooms.find((r) => r.id === mat.room_id)?.name || "–"}
+                              </span>
+                            ) : (
+                              <button
+                                className="hover:bg-muted px-1.5 py-0.5 rounded cursor-pointer text-sm text-muted-foreground text-left"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingCell({ taskId: "__standalone__", field: "mat_room_id", materialId: mat.id });
+                                  setEditValue("");
+                                }}
+                              >
+                                {mat.room_id && rooms.find((r) => r.id === mat.room_id)?.name || "–"}
+                              </button>
+                            )}
+                          </TableCell>
+                        )}
                         {show.costType && (
                           <TableCell className="hidden sm:table-cell py-2.5">
                             <TooltipProvider>

@@ -1,4 +1,4 @@
-import { Trash2, Ruler, AlertCircle } from "lucide-react";
+import { Trash2, Ruler, AlertCircle, Hammer, Handshake, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -62,11 +62,11 @@ export function QuoteItemRow({ item, onChange, onDelete, onImportRoom }: QuoteIt
         {item.source && (
           <Badge
             variant="secondary"
-            className={cn("text-xs font-normal shrink-0 h-6", SOURCE_STYLES[item.source])}
+            className={cn("text-xs font-normal shrink-0 h-6 gap-1", SOURCE_STYLES[item.source])}
           >
-            {item.source === "hours" && t("quotes.sourceHours", "Hours")}
-            {item.source === "subcontractor" && t("quotes.sourceSubcontractor", "Subcontractor")}
-            {item.source === "material" && t("quotes.sourceMaterial", "Material")}
+            {item.source === "hours" && <><Hammer className="h-3 w-3" />{t("quotes.sourceHours", "Hours")}</>}
+            {item.source === "subcontractor" && <><Handshake className="h-3 w-3" />{t("quotes.sourceSubcontractor", "Subcontractor")}</>}
+            {item.source === "material" && <><ShoppingCart className="h-3 w-3" />{t("quotes.sourceMaterial", "Material")}</>}
             {item.source === "fixed" && t("quotes.sourceFixed", "Fixed")}
             {item.source === "missing" && t("quotes.sourceMissing", "No price")}
           </Badge>

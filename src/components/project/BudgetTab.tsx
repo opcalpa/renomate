@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Package } from "lucide-react";
+import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Package, Hammer, Handshake } from "lucide-react";
 import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
 import { getStatusBadgeColor } from "@/lib/statusColors";
 import { BudgetChartsSection } from "./BudgetChartsSection";
@@ -1132,12 +1132,26 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
             )}
           </span>
         );
-      case "type":
+      case "type": {
+        if (row.type === "material") {
+          return (
+            <Badge variant={row.isChild ? "outline" : "secondary"} className="gap-1">
+              <ShoppingCart className="h-3 w-3" />
+              {t('budget.material')}
+            </Badge>
+          );
+        }
+        const isSubcontractor = row.taskCostType === "subcontractor" || (!row.taskCostType && (row.subcontractorCost ?? 0) > 0);
+        const hasOwnLabor = row.taskCostType === "own_labor" || (!row.taskCostType && (row.estimatedHours ?? 0) > 0);
         return (
-          <Badge variant={row.type === "task" ? "default" : row.isChild ? "outline" : "secondary"}>
-            {row.type === "task" ? t('budget.task') : t('budget.material')}
+          <Badge variant="default" className="gap-1">
+            {isSubcontractor ? <Handshake className="h-3 w-3" /> : <Hammer className="h-3 w-3" />}
+            {isSubcontractor && !hasOwnLabor
+              ? t('budget.subcontractor', 'UE')
+              : t('budget.task')}
           </Badge>
         );
+      }
       case "status": {
         if (!row.status) return <span className="text-muted-foreground">{"\u2014"}</span>;
         const statusLabel = row.type === "task"

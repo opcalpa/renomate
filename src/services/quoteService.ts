@@ -539,12 +539,14 @@ export async function createTasksFromQuote(quoteId: string) {
       } else if (sourceType === "subcontractor") {
         // Set subcontractor cost on the source task
         taskUpdates.subcontractor_cost = item.total_price ?? 0;
+        taskUpdates.task_cost_type = "subcontractor";
       } else {
         // hours / fixed — set budget from this line's total
         taskUpdates.budget = item.total_price ?? null;
         if (sourceType === "hours") {
           taskUpdates.estimated_hours = item.quantity;
           taskUpdates.hourly_rate = item.unit_price;
+          taskUpdates.task_cost_type = "own_labor";
         }
       }
     }
@@ -575,19 +577,24 @@ export async function createTasksFromQuote(quoteId: string) {
     const cleanDesc = item.description.replace(/\s*\([^)]+\)\s*$/, "").trim();
     const matchKey = cleanDesc.toLowerCase();
     const existing = tasksByTitle.get(matchKey);
+    const orphanSourceType = (item as Record<string, unknown>).source_type as string | null;
 
     if (existing && !alreadyUpdatedIds.has(existing.id)) {
       // Update existing task
+      const orphanUpdates: Record<string, unknown> = { budget: item.total_price ?? null, status: "to_do" };
+      if (orphanSourceType === "hours") orphanUpdates.task_cost_type = "own_labor";
+      else if (orphanSourceType === "subcontractor") orphanUpdates.task_cost_type = "subcontractor";
       const { error } = await supabase
         .from("tasks")
-        .update({ budget: item.total_price ?? null, status: "to_do" })
+        .update(orphanUpdates)
         .eq("id", existing.id);
       if (!error) {
         updated++;
         alreadyUpdatedIds.add(existing.id);
       }
     } else {
-      // Create new task
+      // Create new task — default to own_labor for orphan items
+      const newTaskCostType = orphanSourceType === "subcontractor" ? "subcontractor" : "own_labor";
       const { error } = await supabase.from("tasks").insert({
         project_id: projectId,
         title: item.description,
@@ -595,6 +602,7 @@ export async function createTasksFromQuote(quoteId: string) {
         priority: "medium",
         room_id: item.room_id ?? null,
         budget: item.total_price ?? null,
+        task_cost_type: newTaskCostType,
         created_by_user_id: profile.id,
       });
       if (!error) created++;
