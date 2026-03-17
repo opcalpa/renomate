@@ -234,21 +234,6 @@ export function PlanningTaskList({
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
   const [addMaterialKind, setAddMaterialKind] = useState<"material" | "subcontractor">("material");
 
-  const handleSaveMargin = useCallback(
-    async (taskId: string, newCostPct: number) => {
-      const { error } = await supabase
-        .from("tasks")
-        .update({ labor_cost_percent: newCostPct })
-        .eq("id", taskId);
-      if (error) {
-        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
-      } else {
-        fetchData();
-      }
-    },
-    [fetchData, t, toast]
-  );
-
   // Auto-show markup column when material/UE rows exist
   useEffect(() => {
     if (materials.length > 0 && !isHomeowner) {
@@ -419,6 +404,21 @@ export function PlanningTaskList({
     );
     setLoading(false);
   }, [projectId]);
+
+  const handleSaveMargin = useCallback(
+    async (taskId: string, newCostPct: number) => {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ labor_cost_percent: newCostPct })
+        .eq("id", taskId);
+      if (error) {
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      } else {
+        fetchData();
+      }
+    },
+    [fetchData, t, toast]
+  );
 
   useEffect(() => {
     fetchData();
