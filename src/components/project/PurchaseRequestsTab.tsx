@@ -649,12 +649,18 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   const plannedMaterials = materials.filter(m => m.status === "planned");
   const orderMaterials = materials.filter(m => m.status !== "planned");
 
-  // Consumed per planned row: sum of orders that were generated from it
-  const consumedByPlannedId = new Map<string, number>();
+  // Paid per planned row: only counts when purchase order status = "paid"
+  const paidByPlannedId = new Map<string, number>();
+  // Ordered (not yet paid) per planned row: to_order + ordered statuses
+  const orderedByPlannedId = new Map<string, number>();
   for (const m of orderMaterials) {
-    if (m.source_material_id) {
-      consumedByPlannedId.set(m.source_material_id,
-        (consumedByPlannedId.get(m.source_material_id) || 0) + (m.price_total || 0));
+    if (!m.source_material_id) continue;
+    if (m.status === "paid") {
+      paidByPlannedId.set(m.source_material_id,
+        (paidByPlannedId.get(m.source_material_id) || 0) + (m.price_total || 0));
+    } else {
+      orderedByPlannedId.set(m.source_material_id,
+        (orderedByPlannedId.get(m.source_material_id) || 0) + (m.price_total || 0));
     }
   }
 
@@ -1338,24 +1344,31 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                           <tr className="border-b bg-muted/40">
                             <th className="text-left px-4 py-2 font-medium text-muted-foreground">{t("purchases.materialName")}</th>
                             <th className="text-left px-4 py-2 font-medium text-muted-foreground">{t("purchases.task")}</th>
-                            <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("costBreakdown.materialBudget")}</th>
-                            <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("costBreakdown.spent")}</th>
-                            <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("costBreakdown.remainingToBuy")}</th>
+                            <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.quoteBudget", "Budget")}</th>
+                            <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.ordered", "Beställt")}</th>
+                            <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.paid", "Betalt")}</th>
+                            <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.remaining", "Kvar")}</th>
                             <th className="px-4 py-2" />
                           </tr>
                         </thead>
                         <tbody>
                           {plannedMaterials.map((m) => {
-                            const consumed = consumedByPlannedId.get(m.id) || 0;
+                            const paid = paidByPlannedId.get(m.id) || 0;
+                            const ordered = orderedByPlannedId.get(m.id) || 0;
                             const budget = m.price_total || 0;
-                            const remaining = budget - consumed;
+                            const remaining = budget - paid;
                             return (
                               <tr key={m.id} className="border-b last:border-0 hover:bg-muted/20">
                                 <td className="px-4 py-2.5 font-medium">{m.name}</td>
                                 <td className="px-4 py-2.5 text-muted-foreground">{m.task?.title || "—"}</td>
                                 <td className="px-4 py-2.5 text-right tabular-nums">{formatCurrency(budget, currency)}</td>
-                                <td className="px-4 py-2.5 text-right tabular-nums">{formatCurrency(consumed, currency)}</td>
-                                <td className={`px-4 py-2.5 text-right tabular-nums font-medium ${remaining < 0 ? "text-destructive" : remaining === 0 && consumed > 0 ? "text-muted-foreground" : "text-emerald-600"}`}>
+                                <td className="px-4 py-2.5 text-right tabular-nums text-amber-600">
+                                  {ordered > 0 ? formatCurrency(ordered, currency) : <span className="text-muted-foreground">—</span>}
+                                </td>
+                                <td className="px-4 py-2.5 text-right tabular-nums text-emerald-600">
+                                  {paid > 0 ? formatCurrency(paid, currency) : <span className="text-muted-foreground">—</span>}
+                                </td>
+                                <td className={`px-4 py-2.5 text-right tabular-nums font-medium ${remaining < 0 ? "text-destructive" : remaining === 0 && paid > 0 ? "text-muted-foreground" : ""}`}>
                                   {formatCurrency(remaining, currency)}
                                 </td>
                                 <td className="px-4 py-2.5 text-right">
