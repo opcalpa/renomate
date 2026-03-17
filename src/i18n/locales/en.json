@@ -3820,7 +3820,8 @@
     "attachAsFile": "Attach as file",
     "smartImport": "Smart import",
     "linkFileTo": "Link file to",
-    "linkedToMultiple": "File will be linked to {{count}} items"
+    "linkedToMultiple": "File will be linked to {{count}} items",
+    "profitFormula": "Profit from labor (hours × rate × margin) + markup on materials and subcontractors"
   },
   "planningSmartImport": {
     "title": "Smart Import",

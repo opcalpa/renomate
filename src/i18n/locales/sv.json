@@ -3817,7 +3817,8 @@
     "attachAsFile": "Bifoga som fil",
     "smartImport": "Smart import",
     "linkFileTo": "Koppla fil till",
-    "linkedToMultiple": "Filen kopplas till {{count}} poster"
+    "linkedToMultiple": "Filen kopplas till {{count}} poster",
+    "profitFormula": "Vinst från arbete (timmar × timpris × marginal) + påslag på material och underentreprenörer"
   },
   "planningSmartImport": {
     "title": "Smart import",

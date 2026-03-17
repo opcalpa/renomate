@@ -1225,14 +1225,13 @@ export function PlanningTaskList({
                     {show.profit && (
                       <TableHead className="hidden sm:table-cell text-right w-[110px]">
                         <span className="inline-flex items-center gap-1">
-                          {t("taskCost.result", "Result")}
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Info className="h-3 w-3 text-muted-foreground" />
+                                <span className="cursor-help">{t("taskCost.result", "Result")}</span>
                               </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-[220px]">
-                                <p className="text-xs">{t("planningTasks.profitTooltip")}</p>
+                              <TooltipContent side="top" className="max-w-[250px]">
+                                <p className="text-xs">{t("planningTasks.profitFormula", "Profit from labor (hours × rate × margin) + markup on materials and subcontractors")}</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -1403,7 +1402,16 @@ export function PlanningTaskList({
                               {show.profit && (
                                 <TableCell className="text-right hidden sm:table-cell py-2.5">
                                   {profit > 0 ? (
-                                    <span className="text-sm text-green-600">{formatCurrency(profit, currency)}</span>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="text-sm text-green-600 cursor-help">{formatCurrency(profit, currency)}</span>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="text-xs">
+                                          {formatCurrency(base, currency)} × {markup}% = {formatCurrency(profit, currency)}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                   ) : (
                                     <span className="text-xs text-muted-foreground">–</span>
                                   )}
@@ -1761,12 +1769,34 @@ export function PlanningTaskList({
                       </TableCell>
                       {show.profit && (() => {
                         const rowProfit = calcTaskProfit(task);
+                        const laborTotal = (task.estimated_hours || 0) * (task.hourly_rate || 0);
+                        const costPct = task.labor_cost_percent ?? profileLaborCostPercent ?? 50;
+                        const laborProfit = laborTotal * (1 - costPct / 100);
+                        const ueProfit = (task.subcontractor_cost || 0) * (task.markup_percent || 0) / 100;
+                        const matProfit = rowProfit - laborProfit - ueProfit;
+
+                        const formulaParts: string[] = [];
+                        if (laborProfit > 0) formulaParts.push(`${t("planningTasks.estLabor")}: ${formatCurrency(laborTotal, currency)} × ${100 - costPct}% = ${formatCurrency(Math.round(laborProfit), currency)}`);
+                        if (ueProfit > 0) formulaParts.push(`UE: ${formatCurrency(task.subcontractor_cost || 0, currency)} × ${task.markup_percent}% = ${formatCurrency(Math.round(ueProfit), currency)}`);
+                        if (matProfit > 0) formulaParts.push(`${t("planningTasks.estMaterial")}: ${formatCurrency(Math.round(matProfit), currency)}`);
+
                         return (
                           <TableCell className="text-right hidden sm:table-cell py-2.5">
                             {rowProfit > 0 ? (
-                              <span className={`text-sm ${rowProfit >= 0 ? "text-green-600" : "text-destructive"}`}>
-                                {formatCurrency(rowProfit, currency)}
-                              </span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className={`text-sm cursor-help ${rowProfit >= 0 ? "text-green-600" : "text-destructive"}`}>
+                                      {formatCurrency(rowProfit, currency)}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-[280px]">
+                                    <div className="text-xs space-y-0.5">
+                                      {formulaParts.map((p, i) => <p key={i}>{p}</p>)}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             ) : (
                               <span className="text-xs text-muted-foreground">–</span>
                             )}
@@ -1976,7 +2006,16 @@ export function PlanningTaskList({
                                 {show.profit && (
                                   <TableCell className="text-right hidden sm:table-cell py-2">
                                     {pr > 0 ? (
-                                      <span className="text-sm text-green-600">{formatCurrency(pr, currency)}</span>
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <span className="text-sm text-green-600 cursor-help">{formatCurrency(pr, currency)}</span>
+                                          </TooltipTrigger>
+                                          <TooltipContent side="top" className="text-xs">
+                                            {formatCurrency(base, currency)} × {mkp}% = {formatCurrency(pr, currency)}
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
                                     ) : null}
                                   </TableCell>
                                 )}
