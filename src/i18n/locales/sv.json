@@ -3123,6 +3123,8 @@
     "hoursPlaceholder": "Timmar",
     "hourlyRatePlaceholder": "Timpris",
     "applyRotDeduction": "Tillämpa ROT-avdrag (30% på arbete)",
+    "presentationSettings": "Presentationsinställningar",
+    "settingsResetWarning": "Ändring av inställningar återställer de importerade raderna",
     "emptyQuote": "Tom offert",
     "createWithItems": "Skapa med rader",
     "selectAll": "Markera alla",

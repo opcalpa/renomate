@@ -12,8 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Separator } from "@/components/ui/separator";
 import {
   Collapsible,
   CollapsibleContent,
@@ -69,9 +67,6 @@ export function CreateQuoteDialog({
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<Set<string>>(new Set());
   const [selectedSubcontractorIds, setSelectedSubcontractorIds] = useState<Set<string>>(new Set());
-  const [groupByType, setGroupByType] = useState<"mixed" | "grouped" | "byRoom">("grouped");
-  const [pricingFormat, setPricingFormat] = useState<"fixed" | "detailed">("detailed");
-  const [applyRot, setApplyRot] = useState(true);
   const [tasksOpen, setTasksOpen] = useState(false);
   const [materialsOpen, setMaterialsOpen] = useState(false);
   const [subcontractorsOpen, setSubcontractorsOpen] = useState(false);
@@ -178,9 +173,6 @@ export function CreateQuoteDialog({
     const params = new URLSearchParams({
       projectId,
       prepopulate: "true",
-      groupByType,
-      pricingFormat,
-      applyRot: applyRot.toString(),
     });
 
     // Pass selected IDs as comma-separated strings
@@ -466,94 +458,6 @@ export function CreateQuoteDialog({
               )}
             </div>
 
-            <Separator />
-
-            {/* Presentation */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">
-                {t("quotes.presentation")}
-              </Label>
-
-              <RadioGroup
-                value={groupByType}
-                onValueChange={(value) => setGroupByType(value as "mixed" | "grouped" | "byRoom")}
-                className="space-y-2"
-              >
-                <div className="flex items-center space-x-3">
-                  <RadioGroupItem value="grouped" id="grouped" />
-                  <Label htmlFor="grouped" className="text-sm font-normal cursor-pointer">
-                    {t("quotes.groupedByType")}
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <RadioGroupItem value="byRoom" id="byRoom" />
-                  <Label htmlFor="byRoom" className="text-sm font-normal cursor-pointer">
-                    {t("quotes.groupedByRoom")}
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <RadioGroupItem value="mixed" id="mixed" />
-                  <Label htmlFor="mixed" className="text-sm font-normal cursor-pointer">
-                    {t("quotes.mixedList")}
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <Separator />
-
-            {/* Pricing format */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">
-                {t("quotes.pricingFormat", "Pricing format")}
-              </Label>
-
-              <RadioGroup
-                value={pricingFormat}
-                onValueChange={(value) => setPricingFormat(value as "fixed" | "detailed")}
-                className="space-y-2"
-              >
-                <div className="flex items-start space-x-3">
-                  <RadioGroupItem value="detailed" id="detailed" className="mt-0.5" />
-                  <div>
-                    <Label htmlFor="detailed" className="text-sm font-normal cursor-pointer">
-                      {t("quotes.pricingDetailed", "Hour specification")}
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      {t("quotes.pricingDetailedHint", "Own labor shows hours × rate. Subcontractor shown as adjusted unit price.")}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <RadioGroupItem value="fixed" id="fixed" className="mt-0.5" />
-                  <div>
-                    <Label htmlFor="fixed" className="text-sm font-normal cursor-pointer">
-                      {t("quotes.pricingFixed", "Fixed price")}
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      {t("quotes.pricingFixedHint", "Each task shown as a lump sum.")}
-                    </p>
-                  </div>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <Separator />
-
-            {/* ROT */}
-            <div className="flex items-center space-x-3">
-              <Checkbox
-                id="applyRot"
-                checked={applyRot}
-                onCheckedChange={(checked) => setApplyRot(checked === true)}
-              />
-              <Label
-                htmlFor="applyRot"
-                className="text-sm font-normal cursor-pointer"
-              >
-                {t("quotes.applyRotDeduction")}
-              </Label>
-            </div>
           </div>
         )}
 

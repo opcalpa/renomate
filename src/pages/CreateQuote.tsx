@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Maximize2, Plus, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ChevronDown, ChevronUp, Maximize2, Plus, Settings2, ZoomIn, ZoomOut } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -54,9 +58,13 @@ export default function CreateQuote() {
   const isAta = searchParams.get("is_ata") === "true";
   const taskIds = searchParams.get("taskIds")?.split(",").filter(Boolean) || [];
   const materialIds = searchParams.get("materialIds")?.split(",").filter(Boolean) || [];
-  const groupByType = searchParams.get("groupByType") || "grouped";
-  const pricingFormat = searchParams.get("pricingFormat") || "fixed";
-  const applyRot = searchParams.get("applyRot") !== "false"; // default true
+
+  // Presentation settings — live-editable from the settings panel in the editor
+  const [groupByType, setGroupByType] = useState<"grouped" | "byRoom" | "mixed">("grouped");
+  const [pricingFormat, setPricingFormat] = useState<"detailed" | "fixed">("detailed");
+  const [applyRot, setApplyRot] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [hasManualEdits, setHasManualEdits] = useState(false);
 
   const [projectId, setProjectId] = useState<string>("");
   const [projects, setProjects] = useState<SimpleProject[]>([]);
@@ -506,7 +514,7 @@ export default function CreateQuote() {
 
       if (newItems.length > 0) {
         setItems(newItems);
-        toast.success(t("quotes.itemsImported", { count: newItems.length }));
+        setHasManualEdits(false);
       }
     };
 
@@ -515,6 +523,7 @@ export default function CreateQuote() {
 
   const handleChange = useCallback((id: string, updates: Partial<QuoteItem>) => {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...updates } : i)));
+    setHasManualEdits(true);
   }, []);
 
   const handleDelete = useCallback((id: string) => {
@@ -522,6 +531,7 @@ export default function CreateQuote() {
       const next = prev.filter((i) => i.id !== id);
       return next.length === 0 ? [newItem()] : next;
     });
+    setHasManualEdits(true);
   }, []);
 
   const handleImportRoom = useCallback((itemId: string) => {
@@ -719,6 +729,97 @@ export default function CreateQuote() {
               className="min-h-[80px]"
             />
 
+            {/* Settings panel — only shown when prepopulating from a project */}
+            {shouldPrepopulate && (
+              <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
+                    <Settings2 className="h-3.5 w-3.5" />
+                    {t("quotes.presentationSettings", "Presentationsinställningar")}
+                    {settingsOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="mt-2 p-4 border rounded-lg space-y-4 bg-muted/20">
+                    {hasManualEdits && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                        <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                        {t("quotes.settingsResetWarning", "Ändring av inställningar återställer de importerade raderna")}
+                      </p>
+                    )}
+
+                    {/* Presentation */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        {t("quotes.presentation")}
+                      </p>
+                      <RadioGroup
+                        value={groupByType}
+                        onValueChange={(v) => setGroupByType(v as typeof groupByType)}
+                        className="space-y-1.5"
+                      >
+                        {(["grouped", "byRoom", "mixed"] as const).map((v) => (
+                          <div key={v} className="flex items-center gap-2">
+                            <RadioGroupItem value={v} id={`gbt-${v}`} />
+                            <Label htmlFor={`gbt-${v}`} className="text-sm font-normal cursor-pointer">
+                              {v === "grouped" ? t("quotes.groupedByType") : v === "byRoom" ? t("quotes.groupedByRoom") : t("quotes.mixedList")}
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
+
+                    <div className="h-px bg-border" />
+
+                    {/* Pricing format */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        {t("quotes.pricingFormat", "Prisformat")}
+                      </p>
+                      <RadioGroup
+                        value={pricingFormat}
+                        onValueChange={(v) => setPricingFormat(v as typeof pricingFormat)}
+                        className="space-y-1.5"
+                      >
+                        <div className="flex items-start gap-2">
+                          <RadioGroupItem value="detailed" id="pf-detailed" className="mt-0.5" />
+                          <div>
+                            <Label htmlFor="pf-detailed" className="text-sm font-normal cursor-pointer">
+                              {t("quotes.pricingDetailed", "Timspecifikation")}
+                            </Label>
+                            <p className="text-xs text-muted-foreground">{t("quotes.pricingDetailedHint")}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <RadioGroupItem value="fixed" id="pf-fixed" className="mt-0.5" />
+                          <div>
+                            <Label htmlFor="pf-fixed" className="text-sm font-normal cursor-pointer">
+                              {t("quotes.pricingFixed", "Fast pris")}
+                            </Label>
+                            <p className="text-xs text-muted-foreground">{t("quotes.pricingFixedHint")}</p>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    <div className="h-px bg-border" />
+
+                    {/* ROT */}
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="rot-toggle"
+                        checked={applyRot}
+                        onCheckedChange={(c) => setApplyRot(c === true)}
+                      />
+                      <Label htmlFor="rot-toggle" className="text-sm font-normal cursor-pointer">
+                        {t("quotes.applyRotDeduction")}
+                      </Label>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
             <div className="space-y-3">
               {items.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">{t("quotes.noItems")}</p>
@@ -737,7 +838,7 @@ export default function CreateQuote() {
             <Button
               variant="outline"
               className="w-full min-h-[48px]"
-              onClick={() => setItems((prev) => [...prev, newItem()])}
+              onClick={() => { setItems((prev) => [...prev, newItem()]); setHasManualEdits(true); }}
             >
               <Plus className="h-4 w-4 mr-2" />
               {t("quotes.addItem")}
