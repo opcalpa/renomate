@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AddMaterialDialog } from "./AddMaterialDialog";
 import { MaterialFileAttachment } from "./MaterialFileAttachment";
+import { UploadFileDialog, useUploadFileDialog } from "./UploadFileDialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -175,6 +176,9 @@ export function PlanningTaskList({
 
   // Smart import dialog state
   const [smartImportOpen, setSmartImportOpen] = useState(false);
+
+  // Unified upload dialog
+  const uploadDialog = useUploadFileDialog();
 
   // Inline cell editing state
   const [editingCell, setEditingCell] = useState<{
@@ -2128,18 +2132,24 @@ export function PlanningTaskList({
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setSmartImportOpen(true)}
+                            onClick={uploadDialog.triggerUpload}
                             className="gap-1"
                           >
                             <FileUp className="h-4 w-4" />
-                            <Sparkles className="h-3 w-3 text-amber-500" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {t("planningSmartImport.tooltip", "Import rooms & tasks from a document (PDF, DOCX, TXT)")}
+                          <p className="text-xs max-w-[220px]">{t("planningTasks.uploadFileHint", "Upload a file — attach as reference or smart-import with AI")}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
+                    <input
+                      ref={uploadDialog.fileRef}
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx,.xls,.xlsx,.txt"
+                      onChange={uploadDialog.onFileSelected}
+                    />
                   </>
                 )}
 
@@ -2202,6 +2212,22 @@ export function PlanningTaskList({
         open={smartImportOpen}
         onOpenChange={setSmartImportOpen}
         onImportComplete={() => fetchData()}
+      />
+
+      <UploadFileDialog
+        projectId={projectId}
+        targets={[
+          ...tasks.map((t) => ({ id: t.id, name: t.title, type: "task" as const })),
+          ...materials.map((m) => ({ id: m.id, name: m.name, type: "material" as const })),
+        ]}
+        open={uploadDialog.open}
+        onOpenChange={uploadDialog.setOpen}
+        pendingFile={uploadDialog.pendingFile}
+        onComplete={() => fetchData()}
+        onSmartImport={() => {
+          uploadDialog.setOpen(false);
+          setSmartImportOpen(true);
+        }}
       />
 
       {/* Estimate feedback dialog — centered, impossible to miss */}

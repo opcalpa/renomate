@@ -3811,7 +3811,13 @@
     "rateUnitPrice": "Timpris / Á-pris",
     "addCost": "Lägg till kostnad",
     "addCostHint": "Lägg till material (kakel, färg, armaturer) eller underentreprenörskostnader (elektriker, rörmokare) i din kalkyl.",
-    "addTaskHint": "Lägg till ett arbetsmoment, t.ex. målning, rivning eller plattsättning"
+    "addTaskHint": "Lägg till ett arbetsmoment, t.ex. målning, rivning eller plattsättning",
+    "uploadFile": "Ladda upp fil",
+    "uploadFileHint": "Ladda upp en fil — bifoga som underlag eller smart-importera med AI",
+    "attachAsFile": "Bifoga som fil",
+    "smartImport": "Smart import",
+    "linkFileTo": "Koppla fil till",
+    "linkedToMultiple": "Filen kopplas till {{count}} poster"
   },
   "planningSmartImport": {
     "title": "Smart import",

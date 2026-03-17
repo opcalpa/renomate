@@ -3814,7 +3814,13 @@
     "rateUnitPrice": "Rate / Unit price",
     "addCost": "Add cost",
     "addCostHint": "Add materials (tiles, paint, fixtures) or subcontractor costs (electrician, plumber) to your scope.",
-    "addTaskHint": "Add a work item such as painting, demolition, or tiling"
+    "addTaskHint": "Add a work item such as painting, demolition, or tiling",
+    "uploadFile": "Upload file",
+    "uploadFileHint": "Upload a file — attach as reference or smart-import with AI",
+    "attachAsFile": "Attach as file",
+    "smartImport": "Smart import",
+    "linkFileTo": "Link file to",
+    "linkedToMultiple": "File will be linked to {{count}} items"
   },
   "planningSmartImport": {
     "title": "Smart Import",
