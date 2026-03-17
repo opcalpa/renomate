@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -19,7 +19,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle, FileUp } from "lucide-react";
+import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle, FileUp, ChevronRight, ChevronDown, ShoppingCart, Package, Wrench, Link2, GripVertical } from "lucide-react";
+import { AddMaterialDialog } from "./AddMaterialDialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -79,7 +80,21 @@ interface Room {
   ceiling_height_mm: number | null;
 }
 
-type ExtraColumnKey = "hours" | "hourlyRate" | "room" | "costType" | "material" | "profit" | "description";
+interface PlanningMaterial {
+  id: string;
+  name: string;
+  quantity: number | null;
+  unit: string | null;
+  price_per_unit: number | null;
+  price_total: number | null;
+  markup_percent: number | null;
+  task_id: string | null;
+  status: string;
+  vendor_name: string | null;
+  kind: "material" | "subcontractor";
+}
+
+type ExtraColumnKey = "hours" | "hourlyRate" | "room" | "costType" | "material" | "profit" | "description" | "markup" | "qty" | "unitPrice";
 
 interface ExtraColumnDef {
   key: ExtraColumnKey;
@@ -96,6 +111,9 @@ const EXTRA_COLUMNS: ExtraColumnDef[] = [
   { key: "hourlyRate", labelKey: "taskCost.hourlyRate", defaultOn: true, builderOnly: true },
   { key: "costType", labelKey: "planningTasks.costType", defaultOn: false, builderOnly: true },
   { key: "material", labelKey: "taskCost.materialEstimate", defaultOn: true, builderOnly: true },
+  { key: "markup", labelKey: "planningTasks.markup", defaultOn: false, builderOnly: true },
+  { key: "qty", labelKey: "planningTasks.quantity", defaultOn: false, builderOnly: true },
+  { key: "unitPrice", labelKey: "planningTasks.unitPrice", defaultOn: false, builderOnly: true },
   { key: "profit", labelKey: "taskCost.result", defaultOn: true, builderOnly: true },
 ];
 
@@ -156,6 +174,10 @@ export function PlanningTaskList({
   const [editingCell, setEditingCell] = useState<{
     taskId: string;
     field: "estimated_hours" | "hourly_rate" | "material_estimate" | "budget" | "description" | "room_id";
+  } | {
+    taskId: string;
+    field: "mat_quantity" | "mat_price_per_unit" | "mat_markup_percent" | "mat_price_total";
+    materialId: string;
   } | null>(null);
   const [editValue, setEditValue] = useState("");
 
@@ -188,12 +210,82 @@ export function PlanningTaskList({
       room: visibleExtras.has("room"),
       costType: visibleExtras.has("costType"),
       material: visibleExtras.has("material"),
+      markup: visibleExtras.has("markup"),
+      qty: visibleExtras.has("qty"),
+      unitPrice: visibleExtras.has("unitPrice"),
       profit: visibleExtras.has("profit"),
     }),
     [visibleExtras]
   );
 
   const extraCount = visibleExtras.size;
+
+  // Material/UE sub-rows state
+  const [materials, setMaterials] = useState<PlanningMaterial[]>([]);
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [addMaterialOpen, setAddMaterialOpen] = useState(false);
+
+  // Row drag-reorder state
+  const dragItem = React.useRef<{ type: "task" | "material"; id: string; index: number } | null>(null);
+  const [dragOverTarget, setDragOverTarget] = React.useState<{ type: "task" | "material"; id: string; position: "above" | "below" } | null>(null);
+  const [isDraggingMaterial, setIsDraggingMaterial] = useState(false);
+  const [unlinkDropHover, setUnlinkDropHover] = useState(false);
+
+  const toggleTaskExpand = useCallback((taskId: string) => {
+    setExpandedTasks((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  }, []);
+
+  // Group materials by task
+  const materialsByTask = useMemo(() => {
+    const map = new Map<string, PlanningMaterial[]>();
+    const standalone: PlanningMaterial[] = [];
+    for (const m of materials) {
+      if (m.task_id) {
+        const list = map.get(m.task_id) || [];
+        list.push(m);
+        map.set(m.task_id, list);
+      } else {
+        standalone.push(m);
+      }
+    }
+    return { byTask: map, standalone };
+  }, [materials]);
+
+  // Unified display order: tasks and standalone materials can be freely intermixed
+  type DisplayItem = { type: "task"; id: string } | { type: "standalone"; id: string };
+  const [displayOrder, setDisplayOrder] = useState<DisplayItem[]>([]);
+
+  // Rebuild display order when tasks/materials change, preserving existing order
+  useEffect(() => {
+    setDisplayOrder((prev) => {
+      const taskIds = new Set(tasks.map((t) => t.id));
+      const standaloneIds = new Set(materialsByTask.standalone.map((m) => m.id));
+
+      // Keep existing items that still exist
+      const kept = prev.filter(
+        (item) =>
+          (item.type === "task" && taskIds.has(item.id)) ||
+          (item.type === "standalone" && standaloneIds.has(item.id))
+      );
+      const keptIds = new Set(kept.map((item) => item.id));
+
+      // Append new items not in previous order
+      const newItems: DisplayItem[] = [];
+      for (const t of tasks) {
+        if (!keptIds.has(t.id)) newItems.push({ type: "task", id: t.id });
+      }
+      for (const m of materialsByTask.standalone) {
+        if (!keptIds.has(m.id)) newItems.push({ type: "standalone", id: m.id });
+      }
+
+      return [...kept, ...newItems];
+    });
+  }, [tasks, materialsByTask.standalone]);
 
   const fetchProfileCostPercent = useCallback(async () => {
     try {
@@ -228,9 +320,8 @@ export function PlanningTaskList({
         .eq("project_id", projectId),
       supabase
         .from("materials")
-        .select("id, name, quantity, unit, price_per_unit, price_total, markup_percent, task_id")
-        .eq("project_id", projectId)
-        .eq("status", "planned"),
+        .select("id, name, quantity, unit, price_per_unit, price_total, markup_percent, task_id, status, vendor_name, description")
+        .eq("project_id", projectId),
     ]);
 
     const fetchedRooms = (roomsRes.data || []) as Room[];
@@ -240,8 +331,9 @@ export function PlanningTaskList({
     setRoomMap(fullRoomMap);
 
     // Build planned materials map per task
+    const allMats = plannedMatsRes.data || [];
     const plannedByTask = new Map<string, NonNullable<PlanningTask["material_items"]>>();
-    for (const m of plannedMatsRes.data || []) {
+    for (const m of allMats) {
       if (!m.task_id) continue;
       const items = plannedByTask.get(m.task_id) || [];
       items.push({
@@ -253,6 +345,23 @@ export function PlanningTaskList({
       });
       plannedByTask.set(m.task_id, items);
     }
+
+    // Store all materials for sub-row display
+    setMaterials(
+      allMats.map((m) => ({
+        id: m.id,
+        name: m.name,
+        quantity: m.quantity,
+        unit: m.unit,
+        price_per_unit: m.price_per_unit,
+        price_total: m.price_total,
+        markup_percent: m.markup_percent,
+        task_id: m.task_id,
+        status: m.status,
+        vendor_name: m.vendor_name,
+        kind: (m.description === "__subcontractor__" ? "subcontractor" : "material") as "material" | "subcontractor",
+      }))
+    );
 
     setTasks(
       (tasksRes.data || []).map((task) => {
@@ -481,6 +590,260 @@ export function PlanningTaskList({
       }
     },
     [fetchData, t, toast]
+  );
+
+  // --- Material/UE handlers ---
+
+  const handleAddMaterialSubmit = useCallback(
+    async (data: {
+      name: string;
+      kind: "material" | "subcontractor";
+      linkMode: "existing" | "create" | "none";
+      existingTaskId?: string;
+      newTaskTitle?: string;
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id, default_hourly_rate")
+        .eq("user_id", user.id)
+        .single();
+      if (!profile) return;
+
+      let taskId: string | null = null;
+
+      if (data.linkMode === "existing" && data.existingTaskId) {
+        taskId = data.existingTaskId;
+      } else if (data.linkMode === "create" && data.newTaskTitle) {
+        const { data: newTask, error: taskErr } = await supabase
+          .from("tasks")
+          .insert({
+            project_id: projectId,
+            title: data.newTaskTitle,
+            status: "planned",
+            priority: "medium",
+            created_by_user_id: profile.id,
+            hourly_rate: profile.default_hourly_rate ?? null,
+          })
+          .select("id")
+          .single();
+
+        if (taskErr || !newTask) {
+          toast({ title: t("common.error"), description: taskErr?.message || "Failed", variant: "destructive" });
+          return;
+        }
+        taskId = newTask.id;
+      }
+
+      const { error } = await supabase.from("materials").insert({
+        project_id: projectId,
+        task_id: taskId,
+        name: data.name,
+        status: "submitted",
+        created_by_user_id: profile.id,
+        description: data.kind === "subcontractor" ? "__subcontractor__" : null,
+      });
+
+      if (error) {
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+        return;
+      }
+
+      // Auto-expand the parent task if linked
+      if (taskId) {
+        setExpandedTasks((prev) => new Set(prev).add(taskId));
+      }
+      fetchData();
+    },
+    [projectId, fetchData, t, toast]
+  );
+
+  const handleDeleteMaterial = useCallback(
+    async (materialId: string) => {
+      const { error } = await supabase
+        .from("materials")
+        .delete()
+        .eq("id", materialId);
+
+      if (error) {
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      } else {
+        fetchData();
+      }
+    },
+    [fetchData, t, toast]
+  );
+
+  const handleMaterialInlineSave = useCallback(
+    async (materialId: string, field: string, rawValue: string) => {
+      const numValue = rawValue === "" ? null : parseFloat(rawValue);
+      if (rawValue !== "" && isNaN(numValue as number)) {
+        setEditingCell(null);
+        return;
+      }
+
+      const mat = materials.find((m) => m.id === materialId);
+      const updates: Record<string, number | null> = { [field]: numValue };
+
+      // Auto-compute price_total when qty or unit price changes
+      if (mat && (field === "quantity" || field === "price_per_unit")) {
+        const qty = field === "quantity" ? (numValue || 0) : (mat.quantity || 0);
+        const unitPrice = field === "price_per_unit" ? (numValue || 0) : (mat.price_per_unit || 0);
+        if (qty > 0 && unitPrice > 0) {
+          updates.price_total = Math.round(qty * unitPrice);
+        }
+      }
+
+      const { error } = await supabase
+        .from("materials")
+        .update(updates)
+        .eq("id", materialId);
+
+      if (error) {
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      } else {
+        fetchData();
+      }
+      setEditingCell(null);
+    },
+    [materials, fetchData, t, toast]
+  );
+
+  const handleLinkMaterialToTask = useCallback(
+    async (materialId: string, taskId: string) => {
+      const { error } = await supabase
+        .from("materials")
+        .update({ task_id: taskId })
+        .eq("id", materialId);
+
+      if (error) {
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      } else {
+        setExpandedTasks((prev) => new Set(prev).add(taskId));
+        fetchData();
+      }
+    },
+    [fetchData, t, toast]
+  );
+
+  const handleUnlinkMaterial = useCallback(
+    async (materialId: string) => {
+      const { error } = await supabase
+        .from("materials")
+        .update({ task_id: null })
+        .eq("id", materialId);
+
+      if (error) {
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      } else {
+        fetchData();
+      }
+    },
+    [fetchData, t, toast]
+  );
+
+  // --- Row drag-reorder handlers ---
+
+  const handleRowDragStart = useCallback(
+    (e: React.DragEvent, type: "task" | "material", id: string, index: number) => {
+      dragItem.current = { type, id, index };
+      e.dataTransfer.effectAllowed = "move";
+      if (type === "material") setIsDraggingMaterial(true);
+      if (e.currentTarget instanceof HTMLElement) {
+        e.currentTarget.style.opacity = "0.5";
+      }
+    },
+    []
+  );
+
+  const handleRowDragEnd = useCallback((e: React.DragEvent) => {
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = "1";
+    }
+    dragItem.current = null;
+    setDragOverTarget(null);
+    setIsDraggingMaterial(false);
+    setUnlinkDropHover(false);
+  }, []);
+
+  const handleRowDragOver = useCallback(
+    (e: React.DragEvent, type: "task" | "material", id: string) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (!dragItem.current || dragItem.current.id === id) {
+        setDragOverTarget(null);
+        return;
+      }
+      // Determine above/below based on mouse position within the row
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      const position = e.clientY < midY ? "above" : "below";
+      setDragOverTarget({ type, id, position });
+    },
+    []
+  );
+
+  const handleRowDrop = useCallback(
+    async (e: React.DragEvent, targetType: "task" | "material" | "child-material", targetId: string) => {
+      e.preventDefault();
+      const src = dragItem.current;
+      if (!src || src.id === targetId) return;
+
+      // Child material dragged onto a task → link it to that task
+      if (src.type === "material" && targetType === "task") {
+        const srcMat = materials.find((m) => m.id === src.id);
+        // Only link if the material isn't already under this task
+        if (srcMat?.task_id !== targetId) {
+          await handleLinkMaterialToTask(src.id, targetId);
+        }
+      }
+      // Dragged onto a child-material row
+      else if (src.type === "material" && targetType === "child-material") {
+        const srcMat = materials.find((m) => m.id === src.id);
+        const targetMat = materials.find((m) => m.id === targetId);
+        if (!targetMat?.task_id) return;
+
+        // Same parent task → reorder within the group
+        if (srcMat?.task_id === targetMat.task_id) {
+          setMaterials((prev) => {
+            const list = [...prev];
+            const fromIdx = list.findIndex((m) => m.id === src.id);
+            const toIdx = list.findIndex((m) => m.id === targetId);
+            if (fromIdx === -1 || toIdx === -1) return prev;
+            const [moved] = list.splice(fromIdx, 1);
+            const adjustedTo = fromIdx < toIdx ? toIdx - 1 : toIdx;
+            const insertIdx = dragOverTarget?.position === "below" ? adjustedTo + 1 : adjustedTo;
+            list.splice(insertIdx, 0, moved);
+            return list;
+          });
+        }
+        // Different parent → move to that task
+        else {
+          await handleLinkMaterialToTask(src.id, targetMat.task_id);
+        }
+      }
+      // Reorder within displayOrder (tasks + standalone materials)
+      else {
+        const srcDisplayType = src.type === "task" ? "task" : "standalone";
+        setDisplayOrder((prev) => {
+          const list = [...prev];
+          const fromIdx = list.findIndex((item) => item.id === src.id && item.type === srcDisplayType);
+          const toIdx = list.findIndex((item) => item.id === targetId);
+          if (fromIdx === -1 || toIdx === -1) return prev;
+          const [moved] = list.splice(fromIdx, 1);
+          const adjustedTo = fromIdx < toIdx ? toIdx - 1 : toIdx;
+          const insertIdx = dragOverTarget?.position === "below" ? adjustedTo + 1 : adjustedTo;
+          list.splice(insertIdx, 0, moved);
+          return list;
+        });
+      }
+
+      dragItem.current = null;
+      setDragOverTarget(null);
+    },
+    [handleLinkMaterialToTask, dragOverTarget, materials]
   );
 
   // Auto-estimate: compute hours + materials + budget from room dimensions
@@ -803,6 +1166,21 @@ export function PlanningTaskList({
                         {t("taskCost.materialEstimate", "Material")}
                       </TableHead>
                     )}
+                    {show.qty && (
+                      <TableHead className="hidden sm:table-cell text-right w-[70px]">
+                        {t("planningTasks.quantity", "Qty")}
+                      </TableHead>
+                    )}
+                    {show.unitPrice && (
+                      <TableHead className="hidden sm:table-cell text-right w-[90px]">
+                        {t("planningTasks.unitPrice", "Unit price")}
+                      </TableHead>
+                    )}
+                    {show.markup && (
+                      <TableHead className="hidden sm:table-cell text-right w-[80px]">
+                        {t("planningTasks.markup", "Markup")}
+                      </TableHead>
+                    )}
                     <TableHead className="text-right w-[120px]">
                       {isHomeowner
                         ? t("planningTasks.estimatedBudget", "Budget")
@@ -829,7 +1207,162 @@ export function PlanningTaskList({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tasks.map((task) => {
+                  {displayOrder.map((displayItem, displayIdx) => {
+                  // --- Standalone material row ---
+                  if (displayItem.type === "standalone") {
+                    const mat = materialsByTask.standalone.find((m) => m.id === displayItem.id);
+                    if (!mat) return null;
+                    const matTotal = mat.price_total ?? Math.round((mat.quantity || 0) * (mat.price_per_unit || 0));
+                    const renderStandaloneInline2 = (
+                      matField: "mat_quantity" | "mat_price_per_unit" | "mat_markup_percent" | "mat_price_total",
+                      dbField: string,
+                      value: number | null,
+                      suffix?: string,
+                    ) => {
+                      const isEditingThis = editingCell && "materialId" in editingCell && editingCell.materialId === mat.id && editingCell.field === matField;
+                      if (isEditingThis && !effectiveLock) {
+                        return (
+                          <Input
+                            type="number"
+                            className="w-16 h-7 text-right text-sm"
+                            autoFocus
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleMaterialInlineSave(mat.id, dbField, editValue);
+                              if (e.key === "Escape") setEditingCell(null);
+                            }}
+                            onBlur={() => handleMaterialInlineSave(mat.id, dbField, editValue)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        );
+                      }
+                      if (effectiveLock) {
+                        return value ? (
+                          <span className="text-sm text-muted-foreground">{suffix ? `${value}${suffix}` : formatCurrency(value, currency)}</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">–</span>
+                        );
+                      }
+                      return (
+                        <button
+                          className="hover:bg-muted px-1.5 py-0.5 rounded cursor-text text-sm text-muted-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCell({ taskId: "__standalone__", field: matField, materialId: mat.id });
+                            setEditValue(value != null ? String(value) : "");
+                          }}
+                        >
+                          {value ? (suffix ? `${value}${suffix}` : formatCurrency(value, currency)) : "–"}
+                        </button>
+                      );
+                    };
+
+                    return (
+                      <TableRow
+                        key={`s-${mat.id}`}
+                        className={`bg-amber-50/30 ${dragOverTarget?.id === mat.id ? (dragOverTarget.position === "above" ? "border-t-2 border-t-primary" : "border-b-2 border-b-primary") : ""}`}
+                        draggable={!effectiveLock}
+                        onDragStart={(e) => handleRowDragStart(e, "material", mat.id, displayIdx)}
+                        onDragEnd={handleRowDragEnd}
+                        onDragOver={(e) => handleRowDragOver(e, "material", mat.id)}
+                        onDrop={(e) => handleRowDrop(e, "material", mat.id)}
+                      >
+                        <TableCell className="py-2.5">
+                          <div className="flex items-center gap-1.5">
+                            {!effectiveLock && (
+                              <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 cursor-grab active:cursor-grabbing shrink-0" />
+                            )}
+                            {mat.kind === "subcontractor"
+                              ? <Wrench className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              : <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                            <span className="text-sm">{mat.name}</span>
+                            {!effectiveLock && tasks.length > 0 ? (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button className="inline-flex items-center gap-1 text-xs font-normal text-amber-600 border border-amber-200 rounded-full px-2 py-0.5 hover:bg-amber-50 transition-colors">
+                                    <Link2 className="h-3 w-3" />
+                                    {t("planningTasks.standalone")}
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-52 p-2" align="start">
+                                  <p className="text-xs font-medium text-muted-foreground mb-2 px-1">
+                                    {t("planningTasks.linkToTask")}
+                                  </p>
+                                  <div className="flex flex-col">
+                                    {tasks.map((tk) => (
+                                      <button
+                                        key={tk.id}
+                                        className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted text-left"
+                                        onClick={() => handleLinkMaterialToTask(mat.id, tk.id)}
+                                      >
+                                        {tk.title}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            ) : (
+                              <Badge variant="outline" className="text-xs font-normal text-amber-600 border-amber-200">
+                                {t("planningTasks.standalone")}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        {show.description && <TableCell className="hidden sm:table-cell py-2.5" />}
+                        {show.hours && <TableCell className="hidden sm:table-cell py-2.5" />}
+                        {show.hourlyRate && <TableCell className="hidden sm:table-cell py-2.5" />}
+                        {show.room && <TableCell className="hidden sm:table-cell py-2.5" />}
+                        {show.costType && (
+                          <TableCell className="hidden sm:table-cell py-2.5">
+                            <Badge variant="outline" className="text-xs font-normal">
+                              {mat.kind === "subcontractor" ? t("planningTasks.typeSubcontractor") : t("planningTasks.typeMaterial")}
+                            </Badge>
+                          </TableCell>
+                        )}
+                        {show.material && (
+                          <TableCell className="text-right hidden sm:table-cell py-2.5">
+                            {renderStandaloneInline2("mat_price_total", "price_total", matTotal || null)}
+                          </TableCell>
+                        )}
+                        {show.qty && (
+                          <TableCell className="text-right hidden sm:table-cell py-2.5">
+                            {renderStandaloneInline2("mat_quantity", "quantity", mat.quantity, mat.unit ? ` ${mat.unit}` : "")}
+                          </TableCell>
+                        )}
+                        {show.unitPrice && (
+                          <TableCell className="text-right hidden sm:table-cell py-2.5">
+                            {renderStandaloneInline2("mat_price_per_unit", "price_per_unit", mat.price_per_unit)}
+                          </TableCell>
+                        )}
+                        {show.markup && (
+                          <TableCell className="text-right hidden sm:table-cell py-2.5">
+                            {renderStandaloneInline2("mat_markup_percent", "markup_percent", mat.markup_percent, "%")}
+                          </TableCell>
+                        )}
+                        <TableCell className="py-2.5" />
+                        {show.profit && <TableCell className="hidden sm:table-cell py-2.5" />}
+                        {!effectiveLock && (
+                          <TableCell className="py-2.5">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteMaterial(mat.id); }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  }
+
+                  // --- Task row ---
+                  const task = tasks.find((t) => t.id === displayItem.id);
+                  if (!task) return null;
+                  const idx = displayIdx;
+                  {
                     const hasOwnLabor = !!(task.estimated_hours && task.hourly_rate);
                     const hasSubcontractor = !!task.subcontractor_cost;
                     // Detail-calc mode: budget is auto-computed when BOTH hours AND rate are set
@@ -890,18 +1423,49 @@ export function PlanningTaskList({
                       );
                     };
 
+                    const taskMaterials = materialsByTask.byTask.get(task.id) || [];
+                    const matCount = taskMaterials.length;
+                    const isExpanded = expandedTasks.has(task.id);
+
                     return (
+                    <React.Fragment key={task.id}>
                     <TableRow
-                      key={task.id}
+                      draggable={!effectiveLock}
+                      onDragStart={(e) => handleRowDragStart(e, "task", task.id, idx)}
+                      onDragEnd={handleRowDragEnd}
+                      onDragOver={(e) => handleRowDragOver(e, "task", task.id)}
+                      onDrop={(e) => handleRowDrop(e, "task", task.id)}
+                      className={
+                        dragOverTarget?.id === task.id
+                          ? dragOverTarget.position === "above"
+                            ? "border-t-2 border-t-primary"
+                            : "border-b-2 border-b-primary"
+                          : undefined
+                      }
                     >
                       <TableCell className="font-medium py-2.5">
-                        <button
-                          type="button"
-                          className={`text-left hover:underline hover:text-primary transition-colors ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}
-                          onClick={() => setEditTaskId(task.id)}
-                        >
-                          {task.title}
-                        </button>
+                        <div className="flex items-center gap-1">
+                          {!effectiveLock && (
+                            <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 cursor-grab active:cursor-grabbing shrink-0" />
+                          )}
+                          <button
+                            type="button"
+                            className={`text-left hover:underline hover:text-primary transition-colors ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}
+                            onClick={() => setEditTaskId(task.id)}
+                          >
+                            {task.title}
+                          </button>
+                          {matCount > 0 && (
+                            <button
+                              type="button"
+                              className="ml-1.5 inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors rounded px-1 py-0.5 hover:bg-muted"
+                              onClick={(e) => { e.stopPropagation(); toggleTaskExpand(task.id); }}
+                            >
+                              <ShoppingCart className="h-3 w-3" />
+                              <span className="text-xs">{matCount}</span>
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                       {show.description && (
                         <TableCell className="hidden sm:table-cell py-2.5 max-w-[200px]">
@@ -1086,6 +1650,9 @@ export function PlanningTaskList({
                           })()}
                         </TableCell>
                       )}
+                      {show.qty && <TableCell className="hidden sm:table-cell py-2.5" />}
+                      {show.unitPrice && <TableCell className="hidden sm:table-cell py-2.5" />}
+                      {show.markup && <TableCell className="hidden sm:table-cell py-2.5" />}
                       <TableCell className="text-right py-2.5">
                         {renderInlineCell("budget", task.budget, "currency")}
                       </TableCell>
@@ -1182,8 +1749,190 @@ export function PlanningTaskList({
                         </TableCell>
                       )}
                     </TableRow>
+
+                    {/* Material/UE sub-rows */}
+                    {isExpanded && taskMaterials.map((mat) => {
+                      const matTotal = mat.price_total ?? Math.round((mat.quantity || 0) * (mat.price_per_unit || 0));
+                      const renderMatInline = (
+                        matField: "mat_quantity" | "mat_price_per_unit" | "mat_markup_percent" | "mat_price_total",
+                        dbField: string,
+                        value: number | null,
+                        suffix?: string,
+                      ) => {
+                        const isEditingThis = editingCell && "materialId" in editingCell && editingCell.materialId === mat.id && editingCell.field === matField;
+                        if (isEditingThis && !effectiveLock) {
+                          return (
+                            <Input
+                              type="number"
+                              className="w-16 h-7 text-right text-sm"
+                              autoFocus
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleMaterialInlineSave(mat.id, dbField, editValue);
+                                if (e.key === "Escape") setEditingCell(null);
+                              }}
+                              onBlur={() => handleMaterialInlineSave(mat.id, dbField, editValue)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          );
+                        }
+                        if (effectiveLock) {
+                          return value ? (
+                            <span className="text-sm text-muted-foreground">{suffix ? `${value}${suffix}` : formatCurrency(value, currency)}</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">–</span>
+                          );
+                        }
+                        return (
+                          <button
+                            className="hover:bg-muted px-1.5 py-0.5 rounded cursor-text text-sm text-muted-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingCell({ taskId: task.id, field: matField, materialId: mat.id });
+                              setEditValue(value != null ? String(value) : "");
+                            }}
+                          >
+                            {value ? (suffix ? `${value}${suffix}` : formatCurrency(value, currency)) : "–"}
+                          </button>
+                        );
+                      };
+
+                      return (
+                        <TableRow
+                          key={mat.id}
+                          className={`bg-muted/30 hover:bg-muted/50 ${dragOverTarget?.id === mat.id ? (dragOverTarget.position === "above" ? "border-t-2 border-t-primary" : "border-b-2 border-b-primary") : ""}`}
+                          draggable={!effectiveLock}
+                          onDragStart={(e) => handleRowDragStart(e, "material", mat.id, 0)}
+                          onDragEnd={handleRowDragEnd}
+                          onDragOver={(e) => handleRowDragOver(e, "material", mat.id)}
+                          onDrop={(e) => handleRowDrop(e, "child-material", mat.id)}
+                        >
+                          <TableCell className="py-2 pl-8">
+                            <div className="flex items-center gap-1.5">
+                              {!effectiveLock && (
+                                <GripVertical className="h-3 w-3 text-muted-foreground/40 cursor-grab active:cursor-grabbing shrink-0" />
+                              )}
+                              <span className="text-muted-foreground text-xs">└</span>
+                              {mat.kind === "subcontractor"
+                                ? <Wrench className="h-3 w-3 text-muted-foreground shrink-0" />
+                                : <Package className="h-3 w-3 text-muted-foreground shrink-0" />}
+                              <span className="text-sm">{mat.name}</span>
+                              {!effectiveLock && (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button className="ml-0.5 p-0.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                                      <Link2 className="h-3 w-3" />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-52 p-2" align="start">
+                                    <p className="text-xs font-medium text-muted-foreground mb-2 px-1">
+                                      {t("planningTasks.linkToTask")}
+                                    </p>
+                                    <div className="flex flex-col">
+                                      {tasks.filter((tk) => tk.id !== task.id).map((tk) => (
+                                        <button
+                                          key={tk.id}
+                                          className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted text-left"
+                                          onClick={() => handleLinkMaterialToTask(mat.id, tk.id)}
+                                        >
+                                          {tk.title}
+                                        </button>
+                                      ))}
+                                      <div className="border-t mt-1 pt-1">
+                                        <button
+                                          className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted text-left w-full text-amber-600"
+                                          onClick={() => handleUnlinkMaterial(mat.id)}
+                                        >
+                                          {t("planningTasks.unlinkFromTask")}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                            </div>
+                          </TableCell>
+                          {show.description && <TableCell className="hidden sm:table-cell py-2" />}
+                          {show.hours && <TableCell className="hidden sm:table-cell py-2" />}
+                          {show.hourlyRate && <TableCell className="hidden sm:table-cell py-2" />}
+                          {show.room && <TableCell className="hidden sm:table-cell py-2" />}
+                          {show.costType && (
+                            <TableCell className="hidden sm:table-cell py-2">
+                              <Badge variant="outline" className="text-xs font-normal">
+                                {mat.kind === "subcontractor" ? t("planningTasks.typeSubcontractor") : t("planningTasks.typeMaterial")}
+                              </Badge>
+                            </TableCell>
+                          )}
+                          {show.material && (
+                            <TableCell className="text-right hidden sm:table-cell py-2">
+                              {renderMatInline("mat_price_total", "price_total", matTotal || null)}
+                            </TableCell>
+                          )}
+                          {show.qty && (
+                            <TableCell className="text-right hidden sm:table-cell py-2">
+                              {renderMatInline("mat_quantity", "quantity", mat.quantity, mat.unit ? ` ${mat.unit}` : "")}
+                            </TableCell>
+                          )}
+                          {show.unitPrice && (
+                            <TableCell className="text-right hidden sm:table-cell py-2">
+                              {renderMatInline("mat_price_per_unit", "price_per_unit", mat.price_per_unit)}
+                            </TableCell>
+                          )}
+                          {show.markup && (
+                            <TableCell className="text-right hidden sm:table-cell py-2">
+                              {renderMatInline("mat_markup_percent", "markup_percent", mat.markup_percent, "%")}
+                            </TableCell>
+                          )}
+                          <TableCell className="py-2" />
+                          {show.profit && <TableCell className="hidden sm:table-cell py-2" />}
+                          {!effectiveLock && (
+                            <TableCell className="py-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteMaterial(mat.id); }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
+                    </React.Fragment>
                     );
-                  })}
+                  }})}
+
+                  {/* Unlink drop zone — shown when dragging a linked material */}
+                  {isDraggingMaterial && (
+                    <TableRow
+                      className={`transition-colors ${unlinkDropHover ? "bg-amber-100 border-2 border-dashed border-amber-400" : "bg-amber-50/50 border-2 border-dashed border-amber-200"}`}
+                      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setUnlinkDropHover(true); setDragOverTarget(null); }}
+                      onDragLeave={() => setUnlinkDropHover(false)}
+                      onDrop={async (e) => {
+                        e.preventDefault();
+                        const src = dragItem.current;
+                        if (src?.type === "material") {
+                          const mat = materials.find((m) => m.id === src.id);
+                          if (mat?.task_id) {
+                            await handleUnlinkMaterial(src.id);
+                          }
+                        }
+                        dragItem.current = null;
+                        setDragOverTarget(null);
+                        setIsDraggingMaterial(false);
+                        setUnlinkDropHover(false);
+                      }}
+                    >
+                      <TableCell colSpan={visibleColCount} className="py-3 text-center">
+                        <span className={`text-sm ${unlinkDropHover ? "text-amber-700 font-medium" : "text-amber-500"}`}>
+                          {t("planningTasks.unlinkFromTask", "Make standalone")}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  )}
 
                   {/* Inline add row */}
                   {isAdding && !effectiveLock && (
@@ -1245,6 +1994,14 @@ export function PlanningTaskList({
                     >
                       <Plus className="h-4 w-4 mr-1" />
                       {t("planningTasks.addTask", "Add task")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAddMaterialOpen(true)}
+                    >
+                      <Package className="h-4 w-4 mr-1" />
+                      {t("planningTasks.addMaterial", "Add material")}
                     </Button>
                     <TooltipProvider>
                       <Tooltip>
@@ -1354,6 +2111,13 @@ export function PlanningTaskList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AddMaterialDialog
+        open={addMaterialOpen}
+        onOpenChange={setAddMaterialOpen}
+        tasks={tasks.map((t) => ({ id: t.id, title: t.title }))}
+        onAdd={handleAddMaterialSubmit}
+      />
     </Card>
   );
 }
