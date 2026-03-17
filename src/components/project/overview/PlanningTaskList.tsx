@@ -95,7 +95,7 @@ interface PlanningMaterial {
   kind: "material" | "subcontractor";
 }
 
-type ExtraColumnKey = "hours" | "hourlyRate" | "room" | "costType" | "material" | "profit" | "description" | "markup" | "qty" | "unitPrice";
+type ExtraColumnKey = "hours" | "hourlyRate" | "room" | "costType" | "material" | "profit" | "description" | "markup";
 
 interface ExtraColumnDef {
   key: ExtraColumnKey;
@@ -108,13 +108,11 @@ interface ExtraColumnDef {
 const EXTRA_COLUMNS: ExtraColumnDef[] = [
   { key: "description", labelKey: "tasks.description", defaultOn: false },
   { key: "room", labelKey: "planningTasks.room", defaultOn: true },
-  { key: "hours", labelKey: "taskCost.estimatedHours", defaultOn: true, builderOnly: true },
-  { key: "hourlyRate", labelKey: "taskCost.hourlyRate", defaultOn: true, builderOnly: true },
+  { key: "hours", labelKey: "planningTasks.hoursQty", defaultOn: true, builderOnly: true },
+  { key: "hourlyRate", labelKey: "planningTasks.rateUnitPrice", defaultOn: true, builderOnly: true },
   { key: "costType", labelKey: "planningTasks.costType", defaultOn: false, builderOnly: true },
   { key: "material", labelKey: "taskCost.materialEstimate", defaultOn: true, builderOnly: true },
   { key: "markup", labelKey: "planningTasks.markup", defaultOn: false, builderOnly: true },
-  { key: "qty", labelKey: "planningTasks.quantity", defaultOn: false, builderOnly: true },
-  { key: "unitPrice", labelKey: "planningTasks.unitPrice", defaultOn: false, builderOnly: true },
   { key: "profit", labelKey: "taskCost.result", defaultOn: true, builderOnly: true },
 ];
 
@@ -212,8 +210,6 @@ export function PlanningTaskList({
       costType: visibleExtras.has("costType"),
       material: visibleExtras.has("material"),
       markup: visibleExtras.has("markup"),
-      qty: visibleExtras.has("qty"),
-      unitPrice: visibleExtras.has("unitPrice"),
       profit: visibleExtras.has("profit"),
     }),
     [visibleExtras]
@@ -227,15 +223,13 @@ export function PlanningTaskList({
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
   const [addMaterialKind, setAddMaterialKind] = useState<"material" | "subcontractor">("material");
 
-  // Auto-show material columns when material/UE rows exist
+  // Auto-show markup column when material/UE rows exist
   useEffect(() => {
     if (materials.length > 0 && !isHomeowner) {
       setVisibleExtras((prev) => {
-        if (prev.has("markup") && prev.has("qty") && prev.has("unitPrice")) return prev;
+        if (prev.has("markup")) return prev;
         const next = new Set(prev);
         next.add("markup");
-        next.add("qty");
-        next.add("unitPrice");
         return next;
       });
     }
@@ -1158,13 +1152,13 @@ export function PlanningTaskList({
                       </TableHead>
                     )}
                     {show.hours && (
-                      <TableHead className="hidden sm:table-cell text-right w-[80px]">
-                        {t("taskCost.estimatedHours", "Hours")}
+                      <TableHead className="hidden sm:table-cell text-right w-[90px]">
+                        {t("planningTasks.hoursQty", "Hours / Qty")}
                       </TableHead>
                     )}
                     {show.hourlyRate && (
-                      <TableHead className="hidden sm:table-cell text-right w-[100px]">
-                        {t("taskCost.hourlyRate", "Hourly rate")}
+                      <TableHead className="hidden sm:table-cell text-right w-[110px]">
+                        {t("planningTasks.rateUnitPrice", "Rate / Unit price")}
                       </TableHead>
                     )}
                     {show.room && (
@@ -1180,16 +1174,6 @@ export function PlanningTaskList({
                     {show.material && (
                       <TableHead className="hidden sm:table-cell text-right w-[110px]">
                         {t("taskCost.materialEstimate", "Material")}
-                      </TableHead>
-                    )}
-                    {show.qty && (
-                      <TableHead className="hidden sm:table-cell text-right w-[70px]">
-                        {t("planningTasks.quantity", "Qty")}
-                      </TableHead>
-                    )}
-                    {show.unitPrice && (
-                      <TableHead className="hidden sm:table-cell text-right w-[90px]">
-                        {t("planningTasks.unitPrice", "Unit price")}
                       </TableHead>
                     )}
                     {show.markup && (
@@ -1327,8 +1311,16 @@ export function PlanningTaskList({
                           </div>
                         </TableCell>
                         {show.description && <TableCell className="hidden sm:table-cell py-2.5" />}
-                        {show.hours && <TableCell className="hidden sm:table-cell py-2.5" />}
-                        {show.hourlyRate && <TableCell className="hidden sm:table-cell py-2.5" />}
+                        {show.hours && (
+                          <TableCell className="text-right hidden sm:table-cell py-2.5">
+                            {renderStandaloneInline2("mat_quantity", "quantity", mat.quantity, mat.unit ? ` ${mat.unit}` : "")}
+                          </TableCell>
+                        )}
+                        {show.hourlyRate && (
+                          <TableCell className="text-right hidden sm:table-cell py-2.5">
+                            {renderStandaloneInline2("mat_price_per_unit", "price_per_unit", mat.price_per_unit)}
+                          </TableCell>
+                        )}
                         {show.room && <TableCell className="hidden sm:table-cell py-2.5" />}
                         {show.costType && (
                           <TableCell className="hidden sm:table-cell py-2.5">
@@ -1340,16 +1332,6 @@ export function PlanningTaskList({
                         {show.material && (
                           <TableCell className="text-right hidden sm:table-cell py-2.5">
                             {renderStandaloneInline2("mat_price_total", "price_total", matTotal || null)}
-                          </TableCell>
-                        )}
-                        {show.qty && (
-                          <TableCell className="text-right hidden sm:table-cell py-2.5">
-                            {renderStandaloneInline2("mat_quantity", "quantity", mat.quantity, mat.unit ? ` ${mat.unit}` : "")}
-                          </TableCell>
-                        )}
-                        {show.unitPrice && (
-                          <TableCell className="text-right hidden sm:table-cell py-2.5">
-                            {renderStandaloneInline2("mat_price_per_unit", "price_per_unit", mat.price_per_unit)}
                           </TableCell>
                         )}
                         {show.markup && (
@@ -1667,8 +1649,6 @@ export function PlanningTaskList({
                           })()}
                         </TableCell>
                       )}
-                      {show.qty && <TableCell className="hidden sm:table-cell py-2.5" />}
-                      {show.unitPrice && <TableCell className="hidden sm:table-cell py-2.5" />}
                       {show.markup && <TableCell className="hidden sm:table-cell py-2.5" />}
                       <TableCell className="text-right py-2.5">
                         {renderInlineCell("budget", task.budget, "currency")}
@@ -1872,8 +1852,16 @@ export function PlanningTaskList({
                             </div>
                           </TableCell>
                           {show.description && <TableCell className="hidden sm:table-cell py-2" />}
-                          {show.hours && <TableCell className="hidden sm:table-cell py-2" />}
-                          {show.hourlyRate && <TableCell className="hidden sm:table-cell py-2" />}
+                          {show.hours && (
+                            <TableCell className="text-right hidden sm:table-cell py-2">
+                              {renderMatInline("mat_quantity", "quantity", mat.quantity, mat.unit ? ` ${mat.unit}` : "")}
+                            </TableCell>
+                          )}
+                          {show.hourlyRate && (
+                            <TableCell className="text-right hidden sm:table-cell py-2">
+                              {renderMatInline("mat_price_per_unit", "price_per_unit", mat.price_per_unit)}
+                            </TableCell>
+                          )}
                           {show.room && <TableCell className="hidden sm:table-cell py-2" />}
                           {show.costType && (
                             <TableCell className="hidden sm:table-cell py-2">
@@ -1885,16 +1873,6 @@ export function PlanningTaskList({
                           {show.material && (
                             <TableCell className="text-right hidden sm:table-cell py-2">
                               {renderMatInline("mat_price_total", "price_total", matTotal || null)}
-                            </TableCell>
-                          )}
-                          {show.qty && (
-                            <TableCell className="text-right hidden sm:table-cell py-2">
-                              {renderMatInline("mat_quantity", "quantity", mat.quantity, mat.unit ? ` ${mat.unit}` : "")}
-                            </TableCell>
-                          )}
-                          {show.unitPrice && (
-                            <TableCell className="text-right hidden sm:table-cell py-2">
-                              {renderMatInline("mat_price_per_unit", "price_per_unit", mat.price_per_unit)}
                             </TableCell>
                           )}
                           {show.markup && (

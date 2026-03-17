@@ -3806,7 +3806,9 @@
     "typeTask": "Arbete",
     "unlinkFromTask": "Gör fristående",
     "moveToTask": "Flytta till annat arbete",
-    "attachFile": "Bifoga fil"
+    "attachFile": "Bifoga fil",
+    "hoursQty": "Timmar / Antal",
+    "rateUnitPrice": "Timpris / Á-pris"
   },
   "planningSmartImport": {
     "title": "Smart import",

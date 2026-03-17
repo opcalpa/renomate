@@ -3809,7 +3809,9 @@
     "typeTask": "Task",
     "unlinkFromTask": "Make standalone",
     "moveToTask": "Move to another task",
-    "attachFile": "Attach file"
+    "attachFile": "Attach file",
+    "hoursQty": "Hours / Qty",
+    "rateUnitPrice": "Rate / Unit price"
   },
   "planningSmartImport": {
     "title": "Smart Import",
