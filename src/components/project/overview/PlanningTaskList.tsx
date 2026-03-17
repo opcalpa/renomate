@@ -1095,25 +1095,31 @@ export function PlanningTaskList({
         if (error) throw error;
 
         // Create planned material row (only if material was estimated)
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (authUser) {
-          await supabase.from("materials").delete().eq("task_id", task.id).eq("status", "planned");
-
-          if (result.material) {
-            const s = result.material;
-            await supabase.from("materials").insert({
-              id: crypto.randomUUID(),
-              name: s.nameFallback,
-              quantity: s.quantity,
-              unit: s.unit,
-              price_per_unit: s.unitPrice,
-              price_total: s.totalCost,
-              task_id: task.id,
-              project_id: projectId,
-              status: "planned",
-              exclude_from_budget: false,
-              created_by_user_id: authUser.id,
-            });
+        if (result.material) {
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (authUser) {
+            const { data: profileRow } = await supabase
+              .from("profiles").select("id").eq("user_id", authUser.id).single();
+            const profileId = profileRow?.id;
+            if (profileId) {
+              // Delete old planned materials for this task, then upsert new
+              await supabase.from("materials").delete().eq("task_id", task.id).eq("status", "planned");
+              const s = result.material;
+              const { error: upsertErr } = await supabase.from("materials").upsert({
+                id: crypto.randomUUID(),
+                name: s.nameFallback,
+                quantity: s.quantity,
+                unit: s.unit,
+                price_per_unit: s.unitPrice,
+                price_total: s.totalCost,
+                task_id: task.id,
+                project_id: projectId,
+                status: "planned",
+                exclude_from_budget: false,
+                created_by_user_id: profileId,
+              }, { onConflict: "id" });
+              if (upsertErr) console.error("Material upsert failed:", upsertErr.message, upsertErr.details);
+            }
           }
         }
 
