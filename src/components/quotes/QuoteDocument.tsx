@@ -22,6 +22,7 @@ interface QuoteDocumentProps {
   clientName?: string;
   quoteNumber?: string | null;
   quoteDate?: string;
+  compactMode?: boolean;
 }
 
 export function QuoteDocument({
@@ -32,6 +33,7 @@ export function QuoteDocument({
   clientName,
   quoteNumber,
   quoteDate,
+  compactMode = false,
 }: QuoteDocumentProps) {
   const { t } = useTranslation();
 
@@ -124,15 +126,15 @@ export function QuoteDocument({
         <table className="w-full mb-8 border-collapse">
           <thead>
             <tr className="border-b-2 border-foreground/20">
-              <th className="text-left py-2.5 pr-4 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground">{t("quotes.description")}</th>
-              <th className="text-right py-2.5 px-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">{t("quotes.quantity")}</th>
-              <th className="text-right py-2.5 px-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">{t("quotes.unitPrice")}</th>
+              <th className={`text-left pr-4 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground ${compactMode ? "py-1.5" : "py-2.5"}`}>{t("quotes.description")}</th>
+              <th className={`text-right px-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap ${compactMode ? "py-1.5" : "py-2.5"}`}>{t("quotes.quantity")}</th>
+              <th className={`text-right px-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap ${compactMode ? "py-1.5" : "py-2.5"}`}>{t("quotes.unitPrice")}</th>
               {hasAnyDiscount && (
-                <th className="text-right py-2.5 px-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                <th className={`text-right px-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap ${compactMode ? "py-1.5" : "py-2.5"}`}>
                   {t("quotes.discount", "Discount")}
                 </th>
               )}
-              <th className="text-right py-2.5 pl-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">{t("quotes.totalAmount")}</th>
+              <th className={`text-right pl-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap ${compactMode ? "py-1.5" : "py-2.5"}`}>{t("quotes.totalAmount")}</th>
             </tr>
           </thead>
           <tbody>
@@ -142,9 +144,12 @@ export function QuoteDocument({
               const prevRoom = idx > 0 ? (items[idx - 1].roomId ?? "__none__") : null;
               const currRoom = item.roomId ?? "__none__";
               const isNewRoomGroup = idx > 0 && currRoom !== prevRoom;
+              const cellPy = compactMode ? "py-1" : "py-2.5";
+              const newGroupPt = compactMode ? "pt-3" : "pt-6";
+              const newGroupPb = compactMode ? "pb-1" : "pb-2.5";
               return (
                 <tr key={item.id} className={`border-b border-foreground/8 ${isNewRoomGroup ? "border-t border-foreground/8" : ""}`}>
-                  <td className={`pr-4 ${isNewRoomGroup ? "pt-6 pb-2.5" : "py-2.5"}`}>
+                  <td className={`pr-4 ${isNewRoomGroup ? `${newGroupPt} ${newGroupPb}` : cellPy}`}>
                     {item.description || "—"}
                     {item.isRotEligible && (
                       <span className="text-[11px] text-muted-foreground ml-1.5">(ROT)</span>
@@ -155,16 +160,16 @@ export function QuoteDocument({
                       </p>
                     )}
                   </td>
-                  <td className={`text-right px-3 whitespace-nowrap tabular-nums ${isNewRoomGroup ? "pt-6 pb-2.5" : "py-2.5"}`}>
+                  <td className={`text-right px-3 whitespace-nowrap tabular-nums ${isNewRoomGroup ? `${newGroupPt} ${newGroupPb}` : cellPy}`}>
                     {item.quantity} {item.unit}
                   </td>
-                  <td className={`text-right px-3 whitespace-nowrap tabular-nums ${isNewRoomGroup ? "pt-6 pb-2.5" : "py-2.5"}`}>{fmt(item.unitPrice)} kr</td>
+                  <td className={`text-right px-3 whitespace-nowrap tabular-nums ${isNewRoomGroup ? `${newGroupPt} ${newGroupPb}` : cellPy}`}>{fmt(item.unitPrice)} kr</td>
                   {hasAnyDiscount && (
-                    <td className={`text-right px-3 whitespace-nowrap tabular-nums ${isNewRoomGroup ? "pt-6 pb-2.5" : "py-2.5"}`}>
+                    <td className={`text-right px-3 whitespace-nowrap tabular-nums ${isNewRoomGroup ? `${newGroupPt} ${newGroupPb}` : cellPy}`}>
                       {discount > 0 ? `${discount}%` : "—"}
                     </td>
                   )}
-                  <td className={`text-right pl-3 whitespace-nowrap tabular-nums font-medium ${isNewRoomGroup ? "pt-6 pb-2.5" : "py-2.5"}`}>{fmt(lineTotal)} kr</td>
+                  <td className={`text-right pl-3 whitespace-nowrap tabular-nums font-medium ${isNewRoomGroup ? `${newGroupPt} ${newGroupPb}` : cellPy}`}>{fmt(lineTotal)} kr</td>
                 </tr>
               );
             })}

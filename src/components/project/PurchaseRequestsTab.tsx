@@ -18,8 +18,7 @@ import {
   LayoutGrid,
   Table as TableIcon,
   Columns3,
-  Save,
-  ToggleLeft,
+  Rows3,
   Trash2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -78,6 +77,7 @@ interface Material {
   room_id: string | null;
   created_by_user_id: string | null;
   assigned_to_user_id: string | null;
+  source_material_id?: string | null;
   creator?: {
     name: string;
   } | null;
@@ -125,9 +125,6 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
 
   // Table view state (lifted so toolbar renders in parent row)
   const purchaseTableViewState = usePurchasesTableView(projectId);
-  const [pSaveViewOpen, setPSaveViewOpen] = useState(false);
-  const [pSaveViewName, setPSaveViewName] = useState("");
-  const [pLoadViewOpen, setPLoadViewOpen] = useState(false);
 
   // Filter state (multi-select sets)
   const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set());
@@ -593,6 +590,29 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
 
   const getStatusColor = useCallback((status: string) => getStatusBadgeColor(status), []);
 
+  const createOrderFromPlanned = useCallback(async (planned: Material) => {
+    if (!currentProfileId) return;
+    const { error } = await supabase.from("materials").insert({
+      project_id: projectId,
+      task_id: planned.task_id,
+      room_id: planned.room_id,
+      name: planned.name,
+      quantity: planned.quantity,
+      unit: planned.unit,
+      price_per_unit: planned.price_per_unit,
+      price_total: planned.price_total,
+      status: "to_order",
+      source_material_id: planned.id,
+      created_by_user_id: currentProfileId,
+    });
+    if (error) {
+      toast({ variant: "destructive", description: t("purchases.createOrderFailed", "Kunde inte skapa inköpsorder") });
+    } else {
+      toast({ description: t("purchases.orderCreatedFromPlan", "Inköpsorder skapad från offertrad") });
+      fetchMaterials();
+    }
+  }, [currentProfileId, projectId, fetchMaterials, t]);
+
   const openEditDialog = useCallback((material: Material) => {
     setEditingMaterial({
       ...material,
@@ -625,8 +645,21 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
     setFilterAttachment(new Set());
   };
 
-  // Filter materials
-  const filteredMaterials = materials.filter((material) => {
+  // Split planned (budget references) from real orders
+  const plannedMaterials = materials.filter(m => m.status === "planned");
+  const orderMaterials = materials.filter(m => m.status !== "planned");
+
+  // Consumed per planned row: sum of orders that were generated from it
+  const consumedByPlannedId = new Map<string, number>();
+  for (const m of orderMaterials) {
+    if (m.source_material_id) {
+      consumedByPlannedId.set(m.source_material_id,
+        (consumedByPlannedId.get(m.source_material_id) || 0) + (m.price_total || 0));
+    }
+  }
+
+  // Filter real orders only
+  const filteredMaterials = orderMaterials.filter((material) => {
     if (filterStatuses.size > 0 && !filterStatuses.has(material.status)) return false;
     if (filterRooms.size > 0) {
       const roomMatch = material.room_id ? filterRooms.has(material.room_id) : filterRooms.has("none");
@@ -644,16 +677,16 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
     return true;
   });
 
-  // Count helpers for filter popover
-  const getStatusCount = (status: string) => materials.filter(m => m.status === status).length;
-  const getRoomCount = (id: string) => materials.filter(m => id === "none" ? !m.room_id : m.room_id === id).length;
-  const getTaskCount = (id: string) => materials.filter(m => id === "none" ? !m.task_id : m.task_id === id).length;
-  const getCreatorCount = (id: string) => materials.filter(m => m.created_by_user_id === id).length;
+  // Count helpers for filter popover (based on real orders only)
+  const getStatusCount = (status: string) => orderMaterials.filter(m => m.status === status).length;
+  const getRoomCount = (id: string) => orderMaterials.filter(m => id === "none" ? !m.room_id : m.room_id === id).length;
+  const getTaskCount = (id: string) => orderMaterials.filter(m => id === "none" ? !m.task_id : m.task_id === id).length;
+  const getCreatorCount = (id: string) => orderMaterials.filter(m => m.created_by_user_id === id).length;
 
-  // Get unique creators
+  // Get unique creators (from real orders)
   const uniqueCreators = Array.from(
     new Map(
-      materials
+      orderMaterials
         .filter((m) => m.created_by_user_id && m.creator?.name)
         .map((m) => [m.created_by_user_id, { id: m.created_by_user_id!, name: m.creator!.name }])
     ).values()
@@ -1091,13 +1124,12 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                 {/* Filter Popover */}
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-9">
-                      <Filter className="h-3 w-3 mr-2" />
-                      {t('purchases.filters', 'Filter')}
+                    <Button variant="outline" size="icon" className="h-8 w-8 relative" title={t('purchases.filters', 'Filter')}>
+                      <Filter className="h-4 w-4" />
                       {totalFilterCount > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] text-primary-foreground flex items-center justify-center font-medium">
                           {totalFilterCount}
-                        </Badge>
+                        </span>
                       )}
                     </Button>
                   </PopoverTrigger>
@@ -1267,86 +1299,14 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                       </PopoverContent>
                     </Popover>
                     <Button
-                      variant={purchaseTableViewState.compactRows ? "secondary" : "outline"}
-                      size="sm"
-                      className="gap-1 h-9"
+                      variant={purchaseTableViewState.compactRows ? "default" : "outline"}
+                      size="icon"
+                      className="h-8 w-8"
                       onClick={() => purchaseTableViewState.setCompactRows(!purchaseTableViewState.compactRows)}
+                      title={t("purchasesTable.compactRows")}
                     >
-                      <ToggleLeft className="h-4 w-4" />
-                      {t("purchasesTable.compactRows")}
+                      <Rows3 className="h-4 w-4" />
                     </Button>
-                    <Popover open={pSaveViewOpen} onOpenChange={setPSaveViewOpen}>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="gap-1 h-9">
-                          <Save className="h-4 w-4" />
-                          {t("purchasesTable.saveView")}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-56" align="start">
-                        <div className="space-y-2">
-                          <Input
-                            placeholder={t("purchasesTable.viewName")}
-                            value={pSaveViewName}
-                            onChange={(e) => setPSaveViewName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && pSaveViewName.trim()) {
-                                purchaseTableViewState.saveView(pSaveViewName.trim());
-                                setPSaveViewName("");
-                                setPSaveViewOpen(false);
-                              }
-                            }}
-                            className="h-8"
-                          />
-                          <Button
-                            size="sm"
-                            className="w-full"
-                            onClick={() => {
-                              if (!pSaveViewName.trim()) return;
-                              purchaseTableViewState.saveView(pSaveViewName.trim());
-                              setPSaveViewName("");
-                              setPSaveViewOpen(false);
-                            }}
-                            disabled={!pSaveViewName.trim()}
-                          >
-                            {t("purchasesTable.saveView")}
-                          </Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                    {purchaseTableViewState.savedViews?.length > 0 && (
-                      <Popover open={pLoadViewOpen} onOpenChange={setPLoadViewOpen}>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm" className="gap-1 h-9">
-                            {t("purchasesTable.savedViews")} ({purchaseTableViewState.savedViews?.length})
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-56" align="start">
-                          <div className="space-y-1">
-                            {(purchaseTableViewState.savedViews || []).map((view) => (
-                              <div key={view.id} className="flex items-center justify-between">
-                                <button
-                                  className="text-sm hover:bg-muted px-2 py-1 rounded flex-1 text-left"
-                                  onClick={() => {
-                                    purchaseTableViewState.loadView(view);
-                                    setPLoadViewOpen(false);
-                                  }}
-                                >
-                                  {view.name}
-                                </button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => purchaseTableViewState.deleteView(view.id)}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    )}
                   </>
                 )}
 
@@ -1355,11 +1315,68 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                   <span className="text-sm text-muted-foreground">
                     {t('purchases.showingResults', 'Showing {{count}} of {{total}} orders', {
                       count: filteredMaterials.length,
-                      total: materials.length,
+                      total: orderMaterials.length,
                     })}
                   </span>
                 )}
               </div>
+
+              {/* Materialposter från offert */}
+              {plannedMaterials.length > 0 && (
+                <Collapsible defaultOpen className="mb-4">
+                  <CollapsibleTrigger asChild>
+                    <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground w-full mb-2 group">
+                      <ChevronDown className="h-4 w-4 transition-transform group-data-[state=closed]:-rotate-90" />
+                      {t("purchases.quoteLineItems", "Materialposter från offert")}
+                      <span className="ml-1 text-xs bg-muted rounded-full px-2 py-0.5">{plannedMaterials.length}</span>
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="rounded-lg border overflow-hidden mb-4">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-muted/40">
+                            <th className="text-left px-4 py-2 font-medium text-muted-foreground">{t("purchases.materialName")}</th>
+                            <th className="text-left px-4 py-2 font-medium text-muted-foreground">{t("purchases.task")}</th>
+                            <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("costBreakdown.materialBudget")}</th>
+                            <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("costBreakdown.spent")}</th>
+                            <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("costBreakdown.remainingToBuy")}</th>
+                            <th className="px-4 py-2" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {plannedMaterials.map((m) => {
+                            const consumed = consumedByPlannedId.get(m.id) || 0;
+                            const budget = m.price_total || 0;
+                            const remaining = budget - consumed;
+                            return (
+                              <tr key={m.id} className="border-b last:border-0 hover:bg-muted/20">
+                                <td className="px-4 py-2.5 font-medium">{m.name}</td>
+                                <td className="px-4 py-2.5 text-muted-foreground">{m.task?.title || "—"}</td>
+                                <td className="px-4 py-2.5 text-right tabular-nums">{formatCurrency(budget, currency)}</td>
+                                <td className="px-4 py-2.5 text-right tabular-nums">{formatCurrency(consumed, currency)}</td>
+                                <td className={`px-4 py-2.5 text-right tabular-nums font-medium ${remaining < 0 ? "text-destructive" : remaining === 0 && consumed > 0 ? "text-muted-foreground" : "text-emerald-600"}`}>
+                                  {formatCurrency(remaining, currency)}
+                                </td>
+                                <td className="px-4 py-2.5 text-right">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs"
+                                    onClick={() => createOrderFromPlanned(m)}
+                                  >
+                                    {t("purchases.createOrder", "Skapa order")}
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
 
               {/* Views */}
               {viewMode === 'kanban' ? (

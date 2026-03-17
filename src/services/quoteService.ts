@@ -523,19 +523,7 @@ export async function createTasksFromQuote(quoteId: string) {
       const sourceType = (item as Record<string, unknown>).source_type as string | null;
 
       if (sourceType === "material") {
-        // Create as material record under the source task
-        const { error } = await supabase.from("materials").insert({
-          task_id: sourceTaskId,
-          project_id: projectId,
-          name: item.description,
-          quantity: item.quantity ?? 1,
-          unit: item.unit || "st",
-          price_per_unit: item.unit_price ?? 0,
-          price_total: item.total_price ?? 0,
-          status: "to_order",
-          created_by_user_id: profile.id,
-        });
-        if (!error) materialsCreated++;
+        // Planned materials row already exists as budget reference — skip creating duplicate to_order row
       } else if (sourceType === "subcontractor") {
         // Set subcontractor cost on the source task
         taskUpdates.subcontractor_cost = item.total_price ?? 0;
@@ -560,13 +548,22 @@ export async function createTasksFromQuote(quoteId: string) {
 
   // ── 2. Orphan items (manually added in quote, no source task) ──
   // Fall back to title matching against existing tasks, then create new
-  const { data: existingTasks } = await supabase
-    .from("tasks")
-    .select("id, title")
-    .eq("project_id", projectId);
+  const [{ data: existingTasks }, { data: plannedStandaloneMaterials }] = await Promise.all([
+    supabase.from("tasks").select("id, title").eq("project_id", projectId),
+    supabase
+      .from("materials")
+      .select("id, name")
+      .eq("project_id", projectId)
+      .eq("status", "planned")
+      .is("task_id", null),
+  ]);
 
   const tasksByTitle = new Map(
     (existingTasks || []).map((t) => [t.title.toLowerCase().trim(), t])
+  );
+  // Index planned standalone materials by name for upsert matching
+  const plannedMaterialsByName = new Map(
+    (plannedStandaloneMaterials || []).map((m) => [m.name.toLowerCase().trim(), m])
   );
 
   // Track which existing tasks were already updated via source_task_id
@@ -579,8 +576,28 @@ export async function createTasksFromQuote(quoteId: string) {
     const existing = tasksByTitle.get(matchKey);
     const orphanSourceType = (item as Record<string, unknown>).source_type as string | null;
 
-    if (existing && !alreadyUpdatedIds.has(existing.id)) {
-      // Update existing task
+    if (orphanSourceType === "material") {
+      // Orphan material — all quote materials stay as "planned" budget references.
+      // Builders create real purchase orders manually via "Skapa order" in the purchases tab.
+      const existingPlanned = plannedMaterialsByName.get(matchKey);
+      if (!existingPlanned) {
+        // No planned row yet (material was added in quote editor, not planning) — create one
+        const { error } = await supabase.from("materials").insert({
+          project_id: projectId,
+          name: item.description,
+          quantity: item.quantity ?? 1,
+          unit: item.unit || "st",
+          price_per_unit: item.unit_price ?? 0,
+          price_total: item.total_price ?? 0,
+          status: "planned",
+          room_id: item.room_id ?? null,
+          created_by_user_id: profile.id,
+        });
+        if (!error) materialsCreated++;
+      }
+      // If existingPlanned — already a planned budget reference, leave as-is
+    } else if (existing && !alreadyUpdatedIds.has(existing.id)) {
+      // Update existing task (hours / subcontractor / fixed)
       const orphanUpdates: Record<string, unknown> = { budget: item.total_price ?? null, status: "to_do" };
       if (orphanSourceType === "hours") orphanUpdates.task_cost_type = "own_labor";
       else if (orphanSourceType === "subcontractor") orphanUpdates.task_cost_type = "subcontractor";
@@ -593,7 +610,7 @@ export async function createTasksFromQuote(quoteId: string) {
         alreadyUpdatedIds.add(existing.id);
       }
     } else {
-      // Create new task — default to own_labor for orphan items
+      // Create new task for hours / subcontractor / fixed orphans
       const newTaskCostType = orphanSourceType === "subcontractor" ? "subcontractor" : "own_labor";
       const { error } = await supabase.from("tasks").insert({
         project_id: projectId,
@@ -609,7 +626,15 @@ export async function createTasksFromQuote(quoteId: string) {
     }
   }
 
-  // ── 3. Archive leftover planning tasks that weren't in the quote ──
+  // ── 3. Clean up __subcontractor__ sentinel planned materials ──
+  // These were budget placeholders during planning; subcontractor costs are now on task.subcontractor_cost
+  await supabase
+    .from("materials")
+    .delete()
+    .eq("project_id", projectId)
+    .eq("description", "__subcontractor__");
+
+  // ── 4. Archive leftover planning tasks that weren't in the quote ──
   if (existingTasks) {
     const planningLeftovers = existingTasks.filter(
       (t) => !alreadyUpdatedIds.has(t.id)

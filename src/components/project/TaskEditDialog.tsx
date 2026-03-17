@@ -635,7 +635,7 @@ export const TaskEditDialog = ({
       setMaterialSpent(actualSpend);
 
       // Detect per-row markup mode from loaded data
-      setPerRowMarkup(items.length > 0 && items.some((i: MaterialItem) => (i.markup_percent ?? null) !== null));
+      setPerRowMarkup(plannedItems.length > 0 && plannedItems.some((i: MaterialItem) => (i.markup_percent ?? null) !== null));
 
       // Extract custom cost centers from task
       const existingCenters = data.cost_centers || [];
@@ -1210,6 +1210,42 @@ export const TaskEditDialog = ({
               </div>
               )}
 
+              {/* Economics summary: material budget + consumed (non-planning, builder only) */}
+              {!isPlanning && isBuilder && (() => {
+                const plannedMaterialTotal = (task.material_items || []).reduce((sum, i) => sum + (i.amount || 0), 0)
+                  || task.material_estimate || 0;
+                if (plannedMaterialTotal === 0 && materialSpent === 0) return null;
+                const remaining = plannedMaterialTotal - materialSpent;
+                const ratio = plannedMaterialTotal > 0 ? materialSpent / plannedMaterialTotal : 0;
+                const barColor = ratio >= 1 ? "bg-destructive" : ratio >= 0.8 ? "bg-amber-500" : "bg-emerald-500";
+                return (
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {t("costBreakdown.purchaseTracking")}
+                    </p>
+                    <div className="grid grid-cols-3 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t("costBreakdown.materialBudget")}</p>
+                        <p className="font-medium tabular-nums">{formatCurrency(plannedMaterialTotal, currency)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t("costBreakdown.spent")}</p>
+                        <p className="font-medium tabular-nums">{formatCurrency(materialSpent, currency)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t("costBreakdown.remainingToBuy")}</p>
+                        <p className={`font-medium tabular-nums ${remaining < 0 ? "text-destructive" : remaining > 0 ? "text-emerald-600" : ""}`}>
+                          {formatCurrency(remaining, currency)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(ratio * 100, 100)}%` }} />
+                    </div>
+                  </div>
+                );
+              })()}
+
               {!isPlanning && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -1443,9 +1479,11 @@ export const TaskEditDialog = ({
                         );
                       })() : null}
 
-                      {/* Purchase Tracking — builder only, when material_estimate > 0 */}
-                      {isBuilder && (task.material_estimate || 0) > 0 ? (() => {
-                        const materialBudget = task.material_estimate || 0;
+                      {/* Purchase Tracking — builder only, when material budget > 0 */}
+                      {isBuilder && (() => {
+                        const materialBudget = (task.material_items || []).reduce((sum, i) => sum + (i.amount || 0), 0)
+                          || task.material_estimate || 0;
+                        if (materialBudget === 0 && materialSpent === 0) return null;
                         const ratio = materialSpent / materialBudget;
                         const remaining = materialBudget - materialSpent;
                         const barColor = ratio >= 1 ? "bg-destructive" : ratio >= 0.8 ? "bg-amber-500" : "bg-emerald-500";
@@ -1472,7 +1510,7 @@ export const TaskEditDialog = ({
                             </div>
                           </div>
                         );
-                      })() : null}
+                      })()}
 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">

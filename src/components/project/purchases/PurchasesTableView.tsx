@@ -37,9 +37,8 @@ import {
   ArrowUp,
   ArrowDown,
   Columns3,
-  Save,
+  Rows3,
   Trash2,
-  ToggleLeft,
   ExternalLink,
   Package,
 } from "lucide-react";
@@ -569,13 +568,13 @@ export function PurchasesTableView({
 
         {/* Compact toggle */}
         <Button
-          variant={compactRows ? "secondary" : "outline"}
-          size="sm"
-          className="gap-1"
+          variant={compactRows ? "default" : "outline"}
+          size="icon"
+          className="h-8 w-8"
           onClick={() => setCompactRows(!compactRows)}
+          title={t("purchasesTable.compactRows")}
         >
-          <ToggleLeft className="h-4 w-4" />
-          {t("purchasesTable.compactRows")}
+          <Rows3 className="h-4 w-4" />
         </Button>
 
       </div>}

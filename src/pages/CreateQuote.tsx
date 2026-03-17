@@ -62,6 +62,7 @@ export default function CreateQuote() {
   const [groupByType, setGroupByType] = useState<"grouped" | "byRoom" | "mixed">("grouped");
   const [pricingFormat, setPricingFormat] = useState<"detailed" | "fixed">("detailed");
   const [applyRot, setApplyRot] = useState(true);
+  const [compactMode, setCompactMode] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [hasManualEdits, setHasManualEdits] = useState(false);
 
@@ -814,6 +815,20 @@ export default function CreateQuote() {
                         {t("quotes.applyRotDeduction")}
                       </Label>
                     </div>
+
+                    <div className="h-px bg-border" />
+
+                    {/* Compact mode */}
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="compact-toggle"
+                        checked={compactMode}
+                        onCheckedChange={(c) => setCompactMode(c === true)}
+                      />
+                      <Label htmlFor="compact-toggle" className="text-sm font-normal cursor-pointer">
+                        {t("quotes.compactMode", "Kompakt layout")}
+                      </Label>
+                    </div>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
@@ -933,6 +948,7 @@ export default function CreateQuote() {
                   }}
                   clientName={clients.find((c) => c.id === clientId)?.name}
                   quoteNumber={quoteNumber}
+                  compactMode={compactMode}
                 />
               </div>
             </div>
