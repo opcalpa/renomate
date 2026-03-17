@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Package, Wrench } from "lucide-react";
+import { Package, Wrench, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type RowKind = "material" | "subcontractor";
 type LinkMode = "existing" | "create" | "none";
@@ -112,10 +113,18 @@ export function AddMaterialDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {kind === "material"
-              ? t("planningTasks.addMaterial")
-              : t("planningTasks.addSubcontractor")}
+          <DialogTitle className="flex items-center gap-2">
+            {t("planningTasks.addCost", "Add cost")}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[260px]">
+                  <p className="text-xs">{t("planningTasks.addCostHint", "Add materials (tiles, paint, fixtures) or subcontractor costs (electrician, plumber) to your scope.")}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </DialogTitle>
         </DialogHeader>
 

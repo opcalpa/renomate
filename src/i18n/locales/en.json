@@ -3811,7 +3811,9 @@
     "moveToTask": "Move to another task",
     "attachFile": "Attach file",
     "hoursQty": "Hours / Qty",
-    "rateUnitPrice": "Rate / Unit price"
+    "rateUnitPrice": "Rate / Unit price",
+    "addCost": "Add cost",
+    "addCostHint": "Add materials (tiles, paint, fixtures) or subcontractor costs (electrician, plumber) to your scope."
   },
   "planningSmartImport": {
     "title": "Smart Import",

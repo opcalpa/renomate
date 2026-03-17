@@ -2101,16 +2101,8 @@ export function PlanningTaskList({
                       size="sm"
                       onClick={() => { setAddMaterialKind("material"); setAddMaterialOpen(true); }}
                     >
-                      <Package className="h-4 w-4 mr-1" />
-                      {t("planningTasks.addMaterial", "Add material")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { setAddMaterialKind("subcontractor"); setAddMaterialOpen(true); }}
-                    >
-                      <Wrench className="h-4 w-4 mr-1" />
-                      {t("planningTasks.addSubcontractor", "Add subcontractor")}
+                      <Plus className="h-4 w-4 mr-1" />
+                      {t("planningTasks.addCost", "Add cost")}
                     </Button>
                     <TooltipProvider>
                       <Tooltip>

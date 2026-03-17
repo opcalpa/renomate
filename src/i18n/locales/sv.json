@@ -3808,7 +3808,9 @@
     "moveToTask": "Flytta till annat arbete",
     "attachFile": "Bifoga fil",
     "hoursQty": "Timmar / Antal",
-    "rateUnitPrice": "Timpris / Á-pris"
+    "rateUnitPrice": "Timpris / Á-pris",
+    "addCost": "Lägg till kostnad",
+    "addCostHint": "Lägg till material (kakel, färg, armaturer) eller underentreprenörskostnader (elektriker, rörmokare) i din kalkyl."
   },
   "planningSmartImport": {
     "title": "Smart import",
