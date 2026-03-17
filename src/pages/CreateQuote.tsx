@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Maximize2, Plus, ZoomIn, ZoomOut } from "lucide-react";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -630,10 +631,10 @@ export default function CreateQuote() {
         onSignOut={handleSignOut}
       />
 
-      <main className="container mx-auto px-4 py-6">
-        <div className="lg:grid lg:grid-cols-[minmax(0,45fr)_minmax(0,55fr)] lg:gap-6 lg:items-start">
-          {/* ── Left column: form fields ── */}
-          <div className="max-w-2xl lg:max-w-none space-y-4 mx-auto lg:mx-0">
+      <main className="lg:h-[calc(100vh-4rem)]">
+        {/* Mobile: stacked, Desktop: resizable panels */}
+        <div className="lg:hidden container mx-auto px-4 py-6 space-y-4">
+          <div className="max-w-2xl mx-auto space-y-4">
             {urlProjectId && (
               <Button
                 variant="ghost"
@@ -742,11 +743,102 @@ export default function CreateQuote() {
             </div>
           </div>
 
-          {/* ── Right column: live preview (desktop only) ── */}
-          <div
-            ref={previewContainerRef}
-            className="hidden lg:flex lg:flex-col sticky top-6 max-h-[calc(100vh-3rem)] rounded-lg border bg-neutral-100 dark:bg-neutral-900"
-          >
+          {/* Mobile preview button already inside the form */}
+          </div>
+        </div>
+
+        {/* Desktop: resizable panels */}
+        <ResizablePanelGroup direction="horizontal" className="hidden lg:flex h-full">
+          <ResizablePanel defaultSize={42} minSize={25} maxSize={65}>
+            <div className="h-full overflow-auto px-6 py-6">
+              <div className="max-w-2xl mx-auto space-y-4">
+                {urlProjectId && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
+                    onClick={() => navigate(`/projects/${urlProjectId}`)}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    {t("quotes.backToPlanning")}
+                  </Button>
+                )}
+                <h1 className="text-2xl font-bold">{t("quotes.newQuote")}</h1>
+
+                <Select value={projectId} onValueChange={setProjectId}>
+                  <SelectTrigger className="min-h-[48px]">
+                    <SelectValue placeholder={t("quotes.selectProject")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {projectId && (
+                  <Select value={clientId} onValueChange={setClientId}>
+                    <SelectTrigger className="min-h-[48px]">
+                      <SelectValue placeholder={t("quotes.selectClient")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {items.map((item, i) => (
+                  <QuoteItemRow
+                    key={item.id || i}
+                    item={item}
+                    index={i}
+                    currency={currency}
+                    projectId={projectId || undefined}
+                    onUpdate={(idx, updates) => {
+                      setItems((prev) => prev.map((it, j) => (j === idx ? { ...it, ...updates } : it)));
+                    }}
+                    onRemove={(idx) => setItems((prev) => prev.filter((_, j) => j !== idx))}
+                  />
+                ))}
+
+                <div className="flex gap-2 flex-wrap">
+                  <Button variant="outline" size="sm" className="gap-1" onClick={handleAddItem}>
+                    <Plus className="h-4 w-4" />
+                    {t("quotes.addItem")}
+                  </Button>
+                </div>
+
+                <Textarea
+                  placeholder={t("quotes.freeTextPlaceholder")}
+                  value={freeText}
+                  onChange={(e) => setFreeText(e.target.value)}
+                  rows={3}
+                />
+
+                <QuoteSummary items={items} />
+
+                <div className="flex gap-2 pb-8">
+                  <Button
+                    className="flex-1 min-h-[48px]"
+                    onClick={handleSaveDraft}
+                    disabled={saving}
+                  >
+                    {saving ? t("common.saving") : t("quotes.saveDraft")}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          <ResizablePanel defaultSize={58} minSize={30} maxSize={75}>
+            <div
+              ref={previewContainerRef}
+              className="flex flex-col h-full bg-neutral-100 dark:bg-neutral-900"
+            >
             {/* Toolbar */}
             <div className="flex items-center gap-1.5 px-4 py-2 border-b bg-background/60 backdrop-blur-sm rounded-t-lg flex-shrink-0">
               <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -810,7 +902,8 @@ export default function CreateQuote() {
               </div>
             </div>
           </div>
-        </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </main>
 
       <QuotePreview
