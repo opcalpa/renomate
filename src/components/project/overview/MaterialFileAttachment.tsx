@@ -1,13 +1,18 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { Paperclip, Loader2, X, FileText } from "lucide-react";
+import { Paperclip, Loader2, X, FileText, Download, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
 interface FileLink {
@@ -24,6 +29,12 @@ interface MaterialFileAttachmentProps {
   compact?: boolean;
 }
 
+function isPreviewable(mimeType: string | null, fileName: string): "image" | "pdf" | false {
+  if (mimeType?.startsWith("image/")) return "image";
+  if (mimeType === "application/pdf" || fileName.toLowerCase().endsWith(".pdf")) return "pdf";
+  return false;
+}
+
 export function MaterialFileAttachment({
   materialId,
   taskId,
@@ -32,11 +43,14 @@ export function MaterialFileAttachment({
 }: MaterialFileAttachmentProps) {
   const entityId = materialId || taskId || "";
   const entityField = materialId ? "material_id" : "task_id";
+
   const { t } = useTranslation();
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [files, setFiles] = useState<FileLink[]>([]);
+  const [previewFile, setPreviewFile] = useState<FileLink | null>(null);
+  const [previewUrl, setPreviewUrl] = useState("");
 
   const fetchFiles = useCallback(async () => {
     const { data } = await supabase
@@ -103,7 +117,7 @@ export function MaterialFileAttachment({
         if (fileRef.current) fileRef.current.value = "";
       }
     },
-    [materialId, projectId, fetchFiles, t, toast]
+    [materialId, taskId, entityId, projectId, fetchFiles, t, toast]
   );
 
   const handleDelete = useCallback(
@@ -115,13 +129,29 @@ export function MaterialFileAttachment({
     [fetchFiles]
   );
 
-  const handleOpenFile = useCallback((filePath: string) => {
-    const { data } = supabase.storage.from("project-files").getPublicUrl(filePath);
-    window.open(data.publicUrl, "_blank");
+  const handlePreview = useCallback((file: FileLink) => {
+    const { data } = supabase.storage.from("project-files").getPublicUrl(file.file_path);
+    setPreviewUrl(data.publicUrl);
+    setPreviewFile(file);
   }, []);
 
+  const handleDownload = useCallback((file: FileLink) => {
+    const { data } = supabase.storage.from("project-files").getPublicUrl(file.file_path);
+    const a = document.createElement("a");
+    a.href = data.publicUrl;
+    a.download = file.file_name;
+    a.target = "_blank";
+    a.click();
+  }, []);
+
+  const closePreview = () => {
+    setPreviewFile(null);
+    setPreviewUrl("");
+  };
+
+  const previewType = previewFile ? isPreviewable(previewFile.mime_type, previewFile.file_name) : false;
+
   if (files.length === 0 && compact) {
-    // No files — only render the hidden file input (triggered from dropdown menu)
     return (
       <input
         ref={fileRef}
@@ -141,6 +171,7 @@ export function MaterialFileAttachment({
     <>
       <input
         ref={fileRef}
+        id={`file-${entityId}`}
         type="file"
         className="hidden"
         accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx,.xls,.xlsx"
@@ -166,7 +197,7 @@ export function MaterialFileAttachment({
                 <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
                 <button
                   className="flex-1 text-left truncate text-xs hover:underline"
-                  onClick={() => handleOpenFile(f.file_path)}
+                  onClick={() => handlePreview(f)}
                   title={f.file_name}
                 >
                   {f.file_name}
@@ -192,6 +223,62 @@ export function MaterialFileAttachment({
           </Button>
         </PopoverContent>
       </Popover>
+
+      {/* File preview dialog */}
+      <Dialog open={!!previewFile} onOpenChange={(open) => { if (!open) closePreview(); }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+          <DialogTitle className="sr-only">{previewFile?.file_name}</DialogTitle>
+          <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-sm font-medium truncate">{previewFile?.file_name}</span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button variant="ghost" size="sm" onClick={() => previewFile && handleDownload(previewFile)}>
+                  <Download className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => {
+                  if (previewUrl) window.open(previewUrl, "_blank");
+                }}>
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-auto bg-muted/30 min-h-[400px]">
+              {previewType === "image" && previewUrl && (
+                <div className="flex items-center justify-center p-4 h-full">
+                  <img
+                    src={previewUrl}
+                    alt={previewFile?.file_name}
+                    className="max-w-full max-h-[70vh] object-contain rounded"
+                  />
+                </div>
+              )}
+              {previewType === "pdf" && previewUrl && (
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-[75vh] border-0"
+                  title={previewFile?.file_name}
+                />
+              )}
+              {!previewType && previewFile && (
+                <div className="flex flex-col items-center justify-center h-full gap-3 py-12">
+                  <FileText className="h-12 w-12 text-muted-foreground/50" />
+                  <p className="text-sm text-muted-foreground">{t("files.noPreviewAvailable", "Preview not available for this file type")}</p>
+                  <Button variant="outline" size="sm" onClick={() => previewFile && handleDownload(previewFile)}>
+                    <Download className="h-4 w-4 mr-1" />
+                    {t("common.download", "Download")}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

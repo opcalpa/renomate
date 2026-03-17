@@ -330,19 +330,7 @@ const OverviewTab = ({
         </Card>
       )}
 
-      {/* Documents card - contractors in planning/quote phases (no create buttons — use main "Skapa offert" below) */}
-      {!isHomeowner && isPlanning && (
-        <CollapsibleSection
-          title={t("overview.documents", "Documents")}
-          icon={<FileText className="h-4 w-4" />}
-          defaultOpen
-        >
-          <ProjectDocumentsCard
-            projectId={project.id}
-            currency={project.currency}
-          />
-        </CollapsibleSection>
-      )}
+      {/* Documents card hidden in planning phase — no value until a quote exists */}
 
       {/* Invite customer to fill in planning — builder only, planning phase */}
       {!isHomeowner && isPlanning && !isRfqProject && (
