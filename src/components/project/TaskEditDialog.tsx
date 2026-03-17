@@ -619,17 +619,12 @@ export const TaskEditDialog = ({
           quantity: m.quantity ?? 1,
           unit: m.unit ?? "st",
           unit_price: m.price_per_unit ?? (m.price_total ?? 0),
-          amount: Math.round((m.quantity ?? 1) * (m.price_per_unit ?? 0)),
+          amount: m.price_total ?? Math.round((m.quantity ?? 1) * (m.price_per_unit ?? 0)),
           markup_percent: m.markup_percent ?? null,
         }));
 
-      // Fallback: if no planned materials, try legacy JSONB (backward compat)
-      const legacyItems: MaterialItem[] = plannedItems.length === 0 && data.material_items?.length
-        ? data.material_items.map(normalizeMaterialItem)
-        : [];
-
-      const items = plannedItems.length > 0 ? plannedItems : legacyItems;
-      data.material_items = items.length > 0 ? items : undefined;
+      // Materials table is the source of truth. Clear JSONB to avoid stale data showing.
+      data.material_items = plannedItems.length > 0 ? plannedItems : undefined;
 
       setTask(data);
 
@@ -769,7 +764,11 @@ export const TaskEditDialog = ({
       const hours = task.estimated_hours || 0;
       const labor = hours * profileDefaultRate;
       const ue = (task.subcontractor_cost || 0) * (1 + (task.markup_percent || 0) / 100);
-      const mat = (task.material_estimate || 0) * (1 + (task.material_markup_percent || 0) / 100);
+      const matItems = task.material_items || [];
+      const matBase = matItems.length > 0
+        ? matItems.reduce((sum, i) => sum + (i.amount || 0), 0)
+        : (task.material_estimate || 0);
+      const mat = matBase * (1 + (task.material_markup_percent || 0) / 100);
       const budget = labor + ue + mat || null;
       setTask({ ...task, hourly_rate: profileDefaultRate, budget });
     }
@@ -863,11 +862,7 @@ export const TaskEditDialog = ({
         payload.labor_cost_percent = task.labor_cost_percent;
       }
 
-      // Sync material_items to materials table (planned rows)
-      // Also keep JSONB in sync for backward compat during transition
-      if ("material_items" in task) {
-        payload.material_items = task.material_items || [];
-      }
+      // material_items JSONB is no longer written — materials table is the source of truth.
 
       // ÄTA field — only include if the column existed when we fetched
       if ("is_ata" in task) {
@@ -1123,11 +1118,6 @@ export const TaskEditDialog = ({
                   const next = { ...task, ...updates };
                   const labor = (next.estimated_hours || 0) * (next.hourly_rate || 0);
                   const ue = (next.subcontractor_cost || 0) * (1 + (next.markup_percent || 0) / 100);
-                  // Sync material_estimate from items for backward compat
-                  const items = next.material_items || [];
-                  if (items.length > 0) {
-                    next.material_estimate = items.reduce((sum, i) => sum + (i.amount || 0), 0) || null;
-                  }
                   const mat = calcMaterial(next);
                   const total = labor + ue + mat;
                   setTask({ ...next, budget: total || null });

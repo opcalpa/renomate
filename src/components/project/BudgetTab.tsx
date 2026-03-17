@@ -157,10 +157,6 @@ function persistBudgetPrefs(projectId: string, prefs: BudgetTablePrefs) {
 
 // --- Cost helpers ---
 
-interface MaterialItem {
-  amount?: number;
-}
-
 function computeTaskEstimatedCost(
   task: {
     estimated_hours?: number | null;
@@ -168,7 +164,6 @@ function computeTaskEstimatedCost(
     labor_cost_percent?: number | null;
     subcontractor_cost?: number | null;
     material_estimate?: number | null;
-    material_items?: MaterialItem[] | null;
   },
   defaultLaborCostPercent: number,
   plannedMaterialCost?: number
@@ -176,30 +171,23 @@ function computeTaskEstimatedCost(
   const laborTotal = (task.estimated_hours || 0) * (task.hourly_rate || 0);
   const laborCost = laborTotal * ((task.labor_cost_percent ?? defaultLaborCostPercent) / 100);
   const ueCost = task.subcontractor_cost || 0;
-  let materialCost: number;
-  if (plannedMaterialCost != null && plannedMaterialCost > 0) {
-    materialCost = plannedMaterialCost;
-  } else {
-    const items = task.material_items || [];
-    materialCost = items.length > 0
-      ? items.reduce((sum, i) => sum + (i.amount || 0), 0)
-      : (task.material_estimate || 0);
-  }
+  // Planned materials (from materials table) take priority; fall back to flat estimate for
+  // tasks that predate the migration or were saved without creating materials rows.
+  const materialCost = (plannedMaterialCost != null && plannedMaterialCost > 0)
+    ? plannedMaterialCost
+    : (task.material_estimate || 0);
   return laborCost + ueCost + materialCost;
 }
 
 const getEffectiveCost = (row: BudgetRow) => row.paid > 0 ? row.paid : row.estimatedCost;
 
 function computeMaterialBudget(
-  task: { material_items?: MaterialItem[] | null; material_estimate?: number | null },
+  task: { material_estimate?: number | null },
   plannedMaterialCost?: number
 ): number {
-  // Prefer planned materials from materials table, then legacy JSONB, then flat estimate
+  // Planned materials (from materials table) take priority; fall back to flat estimate.
   if (plannedMaterialCost != null && plannedMaterialCost > 0) return plannedMaterialCost;
-  const items = task.material_items || [];
-  return items.length > 0
-    ? items.reduce((sum, i) => sum + (i.amount || 0), 0)
-    : (task.material_estimate || 0);
+  return task.material_estimate || 0;
 }
 
 // --- Component ---
@@ -406,7 +394,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
       const [tasksRes, materialsRes, extraRes, projectRes, taskDocsRes, materialDocsRes] = await Promise.all([
         supabase
           .from("tasks")
-          .select("id, title, status, budget, ordered_amount, payment_status, paid_amount, room_id, cost_center, start_date, finish_date, is_ata, estimated_hours, hourly_rate, labor_cost_percent, subcontractor_cost, markup_percent, material_estimate, material_markup_percent, task_cost_type, material_items")
+          .select("id, title, status, budget, ordered_amount, payment_status, paid_amount, room_id, cost_center, start_date, finish_date, is_ata, estimated_hours, hourly_rate, labor_cost_percent, subcontractor_cost, markup_percent, material_estimate, material_markup_percent, task_cost_type")
           .eq("project_id", projectId),
         supabase
           .from("materials")

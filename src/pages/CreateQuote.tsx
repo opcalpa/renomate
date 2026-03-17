@@ -292,14 +292,31 @@ export default function CreateQuote() {
           .in("id", taskIds)
           .order("created_at");
 
+        // Fetch planned materials for these tasks so we can use them as the material line item.
+        // This is the canonical source; material_estimate is a fallback for unmigrated tasks.
+        const { data: plannedMaterialRows } = await supabase
+          .from("materials")
+          .select("task_id, price_total, quantity, price_per_unit")
+          .in("task_id", taskIds)
+          .eq("status", "planned");
+
+        const plannedMaterialTotals = new Map<string, number>();
+        for (const m of plannedMaterialRows || []) {
+          if (!m.task_id) continue;
+          const cost = m.price_total ?? ((m.quantity || 0) * (m.price_per_unit || 0));
+          plannedMaterialTotals.set(m.task_id, (plannedMaterialTotals.get(m.task_id) || 0) + cost);
+        }
+
         if (tasks && tasks.length > 0) {
           for (const task of tasks) {
             const roomName = (task.rooms as { name: string } | null)?.name || null;
+            // Prefer sum of planned materials rows; fall back to flat estimate for unmigrated tasks.
+            const materialCost = plannedMaterialTotals.get(task.id) ?? (task.material_estimate ?? 0);
 
             if (pricingFormat === "detailed") {
               const hasOwnLabor = !!(task.estimated_hours && task.hourly_rate);
               const hasSub = !!(task.subcontractor_cost && task.subcontractor_cost > 0);
-              const hasMaterial = !!(task.material_estimate && task.material_estimate > 0);
+              const hasMaterial = materialCost > 0;
               const hasAnyDetail = hasOwnLabor || hasSub || hasMaterial;
 
               // Own labor row — carries task description as comment
@@ -344,7 +361,7 @@ export default function CreateQuote() {
                   description: `${task.title} — material`,
                   quantity: 1,
                   unit: "st",
-                  unitPrice: task.material_estimate,
+                  unitPrice: materialCost,
                   isRotEligible: false,
                   roomId: task.room_id || undefined,
                   roomName,
