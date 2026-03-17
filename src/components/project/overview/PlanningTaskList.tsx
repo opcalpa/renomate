@@ -1235,13 +1235,24 @@ export function PlanningTaskList({
                   if (displayItem.type === "standalone") {
                     const mat = materialsByTask.standalone.find((m) => m.id === displayItem.id);
                     if (!mat) return null;
-                    const matTotal = mat.price_total ?? Math.round((mat.quantity || 0) * (mat.price_per_unit || 0));
+                    const hasQtyAndPriceS = !!(mat.quantity && mat.quantity > 0 && mat.price_per_unit && mat.price_per_unit > 0);
+                    const matTotal = hasQtyAndPriceS
+                      ? Math.round(mat.quantity! * mat.price_per_unit!)
+                      : (mat.price_total ?? 0);
                     const renderStandaloneInline2 = (
                       matField: "mat_quantity" | "mat_price_per_unit" | "mat_markup_percent" | "mat_price_total",
                       dbField: string,
                       value: number | null,
                       suffix?: string,
                     ) => {
+                      const isLockedFieldS = matField === "mat_price_total" && hasQtyAndPriceS;
+                      if (isLockedFieldS) {
+                        return matTotal > 0 ? (
+                          <span className="text-sm text-muted-foreground">{formatCurrency(matTotal, currency)}</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">–</span>
+                        );
+                      }
                       const isEditingThis = editingCell && "materialId" in editingCell && editingCell.materialId === mat.id && editingCell.field === matField;
                       if (isEditingThis && !effectiveLock) {
                         return (
@@ -1790,13 +1801,25 @@ export function PlanningTaskList({
 
                     {/* Material/UE sub-rows */}
                     {isExpanded && taskMaterials.map((mat) => {
-                      const matTotal = mat.price_total ?? Math.round((mat.quantity || 0) * (mat.price_per_unit || 0));
+                      const hasQtyAndPrice = !!(mat.quantity && mat.quantity > 0 && mat.price_per_unit && mat.price_per_unit > 0);
+                      const matTotal = hasQtyAndPrice
+                        ? Math.round(mat.quantity! * mat.price_per_unit!)
+                        : (mat.price_total ?? 0);
                       const renderMatInline = (
                         matField: "mat_quantity" | "mat_price_per_unit" | "mat_markup_percent" | "mat_price_total",
                         dbField: string,
                         value: number | null,
                         suffix?: string,
                       ) => {
+                        // price_total is locked when both qty and unit price are set
+                        const isLockedField = matField === "mat_price_total" && hasQtyAndPrice;
+                        if (isLockedField) {
+                          return matTotal > 0 ? (
+                            <span className="text-sm text-muted-foreground">{formatCurrency(matTotal, currency)}</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">–</span>
+                          );
+                        }
                         const isEditingThis = editingCell && "materialId" in editingCell && editingCell.materialId === mat.id && editingCell.field === matField;
                         if (isEditingThis && !effectiveLock) {
                           return (
