@@ -1,12 +1,22 @@
 /**
  * TaskCostTable — Inline spreadsheet-style cost breakdown for a task.
- * Replaces the old collapsible sections with a clean table view.
- * Shows: Labor, Material, Subcontractor rows with live calculations.
+ * Shows: Labor row, individual Material rows (same data as planning table sub-rows),
+ * Subcontractor row, and customer price footer.
  */
 
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/currency";
+
+interface MaterialItem {
+  id: string;
+  name: string;
+  quantity?: number;
+  unit?: string;
+  unit_price?: number;
+  amount: number;
+  markup_percent?: number | null;
+}
 
 interface TaskCostTableProps {
   estimatedHours: number | null;
@@ -15,7 +25,7 @@ interface TaskCostTableProps {
   markupPercent: number | null;
   materialEstimate: number | null;
   materialMarkupPercent: number | null;
-  materialItems?: { amount: number; markup_percent?: number | null }[];
+  materialItems?: MaterialItem[];
   currency?: string | null;
   onChange: (updates: Record<string, number | null>) => void;
 }
@@ -38,8 +48,9 @@ export function TaskCostTable({
   const ueMarkup = markupPercent || 0;
   const ueTotal = ueBase * (1 + ueMarkup / 100);
 
-  const matBase = materialItems && materialItems.length > 0
-    ? materialItems.reduce((sum, i) => sum + (i.amount || 0), 0)
+  const hasItems = materialItems && materialItems.length > 0;
+  const matBase = hasItems
+    ? materialItems!.reduce((sum, i) => sum + (i.amount || 0), 0)
     : (materialEstimate || 0);
   const matMarkup = materialMarkupPercent || 0;
   const matTotal = matBase * (1 + matMarkup / 100);
@@ -102,36 +113,63 @@ export function TaskCostTable({
             </td>
           </tr>
 
-          {/* Material row */}
-          <tr className="border-t hover:bg-muted/30">
-            <td className="px-3 py-1.5 text-xs font-medium">{t("taskCost.material", "Material")}</td>
-            <td className="px-2 py-1.5 text-xs text-right text-muted-foreground">—</td>
-            <td className="px-1 py-1">
-              <Input
-                type="number"
-                step="1"
-                min="0"
-                placeholder="kr"
-                className={inputClass}
-                value={materialEstimate?.toString() || ""}
-                onChange={(e) => onChange({ material_estimate: e.target.value ? parseFloat(e.target.value) : null })}
-              />
-            </td>
-            <td className="px-1 py-1">
-              <Input
-                type="number"
-                step="1"
-                min="0"
-                placeholder="%"
-                className={inputClass}
-                value={materialMarkupPercent?.toString() || ""}
-                onChange={(e) => onChange({ material_markup_percent: e.target.value ? parseFloat(e.target.value) : null })}
-              />
-            </td>
-            <td className="px-3 py-1.5 text-xs text-right tabular-nums font-medium">
-              {matTotal > 0 ? formatCurrency(matTotal, currency) : "—"}
-            </td>
-          </tr>
+          {/* Material rows — individual items when available, aggregate fallback */}
+          {hasItems ? (
+            materialItems!.map((item) => {
+              const itemTotal = item.amount || 0;
+              const qtyLabel = item.quantity != null
+                ? `${item.quantity}${item.unit ? ` ${item.unit}` : ""}`
+                : "—";
+              return (
+                <tr key={item.id} className="border-t hover:bg-muted/30">
+                  <td className="px-3 py-1.5 text-xs">
+                    <span className="text-muted-foreground mr-1">└</span>
+                    {item.name || t("taskCost.material", "Material")}
+                  </td>
+                  <td className="px-2 py-1.5 text-xs text-right text-muted-foreground tabular-nums">{qtyLabel}</td>
+                  <td className="px-2 py-1.5 text-xs text-right text-muted-foreground tabular-nums">
+                    {item.unit_price != null ? formatCurrency(item.unit_price, currency) : "—"}
+                  </td>
+                  <td className="px-2 py-1.5 text-xs text-right text-muted-foreground">
+                    {item.markup_percent != null ? `${item.markup_percent}%` : "—"}
+                  </td>
+                  <td className="px-3 py-1.5 text-xs text-right tabular-nums font-medium">
+                    {itemTotal > 0 ? formatCurrency(itemTotal, currency) : "—"}
+                  </td>
+                </tr>
+              );
+            })
+          ) : (
+            <tr className="border-t hover:bg-muted/30">
+              <td className="px-3 py-1.5 text-xs font-medium">{t("taskCost.material", "Material")}</td>
+              <td className="px-2 py-1.5 text-xs text-right text-muted-foreground">—</td>
+              <td className="px-1 py-1">
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  placeholder="kr"
+                  className={inputClass}
+                  value={materialEstimate?.toString() || ""}
+                  onChange={(e) => onChange({ material_estimate: e.target.value ? parseFloat(e.target.value) : null })}
+                />
+              </td>
+              <td className="px-1 py-1">
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  placeholder="%"
+                  className={inputClass}
+                  value={materialMarkupPercent?.toString() || ""}
+                  onChange={(e) => onChange({ material_markup_percent: e.target.value ? parseFloat(e.target.value) : null })}
+                />
+              </td>
+              <td className="px-3 py-1.5 text-xs text-right tabular-nums font-medium">
+                {matTotal > 0 ? formatCurrency(matTotal, currency) : "—"}
+              </td>
+            </tr>
+          )}
 
           {/* Subcontractor row */}
           <tr className="border-t hover:bg-muted/30">

@@ -48,11 +48,9 @@ import { TaskEditDialog } from "../TaskEditDialog";
 import { PlanningSmartImportDialog } from "./PlanningSmartImportDialog";
 import {
   suggestMaterials,
-  suggestMaterialsMultiRoom,
   detectRecipeKey,
   detectWorkType,
   estimateTaskMultiRoom,
-  formatSuggestionSummary,
   parseEstimationSettings,
   ALL_WORK_TYPES,
   WORK_TYPE_LABEL_KEYS,
@@ -105,7 +103,7 @@ interface PlanningMaterial {
   kind: "material" | "subcontractor";
 }
 
-type ExtraColumnKey = "hours" | "hourlyRate" | "room" | "costType" | "material" | "profit" | "description" | "markup";
+type ExtraColumnKey = "hours" | "hourlyRate" | "room" | "costType" | "profit" | "description" | "markup";
 
 interface ExtraColumnDef {
   key: ExtraColumnKey;
@@ -121,7 +119,6 @@ const EXTRA_COLUMNS: ExtraColumnDef[] = [
   { key: "hours", labelKey: "planningTasks.hoursQty", defaultOn: true, builderOnly: true },
   { key: "hourlyRate", labelKey: "planningTasks.rateUnitPrice", defaultOn: true, builderOnly: true },
   { key: "costType", labelKey: "planningTasks.costType", defaultOn: false, builderOnly: true },
-  { key: "material", labelKey: "taskCost.materialEstimate", defaultOn: true, builderOnly: true },
   { key: "markup", labelKey: "planningTasks.markup", defaultOn: false, builderOnly: true },
   { key: "profit", labelKey: "taskCost.result", defaultOn: true, builderOnly: true },
 ];
@@ -145,6 +142,70 @@ interface PlanningTaskListProps {
   onNavigateToTasks?: (taskId?: string) => void;
   onCreateQuote?: () => void;
   locked?: boolean;
+}
+
+function MaterialKindIcon({
+  kind,
+  editable,
+  onChangeKind,
+  size = "sm",
+}: {
+  kind: "material" | "subcontractor";
+  editable: boolean;
+  onChangeKind: (kind: "material" | "subcontractor") => void;
+  size?: "sm" | "xs";
+}) {
+  const { t } = useTranslation();
+  const iconCls = size === "xs" ? "h-3 w-3" : "h-3.5 w-3.5";
+  const icon =
+    kind === "subcontractor" ? (
+      <Handshake className={`${iconCls} text-muted-foreground shrink-0`} />
+    ) : (
+      <ShoppingCart className={`${iconCls} text-muted-foreground shrink-0`} />
+    );
+
+  if (!editable) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>{icon}</TooltipTrigger>
+          <TooltipContent>
+            <p className="text-xs">
+              {kind === "subcontractor"
+                ? t("planningTasks.typeSubcontractor")
+                : t("planningTasks.typeMaterial")}
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="rounded p-0.5 hover:bg-muted transition-colors">{icon}</button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-44">
+        <DropdownMenuItem
+          className="gap-2"
+          onClick={() => onChangeKind("material")}
+        >
+          <ShoppingCart className="h-3.5 w-3.5" />
+          {t("planningTasks.typeMaterial")}
+          {kind === "material" && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="gap-2"
+          onClick={() => onChangeKind("subcontractor")}
+        >
+          <Handshake className="h-3.5 w-3.5" />
+          {t("planningTasks.typeSubcontractor")}
+          {kind === "subcontractor" && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export function PlanningTaskList({
@@ -185,7 +246,7 @@ export function PlanningTaskList({
   // Inline cell editing state
   const [editingCell, setEditingCell] = useState<{
     taskId: string;
-    field: "estimated_hours" | "hourly_rate" | "material_estimate" | "budget" | "description" | "room_id";
+    field: "estimated_hours" | "hourly_rate" | "budget" | "description" | "room_id";
   } | {
     taskId: string;
     field: "mat_quantity" | "mat_price_per_unit" | "mat_markup_percent" | "mat_price_total" | "mat_room_id";
@@ -221,7 +282,6 @@ export function PlanningTaskList({
       hourlyRate: visibleExtras.has("hourlyRate"),
       room: visibleExtras.has("room"),
       costType: visibleExtras.has("costType"),
-      material: visibleExtras.has("material"),
       markup: visibleExtras.has("markup"),
       profit: visibleExtras.has("profit"),
     }),
@@ -235,6 +295,20 @@ export function PlanningTaskList({
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
   const [addMaterialKind, setAddMaterialKind] = useState<"material" | "subcontractor">("material");
+
+  // Auto-expand sub-rows for tasks that have materials
+  useEffect(() => {
+    const tasksWithMaterials = new Set(
+      materials.filter(m => m.task_id).map(m => m.task_id!)
+    );
+    if (tasksWithMaterials.size > 0) {
+      setExpandedTasks(prev => {
+        // Only auto-expand on first load, not on every material change
+        if (prev.size === 0) return tasksWithMaterials;
+        return prev;
+      });
+    }
+  }, [materials]);
 
   // Auto-show markup column when material/UE rows exist
   useEffect(() => {
@@ -494,7 +568,7 @@ export function PlanningTaskList({
           : 0;
         const material = linkedMats.length > 0
           ? linkedMatSum
-          : (field === "material_estimate" ? (numValue || 0) : (task.material_estimate || 0));
+          : (task.material_estimate || 0);
         const hasDetailCalc = hours > 0 && rate > 0;
 
         if (field !== "budget" && hasDetailCalc) {
@@ -664,6 +738,8 @@ export function PlanningTaskList({
       linkMode: "existing" | "create" | "none";
       existingTaskId?: string;
       newTaskTitle?: string;
+      quantity?: number;
+      priceTotal?: number;
       markupPercent?: number;
       file?: File;
     }) => {
@@ -702,11 +778,17 @@ export function PlanningTaskList({
         taskId = newTask.id;
       }
 
+      const qty = data.quantity ?? 1;
+      const unitPrice = data.priceTotal ?? 0;
       const { data: newMat, error } = await supabase.from("materials").insert({
         project_id: projectId,
         task_id: taskId,
         name: data.name,
-        status: "submitted",
+        quantity: qty,
+        unit: "st",
+        price_per_unit: unitPrice,
+        price_total: qty * unitPrice || null,
+        status: "planned",
         created_by_user_id: profile.id,
         description: data.kind === "subcontractor" ? "__subcontractor__" : null,
         markup_percent: data.markupPercent ?? null,
@@ -834,6 +916,22 @@ export function PlanningTaskList({
       const { error } = await supabase
         .from("materials")
         .update({ task_id: null })
+        .eq("id", materialId);
+
+      if (error) {
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      } else {
+        fetchData();
+      }
+    },
+    [fetchData, t, toast]
+  );
+
+  const handleChangeMaterialKind = useCallback(
+    async (materialId: string, kind: "material" | "subcontractor") => {
+      const { error } = await supabase
+        .from("materials")
+        .update({ description: kind === "subcontractor" ? "__subcontractor__" : null })
         .eq("id", materialId);
 
       if (error) {
@@ -1262,11 +1360,6 @@ export function PlanningTaskList({
                         {t("planningTasks.costType", "Type")}
                       </TableHead>
                     )}
-                    {show.material && (
-                      <TableHead className="hidden sm:table-cell text-right w-[110px]">
-                        {t("taskCost.materialEstimate", "Material")}
-                      </TableHead>
-                    )}
                     {show.markup && (
                       <TableHead className="hidden sm:table-cell text-right w-[80px]">
                         {t("planningTasks.markup", "Markup")}
@@ -1371,18 +1464,11 @@ export function PlanningTaskList({
                       >
                         <TableCell className="py-2.5">
                           <div className="flex items-center gap-1.5">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  {mat.kind === "subcontractor"
-                                    ? <Handshake className={`h-3.5 w-3.5 text-muted-foreground shrink-0 ${!effectiveLock ? "cursor-grab active:cursor-grabbing" : ""}`} />
-                                    : <ShoppingCart className={`h-3.5 w-3.5 text-muted-foreground shrink-0 ${!effectiveLock ? "cursor-grab active:cursor-grabbing" : ""}`} />}
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="text-xs">{mat.kind === "subcontractor" ? t("planningTasks.typeSubcontractor") : t("planningTasks.typeMaterial")}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                            <MaterialKindIcon
+                              kind={mat.kind}
+                              editable={!effectiveLock}
+                              onChangeKind={(kind) => handleChangeMaterialKind(mat.id, kind)}
+                            />
                             <span className="text-sm">{mat.name}</span>
                             <MaterialFileAttachment materialId={mat.id} projectId={projectId} />
                             {!effectiveLock && tasks.length > 0 ? (
@@ -1420,7 +1506,7 @@ export function PlanningTaskList({
                         {show.description && <TableCell className="hidden sm:table-cell py-2.5" />}
                         {show.hours && (
                           <TableCell className="text-right hidden sm:table-cell py-2.5">
-                            {renderStandaloneInline2("mat_quantity", "quantity", mat.quantity, mat.unit ? ` ${mat.unit}` : "")}
+                            {renderStandaloneInline2("mat_quantity", "quantity", mat.quantity, ` ${mat.unit && mat.unit !== "kr" ? mat.unit : "st"}`)}
                           </TableCell>
                         )}
                         {show.hourlyRate && (
@@ -1518,23 +1604,11 @@ export function PlanningTaskList({
                         )}
                         {show.costType && (
                           <TableCell className="hidden sm:table-cell py-2.5">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  {mat.kind === "subcontractor"
-                                    ? <Handshake className="h-3.5 w-3.5 text-muted-foreground" />
-                                    : <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" />}
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="text-xs">{mat.kind === "subcontractor" ? t("planningTasks.typeSubcontractor") : t("planningTasks.typeMaterial")}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </TableCell>
-                        )}
-                        {show.material && (
-                          <TableCell className="text-right hidden sm:table-cell py-2.5">
-                            {renderStandaloneInline2("mat_price_total", "price_total", matTotal || null)}
+                            <MaterialKindIcon
+                              kind={mat.kind}
+                              editable={!effectiveLock}
+                              onChangeKind={(kind) => handleChangeMaterialKind(mat.id, kind)}
+                            />
                           </TableCell>
                         )}
                         {show.markup && (
@@ -1629,7 +1703,7 @@ export function PlanningTaskList({
                     const isDetailCalc = !!(task.estimated_hours && task.hourly_rate);
 
                     const renderInlineCell = (
-                      field: "estimated_hours" | "hourly_rate" | "material_estimate" | "budget",
+                      field: "estimated_hours" | "hourly_rate" | "budget",
                       value: number | null,
                       format: "hours" | "currency",
                     ) => {
@@ -1888,62 +1962,6 @@ export function PlanningTaskList({
                           )}
                         </TableCell>
                       )}
-                      {show.material && (() => {
-                        // If task has linked material rows, show computed sum (read-only)
-                        const linkedMatSum = matCount > 0
-                          ? taskMaterials.reduce((sum, m) => sum + (m.price_total ?? Math.round((m.quantity || 0) * (m.price_per_unit || 0))), 0)
-                          : 0;
-
-                        if (matCount > 0 && linkedMatSum > 0) {
-                          return (
-                            <TableCell className="text-right hidden sm:table-cell py-2.5">
-                              <span className="text-sm text-muted-foreground">
-                                {formatCurrency(linkedMatSum, currency)}
-                              </span>
-                            </TableCell>
-                          );
-                        }
-
-                        // No linked materials — editable or show suggestion
-                        return (
-                          <TableCell className="text-right hidden sm:table-cell py-2.5">
-                            {task.material_estimate ? (
-                              renderInlineCell("material_estimate", task.material_estimate, "currency")
-                            ) : (() => {
-                              const linkedRooms = (task.room_ids || [])
-                                .map((id) => roomMap.get(id))
-                                .filter((r): r is Room => !!r);
-                              const suggestions = linkedRooms.length > 0
-                                ? suggestMaterialsMultiRoom(task, linkedRooms, estimationSettings ?? undefined)
-                                : [];
-                              if (suggestions.length > 0) {
-                                const summary = formatSuggestionSummary(suggestions);
-                                return (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <button
-                                          className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setEditTaskId(task.id);
-                                          }}
-                                        >
-                                          {summary}
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top" className="text-xs">
-                                        {t("materialRecipes.clickToSuggest")}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                );
-                              }
-                              return renderInlineCell("material_estimate", null, "currency");
-                            })()}
-                          </TableCell>
-                        );
-                      })()}
                       {show.markup && <TableCell className="hidden sm:table-cell py-2.5" />}
                       <TableCell className="text-right py-2.5">
                         {renderInlineCell("budget", task.budget, "currency")}
@@ -2146,18 +2164,12 @@ export function PlanningTaskList({
                           <TableCell className="py-2 pl-8">
                             <div className="flex items-center gap-1.5">
                               <span className="text-muted-foreground text-xs">└</span>
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    {mat.kind === "subcontractor"
-                                      ? <Handshake className={`h-3 w-3 text-muted-foreground shrink-0 ${!effectiveLock ? "cursor-grab active:cursor-grabbing" : ""}`} />
-                                      : <ShoppingCart className={`h-3 w-3 text-muted-foreground shrink-0 ${!effectiveLock ? "cursor-grab active:cursor-grabbing" : ""}`} />}
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="text-xs">{mat.kind === "subcontractor" ? t("planningTasks.typeSubcontractor") : t("planningTasks.typeMaterial")}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                              <MaterialKindIcon
+                                kind={mat.kind}
+                                editable={!effectiveLock}
+                                onChangeKind={(kind) => handleChangeMaterialKind(mat.id, kind)}
+                                size="xs"
+                              />
                               <span className="text-sm">{mat.name}</span>
                               <MaterialFileAttachment materialId={mat.id} projectId={projectId} />
                               {!effectiveLock && (
@@ -2198,7 +2210,7 @@ export function PlanningTaskList({
                           {show.description && <TableCell className="hidden sm:table-cell py-2" />}
                           {show.hours && (
                             <TableCell className="text-right hidden sm:table-cell py-2">
-                              {renderMatInline("mat_quantity", "quantity", mat.quantity, mat.unit ? ` ${mat.unit}` : "")}
+                              {renderMatInline("mat_quantity", "quantity", mat.quantity, ` ${mat.unit && mat.unit !== "kr" ? mat.unit : "st"}`)}
                             </TableCell>
                           )}
                           {show.hourlyRate && (
@@ -2209,23 +2221,11 @@ export function PlanningTaskList({
                           {show.room && <TableCell className="hidden sm:table-cell py-2" />}
                           {show.costType && (
                             <TableCell className="hidden sm:table-cell py-2">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    {mat.kind === "subcontractor"
-                                      ? <Handshake className="h-3.5 w-3.5 text-muted-foreground" />
-                                      : <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" />}
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="text-xs">{mat.kind === "subcontractor" ? t("planningTasks.typeSubcontractor") : t("planningTasks.typeMaterial")}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </TableCell>
-                          )}
-                          {show.material && (
-                            <TableCell className="text-right hidden sm:table-cell py-2">
-                              {renderMatInline("mat_price_total", "price_total", matTotal || null)}
+                              <MaterialKindIcon
+                                kind={mat.kind}
+                                editable={!effectiveLock}
+                                onChangeKind={(kind) => handleChangeMaterialKind(mat.id, kind)}
+                              />
                             </TableCell>
                           )}
                           {show.markup && (

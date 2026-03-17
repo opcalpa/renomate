@@ -775,6 +775,50 @@ export const TaskEditDialog = ({
     }
   }, [isPlanning, task, profileDefaultRate]);
 
+  // Sync material items → materials table (status: "planned")
+  // Called immediately on SmartEstimate apply AND on save as fallback.
+  const syncPlannedMaterials = React.useCallback(async (items: MaterialItem[], taskId: string, projectId: string) => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+    const { data: matProfile } = await supabase.from("profiles").select("id").eq("user_id", authUser.id).single();
+    const profileId = matProfile?.id;
+    if (!profileId) return;
+
+    const { data: existingPlanned } = await supabase
+      .from("materials").select("id").eq("task_id", taskId).eq("status", "planned");
+    const existingIds = new Set((existingPlanned || []).map((m) => m.id));
+    const currentIds = new Set(items.map((i) => i.id));
+    const toDelete = [...existingIds].filter((id) => !currentIds.has(id));
+
+    if (toDelete.length > 0) {
+      await supabase.from("materials").delete().in("id", toDelete);
+    }
+
+    for (const item of items) {
+      const row = {
+        id: item.id,
+        name: item.name || t("taskCost.material", "Material"),
+        quantity: item.quantity ?? null,
+        unit: item.unit ?? null,
+        price_per_unit: item.unit_price ?? null,
+        price_total: item.amount ?? null,
+        markup_percent: item.markup_percent ?? null,
+        task_id: taskId,
+        project_id: projectId,
+        status: "planned",
+        exclude_from_budget: false,
+        created_by_user_id: profileId,
+      };
+      const { error } = await supabase
+        .from("materials")
+        .upsert(row, { onConflict: "id" });
+      if (error) {
+        console.error("Material upsert failed:", error.message, error.details, row);
+        toast({ title: t("common.error"), description: `Material: ${error.message}`, variant: "destructive" });
+      }
+    }
+  }, [t, toast]);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!task) return;
@@ -837,59 +881,10 @@ export const TaskEditDialog = ({
 
       if (error) throw error;
 
-      // Sync material items → materials table rows (status: "planned")
+      // Sync material items → materials table (fallback for any manual edits since last apply)
       const items: MaterialItem[] = task.material_items || [];
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      let materialProfileId: string | null = null;
-      if (authUser) {
-        const { data: matProfile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("user_id", authUser.id)
-          .single();
-        materialProfileId = matProfile?.id ?? null;
-      }
-      if (authUser && materialProfileId) {
-        // Get existing planned materials for this task
-        const { data: existingPlanned } = await supabase
-          .from("materials")
-          .select("id")
-          .eq("task_id", task.id)
-          .eq("status", "planned");
-        const existingIds = new Set((existingPlanned || []).map((m) => m.id));
-
-        // Determine which items to upsert and which to delete
-        const currentIds = new Set(items.map((i) => i.id));
-        const toDelete = [...existingIds].filter((id) => !currentIds.has(id));
-
-        // Delete removed planned materials
-        if (toDelete.length > 0) {
-          await supabase.from("materials").delete().in("id", toDelete);
-        }
-
-        // Upsert current items
-        for (const item of items) {
-          const materialRow = {
-            id: item.id,
-            name: item.name,
-            quantity: item.quantity,
-            unit: item.unit,
-            price_per_unit: item.unit_price,
-            price_total: item.amount,
-            markup_percent: item.markup_percent,
-            task_id: task.id,
-            project_id: task.project_id,
-            status: "planned",
-            exclude_from_budget: false,
-            created_by_user_id: materialProfileId!,
-          };
-          if (existingIds.has(item.id)) {
-            const { id: _id, created_by_user_id: _c, ...updateFields } = materialRow;
-            await supabase.from("materials").update(updateFields).eq("id", item.id);
-          } else {
-            await supabase.from("materials").insert(materialRow);
-          }
-        }
+      if (items.length > 0) {
+        await syncPlannedMaterials(items, task.id, task.project_id);
       }
 
       toast({
@@ -1145,14 +1140,35 @@ export const TaskEditDialog = ({
                   task={task}
                   rooms={rooms}
                   estimationSettings={estimationSettings}
-                  onApply={(hours, items) => {
-                    recalcBudget({
-                      estimated_hours: hours,
-                      material_items: items.length > 0 ? items : (task.material_items || []),
-                    });
-                    toast({
-                      description: t("materialRecipes.estimateApplied", "Estimate applied — adjust values as needed"),
-                    });
+                  onApply={async (hours, items) => {
+                    const newItems = items.length > 0 ? items : (task.material_items || []);
+                    recalcBudget({ estimated_hours: hours, material_items: newItems });
+
+                    // Immediately write to DB so sub-row appears in planning table
+                    if (task && newItems.length > 0) {
+                      await syncPlannedMaterials(newItems, task.id, task.project_id);
+
+                      // Re-fetch from DB so dialog shows the saved rows (with DB ids/names)
+                      const { data: saved } = await supabase
+                        .from("materials")
+                        .select("id, name, quantity, unit, price_per_unit, price_total, markup_percent")
+                        .eq("task_id", task.id)
+                        .eq("status", "planned");
+                      if (saved && saved.length > 0) {
+                        const refreshed = saved.map((m) => ({
+                          id: m.id,
+                          name: m.name,
+                          quantity: m.quantity ?? 1,
+                          unit: m.unit ?? "st",
+                          unit_price: m.price_per_unit ?? 0,
+                          amount: m.price_total ?? Math.round((m.quantity || 0) * (m.price_per_unit || 0)),
+                          markup_percent: m.markup_percent ?? null,
+                        }));
+                        setTask((prev) => prev ? { ...prev, material_items: refreshed } : prev);
+                      }
+                    }
+
+                    toast({ description: t("materialRecipes.estimateApplied", "Estimate applied — adjust values as needed") });
                   }}
                   onSaveDefault={async (key, value) => {
                     try {
