@@ -72,7 +72,7 @@ const MaterialsList = ({ taskId, currency }: MaterialsListProps) => {
   const [newMaterial, setNewMaterial] = useState({
     name: "",
     quantity: "",
-    unit: "",
+    unit: "st",
     price_per_unit: "",
     vendor_name: "",
     vendor_link: "",
@@ -207,7 +207,7 @@ const MaterialsList = ({ taskId, currency }: MaterialsListProps) => {
       setNewMaterial({
         name: "",
         quantity: "",
-        unit: "",
+        unit: "st",
         price_per_unit: "",
         vendor_name: "",
         vendor_link: "",
