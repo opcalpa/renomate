@@ -1795,6 +1795,13 @@ export function PlanningTaskList({
                                   : <Sparkles className="h-3.5 w-3.5 mr-2 text-amber-500" />}
                                 {t("planningTasks.autoEstimate", "Auto-estimate")}
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                const input = document.getElementById(`file-${task.id}`) as HTMLInputElement;
+                                input?.click();
+                              }}>
+                                <Paperclip className="h-3.5 w-3.5 mr-2" />
+                                {t("planningTasks.attachFile", "Attach file")}
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"

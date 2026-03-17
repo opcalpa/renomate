@@ -121,27 +121,19 @@ export function MaterialFileAttachment({
   }, []);
 
   if (files.length === 0 && compact) {
+    // No files — only render the hidden file input (triggered from dropdown menu)
     return (
-      <>
-        <input
-          ref={fileRef}
-          id={`file-${entityId}`}
-          type="file"
-          className="hidden"
-          accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx,.xls,.xlsx"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) handleUpload(f);
-          }}
-        />
-        <button
-          className="p-0.5 rounded hover:bg-muted transition-colors text-muted-foreground/40 hover:text-muted-foreground"
-          onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
-          title={t("planningTasks.attachFile", "Attach file")}
-        >
-          {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Paperclip className="h-3 w-3" />}
-        </button>
-      </>
+      <input
+        ref={fileRef}
+        id={`file-${entityId}`}
+        type="file"
+        className="hidden"
+        accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx,.xls,.xlsx"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleUpload(f);
+        }}
+      />
     );
   }
 
