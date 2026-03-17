@@ -10,8 +10,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Package, Wrench, Plus, Link2Off } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Package, Wrench } from "lucide-react";
 
 type RowKind = "material" | "subcontractor";
 type LinkMode = "existing" | "create" | "none";
@@ -32,6 +41,7 @@ interface AddMaterialDialogProps {
     linkMode: LinkMode;
     existingTaskId?: string;
     newTaskTitle?: string;
+    markupPercent?: number;
   }) => Promise<void>;
 }
 
@@ -45,9 +55,9 @@ export function AddMaterialDialog({
   const { t } = useTranslation();
   const [name, setName] = useState("");
   const [kind, setKind] = useState<RowKind>(initialKind);
-  // "none" = standalone, "create" = new task, or a task ID for existing
-  const [selectedLink, setSelectedLink] = useState<string>("none");
+  const [selectedLink, setSelectedLink] = useState<string>("__none__");
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [markupPercent, setMarkupPercent] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -57,14 +67,14 @@ export function AddMaterialDialog({
   const reset = () => {
     setName("");
     setKind(initialKind);
-    setSelectedLink(tasks.length > 0 ? tasks[0].id : "none");
+    setSelectedLink(tasks.length > 0 ? tasks[0].id : "__none__");
     setNewTaskTitle("");
+    setMarkupPercent("");
   };
 
-  // Derive linkMode from selectedLink
   const linkMode: LinkMode =
-    selectedLink === "none" ? "none" :
-    selectedLink === "create" ? "create" : "existing";
+    selectedLink === "__none__" ? "none" :
+    selectedLink === "__create__" ? "create" : "existing";
 
   const canSubmit =
     name.trim() &&
@@ -76,12 +86,14 @@ export function AddMaterialDialog({
     if (!canSubmit) return;
     setSaving(true);
     try {
+      const markup = markupPercent ? parseFloat(markupPercent) : undefined;
       await onAdd({
         name: name.trim(),
         kind,
         linkMode,
         existingTaskId: linkMode === "existing" ? selectedLink : undefined,
         newTaskTitle: linkMode === "create" ? newTaskTitle.trim() : undefined,
+        markupPercent: markup && !isNaN(markup) ? markup : undefined,
       });
       reset();
       onOpenChange(false);
@@ -151,63 +163,54 @@ export function AddMaterialDialog({
             />
           </div>
 
-          {/* Unified link list */}
+          {/* Link to task — compact dropdown */}
           <div className="space-y-1.5">
             <Label>{t("planningTasks.linkToTask")}</Label>
-            <div className="border rounded-md max-h-48 overflow-y-auto">
-              {/* Existing tasks */}
-              {tasks.map((task) => (
-                <button
-                  key={task.id}
-                  type="button"
-                  className={cn(
-                    "w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2",
-                    selectedLink === task.id && "bg-primary/10 text-primary font-medium"
-                  )}
-                  onClick={() => setSelectedLink(task.id)}
-                >
-                  {task.title}
-                </button>
-              ))}
-
-              {tasks.length > 0 && <div className="border-t" />}
-
-              {/* Create new task */}
-              <button
-                type="button"
-                className={cn(
-                  "w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2",
-                  selectedLink === "create" && "bg-primary/10 text-primary font-medium"
+            <Select value={selectedLink} onValueChange={setSelectedLink}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {tasks.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel className="text-xs">{t("planningTasks.linkOption")}</SelectLabel>
+                    {tasks.map((task) => (
+                      <SelectItem key={task.id} value={task.id}>
+                        {task.title}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 )}
-                onClick={() => setSelectedLink("create")}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {t("planningTasks.createTaskOption")}
-              </button>
+                {tasks.length > 0 && <SelectSeparator />}
+                <SelectItem value="__create__">
+                  + {t("planningTasks.createTaskOption")}
+                </SelectItem>
+                <SelectItem value="__none__">
+                  {t("planningTasks.noLinkOption")}
+                </SelectItem>
+              </SelectContent>
+            </Select>
 
-              {/* No link */}
-              <button
-                type="button"
-                className={cn(
-                  "w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2 text-muted-foreground",
-                  selectedLink === "none" && "bg-amber-50 text-amber-700 font-medium"
-                )}
-                onClick={() => setSelectedLink("none")}
-              >
-                <Link2Off className="h-3.5 w-3.5" />
-                {t("planningTasks.noLinkOption")}
-              </button>
-            </div>
-
-            {/* Inline new task name input */}
-            {selectedLink === "create" && (
+            {selectedLink === "__create__" && (
               <Input
-                className="h-8 text-sm mt-1.5"
+                className="h-8 text-sm"
                 placeholder={t("planningTasks.newTaskPlaceholder")}
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
               />
             )}
+          </div>
+
+          {/* Markup */}
+          <div className="space-y-1.5">
+            <Label>{t("planningTasks.markup", "Markup")} (%)</Label>
+            <Input
+              type="number"
+              className="h-9 text-sm w-28"
+              placeholder="0"
+              value={markupPercent}
+              onChange={(e) => setMarkupPercent(e.target.value)}
+            />
           </div>
         </div>
 

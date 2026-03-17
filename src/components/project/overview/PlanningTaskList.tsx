@@ -625,6 +625,7 @@ export function PlanningTaskList({
       linkMode: "existing" | "create" | "none";
       existingTaskId?: string;
       newTaskTitle?: string;
+      markupPercent?: number;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -668,6 +669,7 @@ export function PlanningTaskList({
         status: "submitted",
         created_by_user_id: profile.id,
         description: data.kind === "subcontractor" ? "__subcontractor__" : null,
+        markup_percent: data.markupPercent ?? null,
       });
 
       if (error) {
