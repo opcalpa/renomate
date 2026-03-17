@@ -229,7 +229,6 @@ export function AddMaterialDialog({
 
           {/* Attach file */}
           <div className="space-y-1.5">
-            <Label>{t("planningTasks.attachFile", "Attach file")}</Label>
             <input
               ref={attachRef}
               type="file"
