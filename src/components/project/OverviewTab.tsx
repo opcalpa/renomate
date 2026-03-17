@@ -330,7 +330,7 @@ const OverviewTab = ({
         </Card>
       )}
 
-      {/* Documents card - contractors in planning/quote phases */}
+      {/* Documents card - contractors in planning/quote phases (no create buttons — use main "Skapa offert" below) */}
       {!isHomeowner && isPlanning && (
         <CollapsibleSection
           title={t("overview.documents", "Documents")}
@@ -340,8 +340,6 @@ const OverviewTab = ({
           <ProjectDocumentsCard
             projectId={project.id}
             currency={project.currency}
-            onCreateQuote={() => setQuoteDialogOpen(true)}
-            onCreateInvoice={() => setInvoiceMethodOpen(true)}
           />
         </CollapsibleSection>
       )}
