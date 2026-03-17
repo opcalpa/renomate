@@ -20,7 +20,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle, FileUp, ChevronRight, ChevronDown, ShoppingCart, Package, Wrench, Link2, GripVertical, MoreVertical, Paperclip } from "lucide-react";
+import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle, FileUp, ChevronRight, ChevronDown, ShoppingCart, Package, Wrench, Link2, GripVertical, MoreVertical, Paperclip, Hammer, Handshake } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1406,9 +1406,18 @@ export function PlanningTaskList({
                         {show.room && <TableCell className="hidden sm:table-cell py-2.5" />}
                         {show.costType && (
                           <TableCell className="hidden sm:table-cell py-2.5">
-                            <Badge variant="outline" className="text-xs font-normal">
-                              {mat.kind === "subcontractor" ? t("planningTasks.typeSubcontractor") : t("planningTasks.typeMaterial")}
-                            </Badge>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  {mat.kind === "subcontractor"
+                                    ? <Handshake className="h-3.5 w-3.5 text-muted-foreground" />
+                                    : <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" />}
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-xs">{mat.kind === "subcontractor" ? t("planningTasks.typeSubcontractor") : t("planningTasks.typeMaterial")}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </TableCell>
                         )}
                         {show.material && (
@@ -1735,16 +1744,26 @@ export function PlanningTaskList({
                       {show.costType && (
                         <TableCell className="hidden sm:table-cell py-2.5">
                           {(hasOwnLabor || hasSubcontractor) ? (
-                            <div className="flex flex-wrap gap-1">
+                            <div className="flex flex-wrap gap-1.5">
                               {hasOwnLabor && (
-                                <Badge variant="outline" className="text-xs font-normal">
-                                  {t("taskCost.ownLabor", "Own labor")}
-                                </Badge>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Hammer className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </TooltipTrigger>
+                                    <TooltipContent><p className="text-xs">{t("taskCost.ownLabor", "Own labor")}</p></TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               )}
                               {hasSubcontractor && (
-                                <Badge variant="outline" className="text-xs font-normal">
-                                  {t("taskCost.subcontractor", "Subcontractor")}
-                                </Badge>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Handshake className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </TooltipTrigger>
+                                    <TooltipContent><p className="text-xs">{t("taskCost.subcontractor", "Subcontractor")}</p></TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               )}
                             </div>
                           ) : (
@@ -2067,9 +2086,18 @@ export function PlanningTaskList({
                           {show.room && <TableCell className="hidden sm:table-cell py-2" />}
                           {show.costType && (
                             <TableCell className="hidden sm:table-cell py-2">
-                              <Badge variant="outline" className="text-xs font-normal">
-                                {mat.kind === "subcontractor" ? t("planningTasks.typeSubcontractor") : t("planningTasks.typeMaterial")}
-                              </Badge>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    {mat.kind === "subcontractor"
+                                      ? <Handshake className="h-3.5 w-3.5 text-muted-foreground" />
+                                      : <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" />}
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="text-xs">{mat.kind === "subcontractor" ? t("planningTasks.typeSubcontractor") : t("planningTasks.typeMaterial")}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             </TableCell>
                           )}
                           {show.material && (
