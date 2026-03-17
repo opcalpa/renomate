@@ -409,13 +409,14 @@ export default function CreateQuote() {
       if (materialIds.length > 0) {
         const { data: materials } = await supabase
           .from("materials")
-          .select("id, name, quantity, unit, price_per_unit, price_total, room_id, rooms(name)")
+          .select("id, name, quantity, unit, price_per_unit, price_total, room_id, description, rooms(name)")
           .in("id", materialIds)
           .order("created_at");
 
         if (materials && materials.length > 0) {
           for (const material of materials) {
             const roomName = (material.rooms as { name: string } | null)?.name || null;
+            const isSubcontractor = material.description === "__subcontractor__";
             materialItems.push({
               id: crypto.randomUUID(),
               description: material.name,
@@ -425,7 +426,7 @@ export default function CreateQuote() {
               isRotEligible: false,
               roomId: material.room_id || undefined,
               roomName,
-              source: "material",
+              source: isSubcontractor ? "subcontractor" : "material",
             });
           }
         }

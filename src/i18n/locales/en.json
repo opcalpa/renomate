@@ -3108,6 +3108,7 @@
     "whatToInclude": "What to include",
     "tasksAsLabor": "Tasks as labor ({{count}})",
     "materialsAsMaterials": "Materials ({{count}})",
+    "subcontractorsSection": "Subcontractors ({{count}})",
     "presentation": "Presentation",
     "groupedByType": "Grouped by type (labor first, then materials)",
     "mixedList": "Mixed list (in order added)",

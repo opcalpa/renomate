@@ -3105,6 +3105,7 @@
     "whatToInclude": "Vad ska inkluderas",
     "tasksAsLabor": "Arbeten som arbete ({{count}})",
     "materialsAsMaterials": "Material ({{count}})",
+    "subcontractorsSection": "Underentreprenörer ({{count}})",
     "presentation": "Presentation",
     "groupedByType": "Grupperat efter typ (arbete först, sedan material)",
     "mixedList": "Blandad lista (i ordning tillagda)",

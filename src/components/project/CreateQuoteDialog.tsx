@@ -19,7 +19,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { FileText, Hammer, Package, Loader2, ChevronDown, ChevronRight } from "lucide-react";
+import { FileText, Hammer, Package, Handshake, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -41,11 +41,13 @@ interface MaterialItem {
   name: string;
   room_id: string | null;
   roomName: string | null;
+  kind: "material" | "subcontractor";
 }
 
 interface ProjectData {
   tasks: TaskItem[];
   materials: MaterialItem[];
+  subcontractors: MaterialItem[];
   loading: boolean;
 }
 
@@ -60,16 +62,19 @@ export function CreateQuoteDialog({
   const [data, setData] = useState<ProjectData>({
     tasks: [],
     materials: [],
+    subcontractors: [],
     loading: true,
   });
 
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<Set<string>>(new Set());
+  const [selectedSubcontractorIds, setSelectedSubcontractorIds] = useState<Set<string>>(new Set());
   const [groupByType, setGroupByType] = useState<"mixed" | "grouped" | "byRoom">("grouped");
   const [pricingFormat, setPricingFormat] = useState<"fixed" | "detailed">("detailed");
   const [applyRot, setApplyRot] = useState(true);
   const [tasksOpen, setTasksOpen] = useState(false);
   const [materialsOpen, setMaterialsOpen] = useState(false);
+  const [subcontractorsOpen, setSubcontractorsOpen] = useState(false);
 
   // Fetch tasks and materials when dialog opens
   useEffect(() => {
@@ -86,7 +91,7 @@ export function CreateQuoteDialog({
           .order("created_at"),
         supabase
           .from("materials")
-          .select("id, name, room_id, rooms(name)")
+          .select("id, name, room_id, description, rooms(name)")
           .eq("project_id", projectId)
           .order("created_at"),
       ]);
@@ -98,18 +103,23 @@ export function CreateQuoteDialog({
         roomName: (t.rooms as { name: string } | null)?.name || null,
       }));
 
-      const materials: MaterialItem[] = (materialsRes.data || []).map((m) => ({
+      const allMaterials: MaterialItem[] = (materialsRes.data || []).map((m) => ({
         id: m.id,
         name: m.name,
         room_id: m.room_id,
         roomName: (m.rooms as { name: string } | null)?.name || null,
+        kind: m.description === "__subcontractor__" ? "subcontractor" as const : "material" as const,
       }));
 
-      setData({ tasks, materials, loading: false });
+      const materials = allMaterials.filter((m) => m.kind === "material");
+      const subcontractors = allMaterials.filter((m) => m.kind === "subcontractor");
+
+      setData({ tasks, materials, subcontractors, loading: false });
 
       // Select all by default
       setSelectedTaskIds(new Set(tasks.map((t) => t.id)));
       setSelectedMaterialIds(new Set(materials.map((m) => m.id)));
+      setSelectedSubcontractorIds(new Set(subcontractors.map((s) => s.id)));
     };
 
     fetchData();
@@ -120,6 +130,7 @@ export function CreateQuoteDialog({
     if (!open) {
       setTasksOpen(false);
       setMaterialsOpen(false);
+      setSubcontractorsOpen(false);
     }
   }, [open]);
 
@@ -152,6 +163,17 @@ export function CreateQuoteDialog({
   const selectAllMaterials = () => setSelectedMaterialIds(new Set(data.materials.map((m) => m.id)));
   const deselectAllMaterials = () => setSelectedMaterialIds(new Set());
 
+  const toggleSubcontractor = (id: string) => {
+    setSelectedSubcontractorIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const selectAllSubcontractors = () => setSelectedSubcontractorIds(new Set(data.subcontractors.map((s) => s.id)));
+  const deselectAllSubcontractors = () => setSelectedSubcontractorIds(new Set());
+
   const handleCreate = () => {
     const params = new URLSearchParams({
       projectId,
@@ -165,8 +187,9 @@ export function CreateQuoteDialog({
     if (selectedTaskIds.size > 0) {
       params.set("taskIds", Array.from(selectedTaskIds).join(","));
     }
-    if (selectedMaterialIds.size > 0) {
-      params.set("materialIds", Array.from(selectedMaterialIds).join(","));
+    const allMaterialIds = [...selectedMaterialIds, ...selectedSubcontractorIds];
+    if (allMaterialIds.length > 0) {
+      params.set("materialIds", allMaterialIds.join(","));
     }
 
     navigate(`/quotes/new?${params.toString()}`);
@@ -178,8 +201,8 @@ export function CreateQuoteDialog({
     onOpenChange(false);
   };
 
-  const hasData = data.tasks.length > 0 || data.materials.length > 0;
-  const willImportAnything = selectedTaskIds.size > 0 || selectedMaterialIds.size > 0;
+  const hasData = data.tasks.length > 0 || data.materials.length > 0 || data.subcontractors.length > 0;
+  const willImportAnything = selectedTaskIds.size > 0 || selectedMaterialIds.size > 0 || selectedSubcontractorIds.size > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -198,7 +221,7 @@ export function CreateQuoteDialog({
             ) : hasData ? (
               t("quotes.projectContains", {
                 tasks: data.tasks.length,
-                materials: data.materials.length,
+                materials: data.materials.length + data.subcontractors.length,
               })
             ) : (
               t("quotes.projectEmpty")
@@ -356,6 +379,82 @@ export function CreateQuoteDialog({
                             {material.roomName && (
                               <span className="text-muted-foreground ml-1">
                                 ({material.roomName})
+                              </span>
+                            )}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {/* Subcontractors section */}
+              {data.subcontractors.length > 0 && (
+                <Collapsible open={subcontractorsOpen} onOpenChange={setSubcontractorsOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-between px-3 py-2 h-auto font-normal hover:bg-muted/50"
+                    >
+                      <span className="flex items-center gap-2">
+                        {subcontractorsOpen ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                        <Handshake className="h-4 w-4 text-muted-foreground" />
+                        <span>
+                          {t("quotes.subcontractorsSection", { count: data.subcontractors.length })}
+                        </span>
+                      </span>
+                      <span className={cn(
+                        "text-xs px-2 py-0.5 rounded-full",
+                        selectedSubcontractorIds.size === data.subcontractors.length
+                          ? "bg-primary/10 text-primary"
+                          : selectedSubcontractorIds.size === 0
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                      )}>
+                        {selectedSubcontractorIds.size}/{data.subcontractors.length}
+                      </span>
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="ml-6 mt-2 space-y-2 border-l-2 border-muted pl-4">
+                      <div className="flex gap-2 mb-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={selectAllSubcontractors}
+                        >
+                          {t("quotes.selectAll")}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={deselectAllSubcontractors}
+                        >
+                          {t("quotes.deselectAll")}
+                        </Button>
+                      </div>
+                      {data.subcontractors.map((sub) => (
+                        <div key={sub.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`sub-${sub.id}`}
+                            checked={selectedSubcontractorIds.has(sub.id)}
+                            onCheckedChange={() => toggleSubcontractor(sub.id)}
+                          />
+                          <Label
+                            htmlFor={`sub-${sub.id}`}
+                            className="text-sm font-normal cursor-pointer flex-1"
+                          >
+                            {sub.name}
+                            {sub.roomName && (
+                              <span className="text-muted-foreground ml-1">
+                                ({sub.roomName})
                               </span>
                             )}
                           </Label>
