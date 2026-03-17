@@ -19,7 +19,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle, FileUp, ChevronRight, ChevronDown, ShoppingCart, Package, Wrench, Link2, GripVertical } from "lucide-react";
+import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle, FileUp, ChevronRight, ChevronDown, ShoppingCart, Package, Wrench, Link2, GripVertical, MoreVertical, Paperclip } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AddMaterialDialog } from "./AddMaterialDialog";
 import { MaterialFileAttachment } from "./MaterialFileAttachment";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -1226,7 +1233,7 @@ export function PlanningTaskList({
                         </span>
                       </TableHead>
                     )}
-                    {!effectiveLock && <TableHead className="w-[80px]" />}
+                    {!effectiveLock && <TableHead className="w-[40px]" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1401,14 +1408,22 @@ export function PlanningTaskList({
                         })()}
                         {!effectiveLock && (
                           <TableCell className="py-2.5">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={(e) => { e.stopPropagation(); handleDeleteMaterial(mat.id); }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => e.stopPropagation()}>
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44">
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => handleDeleteMaterial(mat.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                  {t("common.delete", "Delete")}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         )}
                       </TableRow>
@@ -1745,80 +1760,36 @@ export function PlanningTaskList({
                       })()}
                       {!effectiveLock && (
                         <TableCell className="py-2.5">
-                          <div className="flex items-center gap-0.5">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditTaskId(task.id);
-                              }}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Popover
-                              open={workTypePickerTaskId === task.id}
-                              onOpenChange={(open) => {
-                                if (!open) setWorkTypePickerTaskId(null);
-                              }}
-                            >
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <PopoverTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                                      disabled={estimatingTaskId === task.id}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleAutoEstimate(task);
-                                      }}
-                                    >
-                                      {estimatingTaskId === task.id ? (
-                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                      ) : (
-                                        <Sparkles className="h-3.5 w-3.5" />
-                                      )}
-                                    </Button>
-                                  </PopoverTrigger>
-                                </TooltipTrigger>
-                                <TooltipContent>{t("planningTasks.autoEstimate", "Auto-estimate")}</TooltipContent>
-                              </Tooltip>
-                              <PopoverContent
-                                className="w-48 p-2"
-                                align="end"
-                                onClick={(e) => e.stopPropagation()}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => e.stopPropagation()}>
+                                <MoreVertical className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuItem onClick={() => setEditTaskId(task.id)}>
+                                <Pencil className="h-3.5 w-3.5 mr-2" />
+                                {t("common.edit", "Edit")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleAutoEstimate(task)}
+                                disabled={estimatingTaskId === task.id}
                               >
-                                <p className="text-xs font-medium text-muted-foreground mb-2 px-1">
-                                  {t("planningTasks.pickWorkType", "What type of work?")}
-                                </p>
-                                <div className="flex flex-col">
-                                  {ALL_WORK_TYPES.map((wt) => (
-                                    <button
-                                      key={wt}
-                                      className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted text-left"
-                                      onClick={() => handleWorkTypePicked(task.id, wt)}
-                                    >
-                                      {t(WORK_TYPE_LABEL_KEYS[wt], wt)}
-                                    </button>
-                                  ))}
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteTask(task.id);
-                              }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
+                                {estimatingTaskId === task.id
+                                  ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                                  : <Sparkles className="h-3.5 w-3.5 mr-2 text-amber-500" />}
+                                {t("planningTasks.autoEstimate", "Auto-estimate")}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => handleDeleteTask(task.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                {t("common.delete", "Delete")}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       )}
                     </TableRow>
@@ -1992,14 +1963,22 @@ export function PlanningTaskList({
                           })()}
                           {!effectiveLock && (
                             <TableCell className="py-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                onClick={(e) => { e.stopPropagation(); handleDeleteMaterial(mat.id); }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => e.stopPropagation()}>
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44">
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => handleDeleteMaterial(mat.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                    {t("common.delete", "Delete")}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </TableCell>
                           )}
                         </TableRow>
