@@ -1373,8 +1373,32 @@ export function PlanningTaskList({
                             {renderStandaloneInline2("mat_markup_percent", "markup_percent", mat.markup_percent, "%")}
                           </TableCell>
                         )}
-                        <TableCell className="py-2.5" />
-                        {show.profit && <TableCell className="hidden sm:table-cell py-2.5" />}
+                        {(() => {
+                          const base = matTotal || 0;
+                          const markup = mat.markup_percent || 0;
+                          const customerPrice = markup > 0 ? Math.round(base * (1 + markup / 100)) : base;
+                          const profit = markup > 0 ? Math.round(base * markup / 100) : 0;
+                          return (
+                            <>
+                              <TableCell className="text-right py-2.5">
+                                {customerPrice > 0 ? (
+                                  <span className="text-sm font-medium">{formatCurrency(customerPrice, currency)}</span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">–</span>
+                                )}
+                              </TableCell>
+                              {show.profit && (
+                                <TableCell className="text-right hidden sm:table-cell py-2.5">
+                                  {profit > 0 ? (
+                                    <span className="text-sm text-green-600">{formatCurrency(profit, currency)}</span>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">–</span>
+                                  )}
+                                </TableCell>
+                              )}
+                            </>
+                          );
+                        })()}
                         {!effectiveLock && (
                           <TableCell className="py-2.5">
                             <Button
@@ -1944,8 +1968,28 @@ export function PlanningTaskList({
                               {renderMatInline("mat_markup_percent", "markup_percent", mat.markup_percent, "%")}
                             </TableCell>
                           )}
-                          <TableCell className="py-2" />
-                          {show.profit && <TableCell className="hidden sm:table-cell py-2" />}
+                          {(() => {
+                            const base = matTotal || 0;
+                            const mkp = mat.markup_percent || 0;
+                            const cp = mkp > 0 ? Math.round(base * (1 + mkp / 100)) : base;
+                            const pr = mkp > 0 ? Math.round(base * mkp / 100) : 0;
+                            return (
+                              <>
+                                <TableCell className="text-right py-2">
+                                  {cp > 0 ? (
+                                    <span className="text-sm text-muted-foreground">{formatCurrency(cp, currency)}</span>
+                                  ) : null}
+                                </TableCell>
+                                {show.profit && (
+                                  <TableCell className="text-right hidden sm:table-cell py-2">
+                                    {pr > 0 ? (
+                                      <span className="text-sm text-green-600">{formatCurrency(pr, currency)}</span>
+                                    ) : null}
+                                  </TableCell>
+                                )}
+                              </>
+                            );
+                          })()}
                           {!effectiveLock && (
                             <TableCell className="py-2">
                               <Button
