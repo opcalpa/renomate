@@ -120,6 +120,7 @@ export function MaterialFileAttachment({
       <>
         <input
           ref={fileRef}
+          id={`file-${materialId}`}
           type="file"
           className="hidden"
           accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx,.xls,.xlsx"

@@ -1414,7 +1414,15 @@ export function PlanningTaskList({
                                   <MoreVertical className="h-3.5 w-3.5" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem onClick={() => {
+                                  const input = document.getElementById(`file-${mat.id}`) as HTMLInputElement;
+                                  input?.click();
+                                }}>
+                                  <Paperclip className="h-3.5 w-3.5 mr-2" />
+                                  {t("planningTasks.attachFile", "Attach file")}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   className="text-destructive focus:text-destructive"
                                   onClick={() => handleDeleteMaterial(mat.id)}
@@ -1969,7 +1977,15 @@ export function PlanningTaskList({
                                     <MoreVertical className="h-3.5 w-3.5" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-44">
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem onClick={() => {
+                                    const input = document.getElementById(`file-${mat.id}`) as HTMLInputElement;
+                                    input?.click();
+                                  }}>
+                                    <Paperclip className="h-3.5 w-3.5 mr-2" />
+                                    {t("planningTasks.attachFile", "Attach file")}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
                                   <DropdownMenuItem
                                     className="text-destructive focus:text-destructive"
                                     onClick={() => handleDeleteMaterial(mat.id)}
