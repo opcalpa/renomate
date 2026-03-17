@@ -630,6 +630,7 @@ export function PlanningTaskList({
       existingTaskId?: string;
       newTaskTitle?: string;
       markupPercent?: number;
+      file?: File;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -666,7 +667,7 @@ export function PlanningTaskList({
         taskId = newTask.id;
       }
 
-      const { error } = await supabase.from("materials").insert({
+      const { data: newMat, error } = await supabase.from("materials").insert({
         project_id: projectId,
         task_id: taskId,
         name: data.name,
@@ -674,11 +675,30 @@ export function PlanningTaskList({
         created_by_user_id: profile.id,
         description: data.kind === "subcontractor" ? "__subcontractor__" : null,
         markup_percent: data.markupPercent ?? null,
-      });
+      }).select("id").single();
 
-      if (error) {
-        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      if (error || !newMat) {
+        toast({ title: t("common.error"), description: error?.message || "Failed", variant: "destructive" });
         return;
+      }
+
+      // Upload attached file if provided
+      if (data.file && newMat.id) {
+        const ext = data.file.name.split(".").pop() || "pdf";
+        const safeName = data.file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const storagePath = `projects/${projectId}/underlag/${newMat.id}_${Date.now()}_${safeName}`;
+
+        await supabase.storage.from("project-files").upload(storagePath, data.file, { upsert: true });
+        await supabase.from("task_file_links").insert({
+          project_id: projectId,
+          material_id: newMat.id,
+          file_path: storagePath,
+          file_name: data.file.name,
+          file_type: ext === "pdf" ? "contract" : "other",
+          file_size: data.file.size,
+          mime_type: data.file.type,
+          linked_by_user_id: profile.id,
+        });
       }
 
       // Auto-expand the parent task if linked

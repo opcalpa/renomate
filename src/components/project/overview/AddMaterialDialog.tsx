@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Dialog,
@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Package, Wrench, Info } from "lucide-react";
+import { Package, Wrench, Info, Paperclip, FileText, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type RowKind = "material" | "subcontractor";
@@ -43,6 +43,7 @@ interface AddMaterialDialogProps {
     existingTaskId?: string;
     newTaskTitle?: string;
     markupPercent?: number;
+    file?: File;
   }) => Promise<void>;
 }
 
@@ -59,6 +60,8 @@ export function AddMaterialDialog({
   const [selectedLink, setSelectedLink] = useState<string>("__none__");
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [markupPercent, setMarkupPercent] = useState("");
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const attachRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -71,6 +74,7 @@ export function AddMaterialDialog({
     setSelectedLink(tasks.length > 0 ? tasks[0].id : "__none__");
     setNewTaskTitle("");
     setMarkupPercent("");
+    setAttachedFile(null);
   };
 
   const linkMode: LinkMode =
@@ -95,6 +99,7 @@ export function AddMaterialDialog({
         existingTaskId: linkMode === "existing" ? selectedLink : undefined,
         newTaskTitle: linkMode === "create" ? newTaskTitle.trim() : undefined,
         markupPercent: markup && !isNaN(markup) ? markup : undefined,
+        file: attachedFile || undefined,
       });
       reset();
       onOpenChange(false);
@@ -220,6 +225,46 @@ export function AddMaterialDialog({
               value={markupPercent}
               onChange={(e) => setMarkupPercent(e.target.value)}
             />
+          </div>
+
+          {/* Attach file */}
+          <div className="space-y-1.5">
+            <Label>{t("planningTasks.attachFile", "Attach file")}</Label>
+            <input
+              ref={attachRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx,.xls,.xlsx"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) setAttachedFile(f);
+                if (attachRef.current) attachRef.current.value = "";
+              }}
+            />
+            {attachedFile ? (
+              <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md text-sm">
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="truncate flex-1">{attachedFile.name}</span>
+                <button
+                  type="button"
+                  className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
+                  onClick={() => setAttachedFile(null)}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => attachRef.current?.click()}
+              >
+                <Paperclip className="h-3.5 w-3.5" />
+                {t("planningTasks.attachFile", "Attach file")}
+              </Button>
+            )}
           </div>
         </div>
 
