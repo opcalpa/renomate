@@ -3818,7 +3818,8 @@
     "smartImport": "Smart import",
     "linkFileTo": "Koppla fil till",
     "linkedToMultiple": "Filen kopplas till {{count}} poster",
-    "profitFormula": "Vinst från arbete (timmar × timpris × marginal) + påslag på material och underentreprenörer"
+    "profitFormula": "Vinst från arbete (timmar × timpris × marginal) + påslag på material och underentreprenörer",
+    "laborMargin": "Arbetsmarginal"
   },
   "planningSmartImport": {
     "title": "Smart import",

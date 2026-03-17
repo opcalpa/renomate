@@ -234,6 +234,21 @@ export function PlanningTaskList({
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
   const [addMaterialKind, setAddMaterialKind] = useState<"material" | "subcontractor">("material");
 
+  const handleSaveMargin = useCallback(
+    async (taskId: string, newCostPct: number) => {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ labor_cost_percent: newCostPct })
+        .eq("id", taskId);
+      if (error) {
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      } else {
+        fetchData();
+      }
+    },
+    [fetchData, t, toast]
+  );
+
   // Auto-show markup column when material/UE rows exist
   useEffect(() => {
     if (materials.length > 0 && !isHomeowner) {
@@ -1422,16 +1437,25 @@ export function PlanningTaskList({
                               {show.profit && (
                                 <TableCell className="text-right hidden sm:table-cell py-2.5">
                                   {profit > 0 ? (
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <span className="text-sm text-green-600 cursor-help">{formatCurrency(profit, currency)}</span>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="top" className="text-xs">
-                                          {formatCurrency(base, currency)} × {markup}% = {formatCurrency(profit, currency)}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <button className="text-sm text-green-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                                          {formatCurrency(profit, currency)}
+                                        </button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-56 p-3" align="end" onClick={(e) => e.stopPropagation()}>
+                                        <div className="space-y-2 text-xs">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">{t("planningTasks.markup")}:</span>
+                                            <span>{formatCurrency(base, currency)} × <span className="text-green-600 font-medium">{markup}%</span></span>
+                                          </div>
+                                          <div className="border-t pt-1.5 flex items-center justify-between font-medium">
+                                            <span>{t("taskCost.result")}:</span>
+                                            <span className="text-green-600">{formatCurrency(profit, currency)}</span>
+                                          </div>
+                                        </div>
+                                      </PopoverContent>
+                                    </Popover>
                                   ) : (
                                     <span className="text-xs text-muted-foreground">–</span>
                                   )}
@@ -1791,32 +1815,78 @@ export function PlanningTaskList({
                         const rowProfit = calcTaskProfit(task);
                         const laborTotal = (task.estimated_hours || 0) * (task.hourly_rate || 0);
                         const costPct = task.labor_cost_percent ?? profileLaborCostPercent ?? 50;
-                        const laborProfit = laborTotal * (1 - costPct / 100);
+                        const marginPct = 100 - costPct;
+                        const laborProfit = laborTotal * marginPct / 100;
                         const ueProfit = (task.subcontractor_cost || 0) * (task.markup_percent || 0) / 100;
                         const matProfit = rowProfit - laborProfit - ueProfit;
-
-                        const formulaParts: string[] = [];
-                        if (laborProfit > 0) formulaParts.push(`${t("planningTasks.estLabor")}: ${formatCurrency(laborTotal, currency)} × ${100 - costPct}% = ${formatCurrency(Math.round(laborProfit), currency)}`);
-                        if (ueProfit > 0) formulaParts.push(`UE: ${formatCurrency(task.subcontractor_cost || 0, currency)} × ${task.markup_percent}% = ${formatCurrency(Math.round(ueProfit), currency)}`);
-                        if (matProfit > 0) formulaParts.push(`${t("planningTasks.estMaterial")}: ${formatCurrency(Math.round(matProfit), currency)}`);
 
                         return (
                           <TableCell className="text-right hidden sm:table-cell py-2.5">
                             {rowProfit > 0 ? (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className={`text-sm cursor-help ${rowProfit >= 0 ? "text-green-600" : "text-destructive"}`}>
-                                      {formatCurrency(rowProfit, currency)}
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top" className="max-w-[280px]">
-                                    <div className="text-xs space-y-0.5">
-                                      {formulaParts.map((p, i) => <p key={i}>{p}</p>)}
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button className={`text-sm ${rowProfit >= 0 ? "text-green-600" : "text-destructive"} hover:underline`} onClick={(e) => e.stopPropagation()}>
+                                    {formatCurrency(rowProfit, currency)}
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-72 p-3" align="end" onClick={(e) => e.stopPropagation()}>
+                                  <div className="space-y-2 text-xs">
+                                    {laborProfit > 0 && (
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="text-muted-foreground">{t("planningTasks.estLabor")}:</span>
+                                        <span>
+                                          {formatCurrency(laborTotal, currency)} ×{" "}
+                                          <Popover>
+                                            <PopoverTrigger asChild>
+                                              <button className="text-green-600 font-medium hover:underline">{marginPct}%</button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-48 p-3" align="end" onClick={(e) => e.stopPropagation()}>
+                                              <div className="space-y-2">
+                                                <Label className="text-xs">{t("planningTasks.laborMargin", "Labor margin")} (%)</Label>
+                                                <div className="flex gap-2">
+                                                  <Input
+                                                    type="number"
+                                                    className="h-7 text-sm w-20"
+                                                    defaultValue={marginPct}
+                                                    onKeyDown={(e) => {
+                                                      if (e.key === "Enter") {
+                                                        const val = parseFloat((e.target as HTMLInputElement).value);
+                                                        if (!isNaN(val)) handleSaveMargin(task.id, 100 - val);
+                                                      }
+                                                    }}
+                                                    onBlur={(e) => {
+                                                      const val = parseFloat(e.target.value);
+                                                      if (!isNaN(val) && val !== marginPct) handleSaveMargin(task.id, 100 - val);
+                                                    }}
+                                                  />
+                                                  <span className="text-xs text-muted-foreground self-center">%</span>
+                                                </div>
+                                              </div>
+                                            </PopoverContent>
+                                          </Popover>
+                                          {" "}= {formatCurrency(Math.round(laborProfit), currency)}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {ueProfit > 0 && (
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="text-muted-foreground">UE:</span>
+                                        <span>{formatCurrency(task.subcontractor_cost || 0, currency)} × {task.markup_percent}% = {formatCurrency(Math.round(ueProfit), currency)}</span>
+                                      </div>
+                                    )}
+                                    {matProfit > 0 && (
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="text-muted-foreground">{t("planningTasks.estMaterial")}:</span>
+                                        <span>{formatCurrency(Math.round(matProfit), currency)}</span>
+                                      </div>
+                                    )}
+                                    <div className="border-t pt-1.5 flex items-center justify-between font-medium">
+                                      <span>{t("taskCost.result")}:</span>
+                                      <span className="text-green-600">{formatCurrency(rowProfit, currency)}</span>
                                     </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                             ) : (
                               <span className="text-xs text-muted-foreground">–</span>
                             )}
@@ -2026,16 +2096,25 @@ export function PlanningTaskList({
                                 {show.profit && (
                                   <TableCell className="text-right hidden sm:table-cell py-2">
                                     {pr > 0 ? (
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <span className="text-sm text-green-600 cursor-help">{formatCurrency(pr, currency)}</span>
-                                          </TooltipTrigger>
-                                          <TooltipContent side="top" className="text-xs">
-                                            {formatCurrency(base, currency)} × {mkp}% = {formatCurrency(pr, currency)}
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <button className="text-sm text-green-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                                            {formatCurrency(pr, currency)}
+                                          </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-56 p-3" align="end" onClick={(e) => e.stopPropagation()}>
+                                          <div className="space-y-2 text-xs">
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-muted-foreground">{t("planningTasks.markup")}:</span>
+                                              <span>{formatCurrency(base, currency)} × <span className="text-green-600 font-medium">{mkp}%</span></span>
+                                            </div>
+                                            <div className="border-t pt-1.5 flex items-center justify-between font-medium">
+                                              <span>{t("taskCost.result")}:</span>
+                                              <span className="text-green-600">{formatCurrency(pr, currency)}</span>
+                                            </div>
+                                          </div>
+                                        </PopoverContent>
+                                      </Popover>
                                     ) : null}
                                   </TableCell>
                                 )}
