@@ -2087,23 +2087,41 @@ export function PlanningTaskList({
               <div className="flex items-center gap-2">
                 {!effectiveLock && (
                   <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsAdding(true)}
-                      disabled={isAdding}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      {t("planningTasks.addTask", "Add task")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { setAddMaterialKind("material"); setAddMaterialOpen(true); }}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      {t("planningTasks.addCost", "Add cost")}
-                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsAdding(true)}
+                            disabled={isAdding}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            {t("planningTasks.addTask", "Add task")}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs max-w-[200px]">{t("planningTasks.addTaskHint", "Add a work item such as painting, demolition, or tiling")}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => { setAddMaterialKind("material"); setAddMaterialOpen(true); }}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            {t("planningTasks.addCost", "Add cost")}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs max-w-[220px]">{t("planningTasks.addCostHint")}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>

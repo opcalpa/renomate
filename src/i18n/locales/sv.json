@@ -3810,7 +3810,8 @@
     "hoursQty": "Timmar / Antal",
     "rateUnitPrice": "Timpris / Á-pris",
     "addCost": "Lägg till kostnad",
-    "addCostHint": "Lägg till material (kakel, färg, armaturer) eller underentreprenörskostnader (elektriker, rörmokare) i din kalkyl."
+    "addCostHint": "Lägg till material (kakel, färg, armaturer) eller underentreprenörskostnader (elektriker, rörmokare) i din kalkyl.",
+    "addTaskHint": "Lägg till ett arbetsmoment, t.ex. målning, rivning eller plattsättning"
   },
   "planningSmartImport": {
     "title": "Smart import",

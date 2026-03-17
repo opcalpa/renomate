@@ -3813,7 +3813,8 @@
     "hoursQty": "Hours / Qty",
     "rateUnitPrice": "Rate / Unit price",
     "addCost": "Add cost",
-    "addCostHint": "Add materials (tiles, paint, fixtures) or subcontractor costs (electrician, plumber) to your scope."
+    "addCostHint": "Add materials (tiles, paint, fixtures) or subcontractor costs (electrician, plumber) to your scope.",
+    "addTaskHint": "Add a work item such as painting, demolition, or tiling"
   },
   "planningSmartImport": {
     "title": "Smart Import",
