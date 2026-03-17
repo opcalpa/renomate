@@ -458,7 +458,14 @@ export function PlanningTaskList({
         // Determine effective values after this edit
         const hours = field === "estimated_hours" ? (numValue || 0) : (task.estimated_hours || 0);
         const rate = field === "hourly_rate" ? (numValue || 0) : (task.hourly_rate || 0);
-        const material = field === "material_estimate" ? (numValue || 0) : (task.material_estimate || 0);
+        // Use linked materials sum if available, otherwise fall back to manual estimate
+        const linkedMats = materialsByTask.byTask.get(taskId) || [];
+        const linkedMatSum = linkedMats.length > 0
+          ? linkedMats.reduce((sum, m) => sum + (m.price_total ?? Math.round((m.quantity || 0) * (m.price_per_unit || 0))), 0)
+          : 0;
+        const material = linkedMats.length > 0
+          ? linkedMatSum
+          : (field === "material_estimate" ? (numValue || 0) : (task.material_estimate || 0));
         const hasDetailCalc = hours > 0 && rate > 0;
 
         if (field !== "budget" && hasDetailCalc) {
@@ -714,11 +721,27 @@ export function PlanningTaskList({
       if (error) {
         toast({ title: t("common.error"), description: error.message, variant: "destructive" });
       } else {
+        // Recalculate parent task budget if material is linked and task has detail-calc
+        if (mat?.task_id) {
+          const parentTask = tasks.find((t) => t.id === mat.task_id);
+          if (parentTask?.estimated_hours && parentTask?.hourly_rate) {
+            const laborTotal = parentTask.estimated_hours * parentTask.hourly_rate;
+            // Re-fetch linked materials to get updated sum
+            const { data: siblingMats } = await supabase
+              .from("materials")
+              .select("price_total, quantity, price_per_unit")
+              .eq("task_id", mat.task_id);
+            const matSum = (siblingMats || []).reduce((sum, m) => {
+              return sum + (m.price_total ?? Math.round((m.quantity || 0) * (m.price_per_unit || 0)));
+            }, 0);
+            await supabase.from("tasks").update({ budget: laborTotal + matSum }).eq("id", mat.task_id);
+          }
+        }
         fetchData();
       }
       setEditingCell(null);
     },
-    [materials, fetchData, t, toast]
+    [materials, tasks, fetchData, t, toast]
   );
 
   const handleLinkMaterialToTask = useCallback(
@@ -1611,44 +1634,62 @@ export function PlanningTaskList({
                           )}
                         </TableCell>
                       )}
-                      {show.material && (
-                        <TableCell className="text-right hidden sm:table-cell py-2.5">
-                          {task.material_estimate ? (
-                            renderInlineCell("material_estimate", task.material_estimate, "currency")
-                          ) : (() => {
-                            const linkedRooms = (task.room_ids || [])
-                              .map((id) => roomMap.get(id))
-                              .filter((r): r is Room => !!r);
-                            const suggestions = linkedRooms.length > 0
-                              ? suggestMaterialsMultiRoom(task, linkedRooms, estimationSettings ?? undefined)
-                              : [];
-                            if (suggestions.length > 0) {
-                              const summary = formatSuggestionSummary(suggestions);
-                              return (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <button
-                                        className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setEditTaskId(task.id);
-                                        }}
-                                      >
-                                        {summary}
-                                      </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="text-xs">
-                                      {t("materialRecipes.clickToSuggest")}
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              );
-                            }
-                            return renderInlineCell("material_estimate", null, "currency");
-                          })()}
-                        </TableCell>
-                      )}
+                      {show.material && (() => {
+                        // If task has linked material rows, show computed sum (read-only)
+                        const linkedMatSum = matCount > 0
+                          ? taskMaterials.reduce((sum, m) => sum + (m.price_total ?? Math.round((m.quantity || 0) * (m.price_per_unit || 0))), 0)
+                          : 0;
+
+                        if (matCount > 0 && linkedMatSum > 0) {
+                          return (
+                            <TableCell className="text-right hidden sm:table-cell py-2.5">
+                              <span className="text-sm text-muted-foreground">
+                                {formatCurrency(linkedMatSum, currency)}
+                              </span>
+                            </TableCell>
+                          );
+                        }
+
+                        // No linked materials — editable or show suggestion
+                        return (
+                          <TableCell className="text-right hidden sm:table-cell py-2.5">
+                            {task.material_estimate ? (
+                              renderInlineCell("material_estimate", task.material_estimate, "currency")
+                            ) : (() => {
+                              const linkedRooms = (task.room_ids || [])
+                                .map((id) => roomMap.get(id))
+                                .filter((r): r is Room => !!r);
+                              const suggestions = linkedRooms.length > 0
+                                ? suggestMaterialsMultiRoom(task, linkedRooms, estimationSettings ?? undefined)
+                                : [];
+                              if (suggestions.length > 0) {
+                                const summary = formatSuggestionSummary(suggestions);
+                                return (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditTaskId(task.id);
+                                          }}
+                                        >
+                                          {summary}
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="text-xs">
+                                        {t("materialRecipes.clickToSuggest")}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                );
+                              }
+                              return renderInlineCell("material_estimate", null, "currency");
+                            })()}
+                          </TableCell>
+                        );
+                      })()}
                       {show.markup && <TableCell className="hidden sm:table-cell py-2.5" />}
                       <TableCell className="text-right py-2.5">
                         {renderInlineCell("budget", task.budget, "currency")}
