@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Dialog,
@@ -32,6 +32,7 @@ interface AddMaterialDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tasks: TaskOption[];
+  initialKind?: RowKind;
   onAdd: (data: {
     name: string;
     kind: RowKind;
@@ -45,11 +46,12 @@ export function AddMaterialDialog({
   open,
   onOpenChange,
   tasks,
+  initialKind = "material",
   onAdd,
 }: AddMaterialDialogProps) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
-  const [kind, setKind] = useState<RowKind>("material");
+  const [kind, setKind] = useState<RowKind>(initialKind);
   const [linkMode, setLinkMode] = useState<LinkMode>(
     tasks.length > 0 ? "existing" : "create"
   );
@@ -57,9 +59,14 @@ export function AddMaterialDialog({
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Sync kind when initialKind changes (e.g. opening with different button)
+  useEffect(() => {
+    setKind(initialKind);
+  }, [initialKind, open]);
+
   const reset = () => {
     setName("");
-    setKind("material");
+    setKind(initialKind);
     setLinkMode(tasks.length > 0 ? "existing" : "create");
     setSelectedTaskId("");
     setNewTaskTitle("");

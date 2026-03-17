@@ -224,6 +224,21 @@ export function PlanningTaskList({
   const [materials, setMaterials] = useState<PlanningMaterial[]>([]);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
+  const [addMaterialKind, setAddMaterialKind] = useState<"material" | "subcontractor">("material");
+
+  // Auto-show material columns when material/UE rows exist
+  useEffect(() => {
+    if (materials.length > 0 && !isHomeowner) {
+      setVisibleExtras((prev) => {
+        if (prev.has("markup") && prev.has("qty") && prev.has("unitPrice")) return prev;
+        const next = new Set(prev);
+        next.add("markup");
+        next.add("qty");
+        next.add("unitPrice");
+        return next;
+      });
+    }
+  }, [materials.length, isHomeowner]);
 
   // Row drag-reorder state
   const dragItem = React.useRef<{ type: "task" | "material"; id: string; index: number } | null>(null);
@@ -1998,10 +2013,18 @@ export function PlanningTaskList({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setAddMaterialOpen(true)}
+                      onClick={() => { setAddMaterialKind("material"); setAddMaterialOpen(true); }}
                     >
                       <Package className="h-4 w-4 mr-1" />
                       {t("planningTasks.addMaterial", "Add material")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setAddMaterialKind("subcontractor"); setAddMaterialOpen(true); }}
+                    >
+                      <Wrench className="h-4 w-4 mr-1" />
+                      {t("planningTasks.addSubcontractor", "Add subcontractor")}
                     </Button>
                     <TooltipProvider>
                       <Tooltip>
@@ -2116,6 +2139,7 @@ export function PlanningTaskList({
         open={addMaterialOpen}
         onOpenChange={setAddMaterialOpen}
         tasks={tasks.map((t) => ({ id: t.id, title: t.title }))}
+        initialKind={addMaterialKind}
         onAdd={handleAddMaterialSubmit}
       />
     </Card>
