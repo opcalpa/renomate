@@ -10,15 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Package, Wrench } from "lucide-react";
+import { Package, Wrench, Plus, Link2Off } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type RowKind = "material" | "subcontractor";
 type LinkMode = "existing" | "create" | "none";
@@ -52,14 +45,11 @@ export function AddMaterialDialog({
   const { t } = useTranslation();
   const [name, setName] = useState("");
   const [kind, setKind] = useState<RowKind>(initialKind);
-  const [linkMode, setLinkMode] = useState<LinkMode>(
-    tasks.length > 0 ? "existing" : "create"
-  );
-  const [selectedTaskId, setSelectedTaskId] = useState<string>("");
+  // "none" = standalone, "create" = new task, or a task ID for existing
+  const [selectedLink, setSelectedLink] = useState<string>("none");
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Sync kind when initialKind changes (e.g. opening with different button)
   useEffect(() => {
     setKind(initialKind);
   }, [initialKind, open]);
@@ -67,15 +57,19 @@ export function AddMaterialDialog({
   const reset = () => {
     setName("");
     setKind(initialKind);
-    setLinkMode(tasks.length > 0 ? "existing" : "create");
-    setSelectedTaskId("");
+    setSelectedLink(tasks.length > 0 ? tasks[0].id : "none");
     setNewTaskTitle("");
   };
+
+  // Derive linkMode from selectedLink
+  const linkMode: LinkMode =
+    selectedLink === "none" ? "none" :
+    selectedLink === "create" ? "create" : "existing";
 
   const canSubmit =
     name.trim() &&
     (linkMode === "none" ||
-      (linkMode === "existing" && selectedTaskId) ||
+      linkMode === "existing" ||
       (linkMode === "create" && newTaskTitle.trim()));
 
   const handleSubmit = async () => {
@@ -86,7 +80,7 @@ export function AddMaterialDialog({
         name: name.trim(),
         kind,
         linkMode,
-        existingTaskId: linkMode === "existing" ? selectedTaskId : undefined,
+        existingTaskId: linkMode === "existing" ? selectedLink : undefined,
         newTaskTitle: linkMode === "create" ? newTaskTitle.trim() : undefined,
       });
       reset();
@@ -157,63 +151,63 @@ export function AddMaterialDialog({
             />
           </div>
 
-          {/* Link mode */}
-          <div className="space-y-2">
+          {/* Unified link list */}
+          <div className="space-y-1.5">
             <Label>{t("planningTasks.linkToTask")}</Label>
-            <RadioGroup
-              value={linkMode}
-              onValueChange={(v) => setLinkMode(v as LinkMode)}
-              className="space-y-2"
-            >
-              {tasks.length > 0 && (
-                <div className="flex items-start gap-2">
-                  <RadioGroupItem value="existing" id="link-existing" className="mt-0.5" />
-                  <div className="flex-1 space-y-1.5">
-                    <Label htmlFor="link-existing" className="cursor-pointer font-normal">
-                      {t("planningTasks.linkOption")}
-                    </Label>
-                    {linkMode === "existing" && (
-                      <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder={t("planningTasks.selectTask")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {tasks.map((task) => (
-                            <SelectItem key={task.id} value={task.id}>
-                              {task.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-start gap-2">
-                <RadioGroupItem value="create" id="link-create" className="mt-0.5" />
-                <div className="flex-1 space-y-1.5">
-                  <Label htmlFor="link-create" className="cursor-pointer font-normal">
-                    {t("planningTasks.createTaskOption")}
-                  </Label>
-                  {linkMode === "create" && (
-                    <Input
-                      className="h-8 text-sm"
-                      placeholder={t("planningTasks.newTaskPlaceholder")}
-                      value={newTaskTitle}
-                      onChange={(e) => setNewTaskTitle(e.target.value)}
-                    />
+            <div className="border rounded-md max-h-48 overflow-y-auto">
+              {/* Existing tasks */}
+              {tasks.map((task) => (
+                <button
+                  key={task.id}
+                  type="button"
+                  className={cn(
+                    "w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2",
+                    selectedLink === task.id && "bg-primary/10 text-primary font-medium"
                   )}
-                </div>
-              </div>
+                  onClick={() => setSelectedLink(task.id)}
+                >
+                  {task.title}
+                </button>
+              ))}
 
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="none" id="link-none" />
-                <Label htmlFor="link-none" className="cursor-pointer font-normal">
-                  {t("planningTasks.noLinkOption")}
-                </Label>
-              </div>
-            </RadioGroup>
+              {tasks.length > 0 && <div className="border-t" />}
+
+              {/* Create new task */}
+              <button
+                type="button"
+                className={cn(
+                  "w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2",
+                  selectedLink === "create" && "bg-primary/10 text-primary font-medium"
+                )}
+                onClick={() => setSelectedLink("create")}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {t("planningTasks.createTaskOption")}
+              </button>
+
+              {/* No link */}
+              <button
+                type="button"
+                className={cn(
+                  "w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2 text-muted-foreground",
+                  selectedLink === "none" && "bg-amber-50 text-amber-700 font-medium"
+                )}
+                onClick={() => setSelectedLink("none")}
+              >
+                <Link2Off className="h-3.5 w-3.5" />
+                {t("planningTasks.noLinkOption")}
+              </button>
+            </div>
+
+            {/* Inline new task name input */}
+            {selectedLink === "create" && (
+              <Input
+                className="h-8 text-sm mt-1.5"
+                placeholder={t("planningTasks.newTaskPlaceholder")}
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+              />
+            )}
           </div>
         </div>
 
