@@ -20,7 +20,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle, FileUp, ChevronRight, ChevronDown, ShoppingCart, Package, Wrench, Link2, GripVertical, MoreVertical, Paperclip, Hammer, Handshake } from "lucide-react";
+import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle, FileUp, ChevronRight, ChevronDown, ShoppingCart, Package, Wrench, Link2, MoreVertical, Paperclip, Hammer, Handshake } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1352,12 +1352,18 @@ export function PlanningTaskList({
                       >
                         <TableCell className="py-2.5">
                           <div className="flex items-center gap-1.5">
-                            {!effectiveLock && (
-                              <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 cursor-grab active:cursor-grabbing shrink-0" />
-                            )}
-                            {mat.kind === "subcontractor"
-                              ? <Wrench className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              : <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  {mat.kind === "subcontractor"
+                                    ? <Handshake className={`h-3.5 w-3.5 text-muted-foreground shrink-0 ${!effectiveLock ? "cursor-grab active:cursor-grabbing" : ""}`} />
+                                    : <ShoppingCart className={`h-3.5 w-3.5 text-muted-foreground shrink-0 ${!effectiveLock ? "cursor-grab active:cursor-grabbing" : ""}`} />}
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-xs">{mat.kind === "subcontractor" ? t("planningTasks.typeSubcontractor") : t("planningTasks.typeMaterial")}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                             <span className="text-sm">{mat.name}</span>
                             <MaterialFileAttachment materialId={mat.id} projectId={projectId} />
                             {!effectiveLock && tasks.length > 0 ? (
@@ -1593,9 +1599,14 @@ export function PlanningTaskList({
                     >
                       <TableCell className="font-medium py-2.5">
                         <div className="flex items-center gap-1">
-                          {!effectiveLock && (
-                            <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 cursor-grab active:cursor-grabbing shrink-0" />
-                          )}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Hammer className={`h-3.5 w-3.5 text-muted-foreground shrink-0 ${!effectiveLock ? "cursor-grab active:cursor-grabbing" : ""}`} />
+                              </TooltipTrigger>
+                              <TooltipContent><p className="text-xs">{t("taskCost.ownLabor", "Own labor")}</p></TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           <button
                             type="button"
                             className={`text-left hover:underline hover:text-primary transition-colors ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}
@@ -2028,13 +2039,19 @@ export function PlanningTaskList({
                         >
                           <TableCell className="py-2 pl-8">
                             <div className="flex items-center gap-1.5">
-                              {!effectiveLock && (
-                                <GripVertical className="h-3 w-3 text-muted-foreground/40 cursor-grab active:cursor-grabbing shrink-0" />
-                              )}
                               <span className="text-muted-foreground text-xs">└</span>
-                              {mat.kind === "subcontractor"
-                                ? <Wrench className="h-3 w-3 text-muted-foreground shrink-0" />
-                                : <Package className="h-3 w-3 text-muted-foreground shrink-0" />}
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    {mat.kind === "subcontractor"
+                                      ? <Handshake className={`h-3 w-3 text-muted-foreground shrink-0 ${!effectiveLock ? "cursor-grab active:cursor-grabbing" : ""}`} />
+                                      : <ShoppingCart className={`h-3 w-3 text-muted-foreground shrink-0 ${!effectiveLock ? "cursor-grab active:cursor-grabbing" : ""}`} />}
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="text-xs">{mat.kind === "subcontractor" ? t("planningTasks.typeSubcontractor") : t("planningTasks.typeMaterial")}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                               <span className="text-sm">{mat.name}</span>
                               <MaterialFileAttachment materialId={mat.id} projectId={projectId} />
                               {!effectiveLock && (
