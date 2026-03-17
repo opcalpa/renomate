@@ -631,10 +631,11 @@ export default function CreateQuote() {
         onSignOut={handleSignOut}
       />
 
-      <main className="lg:h-[calc(100vh-4rem)]">
-        {/* Mobile: stacked, Desktop: resizable panels */}
-        <div className="lg:hidden container mx-auto px-4 py-6 space-y-4">
-          <div className="max-w-2xl mx-auto space-y-4">
+      <main className="container mx-auto px-4 py-6 lg:px-0 lg:py-0 lg:h-[calc(100vh-4rem)] lg:max-w-none">
+        <ResizablePanelGroup direction="horizontal" className="h-full">
+          <ResizablePanel defaultSize={42} minSize={25} maxSize={70} className="lg:!overflow-auto">
+          {/* ── Left column: form fields ── */}
+          <div className="max-w-2xl lg:max-w-none space-y-4 mx-auto lg:mx-0 lg:px-6 lg:py-6">
             {urlProjectId && (
               <Button
                 variant="ghost"
@@ -743,102 +744,16 @@ export default function CreateQuote() {
             </div>
           </div>
 
-          {/* Mobile preview button already inside the form */}
-          </div>
-        </div>
-
-        {/* Desktop: resizable panels */}
-        <ResizablePanelGroup direction="horizontal" className="hidden lg:flex h-full">
-          <ResizablePanel defaultSize={42} minSize={25} maxSize={65}>
-            <div className="h-full overflow-auto px-6 py-6">
-              <div className="max-w-2xl mx-auto space-y-4">
-                {urlProjectId && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
-                    onClick={() => navigate(`/projects/${urlProjectId}`)}
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    {t("quotes.backToPlanning")}
-                  </Button>
-                )}
-                <h1 className="text-2xl font-bold">{t("quotes.newQuote")}</h1>
-
-                <Select value={projectId} onValueChange={setProjectId}>
-                  <SelectTrigger className="min-h-[48px]">
-                    <SelectValue placeholder={t("quotes.selectProject")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {projectId && (
-                  <Select value={clientId} onValueChange={setClientId}>
-                    <SelectTrigger className="min-h-[48px]">
-                      <SelectValue placeholder={t("quotes.selectClient")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-
-                {items.map((item, i) => (
-                  <QuoteItemRow
-                    key={item.id || i}
-                    item={item}
-                    index={i}
-                    currency={currency}
-                    projectId={projectId || undefined}
-                    onUpdate={(idx, updates) => {
-                      setItems((prev) => prev.map((it, j) => (j === idx ? { ...it, ...updates } : it)));
-                    }}
-                    onRemove={(idx) => setItems((prev) => prev.filter((_, j) => j !== idx))}
-                  />
-                ))}
-
-                <div className="flex gap-2 flex-wrap">
-                  <Button variant="outline" size="sm" className="gap-1" onClick={handleAddItem}>
-                    <Plus className="h-4 w-4" />
-                    {t("quotes.addItem")}
-                  </Button>
-                </div>
-
-                <Textarea
-                  placeholder={t("quotes.freeTextPlaceholder")}
-                  value={freeText}
-                  onChange={(e) => setFreeText(e.target.value)}
-                  rows={3}
-                />
-
-                <QuoteSummary items={items} />
-
-                <div className="flex gap-2 pb-8">
-                  <Button
-                    className="flex-1 min-h-[48px]"
-                    onClick={handleSaveDraft}
-                    disabled={saving}
-                  >
-                    {saving ? t("common.saving") : t("quotes.saveDraft")}
-                  </Button>
-                </div>
-              </div>
-            </div>
           </ResizablePanel>
 
-          <ResizableHandle withHandle />
+          <ResizableHandle withHandle className="hidden lg:flex" />
 
           <ResizablePanel defaultSize={58} minSize={30} maxSize={75}>
-            <div
-              ref={previewContainerRef}
-              className="flex flex-col h-full bg-neutral-100 dark:bg-neutral-900"
-            >
+          {/* ── Right column: live preview (desktop only) ── */}
+          <div
+            ref={previewContainerRef}
+            className="hidden lg:flex lg:flex-col h-full bg-neutral-100 dark:bg-neutral-900"
+          >
             {/* Toolbar */}
             <div className="flex items-center gap-1.5 px-4 py-2 border-b bg-background/60 backdrop-blur-sm rounded-t-lg flex-shrink-0">
               <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
