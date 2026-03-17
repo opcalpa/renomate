@@ -1551,6 +1551,7 @@ export function PlanningTaskList({
                               <span className="text-xs">{matCount}</span>
                             </button>
                           )}
+                          <MaterialFileAttachment taskId={task.id} projectId={projectId} />
                         </div>
                       </TableCell>
                       {show.description && (

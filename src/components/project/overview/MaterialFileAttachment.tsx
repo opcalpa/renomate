@@ -18,16 +18,20 @@ interface FileLink {
 }
 
 interface MaterialFileAttachmentProps {
-  materialId: string;
+  materialId?: string;
+  taskId?: string;
   projectId: string;
   compact?: boolean;
 }
 
 export function MaterialFileAttachment({
   materialId,
+  taskId,
   projectId,
   compact = true,
 }: MaterialFileAttachmentProps) {
+  const entityId = materialId || taskId || "";
+  const entityField = materialId ? "material_id" : "task_id";
   const { t } = useTranslation();
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -38,10 +42,10 @@ export function MaterialFileAttachment({
     const { data } = await supabase
       .from("task_file_links")
       .select("id, file_name, file_path, mime_type")
-      .eq("material_id", materialId)
+      .eq(entityField, entityId)
       .eq("project_id", projectId);
     setFiles(data || []);
-  }, [materialId, projectId]);
+  }, [entityId, entityField, projectId]);
 
   useEffect(() => {
     fetchFiles();
@@ -69,7 +73,7 @@ export function MaterialFileAttachment({
 
         const ext = file.name.split(".").pop() || "pdf";
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const storagePath = `projects/${projectId}/underlag/${materialId}_${Date.now()}_${safeName}`;
+        const storagePath = `projects/${projectId}/underlag/${entityId}_${Date.now()}_${safeName}`;
 
         const { error: uploadErr } = await supabase.storage
           .from("project-files")
@@ -79,7 +83,8 @@ export function MaterialFileAttachment({
 
         const { error: linkErr } = await supabase.from("task_file_links").insert({
           project_id: projectId,
-          material_id: materialId,
+          material_id: materialId || null,
+          task_id: taskId || null,
           file_path: storagePath,
           file_name: file.name,
           file_type: ext === "pdf" ? "contract" : "other",
@@ -120,7 +125,7 @@ export function MaterialFileAttachment({
       <>
         <input
           ref={fileRef}
-          id={`file-${materialId}`}
+          id={`file-${entityId}`}
           type="file"
           className="hidden"
           accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx,.xls,.xlsx"
