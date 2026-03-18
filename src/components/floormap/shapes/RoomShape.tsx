@@ -275,10 +275,9 @@ export const RoomShape = React.memo<RoomShapeProps>(({
   const centerY = visualCenter.y;
   const labelRotation = visualCenter.rotation;
 
-  // Calculate font size - adjust based on rotation
-  const effectiveWidth = labelRotation === 0 ? roomWidth : roomHeight;
-  const effectiveHeight = labelRotation === 0 ? roomHeight : roomWidth;
-  const fontSize = Math.max(12, Math.min(effectiveHeight * 0.15, effectiveWidth * 0.08));
+  // Fixed screen-size label — same size for all rooms regardless of area.
+  // Dividing by zoom makes the font zoom-invariant (always ~14px on screen).
+  const fontSize = Math.max(9, 14 / zoom);
 
   // Handle size based on zoom for better visibility
   const handleRadius = Math.max(6, 8 / zoom);
