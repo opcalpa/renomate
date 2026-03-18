@@ -7,7 +7,10 @@ import {
   DEFAULT_VISIBLE_EXTRAS,
 } from "./purchasesTypes";
 
-const PREFS_KEY = (projectId: string) => `purchases-table-prefs-${projectId}`;
+const PREFS_KEY = (projectId: string, isMobile: boolean) =>
+  `purchases-table-prefs-${projectId}${isMobile ? "_mobile" : ""}`;
+
+const MOBILE_DEFAULT_VISIBLE_EXTRAS: PurchaseColumnKey[] = ["priceTotal"];
 
 interface TablePrefs {
   columnOrder: PurchaseColumnKey[];
@@ -17,9 +20,9 @@ interface TablePrefs {
   compactRows: boolean;
 }
 
-function loadPrefs(projectId: string): TablePrefs | null {
+function loadPrefs(projectId: string, isMobile: boolean): TablePrefs | null {
   try {
-    const raw = localStorage.getItem(PREFS_KEY(projectId));
+    const raw = localStorage.getItem(PREFS_KEY(projectId, isMobile));
     if (!raw) return null;
     return JSON.parse(raw) as TablePrefs;
   } catch {
@@ -27,8 +30,8 @@ function loadPrefs(projectId: string): TablePrefs | null {
   }
 }
 
-function persistPrefs(projectId: string, prefs: TablePrefs) {
-  localStorage.setItem(PREFS_KEY(projectId), JSON.stringify(prefs));
+function persistPrefs(projectId: string, isMobile: boolean, prefs: TablePrefs) {
+  localStorage.setItem(PREFS_KEY(projectId, isMobile), JSON.stringify(prefs));
 }
 
 export function usePurchasesTableView(projectId: string) {
@@ -55,7 +58,8 @@ export function usePurchasesTableView(projectId: string) {
     [t]
   );
 
-  const saved = useRef(loadPrefs(projectId));
+  const isMobile = useRef(typeof window !== "undefined" && window.innerWidth < 768).current;
+  const saved = useRef(loadPrefs(projectId, isMobile));
 
   const [columns, setColumns] = useState<PurchaseColumnDef[]>(() => {
     if (saved.current?.columnOrder) {
@@ -73,7 +77,7 @@ export function usePurchasesTableView(projectId: string) {
   const [visibleExtras, setVisibleExtras] = useState<Set<PurchaseColumnKey>>(
     () => saved.current?.visibleExtras
       ? new Set(saved.current.visibleExtras)
-      : new Set(DEFAULT_VISIBLE_EXTRAS)
+      : new Set(isMobile ? MOBILE_DEFAULT_VISIBLE_EXTRAS : DEFAULT_VISIBLE_EXTRAS)
   );
 
   const [sortKey, setSortKey] = useState<PurchaseColumnKey | null>(
@@ -88,14 +92,14 @@ export function usePurchasesTableView(projectId: string) {
 
   // Auto-persist on every change
   useEffect(() => {
-    persistPrefs(projectId, {
+    persistPrefs(projectId, isMobile, {
       columnOrder: columns.map((c) => c.key),
       visibleExtras: Array.from(visibleExtras),
       sortKey,
       sortDir,
       compactRows,
     });
-  }, [columns, visibleExtras, sortKey, sortDir, compactRows, projectId]);
+  }, [columns, visibleExtras, sortKey, sortDir, compactRows, projectId, isMobile]);
 
   const visibleColumns = useMemo(
     () => columns.filter((c) => !c.extra || visibleExtras.has(c.key)),

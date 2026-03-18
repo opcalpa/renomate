@@ -7,7 +7,10 @@ import {
   DEFAULT_VISIBLE_EXTRAS,
 } from "./tasksTableTypes";
 
-const PREFS_KEY = (projectId: string) => `tasks-table-prefs-${projectId}`;
+const PREFS_KEY = (projectId: string, isMobile: boolean) =>
+  `tasks-table-prefs-${projectId}${isMobile ? "_mobile" : ""}`;
+
+const MOBILE_DEFAULT_VISIBLE_EXTRAS: TaskColumnKey[] = ["budget"];
 
 interface TablePrefs {
   columnOrder: TaskColumnKey[];
@@ -17,9 +20,9 @@ interface TablePrefs {
   compactRows: boolean;
 }
 
-function loadPrefs(projectId: string): TablePrefs | null {
+function loadPrefs(projectId: string, isMobile: boolean): TablePrefs | null {
   try {
-    const raw = localStorage.getItem(PREFS_KEY(projectId));
+    const raw = localStorage.getItem(PREFS_KEY(projectId, isMobile));
     if (!raw) return null;
     return JSON.parse(raw) as TablePrefs;
   } catch {
@@ -27,8 +30,8 @@ function loadPrefs(projectId: string): TablePrefs | null {
   }
 }
 
-function persistPrefs(projectId: string, prefs: TablePrefs) {
-  localStorage.setItem(PREFS_KEY(projectId), JSON.stringify(prefs));
+function persistPrefs(projectId: string, isMobile: boolean, prefs: TablePrefs) {
+  localStorage.setItem(PREFS_KEY(projectId, isMobile), JSON.stringify(prefs));
 }
 
 export function useTasksTableView(projectId: string) {
@@ -61,8 +64,9 @@ export function useTasksTableView(projectId: string) {
     [t]
   );
 
-  // Restore saved prefs or use defaults
-  const saved = useRef(loadPrefs(projectId));
+  // Restore saved prefs or use defaults (separate key for mobile vs desktop)
+  const isMobile = useRef(typeof window !== "undefined" && window.innerWidth < 768).current;
+  const saved = useRef(loadPrefs(projectId, isMobile));
 
   const [columns, setColumns] = useState<TaskColumnDef[]>(() => {
     if (saved.current?.columnOrder) {
@@ -80,7 +84,7 @@ export function useTasksTableView(projectId: string) {
   const [visibleExtras, setVisibleExtras] = useState<Set<TaskColumnKey>>(
     () => saved.current?.visibleExtras
       ? new Set(saved.current.visibleExtras)
-      : new Set(DEFAULT_VISIBLE_EXTRAS)
+      : new Set(isMobile ? MOBILE_DEFAULT_VISIBLE_EXTRAS : DEFAULT_VISIBLE_EXTRAS)
   );
 
   const [sortKey, setSortKey] = useState<TaskColumnKey | null>(
@@ -95,14 +99,14 @@ export function useTasksTableView(projectId: string) {
 
   // Auto-persist on every change
   useEffect(() => {
-    persistPrefs(projectId, {
+    persistPrefs(projectId, isMobile, {
       columnOrder: columns.map((c) => c.key),
       visibleExtras: Array.from(visibleExtras),
       sortKey,
       sortDir,
       compactRows,
     });
-  }, [columns, visibleExtras, sortKey, sortDir, compactRows, projectId]);
+  }, [columns, visibleExtras, sortKey, sortDir, compactRows, projectId, isMobile]);
 
   const visibleColumns = useMemo(
     () => columns.filter((c) => !c.extra || visibleExtras.has(c.key)),
