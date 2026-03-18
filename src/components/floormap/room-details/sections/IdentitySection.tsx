@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Ruler, Calendar, AlertTriangle, TriangleAlert } from "lucide-react";
-import { Label } from "@/components/ui/label";
+import { Calendar, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -121,58 +120,49 @@ export function IdentitySection({
         </div>
       )}
 
-      {/* Status and Priority side by side */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Status */}
-        <div className="space-y-2">
-          <Label htmlFor="room-status">{t('rooms.status')}</Label>
-          <Select
-            value={formData.status}
-            onValueChange={(value) => updateFormData({ status: value })}
-          >
-            <SelectTrigger id="room-status">
-              <SelectValue placeholder={t('identitySection.selectStatus')} />
-            </SelectTrigger>
-            <SelectContent>
-              {ROOM_STATUS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {t(option.labelKey)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Priority */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-gray-600" />
-            <Label htmlFor="room-priority">{t("rooms.priority")}</Label>
+      {/* Status and Priority — compact table */}
+      <div className="divide-y divide-border/50">
+        <div className="flex items-center gap-3 py-1.5">
+          <span className="text-sm text-muted-foreground shrink-0 w-28">{t('rooms.status')}</span>
+          <div className="flex-1 min-w-0">
+            <Select value={formData.status} onValueChange={(value) => updateFormData({ status: value })}>
+              <SelectTrigger id="room-status" className="h-8">
+                <SelectValue placeholder={t('identitySection.selectStatus')} />
+              </SelectTrigger>
+              <SelectContent>
+                {ROOM_STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {t(option.labelKey)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Select
-            value={formData.priority}
-            onValueChange={(value) => updateFormData({ priority: value })}
-          >
-            <SelectTrigger id="room-priority">
-              <SelectValue placeholder={t("rooms.selectPriority", "Välj prioritet")} />
-            </SelectTrigger>
-            <SelectContent>
-              {PRIORITY_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {t(option.labelKey)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        </div>
+        <div className="flex items-center gap-3 py-1.5">
+          <span className="text-sm text-muted-foreground shrink-0 w-28">{t("rooms.priority")}</span>
+          <div className="flex-1 min-w-0">
+            <Select value={formData.priority} onValueChange={(value) => updateFormData({ priority: value })}>
+              <SelectTrigger id="room-priority" className="h-8">
+                <SelectValue placeholder={t("rooms.selectPriority", "Välj prioritet")} />
+              </SelectTrigger>
+              <SelectContent>
+                {PRIORITY_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {t(option.labelKey)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
       {/* Dimensions — compact table */}
       <div className="pt-2 border-t">
-        <div className="flex items-center gap-2 mb-2">
-          <Ruler className="h-4 w-4 text-gray-600" />
-          <Label className="text-sm font-medium">{t('rooms.dimensions', 'Dimensioner')}</Label>
-        </div>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+          {t('rooms.dimensions', 'Dimensioner')}
+        </p>
 
         {/* Area mismatch warning */}
         {formData.width_mm && formData.depth_mm && formData.area_sqm !== undefined && (() => {
