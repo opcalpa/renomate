@@ -178,6 +178,24 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
     const order = saved ? JSON.parse(saved) : ['planned', 'to_do', 'in_progress', 'waiting', 'completed', 'cancelled'];
     return order.filter((s: string) => s !== 'done');
   });
+
+  // Which Kanban columns are visible — default: only the three core statuses
+  const [kanbanVisibleStatuses, setKanbanVisibleStatuses] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem(`kanban-visible-statuses-${projectId}`);
+    if (saved) {
+      try { return new Set(JSON.parse(saved) as string[]); } catch { /* ignore */ }
+    }
+    return new Set(['to_do', 'in_progress', 'completed']);
+  });
+
+  const toggleKanbanStatus = (status: string) => {
+    setKanbanVisibleStatuses(prev => {
+      const next = new Set(prev);
+      next.has(status) ? next.delete(status) : next.add(status);
+      localStorage.setItem(`kanban-visible-statuses-${projectId}`, JSON.stringify([...next]));
+      return next;
+    });
+  };
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   
   // Custom column names
@@ -1257,6 +1275,36 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
             </PopoverContent>
           </Popover>
 
+          {/* Kanban column visibility toggle */}
+          {viewMode === 'kanban' && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9" title={t("tasks.kanbanColumns", "Kanban-kolumner")}>
+                  <Columns3 className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-52 p-2" align="start">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-2 py-1 mb-1">
+                  {t("tasks.visibleColumns", "Synliga kolumner")}
+                </p>
+                {statusOrder.map(status => {
+                  const count = getStatusCount(status);
+                  const label = statusLabels[status as keyof typeof statusLabels] || status;
+                  return (
+                    <label key={status} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                      <Checkbox
+                        checked={kanbanVisibleStatuses.has(status)}
+                        onCheckedChange={() => toggleKanbanStatus(status)}
+                      />
+                      <span className="flex-1">{label}</span>
+                      <span className="text-xs text-muted-foreground">({count})</span>
+                    </label>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
+          )}
+
           {/* Table view toolbar items (inline) */}
           {viewMode === 'table' && (
             <>
@@ -1685,7 +1733,9 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
       ) : viewMode === 'kanban' ? (
         <div className="overflow-x-auto pb-4 snap-x snap-mandatory">
           <div className="flex gap-4 min-w-min p-2">
-            {[...columnOrder, ...unknownStatuses].map((status) => {
+            {[...columnOrder, ...unknownStatuses].filter(status =>
+              kanbanVisibleStatuses.has(status) || unknownStatuses.includes(status)
+            ).map((status) => {
               const tasksForStatus = groupedTasks[status] || [];
               const defaultLabel = statusLabels[status as keyof typeof statusLabels] || status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
               const displayLabel = customColumnNames[status] || defaultLabel;
