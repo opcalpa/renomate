@@ -19,8 +19,8 @@ const DAY_LINE_COLOR = "#e5e7eb";
 const MONTH_LINE_COLOR = "#94a3b8";
 const TODAY_LINE_COLOR = "#ef4444";
 
-const PROJECT_START_COLOR = "#3b82f6"; // blue-500
-const PROJECT_FINISH_COLOR = "#22c55e"; // green-500
+const PROJECT_START_COLOR = "#60a5fa"; // blue-400 — light blue
+const PROJECT_FINISH_COLOR = "#4ade80"; // green-400 — clear green
 
 const TimelineGridComponent: React.FC<TimelineGridProps> = ({
   originDate,
@@ -126,8 +126,8 @@ const TimelineGridComponent: React.FC<TimelineGridProps> = ({
           key="proj-start"
           points={[x, 0, x, stageHeight]}
           stroke={PROJECT_START_COLOR}
-          strokeWidth={2}
-          dash={[8, 4]}
+          strokeWidth={2.5}
+          dash={[6, 3]}
           listening={false}
           perfectDrawEnabled={false}
         />
@@ -135,10 +135,11 @@ const TimelineGridComponent: React.FC<TimelineGridProps> = ({
       elements.push(
         <KonvaText
           key="proj-start-label"
-          x={x + 4}
+          x={x + 3}
           y={4}
-          text="▶ Start"
+          text="Start"
           fontSize={10}
+          fontStyle="bold"
           fill={PROJECT_START_COLOR}
           listening={false}
           perfectDrawEnabled={false}
@@ -156,8 +157,8 @@ const TimelineGridComponent: React.FC<TimelineGridProps> = ({
           key="proj-finish"
           points={[x, 0, x, stageHeight]}
           stroke={PROJECT_FINISH_COLOR}
-          strokeWidth={2}
-          dash={[8, 4]}
+          strokeWidth={2.5}
+          dash={[6, 3]}
           listening={false}
           perfectDrawEnabled={false}
         />
@@ -165,10 +166,11 @@ const TimelineGridComponent: React.FC<TimelineGridProps> = ({
       elements.push(
         <KonvaText
           key="proj-finish-label"
-          x={x + 4}
+          x={x + 3}
           y={4}
-          text="🏁 Mål"
+          text="M\u00e5l"
           fontSize={10}
+          fontStyle="bold"
           fill={PROJECT_FINISH_COLOR}
           listening={false}
           perfectDrawEnabled={false}

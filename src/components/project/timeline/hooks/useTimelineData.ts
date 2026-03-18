@@ -64,17 +64,24 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
     setDependencies(data || []);
   }, []);
 
+  const fetchProjectDates = useCallback(async () => {
+    const { data } = await supabase
+      .from("projects")
+      .select("start_date, finish_goal_date")
+      .eq("id", projectId)
+      .single();
+    if (data) {
+      setProjectStartDate(data.start_date ?? null);
+      setProjectFinishDate(data.finish_goal_date ?? null);
+    }
+  }, [projectId]);
+
   const fetchTeamMembers = useCallback(async () => {
     const { data: projectData } = await supabase
       .from("projects")
-      .select("owner_id, start_date, finish_goal_date, profiles!projects_owner_id_fkey(id, name)")
+      .select("owner_id, profiles!projects_owner_id_fkey(id, name)")
       .eq("id", projectId)
       .single();
-
-    if (projectData) {
-      setProjectStartDate((projectData as unknown as { start_date: string | null }).start_date ?? null);
-      setProjectFinishDate((projectData as unknown as { finish_goal_date: string | null }).finish_goal_date ?? null);
-    }
 
     const members: TeamMember[] = [];
     if (projectData?.profiles) {
@@ -130,9 +137,10 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
       fetchDependencies(),
       fetchTeamMembers(),
       fetchRooms(),
+      fetchProjectDates(),
     ]);
     setLoading(false);
-  }, [fetchTasks, fetchDependencies, fetchTeamMembers, fetchRooms]);
+  }, [fetchTasks, fetchDependencies, fetchTeamMembers, fetchRooms, fetchProjectDates]);
 
   useEffect(() => {
     fetchAll();
