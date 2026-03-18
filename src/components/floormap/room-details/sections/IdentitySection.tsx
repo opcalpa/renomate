@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Ruler, Calendar, AlertTriangle, TriangleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -15,6 +14,60 @@ import {
   PRIORITY_OPTIONS,
 } from "../constants";
 import type { IdentitySectionProps } from "../types";
+
+// Compact dimension table row: label | input | unit
+function DimRow({
+  label,
+  unit,
+  value,
+  step = 0.01,
+  min,
+  max,
+  hint,
+  readOnly = false,
+  onChange,
+}: {
+  label: string;
+  unit: string;
+  value: number | null;
+  step?: number;
+  min?: number;
+  max?: number;
+  hint?: string;
+  readOnly?: boolean;
+  onChange?: (v: number | null) => void;
+}) {
+  const displayValue = value != null ? Number(value.toFixed(2)) : "";
+
+  return (
+    <div className="py-1.5">
+      <div className="flex items-center gap-2">
+        <span className="flex-1 text-sm text-muted-foreground truncate">{label}</span>
+        {readOnly ? (
+          <span className="w-20 text-right text-sm tabular-nums text-muted-foreground pr-1">
+            {value != null ? value.toFixed(2) : "—"}
+          </span>
+        ) : (
+          <input
+            type="number"
+            step={step}
+            min={min}
+            max={max}
+            placeholder="—"
+            value={displayValue}
+            onChange={(e) => {
+              const v = e.target.value;
+              onChange?.(v !== "" ? parseFloat(v) : null);
+            }}
+            className="w-20 text-right text-sm tabular-nums bg-transparent border border-transparent hover:border-input focus:border-primary rounded px-1.5 py-0.5 outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+        )}
+        <span className="w-7 shrink-0 text-xs text-muted-foreground">{unit}</span>
+      </div>
+      {hint && <p className="text-xs text-muted-foreground/70 mt-0.5 pl-0">{hint}</p>}
+    </div>
+  );
+}
 
 export function IdentitySection({
   formData,
@@ -114,133 +167,103 @@ export function IdentitySection({
         </div>
       </div>
 
-      {/* Dimensions section */}
-      <div className="space-y-2 pt-2 border-t">
-        <div className="flex items-center gap-2">
+      {/* Dimensions — compact table */}
+      <div className="pt-2 border-t">
+        <div className="flex items-center gap-2 mb-2">
           <Ruler className="h-4 w-4 text-gray-600" />
           <Label className="text-sm font-medium">{t('rooms.dimensions', 'Dimensioner')}</Label>
         </div>
 
-        {/* Area */}
-        <div className="space-y-1">
-          <Label htmlFor="room-area" className="text-xs text-muted-foreground">{t('rooms.area')} (m²)</Label>
-          <Input
-            id="room-area"
-            type="number"
-            min={0}
-            step={0.01}
-            placeholder="—"
-            value={formData.area_sqm ?? ""}
-            onChange={(e) => {
-              const v = e.target.value;
-              updateFormData({ area_sqm: v ? parseFloat(v) : undefined });
-            }}
-          />
-          {/* Mismatch warning when area doesn't match width × depth */}
-          {formData.width_mm && formData.depth_mm && formData.area_sqm !== undefined && (() => {
-            const computed = (formData.width_mm! * formData.depth_mm!) / 1_000_000;
-            const diff = Math.abs(formData.area_sqm! - computed);
-            if (diff < 0.01) return null;
-            return (
-              <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5">
-                <TriangleAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                <div className="flex-1">
-                  <span>{t('rooms.areaMismatch', 'Ytan stämmer inte med bredd × djup')} ({computed.toFixed(2)} m²). </span>
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="h-auto p-0 text-xs text-amber-800 underline"
-                    onClick={() => updateFormData({ width_mm: undefined, depth_mm: undefined })}
-                  >
-                    {t('rooms.clearWidthDepth', 'Rensa bredd/djup')}
-                  </Button>
-                </div>
+        {/* Area mismatch warning */}
+        {formData.width_mm && formData.depth_mm && formData.area_sqm !== undefined && (() => {
+          const computed = (formData.width_mm! * formData.depth_mm!) / 1_000_000;
+          const diff = Math.abs(formData.area_sqm! - computed);
+          if (diff < 0.01) return null;
+          return (
+            <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5 mb-2">
+              <TriangleAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <span>{t('rooms.areaMismatch', 'Ytan stämmer inte med bredd × djup')} ({computed.toFixed(2)} m²). </span>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-xs text-amber-800 underline"
+                  onClick={() => updateFormData({ width_mm: undefined, depth_mm: undefined })}
+                >
+                  {t('rooms.clearWidthDepth', 'Rensa bredd/djup')}
+                </Button>
               </div>
-            );
-          })()}
-        </div>
+            </div>
+          );
+        })()}
 
-        {/* Width and Depth side by side */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <Label htmlFor="room-width" className="text-xs text-muted-foreground">{t('rooms.width', 'Bredd')} (mm)</Label>
-            <Input
-              id="room-width"
-              type="number"
-              min={0}
-              step={1}
-              placeholder="—"
-              value={formData.width_mm ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                handleWidthChange(v ? parseFloat(v) : undefined);
-              }}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="room-depth" className="text-xs text-muted-foreground">{t('rooms.depth', 'Djup')} (mm)</Label>
-            <Input
-              id="room-depth"
-              type="number"
-              min={0}
-              step={1}
-              placeholder="—"
-              value={formData.depth_mm ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                handleDepthChange(v ? parseFloat(v) : undefined);
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Ceiling height */}
-        <div className="space-y-1">
-          <Label htmlFor="ceiling-height" className="text-xs text-muted-foreground">{t('identitySection.ceilingHeight')} (mm)</Label>
-          <Input
-            id="ceiling-height"
-            type="number"
-            min={1000}
-            max={10000}
-            step={100}
-            value={formData.ceiling_height_mm}
-            onChange={(e) =>
-              updateFormData({ ceiling_height_mm: parseInt(e.target.value) || 2400 })
-            }
+        <div className="divide-y divide-border/50">
+          {/* Bredd */}
+          <DimRow
+            label={t('rooms.width', 'Bredd')}
+            unit="m"
+            value={formData.width_mm != null ? formData.width_mm / 1000 : null}
+            step={0.01}
+            min={0.1}
+            onChange={(m) => handleWidthChange(m != null ? Math.round(m * 1000) : undefined)}
           />
-        </div>
-
-        {/* Non-paintable area */}
-        <div className="space-y-1">
-          <Label htmlFor="non-paintable-area" className="text-xs text-muted-foreground">
-            {t('rooms.nonPaintableArea', 'Icke-målningsbar yta')} (m²)
-          </Label>
-          <Input
-            id="non-paintable-area"
-            type="number"
+          {/* Djup */}
+          <DimRow
+            label={t('rooms.depth', 'Djup')}
+            unit="m"
+            value={formData.depth_mm != null ? formData.depth_mm / 1000 : null}
+            step={0.01}
+            min={0.1}
+            onChange={(m) => handleDepthChange(m != null ? Math.round(m * 1000) : undefined)}
+          />
+          {/* Takhöjd */}
+          <DimRow
+            label={t('identitySection.ceilingHeight', 'Takhöjd')}
+            unit="m"
+            value={formData.ceiling_height_mm / 1000}
+            step={0.01}
+            min={1}
+            max={10}
+            onChange={(m) => updateFormData({ ceiling_height_mm: m != null ? Math.round(m * 1000) : 2400 })}
+          />
+          {/* Yta */}
+          <DimRow
+            label={t('rooms.area', 'Yta')}
+            unit="m²"
+            value={formData.area_sqm ?? null}
+            step={0.01}
             min={0}
-            step={0.1}
-            placeholder="—"
-            value={formData.non_paintable_area_sqm ?? ""}
-            onChange={(e) => {
-              const v = e.target.value;
-              updateFormData({ non_paintable_area_sqm: v ? parseFloat(v) : undefined });
-            }}
+            onChange={(v) => updateFormData({ area_sqm: v ?? undefined })}
           />
-          <p className="text-xs text-muted-foreground">
-            {t('rooms.nonPaintableAreaHint', 'Fönster, garderober, dörrar m.m. som dras av från väggyta vid färgberäkning')}
-          </p>
-        </div>
+          {/* Icke-målningsbar yta */}
+          <DimRow
+            label={t('rooms.nonPaintableArea', 'Icke-mål. yta')}
+            unit="m²"
+            value={formData.non_paintable_area_sqm ?? null}
+            step={0.1}
+            min={0}
+            hint={t('rooms.nonPaintableAreaHint', 'Fönster, garderober, dörrar m.m.')}
+            onChange={(v) => updateFormData({ non_paintable_area_sqm: v ?? undefined })}
+          />
 
-        {/* Computed wall area summary */}
-        {wallArea !== null && (
-          <div className="text-xs text-muted-foreground bg-muted/50 rounded px-3 py-2 space-y-0.5">
-            <div>{t('rooms.wallArea', 'Väggarea')}: {wallArea.toFixed(1)} m²</div>
-            {formData.non_paintable_area_sqm ? (
-              <div>{t('rooms.paintableWallArea', 'Målningsbar väggyta')}: {paintableWallArea?.toFixed(1)} m²</div>
-            ) : null}
-          </div>
-        )}
+          {/* Computed rows — read-only */}
+          {wallArea !== null && (
+            <DimRow
+              label={t('rooms.wallArea', 'Väggarea')}
+              unit="m²"
+              value={wallArea}
+              readOnly
+            />
+          )}
+          {wallArea !== null && formData.non_paintable_area_sqm ? (
+            <DimRow
+              label={t('rooms.paintableWallArea', 'Målningsbar väggyta')}
+              unit="m²"
+              value={paintableWallArea ?? null}
+              readOnly
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   );
