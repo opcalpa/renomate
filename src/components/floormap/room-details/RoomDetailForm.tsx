@@ -81,11 +81,9 @@ export function RoomDetailForm({
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Track which accordion sections are open
-  const [openSections, setOpenSections] = useState<string[]>(["tasks"]);
+  const [openSections, setOpenSections] = useState<string[]>(["tasks", "vision", "notes"]);
 
   // Track collapsible sections
-  const [visionExpanded, setVisionExpanded] = useState(true);
-  const [notesExpanded, setNotesExpanded] = useState(true);
   const [photosExpanded, setPhotosExpanded] = useState(true);
   const [tasksExpanded, setTasksExpanded] = useState(true);
   const [checklistsExpanded, setChecklistsExpanded] = useState(true);
@@ -161,61 +159,39 @@ export function RoomDetailForm({
         </div>
       </div>
 
-      {/* Kundens önskemål — collapsible */}
-      <div className="border rounded-lg">
-        <button
-          type="button"
-          onClick={() => setVisionExpanded(!visionExpanded)}
-          className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors rounded-t-lg"
-        >
-          <div className="flex items-center gap-2">
-            <Lightbulb className="h-4 w-4 text-amber-500" />
-            <span className="font-medium text-sm">{t("rooms.visionTitle", "Kundens önskemål")}</span>
-          </div>
-          {visionExpanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          )}
-        </button>
-        {visionExpanded && (
-          <div className="px-4 pb-4">
-            <VisionSection formData={formData} updateFormData={updateFormData} />
-          </div>
-        )}
-      </div>
-
-      {/* Interna anteckningar — collapsible */}
-      <div className="border rounded-lg">
-        <button
-          type="button"
-          onClick={() => setNotesExpanded(!notesExpanded)}
-          className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors rounded-t-lg"
-        >
-          <div className="flex items-center gap-2">
-            <HardHat className="h-4 w-4 text-slate-500" />
-            <span className="font-medium text-sm">{t("rooms.internalNotes", "Interna anteckningar")}</span>
-          </div>
-          {notesExpanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          )}
-        </button>
-        {notesExpanded && (
-          <div className="px-4 pb-4">
-            <InternalNotesSection formData={formData} updateFormData={updateFormData} />
-          </div>
-        )}
-      </div>
-
       <Accordion
         type="multiple"
         value={openSections}
         onValueChange={setOpenSections}
         className="w-full"
       >
-        {/* Egenskaper (Identity) — moved above specs */}
+        {/* Kundens önskemål */}
+        <AccordionItem value="vision">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="h-4 w-4 text-amber-500" />
+              <span>{t("rooms.visionTitle", "Kundens önskemål")}</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <VisionSection formData={formData} updateFormData={updateFormData} />
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Interna anteckningar */}
+        <AccordionItem value="notes">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <HardHat className="h-4 w-4 text-slate-500" />
+              <span>{t("rooms.internalNotes", "Interna anteckningar")}</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <InternalNotesSection formData={formData} updateFormData={updateFormData} />
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Egenskaper (Identity) */}
         <AccordionItem value="identity" data-section="identity">
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center justify-between w-full pr-2">
