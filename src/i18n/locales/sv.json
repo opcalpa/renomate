@@ -1220,8 +1220,8 @@
     "partiallyPaid": "Delvis betald"
   },
   "roomStatuses": {
-    "existing": "Befintligt",
-    "toBeRenovated": "Ska renoveras",
+    "existing": "Oförändrat",
+    "toBeRenovated": "Renoveras",
     "newConstruction": "Nyproduktion"
   },
   "floormap": {

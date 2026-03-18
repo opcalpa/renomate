@@ -327,8 +327,8 @@
     "partiallyPaid": "Partiellement payé"
   },
   "roomStatuses": {
-    "existing": "Existant",
-    "toBeRenovated": "À rénover",
+    "existing": "Inchangé",
+    "toBeRenovated": "En rénovation",
     "newConstruction": "Nouvelle construction"
   },
   "floormap": {
