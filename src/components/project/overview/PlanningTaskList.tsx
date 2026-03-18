@@ -2410,7 +2410,7 @@ export function PlanningTaskList({
 
             {/* Action bar */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mt-4">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {!effectiveLock && (
                   <>
                     <TooltipProvider>
@@ -2423,7 +2423,7 @@ export function PlanningTaskList({
                             disabled={isAdding}
                           >
                             <Plus className="h-4 w-4 mr-1" />
-                            {t("planningTasks.addTask", "Add task")}
+                            {t("planningTasks.addTask", "Task")}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -2440,7 +2440,7 @@ export function PlanningTaskList({
                             onClick={() => { setAddMaterialKind("material"); setAddMaterialOpen(true); }}
                           >
                             <Plus className="h-4 w-4 mr-1" />
-                            {t("planningTasks.addCost", "Add cost")}
+                            {t("planningTasks.addCost", "Cost")}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
