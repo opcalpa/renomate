@@ -15,6 +15,8 @@ import {
   Trash2,
   X,
   Pencil,
+  Lightbulb,
+  HardHat,
 } from "lucide-react";
 import {
   Accordion,
@@ -82,6 +84,8 @@ export function RoomDetailForm({
   const [openSections, setOpenSections] = useState<string[]>(["tasks"]);
 
   // Track collapsible sections
+  const [visionExpanded, setVisionExpanded] = useState(true);
+  const [notesExpanded, setNotesExpanded] = useState(true);
   const [photosExpanded, setPhotosExpanded] = useState(true);
   const [tasksExpanded, setTasksExpanded] = useState(true);
   const [checklistsExpanded, setChecklistsExpanded] = useState(true);
@@ -157,10 +161,53 @@ export function RoomDetailForm({
         </div>
       </div>
 
-      {/* Single column — wider dialog handles the extra space */}
-      <VisionSection formData={formData} updateFormData={updateFormData} />
+      {/* Kundens önskemål — collapsible */}
+      <div className="border rounded-lg">
+        <button
+          type="button"
+          onClick={() => setVisionExpanded(!visionExpanded)}
+          className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors rounded-t-lg"
+        >
+          <div className="flex items-center gap-2">
+            <Lightbulb className="h-4 w-4 text-amber-500" />
+            <span className="font-medium text-sm">{t("rooms.visionTitle", "Kundens önskemål")}</span>
+          </div>
+          {visionExpanded ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
+        {visionExpanded && (
+          <div className="px-4 pb-4">
+            <VisionSection formData={formData} updateFormData={updateFormData} />
+          </div>
+        )}
+      </div>
 
-      <InternalNotesSection formData={formData} updateFormData={updateFormData} />
+      {/* Interna anteckningar — collapsible */}
+      <div className="border rounded-lg">
+        <button
+          type="button"
+          onClick={() => setNotesExpanded(!notesExpanded)}
+          className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors rounded-t-lg"
+        >
+          <div className="flex items-center gap-2">
+            <HardHat className="h-4 w-4 text-slate-500" />
+            <span className="font-medium text-sm">{t("rooms.internalNotes", "Interna anteckningar")}</span>
+          </div>
+          {notesExpanded ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
+        {notesExpanded && (
+          <div className="px-4 pb-4">
+            <InternalNotesSection formData={formData} updateFormData={updateFormData} />
+          </div>
+        )}
+      </div>
 
       <Accordion
         type="multiple"
