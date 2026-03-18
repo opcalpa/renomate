@@ -1723,7 +1723,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
               {visibleColumns.map((col, idx) => (
                 <TableHead
                   key={col.key}
-                  className={`${col.align === "right" ? "text-right" : ""} select-none${compactRows ? " py-1 text-xs h-8" : ""}`}
+                  className={`${col.align === "right" ? "text-right" : ""} select-none${compactRows ? " py-1 text-xs h-8" : ""}${idx === 0 ? " sticky left-0 z-20 bg-card after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border" : ""}`}
                   draggable
                   onDragStart={() => handleDragStart(idx)}
                   onDragOver={(e) => handleDragOver(e, idx)}
@@ -1781,10 +1781,10 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
                   className={`cursor-pointer hover:bg-muted/50${compactRows ? " h-8" : ""}${row.isChild ? " bg-muted/30" : ""}`}
                   onClick={() => openDetail(row)}
                 >
-                  {visibleColumns.map((col) => (
+                  {visibleColumns.map((col, colIdx) => (
                     <TableCell
                       key={col.key}
-                      className={`${col.align === "right" ? "text-right" : ""}${compactRows ? " py-0.5 px-2 text-xs" : ""}${row.isChild && compactRows ? " text-[11px]" : ""}`}
+                      className={`${col.align === "right" ? "text-right" : ""}${compactRows ? " py-0.5 px-2 text-xs" : ""}${row.isChild && compactRows ? " text-[11px]" : ""}${colIdx === 0 ? ` sticky left-0 z-10 ${row.isChild ? "bg-muted/30" : "bg-card"} after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border` : ""}`}
                     >
                       {renderCell(col, row)}
                     </TableCell>
