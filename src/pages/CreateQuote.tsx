@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, ArrowLeft, ChevronDown, ChevronUp, Maximize2, Plus, Settings2, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ChevronDown, ChevronUp, Eye, Maximize2, Plus, Settings2, ZoomIn, ZoomOut } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -95,6 +95,7 @@ export default function CreateQuote() {
   const [quoteNumber, setQuoteNumber] = useState("");
   const [previewScale, setPreviewScale] = useState(0.75);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const isMobile = useRef(typeof window !== "undefined" && window.innerWidth < 1024).current;
 
   const fitToWidth = useCallback(() => {
     const container = previewContainerRef.current;
@@ -663,7 +664,7 @@ export default function CreateQuote() {
 
       <main className="container mx-auto px-4 py-6 lg:px-0 lg:py-0 lg:h-[calc(100vh-4rem)] lg:max-w-none">
         <ResizablePanelGroup direction="horizontal" className="h-full">
-          <ResizablePanel defaultSize={42} minSize={25} maxSize={70} className="lg:!overflow-auto">
+          <ResizablePanel defaultSize={isMobile ? 100 : 42} minSize={25} maxSize={70} className="overflow-auto lg:!overflow-auto">
           {/* ── Left column: form fields ── */}
           <div className="max-w-2xl lg:max-w-none space-y-4 mx-auto lg:mx-0 lg:px-6 lg:py-6">
             {urlProjectId && (
@@ -861,14 +862,6 @@ export default function CreateQuote() {
             <QuoteSummary items={items} />
 
             <div className="flex gap-2 pb-8">
-              {/* Preview button only on mobile — desktop has live preview */}
-              <Button
-                variant="outline"
-                className="flex-1 min-h-[48px] lg:hidden"
-                onClick={() => setPreviewOpen(true)}
-              >
-                {t("quotes.preview")}
-              </Button>
               <Button
                 className="flex-1 min-h-[48px]"
                 onClick={handleSaveDraft}
@@ -881,9 +874,9 @@ export default function CreateQuote() {
 
           </ResizablePanel>
 
-          <ResizableHandle withHandle className="hidden lg:flex" />
+          {!isMobile && <ResizableHandle withHandle />}
 
-          <ResizablePanel defaultSize={58} minSize={30} maxSize={75}>
+          {!isMobile && <ResizablePanel defaultSize={58} minSize={30} maxSize={75}>
           {/* ── Right column: live preview (desktop only) ── */}
           <div
             ref={previewContainerRef}
@@ -953,8 +946,30 @@ export default function CreateQuote() {
               </div>
             </div>
           </div>
-          </ResizablePanel>
+          </ResizablePanel>}
         </ResizablePanelGroup>
+
+        {/* Mobile-only inline preview, shown below the form */}
+        {isMobile && (
+          <div className="mt-6 pb-8">
+            <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
+              <Eye className="h-4 w-4" />
+              <span className="font-medium">{t("quotes.livePreview", "Förhandsgranskning")}</span>
+              <span className="text-xs">{t("quotes.previewSubtitle", "Så här ser offerten ut för kund")}</span>
+            </div>
+            <div className="overflow-x-auto rounded-lg bg-neutral-100 dark:bg-neutral-900 p-2">
+              <QuoteDocument
+                projectName={projectName}
+                items={items}
+                freeText={freeText}
+                company={{ name: companyName, logoUrl: companyLogoUrl, ...companyInfo }}
+                clientName={clients.find((c) => c.id === clientId)?.name}
+                quoteNumber={quoteNumber}
+                compactMode={compactMode}
+              />
+            </div>
+          </div>
+        )}
       </main>
 
       <QuotePreview
