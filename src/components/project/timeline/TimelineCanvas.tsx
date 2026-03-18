@@ -36,6 +36,8 @@ interface TimelineCanvasProps {
   totalRows: number;
   originDate: Date;
   daysToRender: number;
+  projectStartDate?: string | null;
+  projectFinishDate?: string | null;
   onTaskClick: (taskId: string) => void;
   onRefetch: () => void;
 }
@@ -51,6 +53,8 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
   totalRows,
   originDate,
   daysToRender,
+  projectStartDate,
+  projectFinishDate,
   onTaskClick,
   onRefetch,
 }) => {
@@ -339,6 +343,8 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
             stageWidth={stageWidth}
             stageHeight={stageHeight}
             daysToRender={daysToRender}
+            projectStartDate={projectStartDate}
+            projectFinishDate={projectFinishDate}
           />
         </Layer>
 

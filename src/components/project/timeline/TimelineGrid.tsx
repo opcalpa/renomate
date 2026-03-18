@@ -1,6 +1,6 @@
 import React from "react";
-import { Group, Rect, Line } from "react-konva";
-import { addDays } from "date-fns";
+import { Group, Rect, Line, Text as KonvaText } from "react-konva";
+import { addDays, parseISO } from "date-fns";
 import { dateToX, isWeekend, isSameDay } from "./utils";
 
 interface TimelineGridProps {
@@ -10,12 +10,17 @@ interface TimelineGridProps {
   stageWidth: number;
   stageHeight: number;
   daysToRender: number;
+  projectStartDate?: string | null;
+  projectFinishDate?: string | null;
 }
 
 const WEEKEND_COLOR = "#f1f5f9";
 const DAY_LINE_COLOR = "#e5e7eb";
 const MONTH_LINE_COLOR = "#94a3b8";
 const TODAY_LINE_COLOR = "#ef4444";
+
+const PROJECT_START_COLOR = "#3b82f6"; // blue-500
+const PROJECT_FINISH_COLOR = "#22c55e"; // green-500
 
 const TimelineGridComponent: React.FC<TimelineGridProps> = ({
   originDate,
@@ -24,6 +29,8 @@ const TimelineGridComponent: React.FC<TimelineGridProps> = ({
   stageWidth,
   stageHeight,
   daysToRender,
+  projectStartDate,
+  projectFinishDate,
 }) => {
   const today = new Date();
   const elements: React.ReactNode[] = [];
@@ -103,6 +110,66 @@ const TimelineGridComponent: React.FC<TimelineGridProps> = ({
           stroke={TODAY_LINE_COLOR}
           strokeWidth={2}
           dash={[6, 3]}
+          listening={false}
+          perfectDrawEnabled={false}
+        />
+      );
+    }
+  }
+
+  // Project start date marker
+  if (projectStartDate) {
+    const x = dateToX(parseISO(projectStartDate), originDate, pixelsPerDay, panX);
+    if (x >= -2 && x <= stageWidth + 2) {
+      elements.push(
+        <Line
+          key="proj-start"
+          points={[x, 0, x, stageHeight]}
+          stroke={PROJECT_START_COLOR}
+          strokeWidth={2}
+          dash={[8, 4]}
+          listening={false}
+          perfectDrawEnabled={false}
+        />
+      );
+      elements.push(
+        <KonvaText
+          key="proj-start-label"
+          x={x + 4}
+          y={4}
+          text="▶ Start"
+          fontSize={10}
+          fill={PROJECT_START_COLOR}
+          listening={false}
+          perfectDrawEnabled={false}
+        />
+      );
+    }
+  }
+
+  // Project finish/goal date marker
+  if (projectFinishDate) {
+    const x = dateToX(parseISO(projectFinishDate), originDate, pixelsPerDay, panX);
+    if (x >= -2 && x <= stageWidth + 2) {
+      elements.push(
+        <Line
+          key="proj-finish"
+          points={[x, 0, x, stageHeight]}
+          stroke={PROJECT_FINISH_COLOR}
+          strokeWidth={2}
+          dash={[8, 4]}
+          listening={false}
+          perfectDrawEnabled={false}
+        />
+      );
+      elements.push(
+        <KonvaText
+          key="proj-finish-label"
+          x={x + 4}
+          y={4}
+          text="🏁 Mål"
+          fontSize={10}
+          fill={PROJECT_FINISH_COLOR}
           listening={false}
           perfectDrawEnabled={false}
         />

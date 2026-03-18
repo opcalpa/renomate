@@ -13,6 +13,8 @@ interface UseTimelineDataResult {
   dependencies: TimelineDependency[];
   teamMembers: TeamMember[];
   rooms: Room[];
+  projectStartDate: string | null;
+  projectFinishDate: string | null;
   loading: boolean;
   refetch: () => void;
 }
@@ -23,6 +25,8 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
   const [dependencies, setDependencies] = useState<TimelineDependency[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [projectStartDate, setProjectStartDate] = useState<string | null>(null);
+  const [projectFinishDate, setProjectFinishDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchTasks = useCallback(async () => {
@@ -63,9 +67,14 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
   const fetchTeamMembers = useCallback(async () => {
     const { data: projectData } = await supabase
       .from("projects")
-      .select("owner_id, profiles!projects_owner_id_fkey(id, name)")
+      .select("owner_id, start_date, finish_goal_date, profiles!projects_owner_id_fkey(id, name)")
       .eq("id", projectId)
       .single();
+
+    if (projectData) {
+      setProjectStartDate((projectData as unknown as { start_date: string | null }).start_date ?? null);
+      setProjectFinishDate((projectData as unknown as { finish_goal_date: string | null }).finish_goal_date ?? null);
+    }
 
     const members: TeamMember[] = [];
     if (projectData?.profiles) {
@@ -135,6 +144,8 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
     dependencies,
     teamMembers,
     rooms,
+    projectStartDate,
+    projectFinishDate,
     loading,
     refetch: fetchAll,
   };

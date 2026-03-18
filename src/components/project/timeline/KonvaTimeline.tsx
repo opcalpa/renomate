@@ -34,7 +34,7 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(800);
 
-  const { tasks, allTasks, dependencies, teamMembers, rooms, loading, refetch } =
+  const { tasks, allTasks, dependencies, teamMembers, rooms, projectStartDate, projectFinishDate, loading, refetch } =
     useTimelineData(projectId);
 
   const {
@@ -118,24 +118,31 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
     showProjectSpan();
   }, [loading, tasks, originDate, pixelsPerDay, containerWidth, setPan]);
 
-  // Show entire project span (zoom to fit all tasks)
+  // Show entire project span using project start/finish dates (±2 days margin)
   const showProjectSpan = useCallback(() => {
-    if (tasks.length === 0) return;
-    const starts = tasks.filter(t => t.start_date).map(t => parseISO(t.start_date!));
-    const ends = tasks.filter(t => t.finish_date).map(t => parseISO(t.finish_date!));
-    if (starts.length === 0 || ends.length === 0) return;
-    const earliest = new Date(Math.min(...starts.map(d => d.getTime())));
-    const latest = new Date(Math.max(...ends.map(d => d.getTime())));
-    const span = differenceInDays(latest, earliest) + 7; // padding
+    // Prefer explicit project dates; fall back to task date range
+    const earliest = projectStartDate
+      ? subDays(parseISO(projectStartDate), 2)
+      : (() => {
+          const starts = tasks.filter(t => t.start_date).map(t => parseISO(t.start_date!));
+          return starts.length > 0 ? subDays(new Date(Math.min(...starts.map(d => d.getTime()))), 2) : null;
+        })();
+    const latest = projectFinishDate
+      ? addDays(parseISO(projectFinishDate), 2)
+      : (() => {
+          const ends = tasks.filter(t => t.finish_date).map(t => parseISO(t.finish_date!));
+          return ends.length > 0 ? addDays(new Date(Math.max(...ends.map(d => d.getTime()))), 2) : null;
+        })();
+    if (!earliest || !latest) return;
+    const span = Math.max(differenceInDays(latest, earliest) + 1, 7);
     const newPixelsPerDay = Math.max(20, containerWidth / span);
     const s = useTimelineStore.getState();
     s.setZoom(newPixelsPerDay, containerWidth / 2);
-    // Center on the middle of the task span
     const midDate = addDays(earliest, Math.floor(span / 2));
     const daysFromOrigin = differenceInDays(midDate, originDate);
     const centerX = -(daysFromOrigin * newPixelsPerDay - containerWidth / 2);
     setTimeout(() => useTimelineStore.getState().setPan(centerX, 0), 10);
-  }, [tasks, originDate, containerWidth]);
+  }, [tasks, projectStartDate, projectFinishDate, originDate, containerWidth]);
 
   const handleZoomIn = useCallback(() => {
     const s = useTimelineStore.getState();
@@ -232,6 +239,8 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
         totalRows={totalRows}
         originDate={originDate}
         daysToRender={daysToRender}
+        projectStartDate={projectStartDate}
+        projectFinishDate={projectFinishDate}
         onTaskClick={handleTaskClick}
         onRefetch={refetch}
       />
