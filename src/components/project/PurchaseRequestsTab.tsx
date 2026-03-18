@@ -142,6 +142,8 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
     vendor_name: "",
     vendor_link: "",
     exclude_from_budget: false,
+    outside_budget: false,
+    source_material_id: "none",
     room_id: "none",
     task_id: "none",
     assigned_to_user_id: "none",
@@ -478,7 +480,8 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         price_per_unit: newMaterial.price_per_unit ? parseFloat(newMaterial.price_per_unit) : null,
         vendor_name: newMaterial.vendor_name,
         vendor_link: newMaterial.vendor_link,
-        exclude_from_budget: newMaterial.exclude_from_budget,
+        exclude_from_budget: newMaterial.exclude_from_budget || newMaterial.outside_budget,
+        source_material_id: (newMaterial.source_material_id && newMaterial.source_material_id !== "none") ? newMaterial.source_material_id : null,
         room_id: (newMaterial.room_id && newMaterial.room_id !== "none") ? newMaterial.room_id : null,
         task_id: (newMaterial.task_id && newMaterial.task_id !== "none") ? newMaterial.task_id : null,
         assigned_to_user_id: (newMaterial.assigned_to_user_id && newMaterial.assigned_to_user_id !== "none") ? newMaterial.assigned_to_user_id : null,
@@ -503,6 +506,8 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         vendor_name: "",
         vendor_link: "",
         exclude_from_budget: false,
+        outside_budget: false,
+        source_material_id: "none",
         room_id: "none",
         task_id: "none",
         assigned_to_user_id: "none",
@@ -818,6 +823,51 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                           {t('purchases.priceTotal')}: {formatCurrency(parseFloat(newMaterial.quantity) * parseFloat(newMaterial.price_per_unit), currency, { decimals: 2 })}
                         </p>
                       )}
+                      {/* Budgetpost */}
+                      {plannedMaterials.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>{t('purchases.budgetPost', 'Budgetpost')}</Label>
+                          <Select
+                            value={newMaterial.source_material_id}
+                            onValueChange={(v) => setNewMaterial({ ...newMaterial, source_material_id: v, outside_budget: v !== "none" ? false : newMaterial.outside_budget })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('purchases.selectBudgetPost', 'Välj budgetpost...')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">{t('purchases.noBudgetPost', 'Ingen budgetpost')}</SelectItem>
+                              {plannedMaterials.map((pm) => (
+                                <SelectItem key={pm.id} value={pm.id}>
+                                  {pm.name}{pm.price_total ? ` — ${formatCurrency(pm.price_total, currency)}` : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {newMaterial.source_material_id === "none" && !newMaterial.outside_budget && (
+                            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                              <span className="mt-0.5">⚠</span>
+                              <div>
+                                {t('purchases.noBudgetPostWarning', 'Den här ordern räknas inte mot någon budgetpost.')}
+                                <button
+                                  type="button"
+                                  className="ml-1 underline hover:no-underline"
+                                  onClick={() => setNewMaterial({ ...newMaterial, outside_budget: true })}
+                                >
+                                  {t('purchases.markOutsideBudget', 'Markera som utanför budget')}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          {newMaterial.outside_budget && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              ✓ {t('purchases.markedOutsideBudget', 'Markerad som utanför budget')}
+                              <button type="button" className="underline hover:no-underline" onClick={() => setNewMaterial({ ...newMaterial, outside_budget: false })}>
+                                {t('common.undo', 'Ångra')}
+                              </button>
+                            </p>
+                          )}
+                        </div>
+                      )}
                       {/* Koppling (Connections) */}
                       <Collapsible>
                         <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 text-sm font-semibold cursor-pointer hover:text-foreground text-muted-foreground group">
@@ -962,6 +1012,52 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                     <p className="text-sm text-muted-foreground">
                       {t('purchases.priceTotal')}: {formatCurrency(parseFloat(newMaterial.quantity) * parseFloat(newMaterial.price_per_unit), currency, { decimals: 2 })}
                     </p>
+                  )}
+
+                  {/* Budgetpost */}
+                  {plannedMaterials.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>{t('purchases.budgetPost', 'Budgetpost')}</Label>
+                      <Select
+                        value={newMaterial.source_material_id}
+                        onValueChange={(v) => setNewMaterial({ ...newMaterial, source_material_id: v, outside_budget: v !== "none" ? false : newMaterial.outside_budget })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('purchases.selectBudgetPost', 'Välj budgetpost...')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{t('purchases.noBudgetPost', 'Ingen budgetpost')}</SelectItem>
+                          {plannedMaterials.map((pm) => (
+                            <SelectItem key={pm.id} value={pm.id}>
+                              {pm.name}{pm.price_total ? ` — ${formatCurrency(pm.price_total, currency)}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {newMaterial.source_material_id === "none" && !newMaterial.outside_budget && (
+                        <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                          <span className="mt-0.5">⚠</span>
+                          <div>
+                            {t('purchases.noBudgetPostWarning', 'Den här ordern räknas inte mot någon budgetpost.')}
+                            <button
+                              type="button"
+                              className="ml-1 underline hover:no-underline"
+                              onClick={() => setNewMaterial({ ...newMaterial, outside_budget: true })}
+                            >
+                              {t('purchases.markOutsideBudget', 'Markera som utanför budget')}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {newMaterial.outside_budget && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          ✓ {t('purchases.markedOutsideBudget', 'Markerad som utanför budget')}
+                          <button type="button" className="underline hover:no-underline" onClick={() => setNewMaterial({ ...newMaterial, outside_budget: false })}>
+                            {t('common.undo', 'Ångra')}
+                          </button>
+                        </p>
+                      )}
+                    </div>
                   )}
 
                   {/* Leverantör */}
@@ -1333,7 +1429,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                   <CollapsibleTrigger asChild>
                     <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground w-full mb-2 group">
                       <ChevronDown className="h-4 w-4 transition-transform group-data-[state=closed]:-rotate-90" />
-                      {t("purchases.quoteLineItems", "Materialposter från offert")}
+                      {t("purchases.materialBudget", "Materialbudget")}
                       <span className="ml-1 text-xs bg-muted rounded-full px-2 py-0.5">{plannedMaterials.length}</span>
                     </button>
                   </CollapsibleTrigger>
