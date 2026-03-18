@@ -195,9 +195,13 @@ export function useOverviewData(project: OverviewProject, skip?: boolean): Overv
       const laborCostPct = (profileRes.data as { default_labor_cost_percent?: number | null })
         ?.default_labor_cost_percent ?? 50;
       const estimatedProfit = tasks.reduce((sum, t) => {
-        const laborTotal = (t.estimated_hours || 0) * (t.hourly_rate || 0);
         const costPct = t.labor_cost_percent ?? laborCostPct;
-        const laborProfit = laborTotal * (1 - costPct / 100);
+        // Lump-sum mode: no hours/rate/UE set but kundpris entered directly
+        const isLumpSum = !t.estimated_hours && !t.hourly_rate && !t.subcontractor_cost;
+        const laborBase = isLumpSum && t.budget
+          ? t.budget
+          : (t.estimated_hours || 0) * (t.hourly_rate || 0);
+        const laborProfit = laborBase * (1 - costPct / 100);
         const ueProfit = (t.subcontractor_cost || 0) * (t.markup_percent || 0) / 100;
         const matProfit = (t.material_estimate || 0) * (t.material_markup_percent || 0) / 100;
         return sum + laborProfit + ueProfit + matProfit;

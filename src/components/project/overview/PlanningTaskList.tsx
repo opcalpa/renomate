@@ -1226,9 +1226,13 @@ export function PlanningTaskList({
   );
 
   const calcTaskProfit = useCallback((task: PlanningTask) => {
-    const laborTotal = (task.estimated_hours || 0) * (task.hourly_rate || 0);
     const costPct = task.labor_cost_percent ?? profileLaborCostPercent ?? 50;
-    const laborProfit = laborTotal * (1 - costPct / 100);
+    // Lump-sum mode: no hours/rate/UE set but kundpris entered directly
+    const isLumpSum = !task.estimated_hours && !task.hourly_rate && !task.subcontractor_cost;
+    const laborBase = isLumpSum && task.budget
+      ? task.budget
+      : (task.estimated_hours || 0) * (task.hourly_rate || 0);
+    const laborProfit = laborBase * (1 - costPct / 100);
 
     const ueProfit = (task.subcontractor_cost || 0) * (task.markup_percent || 0) / 100;
 
