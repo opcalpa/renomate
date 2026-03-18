@@ -148,6 +148,15 @@ const Projects = () => {
 
   const visibleListCols = listColumnOrder.filter((k) => !hiddenListCols.has(k));
 
+  const colLabels: Record<ListColKey, string> = useMemo(() => ({
+    address: t("projects.address"),
+    description: t("projects.colDescription", "Beskrivning"),
+    budget: t("projects.totalBudget"),
+    status: t("projects.colStatus", "Status"),
+    date: t("projects.colDate", "Skapad"),
+    owner: t("projects.colOwner", "Ägare"),
+  }), [t]);
+
   const isAdmin = !!(profile as Record<string, unknown> | null)?.is_system_admin;
   const profileId = (profile as Record<string, unknown> | null)?.id as string | undefined;
 
@@ -848,7 +857,45 @@ const Projects = () => {
                   {showAdminProjects ? t("projects.adminOn", "Admin") : t("projects.adminOff", "Admin")}
                 </button>
               )}
-              <Button onClick={() => setDialogOpen(true)} className="flex-1 sm:flex-none">
+              {viewMode === "list" && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
+                      <Settings2 className="h-3 w-3" />
+                      {t("declaration.columns", "Kolumner")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-52 p-2">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                      {t("declaration.toggleColumns", "Visa/dölj kolumner")}
+                    </p>
+                    <div className="space-y-1">
+                      {listColumnOrder.map((key) => (
+                        <label
+                          key={key}
+                          className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted cursor-pointer text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!hiddenListCols.has(key)}
+                            onChange={() => {
+                              setHiddenListCols((prev) => {
+                                const next = new Set(prev);
+                                next.has(key) ? next.delete(key) : next.add(key);
+                                saveListColPrefs(listColumnOrder, next);
+                                return next;
+                              });
+                            }}
+                            className="h-3.5 w-3.5 rounded border-gray-300"
+                          />
+                          {colLabels[key]}
+                        </label>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+              <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">
                   {t('projects.newProject')}
@@ -1298,14 +1345,6 @@ const Projects = () => {
         ) : viewMode === "list" ? (
           /* ---- List view ---- */
           (() => {
-            const colLabels: Record<ListColKey, string> = {
-              address: t("projects.address"),
-              description: t("projects.colDescription", "Beskrivning"),
-              budget: t("projects.totalBudget"),
-              status: t("projects.colStatus", "Status"),
-              date: t("projects.colDate", "Skapad"),
-              owner: t("projects.colOwner", "Ägare"),
-            };
             const colAlign: Partial<Record<ListColKey, "right">> = { budget: "right" };
 
             const renderListCell = (col: ListColKey, project: Project) => {
@@ -1357,46 +1396,7 @@ const Projects = () => {
             };
 
             return (
-              <div className="space-y-2">
-                <div className="flex justify-end">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
-                        <Settings2 className="h-3 w-3" />
-                        {t("declaration.columns", "Kolumner")}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="w-52 p-2">
-                      <p className="text-xs font-medium text-muted-foreground mb-2">
-                        {t("declaration.toggleColumns", "Visa/dölj kolumner")}
-                      </p>
-                      <div className="space-y-1">
-                        {listColumnOrder.map((key) => (
-                          <label
-                            key={key}
-                            className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted cursor-pointer text-sm"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={!hiddenListCols.has(key)}
-                              onChange={() => {
-                                setHiddenListCols((prev) => {
-                                  const next = new Set(prev);
-                                  next.has(key) ? next.delete(key) : next.add(key);
-                                  saveListColPrefs(listColumnOrder, next);
-                                  return next;
-                                });
-                              }}
-                              className="h-3.5 w-3.5 rounded border-gray-300"
-                            />
-                            {colLabels[key]}
-                          </label>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="overflow-x-auto rounded-lg border bg-card">
+              <div className="overflow-x-auto rounded-lg border bg-card">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-muted/50 border-b">
@@ -1463,7 +1463,6 @@ const Projects = () => {
                     </tbody>
                   </table>
                 </div>
-              </div>
             );
           })()
         ) : (
