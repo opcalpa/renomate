@@ -5,6 +5,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetOverlay,
+  SheetPortal,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { Home, Loader2, Save, X, Trash2, Plus, Eye } from "lucide-react";
@@ -12,6 +21,10 @@ import { RoomDetailForm } from "./RoomDetailForm";
 import { useRoomForm } from "./hooks/useRoomForm";
 import { useTranslation } from "react-i18next";
 import type { RoomDetailDialogProps } from "./types";
+
+// On desktop (≥1024px) we render a non-modal right panel so the canvas stays visible.
+// On mobile we keep the centred Dialog.
+const isDesktop = typeof window !== "undefined" && window.innerWidth >= 1024;
 
 export function RoomDetailDialog({
   room,
@@ -39,21 +52,133 @@ export function RoomDetailDialog({
     onClose: () => onOpenChange(false),
   });
 
-  // If dialog is open but room is null and we're NOT in create mode,
-  // we're waiting for room data to load - show loading spinner
   const isLoading = open && !room && !isCreateMode;
 
+  const actionBar = (
+    <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t flex-shrink-0">
+      <Button
+        onClick={handleSave}
+        disabled={saving || !formData.name.trim()}
+        className="flex-1"
+      >
+        {saving ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {isNewRoom ? t("common.creating", "Creating...") : t("common.saving", "Saving...")}
+          </>
+        ) : isNewRoom ? (
+          <>
+            <Plus className="mr-2 h-4 w-4" />
+            {t("floormap.createRoom")}
+          </>
+        ) : (
+          <>
+            <Save className="mr-2 h-4 w-4" />
+            {t("taskPanel.saveChanges")}
+          </>
+        )}
+      </Button>
+      {!isNewRoom && onViewElevation && (
+        <Button
+          variant="secondary"
+          onClick={() => {
+            onOpenChange(false);
+            onViewElevation();
+          }}
+          disabled={saving}
+        >
+          <Eye className="mr-2 h-4 w-4" />
+          {t("roomElevation.viewElevation", "View Elevation")}
+        </Button>
+      )}
+      {!isNewRoom && (
+        <Button variant="destructive" onClick={handleDelete} disabled={saving}>
+          <Trash2 className="mr-2 h-4 w-4" />
+          {t("floormap.deleteRoom", "Delete room")}
+        </Button>
+      )}
+      <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <X className="mr-2 h-4 w-4" />
+        {isNewRoom ? t("common.cancel") : t("common.close", "Close")}
+      </Button>
+    </div>
+  );
+
+  // ── Desktop: right-side sheet, transparent overlay so canvas stays visible ──
+  if (isDesktop) {
+    if (isLoading) {
+      return (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+          <SheetPortal>
+            <SheetOverlay className="bg-transparent pointer-events-none" />
+            <SheetContent side="right" className="w-[520px] max-w-[90vw] flex flex-col gap-0 p-0">
+              <div className="flex flex-col items-center justify-center flex-1 py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                <p className="text-muted-foreground">{t("rooms.loadingRoomData", "Loading room data")}...</p>
+              </div>
+            </SheetContent>
+          </SheetPortal>
+        </Sheet>
+      );
+    }
+
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetPortal>
+          {/* Transparent overlay — canvas stays visible and interactive */}
+          <SheetOverlay className="bg-transparent pointer-events-none" />
+          <SheetContent
+            side="right"
+            className="w-[520px] max-w-[90vw] flex flex-col gap-0 p-0 overflow-hidden"
+          >
+            <SheetHeader className="flex-shrink-0 px-6 pt-5 pb-3 border-b">
+              <div className="flex items-center gap-2">
+                {isNewRoom ? (
+                  <Plus className="h-5 w-5 text-primary" />
+                ) : (
+                  <Home className="h-5 w-5 text-primary" />
+                )}
+                <SheetTitle>
+                  {isNewRoom ? t("floormap.createRoom") : t("floormap.roomDetails", "Room details")}
+                </SheetTitle>
+              </div>
+              <SheetDescription>
+                {isNewRoom
+                  ? t("rooms.fillInNewRoomDetails", "Fill in details for the new room")
+                  : t("rooms.editRoomInfoAndComments", "Edit room information and add comments")}
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <RoomDetailForm
+                room={room}
+                projectId={projectId}
+                formData={formData}
+                updateFormData={updateFormData}
+                updateSpec={updateSpec}
+                showPinterest={showPinterest}
+              />
+            </div>
+
+            <div className="px-6 pb-5">{actionBar}</div>
+          </SheetContent>
+        </SheetPortal>
+      </Sheet>
+    );
+  }
+
+  // ── Mobile: centered dialog (unchanged) ──
   if (isLoading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md">
           <VisuallyHidden>
-            <DialogTitle>{t('rooms.loadingRoomData', 'Loading room data')}</DialogTitle>
-            <DialogDescription>{t('rooms.waitingForRoomData', 'Waiting for room data to load')}</DialogDescription>
+            <DialogTitle>{t("rooms.loadingRoomData", "Loading room data")}</DialogTitle>
+            <DialogDescription>{t("rooms.waitingForRoomData", "Waiting for room data to load")}</DialogDescription>
           </VisuallyHidden>
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">{t('rooms.loadingRoomData', 'Loading room data')}...</p>
+            <p className="text-muted-foreground">{t("rooms.loadingRoomData", "Loading room data")}...</p>
           </div>
         </DialogContent>
       </Dialog>
@@ -70,12 +195,14 @@ export function RoomDetailDialog({
             ) : (
               <Home className="h-5 w-5 text-primary" />
             )}
-            <DialogTitle>{isNewRoom ? t('floormap.createRoom') : t('floormap.roomDetails', 'Room details')}</DialogTitle>
+            <DialogTitle>
+              {isNewRoom ? t("floormap.createRoom") : t("floormap.roomDetails", "Room details")}
+            </DialogTitle>
           </div>
           <DialogDescription>
             {isNewRoom
-              ? t('rooms.fillInNewRoomDetails', 'Fill in details for the new room')
-              : t('rooms.editRoomInfoAndComments', 'Edit room information and add comments')}
+              ? t("rooms.fillInNewRoomDetails", "Fill in details for the new room")
+              : t("rooms.editRoomInfoAndComments", "Edit room information and add comments")}
           </DialogDescription>
         </DialogHeader>
 
@@ -90,58 +217,7 @@ export function RoomDetailDialog({
           />
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t flex-shrink-0">
-          <Button
-            onClick={handleSave}
-            disabled={saving || !formData.name.trim()}
-            className="flex-1"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isNewRoom ? t('common.creating', 'Creating...') : t('common.saving', 'Saving...')}
-              </>
-            ) : (
-              <>
-                {isNewRoom ? (
-                  <>
-                    <Plus className="mr-2 h-4 w-4" />
-                    {t('floormap.createRoom')}
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    {t('taskPanel.saveChanges')}
-                  </>
-                )}
-              </>
-            )}
-          </Button>
-          {!isNewRoom && onViewElevation && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                onOpenChange(false);
-                onViewElevation();
-              }}
-              disabled={saving}
-            >
-              <Eye className="mr-2 h-4 w-4" />
-              {t('roomElevation.viewElevation', 'View Elevation')}
-            </Button>
-          )}
-          {!isNewRoom && (
-            <Button variant="destructive" onClick={handleDelete} disabled={saving}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              {t('floormap.deleteRoom', 'Delete room')}
-            </Button>
-          )}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            <X className="mr-2 h-4 w-4" />
-            {isNewRoom ? t('common.cancel') : t('common.close', 'Close')}
-          </Button>
-        </div>
+        {actionBar}
       </DialogContent>
     </Dialog>
   );
