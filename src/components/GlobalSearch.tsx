@@ -7,7 +7,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Input } from "@/components/ui/input";
 import { Search, CheckSquare, Package, FileText, Home, FolderOpen, Loader2 } from "lucide-react";
 
@@ -223,7 +224,10 @@ export function GlobalSearch() {
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden max-sm:!top-0 max-sm:!left-0 max-sm:!right-0 max-sm:!translate-x-0 max-sm:!translate-y-0 max-sm:!w-full max-sm:!max-w-none max-sm:!rounded-t-none max-sm:!rounded-b-xl">
+        <DialogContent className="p-0 gap-0 overflow-hidden max-md:!bottom-auto max-md:!rounded-t-none max-md:!rounded-b-2xl md:max-w-lg">
+          <VisuallyHidden>
+            <DialogTitle>{t("globalSearch.title", "Search")}</DialogTitle>
+          </VisuallyHidden>
           {/* Search input */}
           <div className="flex items-center gap-3 px-4 py-3 border-b">
             <Search className="h-4 w-4 text-muted-foreground shrink-0" />
