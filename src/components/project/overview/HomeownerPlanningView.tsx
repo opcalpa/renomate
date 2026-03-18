@@ -400,7 +400,7 @@ export function HomeownerPlanningView({
       {totalTasks > 0 && (
         <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
           <CardContent className="pt-6">
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
               <div className="space-y-1">
                 <h3 className="text-lg font-semibold">{t("homeownerPlanning.rfqSummary", "Your renovation plan")}</h3>
                 <p className="text-sm text-muted-foreground">
@@ -408,7 +408,7 @@ export function HomeownerPlanningView({
                 </p>
               </div>
               {!contributorMode && (
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2">
                 {totalTasks >= 1 && onActivate && (
                   <Button
                     size="sm"
@@ -500,7 +500,7 @@ export function HomeownerPlanningView({
         </CardHeader>
         <CardContent>
           {tasksWithRoomNames.length > 0 && (
-            <div className="rounded-md border overflow-hidden mb-3">
+            <div className="rounded-md border overflow-x-auto mb-3">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -535,7 +535,7 @@ export function HomeownerPlanningView({
                           ) : (
                             <button
                               type="button"
-                              className="text-left hover:bg-muted px-1.5 py-0.5 rounded cursor-text flex items-center gap-1.5"
+                              className="text-left hover:bg-muted px-1.5 py-0.5 rounded cursor-text flex items-center gap-1.5 max-w-[180px] min-w-0"
                               onClick={() => {
                                 setEditingCell({ taskId: task.id, field: "title" });
                                 setEditValue(task.title);
@@ -546,7 +546,7 @@ export function HomeownerPlanningView({
                                   {t(WORK_TYPE_LABEL_KEYS[workType], workType)}
                                 </Badge>
                               )}
-                              {task.title}
+                              <span className="truncate">{task.title}</span>
                             </button>
                           )}
                         </TableCell>
@@ -652,7 +652,8 @@ export function HomeownerPlanningView({
                             </Popover>
                           ) : (
                             <button
-                              className="hover:bg-muted px-1.5 py-0.5 rounded cursor-pointer text-sm text-muted-foreground text-left"
+                              className="hover:bg-muted px-1.5 py-0.5 rounded cursor-pointer text-sm text-muted-foreground text-left max-w-[120px] truncate block"
+                              title={task.room_names.join(", ")}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setEditingCell({ taskId: task.id, field: "room_id" });

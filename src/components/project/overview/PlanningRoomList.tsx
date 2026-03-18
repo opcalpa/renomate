@@ -499,7 +499,7 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
   return (
     <Card className="border-l-4 border-l-blue-400">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-2">
             <Home className="h-5 w-5 text-blue-500" />
             <div>
@@ -511,7 +511,7 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
           </div>
 
           {rooms.length > 0 && (
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span>
                 {t("planningRooms.totalArea", "Total area")}: <strong>{totalArea > 0 ? `${totalArea.toFixed(1)} m²` : "–"}</strong>
               </span>

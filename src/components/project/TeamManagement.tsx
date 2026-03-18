@@ -843,7 +843,7 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
                     </p>
                   )}
                 </div>
-                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                <span className="hidden sm:inline text-sm text-muted-foreground whitespace-nowrap">
                   {getMemberRoleLabel(member)}
                   {member.contractor_category && (
                     <span className="text-xs">
@@ -852,7 +852,7 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
                     </span>
                   )}
                 </span>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                   {currentProfileId && member.profile_id && member.profile_id !== currentProfileId && (
                     <Button
                       variant="ghost"

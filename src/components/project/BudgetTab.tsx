@@ -1479,7 +1479,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
       )}
 
       {/* Filters */}
-      <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-end md:gap-4 mb-4">
+      <div className="flex flex-row flex-wrap items-end gap-2 md:gap-4 mb-4">
         <div className="min-w-[140px] max-w-[200px]">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1492,7 +1492,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
             />
           </div>
         </div>
-        <div className="w-full md:w-[130px]">
+        <div className="w-[130px]">
           <Select value={filterType} onValueChange={(v) => setFilterType(v as "all" | "task" | "material")}>
             <SelectTrigger className="h-8">
               <SelectValue />
