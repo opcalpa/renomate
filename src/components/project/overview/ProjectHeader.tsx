@@ -101,25 +101,7 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
               </Button>
             </div>
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="w-full h-28 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 hover:bg-muted/30 transition-colors flex flex-col items-center justify-center gap-1.5 cursor-pointer"
-          >
-            {uploading ? (
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            ) : (
-              <>
-                <Camera className="h-5 w-5 text-muted-foreground/50" />
-                <span className="text-xs text-muted-foreground/50">
-                  {t("overview.addCoverPhoto", "Add project photo")}
-                </span>
-              </>
-            )}
-          </button>
-        )}
+        ) : null}
         <input
           ref={fileRef}
           type="file"
@@ -143,6 +125,16 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
               <Pencil className="h-3.5 w-3.5" />
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground/50 hover:text-muted-foreground"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            title={t("overview.addCoverPhoto", "Add project photo")}
+          >
+            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+          </Button>
           <span
             className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${meta.color}`}
           >
