@@ -96,6 +96,10 @@ export default function CreateQuote() {
   const [previewScale, setPreviewScale] = useState(0.75);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const isMobile = useRef(typeof window !== "undefined" && window.innerWidth < 1024).current;
+  // Scale the A4 document (794px wide) to fit the mobile screen width
+  const mobilePreviewScale = isMobile
+    ? Math.round(Math.max(0.3, (window.innerWidth - 48) / 794) * 100) / 100
+    : 1;
 
   const fitToWidth = useCallback(() => {
     const container = previewContainerRef.current;
@@ -957,16 +961,18 @@ export default function CreateQuote() {
               <span className="font-medium">{t("quotes.livePreview", "Förhandsgranskning")}</span>
               <span className="text-xs">{t("quotes.previewSubtitle", "Så här ser offerten ut för kund")}</span>
             </div>
-            <div className="overflow-x-auto rounded-lg bg-neutral-100 dark:bg-neutral-900 p-2">
-              <QuoteDocument
-                projectName={projectName}
-                items={items}
-                freeText={freeText}
-                company={{ name: companyName, logoUrl: companyLogoUrl, ...companyInfo }}
-                clientName={clients.find((c) => c.id === clientId)?.name}
-                quoteNumber={quoteNumber}
-                compactMode={compactMode}
-              />
+            <div className="rounded-lg bg-neutral-100 dark:bg-neutral-900 p-2 overflow-hidden">
+              <div style={{ zoom: mobilePreviewScale }}>
+                <QuoteDocument
+                  projectName={projectName}
+                  items={items}
+                  freeText={freeText}
+                  company={{ name: companyName, logoUrl: companyLogoUrl, ...companyInfo }}
+                  clientName={clients.find((c) => c.id === clientId)?.name}
+                  quoteNumber={quoteNumber}
+                  compactMode={compactMode}
+                />
+              </div>
             </div>
           </div>
         )}
