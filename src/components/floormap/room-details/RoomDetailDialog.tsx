@@ -55,52 +55,60 @@ export function RoomDetailDialog({
   const isLoading = open && !room && !isCreateMode;
 
   const actionBar = (
-    <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t flex-shrink-0">
-      <Button
-        onClick={handleSave}
-        disabled={saving || !formData.name.trim()}
-        className="flex-1"
-      >
-        {saving ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            {isNewRoom ? t("common.creating", "Creating...") : t("common.saving", "Saving...")}
-          </>
-        ) : isNewRoom ? (
-          <>
-            <Plus className="mr-2 h-4 w-4" />
-            {t("floormap.createRoom")}
-          </>
-        ) : (
-          <>
-            <Save className="mr-2 h-4 w-4" />
-            {t("taskPanel.saveChanges")}
-          </>
+    <div className="flex items-center justify-between gap-3 pt-4 border-t flex-shrink-0">
+      <div>
+        {!isNewRoom && (
+          <Button
+            variant="ghost"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={handleDelete}
+            disabled={saving}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {t("floormap.deleteRoom", "Ta bort rum")}
+          </Button>
         )}
-      </Button>
-      {!isNewRoom && onViewElevation && (
+      </div>
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          <X className="mr-2 h-4 w-4" />
+          {isNewRoom ? t("common.cancel") : t("common.close", "Stäng")}
+        </Button>
+        {!isNewRoom && onViewElevation && (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              onOpenChange(false);
+              onViewElevation();
+            }}
+            disabled={saving}
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            {t("roomElevation.viewElevation", "View Elevation")}
+          </Button>
+        )}
         <Button
-          variant="secondary"
-          onClick={() => {
-            onOpenChange(false);
-            onViewElevation();
-          }}
-          disabled={saving}
+          onClick={handleSave}
+          disabled={saving || !formData.name.trim()}
         >
-          <Eye className="mr-2 h-4 w-4" />
-          {t("roomElevation.viewElevation", "View Elevation")}
+          {saving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {isNewRoom ? t("common.creating", "Skapar...") : t("common.saving", "Sparar...")}
+            </>
+          ) : isNewRoom ? (
+            <>
+              <Plus className="mr-2 h-4 w-4" />
+              {t("floormap.createRoom")}
+            </>
+          ) : (
+            <>
+              <Save className="mr-2 h-4 w-4" />
+              {t("taskPanel.saveChanges")}
+            </>
+          )}
         </Button>
-      )}
-      {!isNewRoom && (
-        <Button variant="destructive" onClick={handleDelete} disabled={saving}>
-          <Trash2 className="mr-2 h-4 w-4" />
-          {t("floormap.deleteRoom", "Delete room")}
-        </Button>
-      )}
-      <Button variant="outline" onClick={() => onOpenChange(false)}>
-        <X className="mr-2 h-4 w-4" />
-        {isNewRoom ? t("common.cancel") : t("common.close", "Close")}
-      </Button>
+      </div>
     </div>
   );
 
@@ -144,8 +152,8 @@ export function RoomDetailDialog({
               </div>
               <SheetDescription>
                 {isNewRoom
-                  ? t("rooms.fillInNewRoomDetails", "Fill in details for the new room")
-                  : t("rooms.editRoomInfoAndComments", "Edit room information and add comments")}
+                  ? t("rooms.fillInNewRoomDetails", "Fyll i detaljer för det nya rummet")
+                  : t("rooms.editRoomInfoAndComments", "Redigera ruminformation och lägg till kommentarer")}
               </SheetDescription>
             </SheetHeader>
 
@@ -201,8 +209,8 @@ export function RoomDetailDialog({
           </div>
           <DialogDescription>
             {isNewRoom
-              ? t("rooms.fillInNewRoomDetails", "Fill in details for the new room")
-              : t("rooms.editRoomInfoAndComments", "Edit room information and add comments")}
+              ? t("rooms.fillInNewRoomDetails", "Fyll i detaljer för det nya rummet")
+              : t("rooms.editRoomInfoAndComments", "Redigera ruminformation och lägg till kommentarer")}
           </DialogDescription>
         </DialogHeader>
 

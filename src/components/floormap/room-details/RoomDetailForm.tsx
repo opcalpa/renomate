@@ -81,7 +81,7 @@ export function RoomDetailForm({
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Track which accordion sections are open
-  const [openSections, setOpenSections] = useState<string[]>(["tasks", "vision", "notes"]);
+  const [openSections, setOpenSections] = useState<string[]>(["identity"]);
 
   // Track collapsible sections
   const [photosExpanded, setPhotosExpanded] = useState(true);
@@ -165,32 +165,6 @@ export function RoomDetailForm({
         onValueChange={setOpenSections}
         className="w-full"
       >
-        {/* Kundens önskemål */}
-        <AccordionItem value="vision">
-          <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-2">
-              <Lightbulb className="h-4 w-4 text-amber-500" />
-              <span>{t("rooms.visionTitle", "Kundens önskemål")}</span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <VisionSection formData={formData} updateFormData={updateFormData} />
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* Interna anteckningar */}
-        <AccordionItem value="notes">
-          <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-2">
-              <HardHat className="h-4 w-4 text-slate-500" />
-              <span>{t("rooms.internalNotes", "Interna anteckningar")}</span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <InternalNotesSection formData={formData} updateFormData={updateFormData} />
-          </AccordionContent>
-        </AccordionItem>
-
         {/* Egenskaper (Identity) */}
         <AccordionItem value="identity" data-section="identity">
           <AccordionTrigger className="hover:no-underline">
@@ -294,6 +268,32 @@ export function RoomDetailForm({
               updateFormData={updateFormData}
               updateSpec={updateSpec}
             />
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Kundens önskemål */}
+        <AccordionItem value="vision">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="h-4 w-4 text-amber-500" />
+              <span>{t("rooms.visionTitle", "Kundens önskemål")}</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <VisionSection formData={formData} updateFormData={updateFormData} />
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Interna anteckningar */}
+        <AccordionItem value="notes">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <HardHat className="h-4 w-4 text-slate-500" />
+              <span>{t("rooms.internalNotes", "Interna anteckningar")}</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <InternalNotesSection formData={formData} updateFormData={updateFormData} />
           </AccordionContent>
         </AccordionItem>
       </Accordion>

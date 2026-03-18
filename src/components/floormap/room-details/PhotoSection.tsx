@@ -350,16 +350,6 @@ export function PhotoSection({ roomId, showPinterest = false }: PhotoSectionProp
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <ImageIcon className="h-4 w-4 text-gray-600" />
-          <Label>{t('rooms.photos', 'Photos')}</Label>
-        </div>
-        <div className="text-xs text-gray-500">
-          {photos.length} {photos.length === 1 ? t('rooms.photo', 'photo') : t('rooms.photosCount', 'photos')}
-        </div>
-      </div>
-
       {/* Upload + Camera Buttons */}
       <div className="flex gap-2">
         <input
@@ -618,7 +608,7 @@ export function PhotoSection({ roomId, showPinterest = false }: PhotoSectionProp
       ) : (
         <div className="text-center py-6 text-gray-400 text-sm">
           <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p>{t('rooms.noPhotosUploaded', 'No photos uploaded yet')}</p>
+          <p>{t('rooms.noPhotosUploaded', 'Inga foton uppladdade än')}</p>
         </div>
       )}
 
