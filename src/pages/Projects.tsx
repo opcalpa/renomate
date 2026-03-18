@@ -1267,7 +1267,7 @@ const Projects = () => {
                 ) : (
                   <>
                     {/* Project type dropdown removed — type is inferred from tasks/rooms */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label>{t('projects.startDate')}</Label>
                         <Input
