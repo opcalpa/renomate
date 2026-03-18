@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, ChevronDown, Check } from "lucide-react";
+import { Check, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -15,6 +15,7 @@ interface DemoBannerProps {
   phase: DemoPhase;
   onPhaseChange: (phase: DemoPhase) => void;
   onRoleChange: (role: DemoViewRole) => void;
+  infoText?: string;
 }
 
 const PHASES: { value: DemoPhase; labelKey: string }[] = [
@@ -28,7 +29,7 @@ const ROLES: { value: DemoViewRole; labelKey: string }[] = [
   { value: "homeowner", labelKey: "demo.roles.homeowner" },
 ];
 
-export function DemoBanner({ role, phase, onPhaseChange, onRoleChange }: DemoBannerProps) {
+export function DemoBanner({ role, phase, onPhaseChange, onRoleChange, infoText }: DemoBannerProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -43,9 +44,8 @@ export function DemoBanner({ role, phase, onPhaseChange, onRoleChange }: DemoBan
           <span className="border border-primary-foreground/60 rounded px-1.5 py-0.5 text-xs">Demo</span>
           <Popover>
             <PopoverTrigger asChild>
-              <button className="inline-flex items-center gap-1 rounded-full bg-primary-foreground/20 text-primary-foreground px-2.5 py-0.5 text-xs font-medium hover:bg-primary-foreground/30 transition-colors">
+              <button className="inline-flex items-center rounded-full bg-primary-foreground/20 text-primary-foreground px-2.5 py-0.5 text-xs font-medium hover:bg-primary-foreground/30 transition-colors">
                 {t(currentRole.labelKey)}
-                <ChevronDown className="h-3 w-3" />
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-44 p-1" align="center">
@@ -73,9 +73,8 @@ export function DemoBanner({ role, phase, onPhaseChange, onRoleChange }: DemoBan
         {role === "contractor" && (
           <Popover>
             <PopoverTrigger asChild>
-              <button className="inline-flex items-center gap-1 rounded-full bg-primary-foreground text-primary px-3 py-1 text-xs font-medium hover:bg-primary-foreground/90 transition-colors">
+              <button className="inline-flex items-center rounded-full bg-primary-foreground text-primary px-3 py-1 text-xs font-medium hover:bg-primary-foreground/90 transition-colors">
                 {t(currentPhase.labelKey)}
-                <ChevronDown className="h-3 w-3" />
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-48 p-1" align="center">
@@ -106,8 +105,21 @@ export function DemoBanner({ role, phase, onPhaseChange, onRoleChange }: DemoBan
           onClick={() => navigate("/auth")}
         >
           {t("demo.banner.signUp", "Create account")}
-          <ArrowRight className="h-3 w-3 ml-1" />
         </Button>
+
+        {/* Info popover — replaces the blue info bar */}
+        {infoText && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30 transition-colors">
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 text-sm" align="end">
+              {infoText}
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
     </div>
   );

@@ -1061,15 +1061,12 @@ const ProjectDetail = () => {
             phase={demoPrefs.preferences.phase}
             onPhaseChange={demoPrefs.setPhase}
             onRoleChange={demoPrefs.setRole}
+            infoText={demoPrefs.preferences.role === "homeowner"
+              ? (activeTab === "customer"
+                ? t("demo.homeownerContext.customerView", "You are viewing the Client View — this is what you see when a builder invites you to follow your project.")
+                : t("demo.homeownerContext.overview", "You are viewing your own project — this is how it looks when you manage a renovation yourself."))
+              : undefined}
           />
-        )}
-        {/* Demo context info bar for homeowners — explains which view they're seeing */}
-        {isPublicDemoProject && demoPrefs.preferences.role === "homeowner" && (
-          <div className="px-4 py-1.5 flex items-center justify-center gap-2 text-xs bg-blue-50 text-blue-700 border-b border-blue-100 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-900">
-            {activeTab === "customer"
-              ? t("demo.homeownerContext.customerView", "You are viewing the Client View — this is what you see when a builder invites you to follow your project.")
-              : t("demo.homeownerContext.overview", "You are viewing your own project — this is how it looks when you manage a renovation yourself.")}
-          </div>
         )}
         {/* Personal demo banner */}
         {isPersonalDemo && (
