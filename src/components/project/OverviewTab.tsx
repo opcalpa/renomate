@@ -332,13 +332,16 @@ const OverviewTab = ({
 
       {/* Documents card hidden in planning phase — no value until a quote exists */}
 
-      {/* Invite customer to fill in planning — builder only, planning phase */}
+      {/* Scope / Planning section — during planning: prominent; after planning: moved to bottom */}
+      {isPlanning && (!isInvitedClient || isPlanningContributor) && planningSection}
+
+      {/* Invite customer to fill in planning — shown below the planning card as secondary option */}
       {!isHomeowner && isPlanning && !isRfqProject && (
-        <div className="flex justify-end">
+        <div className="flex justify-center -mt-2">
           <Button
             size="sm"
-            variant="outline"
-            className="gap-1.5"
+            variant="ghost"
+            className="gap-1.5 text-muted-foreground hover:text-foreground"
             onClick={() => setInviteCustomerOpen(true)}
           >
             <UserPlus className="h-3.5 w-3.5" />
@@ -346,9 +349,6 @@ const OverviewTab = ({
           </Button>
         </div>
       )}
-
-      {/* Scope / Planning section — during planning: prominent; after planning: moved to bottom */}
-      {isPlanning && (!isInvitedClient || isPlanningContributor) && planningSection}
 
       {/* Reminders + contextual tips — collapsible section */}
       {!isGuest && !isPlanningContributor && (reminders.length > 0 || tips.length > 0) && (
