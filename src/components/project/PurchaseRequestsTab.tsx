@@ -740,9 +740,9 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
             </div>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" className="w-full sm:w-auto">
-                  <Plus className="h-4 w-4 sm:mr-2" />
-                  <span className="sm:inline">{t('purchases.addOrder')}</span>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t('purchases.addOrder')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-3xl lg:max-w-5xl max-h-[90vh] flex flex-col">
@@ -1199,12 +1199,8 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
             <div className="text-center py-12">
               <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">{t('purchases.noPurchaseOrders')}</h3>
-              <p className="text-muted-foreground mb-4">
+              <p className="text-muted-foreground mb-2">
                 {t('purchases.noPurchaseOrdersDescription')}</p>
-              <Button onClick={() => setDialogOpen(true)} className="mb-4">
-                <Plus className="h-4 w-4 mr-2" />
-                {t('purchases.addFirstOrder', 'Add first order')}
-              </Button>
               <p className="text-xs text-muted-foreground">
                 {t('purchases.emptyStateTip', 'Tip: Link purchases to tasks to track costs per work item')}
               </p>
