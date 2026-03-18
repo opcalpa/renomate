@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
-import { Home, Loader2, Save, X, Trash2, Plus, Eye } from "lucide-react";
+import { Loader2, Save, X, Trash2, Plus, Eye } from "lucide-react";
 import { RoomDetailForm } from "./RoomDetailForm";
 import { useRoomForm } from "./hooks/useRoomForm";
 import { useTranslation } from "react-i18next";
@@ -64,15 +64,15 @@ export function RoomDetailDialog({
             onClick={handleDelete}
             disabled={saving}
           >
-            <Trash2 className="mr-2 h-4 w-4" />
-            {t("floormap.deleteRoom", "Ta bort rum")}
+            <Trash2 className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">{t("floormap.deleteRoom", "Ta bort rum")}</span>
           </Button>
         )}
       </div>
       <div className="flex gap-2">
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-          <X className="mr-2 h-4 w-4" />
-          {isNewRoom ? t("common.cancel") : t("common.close", "Stäng")}
+          <X className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">{isNewRoom ? t("common.cancel") : t("common.close", "Stäng")}</span>
         </Button>
         {!isNewRoom && onViewElevation && (
           <Button
@@ -104,7 +104,7 @@ export function RoomDetailDialog({
           ) : (
             <>
               <Save className="mr-2 h-4 w-4" />
-              {t("taskPanel.saveChanges")}
+              {t("common.save", "Spara")}
             </>
           )}
         </Button>
@@ -139,23 +139,23 @@ export function RoomDetailDialog({
             side="right"
             className="w-[520px] max-w-[90vw] flex flex-col gap-0 p-0 overflow-hidden"
           >
-            <SheetHeader className="flex-shrink-0 px-6 pt-5 pb-3 border-b">
-              <div className="flex items-center gap-2">
-                {isNewRoom ? (
-                  <Plus className="h-5 w-5 text-primary" />
-                ) : (
-                  <Home className="h-5 w-5 text-primary" />
-                )}
-                <SheetTitle>
-                  {isNewRoom ? t("floormap.createRoom") : t("floormap.roomDetails", "Room details")}
-                </SheetTitle>
-              </div>
+            {/* Title hidden visually for existing rooms — room name inside form is the real heading */}
+            <VisuallyHidden>
+              <SheetTitle>
+                {isNewRoom ? t("floormap.createRoom") : t("floormap.roomDetails", "Rumsdetaljer")}
+              </SheetTitle>
               <SheetDescription>
                 {isNewRoom
                   ? t("rooms.fillInNewRoomDetails", "Fyll i detaljer för det nya rummet")
-                  : t("rooms.editRoomInfoAndComments", "Redigera ruminformation och lägg till kommentarer")}
+                  : t("rooms.editRoomInfoAndComments", "Redigera ruminformation")}
               </SheetDescription>
-            </SheetHeader>
+            </VisuallyHidden>
+            {isNewRoom && (
+              <div className="flex-shrink-0 px-6 pt-5 pb-3 border-b flex items-center gap-2">
+                <Plus className="h-5 w-5 text-primary" />
+                <span className="font-semibold">{t("floormap.createRoom")}</span>
+              </div>
+            )}
 
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <RoomDetailForm
@@ -196,23 +196,22 @@ export function RoomDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl lg:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <div className="flex items-center gap-2">
-            {isNewRoom ? (
+        {isNewRoom ? (
+          <DialogHeader className="flex-shrink-0">
+            <div className="flex items-center gap-2">
               <Plus className="h-5 w-5 text-primary" />
-            ) : (
-              <Home className="h-5 w-5 text-primary" />
-            )}
-            <DialogTitle>
-              {isNewRoom ? t("floormap.createRoom") : t("floormap.roomDetails", "Room details")}
-            </DialogTitle>
-          </div>
-          <DialogDescription>
-            {isNewRoom
-              ? t("rooms.fillInNewRoomDetails", "Fyll i detaljer för det nya rummet")
-              : t("rooms.editRoomInfoAndComments", "Redigera ruminformation och lägg till kommentarer")}
-          </DialogDescription>
-        </DialogHeader>
+              <DialogTitle>{t("floormap.createRoom")}</DialogTitle>
+            </div>
+            <DialogDescription>
+              {t("rooms.fillInNewRoomDetails", "Fyll i detaljer för det nya rummet")}
+            </DialogDescription>
+          </DialogHeader>
+        ) : (
+          <VisuallyHidden>
+            <DialogTitle>{t("floormap.roomDetails", "Rumsdetaljer")}</DialogTitle>
+            <DialogDescription>{t("rooms.editRoomInfoAndComments", "Redigera ruminformation")}</DialogDescription>
+          </VisuallyHidden>
+        )}
 
         <div className="flex-1 overflow-y-auto pr-2">
           <RoomDetailForm

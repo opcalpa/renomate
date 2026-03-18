@@ -7,6 +7,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -350,70 +356,76 @@ export function PhotoSection({ roomId, showPinterest = false }: PhotoSectionProp
 
   return (
     <div className="space-y-3">
-      {/* Upload + Camera Buttons */}
+      {/* Add photo — single button with dropdown */}
+      <input
+        type="file"
+        id="photo-camera"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileUpload}
+        className="hidden"
+        disabled={uploading}
+      />
+      <input
+        type="file"
+        id="photo-upload"
+        accept="image/*"
+        multiple
+        onChange={handleFileUpload}
+        className="hidden"
+        disabled={uploading}
+      />
       <div className="flex gap-2">
-        <input
-          type="file"
-          id="photo-camera"
-          accept="image/*"
-          capture="environment"
-          onChange={handleFileUpload}
-          className="hidden"
-          disabled={uploading}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          className="flex-1 gap-2"
-          disabled={uploading}
-          onClick={() => document.getElementById("photo-camera")?.click()}
-        >
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-          {t('rooms.takePhoto', 'Take photo')}
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 gap-2"
+              disabled={uploading}
+            >
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              {uploading ? t('rooms.uploading', 'Laddar upp...') : t('rooms.addPhoto', 'Lägg till foto')}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-44">
+            <DropdownMenuItem onClick={() => document.getElementById("photo-camera")?.click()}>
+              <Camera className="h-4 w-4 mr-2" />
+              {t('rooms.takePhoto', 'Ta foto')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => document.getElementById("photo-upload")?.click()}>
+              <Upload className="h-4 w-4 mr-2" />
+              {t('rooms.uploadFile', 'Välj fil')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-        <input
-          type="file"
-          id="photo-upload"
-          accept="image/*"
-          multiple
-          onChange={handleFileUpload}
-          className="hidden"
-          disabled={uploading}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          className="flex-1 gap-2"
-          disabled={uploading}
-          onClick={() => document.getElementById("photo-upload")?.click()}
-        >
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {t('rooms.upload', 'Upload')}
-        </Button>
+        {/* Pinterest — only for homeowners */}
+        {showPinterest && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 gap-2 border-[#E60023]/30 text-[#E60023] hover:bg-[#E60023]/5 hover:border-[#E60023]"
+              >
+                <PinterestLogo className="h-4 w-4" />
+                Pinterest
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={handleOpenPinImport}>
+                <PinterestLogo className="h-4 w-4 mr-2" />
+                {t('rooms.importPin', 'Importera pin')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleAddPinterestBoard}>
+                <Plus className="h-4 w-4 mr-2" />
+                {pinterestBoardUrl ? t('rooms.changeBoard', 'Byt board') : t('rooms.linkBoard', 'Länka board')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
-
-      {/* Pinterest Buttons - Only for homeowners */}
-      {showPinterest && (
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleOpenPinImport}
-            className="flex-1 gap-2 border-[#E60023]/30 text-[#E60023] hover:bg-[#E60023]/5 hover:border-[#E60023]"
-          >
-            <PinterestLogo className="h-4 w-4" />
-            {t('rooms.importPin', 'Import Pin')}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleAddPinterestBoard}
-            className="flex-1 gap-2 border-[#E60023]/30 text-[#E60023] hover:bg-[#E60023]/5 hover:border-[#E60023] opacity-70"
-          >
-            <Plus className="h-4 w-4" />
-            {pinterestBoardUrl ? t('rooms.changeBoard', 'Change Board') : t('rooms.linkBoard', 'Link Board')}
-          </Button>
-        </div>
-      )}
 
       {/* Pinterest Pin Import Dialog */}
       <Dialog open={pinImportDialogOpen} onOpenChange={setPinImportDialogOpen}>

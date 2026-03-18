@@ -1,17 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Calendar, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  ROOM_STATUS_OPTIONS,
-  PRIORITY_OPTIONS,
-} from "../constants";
 import type { IdentitySectionProps } from "../types";
 
 // Compact dimension table row: label | input | unit
@@ -22,7 +11,7 @@ function DimRow({
   step = 0.01,
   min,
   max,
-  hint,
+  tooltip,
   readOnly = false,
   onChange,
 }: {
@@ -32,7 +21,7 @@ function DimRow({
   step?: number;
   min?: number;
   max?: number;
-  hint?: string;
+  tooltip?: string;
   readOnly?: boolean;
   onChange?: (v: number | null) => void;
 }) {
@@ -41,7 +30,12 @@ function DimRow({
   return (
     <div className="py-1.5">
       <div className="flex items-center gap-2">
-        <span className="flex-1 text-sm text-muted-foreground truncate">{label}</span>
+        <span
+          className="flex-1 text-sm text-muted-foreground truncate"
+          title={tooltip}
+        >
+          {label}
+        </span>
         {readOnly ? (
           <span className="w-20 text-right text-sm tabular-nums text-muted-foreground pr-1">
             {value != null ? value.toFixed(2) : "—"}
@@ -63,7 +57,6 @@ function DimRow({
         )}
         <span className="w-7 shrink-0 text-xs text-muted-foreground">{unit}</span>
       </div>
-      {hint && <p className="text-xs text-muted-foreground/70 mt-0.5 pl-0">{hint}</p>}
     </div>
   );
 }
@@ -75,16 +68,7 @@ export function IdentitySection({
   perimeterMm,
   createdAt,
 }: IdentitySectionProps) {
-  const { t, i18n } = useTranslation();
-
-  // Format created date
-  const formattedDate = createdAt
-    ? new Date(createdAt).toLocaleDateString(i18n.language === 'sv' ? 'sv-SE' : 'en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
-    : null;
+  const { t } = useTranslation();
 
   // Auto-calculate area from width × depth
   const handleWidthChange = (mm: number | undefined) => {
@@ -111,59 +95,7 @@ export function IdentitySection({
     : wallArea;
 
   return (
-    <div className="space-y-4">
-      {/* Created date - shown at top for existing rooms */}
-      {formattedDate && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground pb-2 border-b">
-          <Calendar className="h-4 w-4" />
-          <span>{t('rooms.createdOn', 'Skapad')}: {formattedDate}</span>
-        </div>
-      )}
-
-      {/* Status and Priority — compact table */}
-      <div className="divide-y divide-border/50">
-        <div className="flex items-center gap-3 py-1.5">
-          <span className="text-sm text-muted-foreground shrink-0 w-28">{t('rooms.status')}</span>
-          <div className="flex-1 min-w-0">
-            <Select value={formData.status} onValueChange={(value) => updateFormData({ status: value })}>
-              <SelectTrigger id="room-status" className="h-8">
-                <SelectValue placeholder={t('identitySection.selectStatus')} />
-              </SelectTrigger>
-              <SelectContent>
-                {ROOM_STATUS_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {t(option.labelKey)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 py-1.5">
-          <span className="text-sm text-muted-foreground shrink-0 w-28">{t("rooms.priority")}</span>
-          <div className="flex-1 min-w-0">
-            <Select value={formData.priority} onValueChange={(value) => updateFormData({ priority: value })}>
-              <SelectTrigger id="room-priority" className="h-8">
-                <SelectValue placeholder={t("rooms.selectPriority", "Välj prioritet")} />
-              </SelectTrigger>
-              <SelectContent>
-                {PRIORITY_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {t(option.labelKey)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
-      {/* Dimensions — compact table */}
-      <div className="pt-2 border-t">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-          {t('rooms.dimensions', 'Dimensioner')}
-        </p>
-
+    <div>
         {/* Area mismatch warning */}
         {formData.width_mm && formData.depth_mm && formData.area_sqm !== undefined && (() => {
           const computed = (formData.width_mm! * formData.depth_mm!) / 1_000_000;
@@ -227,12 +159,12 @@ export function IdentitySection({
           />
           {/* Icke-målningsbar yta */}
           <DimRow
-            label={t('rooms.nonPaintableArea', 'Icke-mål. yta')}
+            label={t('rooms.nonPaintableArea', 'Icke-målningsbar yta')}
             unit="m²"
             value={formData.non_paintable_area_sqm ?? null}
             step={0.1}
             min={0}
-            hint={t('rooms.nonPaintableAreaHint', 'Fönster, garderober, dörrar m.m.')}
+            tooltip={t('rooms.nonPaintableAreaHint', 'Fönster, garderober, dörrar m.m. som dras av från väggyta vid färgberäkning')}
             onChange={(v) => updateFormData({ non_paintable_area_sqm: v ?? undefined })}
           />
 
@@ -254,7 +186,6 @@ export function IdentitySection({
             />
           ) : null}
         </div>
-      </div>
     </div>
   );
 }
