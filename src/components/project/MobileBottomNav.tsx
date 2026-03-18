@@ -33,7 +33,7 @@ const STORAGE_KEY = "renomate_show_all_tabs";
 const DEFAULT_PRIMARY: TabConfig[] = [
   { tab: "overview", icon: LayoutDashboard, labelKey: "nav.mobileNav.overview" },
   { tab: "tasks", icon: CheckSquare, labelKey: "nav.mobileNav.tasks" },
-  { tab: "chat", icon: MessageSquare, labelKey: "nav.mobileNav.chat" },
+  { tab: "purchases", icon: ShoppingCart, labelKey: "nav.mobileNav.purchases" },
   { tab: "budget", icon: PiggyBank, labelKey: "nav.mobileNav.budget" },
 ];
 
