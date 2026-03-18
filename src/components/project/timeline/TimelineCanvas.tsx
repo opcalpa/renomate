@@ -58,9 +58,32 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
   const { toast } = useToast();
   const containerRef = useRef<HTMLDivElement>(null);
   const [stageWidth, setStageWidth] = useState(800);
-  const stageHeight = Math.max(totalRows * ROW_HEIGHT + 20, 200);
 
   const { panX, panY, pixelsPerDay, dragState } = useTimelineStore();
+
+  // Dynamic height: count rows whose tasks are visible in the current viewport
+  const MIN_VISIBLE_ROWS = 4;
+  const stageHeight = useMemo(() => {
+    const visibleStart = xToDate(0, originDate, pixelsPerDay, panX);
+    const visibleEnd = xToDate(stageWidth, originDate, pixelsPerDay, panX);
+    const visibleGroupIds = new Set<string>();
+    let visibleTaskRows = 0;
+    for (const row of rows) {
+      if (row.type === "task" && row.task?.start_date && row.task?.finish_date) {
+        const start = parseISO(row.task.start_date);
+        const end = parseISO(row.task.finish_date);
+        if (start <= visibleEnd && end >= visibleStart) {
+          visibleTaskRows++;
+          if (row.groupId) visibleGroupIds.add(row.groupId);
+        }
+      }
+    }
+    const visibleGroupHeaders = rows.filter(
+      (r) => r.type === "group-header" && visibleGroupIds.has(r.groupId ?? "")
+    ).length;
+    const visibleRows = visibleTaskRows + visibleGroupHeaders;
+    return Math.max(visibleRows * ROW_HEIGHT + 20, MIN_VISIBLE_ROWS * ROW_HEIGHT + 20);
+  }, [rows, originDate, pixelsPerDay, panX, stageWidth]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -72,6 +95,64 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
     });
     ro.observe(el);
     return () => ro.disconnect();
+  }, []);
+
+  // Touch gestures: single-finger pan + two-finger pinch-to-zoom
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let lastX = 0;
+    let lastDist = 0;
+
+    const getTouchDist = (touches: TouchList) => {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        lastX = e.touches[0].clientX;
+      } else if (e.touches.length === 2) {
+        lastDist = getTouchDist(e.touches);
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const store = useTimelineStore.getState();
+      if (e.touches.length === 2 && lastDist > 0) {
+        const newDist = getTouchDist(e.touches);
+        const scale = newDist / lastDist;
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const rect = el.getBoundingClientRect();
+        store.setZoom(store.pixelsPerDay * scale, midX - rect.left);
+        lastDist = newDist;
+      } else if (e.touches.length === 1) {
+        const dx = e.touches[0].clientX - lastX;
+        store.setPan(store.panX + dx, store.panY);
+        lastX = e.touches[0].clientX;
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length === 0) {
+        lastDist = 0;
+      } else if (e.touches.length === 1) {
+        lastX = e.touches[0].clientX;
+        lastDist = 0;
+      }
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: false });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: false });
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
   }, []);
 
   // Wheel handler: pan + zoom
@@ -242,6 +323,7 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
     <div
       ref={containerRef}
       className="w-full overflow-hidden konva-timeline-canvas"
+      style={{ touchAction: "none" }}
     >
       <Stage
         width={stageWidth}
