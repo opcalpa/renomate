@@ -223,9 +223,9 @@ export function GlobalSearch() {
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
+        <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden max-sm:!top-0 max-sm:!left-0 max-sm:!right-0 max-sm:!translate-x-0 max-sm:!translate-y-0 max-sm:!w-full max-sm:!max-w-none max-sm:!rounded-t-none max-sm:!rounded-b-xl">
           {/* Search input */}
-          <div className="flex items-center gap-2 border-b px-4 py-3">
+          <div className="flex items-center gap-3 px-4 py-3 border-b">
             <Search className="h-4 w-4 text-muted-foreground shrink-0" />
             <Input
               ref={inputRef}
@@ -233,7 +233,7 @@ export function GlobalSearch() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={t("globalSearch.inputPlaceholder", "Search tasks, purchases, files, rooms...")}
-              className="border-0 p-0 h-auto focus-visible:ring-0 text-sm"
+              className="border-0 p-0 h-auto focus-visible:ring-0 text-base sm:text-sm"
             />
             {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />}
           </div>
