@@ -292,7 +292,7 @@ export function generateWallsFromRoom(
 function wallsOverlap(
   wall1: { x1: number; y1: number; x2: number; y2: number },
   wall2: { x1: number; y1: number; x2: number; y2: number },
-  tolerance: number = 5
+  tolerance: number = 100
 ): boolean {
   // Calculate direction vectors
   const dx1 = wall1.x2 - wall1.x1;
