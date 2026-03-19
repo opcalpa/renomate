@@ -16,7 +16,6 @@ import { saveShapesForPlan, loadShapesForPlan } from './utils/plans';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Minimap } from './Minimap';
 import { getSymbolComponent, ArchSymbolType, SYMBOL_METADATA } from './SymbolLibrary';
 import { getObjectById } from './ObjectRenderer';
 import { ObjectShape, ObjectDefinition } from './objectLibraryDefinitions';
@@ -3930,33 +3929,6 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         </div>
       )}
 
-      {/* Minimap - Floating overview in bottom-right */}
-      <Minimap
-        shapes={currentShapes}
-        canvasWidth={CANVAS_WIDTH}
-        canvasHeight={CANVAS_HEIGHT}
-        viewState={viewState}
-        onViewportClick={(canvasX, canvasY) => {
-          // Center viewport on clicked position
-          const centerX = window.innerWidth / 2;
-          const centerY = window.innerHeight / 2;
-          
-          const unconstrained = {
-            panX: centerX - canvasX * viewState.zoom,
-            panY: centerY - canvasY * viewState.zoom,
-          };
-          
-          // Constrain pan to canvas bounds
-          const constrained = constrainPan(unconstrained.panX, unconstrained.panY, viewState.zoom);
-          
-          setViewState({
-            ...constrained,
-          });
-        }}
-        gridWidth={CANVAS_WIDTH}
-        gridHeight={CANVAS_HEIGHT}
-        marginOffset={0}
-      />
 
       {/* Context Menu (right-click) */}
       {contextMenuPos && (
