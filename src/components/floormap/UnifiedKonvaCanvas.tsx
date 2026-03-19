@@ -85,6 +85,7 @@ import {
 import { ToolContextMenu } from './ToolContextMenu';
 import { Tool } from './types';
 import { HoverInfoTooltip } from './HoverInfoTooltip';
+import { CanvasEmptyState } from './CanvasEmptyState';
 import { InlineCommentPopover } from '@/components/comments/InlineCommentPopover';
 import { MessageCircle } from 'lucide-react';
 
@@ -546,13 +547,9 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     return success;
   }, [currentPlanId, shapes]);
   
-  // Image import handler — places image at the center of the current viewport
-  const handleCanvasImageImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !currentPlanId) return;
-    if (!file.type.startsWith('image/')) { toast.error('Vänligen välj en bildfil'); return; }
-    if (file.size > 10 * 1024 * 1024) { toast.error('Max 10MB'); return; }
-
+  // Core image upload — takes a File, uploads to storage, places at viewport center
+  const uploadImageToCanvas = useCallback(async (file: File) => {
+    if (!currentPlanId) return;
     setIsUploadingCanvasImage(true);
     try {
       const projectId = useFloorMapStore.getState().currentProjectId;
@@ -587,6 +584,15 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       if (imageFileInputRef.current) imageFileInputRef.current.value = '';
     }
   }, [currentPlanId, addShape]);
+
+  // File input handler (from hidden input or context menu)
+  const handleCanvasImageImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Vänligen välj en bildfil'); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error('Max 10MB'); return; }
+    await uploadImageToCanvas(file);
+  }, [uploadImageToCanvas]);
 
   // Expose functions to window for toolbar
   useEffect(() => {
@@ -3132,6 +3138,17 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         onChange={handleCanvasImageImport}
         className="hidden"
       />
+
+      {/* Empty state — shown when canvas has no shapes */}
+      {currentShapes.length === 0 && !isReadOnly && (
+        <CanvasEmptyState
+          simplified={simplified}
+          onAIImport={() => window.dispatchEvent(new CustomEvent('openAIImport'))}
+          onDrawRoom={() => setActiveTool('room')}
+          onImageFile={uploadImageToCanvas}
+        />
+      )}
+
       {/* Text Input Dialog */}
       <TextInputDialog
         state={textDialog.state}
