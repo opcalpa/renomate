@@ -120,6 +120,8 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   const { t } = useTranslation();
   const stageRef = useRef<Konva.Stage>(null);
   const shapeRefs = useRef<Map<string, Konva.Node>>(new Map());
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingCanvasImage, setIsUploadingCanvasImage] = useState(false);
   
   // Unified drag system now at module level (top of file)
   // Accessible to all shape components
@@ -544,6 +546,48 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     return success;
   }, [currentPlanId, shapes]);
   
+  // Image import handler — places image at the center of the current viewport
+  const handleCanvasImageImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentPlanId) return;
+    if (!file.type.startsWith('image/')) { toast.error('Vänligen välj en bildfil'); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error('Max 10MB'); return; }
+
+    setIsUploadingCanvasImage(true);
+    try {
+      const projectId = useFloorMapStore.getState().currentProjectId;
+      const filePath = `projects/${projectId}/Uppladdade filer/${Date.now()}-${file.name}`;
+      const { error: uploadError } = await supabase.storage.from('project-files').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('project-files').getPublicUrl(filePath);
+
+      // Place at center of visible viewport
+      const { viewState } = useFloorMapStore.getState();
+      const cx = (window.innerWidth / 2 - viewState.panX) / viewState.zoom;
+      const cy = (window.innerHeight / 2 - viewState.panY) / viewState.zoom;
+
+      const imageShape: FloorMapShape = {
+        id: uuidv4(),
+        type: 'image',
+        planId: currentPlanId,
+        coordinates: { x: cx, y: cy, width: 0, height: 0 },
+        imageUrl: publicUrl,
+        imageOpacity: 0.5,
+        locked: false,
+        zIndex: -100,
+        name: file.name,
+      };
+      addShape(imageShape);
+      toast.success(`"${file.name}" tillagd på canvas`);
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      toast.error('Kunde inte ladda upp bilden');
+    } finally {
+      setIsUploadingCanvasImage(false);
+      if (imageFileInputRef.current) imageFileInputRef.current.value = '';
+    }
+  }, [currentPlanId, addShape]);
+
   // Expose functions to window for toolbar
   useEffect(() => {
     (window as any).__canvasSave = handleManualSave;
@@ -3080,6 +3124,14 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       }}
       onContextMenu={handleContextMenu}
     >
+      {/* Hidden file input for image import from context menu */}
+      <input
+        ref={imageFileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleCanvasImageImport}
+        className="hidden"
+      />
       {/* Text Input Dialog */}
       <TextInputDialog
         state={textDialog.state}
@@ -3904,7 +3956,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             window.dispatchEvent(new CustomEvent('openAIImport'));
           }}
           onOpenImageImport={() => {
-            window.dispatchEvent(new CustomEvent('openImageImport'));
+            imageFileInputRef.current?.click();
           }}
           onOpenPinterestImport={showPinterest ? () => {
             window.dispatchEvent(new CustomEvent('openPinterestImport'));

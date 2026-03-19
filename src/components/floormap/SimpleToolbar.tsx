@@ -408,11 +408,15 @@ export const SimpleToolbar = ({
         .from('project-files')
         .getPublicUrl(filePath);
 
+      // Place at center of visible viewport
+      const cx = (window.innerWidth / 2 - viewState.panX) / viewState.zoom;
+      const cy = (window.innerHeight / 2 - viewState.panY) / viewState.zoom;
+
       const imageShape: FloorMapShape = {
         id: uuidv4(),
         type: 'image',
         planId: currentPlanId || undefined,
-        coordinates: { x: 500, y: 500, width: 0, height: 0 },
+        coordinates: { x: cx, y: cy, width: 0, height: 0 },
         imageUrl: publicUrl,
         imageOpacity: 0.5,
         locked: false,
@@ -760,6 +764,21 @@ export const SimpleToolbar = ({
           </Button>
         </TooltipTrigger>
         <TooltipContent side="right">{t('floormap.measureDistance', 'Mät avstånd')} (M)</TooltipContent>
+      </Tooltip>
+
+      {/* Sticky Note - Always visible */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={activeTool === 'sticky_note' ? "default" : "ghost"}
+            size="icon"
+            onClick={() => setActiveTool('sticky_note')}
+            className={cn("w-10 h-10", activeTool === 'sticky_note' && "bg-amber-400 text-white hover:bg-amber-500")}
+          >
+            <StickyNote className="h-5 w-5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">Sticky note (N)</TooltipContent>
       </Tooltip>
 
       <Separator className="w-8 my-1" />
