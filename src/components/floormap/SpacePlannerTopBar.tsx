@@ -448,7 +448,6 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, backLabel, 
             title={gridVisible ? "Dölj rutnät" : "Visa rutnät"}
           >
             <Grid3X3 className="h-4 w-4" />
-            <span className="hidden lg:inline">{gridVisible ? "Dölj rutnät" : "Rutnät"}</span>
           </Button>
         )}
 
