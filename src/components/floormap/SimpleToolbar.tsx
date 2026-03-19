@@ -590,6 +590,27 @@ export const SimpleToolbar = ({
 
       <Separator className="w-8 my-0.5" />
 
+      {/* ── Annotation — top of list so always visible ── */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant={activeTool === 'sticky_note' ? "default" : "ghost"} size="icon" onClick={() => setActiveTool('sticky_note')} className={cn("w-10 h-10", activeTool === 'sticky_note' && "bg-amber-400 text-white hover:bg-amber-500")}>
+            <StickyNote className="h-5 w-5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">Post-it lapp</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant={activeTool === 'text' ? "default" : "ghost"} size="icon" onClick={() => setActiveTool('text')} className={cn("w-10 h-10", activeTool === 'text' && "bg-primary text-primary-foreground")}>
+            <Type className="h-5 w-5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">Text (T)</TooltipContent>
+      </Tooltip>
+
+      <Separator className="w-8 my-0.5" />
+
       {/* ── Core Architecture ── */}
       <Tooltip>
         <TooltipTrigger asChild>
@@ -630,27 +651,6 @@ export const SimpleToolbar = ({
           <TooltipContent side="right">Skapa väggar ({selectedRooms.length} rum)</TooltipContent>
         </Tooltip>
       )}
-
-      <Separator className="w-8 my-0.5" />
-
-      {/* ── Annotation ── */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button variant={activeTool === 'text' ? "default" : "ghost"} size="icon" onClick={() => setActiveTool('text')} className={cn("w-10 h-10", activeTool === 'text' && "bg-primary text-primary-foreground")}>
-            <Type className="h-5 w-5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="right">Text (T)</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button variant={activeTool === 'sticky_note' ? "default" : "ghost"} size="icon" onClick={() => setActiveTool('sticky_note')} className={cn("w-10 h-10", activeTool === 'sticky_note' && "bg-amber-400 text-white hover:bg-amber-500")}>
-            <StickyNote className="h-5 w-5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="right">Sticky note (N)</TooltipContent>
-      </Tooltip>
 
       <Tooltip>
         <TooltipTrigger asChild>
