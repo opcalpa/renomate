@@ -213,9 +213,10 @@ export function createDragHandlers(shapeId: string) {
   let originalToNewIdMap = new Map<string, string>();
 
   return {
-    draggable: !_isReadOnly,
+    draggable: !_isReadOnly && !(useFloorMapStore.getState().shapes.find(s => s.id === shapeId)?.locked),
     onDragStart: (e: KonvaEventObject<DragEvent>) => {
-      if (_isReadOnly) { e.cancelBubble = true; return; }
+      const isLocked = useFloorMapStore.getState().shapes.find(s => s.id === shapeId)?.locked;
+      if (_isReadOnly || isLocked) { e.target.stopDrag(); e.cancelBubble = true; return; }
       e.cancelBubble = true;
 
       // Store the primary node's start position for accurate delta calculation

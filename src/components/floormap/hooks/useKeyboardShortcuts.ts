@@ -329,6 +329,18 @@ export function useKeyboardShortcuts({
         }
       }
 
+      // Lock/Unlock: Cmd+L
+      if (modKey && e.key.toLowerCase() === 'l' && !isTyping && !isReadOnly) {
+        e.preventDefault();
+        const store = useFloorMapStore.getState();
+        const ids = store.selectedShapeIds;
+        if (ids.length > 0) {
+          const allLocked = ids.every(id => store.shapes.find(s => s.id === id)?.locked);
+          ids.forEach(id => store.updateShape(id, { locked: !allLocked }));
+          toast.success(allLocked ? 'Upplåst' : 'Låst');
+        }
+      }
+
       // ===== TOOL SHORTCUTS (single keys without modifiers) =====
       if (!modKey && !e.shiftKey && !isTyping) {
         const key = e.key.toLowerCase();
@@ -377,6 +389,11 @@ export function useKeyboardShortcuts({
         else if (key === 'm') {
           e.preventDefault();
           setActiveToolRef.current('measure');
+        }
+        // N - Sticky Note tool
+        else if (key === 'n') {
+          e.preventDefault();
+          setActiveToolRef.current('sticky_note');
         }
         // ] - Bring Forward
         else if (key === ']') {

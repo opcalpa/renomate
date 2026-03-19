@@ -79,6 +79,7 @@ import {
   SlidingDoorLineShape,
   OpeningLineShape,
   ImageShape,
+  StickyNoteShape,
   TemplateGroupShape,
 } from './shapes';
 import { ToolContextMenu } from './ToolContextMenu';
@@ -350,7 +351,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     const container = stageRef.current?.container();
     if (!container) return;
 
-    const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'opening_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'room', 'bezier', 'measure'];
+    const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'opening_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'sticky_note', 'room', 'bezier', 'measure'];
 
     if (drawingTools.includes(activeTool)) {
       container.style.cursor = 'crosshair';
@@ -2113,6 +2114,12 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       setSelectionBox({ start: pos, end: pos });
       return;
     }
+
+    if (activeTool === 'sticky_note' && !isDrawing && !isBoxSelecting) {
+      setIsBoxSelecting(true);
+      setSelectionBox({ start: pos, end: pos });
+      return;
+    }
   }, [
     isPanning,
     panStart,
@@ -2475,6 +2482,28 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       }
 
       // TEXT TOOL - Open text dialog with position for text box
+      if (activeTool === 'sticky_note' && selectionBox && currentPlanId) {
+        const minX = Math.min(selectionBox.start.x, selectionBox.end.x);
+        const maxX = Math.max(selectionBox.start.x, selectionBox.end.x);
+        const minY = Math.min(selectionBox.start.y, selectionBox.end.y);
+        const maxY = Math.max(selectionBox.start.y, selectionBox.end.y);
+        const w = maxX - minX;
+        const h = maxY - minY;
+        const newShape: FloorMapShape = {
+          id: uuidv4(),
+          type: 'sticky_note',
+          planId: currentPlanId,
+          coordinates: { x: minX, y: minY, width: w >= 40 ? w : 200, height: h >= 40 ? h : 150 },
+          text: '',
+          zIndex: currentShapes.length,
+        };
+        addShape(newShape);
+        setSelectedShapeIds([newShape.id]);
+        setActiveTool('select');
+        setSelectionBox(null);
+        return;
+      }
+
       if (activeTool === 'text' && selectionBox && currentPlanId) {
         const minX = Math.min(selectionBox.start.x, selectionBox.end.x);
         const maxX = Math.max(selectionBox.start.x, selectionBox.end.x);
@@ -2560,6 +2589,13 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             if (shape.type === 'text' && coords.x !== undefined) {
               return coords.x >= boxMinX && coords.x <= boxMaxX &&
                      coords.y >= boxMinY && coords.y <= boxMaxY;
+            }
+
+            // STICKY NOTE - check if any part of the note intersects box
+            if (shape.type === 'sticky_note' && coords.x !== undefined) {
+              const endX = coords.x + (coords.width || 200);
+              const endY = coords.y + (coords.height || 150);
+              return !(endX < boxMinX || coords.x > boxMaxX || endY < boxMinY || coords.y > boxMaxY);
             }
             
             // FREEHAND / POLYGON - check if any point is in box
@@ -3712,6 +3748,10 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
               return (<TextShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} onEdit={handleTextEdit} />);
             }
 
+            if (shape.type === 'sticky_note') {
+              return (<StickyNoteShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} onEdit={handleTextEdit} />);
+            }
+
             if (shape.type === 'bezier') {
               return (<BezierShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} />);
             }
@@ -4008,6 +4048,18 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
                 setWallElevationId(firstSelected.id);
               }
             }
+          }}
+          isSelectionLocked={selectedShapeIds.length > 0 && selectedShapeIds.every(
+            id => currentShapes.find(s => s.id === id)?.locked
+          )}
+          onToggleLock={() => {
+            if (selectedShapeIds.length === 0) return;
+            const allLocked = selectedShapeIds.every(
+              id => currentShapes.find(s => s.id === id)?.locked
+            );
+            selectedShapeIds.forEach(id => {
+              updateShape(id, { locked: !allLocked });
+            });
           }}
         />
       )}

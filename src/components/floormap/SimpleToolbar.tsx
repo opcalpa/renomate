@@ -36,6 +36,7 @@ import {
   Frame,
   Grid3X3,
   Plug,
+  StickyNote,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CanvasSettingsPopover } from "./CanvasSettingsPopover";
@@ -540,6 +541,7 @@ export const SimpleToolbar = ({
 
   const modifyTools: ToolItem[] = [
     { id: 'text', icon: Type, label: 'Text', shortcut: 'T', onClick: () => setActiveTool('text') },
+    { id: 'sticky_note', icon: StickyNote, label: 'Sticky note', shortcut: 'N', onClick: () => setActiveTool('sticky_note') },
     { id: 'eraser', icon: Eraser, label: 'Sudd', shortcut: 'E', onClick: () => setActiveTool('eraser') },
     { id: 'measure', icon: Ruler, label: 'Mät avstånd', shortcut: 'M', onClick: () => setActiveTool('measure') },
     { id: 'scissors', icon: Scissors, label: 'Dela linje', onClick: () => setActiveTool('scissors') },

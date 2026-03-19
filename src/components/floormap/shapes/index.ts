@@ -25,6 +25,9 @@ export { WindowLineShape, DoorLineShape, SlidingDoorLineShape, OpeningLineShape 
 // Background image shape
 export { ImageShape } from './ImageShape';
 
+// Sticky note annotation shape
+export { StickyNoteShape } from './StickyNoteShape';
+
 // Template group shape (grouped template objects)
 export { TemplateGroupShape } from './TemplateGroupShape';
 

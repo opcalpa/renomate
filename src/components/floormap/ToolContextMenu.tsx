@@ -25,6 +25,8 @@ import {
   Grid3X3,
   PanelLeft,
   MessageCircle,
+  Lock,
+  Unlock,
 } from "lucide-react";
 
 // Custom icons
@@ -89,6 +91,9 @@ interface ToolContextMenuProps {
   onAddComment?: () => void;
   commentCount?: number;
   isCommentResolved?: boolean;
+  // Lock/unlock
+  onToggleLock?: () => void;
+  isSelectionLocked?: boolean;
 }
 
 type IconComponent = React.FC<{ className?: string }>;
@@ -161,6 +166,8 @@ export const ToolContextMenu = memo(({
   onAddComment,
   commentCount,
   isCommentResolved,
+  onToggleLock,
+  isSelectionLocked,
 }: ToolContextMenuProps) => {
   // Get top 3 unique recent tools
   const topTools = recentTools.slice(0, 3);
@@ -245,6 +252,26 @@ export const ToolContextMenu = memo(({
                       : 'Lägg till kommentar'
                   }
                 </span>
+              </button>
+            )}
+
+            {onToggleLock && (
+              <button
+                className="w-full px-3 py-2 flex items-center gap-3 hover:bg-amber-50 transition-colors text-left"
+                onClick={() => {
+                  onToggleLock();
+                  onClose();
+                }}
+              >
+                {isSelectionLocked ? (
+                  <Unlock className="w-4 h-4 text-amber-500" />
+                ) : (
+                  <Lock className="w-4 h-4 text-amber-500" />
+                )}
+                <span className="text-sm font-medium text-gray-700">
+                  {isSelectionLocked ? 'Lås upp' : 'Lås'}
+                </span>
+                <span className="ml-auto text-[10px] text-gray-400">⌘L</span>
               </button>
             )}
 
