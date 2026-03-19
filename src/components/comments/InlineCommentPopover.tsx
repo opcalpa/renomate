@@ -203,6 +203,7 @@ export const InlineCommentPopover: React.FC<InlineCommentPopoverProps> = ({
           content: newComment.trim(),
           created_by_user_id: profile.id,
           drawing_object_id: objectId,
+          project_id: projectId,
           is_resolved: false,
         });
 
@@ -214,6 +215,7 @@ export const InlineCommentPopover: React.FC<InlineCommentPopoverProps> = ({
             content: newComment.trim(),
             created_by_user_id: profile.id,
             drawing_object_id: objectId,
+            project_id: projectId,
           });
       }
 
