@@ -20,11 +20,22 @@ import { Loader2, Save, X, Trash2, Plus, Eye } from "lucide-react";
 import { RoomDetailForm } from "./RoomDetailForm";
 import { useRoomForm } from "./hooks/useRoomForm";
 import { useTranslation } from "react-i18next";
+import { useState, useEffect } from "react";
 import type { RoomDetailDialogProps } from "./types";
 
-// On desktop (≥1024px) we render a non-modal right panel so the canvas stays visible.
-// On mobile we keep the centred Dialog.
-const isDesktop = typeof window !== "undefined" && window.innerWidth >= 1024;
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== "undefined" && window.innerWidth >= 1024
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isDesktop;
+}
 
 export function RoomDetailDialog({
   room,
@@ -37,6 +48,7 @@ export function RoomDetailDialog({
   showPinterest,
 }: RoomDetailDialogProps) {
   const { t } = useTranslation();
+  const isDesktop = useIsDesktop();
   const {
     formData,
     updateFormData,
