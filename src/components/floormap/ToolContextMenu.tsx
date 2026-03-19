@@ -28,6 +28,7 @@ import {
   Lock,
   Unlock,
   ChevronRight,
+  StickyNote,
 } from "lucide-react";
 
 // Custom icons
@@ -187,6 +188,7 @@ export const ToolContextMenu = memo(({
   isSelectionLocked,
 }: ToolContextMenuProps) => {
   const [importMenuOpen, setImportMenuOpen] = useState(false);
+  const [textMenuOpen, setTextMenuOpen] = useState(false);
 
   // Get top 3 unique recent tools
   const topTools = recentTools.slice(0, 3);
@@ -447,6 +449,52 @@ export const ToolContextMenu = memo(({
         {/* Quick Actions Section */}
         <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
           Snabbåtgärder
+        </div>
+
+        {/* Text — submenu flyout */}
+        <div className="relative">
+          <button
+            className={`w-full px-3 py-2 flex items-center gap-3 transition-colors text-left ${textMenuOpen ? 'bg-amber-50' : 'hover:bg-amber-50'}`}
+            onMouseEnter={() => setTextMenuOpen(true)}
+            onMouseLeave={() => setTextMenuOpen(false)}
+            onClick={() => setTextMenuOpen(v => !v)}
+          >
+            <Type className="w-4 h-4 text-amber-600" />
+            <span className="text-sm font-medium text-gray-700">Text & anteckningar</span>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-400 ml-auto" />
+          </button>
+
+          {textMenuOpen && (
+            <div
+              className="absolute left-full top-0 ml-1 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200/50 py-1.5 min-w-[190px] z-10"
+              onMouseEnter={() => setTextMenuOpen(true)}
+              onMouseLeave={() => setTextMenuOpen(false)}
+            >
+              <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                Lägg till
+              </div>
+              <SubMenuItem
+                icon={Type}
+                label="Fri text"
+                iconClass="text-amber-600"
+                onClick={() => { onSelectTool('text'); onClose(); }}
+              />
+              <SubMenuItem
+                icon={StickyNote}
+                label="Post-it lapp"
+                iconClass="text-amber-400"
+                onClick={() => { onSelectTool('sticky_note'); onClose(); }}
+              />
+              {onAddComment && (
+                <SubMenuItem
+                  icon={MessageCircle}
+                  label={commentCount && commentCount > 0 ? `Kommentar (${commentCount})` : 'Kommentar'}
+                  iconClass="text-blue-500"
+                  onClick={() => { onAddComment(); onClose(); }}
+                />
+              )}
+            </div>
+          )}
         </div>
 
         {/* Importera — submenu flyout */}
