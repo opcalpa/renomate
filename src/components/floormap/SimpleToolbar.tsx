@@ -557,6 +557,14 @@ export const SimpleToolbar = ({
           </div>
         </SheetContent>
       </Sheet>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={toggleGrid}
+        className={cn("w-9 h-9", projectSettings.gridVisible && "text-blue-600 bg-blue-50")}
+      >
+        <Grid3X3 className="h-4 w-4" />
+      </Button>
       <Button variant="ghost" size="icon" onClick={onSave} className="w-9 h-9">
         <Save className="h-4 w-4" />
       </Button>

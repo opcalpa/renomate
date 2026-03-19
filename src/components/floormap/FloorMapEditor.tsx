@@ -332,8 +332,8 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isRe
               showPinterest={showPinterest}
               simplified={simplified}
             />
-            {/* Property insights panel — always visible in simplified mode */}
-            {simplified && <PropertyInsightsPanel />}
+            {/* Property insights panel — always visible (includes grid toggle) */}
+            {!isReadOnly && <PropertyInsightsPanel />}
             {/* Onboarding canvas hint */}
             {!isReadOnly && !canvasHintDismissed && !onboarding.isDismissed && onboarding.currentStep?.canvasHintKey && (
               <CanvasHint
