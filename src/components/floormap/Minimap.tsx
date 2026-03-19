@@ -92,7 +92,7 @@ export const Minimap: React.FC<MinimapProps> = ({
     return (
       <div
         className={cn(
-          "fixed bottom-6 right-6 z-50",
+          "fixed bottom-16 left-20 z-50",
           "hidden md:block",
           "bg-white border-2 border-gray-300 rounded-lg shadow-lg",
           "transition-all duration-300"
@@ -115,7 +115,7 @@ export const Minimap: React.FC<MinimapProps> = ({
     <div
       ref={minimapRef}
       className={cn(
-        "fixed bottom-6 right-6 z-50",
+        "fixed bottom-16 left-20 z-50",
         "hidden md:flex",
         "bg-white border-2 border-gray-300 rounded-lg shadow-2xl",
         "transition-all duration-300",
