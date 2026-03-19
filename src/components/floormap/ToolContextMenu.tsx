@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Tool } from "./types";
 import {
   MousePointer2,
@@ -27,6 +27,7 @@ import {
   MessageCircle,
   Lock,
   Unlock,
+  ChevronRight,
 } from "lucide-react";
 
 // Custom icons
@@ -140,6 +141,22 @@ const getToolName = (tool: Tool): string => {
   }
 };
 
+// Submenu flyout item
+const SubMenuItem = ({ icon: Icon, label, onClick, iconClass = "text-gray-600" }: {
+  icon: IconComponent;
+  label: string;
+  onClick: () => void;
+  iconClass?: string;
+}) => (
+  <button
+    className="w-full px-3 py-2 flex items-center gap-3 hover:bg-blue-50 transition-colors text-left"
+    onClick={onClick}
+  >
+    <Icon className={`w-4 h-4 ${iconClass}`} />
+    <span className="text-sm font-medium text-gray-700">{label}</span>
+  </button>
+);
+
 export const ToolContextMenu = memo(({
   x,
   y,
@@ -169,8 +186,12 @@ export const ToolContextMenu = memo(({
   onToggleLock,
   isSelectionLocked,
 }: ToolContextMenuProps) => {
+  const [importMenuOpen, setImportMenuOpen] = useState(false);
+
   // Get top 3 unique recent tools
   const topTools = recentTools.slice(0, 3);
+
+  const hasImportActions = onOpenAIImport || onOpenImageImport || onOpenPinterestImport;
 
   // Adjust position to keep menu on screen
   const menuWidth = 200;
@@ -428,43 +449,57 @@ export const ToolContextMenu = memo(({
           Snabbåtgärder
         </div>
 
-        {onOpenAIImport && (
-          <button
-            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-purple-50 transition-colors text-left"
-            onClick={() => {
-              onOpenAIImport();
-              onClose();
-            }}
-          >
-            <Sparkles className="w-4 h-4 text-purple-500" />
-            <span className="text-sm font-medium text-gray-700">AI Import</span>
-          </button>
-        )}
+        {/* Importera — submenu flyout */}
+        {hasImportActions && (
+          <div className="relative">
+            <button
+              className={`w-full px-3 py-2 flex items-center gap-3 transition-colors text-left ${importMenuOpen ? 'bg-blue-50' : 'hover:bg-blue-50'}`}
+              onMouseEnter={() => setImportMenuOpen(true)}
+              onMouseLeave={() => setImportMenuOpen(false)}
+              onClick={() => setImportMenuOpen(v => !v)}
+            >
+              <ImagePlus className="w-4 h-4 text-blue-500" />
+              <span className="text-sm font-medium text-gray-700">Importera bild</span>
+              <ChevronRight className="w-3.5 h-3.5 text-gray-400 ml-auto" />
+            </button>
 
-        {onOpenImageImport && (
-          <button
-            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-blue-50 transition-colors text-left"
-            onClick={() => {
-              onOpenImageImport();
-              onClose();
-            }}
-          >
-            <ImagePlus className="w-4 h-4 text-blue-500" />
-            <span className="text-sm font-medium text-gray-700">Importera bild</span>
-          </button>
-        )}
-
-        {onOpenPinterestImport && (
-          <button
-            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-[#E60023]/5 transition-colors text-left"
-            onClick={() => {
-              onOpenPinterestImport();
-              onClose();
-            }}
-          >
-            <PinterestLogo className="w-4 h-4 text-[#E60023]" />
-            <span className="text-sm font-medium text-gray-700">Importera Pin</span>
-          </button>
+            {/* Flyout submenu */}
+            {importMenuOpen && (
+              <div
+                className="absolute left-full top-0 ml-1 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200/50 py-1.5 min-w-[190px] z-10"
+                onMouseEnter={() => setImportMenuOpen(true)}
+                onMouseLeave={() => setImportMenuOpen(false)}
+              >
+                <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                  Välj källa
+                </div>
+                {onOpenImageImport && (
+                  <SubMenuItem
+                    icon={ImagePlus}
+                    label="Från dator"
+                    iconClass="text-blue-500"
+                    onClick={() => { onOpenImageImport(); onClose(); }}
+                  />
+                )}
+                {onOpenAIImport && (
+                  <SubMenuItem
+                    icon={Sparkles}
+                    label="AI-tolka ritning"
+                    iconClass="text-purple-500"
+                    onClick={() => { onOpenAIImport(); onClose(); }}
+                  />
+                )}
+                {onOpenPinterestImport && (
+                  <SubMenuItem
+                    icon={PinterestLogo}
+                    label="Pinterest pin"
+                    iconClass="text-[#E60023]"
+                    onClick={() => { onOpenPinterestImport(); onClose(); }}
+                  />
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         {onOpenTemplates && (
