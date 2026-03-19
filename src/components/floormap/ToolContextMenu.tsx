@@ -485,13 +485,32 @@ export const ToolContextMenu = memo(({
                 iconClass="text-amber-400"
                 onClick={() => { onSelectTool('sticky_note'); onClose(); }}
               />
-              {onAddComment && (
-                <SubMenuItem
-                  icon={MessageCircle}
-                  label={commentCount && commentCount > 0 ? `Kommentar (${commentCount})` : 'Kommentar'}
-                  iconClass="text-blue-500"
+              {/* Comment — always visible, disabled if nothing selected */}
+              {onAddComment ? (
+                <button
+                  className="w-full px-3 py-2 flex items-center gap-3 hover:bg-blue-50 transition-colors text-left"
                   onClick={() => { onAddComment(); onClose(); }}
-                />
+                >
+                  <MessageCircle className="w-4 h-4 text-blue-500" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-medium text-gray-700">
+                      {isCommentResolved
+                        ? 'Kommentar ✓'
+                        : commentCount && commentCount > 0
+                          ? `Kommentar (${commentCount})`
+                          : 'Kommentar'}
+                    </span>
+                    <span className="text-[10px] text-gray-400">Tråd · markera som klar</span>
+                  </div>
+                </button>
+              ) : (
+                <div className="w-full px-3 py-2 flex items-center gap-3 opacity-40 cursor-default">
+                  <MessageCircle className="w-4 h-4 text-blue-500" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-medium text-gray-700">Kommentar</span>
+                    <span className="text-[10px] text-gray-400">Markera ett objekt först</span>
+                  </div>
+                </div>
               )}
             </div>
           )}
