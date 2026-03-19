@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ChevronUp, Home } from "lucide-react";
+import { ChevronDown, ChevronUp, Home, Grid3X3 } from "lucide-react";
 import { useFloorMapStore } from "./store";
 import { computeRoomInsightsFromShapes } from "./utils/roomInsights";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,8 @@ export const PropertyInsightsPanel: React.FC = () => {
   const shapes = useFloorMapStore((s) => s.shapes);
   const currentPlanId = useFloorMapStore((s) => s.currentPlanId);
   const pixelsPerMm = useFloorMapStore((s) => s.scaleSettings.pixelsPerMm);
+  const gridVisible = useFloorMapStore((s) => s.projectSettings.gridVisible);
+  const toggleGrid = useFloorMapStore((s) => s.toggleGrid);
 
   const planShapes = useMemo(
     () => shapes.filter((s) => s.type === "room" && s.planId === currentPlanId),
@@ -26,9 +28,23 @@ export const PropertyInsightsPanel: React.FC = () => {
   if (totals.roomCount === 0) {
     return (
       <div className="absolute bottom-4 left-20 z-20">
-        <div className="bg-background/95 backdrop-blur-sm rounded-lg shadow-lg border px-4 py-3 text-sm text-muted-foreground flex items-center gap-2">
-          <Home className="h-4 w-4" />
-          {t("insights.noRooms", "Draw rooms to see insights")}
+        <div className="bg-background/95 backdrop-blur-sm rounded-lg shadow-lg border text-sm text-muted-foreground flex items-center">
+          <div className="flex items-center gap-2 px-4 py-3">
+            <Home className="h-4 w-4" />
+            {t("insights.noRooms", "Draw rooms to see insights")}
+          </div>
+          <div className="w-px h-6 bg-border" />
+          <button
+            type="button"
+            onClick={toggleGrid}
+            title={gridVisible ? "Dölj rutnät" : "Visa rutnät"}
+            className={cn(
+              "px-3 py-3 hover:bg-accent/50 transition-colors rounded-r-lg",
+              gridVisible ? "text-blue-600" : "text-muted-foreground"
+            )}
+          >
+            <Grid3X3 className="h-4 w-4" />
+          </button>
         </div>
       </div>
     );
@@ -38,25 +54,39 @@ export const PropertyInsightsPanel: React.FC = () => {
     <div className="absolute bottom-4 left-20 z-20 max-w-xs w-full">
       <div className="bg-background/95 backdrop-blur-sm rounded-lg shadow-lg border overflow-hidden">
         {/* Collapsed pill / header */}
-        <button
-          type="button"
-          onClick={() => setExpanded(!expanded)}
-          className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors"
-        >
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Home className="h-4 w-4 text-primary" />
-            <span>{totals.areaSqm.toFixed(1)} m²</span>
-            <span className="text-muted-foreground">|</span>
-            <span className="text-muted-foreground">
-              {totals.roomCount} {t("insights.rooms", "rooms")}
-            </span>
-          </div>
-          {expanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground" />
-          )}
-        </button>
+        <div className="flex items-center">
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="flex-1 flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors"
+          >
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Home className="h-4 w-4 text-primary" />
+              <span>{totals.areaSqm.toFixed(1)} m²</span>
+              <span className="text-muted-foreground">|</span>
+              <span className="text-muted-foreground">
+                {totals.roomCount} {t("insights.rooms", "rooms")}
+              </span>
+            </div>
+            {expanded ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            )}
+          </button>
+          <div className="w-px h-6 bg-border" />
+          <button
+            type="button"
+            onClick={toggleGrid}
+            title={gridVisible ? "Dölj rutnät" : "Visa rutnät"}
+            className={cn(
+              "px-3 py-3 hover:bg-accent/50 transition-colors",
+              gridVisible ? "text-blue-600" : "text-muted-foreground"
+            )}
+          >
+            <Grid3X3 className="h-4 w-4" />
+          </button>
+        </div>
 
         {/* Expanded detail table */}
         {expanded && (
