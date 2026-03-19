@@ -1,10 +1,12 @@
 /**
- * ConnectorShape - Miro-style connector arrow between two points
+ * ConnectorShape - Miro-style connector arrow between two points or shapes
  *
- * Renders a straight arrow line between start (x1,y1) and end (x2,y2).
- * When selected, shows draggable endpoint handles so the user can reposition
- * either end. Endpoint handles snap to the nearest shape anchor if
- * snapEnabled is on and a shape is nearby.
+ * Supports two modes:
+ * 1. Free: start/end are fixed pixel coordinates (x1,y1 → x2,y2)
+ * 2. Anchored: startShapeId/endShapeId are set → endpoints follow those shapes
+ *    dynamically as they are moved.
+ *
+ * When selected, draggable endpoint handles let the user reposition either end.
  */
 
 import React, { useRef, useEffect, useCallback } from 'react';
@@ -12,7 +14,9 @@ import { Arrow, Circle, Group } from 'react-konva';
 import Konva from 'konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 import { ShapeWithViewProps } from './types';
-import { LineCoordinates } from '../types';
+import { LineCoordinates, AnchorSide } from '../types';
+import { useFloorMapStore } from '../store';
+import { getAnchorPoint } from '../canvas/connectorUtils';
 
 export const ConnectorShape: React.FC<ShapeWithViewProps> = ({
   shape,
@@ -28,14 +32,36 @@ export const ConnectorShape: React.FC<ShapeWithViewProps> = ({
   const coords = shape.coordinates as LineCoordinates;
   const { zoom } = viewState;
 
-  // Store ref for external access (box-select, etc.)
+  // Subscribe only to the shapes that this connector is anchored to.
+  // This causes re-render when anchored shapes are moved.
+  const trackedShapes = useFloorMapStore((state) => {
+    if (!shape.startShapeId && !shape.endShapeId) return [];
+    return state.shapes.filter(
+      (s) => s.id === shape.startShapeId || s.id === shape.endShapeId,
+    );
+  });
+
+  const startShape = trackedShapes.find((s) => s.id === shape.startShapeId);
+  const endShape = trackedShapes.find((s) => s.id === shape.endShapeId);
+
+  const startPt =
+    startShape && shape.startAnchor
+      ? getAnchorPoint(startShape, shape.startAnchor)
+      : null;
+  const endPt =
+    endShape && shape.endAnchor
+      ? getAnchorPoint(endShape, shape.endAnchor)
+      : null;
+
+  const x1 = startPt?.x ?? coords.x1;
+  const y1 = startPt?.y ?? coords.y1;
+  const x2 = endPt?.x ?? coords.x2;
+  const y2 = endPt?.y ?? coords.y2;
+
+  // Store ref for selection / box-select
   useEffect(() => {
-    if (groupRef.current) {
-      shapeRefsMap.set(shape.id, groupRef.current);
-    }
-    return () => {
-      shapeRefsMap.delete(shape.id);
-    };
+    if (groupRef.current) shapeRefsMap.set(shape.id, groupRef.current);
+    return () => { shapeRefsMap.delete(shape.id); };
   }, [shape.id, shapeRefsMap]);
 
   const strokeColor = isSelected ? '#3b82f6' : (shape.strokeColor || '#6366f1');
@@ -43,56 +69,61 @@ export const ConnectorShape: React.FC<ShapeWithViewProps> = ({
   const opacity = shape.opacity ?? 1;
   const handleRadius = 6 / zoom;
 
-  // Snap a point to the grid if enabled
-  const snapPoint = useCallback((x: number, y: number) => {
-    if (projectSettings.snapEnabled && projectSettings.gridInterval) {
-      const snapSize = projectSettings.gridInterval * scaleSettings.pixelsPerMm;
-      return {
-        x: Math.round(x / snapSize) * snapSize,
-        y: Math.round(y / snapSize) * snapSize,
-      };
-    }
-    return { x, y };
-  }, [projectSettings.snapEnabled, projectSettings.gridInterval, scaleSettings.pixelsPerMm]);
+  const snapPoint = useCallback(
+    (x: number, y: number) => {
+      if (projectSettings.snapEnabled && projectSettings.gridInterval) {
+        const snap = projectSettings.gridInterval * scaleSettings.pixelsPerMm;
+        return { x: Math.round(x / snap) * snap, y: Math.round(y / snap) * snap };
+      }
+      return { x, y };
+    },
+    [projectSettings.snapEnabled, projectSettings.gridInterval, scaleSettings.pixelsPerMm],
+  );
 
-  // Drag the whole connector
-  const handleGroupDragEnd = useCallback((e: KonvaEventObject<DragEvent>) => {
-    const node = e.target;
-    const dx = node.x();
-    const dy = node.y();
-    node.x(0);
-    node.y(0);
+  // Move entire connector (clears shape anchors)
+  const handleGroupDragEnd = useCallback(
+    (e: KonvaEventObject<DragEvent>) => {
+      const node = e.target;
+      const dx = node.x();
+      const dy = node.y();
+      node.x(0);
+      node.y(0);
 
-    const raw1 = snapPoint(coords.x1 + dx, coords.y1 + dy);
-    const raw2 = snapPoint(coords.x2 + dx, coords.y2 + dy);
-    onTransform({
-      coordinates: { x1: raw1.x, y1: raw1.y, x2: raw2.x, y2: raw2.y } as LineCoordinates,
-      // Clear shape anchors when manually moved
-      startShapeId: undefined,
-      endShapeId: undefined,
-    });
-  }, [coords, snapPoint, onTransform]);
+      const p1 = snapPoint(x1 + dx, y1 + dy);
+      const p2 = snapPoint(x2 + dx, y2 + dy);
+      onTransform({
+        coordinates: { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y } as LineCoordinates,
+        startShapeId: undefined,
+        startAnchor: undefined,
+        endShapeId: undefined,
+        endAnchor: undefined,
+      });
+    },
+    [x1, y1, x2, y2, snapPoint, onTransform],
+  );
 
-  // Drag an endpoint handle
-  const handleEndpointDragEnd = useCallback((
-    endpoint: 'start' | 'end',
-    e: KonvaEventObject<DragEvent>
-  ) => {
-    const node = e.target;
-    const snapped = snapPoint(node.x(), node.y());
-    node.x(snapped.x);
-    node.y(snapped.y);
+  // Drag one endpoint (clears that anchor only)
+  const handleEndpointDragEnd = useCallback(
+    (endpoint: 'start' | 'end', e: KonvaEventObject<DragEvent>) => {
+      const node = e.target;
+      const snapped = snapPoint(node.x(), node.y());
+      node.x(snapped.x);
+      node.y(snapped.y);
 
-    const newCoords: LineCoordinates = endpoint === 'start'
-      ? { x1: snapped.x, y1: snapped.y, x2: coords.x2, y2: coords.y2 }
-      : { x1: coords.x1, y1: coords.y1, x2: snapped.x, y2: snapped.y };
+      const newCoords: LineCoordinates =
+        endpoint === 'start'
+          ? { x1: snapped.x, y1: snapped.y, x2, y2 }
+          : { x1, y1, x2: snapped.x, y2: snapped.y };
 
-    onTransform({
-      coordinates: newCoords,
-      // Clear the anchor for the moved endpoint
-      ...(endpoint === 'start' ? { startShapeId: undefined } : { endShapeId: undefined }),
-    });
-  }, [coords, snapPoint, onTransform]);
+      onTransform({
+        coordinates: newCoords,
+        ...(endpoint === 'start'
+          ? { startShapeId: undefined, startAnchor: undefined }
+          : { endShapeId: undefined, endAnchor: undefined }),
+      });
+    },
+    [x1, y1, x2, y2, snapPoint, onTransform],
+  );
 
   return (
     <Group
@@ -105,29 +136,25 @@ export const ConnectorShape: React.FC<ShapeWithViewProps> = ({
       onDragEnd={handleGroupDragEnd}
       opacity={opacity}
     >
-      {/* Arrow line */}
       <Arrow
-        points={[coords.x1, coords.y1, coords.x2, coords.y2]}
+        points={[x1, y1, x2, y2]}
         stroke={strokeColor}
-        strokeWidth={strokeWidth}
         fill={strokeColor}
+        strokeWidth={strokeWidth}
         pointerLength={10 / zoom}
         pointerWidth={8 / zoom}
         pointerAtBeginning={false}
         pointerAtEnding={true}
         perfectDrawEnabled={false}
         hitStrokeWidth={Math.max(12, strokeWidth * 4)}
-        listening={true}
         lineCap="round"
       />
 
-      {/* Endpoint handles — only when selected */}
+      {/* Endpoint handles when selected */}
       {isSelected && (
         <>
-          {/* Start handle */}
           <Circle
-            x={coords.x1}
-            y={coords.y1}
+            x={x1} y={y1}
             radius={handleRadius}
             fill="white"
             stroke="#3b82f6"
@@ -135,10 +162,8 @@ export const ConnectorShape: React.FC<ShapeWithViewProps> = ({
             draggable
             onDragEnd={(e) => handleEndpointDragEnd('start', e)}
           />
-          {/* End handle */}
           <Circle
-            x={coords.x2}
-            y={coords.y2}
+            x={x2} y={y2}
             radius={handleRadius}
             fill="white"
             stroke="#3b82f6"

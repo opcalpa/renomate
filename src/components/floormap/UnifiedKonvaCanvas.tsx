@@ -81,7 +81,10 @@ import {
   StickyNoteShape,
   TemplateGroupShape,
   ConnectorShape,
+  ConnectorAnchorHandles,
 } from './shapes';
+import { findNearestConnectableAnchor, isConnectableShape } from './canvas/connectorUtils';
+import type { AnchorSide } from './types';
 import { ToolContextMenu } from './ToolContextMenu';
 import { Tool } from './types';
 import { HoverInfoTooltip } from './HoverInfoTooltip';
@@ -178,6 +181,9 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   // Hover info tooltip state
   const [hoveredShapeId, setHoveredShapeId] = useState<string | null>(null);
   const [hoverMousePosition, setHoverMousePosition] = useState<{ x: number; y: number } | null>(null);
+
+  // Connector anchor drag: tracks which shape+side the drag started from
+  const connectorStartRef = useRef<{ shapeId: string; anchor: AnchorSide } | null>(null);
 
   // Wall elevation view state (shows combined collinear walls)
   const [wallElevationId, setWallElevationId] = useState<string | null>(null);
@@ -368,6 +374,17 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       if (container) container.style.cursor = 'default';
     };
   }, [activeTool]);
+
+  // Handle starting a connector from an anchor dot on a shape
+  const handleAnchorMouseDown = useCallback(
+    (shapeId: string, anchor: AnchorSide, worldX: number, worldY: number) => {
+      connectorStartRef.current = { shapeId, anchor };
+      setActiveTool('connector');
+      setIsBoxSelecting(true);
+      setSelectionBox({ start: { x: worldX, y: worldY }, end: { x: worldX, y: worldY } });
+    },
+    [setActiveTool],
+  );
 
   // Handle opening comments popover for a shape
   const handleOpenComments = useCallback((objectId?: string, screenX?: number, screenY?: number) => {
@@ -2489,21 +2506,40 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         return;
       }
 
-      // CONNECTOR TOOL - Create arrow from drag (start → end)
+      // CONNECTOR TOOL - Create arrow from drag (start → end), with optional shape anchoring
       if (activeTool === 'connector' && selectionBox && currentPlanId) {
         const start = selectionBox.start;
         const end = selectionBox.end;
         const dx = end.x - start.x;
         const dy = end.y - start.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        const minDistance = 30 * scaleSettings.pixelsPerMm; // 30mm minimum
+        const minDistance = 20 * scaleSettings.pixelsPerMm; // 20mm minimum
 
         if (distance >= minDistance) {
+          // Check if we started from an anchor dot
+          const startBinding = connectorStartRef.current;
+
+          // Detect if end point is near a connectable shape anchor
+          const endBinding = findNearestConnectableAnchor(
+            currentShapes,
+            end.x,
+            end.y,
+            startBinding?.shapeId,
+            50,
+          );
+
+          const finalEndX = endBinding ? endBinding.point.x : end.x;
+          const finalEndY = endBinding ? endBinding.point.y : end.y;
+
           const newConnector: FloorMapShape = {
             id: uuidv4(),
             planId: currentPlanId,
             type: 'connector',
-            coordinates: { x1: start.x, y1: start.y, x2: end.x, y2: end.y } as LineCoordinates,
+            coordinates: { x1: start.x, y1: start.y, x2: finalEndX, y2: finalEndY } as LineCoordinates,
+            startShapeId: startBinding?.shapeId,
+            startAnchor: startBinding?.anchor,
+            endShapeId: endBinding?.shape.id,
+            endAnchor: endBinding?.anchor,
             strokeColor: '#6366f1',
             strokeWidth: 2,
           };
@@ -2511,6 +2547,9 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         } else {
           toast.error('Dra längre för att skapa en koppling');
         }
+
+        // Always clear the start binding
+        connectorStartRef.current = null;
 
         setSelectionBox(null);
         return;
@@ -3926,6 +3965,20 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
 
           {/* Transformer removed - shapes handle their own selection visual (blue stroke) */}
           {/* Multi-select dragging handled by unified drag system */}
+
+          {/* Connector anchor handles - Miro-style dots on hovered connectable shapes */}
+          {!isReadOnly && activeTool === 'select' && hoveredShapeId && (() => {
+            const hovered = currentShapes.find(s => s.id === hoveredShapeId);
+            if (!hovered || !isConnectableShape(hovered)) return null;
+            return (
+              <ConnectorAnchorHandles
+                key={`anchors-${hoveredShapeId}`}
+                shape={hovered}
+                zoom={viewState.zoom}
+                onAnchorMouseDown={handleAnchorMouseDown}
+              />
+            );
+          })()}
 
           {/* Comment indicators - blue badges on shapes with comments */}
           <CommentBadgesLayer

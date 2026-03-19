@@ -128,12 +128,16 @@ export interface ShapeAssets {
   thumbnail?: string;    // URL for library preview
 }
 
+export type AnchorSide = 'n' | 'e' | 's' | 'w';
+
 export interface FloorMapShape {
   id: string; // Unique persistent ID
   type: 'line' | 'rectangle' | 'wall' | 'circle' | 'polygon' | 'symbol' | 'measurement' | 'text' | 'sticky_note' | 'triangle' | 'door' | 'opening' | 'room' | 'freehand' | 'bezier' | 'window_line' | 'door_line' | 'sliding_door_line' | 'image' | 'connector';
-  // Connector-specific: optional shape IDs that the endpoints snap to
+  // Connector-specific: shape IDs + which anchor side the endpoint is bound to
   startShapeId?: string;
+  startAnchor?: AnchorSide;
   endShapeId?: string;
+  endAnchor?: AnchorSide;
   // Door/window specific properties
   openingDirection?: 'left' | 'right'; // For door_line - which way the door opens
   coordinates: LineCoordinates | RectangleCoordinates | CircleCoordinates | PolygonCoordinates | SymbolCoordinates | TextCoordinates | BezierCoordinates;
