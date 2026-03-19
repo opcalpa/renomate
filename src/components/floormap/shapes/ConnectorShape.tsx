@@ -32,31 +32,27 @@ export const ConnectorShape: React.FC<ShapeWithViewProps> = ({
   const coords = shape.coordinates as LineCoordinates;
   const { zoom } = viewState;
 
-  // Subscribe only to the shapes that this connector is anchored to.
-  // This causes re-render when anchored shapes are moved.
-  const trackedShapes = useFloorMapStore((state) => {
-    if (!shape.startShapeId && !shape.endShapeId) return [];
-    return state.shapes.filter(
-      (s) => s.id === shape.startShapeId || s.id === shape.endShapeId,
-    );
+  // Compute live anchor positions as a string primitive so Zustand's
+  // reference-equality check is stable and doesn't cause infinite loops.
+  // A new string is only produced when actual coordinate values change.
+  const liveCoordStr = useFloorMapStore((state) => {
+    let ax1 = coords.x1, ay1 = coords.y1, ax2 = coords.x2, ay2 = coords.y2;
+
+    if (shape.startShapeId && shape.startAnchor) {
+      const s = state.shapes.find((sh) => sh.id === shape.startShapeId);
+      const pt = s ? getAnchorPoint(s, shape.startAnchor!) : null;
+      if (pt) { ax1 = pt.x; ay1 = pt.y; }
+    }
+    if (shape.endShapeId && shape.endAnchor) {
+      const s = state.shapes.find((sh) => sh.id === shape.endShapeId);
+      const pt = s ? getAnchorPoint(s, shape.endAnchor!) : null;
+      if (pt) { ax2 = pt.x; ay2 = pt.y; }
+    }
+
+    return `${ax1},${ay1},${ax2},${ay2}`;
   });
 
-  const startShape = trackedShapes.find((s) => s.id === shape.startShapeId);
-  const endShape = trackedShapes.find((s) => s.id === shape.endShapeId);
-
-  const startPt =
-    startShape && shape.startAnchor
-      ? getAnchorPoint(startShape, shape.startAnchor)
-      : null;
-  const endPt =
-    endShape && shape.endAnchor
-      ? getAnchorPoint(endShape, shape.endAnchor)
-      : null;
-
-  const x1 = startPt?.x ?? coords.x1;
-  const y1 = startPt?.y ?? coords.y1;
-  const x2 = endPt?.x ?? coords.x2;
-  const y2 = endPt?.y ?? coords.y2;
+  const [x1, y1, x2, y2] = liveCoordStr.split(',').map(Number);
 
   // Store ref for selection / box-select
   useEffect(() => {
