@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Ruler, FileText, Edit2, Palette, RotateCw, Layers, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Image as ImageIcon, Package } from 'lucide-react';
+import { X, Ruler, FileText, Edit2, Palette, RotateCw, Layers, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Image as ImageIcon, Package, Lock, Unlock } from 'lucide-react';
 import { FloorMapShape, SymbolCoordinates, RectangleCoordinates, LineCoordinates, PolygonCoordinates } from './types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -52,7 +52,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   const [editHeightMm, setEditHeightMm] = useState('2400');
 
   // Visual properties state
-  const [opacity, setOpacity] = useState((shape.opacity ?? 1) * 100);
+  const [opacity, setOpacity] = useState(((shape.type === 'image' ? shape.imageOpacity : shape.opacity) ?? 1) * 100);
   const [rotation, setRotation] = useState(shape.rotation || 0);
   const [fillColor, setFillColor] = useState(shape.color || '#3b82f6');
   const [strokeColor, setStrokeColor] = useState(shape.strokeColor || '#1e40af');
@@ -240,7 +240,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   useEffect(() => {
     setEditName(shape.name || '');
     setNotes(shape.notes || '');
-    setOpacity((shape.opacity ?? 1) * 100);
+    setOpacity(((shape.type === 'image' ? shape.imageOpacity : shape.opacity) ?? 1) * 100);
     setRotation(shape.rotation || 0);
     setFillColor(shape.color || '#3b82f6');
     setStrokeColor(shape.strokeColor || '#1e40af');
@@ -1324,7 +1324,9 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                 value={[opacity]}
                 onValueChange={(value) => {
                   setOpacity(value[0]);
-                  onUpdateShape(shape.id, { opacity: value[0] / 100 });
+                  onUpdateShape(shape.id, shape.type === 'image'
+                    ? { imageOpacity: value[0] / 100 }
+                    : { opacity: value[0] / 100 });
                 }}
                 min={0}
                 max={100}
@@ -1332,6 +1334,25 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                 className="w-full"
               />
             </div>
+
+            {/* Lock as background — image shapes only */}
+            {shape.type === 'image' && (
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-gray-600 flex items-center gap-1">
+                  {shape.locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                  Lås som bakgrund
+                </Label>
+                <button
+                  onClick={() => onUpdateShape(shape.id, {
+                    locked: !shape.locked,
+                    zIndex: !shape.locked ? -100 : 0,
+                  })}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${shape.locked ? 'bg-blue-500' : 'bg-gray-300'}`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${shape.locked ? 'translate-x-[18px]' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            )}
 
             {/* Rotation Input */}
             <div>
