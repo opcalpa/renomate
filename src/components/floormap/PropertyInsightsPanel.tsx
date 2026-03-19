@@ -25,7 +25,7 @@ export const PropertyInsightsPanel: React.FC = () => {
 
   if (totals.roomCount === 0) {
     return (
-      <div className="absolute bottom-20 right-4 z-20">
+      <div className="absolute bottom-4 left-20 z-20">
         <div className="bg-background/95 backdrop-blur-sm rounded-lg shadow-lg border px-4 py-3 text-sm text-muted-foreground flex items-center gap-2">
           <Home className="h-4 w-4" />
           {t("insights.noRooms", "Draw rooms to see insights")}
@@ -35,7 +35,7 @@ export const PropertyInsightsPanel: React.FC = () => {
   }
 
   return (
-    <div className="absolute bottom-20 right-4 z-20 max-w-xs w-full">
+    <div className="absolute bottom-4 left-20 z-20 max-w-xs w-full">
       <div className="bg-background/95 backdrop-blur-sm rounded-lg shadow-lg border overflow-hidden">
         {/* Collapsed pill / header */}
         <button
