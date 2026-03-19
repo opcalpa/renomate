@@ -98,6 +98,8 @@ export function MobileBottomNav({ activeTab, activeSubTab, onTabChange, isTabBlo
 
   return (
     <>
+      {/* Fills any gap below the nav when the browser's own UI (address bar) hides */}
+      <div aria-hidden="true" className="fixed inset-x-0 bottom-0 bg-card md:hidden z-[49] h-24 pointer-events-none" />
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card md:hidden pb-[env(safe-area-inset-bottom)]">
         <div className="flex justify-around h-16">
           {primaryTabs.map(({ tab, icon: Icon, labelKey, navigateTo, subTab }) => {
