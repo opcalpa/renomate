@@ -3,7 +3,7 @@ import { Stage, Layer, Line, Rect, Circle, Text as KonvaText, Group, Transformer
 import { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
 import { useFloorMapStore } from './store';
-import { FloorMapShape, ScalePreset, GridPreset } from './types';
+import { FloorMapShape, ScalePreset, GridPreset, LineCoordinates } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { RoomDetailDialog } from './RoomDetailDialog';
 import { RoomElevationView } from './RoomElevationView';
@@ -80,6 +80,7 @@ import {
   ImageShape,
   StickyNoteShape,
   TemplateGroupShape,
+  ConnectorShape,
 } from './shapes';
 import { ToolContextMenu } from './ToolContextMenu';
 import { Tool } from './types';
@@ -353,7 +354,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     const container = stageRef.current?.container();
     if (!container) return;
 
-    const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'opening_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'sticky_note', 'room', 'bezier', 'measure'];
+    const drawingTools = ['wall', 'door_line', 'window_line', 'sliding_door_line', 'opening_line', 'line', 'freehand', 'rectangle', 'circle', 'text', 'sticky_note', 'room', 'bezier', 'measure', 'connector'];
 
     if (drawingTools.includes(activeTool)) {
       container.style.cursor = 'crosshair';
@@ -2157,6 +2158,13 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       return;
     }
 
+    // CONNECTOR TOOL - Drag to create connector arrow
+    if (activeTool === 'connector' && !isDrawing && !isBoxSelecting) {
+      setIsBoxSelecting(true);
+      setSelectionBox({ start: pos, end: pos });
+      return;
+    }
+
     // TEXT TOOL - Click to open text dialog, then drag to create text box
     if (activeTool === 'text' && !isDrawing && !isBoxSelecting) {
       setIsBoxSelecting(true);
@@ -2475,6 +2483,33 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           toast.success('Rektangel skapad');
         } else {
           toast.error('Rektangeln är för liten - dra en större yta');
+        }
+
+        setSelectionBox(null);
+        return;
+      }
+
+      // CONNECTOR TOOL - Create arrow from drag (start → end)
+      if (activeTool === 'connector' && selectionBox && currentPlanId) {
+        const start = selectionBox.start;
+        const end = selectionBox.end;
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const minDistance = 30 * scaleSettings.pixelsPerMm; // 30mm minimum
+
+        if (distance >= minDistance) {
+          const newConnector: FloorMapShape = {
+            id: uuidv4(),
+            planId: currentPlanId,
+            type: 'connector',
+            coordinates: { x1: start.x, y1: start.y, x2: end.x, y2: end.y } as LineCoordinates,
+            strokeColor: '#6366f1',
+            strokeWidth: 2,
+          };
+          addShape(newConnector);
+        } else {
+          toast.error('Dra längre för att skapa en koppling');
         }
 
         setSelectionBox(null);
@@ -3822,6 +3857,10 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
 
             if (shape.type === 'bezier') {
               return (<BezierShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} />);
+            }
+
+            if (shape.type === 'connector') {
+              return (<ConnectorShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} viewState={viewState} scaleSettings={scaleSettings} projectSettings={projectSettings} />);
             }
 
             // Line-based opening shapes (window, door, sliding door)

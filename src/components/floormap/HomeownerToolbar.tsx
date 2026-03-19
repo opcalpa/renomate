@@ -23,6 +23,7 @@ import {
   Link,
   Triangle,
   Spline,
+  ArrowRight,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -91,6 +92,7 @@ const EXTRA_TOOLS: { tool: Tool; icon: React.ElementType; labelKey: string; fall
   { tool: "circle", icon: Circle, labelKey: "floormap.circle", fallback: "Circle" },
   { tool: "triangle", icon: Triangle, labelKey: "floormap.tools.triangle", fallback: "Triangle" },
   { tool: "bezier", icon: Spline, labelKey: "floormap.tools.bezier", fallback: "Curve" },
+  { tool: "connector", icon: ArrowRight, labelKey: "floormap.tools.connector", fallback: "Connector" },
   { tool: "text", icon: Type, labelKey: "floormap.tools.text", fallback: "Text" },
   { tool: "eraser", icon: Eraser, labelKey: "floormap.tools.eraser", fallback: "Eraser" },
   { tool: "scissors", icon: Scissors, labelKey: "floormap.tools.scissors", fallback: "Split" },

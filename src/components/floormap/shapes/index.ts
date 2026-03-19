@@ -28,6 +28,9 @@ export { ImageShape } from './ImageShape';
 // Sticky note annotation shape
 export { StickyNoteShape } from './StickyNoteShape';
 
+// Connector arrow shape (Miro-style)
+export { ConnectorShape } from './ConnectorShape';
+
 // Template group shape (grouped template objects)
 export { TemplateGroupShape } from './TemplateGroupShape';
 

@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { Group, Rect, Circle, Path } from 'react-konva';
+import { Group, Rect, Circle, Path, Arrow } from 'react-konva';
 import { Tool } from '../types';
 
 interface SelectionPreviewOverlayProps {
@@ -29,6 +29,28 @@ export const SelectionPreviewOverlay: React.FC<SelectionPreviewOverlayProps> = (
 
   const strokeWidth = 2 / zoom;
   const dash = [4 / zoom, 2 / zoom];
+
+  // Connector arrow preview
+  if (activeTool === 'connector') {
+    const start = selectionBox.start;
+    const end = selectionBox.end;
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    if (Math.sqrt(dx * dx + dy * dy) < 5) return null;
+    return (
+      <Arrow
+        points={[start.x, start.y, end.x, end.y]}
+        stroke="#6366f1"
+        fill="#6366f1"
+        strokeWidth={strokeWidth}
+        dash={dash}
+        pointerLength={10 / zoom}
+        pointerWidth={8 / zoom}
+        listening={false}
+        perfectDrawEnabled={false}
+      />
+    );
+  }
 
   // Box selection/room/rectangle preview
   if (activeTool !== 'bezier' && activeTool !== 'circle') {

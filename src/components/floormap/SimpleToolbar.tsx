@@ -34,6 +34,7 @@ import {
   Grid3X3,
   Plug,
   StickyNote,
+  ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CanvasSettingsPopover } from "./CanvasSettingsPopover";
@@ -445,6 +446,7 @@ export const SimpleToolbar = ({
     { id: 'circle', icon: Circle, label: 'Cirkel', shortcut: 'C', onClick: () => setActiveTool('circle') },
     { id: 'freehand', icon: Pencil, label: 'Frihand', shortcut: 'P', onClick: () => setActiveTool('freehand') },
     { id: 'bezier', icon: Spline, label: 'Kurva', shortcut: 'B', onClick: () => setActiveTool('bezier') },
+    { id: 'connector', icon: ArrowRight, label: 'Koppling', onClick: () => setActiveTool('connector') },
     { id: 'eraser', icon: Eraser, label: 'Sudd', shortcut: 'E', onClick: () => setActiveTool('eraser') },
     { id: 'scissors', icon: Scissors, label: 'Dela linje', onClick: () => setActiveTool('scissors') },
     { id: 'glue', icon: Link, label: 'Klistra ihop', onClick: () => setActiveTool('glue') },

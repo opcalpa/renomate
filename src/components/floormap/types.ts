@@ -130,7 +130,10 @@ export interface ShapeAssets {
 
 export interface FloorMapShape {
   id: string; // Unique persistent ID
-  type: 'line' | 'rectangle' | 'wall' | 'circle' | 'polygon' | 'symbol' | 'measurement' | 'text' | 'sticky_note' | 'triangle' | 'door' | 'opening' | 'room' | 'freehand' | 'bezier' | 'window_line' | 'door_line' | 'sliding_door_line' | 'image';
+  type: 'line' | 'rectangle' | 'wall' | 'circle' | 'polygon' | 'symbol' | 'measurement' | 'text' | 'sticky_note' | 'triangle' | 'door' | 'opening' | 'room' | 'freehand' | 'bezier' | 'window_line' | 'door_line' | 'sliding_door_line' | 'image' | 'connector';
+  // Connector-specific: optional shape IDs that the endpoints snap to
+  startShapeId?: string;
+  endShapeId?: string;
   // Door/window specific properties
   openingDirection?: 'left' | 'right'; // For door_line - which way the door opens
   coordinates: LineCoordinates | RectangleCoordinates | CircleCoordinates | PolygonCoordinates | SymbolCoordinates | TextCoordinates | BezierCoordinates;
@@ -309,7 +312,7 @@ export const FONT_SIZE_PRESETS: Record<FontSizePreset, number> = {
 };
 
 export type ViewMode = 'floor' | 'elevation' | '3d';
-export type Tool = 'select' | 'freehand' | 'wall' | 'room' | 'eraser' | 'rectangle' | 'circle' | 'triangle' | 'polygon' | 'symbol' | 'object' | 'measure' | 'text' | 'sticky_note' | 'pan' | 'door' | 'opening' | 'scissors' | 'glue' | 'bezier' | 'window_line' | 'door_line' | 'sliding_door_line' | 'opening_line';
+export type Tool = 'select' | 'freehand' | 'wall' | 'room' | 'eraser' | 'rectangle' | 'circle' | 'triangle' | 'polygon' | 'symbol' | 'object' | 'measure' | 'text' | 'sticky_note' | 'pan' | 'door' | 'opening' | 'scissors' | 'glue' | 'bezier' | 'window_line' | 'door_line' | 'sliding_door_line' | 'opening_line' | 'connector';
 export type Unit = 'mm' | 'cm' | 'm' | 'inch';
 
 export interface GridSettings {
