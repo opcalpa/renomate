@@ -794,7 +794,7 @@ export const SimpleToolbar = ({
       </div>{/* end scrollable tools section */}
 
       {/* ── Pinned bottom: view & settings ── */}
-      <div className="flex flex-col items-center gap-1 pb-3 pt-1 border-t border-border/50">
+      <div className="shrink-0 flex flex-col items-center gap-1 pb-3 pt-1 border-t border-border/50">
 
         {/* Grid toggle — dedicated, always visible */}
         <Tooltip>

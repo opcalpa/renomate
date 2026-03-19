@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Layers, Trash2, Pencil, MoreVertical, Home, User, LogOut, Globe, LayoutDashboard, CheckSquare, ShoppingCart, Users, Map, PanelTop, Box, Eye } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ArrowLeft, Plus, Layers, Trash2, Pencil, MoreVertical, Home, User, LogOut, Globe, LayoutDashboard, CheckSquare, ShoppingCart, Users, Map, PanelTop, Box, Eye, Grid3X3 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useFloorMapStore } from "./store";
@@ -74,8 +75,10 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, backLabel, 
     addPlan,
     updatePlan,
     deletePlan,
-    shapes
+    shapes,
+    toggleGrid,
   } = useFloorMapStore();
+  const gridVisible = useFloorMapStore(s => s.projectSettings.gridVisible);
   const [showNewPlanDialog, setShowNewPlanDialog] = useState(false);
   const [newPlanName, setNewPlanName] = useState("");
   const [newPlanDescription, setNewPlanDescription] = useState("");
@@ -432,6 +435,23 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, backLabel, 
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        {/* Grid toggle — always visible in top bar */}
+        {!isReadOnly && viewMode === 'floor' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleGrid}
+            className={cn(
+              "h-8 px-2 gap-1.5 text-xs",
+              gridVisible ? "text-blue-600 bg-blue-50 hover:bg-blue-100" : "text-muted-foreground"
+            )}
+            title={gridVisible ? "Dölj rutnät" : "Visa rutnät"}
+          >
+            <Grid3X3 className="h-4 w-4" />
+            <span className="hidden lg:inline">{gridVisible ? "Dölj rutnät" : "Rutnät"}</span>
+          </Button>
+        )}
+
         <div className="flex items-center bg-muted/50 rounded-lg p-1">
           <Button
             variant={viewMode === "floor" ? "secondary" : "ghost"}
