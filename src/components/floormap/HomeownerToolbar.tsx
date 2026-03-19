@@ -6,6 +6,7 @@ import {
   DoorOpen,
   Armchair,
   Ruler,
+  StickyNote,
   ChevronDown,
   ChevronUp,
   Save,
@@ -194,6 +195,14 @@ export const HomeownerToolbar: React.FC<HomeownerToolbarProps> = ({
           <ObjectLibraryPanel onSelect={handleSelectObject} />
         </PopoverContent>
       </Popover>
+
+      {/* Sticky note */}
+      <ToolButton
+        icon={StickyNote}
+        label={t("floormap.tools.stickyNote", "Post-it lapp")}
+        isActive={activeTool === "sticky_note"}
+        onClick={() => setActiveTool("sticky_note")}
+      />
 
       {/* Measure */}
       <ToolButton
