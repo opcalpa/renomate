@@ -571,9 +571,12 @@ export const SimpleToolbar = ({
     </div>
 
     {/* ── Desktop toolbar ─────────────────────────────────────────────────────── */}
-    <div className={cn("hidden md:flex fixed left-4 w-14 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-lg shadow-black/5 flex-col items-center py-3 gap-1 z-50", isDemo ? "top-[104px]" : "top-20")}>
+    <div className={cn("hidden md:flex fixed left-4 w-14 bottom-4 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-lg shadow-black/5 flex-col z-50", isDemo ? "top-[104px]" : "top-20")}>
       {/* Hidden file input */}
       <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageImport} className="hidden" />
+
+      {/* Scrollable tools section */}
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center py-3 gap-1" style={{ scrollbarWidth: 'none' }}>
 
       {/* ── Select ── */}
       <Tooltip>
@@ -788,57 +791,58 @@ export const SimpleToolbar = ({
 
       <LayerControls className="w-10 h-10" />
 
-      <div className="flex-1 min-h-2" />
+      </div>{/* end scrollable tools section */}
 
-      <Separator className="w-8 my-0.5" />
+      {/* ── Pinned bottom: view & settings ── */}
+      <div className="flex flex-col items-center gap-1 pb-3 pt-1 border-t border-border/50">
 
-      {/* ── Bottom: view & settings ── */}
+        {/* Grid toggle — dedicated, always visible */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleGrid}
+              className={cn(
+                "w-10 h-10 transition-colors",
+                projectSettings.gridVisible
+                  ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Grid3X3 className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {projectSettings.gridVisible ? 'Dölj rutnät' : 'Visa rutnät'}
+          </TooltipContent>
+        </Tooltip>
 
-      {/* Grid toggle — dedicated, always visible */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleGrid}
-            className={cn(
-              "w-10 h-10 transition-colors",
-              projectSettings.gridVisible
-                ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Grid3X3 className="h-5 w-5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          {projectSettings.gridVisible ? 'Dölj rutnät' : 'Visa rutnät'}
-        </TooltipContent>
-      </Tooltip>
+        <CanvasSettingsPopover />
 
-      <CanvasSettingsPopover />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={handleToggleStartingView} className={cn("w-10 h-10", hasStartingView && "text-primary bg-primary/10")}>
+              <Frame className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {hasStartingView ? t('canvas.clearStartingView', 'Clear starting view') : t('canvas.setStartingView', 'Set starting view')}
+          </TooltipContent>
+        </Tooltip>
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" onClick={handleToggleStartingView} className={cn("w-10 h-10", hasStartingView && "text-primary bg-primary/10")}>
-            <Frame className="h-5 w-5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          {hasStartingView ? t('canvas.clearStartingView', 'Clear starting view') : t('canvas.setStartingView', 'Set starting view')}
-        </TooltipContent>
-      </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={onSave} className="w-10 h-10">
+              <Save className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Spara ({modKey}+S)</TooltipContent>
+        </Tooltip>
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" onClick={onSave} className="w-10 h-10">
-            <Save className="h-5 w-5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="right">Spara ({modKey}+S)</TooltipContent>
-      </Tooltip>
+      </div>{/* end pinned bottom */}
 
-      {/* ── Dialogs ── */}
+      {/* ── Dialogs (outside scroll, inside toolbar for co-location) ── */}
       <AIFloorPlanImport projectId={projectId} open={aiImportOpen} onOpenChange={setAiImportOpen} onImportComplete={() => setAiImportOpen(false)} />
       <TemplateGallery open={templateGalleryOpen} onOpenChange={setTemplateGalleryOpen} />
       <SaveTemplateDialog
