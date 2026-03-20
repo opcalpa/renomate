@@ -156,7 +156,9 @@ export const ConnectorShape: React.FC<ShapeWithViewProps> = ({
             stroke="#3b82f6"
             strokeWidth={2 / zoom}
             draggable
-            onDragEnd={(e) => handleEndpointDragEnd('start', e)}
+            onDragStart={(e) => { e.cancelBubble = true; }}
+            onDragMove={(e) => { e.cancelBubble = true; }}
+            onDragEnd={(e) => { e.cancelBubble = true; handleEndpointDragEnd('start', e); }}
           />
           <Circle
             x={x2} y={y2}
@@ -165,7 +167,9 @@ export const ConnectorShape: React.FC<ShapeWithViewProps> = ({
             stroke="#3b82f6"
             strokeWidth={2 / zoom}
             draggable
-            onDragEnd={(e) => handleEndpointDragEnd('end', e)}
+            onDragStart={(e) => { e.cancelBubble = true; }}
+            onDragMove={(e) => { e.cancelBubble = true; }}
+            onDragEnd={(e) => { e.cancelBubble = true; handleEndpointDragEnd('end', e); }}
           />
         </>
       )}
