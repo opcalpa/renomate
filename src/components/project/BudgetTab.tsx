@@ -1729,20 +1729,15 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
                   onDragOver={(e) => handleDragOver(e, idx)}
                   onDrop={handleDrop}
                 >
-                  <span className="inline-flex items-center gap-1">
-                    <GripVertical className="h-3 w-3 text-muted-foreground/50 cursor-grab active:cursor-grabbing" />
-                    <button
-                      className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-                      onClick={() => handleSort(col.key)}
-                    >
-                      {col.label}
-                      {sortKey === col.key ? (
-                        sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                      ) : (
-                        <ArrowUpDown className="h-3 w-3 text-muted-foreground/40" />
-                      )}
-                    </button>
-                  </span>
+                  <button
+                    className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                    onClick={() => handleSort(col.key)}
+                  >
+                    {col.label}
+                    {sortKey === col.key && (
+                      sortDir === "asc" ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />
+                    )}
+                  </button>
                 </TableHead>
               ))}
               {/* Actions column header (builder only) */}
