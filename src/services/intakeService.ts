@@ -322,6 +322,8 @@ export async function createProjectFromGuidedSetup(
     rooms: Array<{
       name: string;
       area_sqm?: number;
+      width_mm?: number;
+      height_mm?: number;
       ceiling_height_mm?: number;
     }>;
     tasks: Array<{
@@ -360,7 +362,13 @@ export async function createProjectFromGuidedSetup(
         project_id: project.id,
         name: room.name,
         ceiling_height_mm: room.ceiling_height_mm || null,
-        dimensions: room.area_sqm ? { area_sqm: room.area_sqm } : null,
+        dimensions: (room.area_sqm || room.width_mm || room.height_mm)
+          ? {
+              ...(room.area_sqm ? { area_sqm: room.area_sqm } : {}),
+              ...(room.width_mm ? { width_mm: room.width_mm } : {}),
+              ...(room.height_mm ? { height_mm: room.height_mm } : {}),
+            }
+          : null,
       })
       .select("id")
       .single();

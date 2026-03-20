@@ -97,11 +97,15 @@ export function SummaryStep({ formData }: StepProps) {
               <div key={room.id} className="flex items-center gap-2 text-sm">
                 <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
                 <span className="font-medium">{room.name}</span>
-                {room.area_sqm && (
+                {(room.width_m && room.depth_m) ? (
+                  <span className="text-muted-foreground text-xs">
+                    {room.width_m} × {room.depth_m} m ({room.area_sqm} m²)
+                  </span>
+                ) : room.area_sqm ? (
                   <span className="text-muted-foreground text-xs">
                     {room.area_sqm} m²
                   </span>
-                )}
+                ) : null}
               </div>
             ))}
           </div>

@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Check, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, Plus, Trash2, ChevronDown, ChevronUp, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getRoomSuggestions } from "@/services/intakeService";
 import type { StepProps, WizardRoom } from "./types";
@@ -134,11 +134,15 @@ export function RoomsStep({ formData, updateFormData }: StepProps) {
                   <div className="flex items-center justify-between p-3">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span className="font-medium text-sm">{room.name}</span>
-                      {room.area_sqm && (
+                      {(room.width_m && room.depth_m) ? (
+                        <span className="text-xs text-muted-foreground">
+                          {room.width_m} × {room.depth_m} m ({room.area_sqm} m²)
+                        </span>
+                      ) : room.area_sqm ? (
                         <span className="text-xs text-muted-foreground">
                           {room.area_sqm} m²
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     <div className="flex items-center gap-1 ml-2">
                       <Button
@@ -166,41 +170,101 @@ export function RoomsStep({ formData, updateFormData }: StepProps) {
                     </div>
                   </div>
 
-                  {isExpanded && (
-                    <div className="px-3 pb-3 pt-0 border-t space-y-3">
-                      <p className="text-xs text-muted-foreground pt-2">
-                        {t("guidedSetup.roomDimensions")}
-                      </p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label
-                            htmlFor={`area-${room.id}`}
-                            className="text-xs"
-                          >
-                            {t("guidedSetup.areaSqm")}
-                          </Label>
-                          <Input
-                            id={`area-${room.id}`}
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            value={room.area_sqm ?? ""}
-                            onChange={(e) =>
-                              handleUpdateRoom(room.id, {
-                                area_sqm: e.target.value
-                                  ? parseFloat(e.target.value)
-                                  : undefined,
-                              })
-                            }
-                            placeholder={t("guidedSetup.areaSqmPlaceholder")}
-                            className="h-8 text-sm"
-                          />
+                  {isExpanded && (() => {
+                    const computedArea = (room.width_m && room.depth_m)
+                      ? Math.round(room.width_m * room.depth_m * 100) / 100
+                      : null;
+                    const hasMismatch = computedArea !== null
+                      && room.area_sqm !== undefined
+                      && Math.abs(room.area_sqm - computedArea) >= 0.01;
+
+                    return (
+                      <div className="px-3 pb-3 pt-0 border-t space-y-3">
+                        <p className="text-xs text-muted-foreground pt-2">
+                          {t("guidedSetup.roomDimensions")}
+                        </p>
+
+                        {/* Length × Width → auto Area */}
+                        <div className="grid grid-cols-3 gap-2 items-end">
+                          <div className="space-y-1">
+                            <Label htmlFor={`width-${room.id}`} className="text-xs">
+                              {t("rooms.width", "Längd (m)")}
+                            </Label>
+                            <Input
+                              id={`width-${room.id}`}
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              value={room.width_m ?? ""}
+                              onChange={(e) => {
+                                const val = e.target.value ? parseFloat(e.target.value) : undefined;
+                                const newArea = (val && room.depth_m) ? Math.round(val * room.depth_m * 100) / 100 : room.area_sqm;
+                                handleUpdateRoom(room.id, { width_m: val, area_sqm: newArea });
+                              }}
+                              placeholder="t.ex. 4"
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor={`depth-${room.id}`} className="text-xs">
+                              {t("rooms.depth", "Bredd (m)")}
+                            </Label>
+                            <Input
+                              id={`depth-${room.id}`}
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              value={room.depth_m ?? ""}
+                              onChange={(e) => {
+                                const val = e.target.value ? parseFloat(e.target.value) : undefined;
+                                const newArea = (room.width_m && val) ? Math.round(room.width_m * val * 100) / 100 : room.area_sqm;
+                                handleUpdateRoom(room.id, { depth_m: val, area_sqm: newArea });
+                              }}
+                              placeholder="t.ex. 3"
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor={`area-${room.id}`} className="text-xs">
+                              {t("guidedSetup.areaSqm")}
+                            </Label>
+                            <Input
+                              id={`area-${room.id}`}
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              value={room.area_sqm ?? ""}
+                              onChange={(e) =>
+                                handleUpdateRoom(room.id, {
+                                  area_sqm: e.target.value ? parseFloat(e.target.value) : undefined,
+                                })
+                              }
+                              placeholder={t("guidedSetup.areaSqmPlaceholder")}
+                              className="h-8 text-sm"
+                            />
+                          </div>
                         </div>
+
+                        {/* Mismatch warning */}
+                        {hasMismatch && (
+                          <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5">
+                            <TriangleAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                            <span>
+                              {t("rooms.areaMismatch", "Ytan stämmer inte med längd × bredd")} ({computedArea} m²).{" "}
+                              <button
+                                type="button"
+                                className="underline font-medium"
+                                onClick={() => handleUpdateRoom(room.id, { area_sqm: computedArea! })}
+                              >
+                                {t("rooms.useComputedArea", "Använd beräknad yta")}
+                              </button>
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Ceiling height */}
                         <div className="space-y-1">
-                          <Label
-                            htmlFor={`height-${room.id}`}
-                            className="text-xs"
-                          >
+                          <Label htmlFor={`height-${room.id}`} className="text-xs">
                             {t("guidedSetup.ceilingHeight")}
                           </Label>
                           <Input
@@ -221,8 +285,8 @@ export function RoomsStep({ formData, updateFormData }: StepProps) {
                           />
                         </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               );
             })}

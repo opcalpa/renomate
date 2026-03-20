@@ -3,6 +3,8 @@ import type { WorkType } from "@/services/intakeService";
 export interface WizardRoom {
   id: string;
   name: string;
+  width_m?: number;    // Length in meters (maps to width_mm in DB)
+  depth_m?: number;    // Depth/width in meters (maps to height_mm in DB)
   area_sqm?: number;
   ceiling_height_mm: number;
 }

@@ -118,6 +118,8 @@ export function GuidedSetupWizard({
       const rooms = formData.rooms.map((r) => ({
         name: r.name,
         area_sqm: r.area_sqm,
+        width_mm: r.width_m ? Math.round(r.width_m * 1000) : undefined,
+        height_mm: r.depth_m ? Math.round(r.depth_m * 1000) : undefined,
         ceiling_height_mm: r.ceiling_height_mm,
       }));
 
