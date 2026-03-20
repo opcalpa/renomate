@@ -804,7 +804,7 @@ const Projects = () => {
       {/* Guest mode banner - sticky below header */}
       {isGuest && <GuestBanner compact />}
 
-      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 overflow-hidden">
+      <main className="max-w-full mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
 
         {/* Pipeline Section - Leads & Quotes (hidden in guest mode and for homeowners) */}
         {!isGuest && (
@@ -1396,26 +1396,34 @@ const Projects = () => {
             };
 
             return (
-              <div className="overflow-x-auto rounded-lg border bg-card">
-                  <table className="w-full text-sm">
+              <div className="rounded-lg border bg-card">
+                  <table className="w-full text-sm table-fixed">
                     <thead>
                       <tr className="bg-muted/50 border-b">
                         <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">{t("projects.colName", "Namn")}</th>
-                        {visibleListCols.map((col) => (
-                          <th
-                            key={col}
-                            draggable
-                            onDragStart={() => handleColDragStart(col)}
-                            onDragOver={handleColDragOver}
-                            onDrop={() => handleColDrop(col)}
-                            onDragEnd={() => setDraggedCol(null)}
-                            className={`px-3 py-2.5 text-xs font-medium text-muted-foreground whitespace-nowrap select-none cursor-grab active:cursor-grabbing ${
-                              colAlign[col] === "right" ? "text-right" : "text-left"
-                            } ${draggedCol === col ? "opacity-40" : ""}`}
-                          >
-                            {colLabels[col]}
-                          </th>
-                        ))}
+                        {visibleListCols.map((col) => {
+                          // Hide less important columns on smaller viewports
+                          const responsiveHide =
+                            col === "owner" ? "hidden xl:table-cell" :
+                            col === "date" ? "hidden lg:table-cell" :
+                            col === "description" ? "hidden md:table-cell" :
+                            col === "address" ? "hidden lg:table-cell" : "";
+                          return (
+                            <th
+                              key={col}
+                              draggable
+                              onDragStart={() => handleColDragStart(col)}
+                              onDragOver={handleColDragOver}
+                              onDrop={() => handleColDrop(col)}
+                              onDragEnd={() => setDraggedCol(null)}
+                              className={`px-3 py-2.5 text-xs font-medium text-muted-foreground whitespace-nowrap select-none cursor-grab active:cursor-grabbing ${
+                                colAlign[col] === "right" ? "text-right" : "text-left"
+                              } ${draggedCol === col ? "opacity-40" : ""} ${responsiveHide}`}
+                            >
+                              {colLabels[col]}
+                            </th>
+                          );
+                        })}
                         <th className="px-2 py-2.5 w-10" />
                       </tr>
                     </thead>
@@ -1434,14 +1442,21 @@ const Projects = () => {
                                 <span className="font-medium truncate">{project.name}</span>
                               </div>
                             </td>
-                            {visibleListCols.map((col) => (
-                              <td
-                                key={col}
-                                className={`px-3 py-2.5 ${colAlign[col] === "right" ? "text-right" : "text-left"}`}
-                              >
-                                {renderListCell(col, project)}
-                              </td>
-                            ))}
+                            {visibleListCols.map((col) => {
+                              const responsiveHide =
+                                col === "owner" ? "hidden xl:table-cell" :
+                                col === "date" ? "hidden lg:table-cell" :
+                                col === "description" ? "hidden md:table-cell" :
+                                col === "address" ? "hidden lg:table-cell" : "";
+                              return (
+                                <td
+                                  key={col}
+                                  className={`px-3 py-2.5 truncate ${colAlign[col] === "right" ? "text-right" : "text-left"} ${responsiveHide}`}
+                                >
+                                  {renderListCell(col, project)}
+                                </td>
+                              );
+                            })}
                             <td className="px-2 py-2.5">
                               {(isGuest || (profileId && project.owner_id === profileId)) && !isDemo && (
                                 <Button
