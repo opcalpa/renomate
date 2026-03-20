@@ -129,7 +129,7 @@ export const HomeownerToolbar: React.FC<HomeownerToolbarProps> = ({
   );
 
   return (
-    <div className="fixed left-3 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-1 bg-background/95 backdrop-blur-sm rounded-xl shadow-lg border p-2">
+    <div className="hidden md:flex fixed left-3 top-1/2 -translate-y-1/2 z-30 flex-col items-center gap-1 bg-background/95 backdrop-blur-sm rounded-xl shadow-lg border p-2">
       {/* Primary tools */}
       <ToolButton
         icon={MousePointer2}

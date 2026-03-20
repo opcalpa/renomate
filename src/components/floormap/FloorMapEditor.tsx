@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense, lazy } from "react";
 import { SimpleToolbar } from "./SimpleToolbar";
 import { HomeownerToolbar } from "./HomeownerToolbar";
+import { MobileCanvasToolbar } from "./MobileCanvasToolbar";
 import { UnifiedKonvaCanvas } from "./UnifiedKonvaCanvas";
 import { ElevationCanvas } from "./ElevationCanvas";
 import { RoomElevationView } from "./RoomElevationView";
@@ -291,15 +292,27 @@ export const FloorMapEditor = ({ projectId, projectName, onBack, backLabel, isRe
         {/* Left Toolbar - Show in floor plan mode when editable, or always in demo */}
         {viewMode === 'floor' && (!isReadOnly || isDemo) && (
           simplified ? (
-            <HomeownerToolbar
-              projectId={projectId}
-              onSave={handleManualSave}
-              onDelete={handleDelete}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-              canUndo={canUndoState}
-              canRedo={canRedoState}
-            />
+            <>
+              {/* Desktop: full vertical toolbar */}
+              <HomeownerToolbar
+                projectId={projectId}
+                onSave={handleManualSave}
+                onDelete={handleDelete}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                canUndo={canUndoState}
+                canRedo={canRedoState}
+              />
+              {/* Mobile: compact bottom toolbar */}
+              <MobileCanvasToolbar
+                onSave={handleManualSave}
+                onDelete={handleDelete}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                canUndo={canUndoState}
+                canRedo={canRedoState}
+              />
+            </>
           ) : (
             <SimpleToolbar
               projectId={projectId}
