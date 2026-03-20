@@ -60,6 +60,7 @@ import {
   AlignJustify,
   Plus,
   Check,
+  Search,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -173,6 +174,9 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
   const { toast } = useToast();
   const { t } = useTranslation();
+
+  // Search filter
+  const [fileSearch, setFileSearch] = useState('');
 
   // Compact row toggle
   const [compactRows, setCompactRows] = useState(() => localStorage.getItem('files_compact') === 'true');
@@ -769,6 +773,17 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     e.stopPropagation();
   }, []);
 
+  // Filtered files/folders for search
+  const searchQ = fileSearch.toLowerCase().trim();
+  const filteredFolders = searchQ ? folders.filter(f => f.name.toLowerCase().includes(searchQ)) : folders;
+  const filteredFiles = searchQ ? files.filter(f => {
+    if (f.name.toLowerCase().includes(searchQ)) return true;
+    const cat = (categoryOverrides[f.path] || guessCategory(f)).toLowerCase();
+    if (cat.includes(searchQ)) return true;
+    const links = getFileLinksForPath(f.path);
+    return links.some(l => l.task_name?.toLowerCase().includes(searchQ) || l.material_name?.toLowerCase().includes(searchQ) || l.room_name?.toLowerCase().includes(searchQ));
+  }) : files;
+
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -921,17 +936,30 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
         {/* Files Card */}
         <Card>
           <CardHeader>
-            <CardTitle>{t('files.uploadedFiles')}</CardTitle>
-            <CardDescription>
-              {t('files.filesDescription')}
-            </CardDescription>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <CardTitle>{t('files.uploadedFiles')}</CardTitle>
+                <CardDescription>{t('files.filesDescription')}</CardDescription>
+              </div>
+              {(files.length > 0 || folders.length > 0) && (
+                <div className="relative w-48 sm:w-64">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    value={fileSearch}
+                    onChange={(e) => setFileSearch(e.target.value)}
+                    placeholder={t('files.search', 'Sök filer...')}
+                    className="h-8 pl-8 text-sm"
+                  />
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            ) : folders.length === 0 && files.length === 0 ? (
+            ) : filteredFolders.length === 0 && filteredFiles.length === 0 ? (
               <div className="text-center py-12">
                 <FolderOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground mb-4">{t('files.noFilesOrFolders')}</p>
@@ -995,7 +1023,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                 </TableHeader>
                 <TableBody>
                   {/* Folders — expandable with inline sub-files */}
-                  {folders.map((folder) => {
+                  {filteredFolders.map((folder) => {
                     const isExpanded = expandedFolders.has(folder.path);
                     const subFiles = folderContents.get(folder.path) || [];
                     return (
@@ -1051,7 +1079,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                   })}
 
                   {/* Files */}
-                  {files.map((file) => (
+                  {filteredFiles.map((file) => (
                     <TableRow key={file.id} className={`group ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}>
                       <TableCell>{getFileIcon(file)}</TableCell>
                       <TableCell className="font-medium truncate max-w-[200px] lg:max-w-none">{file.name}</TableCell>
