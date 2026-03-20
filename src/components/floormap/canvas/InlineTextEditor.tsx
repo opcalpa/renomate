@@ -1,14 +1,14 @@
 /**
- * InlineTextEditor — WYSIWYG text editing directly on the canvas
+ * InlineTextEditor — Rich-text WYSIWYG editing on the canvas
  *
- * Renders an HTML textarea positioned exactly over a Konva text/sticky_note
- * shape, with a floating format toolbar above it. The user sees their edits
- * in real-time in context, without a modal dialog.
+ * Uses a contenteditable div so the user can select individual words
+ * and apply bold / italic / font-size independently.  The content is
+ * stored as sanitised HTML in shape.text.
  *
- * Save triggers: blur, Escape, or clicking away.
+ * Save triggers: click-outside, Escape.
  */
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { FloorMapShape, TextCoordinates, ViewState } from '../types';
 import { Bold, Italic, Minus, Plus } from 'lucide-react';
 
@@ -19,6 +19,41 @@ interface InlineTextEditorProps {
   onClose: () => void;
 }
 
+/* Allowed tags — everything else is stripped on save */
+const ALLOWED_TAGS = ['B', 'I', 'STRONG', 'EM', 'BR', 'SPAN', 'DIV', 'P'];
+
+function sanitiseHtml(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const walk = (node: Node): string => {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+    const el = node as HTMLElement;
+    const tag = el.tagName;
+    const children = Array.from(el.childNodes).map(walk).join('');
+    if (!ALLOWED_TAGS.includes(tag)) return children;
+    // Keep style only for SPAN (font-size)
+    if (tag === 'SPAN' && el.style.fontSize) {
+      return `<span style="font-size:${el.style.fontSize}">${children}</span>`;
+    }
+    if (tag === 'B' || tag === 'STRONG') return `<b>${children}</b>`;
+    if (tag === 'I' || tag === 'EM') return `<i>${children}</i>`;
+    if (tag === 'BR') return '<br>';
+    if (tag === 'DIV' || tag === 'P') return `${children}<br>`;
+    return children;
+  };
+  return walk(doc.body).replace(/(<br>)+$/, '');
+}
+
+/* Strip all HTML to plain text (for KonvaText fallback) */
+export function stripHtml(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return doc.body.textContent || '';
+}
+
+export function hasHtmlContent(text: string): boolean {
+  return /<[^>]+>/.test(text);
+}
+
 const FONT_SIZES = [10, 12, 13, 14, 16, 20, 24, 32, 48];
 
 export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
@@ -27,8 +62,9 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
   onSave,
   onClose,
 }) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editableRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const savedRef = useRef(false);
 
   const coords = shape.coordinates as TextCoordinates;
   const isStickyNote = shape.type === 'sticky_note';
@@ -38,50 +74,55 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
   const h = coords.height || defaultH;
   const padding = isStickyNote ? 8 : (shape.hasBackground ? 8 : 4);
 
-  // Editing state
-  const [text, setText] = useState(shape.text || '');
-  const [isBold, setIsBold] = useState(shape.textStyle?.isBold || false);
-  const [isItalic, setIsItalic] = useState(shape.textStyle?.isItalic || false);
-  const [fontSize, setFontSize] = useState(
-    isStickyNote ? 13 : (shape.fontSize || 16),
-  );
-
-  // Screen position: world coords → screen pixels
+  // Screen position
   const screenX = coords.x * viewState.zoom + viewState.panX;
   const screenY = coords.y * viewState.zoom + viewState.panY;
   const screenW = w * viewState.zoom;
   const screenH = h * viewState.zoom;
-  const screenFontSize = fontSize * viewState.zoom;
+  const baseFontSize = isStickyNote ? 13 : (shape.fontSize || 16);
+  const screenFontSize = baseFontSize * viewState.zoom;
   const screenPadding = padding * viewState.zoom;
 
-  // Auto-focus on mount
+  const fontFamily = isStickyNote
+    ? "'Inter', system-ui, sans-serif"
+    : 'system-ui, sans-serif';
+  const bgColor = isStickyNote
+    ? '#fef3c7'
+    : shape.hasBackground ? 'rgba(255,255,255,0.95)' : 'transparent';
+  const textColor = isStickyNote ? '#1c1917' : (shape.color || '#000000');
+
+  // Focus and set cursor to end on mount
   useEffect(() => {
-    const ta = textareaRef.current;
-    if (ta) {
-      ta.focus();
-      ta.setSelectionRange(ta.value.length, ta.value.length);
-    }
+    const el = editableRef.current;
+    if (!el) return;
+    el.focus();
+    // Move cursor to end
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
   }, []);
 
   // Save and close
   const handleSave = useCallback(() => {
-    const updates: Partial<FloorMapShape> = {
-      text: text,
-      textStyle: { isBold, isItalic },
-      fontSize,
-    };
-    onSave(shape.id, updates);
+    if (savedRef.current) return;
+    savedRef.current = true;
+    const el = editableRef.current;
+    const rawHtml = el?.innerHTML || '';
+    const clean = sanitiseHtml(rawHtml);
+    // If no HTML formatting, store plain text for backward compat
+    const plainText = stripHtml(clean);
+    const hasFormatting = clean !== plainText;
+    onSave(shape.id, { text: hasFormatting ? clean : plainText });
     onClose();
-  }, [text, isBold, isItalic, fontSize, shape.id, onSave, onClose]);
+  }, [shape.id, onSave, onClose]);
 
-  // Close on Escape, save on blur
+  // Escape → save
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        handleSave();
-      }
-      // Prevent canvas shortcuts from firing
+      if (e.key === 'Escape') { e.preventDefault(); handleSave(); }
       e.stopPropagation();
     },
     [handleSave],
@@ -89,36 +130,52 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
 
   // Click outside → save
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         handleSave();
       }
     };
-    // Delay to avoid the double-click that opened the editor
-    const timer = setTimeout(
-      () => document.addEventListener('mousedown', handleClickOutside),
-      100,
-    );
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    const timer = setTimeout(() => document.addEventListener('mousedown', handler), 150);
+    return () => { clearTimeout(timer); document.removeEventListener('mousedown', handler); };
   }, [handleSave]);
 
-  const fontFamily = isStickyNote
-    ? "'Inter', system-ui, sans-serif"
-    : 'system-ui, sans-serif';
-  const bgColor = isStickyNote ? '#fef3c7' : (shape.hasBackground ? 'rgba(255,255,255,0.95)' : 'transparent');
-  const textColor = isStickyNote ? '#1c1917' : (shape.color || '#000000');
+  // ---- Format commands (operate on current selection) ----
 
-  const changeFontSize = (delta: number) => {
-    const idx = FONT_SIZES.indexOf(fontSize);
-    const newIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, idx + delta));
-    setFontSize(FONT_SIZES[newIdx]);
+  const execCmd = (cmd: string, value?: string) => {
+    document.execCommand(cmd, false, value);
+    editableRef.current?.focus();
   };
+
+  const handleBold = (e: React.MouseEvent) => { e.preventDefault(); execCmd('bold'); };
+  const handleItalic = (e: React.MouseEvent) => { e.preventDefault(); execCmd('italic'); };
+
+  const handleFontSizeChange = (delta: number) => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !editableRef.current) return;
+    // Determine current font size of selection
+    const computed = window.getComputedStyle(
+      sel.anchorNode?.parentElement || editableRef.current,
+    );
+    const current = parseFloat(computed.fontSize) || screenFontSize;
+    // Find nearest preset and step
+    const worldCurrent = current / viewState.zoom;
+    const idx = FONT_SIZES.reduce((best, fs, i) =>
+      Math.abs(fs - worldCurrent) < Math.abs(FONT_SIZES[best] - worldCurrent) ? i : best, 0);
+    const newIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, idx + delta));
+    const newSize = FONT_SIZES[newIdx] * viewState.zoom;
+    execCmd('fontSize', '7'); // set to largest browser size first
+    // Replace font size 7 with actual px
+    const fontEls = editableRef.current.querySelectorAll('font[size="7"]');
+    fontEls.forEach((el) => {
+      const span = document.createElement('span');
+      span.style.fontSize = `${newSize}px`;
+      span.innerHTML = el.innerHTML;
+      el.replaceWith(span);
+    });
+  };
+
+  // Initial HTML content (convert plain text newlines to <br>)
+  const initialHtml = (shape.text || '').replace(/\n/g, '<br>');
 
   return (
     <div
@@ -126,119 +183,54 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
       style={{ position: 'fixed', zIndex: 9999, pointerEvents: 'auto' }}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      {/* Format toolbar — positioned above the textarea */}
+      {/* Floating format toolbar */}
       <div
         style={{
           position: 'fixed',
           left: screenX,
-          top: screenY - 36,
+          top: screenY - 38,
           display: 'flex',
           alignItems: 'center',
           gap: 2,
           background: '#fff',
           border: '1px solid #e5e7eb',
           borderRadius: 6,
-          padding: '2px 4px',
+          padding: '3px 5px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-          fontSize: 13,
           userSelect: 'none',
         }}
       >
-        <button
-          type="button"
-          onMouseDown={(e) => { e.preventDefault(); setIsBold((b) => !b); }}
-          style={{
-            width: 28,
-            height: 28,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 4,
-            border: 'none',
-            background: isBold ? '#e0e7ff' : 'transparent',
-            cursor: 'pointer',
-            fontWeight: 700,
-            color: isBold ? '#4338ca' : '#374151',
-          }}
-          title="Fet"
-        >
+        <button type="button" onMouseDown={handleBold}
+          style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, border: 'none', background: 'transparent', cursor: 'pointer', color: '#374151' }}
+          title="Fet (markerad text)">
           <Bold size={14} />
         </button>
-        <button
-          type="button"
-          onMouseDown={(e) => { e.preventDefault(); setIsItalic((i) => !i); }}
-          style={{
-            width: 28,
-            height: 28,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 4,
-            border: 'none',
-            background: isItalic ? '#e0e7ff' : 'transparent',
-            cursor: 'pointer',
-            color: isItalic ? '#4338ca' : '#374151',
-          }}
-          title="Kursiv"
-        >
+        <button type="button" onMouseDown={handleItalic}
+          style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, border: 'none', background: 'transparent', cursor: 'pointer', color: '#374151' }}
+          title="Kursiv (markerad text)">
           <Italic size={14} />
         </button>
-
-        <div
-          style={{
-            width: 1,
-            height: 20,
-            background: '#e5e7eb',
-            margin: '0 2px',
-          }}
-        />
-
-        <button
-          type="button"
-          onMouseDown={(e) => { e.preventDefault(); changeFontSize(-1); }}
-          style={{
-            width: 24, height: 28,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: 'none', background: 'transparent', cursor: 'pointer',
-            color: '#374151',
-          }}
-          title="Mindre"
-        >
+        <div style={{ width: 1, height: 20, background: '#e5e7eb', margin: '0 3px' }} />
+        <button type="button" onMouseDown={(e) => { e.preventDefault(); handleFontSizeChange(-1); }}
+          style={{ width: 24, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', cursor: 'pointer', color: '#374151' }}
+          title="Mindre (markerad text)">
           <Minus size={12} />
         </button>
-        <span
-          style={{
-            minWidth: 24,
-            textAlign: 'center',
-            fontSize: 12,
-            fontVariantNumeric: 'tabular-nums',
-            color: '#374151',
-          }}
-        >
-          {fontSize}
-        </span>
-        <button
-          type="button"
-          onMouseDown={(e) => { e.preventDefault(); changeFontSize(1); }}
-          style={{
-            width: 24, height: 28,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: 'none', background: 'transparent', cursor: 'pointer',
-            color: '#374151',
-          }}
-          title="Större"
-        >
+        <span style={{ minWidth: 20, textAlign: 'center', fontSize: 11, color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>Aa</span>
+        <button type="button" onMouseDown={(e) => { e.preventDefault(); handleFontSizeChange(1); }}
+          style={{ width: 24, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', cursor: 'pointer', color: '#374151' }}
+          title="Större (markerad text)">
           <Plus size={12} />
         </button>
       </div>
 
-      {/* Textarea overlay — matches Konva text position exactly */}
-      <textarea
-        ref={textareaRef}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
+      {/* Contenteditable div — rich text editing */}
+      <div
+        ref={editableRef}
+        contentEditable
+        suppressContentEditableWarning
         onKeyDown={handleKeyDown}
-        placeholder={isStickyNote ? 'Skriv här...' : 'Text...'}
+        dangerouslySetInnerHTML={{ __html: initialHtml }}
         style={{
           position: 'fixed',
           left: screenX,
@@ -248,17 +240,17 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
           padding: screenPadding,
           fontFamily,
           fontSize: screenFontSize,
-          fontWeight: isBold ? 700 : 400,
-          fontStyle: isItalic ? 'italic' : 'normal',
           color: textColor,
           background: bgColor,
           border: isStickyNote ? '2px solid #f59e0b' : '2px solid #3b82f6',
           borderRadius: isStickyNote ? 2 : 4,
           outline: 'none',
-          resize: 'none',
           overflow: 'auto',
           lineHeight: 1.4,
           boxSizing: 'border-box',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          cursor: 'text',
         }}
       />
     </div>

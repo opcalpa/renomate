@@ -52,6 +52,7 @@ import { MultiSelectionBoundsOverlay } from './canvas/MultiSelectionBounds';
 import { GhostPreviewOverlay } from './canvas/GhostPreviewOverlay';
 import { TextInputDialog, useTextDialog } from './canvas/TextInputDialog';
 import { InlineTextEditor } from './canvas/InlineTextEditor';
+import { TextHtmlOverlay } from './canvas/TextHtmlOverlay';
 import { useCanvasNavigation } from './hooks/useCanvasNavigation';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { cloneShapes, copyShapesToClipboard, PASTE_OFFSET } from './utils/shapeClipboard';
@@ -3237,6 +3238,13 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         onSubmit={addShape}
         onUpdate={updateShape}
         currentPlanId={currentPlanId}
+      />
+
+      {/* HTML overlay for shapes with rich text (renders formatted text over Konva) */}
+      <TextHtmlOverlay
+        shapes={currentShapes}
+        viewState={viewState}
+        editingShapeId={inlineEditShape?.id ?? null}
       />
 
       {/* Inline text editor — WYSIWYG on canvas */}

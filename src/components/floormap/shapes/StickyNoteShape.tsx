@@ -8,6 +8,7 @@ import Konva from 'konva';
 import { ShapeComponentProps } from './types';
 import { createUnifiedDragHandlers } from '../canvas/utils';
 import { TextCoordinates } from '../types';
+import { hasHtmlContent, stripHtml } from '../canvas/InlineTextEditor';
 
 const FOLD_SIZE = 14;
 const DEFAULT_W = 200;
@@ -54,7 +55,9 @@ export const StickyNoteShape = React.memo<ShapeComponentProps & { onEdit?: (shap
     const coords = shape.coordinates as TextCoordinates;
     const w = coords.width || DEFAULT_W;
     const h = coords.height || DEFAULT_H;
-    const text = shape.text || '';
+    const rawText = shape.text || '';
+    const isRichText = hasHtmlContent(rawText);
+    const text = isRichText ? stripHtml(rawText) : rawText;
     const isLocked = shape.locked ?? false;
 
     return (
@@ -102,20 +105,22 @@ export const StickyNoteShape = React.memo<ShapeComponentProps & { onEdit?: (shap
             strokeWidth={1}
             listening={false}
           />
-          {/* Text content */}
-          <KonvaText
-            x={8}
-            y={8}
-            width={w - 16}
-            height={h - 16}
-            text={text || '...'}
-            fontSize={13}
-            fontFamily="'Inter', system-ui, sans-serif"
-            fill={text ? '#1c1917' : '#a8a29e'}
-            wrap="word"
-            ellipsis
-            listening={false}
-          />
+          {/* Text content — hidden when HTML overlay renders rich text */}
+          {!isRichText && (
+            <KonvaText
+              x={8}
+              y={8}
+              width={w - 16}
+              height={h - 16}
+              text={text || '...'}
+              fontSize={13}
+              fontFamily="'Inter', system-ui, sans-serif"
+              fill={text ? '#1c1917' : '#a8a29e'}
+              wrap="word"
+              ellipsis
+              listening={false}
+            />
+          )}
         </Group>
 
         {isSelected && !isLocked && (

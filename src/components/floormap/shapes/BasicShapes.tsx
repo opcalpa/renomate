@@ -12,6 +12,7 @@ import Konva from 'konva';
 import { ShapeComponentProps } from './types';
 import { createUnifiedDragHandlers } from '../canvas/utils';
 import { useFloorMapStore } from '../store';
+import { hasHtmlContent, stripHtml } from '../canvas/InlineTextEditor';
 
 /**
  * RectangleShape - Renders rectangle, door, and opening shapes
@@ -393,19 +394,21 @@ export const TextShape = React.memo<ShapeComponentProps & { onEdit?: (shape: any
           listening={true}
         />
 
-        {/* Text content */}
-        <KonvaText
-          text={shape.text || 'Text'}
-          fontSize={fontSize}
-          fontStyle={fontStyle || undefined}
-          fill={shape.color || '#000000'}
-          width={boxWidth}
-          height={boxHeight}
-          padding={hasBackground ? 8 : 4}
-          align="left"
-          verticalAlign="middle"
-          listening={false}
-        />
+        {/* Text content — hidden when HTML overlay renders rich text */}
+        {!(shape.text && hasHtmlContent(shape.text)) && (
+          <KonvaText
+            text={shape.text ? stripHtml(shape.text) : 'Text'}
+            fontSize={fontSize}
+            fontStyle={fontStyle || undefined}
+            fill={shape.color || '#000000'}
+            width={boxWidth}
+            height={boxHeight}
+            padding={hasBackground ? 8 : 4}
+            align="left"
+            verticalAlign="middle"
+            listening={false}
+          />
+        )}
       </Group>
 
       {isSelected && (
