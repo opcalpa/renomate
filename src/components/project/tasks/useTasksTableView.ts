@@ -60,6 +60,7 @@ export function useTasksTableView(projectId: string) {
       { key: "markupPercent", label: t("tasksTable.markupPercent"), width: "w-[110px]", align: "right", extra: true, editType: "numeric", dbField: "markup_percent" },
       { key: "dependencies", label: t("tasks.dependencies", "Dependencies"), width: "w-[150px]", extra: true, editType: "none" },
       { key: "attachment", label: t("tasksTable.attachment", "Bilagor"), width: "w-[80px]", extra: true, editType: "none" },
+      { key: "fileCategory", label: t("files.category", "Filkategori"), width: "w-[120px]", extra: true, editType: "none" },
       { key: "actions", label: t("common.actions"), width: "w-[60px]", editType: "none" },
     ],
     [t]

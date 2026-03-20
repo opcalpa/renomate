@@ -22,7 +22,8 @@ export type TaskColumnKey =
   | "materialEstimate"
   | "markupPercent"
   | "dependencies"
-  | "attachment";
+  | "attachment"
+  | "fileCategory";
 
 export interface TaskColumnDef {
   key: TaskColumnKey;
@@ -60,6 +61,7 @@ export const EXTRA_COLUMN_KEYS: TaskColumnKey[] = [
   "markupPercent",
   "dependencies",
   "attachment",
+  "fileCategory",
 ];
 
 export const DEFAULT_VISIBLE_EXTRAS: TaskColumnKey[] = [

@@ -339,7 +339,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
           .not("task_id", "is", null),
         supabase
           .from("task_file_links")
-          .select("task_id")
+          .select("task_id, file_type")
           .eq("project_id", projectId)
           .not("task_id", "is", null),
       ]);
@@ -362,10 +362,15 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
       setTaskMaterialSpend(spendMap);
       setTaskMaterialPlanned(plannedMap);
 
-      // Build attachment count map per task
+      // Build attachment count + category map per task
       const attachCountMap = new Map<string, number>();
-      (fileLinksRes.data || []).forEach((l: { task_id: string | null }) => {
-        if (l.task_id) attachCountMap.set(l.task_id, (attachCountMap.get(l.task_id) || 0) + 1);
+      const fileCatMap = new Map<string, Set<string>>();
+      (fileLinksRes.data || []).forEach((l: { task_id: string | null; file_type: string }) => {
+        if (l.task_id) {
+          attachCountMap.set(l.task_id, (attachCountMap.get(l.task_id) || 0) + 1);
+          if (!fileCatMap.has(l.task_id)) fileCatMap.set(l.task_id, new Set());
+          fileCatMap.get(l.task_id)!.add(l.file_type);
+        }
       });
 
       // Map database fields to our interface (assigned_to_contractor_id is deprecated, use assigned_to_stakeholder_id)
@@ -373,6 +378,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
         ...task,
         assigned_to_stakeholder_id: task.assigned_to_stakeholder_id || task.assigned_to_contractor_id || null,
         attachmentCount: attachCountMap.get(task.id) || 0,
+        fileCategories: fileCatMap.has(task.id) ? [...fileCatMap.get(task.id)!] : [],
       }));
 
       setTasks(mappedTasks as Task[]);

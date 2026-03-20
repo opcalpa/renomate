@@ -889,6 +889,17 @@ export function TasksTableView({
         );
       }
 
+      case "fileCategory": {
+        const cats = (task as Record<string, unknown>).fileCategories as string[] | undefined;
+        if (!cats || cats.length === 0) return <span className="text-muted-foreground/40">–</span>;
+        const catLabels: Record<string, string> = { invoice: "Faktura", receipt: "Kvitto", quote: "Offert", contract: "Kontrakt", other: "Övrigt" };
+        return (
+          <span className="inline-flex flex-wrap gap-1">
+            {cats.map(c => <Badge key={c} variant="outline" className="text-[10px] px-1 py-0">{catLabels[c] || c}</Badge>)}
+          </span>
+        );
+      }
+
       default:
         return null;
     }
