@@ -57,6 +57,7 @@ import {
   ChevronDown,
   MoreVertical,
   Settings2,
+  AlignJustify,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -135,6 +136,12 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
   const { toast } = useToast();
   const { t } = useTranslation();
+
+  // Compact row toggle
+  const [compactRows, setCompactRows] = useState(() => localStorage.getItem('files_compact') === 'true');
+  const toggleCompact = () => {
+    setCompactRows(prev => { const next = !prev; localStorage.setItem('files_compact', String(next)); return next; });
+  };
 
   // Configurable file table columns
   type FileColKey = 'category' | 'type' | 'size' | 'uploaded';
@@ -633,6 +640,16 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                 <FolderPlus className="h-4 w-4" />
               </Button>
 
+              {/* Compact rows toggle */}
+              <Button
+                variant={compactRows ? "secondary" : "outline"}
+                size="sm"
+                onClick={toggleCompact}
+                title={t('tasksTable.compactRows', 'Kompakt vy')}
+              >
+                <AlignJustify className="h-4 w-4" />
+              </Button>
+
               {/* Unified upload dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -731,9 +748,9 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
               </div>
             ) : (
               <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
-              <Table>
+              <Table className={compactRows ? 'text-xs' : ''}>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className={compactRows ? '[&>th]:py-1.5' : ''}>
                     <TableHead className="w-10"></TableHead>
                     <TableHead>{t('common.name')}</TableHead>
                     {visibleFileCols.map(col => (
@@ -773,7 +790,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                   {folders.map((folder) => (
                     <TableRow
                       key={folder.id}
-                      className="cursor-pointer hover:bg-muted/50"
+                      className={`cursor-pointer hover:bg-muted/50 ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}
                       onClick={() => setCurrentFolder('/' + folder.path)}
                     >
                       <TableCell>
@@ -791,7 +808,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
                   {/* Files */}
                   {files.map((file) => (
-                    <TableRow key={file.id} className="group">
+                    <TableRow key={file.id} className={`group ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}>
                       <TableCell>{getFileIcon(file)}</TableCell>
                       <TableCell className="font-medium truncate max-w-[200px] lg:max-w-none">{file.name}</TableCell>
                       {visibleFileCols.map(col => (
