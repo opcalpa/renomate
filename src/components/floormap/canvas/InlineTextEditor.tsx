@@ -241,7 +241,7 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
         style={{
           position: 'fixed',
           left: screenX,
-          top: screenY - 38,
+          top: screenY - 38 >= 0 ? screenY - 38 : screenY + screenH + 4,
           display: 'flex',
           alignItems: 'center',
           gap: 2,

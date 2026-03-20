@@ -84,6 +84,8 @@ export const TextHtmlOverlay: React.FC<TextHtmlOverlayProps> = ({
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
               zIndex: 5,
+              transformOrigin: 'top left',
+              transform: shape.rotation ? `rotate(${shape.rotation}deg)` : undefined,
             }}
             dangerouslySetInnerHTML={{ __html: shape.text || '' }}
           />
