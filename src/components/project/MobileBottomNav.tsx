@@ -50,7 +50,7 @@ const ALL_TABS: TabConfig[] = [
   { tab: "tasks", icon: CheckSquare, labelKey: "nav.mobileNav.tasks" },
   { tab: "purchases", icon: ShoppingCart, labelKey: "nav.mobileNav.purchases" },
   { tab: "budget", icon: PiggyBank, labelKey: "nav.mobileNav.budget" },
-  { tab: "spaceplanner", icon: PenTool, labelKey: "nav.mobileNav.plans" },
+  { tab: "spaceplanner", icon: PenTool, labelKey: "nav.mobileNav.plans", subTab: "floorplan" },
   { tab: "files", icon: FolderOpen, labelKey: "nav.mobileNav.files" },
   { tab: "team", icon: Users, labelKey: "nav.mobileNav.team" },
 ];
