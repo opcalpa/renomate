@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -135,6 +135,41 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   const [batchFiles, setBatchFiles] = useState<DroppedFile[]>([]);
   const [showBatchUpload, setShowBatchUpload] = useState(false);
   const dragCountRef = useRef(0);
+
+  // Expandable folders — inline sub-file display
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [folderContents, setFolderContents] = useState<Map<string, ProjectFile[]>>(new Map());
+
+  const toggleFolder = useCallback(async (folderPath: string) => {
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(folderPath)) {
+        next.delete(folderPath);
+      } else {
+        next.add(folderPath);
+        // Fetch contents if not cached
+        if (!folderContents.has(folderPath)) {
+          const basePath = `projects/${projectId}/${folderPath}`;
+          supabase.storage.from('project-files').list(basePath, { sortBy: { column: 'name', order: 'asc' } })
+            .then(({ data }) => {
+              if (!data) return;
+              const subFiles = data
+                .filter(f => !f.name.startsWith('.') && f.name.includes('.'))
+                .map(f => ({
+                  id: f.id || f.name,
+                  name: f.name,
+                  path: `${basePath}/${f.name}`,
+                  size: (f.metadata as Record<string, unknown>)?.size as number || 0,
+                  type: (f.metadata as Record<string, unknown>)?.mimetype as string || '',
+                  uploaded_at: f.created_at || '',
+                })) as ProjectFile[];
+              setFolderContents(prev => new Map(prev).set(folderPath, subFiles));
+            });
+        }
+      }
+      return next;
+    });
+  }, [projectId, folderContents]);
 
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -959,25 +994,61 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {/* Folders */}
-                  {folders.map((folder) => (
-                    <TableRow
-                      key={folder.id}
-                      className={`cursor-pointer hover:bg-muted/50 ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}
-                      onClick={() => setCurrentFolder('/' + folder.path)}
-                    >
-                      <TableCell>
-                        <Folder className="h-5 w-5 text-yellow-500" />
-                      </TableCell>
-                      <TableCell className="font-medium">{folder.name}</TableCell>
-                      {visibleFileCols.map(col => (
-                        <TableCell key={col} className="hidden md:table-cell text-muted-foreground">
-                          {col === 'category' ? <Badge variant="secondary">{t('files.folder')}</Badge> : '–'}
-                        </TableCell>
-                      ))}
-                      <TableCell></TableCell>
-                    </TableRow>
-                  ))}
+                  {/* Folders — expandable with inline sub-files */}
+                  {folders.map((folder) => {
+                    const isExpanded = expandedFolders.has(folder.path);
+                    const subFiles = folderContents.get(folder.path) || [];
+                    return (
+                      <Fragment key={folder.id}>
+                        <TableRow
+                          className={`cursor-pointer hover:bg-muted/50 ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}
+                        >
+                          <TableCell
+                            className="w-10"
+                            onClick={(e) => { e.stopPropagation(); toggleFolder(folder.path); }}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              {isExpanded
+                                ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                                : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                              <Folder className="h-4 w-4 text-yellow-500" />
+                            </span>
+                          </TableCell>
+                          <TableCell
+                            className="font-medium"
+                            onClick={() => setCurrentFolder('/' + folder.path)}
+                          >
+                            {folder.name}
+                            {subFiles.length > 0 && (
+                              <span className="text-xs text-muted-foreground ml-1.5">({subFiles.length})</span>
+                            )}
+                          </TableCell>
+                          {visibleFileCols.map(col => (
+                            <TableCell key={col} className="hidden md:table-cell text-muted-foreground">
+                              {col === 'category' ? <Badge variant="secondary">{t('files.folder')}</Badge> : '–'}
+                            </TableCell>
+                          ))}
+                          <TableCell></TableCell>
+                        </TableRow>
+                        {/* Expanded sub-files */}
+                        {isExpanded && subFiles.map((sf) => (
+                          <TableRow key={sf.id} className={`group bg-muted/20 ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}>
+                            <TableCell className="w-10"></TableCell>
+                            <TableCell className="pl-8 text-sm truncate">{sf.name}</TableCell>
+                            {visibleFileCols.map(col => (
+                              <TableCell key={col} className="hidden md:table-cell text-muted-foreground text-xs">
+                                {col === 'size' && sf.size ? formatFileSize(sf.size) : ''}
+                                {col === 'uploaded' && sf.uploaded_at ? formatDate(sf.uploaded_at) : ''}
+                                {col === 'type' && sf.type ? <Badge variant="outline">{sf.type.split('/')[1] || '?'}</Badge> : ''}
+                                {col === 'category' ? '' : ''}
+                              </TableCell>
+                            ))}
+                            <TableCell></TableCell>
+                          </TableRow>
+                        ))}
+                      </Fragment>
+                    );
+                  })}
 
                   {/* Files */}
                   {files.map((file) => (
