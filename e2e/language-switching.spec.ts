@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { login } from './helpers/auth';
+import { login, requireAuth } from './helpers/auth';
 
 test.describe('Language switching', () => {
   test.beforeEach(async ({ page }) => {
+    requireAuth();
     await login(page);
   });
 
