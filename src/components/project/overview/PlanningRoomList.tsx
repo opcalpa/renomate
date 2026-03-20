@@ -27,7 +27,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Home, Plus, Trash2, Columns3, Info } from "lucide-react";
+import { Home, Plus, Trash2, Columns3, Info, Paperclip } from "lucide-react";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import type { Room } from "@/components/floormap/room-details/types";
 import {
@@ -48,7 +48,7 @@ const DEFAULT_ESTIMATION: EstimationSettings = {
   paint_coats: 2,
 };
 
-type ExtraColumnKey = "width" | "depth" | "ceilingHeight" | "wallArea" | "paintEstimate" | "status";
+type ExtraColumnKey = "width" | "depth" | "ceilingHeight" | "wallArea" | "paintEstimate" | "status" | "attachments";
 
 interface ExtraColumnDef {
   key: ExtraColumnKey;
@@ -63,6 +63,7 @@ const EXTRA_COLUMNS: ExtraColumnDef[] = [
   { key: "wallArea", labelKey: "rooms.wallArea", defaultOn: true },
   { key: "paintEstimate", labelKey: "rooms.paintEstimate", defaultOn: false },
   { key: "status", labelKey: "common.status", defaultOn: false },
+  { key: "attachments", labelKey: "tasksTable.attachment", defaultOn: false },
 ];
 
 const DEFAULT_EXTRAS = new Set<ExtraColumnKey>(
@@ -293,17 +294,25 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
   );
 
   // ---- Data fetching ----
+  // Room attachment counts from task_file_links
+  const [roomAttachCounts, setRoomAttachCounts] = useState<Map<string, number>>(new Map());
+
   const fetchRooms = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("rooms")
-      .select("*")
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: true });
-    if (error) {
-      console.error("Failed to load rooms:", error);
+    const [roomsRes, linksRes] = await Promise.all([
+      supabase.from("rooms").select("*").eq("project_id", projectId).order("created_at", { ascending: true }),
+      supabase.from("task_file_links").select("room_id").eq("project_id", projectId).not("room_id", "is", null),
+    ]);
+    if (roomsRes.error) {
+      console.error("Failed to load rooms:", roomsRes.error);
     } else {
-      setRooms(data as Room[]);
+      setRooms(roomsRes.data as Room[]);
     }
+    // Build counts
+    const counts = new Map<string, number>();
+    (linksRes.data || []).forEach((l: { room_id: string | null }) => {
+      if (l.room_id) counts.set(l.room_id, (counts.get(l.room_id) || 0) + 1);
+    });
+    setRoomAttachCounts(counts);
     setLoading(false);
   }, [projectId]);
 
@@ -587,6 +596,7 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
                     </TableHead>
                   )}
                   {show.status && <TableHead className="text-xs font-medium w-[100px]">{t("common.status")}</TableHead>}
+                  {show.attachments && <TableHead className="text-xs font-medium w-[60px]">{t("tasksTable.attachment", "Bilagor")}</TableHead>}
                   {!locked && <TableHead className="text-xs font-medium w-[40px]" />}
                 </TableRow>
               </TableHeader>
@@ -648,6 +658,18 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
                           <span className="text-xs text-muted-foreground">
                             {room.status ? t(`roomStatuses.${room.status.replace(/_/g, "")}`, room.status) : "–"}
                           </span>
+                        </TableCell>
+                      )}
+                      {show.attachments && (
+                        <TableCell className="py-1.5">
+                          {roomAttachCounts.get(room.id) ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                              <Paperclip className="h-3 w-3" />
+                              {roomAttachCounts.get(room.id)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground/40 text-xs">–</span>
+                          )}
                         </TableCell>
                       )}
                       {!locked && (

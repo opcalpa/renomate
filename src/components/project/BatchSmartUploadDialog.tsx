@@ -189,7 +189,45 @@ export const BatchSmartUploadDialog: React.FC<BatchSmartUploadDialogProps> = ({
           .from('project-files')
           .upload(filePath, entry.file);
 
-        if (!error) uploadedCount++;
+        if (!error) {
+          uploadedCount++;
+
+          // Auto-link: match vendor_name against existing materials/tasks
+          if (entry.classification?.vendor_name) {
+            const vendor = entry.classification.vendor_name.toLowerCase();
+            const { data: matchingMats } = await supabase
+              .from('materials')
+              .select('id, name, vendor_name')
+              .eq('project_id', projectId)
+              .or(`vendor_name.ilike.%${vendor}%,name.ilike.%${vendor}%`)
+              .limit(1);
+
+            const { data: userData } = await supabase.auth.getUser();
+            let profileId: string | null = null;
+            if (userData.data.user) {
+              const { data: profile } = await supabase
+                .from('profiles').select('id').eq('user_id', userData.data.user.id).single();
+              profileId = profile?.id || null;
+            }
+
+            if (matchingMats && matchingMats.length > 0 && profileId) {
+              const fileTypeMap: Record<string, string> = {
+                invoice: 'invoice', receipt: 'receipt', quote: 'quote',
+                contract: 'contract', other: 'other',
+              };
+              await supabase.from('task_file_links').insert({
+                project_id: projectId,
+                material_id: matchingMats[0].id,
+                file_path: filePath,
+                file_name: entry.file.name,
+                file_type: fileTypeMap[category] || 'other',
+                file_size: entry.file.size,
+                mime_type: entry.file.type,
+                linked_by_user_id: profileId,
+              });
+            }
+          }
+        }
       }
 
       toast.success(
