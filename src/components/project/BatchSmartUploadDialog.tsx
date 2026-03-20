@@ -224,6 +224,8 @@ export const BatchSmartUploadDialog: React.FC<BatchSmartUploadDialogProps> = ({
                 file_size: entry.file.size,
                 mime_type: entry.file.type,
                 linked_by_user_id: profileId,
+                invoice_date: entry.classification?.invoice_date || null,
+                invoice_amount: entry.classification?.invoice_amount || null,
               });
             }
           }
@@ -329,6 +331,16 @@ export const BatchSmartUploadDialog: React.FC<BatchSmartUploadDialogProps> = ({
                       {entry.classification?.summary && (
                         <p className="text-xs text-muted-foreground mt-0.5 truncate pl-6">
                           {entry.classification.summary}
+                          {entry.classification.invoice_amount != null && (
+                            <span className="ml-2 font-medium text-foreground">
+                              {entry.classification.invoice_amount.toLocaleString('sv-SE')} kr
+                            </span>
+                          )}
+                          {entry.classification.invoice_date && (
+                            <span className="ml-1 text-muted-foreground">
+                              ({entry.classification.invoice_date})
+                            </span>
+                          )}
                         </p>
                       )}
                     </td>

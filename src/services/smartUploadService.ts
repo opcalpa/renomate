@@ -23,6 +23,8 @@ export interface ClassificationResult {
   confidence: number;
   summary: string;
   vendor_name: string | null;
+  invoice_date: string | null;
+  invoice_amount: number | null;
   suggested_action: SuggestedAction;
 }
 

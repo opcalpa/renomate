@@ -24,6 +24,8 @@ interface ClassificationResult {
   confidence: number;
   summary: string;
   vendor_name: string | null;
+  invoice_date: string | null;
+  invoice_amount: number | null;
   suggested_action: 'extract_tasks' | 'extract_purchase' | 'import_to_canvas' | 'store_only';
 }
 
@@ -46,6 +48,12 @@ SUGGESTED ACTIONS:
 - "import_to_canvas" — For floor plans → import as background image on canvas
 - "store_only" — For product images, other documents → just save to files
 
+INVOICE/RECEIPT EXTRACTION:
+When type is "invoice" or "receipt":
+- invoice_date: Extract the invoice date or receipt date as ISO YYYY-MM-DD. Look for "Fakturadatum", "Datum", "Date". Null if not found.
+- invoice_amount: Extract the total amount as a number (no currency, no spaces). Look for "Att betala", "Totalt", "Summa", "Total". Null if not extractable.
+For other document types, set both to null.
+
 RULES:
 - Be decisive. Pick the most specific type that fits.
 - vendor_name: Extract company/store name if visible, null otherwise.
@@ -54,11 +62,13 @@ RULES:
 
 Return ONLY valid JSON:
 {
-  "type": "quote",
+  "type": "invoice",
   "confidence": 0.95,
-  "summary": "Offert från Byggfirma AB för badrumsrenovering, 8 arbetsmoment totalt 185 000 kr.",
-  "vendor_name": "Byggfirma AB",
-  "suggested_action": "extract_tasks"
+  "summary": "Faktura från Bauhaus för golvmaterial, totalt 4 500 kr.",
+  "vendor_name": "Bauhaus",
+  "invoice_date": "2026-03-15",
+  "invoice_amount": 4500,
+  "suggested_action": "extract_purchase"
 }`;
 }
 
@@ -128,11 +138,13 @@ async function classifyDocument(
       confidence: typeof result.confidence === 'number' ? result.confidence : 0.5,
       summary: result.summary || '',
       vendor_name: result.vendor_name || null,
+      invoice_date: result.invoice_date || null,
+      invoice_amount: typeof result.invoice_amount === 'number' ? result.invoice_amount : null,
       suggested_action: validActions.includes(result.suggested_action) ? result.suggested_action : 'store_only',
     };
   } catch {
     console.error('Failed to parse classification:', jsonText.substring(0, 500));
-    return { type: 'other', confidence: 0, summary: '', vendor_name: null, suggested_action: 'store_only' };
+    return { type: 'other', confidence: 0, summary: '', vendor_name: null, invoice_date: null, invoice_amount: null, suggested_action: 'store_only' };
   }
 }
 
@@ -170,6 +182,8 @@ serve(async (req) => {
         confidence: 0,
         summary: '',
         vendor_name: null,
+        invoice_date: null,
+        invoice_amount: null,
         suggested_action: 'store_only',
       }),
       {
