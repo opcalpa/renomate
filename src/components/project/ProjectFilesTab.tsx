@@ -53,7 +53,15 @@ import {
   Sparkles,
   Wand2,
   Link,
+  Camera,
+  ChevronDown,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { AIFloorPlanImport } from "./AIFloorPlanImport";
@@ -114,6 +122,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   const [quoteReviewFile, setQuoteReviewFile] = useState<File | null>(null);
   const [purchaseFile, setPurchaseFile] = useState<{ file: File; type: "invoice" | "receipt" } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { t } = useTranslation();
 
@@ -492,6 +501,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
           {canEdit && (
             <div className="flex gap-2">
+              {/* Hidden file inputs */}
               <Input
                 ref={fileInputRef}
                 type="file"
@@ -501,43 +511,53 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                 id="file-upload"
                 accept="image/*,.pdf,.doc,.docx,.txt"
               />
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
+              {/* New folder — icon only */}
               <Button
                 variant="outline"
                 onClick={() => setShowNewFolderDialog(true)}
                 size="sm"
-                className="flex-1 sm:flex-none"
+                title={t('files.newFolder')}
               >
-                <FolderPlus className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">{t('files.newFolder')}</span>
+                <FolderPlus className="h-4 w-4" />
               </Button>
-              <Button
-                onClick={() => setShowSmartUpload(true)}
-                size="sm"
-                variant="default"
-                className="flex-1 sm:flex-none"
-              >
-                <Sparkles className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">{t('smartUpload.title')}</span>
-              </Button>
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                size="sm"
-                variant="outline"
-                className="flex-1 sm:flex-none"
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
-                    <span className="hidden sm:inline">{t('files.uploading')}</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">{t('files.uploadFiles')}</span>
-                  </>
-                )}
-              </Button>
+
+              {/* Unified upload dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" disabled={uploading}>
+                    {uploading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4 mr-2" />
+                    )}
+                    {uploading ? t('files.uploading') : t('files.upload', 'Ladda upp')}
+                    <ChevronDown className="h-3 w-3 ml-1 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    {t('files.regularUpload', 'Vanlig uppladdning')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowSmartUpload(true)}>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {t('smartUpload.title', 'Smart uppladdning')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => cameraInputRef.current?.click()}>
+                    <Camera className="h-4 w-4 mr-2" />
+                    {t('files.takePhoto', 'Ta foto')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
         </div>
