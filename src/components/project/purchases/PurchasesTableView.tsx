@@ -228,11 +228,11 @@ export function PurchasesTableView({
   );
 
   const getSortIcon = (key: PurchaseColumnKey) => {
-    if (sortKey !== key) return <ArrowUpDown className="h-3 w-3 ml-1" />;
+    if (sortKey !== key) return null;
     return sortDir === "asc" ? (
-      <ArrowUp className="h-3 w-3 ml-1" />
+      <ArrowUp className="h-3 w-3 ml-1 text-primary" />
     ) : (
-      <ArrowDown className="h-3 w-3 ml-1" />
+      <ArrowDown className="h-3 w-3 ml-1 text-primary" />
     );
   };
 
@@ -592,7 +592,7 @@ export function PurchasesTableView({
                       className={cn(
                         col.width || "",
                         col.align === "right" ? "text-right" : "",
-                        "select-none cursor-grab",
+                        "select-none",
                         compactRows && "py-1 text-xs h-8",
                         dragColIdx === idx && "opacity-40",
                         dragOverIdx === idx && dragColIdx !== null && dragColIdx !== idx && "border-l-2 border-primary",

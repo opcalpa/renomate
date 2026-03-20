@@ -1416,7 +1416,7 @@ const Projects = () => {
                               onDragOver={handleColDragOver}
                               onDrop={() => handleColDrop(col)}
                               onDragEnd={() => setDraggedCol(null)}
-                              className={`px-3 py-2.5 text-xs font-medium text-muted-foreground whitespace-nowrap select-none cursor-grab active:cursor-grabbing ${
+                              className={`px-3 py-2.5 text-xs font-medium text-muted-foreground whitespace-nowrap select-none ${
                                 colAlign[col] === "right" ? "text-right" : "text-left"
                               } ${draggedCol === col ? "opacity-40" : ""} ${responsiveHide}`}
                             >
