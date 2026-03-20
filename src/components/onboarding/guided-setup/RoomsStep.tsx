@@ -184,8 +184,8 @@ export function RoomsStep({ formData, updateFormData }: StepProps) {
                           {t("guidedSetup.roomDimensions")}
                         </p>
 
-                        {/* Length × Width → auto Area */}
-                        <div className="grid grid-cols-3 gap-2 items-end">
+                        {/* Length × Width → auto Area + Ceiling height — all on one row */}
+                        <div className="grid grid-cols-4 gap-2 items-end">
                           <div className="space-y-1">
                             <Label htmlFor={`width-${room.id}`} className="text-xs">
                               {t("rooms.width", "Längd (m)")}
@@ -201,7 +201,7 @@ export function RoomsStep({ formData, updateFormData }: StepProps) {
                                 const newArea = (val && room.depth_m) ? Math.round(val * room.depth_m * 100) / 100 : room.area_sqm;
                                 handleUpdateRoom(room.id, { width_m: val, area_sqm: newArea });
                               }}
-                              placeholder="t.ex. 4"
+                              placeholder="4"
                               className="h-8 text-sm"
                             />
                           </div>
@@ -220,7 +220,7 @@ export function RoomsStep({ formData, updateFormData }: StepProps) {
                                 const newArea = (room.width_m && val) ? Math.round(room.width_m * val * 100) / 100 : room.area_sqm;
                                 handleUpdateRoom(room.id, { depth_m: val, area_sqm: newArea });
                               }}
-                              placeholder="t.ex. 3"
+                              placeholder="3"
                               className="h-8 text-sm"
                             />
                           </div>
@@ -239,11 +239,32 @@ export function RoomsStep({ formData, updateFormData }: StepProps) {
                                   area_sqm: e.target.value ? parseFloat(e.target.value) : undefined,
                                 })
                               }
-                              placeholder={t("guidedSetup.areaSqmPlaceholder")}
+                              placeholder="12"
                               className="h-8 text-sm"
                             />
                           </div>
+                          <div className="space-y-1">
+                            <Label htmlFor={`height-${room.id}`} className="text-xs">
+                              {t("guidedSetup.ceilingHeight")}
+                            </Label>
+                            <Input
+                              id={`height-${room.id}`}
+                              type="number"
+                              step="100"
+                              min="1000"
+                              max="5000"
+                              value={room.ceiling_height_mm}
+                              onChange={(e) =>
+                                handleUpdateRoom(room.id, {
+                                  ceiling_height_mm: e.target.value
+                                    ? parseInt(e.target.value, 10)
+                                    : 2400,
+                              })
+                            }
+                            className="h-8 text-sm"
+                          />
                         </div>
+                      </div>
 
                         {/* Mismatch warning */}
                         {hasMismatch && (
@@ -261,30 +282,7 @@ export function RoomsStep({ formData, updateFormData }: StepProps) {
                             </span>
                           </div>
                         )}
-
-                        {/* Ceiling height */}
-                        <div className="space-y-1">
-                          <Label htmlFor={`height-${room.id}`} className="text-xs">
-                            {t("guidedSetup.ceilingHeight")}
-                          </Label>
-                          <Input
-                            id={`height-${room.id}`}
-                            type="number"
-                            step="100"
-                            min="1000"
-                            max="5000"
-                            value={room.ceiling_height_mm}
-                            onChange={(e) =>
-                              handleUpdateRoom(room.id, {
-                                ceiling_height_mm: e.target.value
-                                  ? parseInt(e.target.value, 10)
-                                  : 2400,
-                              })
-                            }
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                      </div>
+                    </div>
                     );
                   })()}
                 </div>
