@@ -374,7 +374,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         query.order("created_at", { ascending: false }),
         supabase
           .from("task_file_links")
-          .select("material_id")
+          .select("material_id, file_type")
           .eq("project_id", projectId)
           .not("material_id", "is", null),
       ]);
@@ -382,10 +382,13 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
       if (materialsRes.error) throw materialsRes.error;
 
       const docCounts = new Map<string, number>();
+      const fileCatMap = new Map<string, Set<string>>();
       if (!docsRes.error) {
-        (docsRes.data || []).forEach((d) => {
+        (docsRes.data || []).forEach((d: { material_id: string | null; file_type: string }) => {
           if (d.material_id) {
             docCounts.set(d.material_id, (docCounts.get(d.material_id) || 0) + 1);
+            if (!fileCatMap.has(d.material_id)) fileCatMap.set(d.material_id, new Set());
+            fileCatMap.get(d.material_id)!.add(d.file_type);
           }
         });
       }
@@ -441,6 +444,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
           assigned_to: assignedName ? { name: assignedName } : null,
           hasAttachment: attachmentCount > 0,
           attachmentCount,
+          fileCategories: fileCatMap.has(material.id) ? [...fileCatMap.get(material.id)!] : [],
         };
       });
 

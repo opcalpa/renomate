@@ -15,7 +15,8 @@ export type PurchaseColumnKey =
   | "assignedTo"
   | "createdBy"
   | "createdAt"
-  | "attachment";
+  | "attachment"
+  | "fileCategory";
 
 export interface PurchaseColumnDef {
   key: PurchaseColumnKey;
@@ -46,6 +47,7 @@ export const EXTRA_COLUMN_KEYS: PurchaseColumnKey[] = [
   "createdBy",
   "createdAt",
   "attachment",
+  "fileCategory",
 ];
 
 export const DEFAULT_VISIBLE_EXTRAS: PurchaseColumnKey[] = [
