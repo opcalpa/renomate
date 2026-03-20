@@ -45,6 +45,7 @@ function applyDelta(
     case 'door_line':
     case 'window_line':
     case 'sliding_door_line':
+    case 'connector':
       return {
         coordinates: {
           x1: (coords.x1 as number) + deltaX,
@@ -88,6 +89,7 @@ function applyDelta(
       };
 
     case 'text':
+    case 'sticky_note':
       return {
         coordinates: {
           ...coords,
