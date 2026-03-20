@@ -139,40 +139,93 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
     return () => { clearTimeout(timer); document.removeEventListener('mousedown', handler); };
   }, [handleSave]);
 
+  // ---- Selection preservation ----
+
+  const savedSelectionRef = useRef<Range | null>(null);
+
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedSelectionRef.current = sel.getRangeAt(0).cloneRange();
+    }
+  };
+
+  const restoreSelection = () => {
+    const range = savedSelectionRef.current;
+    if (!range) return;
+    const sel = window.getSelection();
+    if (sel) {
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  };
+
   // ---- Format commands (operate on current selection) ----
 
   const execCmd = (cmd: string, value?: string) => {
+    restoreSelection();
     document.execCommand(cmd, false, value);
-    editableRef.current?.focus();
+    saveSelection();
   };
 
   const handleBold = (e: React.MouseEvent) => { e.preventDefault(); execCmd('bold'); };
   const handleItalic = (e: React.MouseEvent) => { e.preventDefault(); execCmd('italic'); };
 
-  const handleFontSizeChange = (delta: number) => {
+  const handleFontSizeChange = (delta: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    restoreSelection();
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !editableRef.current) return;
+
     // Determine current font size of selection
     const computed = window.getComputedStyle(
       sel.anchorNode?.parentElement || editableRef.current,
     );
     const current = parseFloat(computed.fontSize) || screenFontSize;
-    // Find nearest preset and step
     const worldCurrent = current / viewState.zoom;
     const idx = FONT_SIZES.reduce((best, fs, i) =>
       Math.abs(fs - worldCurrent) < Math.abs(FONT_SIZES[best] - worldCurrent) ? i : best, 0);
     const newIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, idx + delta));
     const newSize = FONT_SIZES[newIdx] * viewState.zoom;
-    execCmd('fontSize', '7'); // set to largest browser size first
-    // Replace font size 7 with actual px
-    const fontEls = editableRef.current.querySelectorAll('font[size="7"]');
-    fontEls.forEach((el) => {
-      const span = document.createElement('span');
-      span.style.fontSize = `${newSize}px`;
-      span.innerHTML = el.innerHTML;
-      el.replaceWith(span);
-    });
+
+    // Wrap selection in a span with the new font size
+    const range = sel.getRangeAt(0);
+    const span = document.createElement('span');
+    span.style.fontSize = `${newSize}px`;
+    try {
+      range.surroundContents(span);
+    } catch {
+      // surroundContents fails if selection crosses element boundaries
+      // Fall back to execCommand
+      document.execCommand('fontSize', false, '7');
+      const fontEls = editableRef.current.querySelectorAll('font[size="7"]');
+      fontEls.forEach((el) => {
+        const replacement = document.createElement('span');
+        replacement.style.fontSize = `${newSize}px`;
+        replacement.innerHTML = el.innerHTML;
+        el.replaceWith(replacement);
+      });
+    }
+
+    // Re-select the span content so user can keep clicking +/-
+    const newRange = document.createRange();
+    newRange.selectNodeContents(span.childNodes.length > 0 ? span : span.parentElement || span);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+    saveSelection();
   };
+
+  // Save selection whenever it changes inside the editable area
+  useEffect(() => {
+    const handleSelChange = () => {
+      const sel = window.getSelection();
+      if (sel && editableRef.current?.contains(sel.anchorNode)) {
+        saveSelection();
+      }
+    };
+    document.addEventListener('selectionchange', handleSelChange);
+    return () => document.removeEventListener('selectionchange', handleSelChange);
+  }, []);
 
   // Initial HTML content (convert plain text newlines to <br>)
   const initialHtml = (shape.text || '').replace(/\n/g, '<br>');
@@ -211,13 +264,13 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
           <Italic size={14} />
         </button>
         <div style={{ width: 1, height: 20, background: '#e5e7eb', margin: '0 3px' }} />
-        <button type="button" onMouseDown={(e) => { e.preventDefault(); handleFontSizeChange(-1); }}
+        <button type="button" onMouseDown={(e) => handleFontSizeChange(-1, e)}
           style={{ width: 24, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', cursor: 'pointer', color: '#374151' }}
           title="Mindre (markerad text)">
           <Minus size={12} />
         </button>
         <span style={{ minWidth: 20, textAlign: 'center', fontSize: 11, color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>Aa</span>
-        <button type="button" onMouseDown={(e) => { e.preventDefault(); handleFontSizeChange(1); }}
+        <button type="button" onMouseDown={(e) => handleFontSizeChange(1, e)}
           style={{ width: 24, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', cursor: 'pointer', color: '#374151' }}
           title="Större (markerad text)">
           <Plus size={12} />
