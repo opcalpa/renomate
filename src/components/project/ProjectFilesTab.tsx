@@ -55,7 +55,11 @@ import {
   Link,
   Camera,
   ChevronDown,
+  MoreVertical,
+  Settings2,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -128,8 +132,46 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   const [batchFiles, setBatchFiles] = useState<DroppedFile[]>([]);
   const [showBatchUpload, setShowBatchUpload] = useState(false);
   const dragCountRef = useRef(0);
+
+  // Configurable file table columns
+  type FileColKey = 'category' | 'type' | 'size' | 'uploaded';
+  const ALL_FILE_COLS: FileColKey[] = ['category', 'size', 'uploaded', 'type'];
+  const [hiddenFileCols, setHiddenFileCols] = useState<Set<FileColKey>>(() => {
+    try {
+      const saved = localStorage.getItem('files_hidden_cols');
+      return saved ? new Set(JSON.parse(saved) as FileColKey[]) : new Set<FileColKey>(['type']);
+    } catch { return new Set<FileColKey>(['type']); }
+  });
+  const fileColLabels: Record<FileColKey, string> = {
+    category: t('files.category', 'Kategori'),
+    type: t('budget.type', 'Typ'),
+    size: t('files.size', 'Storlek'),
+    uploaded: t('files.uploaded', 'Uppladdad'),
+  };
+  const visibleFileCols = ALL_FILE_COLS.filter(k => !hiddenFileCols.has(k));
+  const toggleFileCol = (key: FileColKey) => {
+    setHiddenFileCols(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      localStorage.setItem('files_hidden_cols', JSON.stringify([...next]));
+      return next;
+    });
+  };
   const { toast } = useToast();
   const { t } = useTranslation();
+
+  // Guess file category from path/name/type
+  const guessCategory = (file: ProjectFile): string => {
+    const p = file.path.toLowerCase();
+    if (p.includes('/offerter/') || p.includes('offert')) return 'Offert';
+    if (p.includes('/fakturor/') || p.includes('faktura') || p.includes('invoice')) return 'Faktura';
+    if (p.includes('/kvitton/') || p.includes('kvitto') || p.includes('receipt')) return 'Kvitto';
+    if (p.includes('/ritningar/') || p.includes('ritning') || p.includes('floor-plan')) return 'Ritning';
+    if (p.includes('/kontrakt/') || p.includes('kontrakt') || p.includes('contract')) return 'Kontrakt';
+    if (file.type.startsWith('image/')) return 'Bild';
+    if (file.type === 'application/pdf') return 'Dokument';
+    return 'Övrigt';
+  };
 
   // Helper to check if file is a document (PDF, DOC, DOCX, TXT)
   const checkIsDocumentFile = (file: ProjectFile) => {
@@ -691,18 +733,44 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-16"></TableHead>
+                    <TableHead className="w-10"></TableHead>
                     <TableHead>{t('common.name')}</TableHead>
-                    <TableHead className="hidden md:table-cell">{t('budget.type')}</TableHead>
-                    <TableHead className="hidden md:table-cell">{t('files.size')}</TableHead>
-                    <TableHead className="hidden md:table-cell">{t('files.uploaded')}</TableHead>
-                    <TableHead className="text-right">{t('files.actions')}</TableHead>
+                    {visibleFileCols.map(col => (
+                      <TableHead key={col} className="hidden md:table-cell">
+                        {fileColLabels[col]}
+                      </TableHead>
+                    ))}
+                    <TableHead className="w-20 text-right">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs -mr-2">
+                            <Settings2 className="h-3 w-3" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-44 p-2">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">
+                            {t('declaration.toggleColumns', 'Visa/dölj kolumner')}
+                          </p>
+                          {ALL_FILE_COLS.map(key => (
+                            <label key={key} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted cursor-pointer text-sm">
+                              <input
+                                type="checkbox"
+                                checked={!hiddenFileCols.has(key)}
+                                onChange={() => toggleFileCol(key)}
+                                className="h-3.5 w-3.5 rounded border-gray-300"
+                              />
+                              {fileColLabels[key]}
+                            </label>
+                          ))}
+                        </PopoverContent>
+                      </Popover>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {/* Folders */}
                   {folders.map((folder) => (
-                    <TableRow 
+                    <TableRow
                       key={folder.id}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => setCurrentFolder('/' + folder.path)}
@@ -711,121 +779,92 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                         <Folder className="h-5 w-5 text-yellow-500" />
                       </TableCell>
                       <TableCell className="font-medium">{folder.name}</TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant="secondary">{t('files.folder')}</Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">-</TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">-</TableCell>
+                      {visibleFileCols.map(col => (
+                        <TableCell key={col} className="hidden md:table-cell text-muted-foreground">
+                          {col === 'category' ? <Badge variant="secondary">{t('files.folder')}</Badge> : '–'}
+                        </TableCell>
+                      ))}
                       <TableCell></TableCell>
                     </TableRow>
                   ))}
-                  
+
                   {/* Files */}
                   {files.map((file) => (
-                    <TableRow key={file.id}>
+                    <TableRow key={file.id} className="group">
                       <TableCell>{getFileIcon(file)}</TableCell>
-                      <TableCell className="font-medium">{file.name}</TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant="outline">
-                          {file.type.split('/')[1] || 'unknown'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">
-                        {formatFileSize(file.size)}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">
-                        {formatDate(file.uploaded_at)}
-                      </TableCell>
+                      <TableCell className="font-medium truncate max-w-[200px] lg:max-w-none">{file.name}</TableCell>
+                      {visibleFileCols.map(col => (
+                        <TableCell key={col} className="hidden md:table-cell text-muted-foreground">
+                          {col === 'category' && <Badge variant="outline">{guessCategory(file)}</Badge>}
+                          {col === 'type' && <Badge variant="outline">{file.type.split('/')[1] || '?'}</Badge>}
+                          {col === 'size' && formatFileSize(file.size)}
+                          {col === 'uploaded' && formatDate(file.uploaded_at)}
+                        </TableCell>
+                      ))}
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handlePreview(file)}
-                            title={
-                              file.type.includes('pdf')
-                                ? t('files.openInNewTab')
-                                : file.type.startsWith('image/')
-                                ? t('files.preview')
-                                : t('files.viewDownload')
-                            }
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {checkIsDocumentFile(file) && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setDocumentImportFile(file)}
-                              title={t('files.extractWithAI')}
-                              className="text-primary hover:text-primary"
-                            >
-                              <Sparkles className="h-4 w-4" />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <MoreVertical className="h-4 w-4" />
                             </Button>
-                          )}
-                          {checkIsImageFile(file) && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setFloorPlanImportFile(file)}
-                              title={t('files.convertWithAI')}
-                              className="text-primary hover:text-primary"
-                            >
-                              <Wand2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {file.type.startsWith('image/') && onUseAsBackground && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handlePreview(file)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              {t('files.preview', 'Förhandsgranska')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownload(file)}>
+                              <Download className="h-4 w-4 mr-2" />
+                              {t('common.download', 'Ladda ner')}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {checkIsDocumentFile(file) && (
+                              <DropdownMenuItem onClick={() => setDocumentImportFile(file)}>
+                                <Sparkles className="h-4 w-4 mr-2" />
+                                {t('files.extractWithAI', 'AI-tolka dokument')}
+                              </DropdownMenuItem>
+                            )}
+                            {checkIsImageFile(file) && (
+                              <DropdownMenuItem onClick={() => setFloorPlanImportFile(file)}>
+                                <Wand2 className="h-4 w-4 mr-2" />
+                                {t('files.convertWithAI', 'AI-tolka ritning')}
+                              </DropdownMenuItem>
+                            )}
+                            {file.type.startsWith('image/') && onUseAsBackground && (
+                              <DropdownMenuItem onClick={() => {
                                 const { data: { publicUrl } } = supabase.storage
                                   .from('project-files')
                                   .getPublicUrl(file.path);
                                 onUseAsBackground(publicUrl, file.name);
-                              }}
-                              title={t('files.useAsBackground')}
-                            >
-                              <Layers className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {canEdit && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setLinkFile(file)}
-                              title={t('files.linkToTask')}
-                            >
-                              <Link className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedFileForComments(file)}
-                            title={t('common.comments')}
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDownload(file)}
-                            title={t('common.download')}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          {canEdit && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setFileToDelete(file)}
-                              title={t('common.delete')}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          )}
-                        </div>
+                              }}>
+                                <Layers className="h-4 w-4 mr-2" />
+                                {t('files.useAsBackground', 'Använd som planritning')}
+                              </DropdownMenuItem>
+                            )}
+                            {canEdit && (
+                              <DropdownMenuItem onClick={() => setLinkFile(file)}>
+                                <Link className="h-4 w-4 mr-2" />
+                                {t('files.linkToTask', 'Koppla till arbete')}
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => setSelectedFileForComments(file)}>
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              {t('common.comments', 'Kommentarer')}
+                            </DropdownMenuItem>
+                            {canEdit && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => setFileToDelete(file)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  {t('common.delete', 'Radera')}
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
