@@ -16,7 +16,7 @@ import { KonvaEventObject } from 'konva/lib/Node';
 import { ShapeWithViewProps } from './types';
 import { LineCoordinates, AnchorSide } from '../types';
 import { useFloorMapStore } from '../store';
-import { getAnchorPoint } from '../canvas/connectorUtils';
+import { getAnchorPoint, findNearestConnectableAnchor } from '../canvas/connectorUtils';
 
 export const ConnectorShape: React.FC<ShapeWithViewProps> = ({
   shape,
@@ -98,27 +98,51 @@ export const ConnectorShape: React.FC<ShapeWithViewProps> = ({
     [x1, y1, x2, y2, snapPoint, onTransform],
   );
 
-  // Drag one endpoint (clears that anchor only)
+  // Drag one endpoint — auto-snap to nearby connectable shapes
   const handleEndpointDragEnd = useCallback(
     (endpoint: 'start' | 'end', e: KonvaEventObject<DragEvent>) => {
       const node = e.target;
-      const snapped = snapPoint(node.x(), node.y());
-      node.x(snapped.x);
-      node.y(snapped.y);
+      const rawX = node.x();
+      const rawY = node.y();
 
-      const newCoords: LineCoordinates =
-        endpoint === 'start'
-          ? { x1: snapped.x, y1: snapped.y, x2, y2 }
-          : { x1, y1, x2: snapped.x, y2: snapped.y };
+      // Check if dragged near a connectable shape
+      const allShapes = useFloorMapStore.getState().shapes;
+      const excludeId = endpoint === 'start' ? shape.endShapeId : shape.startShapeId;
+      const nearAnchor = findNearestConnectableAnchor(allShapes, rawX, rawY, excludeId || undefined, 50);
 
-      onTransform({
-        coordinates: newCoords,
-        ...(endpoint === 'start'
-          ? { startShapeId: undefined, startAnchor: undefined }
-          : { endShapeId: undefined, endAnchor: undefined }),
-      });
+      if (nearAnchor) {
+        // Snap to shape anchor
+        const pt = nearAnchor.point;
+        node.x(pt.x);
+        node.y(pt.y);
+        const newCoords: LineCoordinates =
+          endpoint === 'start'
+            ? { x1: pt.x, y1: pt.y, x2, y2 }
+            : { x1, y1, x2: pt.x, y2: pt.y };
+        onTransform({
+          coordinates: newCoords,
+          ...(endpoint === 'start'
+            ? { startShapeId: nearAnchor.shape.id, startAnchor: nearAnchor.anchor }
+            : { endShapeId: nearAnchor.shape.id, endAnchor: nearAnchor.anchor }),
+        });
+      } else {
+        // Free position with grid snap
+        const snapped = snapPoint(rawX, rawY);
+        node.x(snapped.x);
+        node.y(snapped.y);
+        const newCoords: LineCoordinates =
+          endpoint === 'start'
+            ? { x1: snapped.x, y1: snapped.y, x2, y2 }
+            : { x1, y1, x2: snapped.x, y2: snapped.y };
+        onTransform({
+          coordinates: newCoords,
+          ...(endpoint === 'start'
+            ? { startShapeId: undefined, startAnchor: undefined }
+            : { endShapeId: undefined, endAnchor: undefined }),
+        });
+      }
     },
-    [x1, y1, x2, y2, snapPoint, onTransform],
+    [x1, y1, x2, y2, snapPoint, onTransform, shape.startShapeId, shape.endShapeId],
   );
 
   return (

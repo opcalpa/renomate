@@ -1071,7 +1071,32 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                 {col === 'category' ? '' : ''}
                               </TableCell>
                             ))}
-                            <TableCell></TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => {
+                                    const { data: { publicUrl } } = supabase.storage.from('project-files').getPublicUrl(sf.path);
+                                    if (sf.type?.startsWith('image/')) { setPreviewUrl(publicUrl); setPreviewFile(sf); setImageZoom(100); }
+                                    else window.open(publicUrl, '_blank');
+                                  }}>
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    {t('files.preview', 'Förhandsgranska')}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => {
+                                    const { data: { publicUrl } } = supabase.storage.from('project-files').getPublicUrl(sf.path);
+                                    const a = document.createElement('a'); a.href = publicUrl; a.download = sf.name; a.click();
+                                  }}>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    {t('common.download', 'Ladda ner')}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </Fragment>

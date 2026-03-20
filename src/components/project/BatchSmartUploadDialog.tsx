@@ -298,6 +298,9 @@ export const BatchSmartUploadDialog: React.FC<BatchSmartUploadDialogProps> = ({
                 <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-36">
                   {t('files.category', 'Kategori')}
                 </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-32">
+                  {t('files.autoLink', 'Koppling')}
+                </th>
                 <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground w-20">
                   {t('files.size', 'Storlek')}
                 </th>
@@ -371,6 +374,15 @@ export const BatchSmartUploadDialog: React.FC<BatchSmartUploadDialogProps> = ({
                         </Select>
                       ) : entry.status === 'classifying' ? (
                         <span className="text-xs text-muted-foreground">...</span>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {entry.classification?.vendor_name ? (
+                        <span className="text-foreground" title={`Matchas mot: ${entry.classification.vendor_name}`}>
+                          {entry.classification.vendor_name}
+                        </span>
+                      ) : entry.status === 'done' ? (
+                        <span className="text-muted-foreground/40">–</span>
                       ) : null}
                     </td>
                     <td className="px-3 py-2 text-right text-xs text-muted-foreground tabular-nums">

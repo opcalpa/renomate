@@ -215,12 +215,18 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
     saveSelection();
   };
 
-  // Save selection whenever it changes inside the editable area
+  // Track active formatting state at cursor position
+  const [isBoldActive, setIsBoldActive] = useState(false);
+  const [isItalicActive, setIsItalicActive] = useState(false);
+
+  // Save selection + check formatting whenever selection changes
   useEffect(() => {
     const handleSelChange = () => {
       const sel = window.getSelection();
       if (sel && editableRef.current?.contains(sel.anchorNode)) {
         saveSelection();
+        setIsBoldActive(document.queryCommandState('bold'));
+        setIsItalicActive(document.queryCommandState('italic'));
       }
     };
     document.addEventListener('selectionchange', handleSelChange);
@@ -254,12 +260,12 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
         }}
       >
         <button type="button" onMouseDown={handleBold}
-          style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, border: 'none', background: 'transparent', cursor: 'pointer', color: '#374151' }}
+          style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, border: 'none', background: isBoldActive ? '#e0e7ff' : 'transparent', cursor: 'pointer', color: isBoldActive ? '#4338ca' : '#374151' }}
           title="Fet (markerad text)">
           <Bold size={14} />
         </button>
         <button type="button" onMouseDown={handleItalic}
-          style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, border: 'none', background: 'transparent', cursor: 'pointer', color: '#374151' }}
+          style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, border: 'none', background: isItalicActive ? '#e0e7ff' : 'transparent', cursor: 'pointer', color: isItalicActive ? '#4338ca' : '#374151' }}
           title="Kursiv (markerad text)">
           <Italic size={14} />
         </button>
