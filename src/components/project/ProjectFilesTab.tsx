@@ -146,19 +146,22 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   };
 
   // Configurable file table columns
-  type FileColKey = 'category' | 'task' | 'purchase' | 'room' | 'size' | 'uploaded' | 'type';
-  const ALL_FILE_COLS: FileColKey[] = ['category', 'task', 'purchase', 'room', 'size', 'uploaded', 'type'];
+  type FileColKey = 'category' | 'task' | 'purchase' | 'room' | 'invoiceDate' | 'invoiceAmount' | 'rotAmount' | 'size' | 'uploaded' | 'type';
+  const ALL_FILE_COLS: FileColKey[] = ['category', 'task', 'purchase', 'room', 'invoiceDate', 'invoiceAmount', 'rotAmount', 'size', 'uploaded', 'type'];
   const [hiddenFileCols, setHiddenFileCols] = useState<Set<FileColKey>>(() => {
     try {
       const saved = localStorage.getItem('files_hidden_cols');
-      return saved ? new Set(JSON.parse(saved) as FileColKey[]) : new Set<FileColKey>(['type', 'room']);
-    } catch { return new Set<FileColKey>(['type', 'room']); }
+      return saved ? new Set(JSON.parse(saved) as FileColKey[]) : new Set<FileColKey>(['type', 'room', 'invoiceDate', 'invoiceAmount', 'rotAmount']);
+    } catch { return new Set<FileColKey>(['type', 'room', 'invoiceDate', 'invoiceAmount', 'rotAmount']); }
   });
   const fileColLabels: Record<FileColKey, string> = {
     category: t('files.category', 'Kategori'),
     task: t('common.task', 'Arbete'),
     purchase: t('nav.purchases', 'Inköp'),
     room: t('common.room', 'Rum'),
+    invoiceDate: t('files.invoiceDate', 'Fakturadatum'),
+    invoiceAmount: t('files.invoiceAmount', 'Belopp'),
+    rotAmount: t('files.rotAmount', 'ROT-avdrag'),
     type: t('budget.type', 'Typ'),
     size: t('files.size', 'Storlek'),
     uploaded: t('files.uploaded', 'Uppladdad'),
@@ -166,11 +169,15 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
   // Fetch file-entity links for the project
   interface FileLink {
+    id?: string;
     file_path: string;
     task_id: string | null;
     material_id: string | null;
     room_id: string | null;
     file_type: string;
+    invoice_date?: string | null;
+    invoice_amount?: number | null;
+    rot_amount?: number | null;
     task_name?: string;
     material_name?: string;
     room_name?: string;
@@ -181,7 +188,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     (async () => {
       const { data } = await supabase
         .from('task_file_links')
-        .select('file_path, task_id, material_id, room_id, file_type')
+        .select('id, file_path, task_id, material_id, room_id, file_type, invoice_date, invoice_amount, rot_amount')
         .eq('project_id', projectId);
       if (!data) return;
 
@@ -298,6 +305,30 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
       .eq('file_path', file.path)
       .eq(field, entityId);
     setFileLinks(prev => prev.filter(l => !(l.file_path === file.path && (l as Record<string, unknown>)[field] === entityId)));
+  };
+
+  // Update invoice/ROT fields on a file link
+  const updateFileLink = async (linkId: string, updates: Record<string, unknown>) => {
+    await supabase.from('task_file_links').update(updates).eq('id', linkId);
+    setFileLinks(prev => prev.map(l => l.id === linkId ? { ...l, ...updates } as FileLink : l));
+  };
+
+  // Ensure a file has at least one task_file_link record (for storing invoice metadata)
+  const ensureFileLink = async (file: ProjectFile): Promise<string | null> => {
+    const existing = fileLinks.find(l => l.file_path === file.path);
+    if (existing?.id) return existing.id;
+    if (!currentProfileId) return null;
+    const { data, error } = await supabase.from('task_file_links').insert({
+      project_id: projectId,
+      file_path: file.path,
+      file_name: file.name,
+      file_type: 'invoice',
+      file_size: file.size,
+      mime_type: file.type,
+      linked_by_user_id: currentProfileId,
+    }).select('id').single();
+    if (error || !data) return null;
+    return data.id;
   };
 
   const visibleFileCols = ALL_FILE_COLS.filter(k => !hiddenFileCols.has(k));
@@ -1040,6 +1071,53 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                       </button>
                                     );
                                   })}
+                                </PopoverContent>
+                              </Popover>
+                            </TableCell>
+                          );
+                        }
+
+                        // Invoice date, amount, ROT — inline editable
+                        if (col === 'invoiceDate' || col === 'invoiceAmount' || col === 'rotAmount') {
+                          const link = links[0]; // use first link for invoice data
+                          const dbField = col === 'invoiceDate' ? 'invoice_date' : col === 'invoiceAmount' ? 'invoice_amount' : 'rot_amount';
+                          const currentVal = link ? (link as Record<string, unknown>)[dbField] : null;
+                          const isDate = col === 'invoiceDate';
+                          const displayVal = isDate
+                            ? (currentVal ? String(currentVal).slice(0, 10) : null)
+                            : (currentVal != null ? `${Number(currentVal).toLocaleString('sv-SE')} kr` : null);
+
+                          return (
+                            <TableCell key={col} className="hidden md:table-cell">
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors min-w-[40px]">
+                                    {displayVal || <span className="text-muted-foreground/40">–</span>}
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-3" align="start">
+                                  <div className="space-y-2">
+                                    <Label className="text-xs">{fileColLabels[col]}</Label>
+                                    <Input
+                                      type={isDate ? 'date' : 'number'}
+                                      step={isDate ? undefined : '1'}
+                                      defaultValue={currentVal != null ? String(currentVal) : ''}
+                                      className="h-8 text-sm"
+                                      autoFocus
+                                      onBlur={async (e) => {
+                                        const val = e.target.value;
+                                        let linkId = link?.id;
+                                        if (!linkId) linkId = await ensureFileLink(file) || undefined;
+                                        if (!linkId) return;
+                                        await updateFileLink(linkId, {
+                                          [dbField]: isDate ? (val || null) : (val ? parseFloat(val) : null),
+                                        });
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                      }}
+                                    />
+                                  </div>
                                 </PopoverContent>
                               </Popover>
                             </TableCell>
