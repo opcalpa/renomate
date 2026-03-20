@@ -58,6 +58,8 @@ import {
   MoreVertical,
   Settings2,
   AlignJustify,
+  Plus,
+  Check,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -208,6 +210,96 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   }, [projectId, files]);
 
   const getFileLinksForPath = (path: string) => fileLinks.filter(l => l.file_path === path);
+
+  // Available entities for linking dropdowns
+  const [availTasks, setAvailTasks] = useState<Array<{ id: string; name: string }>>([]);
+  const [availMaterials, setAvailMaterials] = useState<Array<{ id: string; name: string }>>([]);
+  const [availRooms, setAvailRooms] = useState<Array<{ id: string; name: string }>>([]);
+  useEffect(() => {
+    if (!projectId) return;
+    Promise.all([
+      supabase.from('tasks').select('id, title').eq('project_id', projectId).order('title'),
+      supabase.from('materials').select('id, name').eq('project_id', projectId).order('name'),
+      supabase.from('rooms').select('id, name').eq('project_id', projectId).order('name'),
+    ]).then(([t, m, r]) => {
+      setAvailTasks((t.data || []).map(x => ({ id: x.id, name: x.title })));
+      setAvailMaterials((m.data || []).map(x => ({ id: x.id, name: x.name })));
+      setAvailRooms((r.data || []).map(x => ({ id: x.id, name: x.name })));
+    });
+  }, [projectId]);
+
+  // Category overrides (localStorage since no DB column for standalone file category)
+  const [categoryOverrides, setCategoryOverrides] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem('files_cat_overrides') || '{}'); } catch { return {}; }
+  });
+  const setCategoryForFile = (path: string, cat: string) => {
+    setCategoryOverrides(prev => {
+      const next = { ...prev, [path]: cat };
+      localStorage.setItem('files_cat_overrides', JSON.stringify(next));
+      return next;
+    });
+  };
+  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('files_custom_cats') || '[]'); } catch { return []; }
+  });
+
+  // Get current user profile ID for linking
+  const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from('profiles').select('id').eq('user_id', user.id).single().then(({ data }) => {
+        if (data) setCurrentProfileId(data.id);
+      });
+    });
+  }, []);
+
+  // Link/unlink a file to an entity
+  const linkFileToEntity = async (file: ProjectFile, entityType: 'task' | 'material' | 'room', entityId: string) => {
+    if (!currentProfileId) return;
+    const field = entityType === 'task' ? 'task_id' : entityType === 'material' ? 'material_id' : 'room_id';
+    await supabase.from('task_file_links').insert({
+      project_id: projectId,
+      [field]: entityId,
+      file_path: file.path,
+      file_name: file.name,
+      file_type: 'other',
+      file_size: file.size,
+      mime_type: file.type,
+      linked_by_user_id: currentProfileId,
+    });
+    // Refresh links
+    const { data } = await supabase.from('task_file_links').select('file_path, task_id, material_id, room_id, file_type, id').eq('project_id', projectId);
+    if (data) {
+      const tIds = [...new Set(data.filter(d => d.task_id).map(d => d.task_id!))];
+      const mIds = [...new Set(data.filter(d => d.material_id).map(d => d.material_id!))];
+      const rIds = [...new Set(data.filter(d => d.room_id).map(d => d.room_id!))];
+      const [tR, mR, rR] = await Promise.all([
+        tIds.length > 0 ? supabase.from('tasks').select('id, title').in('id', tIds) : { data: [] },
+        mIds.length > 0 ? supabase.from('materials').select('id, name').in('id', mIds) : { data: [] },
+        rIds.length > 0 ? supabase.from('rooms').select('id, name').in('id', rIds) : { data: [] },
+      ]);
+      const tMap = new Map((tR.data || []).map(x => [x.id, x.title]));
+      const mMap = new Map((mR.data || []).map(x => [x.id, x.name]));
+      const rMap = new Map((rR.data || []).map(x => [x.id, x.name]));
+      setFileLinks(data.map(d => ({
+        ...d,
+        task_name: d.task_id ? tMap.get(d.task_id) || undefined : undefined,
+        material_name: d.material_id ? mMap.get(d.material_id) || undefined : undefined,
+        room_name: d.room_id ? rMap.get(d.room_id) || undefined : undefined,
+      })));
+    }
+  };
+
+  const unlinkFileEntity = async (file: ProjectFile, entityType: 'task' | 'material' | 'room', entityId: string) => {
+    const field = entityType === 'task' ? 'task_id' : entityType === 'material' ? 'material_id' : 'room_id';
+    await supabase.from('task_file_links').delete()
+      .eq('project_id', projectId)
+      .eq('file_path', file.path)
+      .eq(field, entityId);
+    setFileLinks(prev => prev.filter(l => !(l.file_path === file.path && (l as Record<string, unknown>)[field] === entityId)));
+  };
+
   const visibleFileCols = ALL_FILE_COLS.filter(k => !hiddenFileCols.has(k));
   const toggleFileCol = (key: FileColKey) => {
     setHiddenFileCols(prev => {
@@ -863,21 +955,102 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                       <TableCell className="font-medium truncate max-w-[200px] lg:max-w-none">{file.name}</TableCell>
                       {visibleFileCols.map(col => {
                         const links = getFileLinksForPath(file.path);
+                        const DEFAULT_CATS = ['Offert', 'Faktura', 'Kvitto', 'Ritning', 'Kontrakt', 'Specifikation', 'Bild', 'Dokument', 'Övrigt'];
+                        const allCats = [...DEFAULT_CATS, ...customCategories.filter(c => !DEFAULT_CATS.includes(c))];
+                        const fileCat = categoryOverrides[file.path] || guessCategory(file);
+
+                        if (col === 'category') {
+                          return (
+                            <TableCell key={col} className="hidden md:table-cell">
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors">
+                                    <Badge variant="outline">{fileCat}</Badge>
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-40 p-1" align="start">
+                                  {allCats.map(cat => (
+                                    <button key={cat} type="button"
+                                      onClick={() => setCategoryForFile(file.path, cat)}
+                                      className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted flex items-center gap-2 ${fileCat === cat ? 'bg-muted font-medium' : ''}`}
+                                    >
+                                      {fileCat === cat && <Check className="h-3 w-3 text-primary" />}
+                                      <span className={fileCat === cat ? '' : 'pl-5'}>{cat}</span>
+                                    </button>
+                                  ))}
+                                  <div className="border-t mt-1 pt-1">
+                                    <button type="button"
+                                      onClick={() => {
+                                        const name = prompt(t('files.newCategory', 'Ny kategori:'));
+                                        if (name?.trim()) {
+                                          const trimmed = name.trim();
+                                          setCustomCategories(prev => {
+                                            const next = [...new Set([...prev, trimmed])];
+                                            localStorage.setItem('files_custom_cats', JSON.stringify(next));
+                                            return next;
+                                          });
+                                          setCategoryForFile(file.path, trimmed);
+                                        }
+                                      }}
+                                      className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted flex items-center gap-2 text-primary"
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                      {t('files.addCategory', 'Ny kategori...')}
+                                    </button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </TableCell>
+                          );
+                        }
+
+                        if (col === 'task' || col === 'purchase' || col === 'room') {
+                          const entityType = col === 'task' ? 'task' : col === 'purchase' ? 'material' : 'room';
+                          const nameField = col === 'task' ? 'task_name' : col === 'purchase' ? 'material_name' : 'room_name';
+                          const idField = col === 'task' ? 'task_id' : col === 'purchase' ? 'material_id' : 'room_id';
+                          const options = col === 'task' ? availTasks : col === 'purchase' ? availMaterials : availRooms;
+                          const linkedEntities = links.filter(l => (l as Record<string, unknown>)[nameField]);
+                          const linkedIds = new Set(links.map(l => (l as Record<string, unknown>)[idField] as string).filter(Boolean));
+
+                          return (
+                            <TableCell key={col} className="hidden md:table-cell">
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors min-w-[40px]">
+                                    {linkedEntities.length > 0
+                                      ? <span className="text-foreground">{linkedEntities.map(l => (l as Record<string, unknown>)[nameField]).join(', ')}</span>
+                                      : <span className="text-muted-foreground/40">–</span>}
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-52 p-1 max-h-64 overflow-y-auto" align="start">
+                                  {options.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground p-2">{t('common.noResults', 'Inga resultat')}</p>
+                                  ) : options.map(opt => {
+                                    const isLinked = linkedIds.has(opt.id);
+                                    return (
+                                      <button key={opt.id} type="button"
+                                        onClick={() => isLinked
+                                          ? unlinkFileEntity(file, entityType, opt.id)
+                                          : linkFileToEntity(file, entityType, opt.id)
+                                        }
+                                        className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted flex items-center gap-2 ${isLinked ? 'bg-primary/5 font-medium' : ''}`}
+                                      >
+                                        {isLinked && <Check className="h-3 w-3 text-primary shrink-0" />}
+                                        <span className={isLinked ? '' : 'pl-5'} title={opt.name}>{opt.name}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </PopoverContent>
+                              </Popover>
+                            </TableCell>
+                          );
+                        }
+
                         return (
                           <TableCell key={col} className="hidden md:table-cell text-muted-foreground">
-                            {col === 'category' && <Badge variant="outline">{guessCategory(file)}</Badge>}
                             {col === 'type' && <Badge variant="outline">{file.type.split('/')[1] || '?'}</Badge>}
                             {col === 'size' && formatFileSize(file.size)}
                             {col === 'uploaded' && formatDate(file.uploaded_at)}
-                            {col === 'task' && (links.filter(l => l.task_name).length > 0
-                              ? <span className="text-xs">{links.filter(l => l.task_name).map(l => l.task_name).join(', ')}</span>
-                              : <span className="text-xs text-muted-foreground/50">–</span>)}
-                            {col === 'purchase' && (links.filter(l => l.material_name).length > 0
-                              ? <span className="text-xs">{links.filter(l => l.material_name).map(l => l.material_name).join(', ')}</span>
-                              : <span className="text-xs text-muted-foreground/50">–</span>)}
-                            {col === 'room' && (links.filter(l => l.room_name).length > 0
-                              ? <span className="text-xs">{links.filter(l => l.room_name).map(l => l.room_name).join(', ')}</span>
-                              : <span className="text-xs text-muted-foreground/50">–</span>)}
                           </TableCell>
                         );
                       })}
