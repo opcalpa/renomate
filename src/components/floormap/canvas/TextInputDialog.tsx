@@ -252,7 +252,7 @@ export function useTextDialog() {
   }, []);
 
   const openForEdit = useCallback((shape: FloorMapShape) => {
-    if (shape.type !== 'text') return;
+    if (shape.type !== 'text' && shape.type !== 'sticky_note') return;
 
     setState({
       isOpen: true,
