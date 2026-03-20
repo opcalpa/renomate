@@ -51,6 +51,7 @@ import { SelectionPreviewOverlay } from './canvas/SelectionPreviewOverlay';
 import { MultiSelectionBoundsOverlay } from './canvas/MultiSelectionBounds';
 import { GhostPreviewOverlay } from './canvas/GhostPreviewOverlay';
 import { TextInputDialog, useTextDialog } from './canvas/TextInputDialog';
+import { InlineTextEditor } from './canvas/InlineTextEditor';
 import { useCanvasNavigation } from './hooks/useCanvasNavigation';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { cloneShapes, copyShapesToClipboard, PASTE_OFFSET } from './utils/shapeClipboard';
@@ -542,9 +543,16 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
     };
   }, [currentShapes]);
 
-  // Handle double-click to edit existing text (using extracted hook)
+  // Inline text editing state (WYSIWYG on canvas)
+  const [inlineEditShape, setInlineEditShape] = useState<FloorMapShape | null>(null);
+
+  // Handle double-click to edit text — opens inline editor on canvas
   const handleTextEdit = useCallback((shape: FloorMapShape) => {
-    textDialog.openForEdit(shape);
+    if (shape.type === 'text' || shape.type === 'sticky_note') {
+      setInlineEditShape(shape);
+    } else {
+      textDialog.openForEdit(shape);
+    }
   }, [textDialog]);
   
   // Manual save function (exposed to toolbar)
@@ -3222,7 +3230,7 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         />
       )}
 
-      {/* Text Input Dialog */}
+      {/* Text Input Dialog (fallback for new text creation) */}
       <TextInputDialog
         state={textDialog.state}
         onStateChange={textDialog.updateState}
@@ -3230,6 +3238,16 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         onUpdate={updateShape}
         currentPlanId={currentPlanId}
       />
+
+      {/* Inline text editor — WYSIWYG on canvas */}
+      {inlineEditShape && (
+        <InlineTextEditor
+          shape={inlineEditShape}
+          viewState={viewState}
+          onSave={(id, updates) => updateShape(id, updates)}
+          onClose={() => setInlineEditShape(null)}
+        />
+      )}
       
       {/* Name Room Dialog */}
       <NameRoomDialog
