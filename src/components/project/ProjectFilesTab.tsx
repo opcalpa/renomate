@@ -71,6 +71,7 @@ import { SmartUploadDialog, type SmartUploadAction } from "./SmartUploadDialog";
 import { QuoteReviewDialog } from "./QuoteReviewDialog";
 import { LinkPurchaseDialog } from "./LinkPurchaseDialog";
 import { isDocumentFile } from "@/services/aiDocumentService";
+import { BatchSmartUploadDialog, readDroppedItems, type DroppedFile } from "./BatchSmartUploadDialog";
 
 interface ProjectFile {
   id: string;
@@ -123,6 +124,10 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   const [purchaseFile, setPurchaseFile] = useState<{ file: File; type: "invoice" | "receipt" } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [batchFiles, setBatchFiles] = useState<DroppedFile[]>([]);
+  const [showBatchUpload, setShowBatchUpload] = useState(false);
+  const dragCountRef = useRef(0);
   const { toast } = useToast();
   const { t } = useTranslation();
 
@@ -486,8 +491,63 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     setCurrentFolder(newPath);
   };
 
+  // Drag-and-drop handlers for the entire files area
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCountRef.current++;
+    if (e.dataTransfer.types.includes('Files')) setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCountRef.current--;
+    if (dragCountRef.current <= 0) { setIsDragOver(false); dragCountRef.current = 0; }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    dragCountRef.current = 0;
+
+    if (!canEdit) return;
+    const droppedFiles = await readDroppedItems(e.dataTransfer);
+    if (droppedFiles.length === 0) return;
+
+    setBatchFiles(droppedFiles);
+    setShowBatchUpload(true);
+  }, [canEdit]);
+
   return (
-    <div className="h-full bg-background p-6">
+    <div
+      className="h-full bg-background p-6 relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* Drop overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary/5 border-2 border-dashed border-primary rounded-lg pointer-events-none">
+          <div className="text-center">
+            <Upload className="h-12 w-12 mx-auto text-primary mb-3" />
+            <p className="text-lg font-semibold text-primary">
+              {t('files.dropToUpload', 'Släpp filer här')}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {t('files.dropHint', 'Filer och mappar analyseras automatiskt')}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1143,6 +1203,16 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
             description: t("quoteReview.importDoneDesc", "Arbeten och rum har skapats i projektet."),
           });
         }}
+      />
+
+      {/* Batch Smart Upload Dialog (drag-and-drop) */}
+      <BatchSmartUploadDialog
+        open={showBatchUpload}
+        onOpenChange={setShowBatchUpload}
+        files={batchFiles}
+        projectId={projectId}
+        currentFolder={currentFolder}
+        onComplete={fetchFiles}
       />
 
       {/* Smart Upload Dialog */}
