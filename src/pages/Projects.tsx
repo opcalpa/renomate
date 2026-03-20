@@ -1633,7 +1633,7 @@ const Projects = () => {
           </section>
         )}
 
-        {!isContractor && !isGuest && visibleProjects.length > 0 && (
+        {!isGuest && visibleProjects.length > 0 && (
           <section id="deklaration" className="mt-10 sm:mt-14 scroll-mt-20">
             <HomeownerYearlyAnalysis
               projects={visibleProjects}
