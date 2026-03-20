@@ -142,6 +142,14 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
   }>>({});
   
   // Navigation state
+  // Canvas dimensions — track window size for responsive Stage
+  const [stageSize, setStageSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+  useEffect(() => {
+    const handleResize = () => setStageSize({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
   // Note: isSpacePressed and isShiftPressed are managed by useKeyboardShortcuts hook
@@ -3450,8 +3458,8 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
       {/* Konva Stage */}
       <Stage
         ref={stageRef}
-        width={window.innerWidth}
-        height={window.innerHeight}
+        width={stageSize.w}
+        height={stageSize.h}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
