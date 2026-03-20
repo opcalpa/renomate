@@ -3966,16 +3966,18 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
           {/* Transformer removed - shapes handle their own selection visual (blue stroke) */}
           {/* Multi-select dragging handled by unified drag system */}
 
-          {/* Connector anchor handles - Miro-style dots on HOVERED (not selected) connectable shapes.
-              Only shows on hover to avoid competing with the Transformer drag handles. */}
-          {!isReadOnly && activeTool === 'select' && hoveredShapeId &&
-            !selectedShapeIds.includes(hoveredShapeId) && (() => {
-            const hovered = currentShapes.find(s => s.id === hoveredShapeId);
-            if (!hovered || !isConnectableShape(hovered)) return null;
+          {/* Connector anchor handles - Miro-style dots on hovered or selected connectable shapes */}
+          {!isReadOnly && activeTool === 'select' && (() => {
+            const targetId =
+              hoveredShapeId ||
+              (selectedShapeIds.length === 1 ? selectedShapeIds[0] : null);
+            if (!targetId) return null;
+            const target = currentShapes.find(s => s.id === targetId);
+            if (!target || !isConnectableShape(target)) return null;
             return (
               <ConnectorAnchorHandles
-                key={`anchors-${hoveredShapeId}`}
-                shape={hovered}
+                key={`anchors-${targetId}`}
+                shape={target}
                 zoom={viewState.zoom}
                 onAnchorMouseDown={handleAnchorMouseDown}
               />

@@ -33,7 +33,7 @@ export const ConnectorAnchorHandles: React.FC<ConnectorAnchorHandlesProps> = ({
 
   const radius = 5 / zoom;
   const strokeWidth = 1.5 / zoom;
-  const outerRadius = 9 / zoom; // invisible hit area
+  const outerRadius = 6 / zoom; // tight hit area — avoids hijacking shape drag
 
   return (
     <Group listening={true}>
