@@ -144,20 +144,70 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   };
 
   // Configurable file table columns
-  type FileColKey = 'category' | 'type' | 'size' | 'uploaded';
-  const ALL_FILE_COLS: FileColKey[] = ['category', 'size', 'uploaded', 'type'];
+  type FileColKey = 'category' | 'task' | 'purchase' | 'room' | 'size' | 'uploaded' | 'type';
+  const ALL_FILE_COLS: FileColKey[] = ['category', 'task', 'purchase', 'room', 'size', 'uploaded', 'type'];
   const [hiddenFileCols, setHiddenFileCols] = useState<Set<FileColKey>>(() => {
     try {
       const saved = localStorage.getItem('files_hidden_cols');
-      return saved ? new Set(JSON.parse(saved) as FileColKey[]) : new Set<FileColKey>(['type']);
-    } catch { return new Set<FileColKey>(['type']); }
+      return saved ? new Set(JSON.parse(saved) as FileColKey[]) : new Set<FileColKey>(['type', 'room']);
+    } catch { return new Set<FileColKey>(['type', 'room']); }
   });
   const fileColLabels: Record<FileColKey, string> = {
     category: t('files.category', 'Kategori'),
+    task: t('common.task', 'Arbete'),
+    purchase: t('nav.purchases', 'Inköp'),
+    room: t('common.room', 'Rum'),
     type: t('budget.type', 'Typ'),
     size: t('files.size', 'Storlek'),
     uploaded: t('files.uploaded', 'Uppladdad'),
   };
+
+  // Fetch file-entity links for the project
+  interface FileLink {
+    file_path: string;
+    task_id: string | null;
+    material_id: string | null;
+    room_id: string | null;
+    file_type: string;
+    task_name?: string;
+    material_name?: string;
+    room_name?: string;
+  }
+  const [fileLinks, setFileLinks] = useState<FileLink[]>([]);
+  useEffect(() => {
+    if (!projectId) return;
+    (async () => {
+      const { data } = await supabase
+        .from('task_file_links')
+        .select('file_path, task_id, material_id, room_id, file_type')
+        .eq('project_id', projectId);
+      if (!data) return;
+
+      // Fetch names for linked entities
+      const taskIds = [...new Set(data.filter(d => d.task_id).map(d => d.task_id!))];
+      const matIds = [...new Set(data.filter(d => d.material_id).map(d => d.material_id!))];
+      const roomIds = [...new Set(data.filter(d => d.room_id).map(d => d.room_id!))];
+
+      const [tasksRes, matsRes, roomsRes] = await Promise.all([
+        taskIds.length > 0 ? supabase.from('tasks').select('id, title').in('id', taskIds) : { data: [] },
+        matIds.length > 0 ? supabase.from('materials').select('id, name').in('id', matIds) : { data: [] },
+        roomIds.length > 0 ? supabase.from('rooms').select('id, name').in('id', roomIds) : { data: [] },
+      ]);
+
+      const taskMap = new Map((tasksRes.data || []).map(t => [t.id, t.title]));
+      const matMap = new Map((matsRes.data || []).map(m => [m.id, m.name]));
+      const roomMap = new Map((roomsRes.data || []).map(r => [r.id, r.name]));
+
+      setFileLinks(data.map(d => ({
+        ...d,
+        task_name: d.task_id ? taskMap.get(d.task_id) || undefined : undefined,
+        material_name: d.material_id ? matMap.get(d.material_id) || undefined : undefined,
+        room_name: d.room_id ? roomMap.get(d.room_id) || undefined : undefined,
+      })));
+    })();
+  }, [projectId, files]);
+
+  const getFileLinksForPath = (path: string) => fileLinks.filter(l => l.file_path === path);
   const visibleFileCols = ALL_FILE_COLS.filter(k => !hiddenFileCols.has(k));
   const toggleFileCol = (key: FileColKey) => {
     setHiddenFileCols(prev => {
@@ -811,14 +861,26 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                     <TableRow key={file.id} className={`group ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}>
                       <TableCell>{getFileIcon(file)}</TableCell>
                       <TableCell className="font-medium truncate max-w-[200px] lg:max-w-none">{file.name}</TableCell>
-                      {visibleFileCols.map(col => (
-                        <TableCell key={col} className="hidden md:table-cell text-muted-foreground">
-                          {col === 'category' && <Badge variant="outline">{guessCategory(file)}</Badge>}
-                          {col === 'type' && <Badge variant="outline">{file.type.split('/')[1] || '?'}</Badge>}
-                          {col === 'size' && formatFileSize(file.size)}
-                          {col === 'uploaded' && formatDate(file.uploaded_at)}
-                        </TableCell>
-                      ))}
+                      {visibleFileCols.map(col => {
+                        const links = getFileLinksForPath(file.path);
+                        return (
+                          <TableCell key={col} className="hidden md:table-cell text-muted-foreground">
+                            {col === 'category' && <Badge variant="outline">{guessCategory(file)}</Badge>}
+                            {col === 'type' && <Badge variant="outline">{file.type.split('/')[1] || '?'}</Badge>}
+                            {col === 'size' && formatFileSize(file.size)}
+                            {col === 'uploaded' && formatDate(file.uploaded_at)}
+                            {col === 'task' && (links.filter(l => l.task_name).length > 0
+                              ? <span className="text-xs">{links.filter(l => l.task_name).map(l => l.task_name).join(', ')}</span>
+                              : <span className="text-xs text-muted-foreground/50">–</span>)}
+                            {col === 'purchase' && (links.filter(l => l.material_name).length > 0
+                              ? <span className="text-xs">{links.filter(l => l.material_name).map(l => l.material_name).join(', ')}</span>
+                              : <span className="text-xs text-muted-foreground/50">–</span>)}
+                            {col === 'room' && (links.filter(l => l.room_name).length > 0
+                              ? <span className="text-xs">{links.filter(l => l.room_name).map(l => l.room_name).join(', ')}</span>
+                              : <span className="text-xs text-muted-foreground/50">–</span>)}
+                          </TableCell>
+                        );
+                      })}
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

@@ -44,6 +44,7 @@ import {
   ClipboardList,
   CheckSquare,
   Circle,
+  Paperclip,
 } from "lucide-react";
 import { useTasksTableView, type TasksTableViewState } from "./useTasksTableView";
 import { TaskColumnKey, TaskColumnDef, EXTRA_COLUMN_KEYS } from "./tasksTableTypes";
@@ -874,6 +875,17 @@ export function TasksTableView({
               </div>
             </PopoverContent>
           </Popover>
+        );
+      }
+
+      case "attachment": {
+        const count = (task as Record<string, unknown>).attachmentCount as number | undefined;
+        if (!count) return <span className="text-muted-foreground/40">–</span>;
+        return (
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <Paperclip className="h-3 w-3" />
+            {count}
+          </span>
         );
       }
 

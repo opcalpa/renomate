@@ -329,13 +329,18 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
         query = query.eq("assigned_to_stakeholder_id", currentProfileId);
       }
 
-      const [{ data, error }, materialsRes] = await Promise.all([
+      const [{ data, error }, materialsRes, fileLinksRes] = await Promise.all([
         query.order("created_at", { ascending: false }),
         supabase
           .from("materials")
           .select("task_id, price_total, status, quantity, price_per_unit")
           .eq("project_id", projectId)
           .eq("exclude_from_budget", false)
+          .not("task_id", "is", null),
+        supabase
+          .from("task_file_links")
+          .select("task_id")
+          .eq("project_id", projectId)
           .not("task_id", "is", null),
       ]);
 
@@ -357,10 +362,17 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
       setTaskMaterialSpend(spendMap);
       setTaskMaterialPlanned(plannedMap);
 
+      // Build attachment count map per task
+      const attachCountMap = new Map<string, number>();
+      (fileLinksRes.data || []).forEach((l: { task_id: string | null }) => {
+        if (l.task_id) attachCountMap.set(l.task_id, (attachCountMap.get(l.task_id) || 0) + 1);
+      });
+
       // Map database fields to our interface (assigned_to_contractor_id is deprecated, use assigned_to_stakeholder_id)
       const mappedTasks = (data || []).map((task: any) => ({
         ...task,
         assigned_to_stakeholder_id: task.assigned_to_stakeholder_id || task.assigned_to_contractor_id || null,
+        attachmentCount: attachCountMap.get(task.id) || 0,
       }));
 
       setTasks(mappedTasks as Task[]);
