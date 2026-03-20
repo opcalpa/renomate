@@ -133,6 +133,9 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   const [showBatchUpload, setShowBatchUpload] = useState(false);
   const dragCountRef = useRef(0);
 
+  const { toast } = useToast();
+  const { t } = useTranslation();
+
   // Configurable file table columns
   type FileColKey = 'category' | 'type' | 'size' | 'uploaded';
   const ALL_FILE_COLS: FileColKey[] = ['category', 'size', 'uploaded', 'type'];
@@ -157,8 +160,6 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
       return next;
     });
   };
-  const { toast } = useToast();
-  const { t } = useTranslation();
 
   // Guess file category from path/name/type
   const guessCategory = (file: ProjectFile): string => {
