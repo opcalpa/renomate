@@ -66,10 +66,15 @@ interface MaterialRow {
 }
 
 interface FileLinkRow {
+  id: string;
   project_id: string;
   file_type: string;
+  file_name: string;
   task_id: string | null;
   material_id: string | null;
+  invoice_date: string | null;
+  invoice_amount: number | null;
+  rot_amount: number | null;
 }
 
 interface ProjectMeta {
@@ -82,7 +87,7 @@ interface ProjectMeta {
 // Processed row for individual cost items
 interface CostItem {
   id: string;
-  type: "invoice" | "material";
+  type: "invoice" | "material" | "file";
   vendor: string;
   description: string;
   date: string | null;
@@ -153,7 +158,7 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
             .is("task_id", null),
           supabase
             .from("task_file_links")
-            .select("project_id, file_type, task_id, material_id")
+            .select("id, project_id, file_type, file_name, task_id, material_id, invoice_date, invoice_amount, rot_amount")
             .in("project_id", projectIds),
           supabase
             .from("projects")
@@ -209,6 +214,10 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
     });
     materials.forEach((mat) => {
       if (mat.created_at) yearSet.add(new Date(mat.created_at).getFullYear());
+    });
+    // Include years from file-based invoice dates
+    fileLinks.forEach((fl) => {
+      if (fl.invoice_date) yearSet.add(new Date(fl.invoice_date).getFullYear());
     });
     const arr = Array.from(yearSet).sort((a, b) => b - a);
     // Ensure at least previous year is available
@@ -327,11 +336,50 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
       });
     });
 
+    // Process file-based invoice/ROT data (from Files tab uploads)
+    // Only include files that have invoice_amount set and aren't already
+    // represented by an invoice record (avoid double-counting)
+    const invoiceIds = new Set(invoices.map((i) => i.id));
+    fileLinks.forEach((fl) => {
+      if (!fl.invoice_amount && !fl.rot_amount) return;
+      const flDate = fl.invoice_date;
+      if (!flDate || new Date(flDate).getFullYear() !== activeYear) return;
+
+      const g = getGroup(fl.project_id);
+      const amount = fl.invoice_amount || 0;
+      const rot = fl.rot_amount || 0;
+      const net = amount - rot;
+
+      g.totalAmount += amount;
+      if (rot > 0) g.totalLabor += amount; // assume labor if ROT is set
+      else g.totalMaterial += amount;
+      g.totalRot += rot;
+      g.totalNet += net;
+
+      const item: CostItem = {
+        id: fl.id,
+        type: "file",
+        vendor: fl.file_name || "—",
+        description: fl.file_type === "invoice" ? t("files.invoice", "Faktura") : fl.file_type,
+        date: flDate,
+        amount,
+        laborAmount: rot > 0 ? amount : 0,
+        rotDeduction: rot,
+        netCost: net,
+        hasDocuments: true,
+        notes: null,
+        isAta: false,
+      };
+
+      if (rot > 0) g.laborItems.push(item);
+      else g.materialItems.push(item);
+    });
+
     // Sort groups by total descending, filter out empty groups
     return Array.from(groups.values())
-      .filter((g) => g.invoiceCount > 0 || g.materialCount > 0)
+      .filter((g) => g.invoiceCount > 0 || g.materialCount > 0 || g.laborItems.length > 0 || g.materialItems.length > 0)
       .sort((a, b) => b.totalAmount - a.totalAmount);
-  }, [invoices, invoiceItems, materials, projectMeta, entityHasFile, activeYear, t]);
+  }, [invoices, invoiceItems, materials, fileLinks, projectMeta, entityHasFile, activeYear, t]);
 
   // --- Grand totals ---
 
