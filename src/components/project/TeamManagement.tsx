@@ -42,6 +42,7 @@ import { getAvatarColor } from "@/lib/avatarColor";
 import { FeatureAccessEditor } from "./team/FeatureAccessEditor";
 import type { FeatureAccess } from "./team/FeatureAccessEditor";
 import { DirectMessageSheet } from "./DirectMessageSheet";
+import { InviteWorkerDialog } from "./team/InviteWorkerDialog";
 import { useUnreadDmCounts } from "@/hooks/useDirectMessages";
 import { MessageCircle } from "lucide-react";
 
@@ -256,6 +257,12 @@ function detectTemplate(access: FeatureAccess): string {
   return "custom";
 }
 
+const LANG_FLAGS: Record<string, string> = {
+  sv: "\u{1F1F8}\u{1F1EA}", en: "\u{1F1EC}\u{1F1E7}", uk: "\u{1F1FA}\u{1F1E6}",
+  pl: "\u{1F1F5}\u{1F1F1}", ro: "\u{1F1F7}\u{1F1F4}", lt: "\u{1F1F1}\u{1F1F9}",
+  et: "\u{1F1EA}\u{1F1EA}", de: "\u{1F1E9}\u{1F1EA}", fr: "\u{1F1EB}\u{1F1F7}", es: "\u{1F1EA}\u{1F1F8}",
+};
+
 const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: TeamManagementProps) => {
   const canManageTeam = canManageProp ?? isOwner;
   const [projectOwner, setProjectOwner] = useState<ProjectOwner | null>(null);
@@ -276,6 +283,12 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [dmRecipient, setDmRecipient] = useState<{ id: string; name: string } | null>(null);
   const unreadCounts = useUnreadDmCounts(projectId, currentProfileId || "");
+  const [workerDialogOpen, setWorkerDialogOpen] = useState(false);
+  const [workerTokens, setWorkerTokens] = useState<Array<{
+    id: string; token: string; worker_name: string; worker_phone: string | null;
+    worker_language: string; assigned_task_ids: string[];
+    expires_at: string; last_accessed_at: string | null; revoked_at: string | null;
+  }>>([]);
 
   // Invite form state
   const [inviteName, setInviteName] = useState("");
@@ -403,6 +416,15 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
 
         if (invitesError) throw invitesError;
         setInvitations((invitesData || []) as unknown as Invitation[]);
+      }
+      // Fetch worker tokens
+      if (canManageTeam) {
+        const { data: wTokens } = await supabase
+          .from("worker_access_tokens")
+          .select("id, token, worker_name, worker_phone, worker_language, assigned_task_ids, expires_at, last_accessed_at, revoked_at")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false });
+        setWorkerTokens((wTokens || []) as typeof workerTokens);
       }
     } catch (error: unknown) {
       toast({
@@ -610,6 +632,25 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
         variant: "destructive",
       });
     }
+  };
+
+  const handleRevokeWorker = async (tokenId: string) => {
+    try {
+      await supabase
+        .from("worker_access_tokens")
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("id", tokenId);
+      toast({ title: t("teamWorker.revoked", "Access revoked") });
+      fetchTeamData();
+    } catch (error: unknown) {
+      toast({ title: t("roles.error"), description: (error as Error).message, variant: "destructive" });
+    }
+  };
+
+  const handleCopyWorkerLink = async (token: string) => {
+    const link = `${window.location.origin}/w/${token}`;
+    await navigator.clipboard.writeText(link);
+    toast({ description: t("teamWorker.linkCopied", "Link copied to clipboard") });
   };
 
   const handleResendInvitation = async (invitationId: string) => {
@@ -966,6 +1007,82 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
           </CardContent>
         </Card>
       )}
+
+      {/* Workers Section */}
+      {canManageTeam && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-base">{t("teamWorker.workers", "Workers")}</CardTitle>
+            <Button size="sm" variant="outline" onClick={() => setWorkerDialogOpen(true)}>
+              <Wrench className="h-3.5 w-3.5 mr-1.5" />
+              {t("teamWorker.inviteWorker", "Invite Worker")}
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {workerTokens.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">
+                {t("teamWorker.noWorkers", "No workers invited yet.")}
+              </p>
+            ) : (
+              workerTokens.map((wt) => {
+                const isExpired = new Date(wt.expires_at) < new Date();
+                const isRevoked = !!wt.revoked_at;
+                const isActive = !isExpired && !isRevoked;
+                const langFlag = LANG_FLAGS[wt.worker_language] || "";
+
+                return (
+                  <div
+                    key={wt.id}
+                    className={`flex items-center gap-3 p-3 border rounded-lg ${
+                      !isActive ? "opacity-60" : ""
+                    }`}
+                  >
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-sm">
+                      {langFlag}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{wt.worker_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("teamWorker.tasksAssigned", "{{count}} tasks", {
+                          count: wt.assigned_task_ids?.length || 0,
+                        })}
+                        {wt.last_accessed_at && (
+                          <> · {t("teamWorker.lastAccessed", "Last accessed")}: {new Date(wt.last_accessed_at).toLocaleDateString("sv-SE")}</>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isActive ? (
+                        <span className="text-xs text-emerald-600 font-medium">{t("teamWorker.active", "Active")}</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{isRevoked ? t("teamWorker.revoked", "Revoked") : t("teamWorker.expired", "Expired")}</span>
+                      )}
+                      {isActive && (
+                        <>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopyWorkerLink(wt.token)} title={t("teamWorker.copyLink")}>
+                            <ClipboardList className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRevokeWorker(wt.id)} title={t("teamWorker.revokeAccess")}>
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Invite Worker Dialog */}
+      <InviteWorkerDialog
+        projectId={projectId}
+        open={workerDialogOpen}
+        onOpenChange={setWorkerDialogOpen}
+        onCreated={fetchTeamData}
+      />
 
       {/* Unified Edit Dialog (members + invitations) */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>

@@ -197,61 +197,46 @@ export type Database = {
           },
         ]
       }
-      direct_messages: {
+      comment_reactions: {
         Row: {
+          comment_id: string
+          created_at: string | null
+          emoji: string
           id: string
-          project_id: string
-          from_user_id: string
-          to_user_id: string
-          content: string
-          images: Json
-          is_read: boolean
-          read_at: string | null
-          created_at: string
-          updated_at: string
+          user_id: string
         }
         Insert: {
+          comment_id: string
+          created_at?: string | null
+          emoji?: string
           id?: string
-          project_id: string
-          from_user_id: string
-          to_user_id: string
-          content: string
-          images?: Json
-          is_read?: boolean
-          read_at?: string | null
-          created_at?: string
-          updated_at?: string
+          user_id: string
         }
         Update: {
+          comment_id?: string
+          created_at?: string | null
+          emoji?: string
           id?: string
-          project_id?: string
-          from_user_id?: string
-          to_user_id?: string
-          content?: string
-          images?: Json
-          is_read?: boolean
-          read_at?: string | null
-          created_at?: string
-          updated_at?: string
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "direct_messages_project_id_fkey"
-            columns: ["project_id"]
+            foreignKeyName: "comment_reactions_comment_id_fkey"
+            columns: ["comment_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "comments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "direct_messages_from_user_id_fkey"
-            columns: ["from_user_id"]
+            foreignKeyName: "comment_reactions_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "professional_profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "direct_messages_to_user_id_fkey"
-            columns: ["to_user_id"]
+            foreignKeyName: "comment_reactions_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -519,6 +504,81 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      direct_messages: {
+        Row: {
+          content: string
+          created_at: string
+          from_user_id: string
+          id: string
+          images: Json | null
+          is_read: boolean
+          project_id: string
+          read_at: string | null
+          to_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          from_user_id: string
+          id?: string
+          images?: Json | null
+          is_read?: boolean
+          project_id: string
+          read_at?: string | null
+          to_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          from_user_id?: string
+          id?: string
+          images?: Json | null
+          is_read?: boolean
+          project_id?: string
+          read_at?: string | null
+          to_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_messages_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_messages_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_messages_to_user_id_fkey"
+            columns: ["to_user_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_messages_to_user_id_fkey"
+            columns: ["to_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -963,6 +1023,7 @@ export type Database = {
           project_id: string | null
           quantity: number | null
           room_id: string | null
+          source_material_id: string | null
           status: string
           task_id: string | null
           unit: string | null
@@ -987,6 +1048,7 @@ export type Database = {
           project_id?: string | null
           quantity?: number | null
           room_id?: string | null
+          source_material_id?: string | null
           status?: string
           task_id?: string | null
           unit?: string | null
@@ -1011,6 +1073,7 @@ export type Database = {
           project_id?: string | null
           quantity?: number | null
           room_id?: string | null
+          source_material_id?: string | null
           status?: string
           task_id?: string | null
           unit?: string | null
@@ -1059,6 +1122,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "materials_source_material_id_fkey"
+            columns: ["source_material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
             referencedColumns: ["id"]
           },
           {
@@ -2181,11 +2251,14 @@ export type Database = {
           file_size: number | null
           file_type: string
           id: string
+          invoice_amount: number | null
+          invoice_date: string | null
           linked_by_user_id: string | null
           material_id: string | null
           mime_type: string | null
           project_id: string
           room_id: string | null
+          rot_amount: number | null
           task_id: string | null
         }
         Insert: {
@@ -2195,11 +2268,14 @@ export type Database = {
           file_size?: number | null
           file_type?: string
           id?: string
+          invoice_amount?: number | null
+          invoice_date?: string | null
           linked_by_user_id?: string | null
           material_id?: string | null
           mime_type?: string | null
           project_id: string
           room_id?: string | null
+          rot_amount?: number | null
           task_id?: string | null
         }
         Update: {
@@ -2209,11 +2285,14 @@ export type Database = {
           file_size?: number | null
           file_type?: string
           id?: string
+          invoice_amount?: number | null
+          invoice_date?: string | null
           linked_by_user_id?: string | null
           material_id?: string | null
           mime_type?: string | null
           project_id?: string
           room_id?: string | null
+          rot_amount?: number | null
           task_id?: string | null
         }
         Relationships: [
@@ -2450,6 +2529,121 @@ export type Database = {
           },
         ]
       }
+      user_feedback: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          email: string | null
+          id: string
+          message: string
+          page_url: string | null
+          status: string
+          type: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          message: string
+          page_url?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          message?: string
+          page_url?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      worker_access_tokens: {
+        Row: {
+          assigned_task_ids: string[]
+          can_toggle_checklist: boolean
+          can_upload_photos: boolean
+          created_at: string
+          created_by_user_id: string
+          expires_at: string
+          id: string
+          last_accessed_at: string | null
+          project_id: string
+          revoked_at: string | null
+          token: string
+          worker_language: string
+          worker_name: string
+          worker_phone: string | null
+        }
+        Insert: {
+          assigned_task_ids?: string[]
+          can_toggle_checklist?: boolean
+          can_upload_photos?: boolean
+          created_at?: string
+          created_by_user_id: string
+          expires_at?: string
+          id?: string
+          last_accessed_at?: string | null
+          project_id: string
+          revoked_at?: string | null
+          token?: string
+          worker_language?: string
+          worker_name: string
+          worker_phone?: string | null
+        }
+        Update: {
+          assigned_task_ids?: string[]
+          can_toggle_checklist?: boolean
+          can_upload_photos?: boolean
+          created_at?: string
+          created_by_user_id?: string
+          expires_at?: string
+          id?: string
+          last_accessed_at?: string | null
+          project_id?: string
+          revoked_at?: string | null
+          token?: string
+          worker_language?: string
+          worker_name?: string
+          worker_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_access_tokens_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_access_tokens_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_access_tokens_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       entity_document_counts: {
@@ -2557,6 +2751,7 @@ export type Database = {
         }
       }
       get_user_profile_id: { Args: never; Returns: string }
+      get_visible_profile_ids: { Args: never; Returns: string[] }
       is_public_demo_project: {
         Args: { p_project_id: string }
         Returns: boolean
@@ -2566,10 +2761,9 @@ export type Database = {
         Args: { p_linked_to_id: string; p_linked_to_type: string }
         Returns: string
       }
-      seed_demo_project_for_user: {
-        Args: { p_owner_id: string; p_language?: string }
-        Returns: string
-      }
+      seed_demo_project_for_user:
+        | { Args: { p_owner_id: string }; Returns: string }
+        | { Args: { p_language?: string; p_owner_id: string }; Returns: string }
       user_can_invite_to_project: {
         Args: { project_uuid: string }
         Returns: boolean
