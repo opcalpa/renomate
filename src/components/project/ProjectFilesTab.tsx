@@ -1775,11 +1775,11 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
       {/* Image Preview Dialog with Zoom */}
       <Dialog open={!!previewFile} onOpenChange={closePreview}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] max-h-[calc(100vh-2rem)] p-0">
           <DialogTitle className="sr-only">{previewFile?.name || t('files.imagePreview')}</DialogTitle>
           <div className="relative h-full">
             {/* Header with controls */}
-            <div className="absolute top-0 left-0 right-0 z-10 bg-background/95 backdrop-blur border-b p-4">
+            <div className="absolute top-0 left-0 right-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <ImageIcon className="h-5 w-5 text-primary" />
@@ -1863,14 +1863,14 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
             </div>
 
             {/* Content container */}
-            <div className="pt-20 pb-4 px-4 h-[85vh] overflow-auto bg-muted/30">
+            <div className="pt-16 pb-0 px-0 h-[calc(100vh-4rem)] overflow-auto bg-muted/30">
               <div className="flex items-center justify-center min-h-full">
                 {previewUrl && previewFile?.type?.includes('pdf') ? (
                   <iframe
                     src={previewUrl}
                     title={previewFile?.name}
                     className="w-full h-full border-0 rounded"
-                    style={{ minHeight: 'calc(85vh - 6rem)' }}
+                    style={{ minHeight: 'calc(100vh - 6rem)' }}
                   />
                 ) : previewUrl && (
                   <img
