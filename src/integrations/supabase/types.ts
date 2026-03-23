@@ -2245,6 +2245,7 @@ export type Database = {
       }
       task_file_links: {
         Row: {
+          ai_summary: string | null
           created_at: string
           file_name: string
           file_path: string
@@ -2260,8 +2261,10 @@ export type Database = {
           room_id: string | null
           rot_amount: number | null
           task_id: string | null
+          vendor_name: string | null
         }
         Insert: {
+          ai_summary?: string | null
           created_at?: string
           file_name: string
           file_path: string
@@ -2277,8 +2280,10 @@ export type Database = {
           room_id?: string | null
           rot_amount?: number | null
           task_id?: string | null
+          vendor_name?: string | null
         }
         Update: {
+          ai_summary?: string | null
           created_at?: string
           file_name?: string
           file_path?: string
@@ -2294,6 +2299,7 @@ export type Database = {
           room_id?: string | null
           rot_amount?: number | null
           task_id?: string | null
+          vendor_name?: string | null
         }
         Relationships: [
           {

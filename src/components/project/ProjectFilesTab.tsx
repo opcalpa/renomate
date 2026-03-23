@@ -253,13 +253,13 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   };
 
   // Configurable file table columns
-  type FileColKey = 'category' | 'task' | 'purchase' | 'room' | 'invoiceDate' | 'invoiceAmount' | 'rotAmount' | 'size' | 'uploaded' | 'type';
-  const ALL_FILE_COLS: FileColKey[] = ['category', 'task', 'purchase', 'room', 'invoiceDate', 'invoiceAmount', 'rotAmount', 'size', 'uploaded', 'type'];
+  type FileColKey = 'category' | 'task' | 'purchase' | 'room' | 'vendor' | 'invoiceDate' | 'invoiceAmount' | 'rotAmount' | 'summary' | 'size' | 'uploaded' | 'type';
+  const ALL_FILE_COLS: FileColKey[] = ['category', 'task', 'purchase', 'room', 'vendor', 'invoiceDate', 'invoiceAmount', 'rotAmount', 'summary', 'size', 'uploaded', 'type'];
   const [hiddenFileCols, setHiddenFileCols] = useState<Set<FileColKey>>(() => {
     try {
       const saved = localStorage.getItem('files_hidden_cols');
-      return saved ? new Set(JSON.parse(saved) as FileColKey[]) : new Set<FileColKey>(['type', 'room', 'invoiceDate', 'invoiceAmount', 'rotAmount']);
-    } catch { return new Set<FileColKey>(['type', 'room', 'invoiceDate', 'invoiceAmount', 'rotAmount']); }
+      return saved ? new Set(JSON.parse(saved) as FileColKey[]) : new Set<FileColKey>(['type', 'room', 'invoiceDate', 'invoiceAmount', 'rotAmount', 'vendor', 'summary']);
+    } catch { return new Set<FileColKey>(['type', 'room', 'invoiceDate', 'invoiceAmount', 'rotAmount', 'vendor', 'summary']); }
   });
   const fileColLabels: Record<FileColKey, string> = {
     category: t('files.category', 'Kategori'),
@@ -269,6 +269,8 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     invoiceDate: t('files.invoiceDate', 'Fakturadatum'),
     invoiceAmount: t('files.invoiceAmount', 'Belopp'),
     rotAmount: t('files.rotAmount', 'ROT-avdrag'),
+    vendor: t('files.vendor', 'Leverantör'),
+    summary: t('files.aiSummary', 'AI-sammanfattning'),
     type: t('budget.type', 'Typ'),
     size: t('files.size', 'Storlek'),
     uploaded: t('files.uploaded', 'Uppladdad'),
@@ -285,6 +287,8 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     invoice_date?: string | null;
     invoice_amount?: number | null;
     rot_amount?: number | null;
+    vendor_name?: string | null;
+    ai_summary?: string | null;
     task_name?: string;
     material_name?: string;
     room_name?: string;
@@ -295,7 +299,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     (async () => {
       const { data } = await supabase
         .from('task_file_links')
-        .select('id, file_path, task_id, material_id, room_id, file_type, invoice_date, invoice_amount, rot_amount')
+        .select('id, file_path, task_id, material_id, room_id, file_type, invoice_date, invoice_amount, rot_amount, vendor_name, ai_summary')
         .eq('project_id', projectId);
       if (!data) return;
 
@@ -444,19 +448,22 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     const isImage = file.type.startsWith('image/');
     const isDoc = isDocumentFile(file.name, file.type);
 
+    // Download file and convert to base64 for AI processing
+    const res = await fetch(publicUrl);
+    const blob = await res.blob();
+    const base64 = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1] || '');
+      reader.readAsDataURL(blob);
+    });
+
     const body: Record<string, string> = { fileName: file.name };
     if (isImage) {
-      const res = await fetch(publicUrl);
-      const blob = await res.blob();
-      const base64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve((reader.result as string).split(',')[1] || '');
-        reader.readAsDataURL(blob);
-      });
       body.image = base64;
     } else {
+      // Extract text from document (PDF etc.) via AI
       const { data: textData } = await supabase.functions.invoke('extract-document-text', {
-        body: { fileUrl: publicUrl, fileName: file.name, mimeType: file.type },
+        body: { fileBase64: base64, fileName: file.name, mimeType: file.type },
       });
       if (textData?.text) body.text = textData.text.slice(0, 5000);
     }
@@ -474,13 +481,15 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
       if (catMap[result.type]) setCategoryForFile(file.path, catMap[result.type]);
     }
 
-    // Auto-fill invoice metadata
-    if (result.invoice_date || result.invoice_amount) {
+    // Auto-fill extracted metadata (invoice date/amount, vendor, summary)
+    if (result.invoice_date || result.invoice_amount || result.vendor_name || result.summary) {
       const linkId = await ensureFileLink(file);
       if (linkId) {
         const updates: Record<string, unknown> = {};
         if (result.invoice_date) updates.invoice_date = result.invoice_date;
         if (result.invoice_amount) updates.invoice_amount = result.invoice_amount;
+        if (result.vendor_name) updates.vendor_name = result.vendor_name;
+        if (result.summary) updates.ai_summary = result.summary;
         await updateFileLink(linkId, updates);
       }
     }
@@ -1508,6 +1517,28 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                   })}
                                 </PopoverContent>
                               </Popover>
+                            </TableCell>
+                          );
+                        }
+
+                        // Vendor name (read-only from AI)
+                        if (col === 'vendor') {
+                          const link = links[0];
+                          const vendor = link?.vendor_name;
+                          return (
+                            <TableCell key={col} className="hidden md:table-cell text-xs truncate max-w-[120px]">
+                              {vendor || <span className="text-muted-foreground/40">–</span>}
+                            </TableCell>
+                          );
+                        }
+
+                        // AI summary (read-only from AI)
+                        if (col === 'summary') {
+                          const link = links[0];
+                          const summary = link?.ai_summary;
+                          return (
+                            <TableCell key={col} className="hidden md:table-cell text-xs text-muted-foreground truncate max-w-[180px]" title={summary || ''}>
+                              {summary || <span className="text-muted-foreground/40">–</span>}
                             </TableCell>
                           );
                         }
