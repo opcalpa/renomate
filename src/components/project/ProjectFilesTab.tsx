@@ -71,6 +71,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { AIFloorPlanImport } from "./AIFloorPlanImport";
 import { AIDocumentImportModal } from "./AIDocumentImportModal";
@@ -182,6 +183,19 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   const [compactRows, setCompactRows] = useState(() => localStorage.getItem('files_compact') === 'true');
   const toggleCompact = () => {
     setCompactRows(prev => { const next = !prev; localStorage.setItem('files_compact', String(next)); return next; });
+  };
+
+  // Batch selection
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [batchProcessing, setBatchProcessing] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
+
+  const toggleFileSelection = (path: string) => {
+    setSelectedFiles(prev => {
+      const next = new Set(prev);
+      next.has(path) ? next.delete(path) : next.add(path);
+      return next;
+    });
   };
 
   // Configurable file table columns
@@ -368,6 +382,86 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     }).select('id').single();
     if (error || !data) return null;
     return data.id;
+  };
+
+  // Smart tolk — adaptive AI analysis per file
+  const runSmartTolk = async (file: ProjectFile) => {
+    const { data: { publicUrl } } = supabase.storage.from('project-files').getPublicUrl(file.path);
+    const isImage = file.type.startsWith('image/');
+    const isDoc = isDocumentFile(file.name, file.type);
+
+    const body: Record<string, string> = { fileName: file.name };
+    if (isImage) {
+      const res = await fetch(publicUrl);
+      const blob = await res.blob();
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(',')[1] || '');
+        reader.readAsDataURL(blob);
+      });
+      body.image = base64;
+    } else {
+      const { data: textData } = await supabase.functions.invoke('extract-document-text', {
+        body: { fileUrl: publicUrl, fileName: file.name, mimeType: file.type },
+      });
+      if (textData?.text) body.text = textData.text.slice(0, 5000);
+    }
+
+    const { data: result } = await supabase.functions.invoke('classify-document', { body });
+    if (!result) return;
+
+    // Auto-update category
+    if (result.type && result.confidence > 0.6) {
+      const catMap: Record<string, string> = {
+        quote: 'Offert', invoice: 'Faktura', receipt: 'Kvitto',
+        floor_plan: 'Ritning', contract: 'Kontrakt', specification: 'Specifikation',
+        product_image: 'Bild',
+      };
+      if (catMap[result.type]) setCategoryForFile(file.path, catMap[result.type]);
+    }
+
+    // Auto-fill invoice metadata
+    if (result.invoice_date || result.invoice_amount) {
+      const linkId = await ensureFileLink(file);
+      if (linkId) {
+        const updates: Record<string, unknown> = {};
+        if (result.invoice_date) updates.invoice_date = result.invoice_date;
+        if (result.invoice_amount) updates.invoice_amount = result.invoice_amount;
+        await updateFileLink(linkId, updates);
+      }
+    }
+
+    // For floor plans: offer import
+    if (result.type === 'floor_plan' && result.suggested_action === 'import_to_canvas') {
+      setFloorPlanImportFile(file);
+    }
+    // For docs: offer task extraction
+    if (isDoc && result.suggested_action === 'extract_tasks') {
+      setDocumentImportFile(file);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedFiles.size === filteredFiles.length) {
+      setSelectedFiles(new Set());
+    } else {
+      setSelectedFiles(new Set(filteredFiles.map(f => f.path)));
+    }
+  };
+
+  const handleBatchSmartTolk = async () => {
+    const filesToProcess = filteredFiles.filter(f => selectedFiles.has(f.path));
+    if (filesToProcess.length === 0) return;
+    setBatchProcessing(true);
+    setBatchProgress({ done: 0, total: filesToProcess.length });
+    for (const file of filesToProcess) {
+      try { await runSmartTolk(file); } catch (err) { console.error("Smart tolk failed:", err); }
+      setBatchProgress(prev => ({ ...prev, done: prev.done + 1 }));
+    }
+    setBatchProcessing(false);
+    setSelectedFiles(new Set());
+    toast({ title: t('files.smartTolkComplete', 'Smart tolk klar'), description: t('files.smartTolkCompleteDesc', '{{count}} filer tolkade', { count: filesToProcess.length }) });
+    fetchFiles();
   };
 
   const visibleFileCols = ALL_FILE_COLS.filter(k => !hiddenFileCols.has(k));
@@ -985,8 +1079,51 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
             ) : (
               <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
               <Table className={compactRows ? 'text-xs' : ''}>
+                {/* Batch action bar */}
+                {selectedFiles.size > 0 && (
+                  <div className="flex items-center gap-3 px-4 py-2 bg-primary/5 border border-primary/20 rounded-lg mb-2">
+                    <span className="text-sm font-medium">
+                      {selectedFiles.size} {t('files.selected', 'valda')}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      disabled={batchProcessing}
+                      onClick={handleBatchSmartTolk}
+                    >
+                      {batchProcessing ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          {batchProgress.done}/{batchProgress.total}
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-3.5 w-3.5" />
+                          {t('files.smartTolk', 'Smart tolk')} ({selectedFiles.size})
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground"
+                      onClick={() => setSelectedFiles(new Set())}
+                    >
+                      {t('common.cancel', 'Avbryt')}
+                    </Button>
+                  </div>
+                )}
+
                 <TableHeader>
                   <TableRow className={compactRows ? '[&>th]:py-1.5' : ''}>
+                    <TableHead className="w-8">
+                      <Checkbox
+                        checked={filteredFiles.length > 0 && selectedFiles.size === filteredFiles.length}
+                        onCheckedChange={toggleSelectAll}
+                        className="h-4 w-4"
+                      />
+                    </TableHead>
                     <TableHead className="w-10"></TableHead>
                     <TableHead>{t('common.name')}</TableHead>
                     {visibleFileCols.map(col => (
@@ -1031,6 +1168,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                         <TableRow
                           className={`cursor-pointer hover:bg-muted/50 ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}
                         >
+                          <TableCell className="w-8"></TableCell>
                           <TableCell
                             className="w-10"
                             onClick={(e) => { e.stopPropagation(); toggleFolder(folder.path); }}
@@ -1061,6 +1199,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                         {/* Expanded sub-files */}
                         {isExpanded && subFiles.map((sf) => (
                           <TableRow key={sf.id} className={`group bg-muted/20 ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}>
+                            <TableCell className="w-8"></TableCell>
                             <TableCell className="w-10"></TableCell>
                             <TableCell className="pl-8 text-sm truncate">{sf.name}</TableCell>
                             {visibleFileCols.map(col => (
@@ -1105,7 +1244,14 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
                   {/* Files */}
                   {filteredFiles.map((file) => (
-                    <TableRow key={file.id} className={`group ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}>
+                    <TableRow key={file.id} className={`group ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''} ${selectedFiles.has(file.path) ? 'bg-primary/5' : ''}`}>
+                      <TableCell className="w-8">
+                        <Checkbox
+                          checked={selectedFiles.has(file.path)}
+                          onCheckedChange={() => toggleFileSelection(file.path)}
+                          className="h-4 w-4"
+                        />
+                      </TableCell>
                       <TableCell>{getFileIcon(file)}</TableCell>
                       <TableCell className="font-medium truncate max-w-[200px] lg:max-w-none">{file.name}</TableCell>
                       {visibleFileCols.map(col => {
@@ -1273,18 +1419,10 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                               {t('common.download', 'Ladda ner')}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            {checkIsDocumentFile(file) && (
-                              <DropdownMenuItem onClick={() => setDocumentImportFile(file)}>
-                                <Sparkles className="h-4 w-4 mr-2" />
-                                {t('files.extractWithAI', 'AI-tolka dokument')}
-                              </DropdownMenuItem>
-                            )}
-                            {checkIsImageFile(file) && (
-                              <DropdownMenuItem onClick={() => setFloorPlanImportFile(file)}>
-                                <Wand2 className="h-4 w-4 mr-2" />
-                                {t('files.convertWithAI', 'AI-tolka ritning')}
-                              </DropdownMenuItem>
-                            )}
+                            <DropdownMenuItem onClick={() => runSmartTolk(file)}>
+                              <Sparkles className="h-4 w-4 mr-2" />
+                              {t('files.smartTolk', 'Smart tolk')}
+                            </DropdownMenuItem>
                             {file.type.startsWith('image/') && onUseAsBackground && (
                               <DropdownMenuItem onClick={() => {
                                 const { data: { publicUrl } } = supabase.storage
