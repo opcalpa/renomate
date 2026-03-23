@@ -1775,7 +1775,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
       {/* Image Preview Dialog with Zoom */}
       <Dialog open={!!previewFile} onOpenChange={closePreview}>
-        <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] max-h-[calc(100vh-2rem)] p-0">
+        <DialogContent className="!w-[calc(100vw-2rem)] !max-w-[calc(100vw-2rem)] !h-[calc(100vh-2rem)] !max-h-[calc(100vh-2rem)] !p-0 !rounded-xl">
           <DialogTitle className="sr-only">{previewFile?.name || t('files.imagePreview')}</DialogTitle>
           <div className="relative h-full">
             {/* Header with controls */}
