@@ -4707,7 +4707,13 @@
     "expiredDescription": "Contact your project manager for a new link.",
     "notFound": "Link not found",
     "notFoundDescription": "This link is invalid or has been revoked.",
-    "errorDescription": "Please try again later."
+    "errorDescription": "Please try again later.",
+    "askQuestion": "Ask a question",
+    "messagePlaceholder": "Ask a question...",
+    "messageSent": "Message sent!",
+    "recording": "Recording...",
+    "sendSms": "Send SMS",
+    "shareViaWhatsApp": "Share via WhatsApp"
   },
   "teamWorker": {
     "workers": "Workers",

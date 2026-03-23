@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Copy, Check } from "lucide-react";
+import { Loader2, Copy, Check, Send, MessageSquare } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -76,7 +76,10 @@ export function InviteWorkerDialog({
   const [tasks, setTasks] = useState<TaskOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [generatedTokenId, setGeneratedTokenId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [smsSending, setSmsSending] = useState(false);
+  const [smsSent, setSmsSent] = useState(false);
 
   // Load project tasks
   useEffect(() => {
@@ -156,12 +159,13 @@ export function InviteWorkerDialog({
           worker_language: language,
           assigned_task_ids: selectedTaskIds,
         })
-        .select("token")
+        .select("id, token")
         .single();
 
       if (error) throw error;
 
       const link = `${window.location.origin}/w/${tokenRecord.token}`;
+      setGeneratedTokenId(tokenRecord.id);
       setGeneratedLink(link);
 
       // Trigger translation in background (best-effort, don't block)
@@ -235,6 +239,62 @@ export function InviteWorkerDialog({
                 ? t("teamWorker.linkCopied", "Link copied")
                 : t("teamWorker.copyLink", "Copy link")}
             </Button>
+
+            {/* SMS button (if phone provided) */}
+            {phone.trim() && generatedTokenId && (
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                disabled={smsSending || smsSent}
+                onClick={async () => {
+                  setSmsSending(true);
+                  try {
+                    const { data } = await supabase.functions.invoke("send-worker-sms", {
+                      body: { tokenId: generatedTokenId },
+                    });
+                    if (data?.sent) {
+                      setSmsSent(true);
+                      toast({ description: `SMS sent to ${phone}` });
+                    } else {
+                      // SMS not configured — open WhatsApp as fallback
+                      const waUrl = `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(data?.message || generatedLink || "")}`;
+                      window.open(waUrl, "_blank");
+                    }
+                  } catch (err) {
+                    console.error("SMS failed:", err);
+                  } finally {
+                    setSmsSending(false);
+                  }
+                }}
+              >
+                {smsSending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : smsSent ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                {smsSent
+                  ? t("worker.smsSent", "SMS sent")
+                  : t("worker.sendSms", "Send SMS")}
+              </Button>
+            )}
+
+            {/* WhatsApp share */}
+            {phone.trim() && (
+              <Button
+                variant="ghost"
+                className="w-full gap-2 text-muted-foreground"
+                onClick={() => {
+                  const waUrl = `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(generatedLink || "")}`;
+                  window.open(waUrl, "_blank");
+                }}
+              >
+                <MessageSquare className="h-4 w-4" />
+                {t("worker.shareViaWhatsApp", "Share via WhatsApp")}
+              </Button>
+            )}
+
             <Button
               variant="outline"
               className="w-full"

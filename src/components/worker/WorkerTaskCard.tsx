@@ -8,7 +8,8 @@ import { getStatusBadgeColor } from "@/lib/statusColors";
 import { ColorSwatchRow } from "./ColorSwatchRow";
 import { RoomMiniMap } from "./RoomMiniMap";
 import { RoomSpecsSummary } from "./RoomSpecsSummary";
-import { MapPin, Ruler, Camera, Loader2, CheckSquare, ImageIcon } from "lucide-react";
+import { WorkerMessageInput } from "./WorkerMessageInput";
+import { MapPin, Ruler, Camera, Loader2, CheckSquare, ImageIcon, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 // ---------------------------------------------------------------------------
@@ -396,6 +397,17 @@ export function WorkerTaskCard({
           )}
         </div>
       )}
+
+      {/* Message input */}
+      <div className="px-4 pb-4 space-y-2">
+        <div className="flex items-center gap-2">
+          <MessageCircle className="h-4 w-4 text-muted-foreground" />
+          <span className="text-xs font-medium text-muted-foreground">
+            {t("worker.askQuestion", "Ask a question")}
+          </span>
+        </div>
+        <WorkerMessageInput token={token} taskId={task.id} />
+      </div>
     </div>
   );
 }

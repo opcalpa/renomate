@@ -4704,7 +4704,13 @@
     "expiredDescription": "Kontakta din projektledare för en ny länk.",
     "notFound": "Länken hittades inte",
     "notFoundDescription": "Denna länk är ogiltig eller har återkallats.",
-    "errorDescription": "Försök igen senare."
+    "errorDescription": "Försök igen senare.",
+    "askQuestion": "Ställ en fråga",
+    "messagePlaceholder": "Ställ en fråga...",
+    "messageSent": "Meddelande skickat!",
+    "recording": "Spelar in...",
+    "sendSms": "Skicka SMS",
+    "shareViaWhatsApp": "Dela via WhatsApp"
   },
   "teamWorker": {
     "workers": "Arbetare",
