@@ -1077,12 +1077,10 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                 )}
               </div>
             ) : (
-              <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
-              <Table className={compactRows ? 'text-xs' : ''}>
-                <div className="relative">
-                {/* Batch action bar — floating overlay */}
+              <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0 relative">
+                {/* Batch action bar — floating overlay above table */}
                 {selectedFiles.size > 0 && (
-                  <div className="absolute top-1 left-10 z-10 flex items-center gap-2 px-3 py-1.5 bg-background border shadow-sm rounded-lg">
+                  <div className="absolute top-1 left-10 z-20 flex items-center gap-2 px-3 py-1.5 bg-background border shadow-sm rounded-lg">
                     <span className="text-xs font-medium tabular-nums">
                       {selectedFiles.size} {t('files.selected', 'valda')}
                     </span>
@@ -1115,8 +1113,8 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                     </Button>
                   </div>
                 )}
-                </div>
 
+              <Table className={compactRows ? 'text-xs' : ''}>
                 <TableHeader>
                   <TableRow className={compactRows ? '[&>th]:py-1.5' : ''}>
                     <TableHead className="w-12">
