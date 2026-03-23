@@ -1079,27 +1079,28 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
             ) : (
               <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
               <Table className={compactRows ? 'text-xs' : ''}>
-                {/* Batch action bar */}
+                <div className="relative">
+                {/* Batch action bar — floating overlay */}
                 {selectedFiles.size > 0 && (
-                  <div className="flex items-center gap-3 px-4 py-2 bg-primary/5 border border-primary/20 rounded-lg mb-2">
-                    <span className="text-sm font-medium">
+                  <div className="absolute top-1 left-10 z-10 flex items-center gap-2 px-3 py-1.5 bg-background border shadow-sm rounded-lg">
+                    <span className="text-xs font-medium tabular-nums">
                       {selectedFiles.size} {t('files.selected', 'valda')}
                     </span>
                     <Button
                       size="sm"
                       variant="outline"
-                      className="gap-1.5"
+                      className="h-7 gap-1.5 text-xs"
                       disabled={batchProcessing}
                       onClick={handleBatchSmartTolk}
                     >
                       {batchProcessing ? (
                         <>
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <Loader2 className="h-3 w-3 animate-spin" />
                           {batchProgress.done}/{batchProgress.total}
                         </>
                       ) : (
                         <>
-                          <Sparkles className="h-3.5 w-3.5" />
+                          <Sparkles className="h-3 w-3" />
                           {t('files.smartTolk', 'Smart tolk')} ({selectedFiles.size})
                         </>
                       )}
@@ -1107,31 +1108,31 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-muted-foreground"
+                      className="h-7 text-xs text-muted-foreground"
                       onClick={() => setSelectedFiles(new Set())}
                     >
                       {t('common.cancel', 'Avbryt')}
                     </Button>
                   </div>
                 )}
+                </div>
 
                 <TableHeader>
                   <TableRow className={compactRows ? '[&>th]:py-1.5' : ''}>
-                    <TableHead className="w-8">
+                    <TableHead className="w-12">
                       <Checkbox
                         checked={filteredFiles.length > 0 && selectedFiles.size === filteredFiles.length}
                         onCheckedChange={toggleSelectAll}
                         className="h-4 w-4"
                       />
                     </TableHead>
-                    <TableHead className="w-10"></TableHead>
                     <TableHead>{t('common.name')}</TableHead>
                     {visibleFileCols.map(col => (
                       <TableHead key={col} className="hidden md:table-cell">
                         {fileColLabels[col]}
                       </TableHead>
                     ))}
-                    <TableHead className="w-20 text-right">
+                    <TableHead className="w-12 text-right sticky right-0 bg-background z-10">
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs -mr-2">
@@ -1168,9 +1169,8 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                         <TableRow
                           className={`cursor-pointer hover:bg-muted/50 ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}
                         >
-                          <TableCell className="w-8"></TableCell>
                           <TableCell
-                            className="w-10"
+                            className="w-12"
                             onClick={(e) => { e.stopPropagation(); toggleFolder(folder.path); }}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -1194,14 +1194,13 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                               {col === 'category' ? <Badge variant="secondary">{t('files.folder')}</Badge> : '–'}
                             </TableCell>
                           ))}
-                          <TableCell></TableCell>
+                          <TableCell className="sticky right-0 bg-background"></TableCell>
                         </TableRow>
                         {/* Expanded sub-files */}
                         {isExpanded && subFiles.map((sf) => (
                           <TableRow key={sf.id} className={`group bg-muted/20 ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}>
-                            <TableCell className="w-8"></TableCell>
-                            <TableCell className="w-10"></TableCell>
-                            <TableCell className="pl-8 text-sm truncate">{sf.name}</TableCell>
+                            <TableCell className="w-12"></TableCell>
+                            <TableCell className="pl-6 text-sm truncate">{sf.name}</TableCell>
                             {visibleFileCols.map(col => (
                               <TableCell key={col} className="hidden md:table-cell text-muted-foreground text-xs">
                                 {col === 'size' && sf.size ? formatFileSize(sf.size) : ''}
@@ -1210,7 +1209,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                 {col === 'category' ? '' : ''}
                               </TableCell>
                             ))}
-                            <TableCell className="text-right">
+                            <TableCell className="text-right sticky right-0 bg-muted/20">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1245,14 +1244,16 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                   {/* Files */}
                   {filteredFiles.map((file) => (
                     <TableRow key={file.id} className={`group ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''} ${selectedFiles.has(file.path) ? 'bg-primary/5' : ''}`}>
-                      <TableCell className="w-8">
-                        <Checkbox
-                          checked={selectedFiles.has(file.path)}
-                          onCheckedChange={() => toggleFileSelection(file.path)}
-                          className="h-4 w-4"
-                        />
+                      <TableCell className="w-12">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Checkbox
+                            checked={selectedFiles.has(file.path)}
+                            onCheckedChange={() => toggleFileSelection(file.path)}
+                            className="h-4 w-4"
+                          />
+                          {getFileIcon(file)}
+                        </span>
                       </TableCell>
-                      <TableCell>{getFileIcon(file)}</TableCell>
                       <TableCell className="font-medium truncate max-w-[200px] lg:max-w-none">{file.name}</TableCell>
                       {visibleFileCols.map(col => {
                         const links = getFileLinksForPath(file.path);
@@ -1402,7 +1403,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           </TableCell>
                         );
                       })}
-                      <TableCell className="text-right">
+                      <TableCell className="text-right sticky right-0 bg-background z-10">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
