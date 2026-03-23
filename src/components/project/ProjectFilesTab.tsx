@@ -428,18 +428,16 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   const ensureFileLink = async (file: ProjectFile): Promise<string | null> => {
     const existing = fileLinks.find(l => l.file_path === file.path);
     if (existing?.id) return existing.id;
-    if (!currentProfileId) return null;
     const { data, error } = await supabase.from('task_file_links').insert({
       project_id: projectId,
       file_path: file.path,
-      file_name: file.name,
-      file_type: 'invoice',
-      file_size: file.size,
-      mime_type: file.type,
-      linked_by_user_id: currentProfileId,
+      file_name: file.name || file.path.split('/').pop() || 'unknown',
     }).select('id').single();
-    if (error || !data) return null;
-    return data.id;
+    if (error) {
+      console.error('ensureFileLink failed:', error.message, file.path);
+      return null;
+    }
+    return data?.id || null;
   };
 
   // Smart tolk — adaptive AI analysis per file
