@@ -185,6 +185,60 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     setCompactRows(prev => { const next = !prev; localStorage.setItem('files_compact', String(next)); return next; });
   };
 
+  // Flat view — show all files across all folders
+  const [flatView, setFlatView] = useState(false);
+  const [allProjectFiles, setAllProjectFiles] = useState<ProjectFile[]>([]);
+  const [loadingFlat, setLoadingFlat] = useState(false);
+
+  const fetchAllFiles = async () => {
+    setLoadingFlat(true);
+    try {
+      const basePath = `projects/${projectId}`;
+      const result: ProjectFile[] = [];
+
+      // Recursive list function
+      const listRecursive = async (path: string) => {
+        const { data, error } = await supabase.storage
+          .from('project-files')
+          .list(path, { sortBy: { column: 'name', order: 'asc' } });
+        if (error || !data) return;
+
+        for (const item of data) {
+          if (item.name === '.emptyFolderPlaceholder') continue;
+          const fullPath = `${path}/${item.name}`;
+
+          if (item.metadata?.mimetype) {
+            // It's a file
+            result.push({
+              id: item.id || item.name,
+              name: item.name,
+              path: fullPath,
+              size: item.metadata?.size || 0,
+              type: item.metadata?.mimetype || 'unknown',
+              uploaded_at: item.created_at || new Date().toISOString(),
+              uploaded_by: '',
+              folder: path.replace(basePath, '').replace(/^\//, '') || '/',
+            });
+          } else if (!item.name.includes('.')) {
+            // Likely a folder — recurse
+            await listRecursive(fullPath);
+          }
+        }
+      };
+
+      await listRecursive(basePath);
+      setAllProjectFiles(result);
+    } catch (err) {
+      console.error('Failed to fetch all files:', err);
+    } finally {
+      setLoadingFlat(false);
+    }
+  };
+
+  useEffect(() => {
+    if (flatView) fetchAllFiles();
+  }, [flatView]);
+
   // Batch selection
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [batchProcessing, setBatchProcessing] = useState(false);
@@ -967,6 +1021,16 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                 <AlignJustify className="h-4 w-4" />
               </Button>
 
+              {/* Flat view toggle */}
+              <Button
+                variant={flatView ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setFlatView(prev => !prev)}
+                title={t('files.allFiles', 'Alla filer')}
+              >
+                <Layers className="h-4 w-4" />
+              </Button>
+
               {/* Unified upload dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -1076,7 +1140,109 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                   </div>
                 )}
               </div>
-            ) : (
+            ) : flatView ? (
+                /* Flat view — all files across all folders */
+                <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0 relative">
+                  {loadingFlat ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <Table className={compactRows ? 'text-xs' : ''}>
+                      <TableHeader>
+                        <TableRow className={compactRows ? '[&>th]:py-1.5' : ''}>
+                          <TableHead className="w-12">
+                            <Checkbox
+                              checked={allProjectFiles.length > 0 && selectedFiles.size === allProjectFiles.length}
+                              onCheckedChange={() => {
+                                if (selectedFiles.size === allProjectFiles.length) setSelectedFiles(new Set());
+                                else setSelectedFiles(new Set(allProjectFiles.map(f => f.path)));
+                              }}
+                              className="h-4 w-4"
+                            />
+                          </TableHead>
+                          <TableHead>{t('common.name')}</TableHead>
+                          <TableHead className="hidden md:table-cell">{t('files.folder', 'Mapp')}</TableHead>
+                          {visibleFileCols.map(col => (
+                            <TableHead key={col} className="hidden md:table-cell">
+                              {fileColLabels[col]}
+                            </TableHead>
+                          ))}
+                          <TableHead className="w-12 text-right sticky right-0 bg-background z-10">
+                            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setFlatView(false)}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {allProjectFiles
+                          .filter(f => !fileSearch || f.name.toLowerCase().includes(fileSearch.toLowerCase()) || (f.folder || '').toLowerCase().includes(fileSearch.toLowerCase()))
+                          .map((file) => (
+                          <TableRow key={file.path} className={`group ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''} ${selectedFiles.has(file.path) ? 'bg-primary/5' : ''}`}>
+                            <TableCell className="w-12">
+                              <span className="inline-flex items-center gap-1.5">
+                                <Checkbox
+                                  checked={selectedFiles.has(file.path)}
+                                  onCheckedChange={() => toggleFileSelection(file.path)}
+                                  className="h-4 w-4"
+                                />
+                                {getFileIcon(file)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="font-medium truncate max-w-[250px]">{file.name}</TableCell>
+                            <TableCell className="hidden md:table-cell text-muted-foreground text-xs truncate max-w-[120px]">
+                              {file.folder || '/'}
+                            </TableCell>
+                            {visibleFileCols.map(col => {
+                              if (col === 'category') {
+                                return <TableCell key={col} className="hidden md:table-cell"><Badge variant="outline">{categoryOverrides[file.path] || guessCategory(file)}</Badge></TableCell>;
+                              }
+                              if (col === 'size') {
+                                return <TableCell key={col} className="hidden md:table-cell text-muted-foreground">{file.size ? formatFileSize(file.size) : '–'}</TableCell>;
+                              }
+                              if (col === 'uploaded') {
+                                return <TableCell key={col} className="hidden md:table-cell text-muted-foreground">{file.uploaded_at ? formatDate(file.uploaded_at) : '–'}</TableCell>;
+                              }
+                              if (col === 'type') {
+                                return <TableCell key={col} className="hidden md:table-cell"><Badge variant="outline">{file.type.split('/')[1] || '?'}</Badge></TableCell>;
+                              }
+                              return <TableCell key={col} className="hidden md:table-cell text-muted-foreground">–</TableCell>;
+                            })}
+                            <TableCell className="text-right sticky right-0 bg-background z-10">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handlePreview(file)}>
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    {t('files.preview', 'Förhandsgranska')}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleDownload(file)}>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    {t('common.download', 'Ladda ner')}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => runSmartTolk(file)}>
+                                    <Sparkles className="h-4 w-4 mr-2" />
+                                    {t('files.smartTolk', 'Smart tolk')}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    {allProjectFiles.length} {t('files.totalFiles', 'filer totalt')}
+                  </p>
+                </div>
+              ) : (
               <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0 relative">
                 {/* Batch action bar — floating overlay above table */}
                 {selectedFiles.size > 0 && (
