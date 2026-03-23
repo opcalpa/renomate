@@ -2340,6 +2340,41 @@ export type Database = {
           },
         ]
       }
+      task_translations: {
+        Row: {
+          checklists: Json | null
+          description: string | null
+          language: string
+          task_id: string
+          title: string | null
+          translated_at: string
+        }
+        Insert: {
+          checklists?: Json | null
+          description?: string | null
+          language: string
+          task_id: string
+          title?: string | null
+          translated_at?: string
+        }
+        Update: {
+          checklists?: Json | null
+          description?: string | null
+          language?: string
+          task_id?: string
+          title?: string | null
+          translated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_translations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assigned_to_contractor_id: string | null

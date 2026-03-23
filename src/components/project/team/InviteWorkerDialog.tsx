@@ -164,6 +164,20 @@ export function InviteWorkerDialog({
       const link = `${window.location.origin}/w/${tokenRecord.token}`;
       setGeneratedLink(link);
 
+      // Trigger translation in background (best-effort, don't block)
+      if (language !== "en" && language !== "sv") {
+        supabase.functions
+          .invoke("translate-task-content", {
+            body: { taskIds: selectedTaskIds, targetLanguage: language },
+          })
+          .then(() => {
+            console.info("Translations triggered for", language);
+          })
+          .catch((err) => {
+            console.error("Translation trigger failed:", err);
+          });
+      }
+
       toast({
         title: t("teamWorker.workerInvited", "Worker invited"),
         description: t("teamWorker.linkCreated", "Link created. Share it with the worker."),

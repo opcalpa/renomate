@@ -101,6 +101,20 @@ serve(async (req) => {
       }
     }
 
+    // 5b. Fetch translations for worker's language
+    const workerLang = tokenRecord.worker_language;
+    let translationsMap: Record<string, { title: string; description: string | null; checklists: unknown }> = {};
+    if (workerLang && workerLang !== "en" && workerLang !== "sv") {
+      const { data: translations } = await sb
+        .from("task_translations")
+        .select("task_id, title, description, checklists")
+        .in("task_id", taskIds)
+        .eq("language", workerLang);
+      for (const tr of translations || []) {
+        translationsMap[tr.task_id] = { title: tr.title, description: tr.description, checklists: tr.checklists };
+      }
+    }
+
     // 6. Fetch photos for tasks
     const { data: photos } = await sb
       .from("photos")
@@ -116,16 +130,17 @@ serve(async (req) => {
       photosByTask[tid].push({ id: photo.id, url: photo.url, caption: photo.caption });
     }
 
-    // 7. Assemble response
+    // 7. Assemble response (use translations when available)
     const workerTasks = (tasks || []).map((task) => {
       const room = task.room_id ? roomsMap[task.room_id] as Record<string, unknown> | undefined : null;
+      const tr = translationsMap[task.id];
       return {
         id: task.id,
-        title: task.title,
-        description: task.description,
+        title: tr?.title || task.title,
+        description: tr?.description ?? task.description,
         status: task.status,
         progress: task.progress || 0,
-        checklists: task.checklists || [],
+        checklists: tr?.checklists || task.checklists || [],
         photos: photosByTask[task.id] || [],
         room: room
           ? {
