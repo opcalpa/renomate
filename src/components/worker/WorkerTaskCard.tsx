@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getStatusBadgeColor } from "@/lib/statusColors";
 import { ColorSwatchRow } from "./ColorSwatchRow";
+import { RoomMiniMap } from "./RoomMiniMap";
+import { RoomSpecsSummary } from "./RoomSpecsSummary";
 import { MapPin, Ruler, Camera, Loader2, CheckSquare, ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -49,7 +51,17 @@ export interface WorkerTask {
   progress: number;
   checklists: Checklist[];
   photos: Photo[];
+  roomId: string | null;
   room: WorkerRoom | null;
+}
+
+interface FloorPlanShape {
+  id: string;
+  roomId: string | null;
+  points: Array<{ x: number; y: number }>;
+  color: string;
+  strokeColor: string;
+  name: string | null;
 }
 
 interface WorkerTaskCardProps {
@@ -57,6 +69,7 @@ interface WorkerTaskCardProps {
   token: string;
   canToggleChecklist: boolean;
   canUploadPhotos: boolean;
+  floorPlan: FloorPlanShape[] | null;
   onTaskUpdate: (taskId: string, updates: Partial<WorkerTask>) => void;
 }
 
@@ -101,6 +114,7 @@ export function WorkerTaskCard({
   token,
   canToggleChecklist,
   canUploadPhotos,
+  floorPlan,
   onTaskUpdate,
 }: WorkerTaskCardProps) {
   const { t } = useTranslation();
@@ -214,6 +228,19 @@ export function WorkerTaskCard({
         )}
       </div>
 
+      {/* Floor plan mini-map */}
+      {floorPlan && floorPlan.length > 0 && task.room && (
+        <div className="px-4 pb-2">
+          <div className="rounded-lg bg-muted/30 border p-2">
+            <RoomMiniMap
+              shapes={floorPlan}
+              highlightRoomId={task.roomId}
+              className="rounded"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Room info */}
       {room && (
         <div className="px-4 pb-3 flex flex-wrap gap-3 text-sm text-muted-foreground">
@@ -242,6 +269,18 @@ export function WorkerTaskCard({
             wallSpec={room.wallSpec as never}
             ceilingSpec={room.ceilingSpec as never}
             floorSpec={room.floorSpec as never}
+          />
+        </div>
+      )}
+
+      {/* Room specs details */}
+      {room && (
+        <div className="px-4 pb-3">
+          <RoomSpecsSummary
+            wallSpec={room.wallSpec as never}
+            floorSpec={room.floorSpec as never}
+            ceilingSpec={room.ceilingSpec as never}
+            joinerySpec={room.joinerySpec as never}
           />
         </div>
       )}

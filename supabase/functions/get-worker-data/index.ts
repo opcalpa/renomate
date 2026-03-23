@@ -101,7 +101,23 @@ serve(async (req) => {
       }
     }
 
-    // 5b. Fetch translations for worker's language
+    // 5b. Fetch floor plan shapes for the project (rooms only, for mini-map)
+    const { data: floorShapes } = await sb
+      .from("floor_map_shapes")
+      .select("id, shape_type, shape_data, room_id, color, stroke_color")
+      .eq("project_id", tokenRecord.project_id)
+      .eq("shape_type", "room");
+
+    const floorPlanShapes = (floorShapes || []).map((s) => ({
+      id: s.id,
+      roomId: s.room_id,
+      points: (s.shape_data as Record<string, unknown>)?.points || [],
+      color: s.color || "rgba(59, 130, 246, 0.2)",
+      strokeColor: s.stroke_color || "rgba(41, 91, 172, 0.8)",
+      name: roomsMap[s.room_id as string] ? (roomsMap[s.room_id as string] as Record<string, unknown>).name : null,
+    }));
+
+    // 5c. Fetch translations for worker's language
     const workerLang = tokenRecord.worker_language;
     let translationsMap: Record<string, { title: string; description: string | null; checklists: unknown }> = {};
     if (workerLang && workerLang !== "en" && workerLang !== "sv") {
@@ -142,6 +158,7 @@ serve(async (req) => {
         progress: task.progress || 0,
         checklists: tr?.checklists || task.checklists || [],
         photos: photosByTask[task.id] || [],
+        roomId: task.room_id || null,
         room: room
           ? {
               name: room.name,
@@ -163,6 +180,7 @@ serve(async (req) => {
       canUploadPhotos: tokenRecord.can_upload_photos,
       canToggleChecklist: tokenRecord.can_toggle_checklist,
       tasks: workerTasks,
+      floorPlan: floorPlanShapes.length > 0 ? floorPlanShapes : null,
     }, 200, req);
   } catch (error) {
     console.error("get-worker-data error:", error);

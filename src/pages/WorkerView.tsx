@@ -9,6 +9,15 @@ import { WorkerTaskCard, type WorkerTask } from "@/components/worker/WorkerTaskC
 // Types
 // ---------------------------------------------------------------------------
 
+interface FloorPlanShape {
+  id: string;
+  roomId: string | null;
+  points: Array<{ x: number; y: number }>;
+  color: string;
+  strokeColor: string;
+  name: string | null;
+}
+
 interface WorkerViewData {
   projectName: string;
   workerName: string;
@@ -16,6 +25,7 @@ interface WorkerViewData {
   canUploadPhotos: boolean;
   canToggleChecklist: boolean;
   tasks: WorkerTask[];
+  floorPlan: FloorPlanShape[] | null;
 }
 
 type ErrorState = "not_found" | "expired" | "error" | null;
@@ -172,6 +182,7 @@ export default function WorkerView() {
                 token={token!}
                 canToggleChecklist={data.canToggleChecklist}
                 canUploadPhotos={data.canUploadPhotos}
+                floorPlan={data.floorPlan}
                 onTaskUpdate={handleTaskUpdate}
               />
             ))}
