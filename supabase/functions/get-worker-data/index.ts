@@ -57,11 +57,10 @@ serve(async (req) => {
       return jsonResponse({ error: "expired" }, 410, req);
     }
 
-    // 2. Update last_accessed_at (best-effort)
-    sb.from("worker_access_tokens")
+    // 2. Update last_accessed_at (best-effort, don't block response)
+    await sb.from("worker_access_tokens")
       .update({ last_accessed_at: new Date().toISOString() })
-      .eq("id", tokenRecord.id)
-      .then(() => {});
+      .eq("id", tokenRecord.id);
 
     // 3. Fetch project name
     const { data: project } = await sb

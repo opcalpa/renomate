@@ -115,14 +115,17 @@ serve(async (req) => {
     }
 
     // Insert as a comment on the task
+    // Use created_by_user_id (project owner) for FK integrity,
+    // but set author_display_name to worker name for correct attribution
     const { data: comment, error: insertError } = await sb
       .from("comments")
       .insert({
-        content: commentContent,
+        content: message || (voiceUrl ? `🎤 ${voiceUrl}` : ""),
         entity_type: "task",
         entity_id: taskId,
         project_id: tokenRecord.project_id,
-        user_id: tokenRecord.created_by_user_id, // Attributed to project owner
+        created_by_user_id: tokenRecord.created_by_user_id,
+        author_display_name: `${tokenRecord.worker_name} (worker)`,
       })
       .select("id, content, created_at")
       .single();

@@ -11,6 +11,21 @@ import { RoomSpecsSummary } from "./RoomSpecsSummary";
 import { WorkerMessageInput } from "./WorkerMessageInput";
 import { MapPin, Ruler, Camera, Loader2, CheckSquare, ImageIcon, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+/** Call edge function with FormData (supabase.functions.invoke doesn't handle FormData) */
+async function invokeWithFormData(fnName: string, formData: FormData) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/${fnName}`, {
+    method: "POST",
+    body: formData,
+    headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+  });
+  if (!res.ok) throw new Error(`${fnName}: ${res.status}`);
+  return res.json();
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,12 +49,38 @@ interface Photo {
   caption: string | null;
 }
 
+interface WallSpec {
+  main_color?: string;
+  accent_wall_color?: string;
+  has_accent_wall?: boolean;
+  treatments?: string[];
+}
+
+interface FloorSpec {
+  material?: string;
+  specification?: string;
+  treatments?: string[];
+  skirting_type?: string;
+  skirting_color?: string;
+}
+
+interface CeilingSpec {
+  color?: string;
+  material?: string;
+  molding_type?: string;
+}
+
+interface JoinerySpec {
+  door_type?: string;
+  trim_type?: string;
+}
+
 interface WorkerRoom {
   name: string;
-  wallSpec: Record<string, unknown> | null;
-  floorSpec: Record<string, unknown> | null;
-  ceilingSpec: Record<string, unknown> | null;
-  joinerySpec: Record<string, unknown> | null;
+  wallSpec: WallSpec | null;
+  floorSpec: FloorSpec | null;
+  ceilingSpec: CeilingSpec | null;
+  joinerySpec: JoinerySpec | null;
   dimensions: { area_sqm?: number; ceiling_height_mm?: number } | null;
   ceilingHeightMm: number | null;
 }
@@ -87,8 +128,10 @@ const statusKey = (s: string) => {
 
 async function compressImage(file: File, maxSize = 1200, quality = 0.8): Promise<Blob> {
   return new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
       const canvas = document.createElement("canvas");
       let { width, height } = img;
       if (width > maxSize || height > maxSize) {
@@ -102,7 +145,8 @@ async function compressImage(file: File, maxSize = 1200, quality = 0.8): Promise
       ctx.drawImage(img, 0, 0, width, height);
       canvas.toBlob((blob) => resolve(blob || file), "image/jpeg", quality);
     };
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => URL.revokeObjectURL(objectUrl);
+    img.src = objectUrl;
   });
 }
 
@@ -150,13 +194,18 @@ export function WorkerTaskCard({
     onTaskUpdate(task.id, { checklists: updatedChecklists });
 
     try {
-      await supabase.functions.invoke("worker-toggle-checklist", {
+      const { data, error } = await supabase.functions.invoke("worker-toggle-checklist", {
         body: { token, taskId: task.id, checklistId, itemId, completed },
       });
+      if (error || data?.error) {
+        console.error("Toggle failed:", error || data?.error);
+        onTaskUpdate(task.id, { checklists: task.checklists });
+        toast.error(t("common.error", "Could not save"));
+      }
     } catch (err) {
       console.error("Toggle failed:", err);
-      // Revert on error
       onTaskUpdate(task.id, { checklists: task.checklists });
+      toast.error(t("common.error", "Could not save"));
     } finally {
       setTogglingItems((prev) => {
         const next = new Set(prev);
@@ -181,17 +230,19 @@ export function WorkerTaskCard({
       formData.append("taskId", task.id);
       formData.append("file", compressed, `worker-${Date.now()}.jpg`);
 
-      const { data, error } = await supabase.functions.invoke("worker-upload-photo", {
-        body: formData,
-      });
+      const data = await invokeWithFormData("worker-upload-photo", formData);
 
-      if (!error && data?.photo) {
+      if (data?.photo) {
         onTaskUpdate(task.id, {
           photos: [...task.photos, data.photo],
         });
+        toast.success(t("worker.photoUploaded", "Photo uploaded"));
+      } else if (data?.error) {
+        toast.error(data.error);
       }
     } catch (err) {
       console.error("Upload failed:", err);
+      toast.error(t("common.error", "Upload failed"));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -267,9 +318,9 @@ export function WorkerTaskCard({
       {room && (
         <div className="px-4 pb-3">
           <ColorSwatchRow
-            wallSpec={room.wallSpec as never}
-            ceilingSpec={room.ceilingSpec as never}
-            floorSpec={room.floorSpec as never}
+            wallSpec={room.wallSpec}
+            ceilingSpec={room.ceilingSpec}
+            floorSpec={room.floorSpec}
           />
         </div>
       )}
@@ -278,10 +329,10 @@ export function WorkerTaskCard({
       {room && (
         <div className="px-4 pb-3">
           <RoomSpecsSummary
-            wallSpec={room.wallSpec as never}
-            floorSpec={room.floorSpec as never}
-            ceilingSpec={room.ceilingSpec as never}
-            joinerySpec={room.joinerySpec as never}
+            wallSpec={room.wallSpec}
+            floorSpec={room.floorSpec}
+            ceilingSpec={room.ceilingSpec}
+            joinerySpec={room.joinerySpec}
           />
         </div>
       )}

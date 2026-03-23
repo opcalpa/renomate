@@ -31,11 +31,15 @@ function findCenter(points: Array<{ x: number; y: number }>): { x: number; y: nu
 }
 
 export function RoomMiniMap({ shapes, highlightRoomId, className }: RoomMiniMapProps) {
-  if (!shapes || shapes.length === 0) return null;
+  // Filter out shapes with missing/empty points
+  const validShapes = (shapes || []).filter(
+    (s) => Array.isArray(s.points) && s.points.length >= 3
+  );
+  if (validShapes.length === 0) return null;
 
   // Calculate bounding box of all shapes
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const shape of shapes) {
+  for (const shape of validShapes) {
     for (const p of shape.points) {
       if (p.x < minX) minX = p.x;
       if (p.y < minY) minY = p.y;
@@ -44,9 +48,9 @@ export function RoomMiniMap({ shapes, highlightRoomId, className }: RoomMiniMapP
     }
   }
 
-  // Add padding (10% on each side)
-  const width = maxX - minX;
-  const height = maxY - minY;
+  // Guard against degenerate bounding box (all points identical or collinear)
+  const width = maxX - minX || 1;
+  const height = maxY - minY || 1;
   const padding = Math.max(width, height) * 0.1;
   const vbX = minX - padding;
   const vbY = minY - padding;
@@ -61,7 +65,7 @@ export function RoomMiniMap({ shapes, highlightRoomId, className }: RoomMiniMapP
       preserveAspectRatio="xMidYMid meet"
     >
       {/* All rooms as outlines first (background) */}
-      {shapes.map((shape) => {
+      {validShapes.map((shape) => {
         const isHighlighted = shape.roomId === highlightRoomId;
         return (
           <g key={shape.id}>

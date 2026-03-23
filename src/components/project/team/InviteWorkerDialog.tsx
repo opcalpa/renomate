@@ -183,9 +183,6 @@ export function InviteWorkerDialog({
           .invoke("translate-task-content", {
             body: { taskIds: selectedTaskIds, targetLanguage: language },
           })
-          .then(() => {
-            console.info("Translations triggered for", language);
-          })
           .catch((err) => {
             console.error("Translation trigger failed:", err);
           });
@@ -424,13 +421,7 @@ export function InviteWorkerDialog({
                       setGeneratingChecklists(true);
                       try {
                         for (const task of missingChecklist) {
-                          const { data: roomData } = await supabase
-                            .from("rooms")
-                            .select("name, wall_spec, floor_spec, ceiling_spec, joinery_spec, dimensions")
-                            .eq("id", tasks.find((t) => t.id === task.id)?.id || "")
-                            .single();
-
-                          // We need room_id — fetch from task
+                          // Fetch task with room_id and description
                           const { data: taskData } = await supabase
                             .from("tasks")
                             .select("room_id, description")
@@ -439,6 +430,7 @@ export function InviteWorkerDialog({
 
                           if (!taskData?.room_id) continue;
 
+                          // Fetch room specs
                           const { data: room } = await supabase
                             .from("rooms")
                             .select("name, wall_spec, floor_spec, ceiling_spec, joinery_spec, dimensions")

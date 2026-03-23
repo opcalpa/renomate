@@ -1,9 +1,13 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Send, Mic, Square, Loader2 } from "lucide-react";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 interface WorkerMessageInputProps {
   token: string;
@@ -21,6 +25,17 @@ export function WorkerMessageInput({ token, taskId }: WorkerMessageInputProps) {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Cleanup on unmount (stop recording if active)
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+        mediaRecorderRef.current.stop();
+      }
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
   // -------------------------------------------------------------------------
   // Text message
   // -------------------------------------------------------------------------
@@ -28,14 +43,16 @@ export function WorkerMessageInput({ token, taskId }: WorkerMessageInputProps) {
     if (!message.trim() || sending) return;
     setSending(true);
     try {
-      await supabase.functions.invoke("worker-send-message", {
+      const { data, error } = await supabase.functions.invoke("worker-send-message", {
         body: { token, taskId, message: message.trim() },
       });
+      if (error || data?.error) throw new Error(data?.error || "Send failed");
       setMessage("");
       setSent(true);
       setTimeout(() => setSent(false), 3000);
     } catch (err) {
       console.error("Send failed:", err);
+      toast.error(t("common.error", "Could not send message"));
     } finally {
       setSending(false);
     }
@@ -69,13 +86,17 @@ export function WorkerMessageInput({ token, taskId }: WorkerMessageInputProps) {
           formData.append("taskId", taskId);
           formData.append("voice", blob, `voice-${Date.now()}.webm`);
 
-          await supabase.functions.invoke("worker-send-message", {
+          const res = await fetch(`${SUPABASE_URL}/functions/v1/worker-send-message`, {
+            method: "POST",
             body: formData,
+            headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
           });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
           setSent(true);
           setTimeout(() => setSent(false), 3000);
         } catch (err) {
           console.error("Voice send failed:", err);
+          toast.error(t("common.error", "Could not send voice message"));
         } finally {
           setSending(false);
         }

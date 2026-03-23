@@ -90,16 +90,15 @@ serve(async (req) => {
       .from("project-files")
       .getPublicUrl(storagePath);
 
-    // Insert photo record
+    // Insert photo record (photos table has no project_id column)
     const { data: photo, error: insertError } = await sb
       .from("photos")
       .insert({
         url: urlData.publicUrl,
         linked_to_type: "task",
         linked_to_id: taskId,
-        project_id: tokenRecord.project_id,
         uploaded_by_user_id: tokenRecord.created_by_user_id,
-        caption: `Uploaded by ${tokenRecord.worker_name}`,
+        caption: `${tokenRecord.worker_name}`,
         source: "worker",
         mime_type: file.type || "image/jpeg",
       })
