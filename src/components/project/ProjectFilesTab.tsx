@@ -755,31 +755,14 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
   const handlePreview = async (file: ProjectFile) => {
     try {
-      // For PDF, open in new tab
-      if (file.type.includes('pdf')) {
-        const { data: { publicUrl } } = supabase.storage
-          .from('project-files')
-          .getPublicUrl(file.path);
-        
-        window.open(publicUrl, '_blank');
-        return;
-      }
+      const { data: { publicUrl } } = supabase.storage
+        .from('project-files')
+        .getPublicUrl(file.path);
 
-      // For images, show in modal with zoom
-      if (file.type.startsWith('image/')) {
-        const { data: { publicUrl } } = supabase.storage
-          .from('project-files')
-          .getPublicUrl(file.path);
-        
-        setPreviewUrl(publicUrl);
-        setPreviewFile(file);
-        setImageZoom(100);
-        setImageRotation(0);
-        return;
-      }
-
-      // For other files, download
-      handleDownload(file);
+      setPreviewUrl(publicUrl);
+      setPreviewFile(file);
+      setImageZoom(100);
+      setImageRotation(0);
     } catch (error: unknown) {
       console.error('Error previewing file:', error);
       toast({
@@ -1199,7 +1182,15 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                 {getFileIcon(file)}
                               </span>
                             </TableCell>
-                            <TableCell className="font-medium truncate max-w-[250px]">{file.name}</TableCell>
+                            <TableCell className="font-medium truncate max-w-[250px]">
+                              <button
+                                type="button"
+                                className="text-left hover:text-primary hover:underline transition-colors truncate block w-full"
+                                onClick={() => handlePreview(file)}
+                              >
+                                {file.name}
+                              </button>
+                            </TableCell>
                             <TableCell className="hidden md:table-cell text-muted-foreground text-xs truncate max-w-[120px]">
                               {file.folder || '/'}
                             </TableCell>
@@ -1427,7 +1418,15 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           {getFileIcon(file)}
                         </span>
                       </TableCell>
-                      <TableCell className="font-medium truncate max-w-[200px] lg:max-w-none">{file.name}</TableCell>
+                      <TableCell className="font-medium truncate max-w-[200px] lg:max-w-none">
+                        <button
+                          type="button"
+                          className="text-left hover:text-primary hover:underline transition-colors truncate block w-full"
+                          onClick={() => handlePreview(file)}
+                        >
+                          {file.name}
+                        </button>
+                      </TableCell>
                       {visibleFileCols.map(col => {
                         const links = getFileLinksForPath(file.path);
                         const DEFAULT_CATS = ['Offert', 'Faktura', 'Kvitto', 'Ritning', 'Kontrakt', 'Specifikation', 'Bild', 'Dokument', 'Övrigt'];
@@ -1793,38 +1792,40 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* Zoom controls */}
-                  <div className="flex items-center gap-1 border rounded-md p-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setImageZoom(Math.max(25, imageZoom - 25))}
-                      disabled={imageZoom <= 25}
-                    >
-                      <ZoomOut className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm font-medium min-w-[60px] text-center">
-                      {imageZoom}%
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setImageZoom(Math.min(400, imageZoom + 25))}
-                      disabled={imageZoom >= 400}
-                    >
-                      <ZoomIn className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  {/* Rotate */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setImageRotation((imageRotation + 90) % 360)}
-                    title={t('files.rotate')}
-                  >
-                    <RotateCw className="h-4 w-4" />
-                  </Button>
+                  {/* Zoom/Rotate controls — only for images */}
+                  {previewFile && !previewFile.type?.includes('pdf') && (
+                    <>
+                      <div className="flex items-center gap-1 border rounded-md p-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setImageZoom(Math.max(25, imageZoom - 25))}
+                          disabled={imageZoom <= 25}
+                        >
+                          <ZoomOut className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm font-medium min-w-[60px] text-center">
+                          {imageZoom}%
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setImageZoom(Math.min(400, imageZoom + 25))}
+                          disabled={imageZoom >= 400}
+                        >
+                          <ZoomIn className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setImageRotation((imageRotation + 90) % 360)}
+                        title={t('files.rotate')}
+                      >
+                        <RotateCw className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
 
                   <div className="h-6 w-px bg-border mx-1" />
 
@@ -1861,10 +1862,17 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
               </div>
             </div>
 
-            {/* Image container */}
+            {/* Content container */}
             <div className="pt-20 pb-4 px-4 h-[85vh] overflow-auto bg-muted/30">
               <div className="flex items-center justify-center min-h-full">
-                {previewUrl && (
+                {previewUrl && previewFile?.type?.includes('pdf') ? (
+                  <iframe
+                    src={previewUrl}
+                    title={previewFile?.name}
+                    className="w-full h-full border-0 rounded"
+                    style={{ minHeight: 'calc(85vh - 6rem)' }}
+                  />
+                ) : previewUrl && (
                   <img
                     src={previewUrl}
                     alt={previewFile?.name}
