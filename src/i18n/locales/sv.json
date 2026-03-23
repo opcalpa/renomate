@@ -575,6 +575,8 @@
     "checklists": "Checklistor",
     "checklist": "Checklista",
     "addChecklist": "Lägg till checklista",
+    "generateChecklist": "Generera från rum",
+    "checklistGenerated": "Checklista genererad från rumspecifikation",
     "addItem": "Lägg till punkt...",
     "updateTask": "Uppdatera arbete",
     "updating": "Uppdaterar...",
@@ -4732,6 +4734,8 @@
     "lastAccessed": "Senast besökt",
     "never": "Aldrig",
     "noWorkers": "Inga arbetare inbjudna ännu.",
-    "tasksAssigned": "{{count}} uppgifter"
+    "tasksAssigned": "{{count}} uppgifter",
+    "missingChecklists": "{{count}} uppgifter saknar steg-för-steg-instruktioner. Generera automatiskt från rumspecifikationer?",
+    "generateChecklists": "Generera checklistor"
   }
 }

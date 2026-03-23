@@ -47,6 +47,8 @@ interface TaskOption {
   id: string;
   title: string;
   roomName: string | null;
+  hasChecklist: boolean;
+  hasRoom: boolean;
 }
 
 interface InviteWorkerDialogProps {
@@ -80,6 +82,7 @@ export function InviteWorkerDialog({
   const [copied, setCopied] = useState(false);
   const [smsSending, setSmsSending] = useState(false);
   const [smsSent, setSmsSent] = useState(false);
+  const [generatingChecklists, setGeneratingChecklists] = useState(false);
 
   // Load project tasks
   useEffect(() => {
@@ -96,7 +99,7 @@ export function InviteWorkerDialog({
   const loadTasks = async () => {
     const { data } = await supabase
       .from("tasks")
-      .select("id, title, room_id")
+      .select("id, title, room_id, checklists")
       .eq("project_id", projectId)
       .order("created_at", { ascending: true });
 
@@ -116,11 +119,17 @@ export function InviteWorkerDialog({
     }
 
     setTasks(
-      data.map((t) => ({
-        id: t.id,
-        title: t.title,
-        roomName: t.room_id ? roomMap[t.room_id] || null : null,
-      }))
+      data.map((t) => {
+        const checklists = t.checklists as Array<{ items?: unknown[] }> | null;
+        const hasItems = (checklists || []).some((cl) => (cl.items?.length || 0) > 0);
+        return {
+          id: t.id,
+          title: t.title,
+          roomName: t.room_id ? roomMap[t.room_id] || null : null,
+          hasChecklist: hasItems,
+          hasRoom: !!t.room_id,
+        };
+      })
     );
   };
 
@@ -391,6 +400,93 @@ export function InviteWorkerDialog({
                 </p>
               )}
             </div>
+
+            {/* Auto-generate checklists hint */}
+            {(() => {
+              const selectedTasks = tasks.filter((t) => selectedTaskIds.includes(t.id));
+              const missingChecklist = selectedTasks.filter((t) => !t.hasChecklist && t.hasRoom);
+              if (missingChecklist.length === 0) return null;
+              return (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg space-y-2">
+                  <p className="text-xs text-amber-800 dark:text-amber-200">
+                    {t(
+                      "teamWorker.missingChecklists",
+                      "{{count}} tasks have no step-by-step instructions. Generate them automatically from room specs?",
+                      { count: missingChecklist.length }
+                    )}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={generatingChecklists}
+                    onClick={async () => {
+                      setGeneratingChecklists(true);
+                      try {
+                        for (const task of missingChecklist) {
+                          const { data: roomData } = await supabase
+                            .from("rooms")
+                            .select("name, wall_spec, floor_spec, ceiling_spec, joinery_spec, dimensions")
+                            .eq("id", tasks.find((t) => t.id === task.id)?.id || "")
+                            .single();
+
+                          // We need room_id — fetch from task
+                          const { data: taskData } = await supabase
+                            .from("tasks")
+                            .select("room_id, description")
+                            .eq("id", task.id)
+                            .single();
+
+                          if (!taskData?.room_id) continue;
+
+                          const { data: room } = await supabase
+                            .from("rooms")
+                            .select("name, wall_spec, floor_spec, ceiling_spec, joinery_spec, dimensions")
+                            .eq("id", taskData.room_id)
+                            .single();
+
+                          if (!room) continue;
+
+                          const { data: result } = await supabase.functions.invoke("generate-work-checklist", {
+                            body: {
+                              taskTitle: task.title,
+                              taskDescription: taskData.description,
+                              roomName: room.name,
+                              wallSpec: room.wall_spec,
+                              floorSpec: room.floor_spec,
+                              ceilingSpec: room.ceiling_spec,
+                              joinerySpec: room.joinery_spec,
+                              dimensions: room.dimensions,
+                            },
+                          });
+
+                          if (result?.checklist) {
+                            await supabase
+                              .from("tasks")
+                              .update({ checklists: [result.checklist] })
+                              .eq("id", task.id);
+                          }
+                        }
+                        // Reload tasks to update hasChecklist
+                        loadTasks();
+                        toast({ description: t("tasks.checklistGenerated", "Checklists generated") });
+                      } catch (err) {
+                        console.error("Auto-generate failed:", err);
+                      } finally {
+                        setGeneratingChecklists(false);
+                      }
+                    }}
+                  >
+                    {generatingChecklists ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : (
+                      <span className="mr-1">✨</span>
+                    )}
+                    {t("teamWorker.generateChecklists", "Generate checklists")}
+                  </Button>
+                </div>
+              );
+            })()}
 
             <Button
               type="submit"

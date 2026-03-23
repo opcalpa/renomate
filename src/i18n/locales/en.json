@@ -575,6 +575,8 @@
     "checklists": "Checklists",
     "checklist": "Checklist",
     "addChecklist": "Add Checklist",
+    "generateChecklist": "Generate from room",
+    "checklistGenerated": "Checklist generated from room specs",
     "addItem": "Add item...",
     "updateTask": "Update Task",
     "updating": "Updating...",
@@ -4735,6 +4737,8 @@
     "lastAccessed": "Last accessed",
     "never": "Never",
     "noWorkers": "No workers invited yet.",
-    "tasksAssigned": "{{count}} tasks"
+    "tasksAssigned": "{{count}} tasks",
+    "missingChecklists": "{{count}} tasks have no step-by-step instructions. Generate them automatically from room specs?",
+    "generateChecklists": "Generate checklists"
   }
 }

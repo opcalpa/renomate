@@ -567,6 +567,7 @@ export const TaskEditDialog = ({
   const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; role?: string }[]>([]);
   const [customCostCenters, setCustomCostCenters] = useState<string[]>([]);
   const [showCustomCostCenter, setShowCustomCostCenter] = useState(false);
+  const [generatingChecklist, setGeneratingChecklist] = useState(false);
   const [customCostCenterValue, setCustomCostCenterValue] = useState("");
   const [perRowMarkup, setPerRowMarkup] = useState(false);
   const [profileDefaultRate, setProfileDefaultRate] = useState<number | null>(null);
@@ -940,6 +941,45 @@ export const TaskEditDialog = ({
     if (!task) return;
     const updated = (task.checklists || []).filter((_, i) => i !== clIdx);
     setTask({ ...task, checklists: updated });
+  };
+
+  const handleGenerateChecklist = async () => {
+    if (!task || !task.room_id) return;
+    setGeneratingChecklist(true);
+    try {
+      // Fetch room specs
+      const { data: roomData } = await supabase
+        .from("rooms")
+        .select("name, wall_spec, floor_spec, ceiling_spec, joinery_spec, dimensions")
+        .eq("id", task.room_id)
+        .single();
+
+      if (!roomData) throw new Error("Room not found");
+
+      const { data: result, error } = await supabase.functions.invoke("generate-work-checklist", {
+        body: {
+          taskTitle: task.title,
+          taskDescription: task.description,
+          roomName: roomData.name,
+          wallSpec: roomData.wall_spec,
+          floorSpec: roomData.floor_spec,
+          ceilingSpec: roomData.ceiling_spec,
+          joinerySpec: roomData.joinery_spec,
+          dimensions: roomData.dimensions,
+        },
+      });
+
+      if (error) throw error;
+      if (result?.checklist) {
+        setTask({ ...task, checklists: [...(task.checklists || []), result.checklist] });
+        toast({ description: t("tasks.checklistGenerated", "Checklist generated from room specs") });
+      }
+    } catch (err) {
+      console.error("Generate checklist failed:", err);
+      toast({ title: t("common.error"), description: String(err), variant: "destructive" });
+    } finally {
+      setGeneratingChecklist(false);
+    }
   };
 
   return (
@@ -1792,22 +1832,40 @@ export const TaskEditDialog = ({
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="pl-6 pb-3 space-y-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const newChecklist: Checklist = {
-                            id: crypto.randomUUID(),
-                            title: t("tasks.checklist"),
-                            items: [],
-                          };
-                          setTask({ ...task, checklists: [...(task.checklists || []), newChecklist] });
-                        }}
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        {t("tasks.addChecklist")}
-                      </Button>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const newChecklist: Checklist = {
+                              id: crypto.randomUUID(),
+                              title: t("tasks.checklist"),
+                              items: [],
+                            };
+                            setTask({ ...task, checklists: [...(task.checklists || []), newChecklist] });
+                          }}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          {t("tasks.addChecklist")}
+                        </Button>
+                        {task.room_id && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleGenerateChecklist}
+                            disabled={generatingChecklist}
+                          >
+                            {generatingChecklist ? (
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3 w-3 mr-1" />
+                            )}
+                            {t("tasks.generateChecklist", "Generate from room")}
+                          </Button>
+                        )}
+                      </div>
                       {(task.checklists || []).map((checklist, clIdx) => {
                         const completedCount = checklist.items.filter((i) => i.completed).length;
                         const totalCount = checklist.items.length;

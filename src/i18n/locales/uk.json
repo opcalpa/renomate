@@ -2783,6 +2783,8 @@
     "lastAccessed": "Останній доступ",
     "never": "Ніколи",
     "noWorkers": "Працівників ще не запрошено.",
-    "tasksAssigned": "{{count}} завдань"
+    "tasksAssigned": "{{count}} завдань",
+    "missingChecklists": "{{count}} завдань не мають покрокових інструкцій. Згенерувати автоматично з характеристик кімнати?",
+    "generateChecklists": "Згенерувати чек-листи"
   }
 }
