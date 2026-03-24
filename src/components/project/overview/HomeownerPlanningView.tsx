@@ -427,12 +427,6 @@ export function HomeownerPlanningView({
                     {t("homeownerPlanning.activateProject", "Start project")}
                   </Button>
                 )}
-                <ImportQuotePopover
-                  projectId={projectId}
-                  quotes={externalQuotes}
-                  currency={currency}
-                  onQuotesChange={fetchExternalQuotes}
-                />
               </div>
               )}
             </div>
@@ -474,13 +468,23 @@ export function HomeownerPlanningView({
                 <CardDescription>{t("homeownerPlanning.whatToDoDesc", "List every type of work. Connect each task to a room for better estimates.")}</CardDescription>
               </div>
             </div>
-            {/* Column toggle */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" title={t("budget.columns", "Columns")}>
-                  <Columns3 className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
+            <div className="flex items-center gap-2">
+              {/* Import quote — populates table with quote data */}
+              {!contributorMode && (
+                <ImportQuotePopover
+                  projectId={projectId}
+                  quotes={externalQuotes}
+                  currency={currency}
+                  onQuotesChange={fetchExternalQuotes}
+                />
+              )}
+              {/* Column toggle */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" title={t("budget.columns", "Columns")}>
+                    <Columns3 className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
               <PopoverContent className="w-52" align="end">
                 <div className="space-y-2">
                   <p className="text-sm font-medium mb-2">{t("planningTasks.showColumns", "Show columns")}</p>
@@ -496,6 +500,7 @@ export function HomeownerPlanningView({
                 </div>
               </PopoverContent>
             </Popover>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
