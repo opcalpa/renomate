@@ -1156,6 +1156,8 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
         setSelectedRoomForDetail(shape.roomId);
         setIsRoomDetailOpen(true);
         toast.success(t('floormap.openingRoomDetails', 'Opening room details'));
+      } else if (shapeType === 'sticky_note' || shapeType === 'text') {
+        // Skip property panel — onDblClick handler opens inline editor instead
       } else {
         setPropertyPanelShape(shape);
         setShowPropertyPanel(true);
@@ -3921,10 +3923,13 @@ export const UnifiedKonvaCanvas: React.FC<UnifiedKonvaCanvasProps> = ({ onRoomCr
             }
             
             if (shape.type === 'text') {
+              if (inlineEditShape?.id === shape.id) return null;
               return (<TextShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} onEdit={handleTextEdit} />);
             }
 
             if (shape.type === 'sticky_note') {
+              // Hide Konva shape while inline editor is open (avoids visual duplication)
+              if (inlineEditShape?.id === shape.id) return null;
               return (<StickyNoteShape key={shape.id} shape={shape} isSelected={isSelected} onSelect={handleSelect} onTransform={handleTransform} shapeRefsMap={shapeRefs.current} onEdit={handleTextEdit} />);
             }
 
