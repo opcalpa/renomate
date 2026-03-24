@@ -35,6 +35,16 @@ const LandingTest = lazy(() => import("./pages/LandingTest"));
 import { HelpBot } from "./components/HelpBot";
 import { BetaBanner } from "./components/BetaBanner";
 
+/** Only show HelpBot on authenticated/app pages, not public landing pages */
+function AuthenticatedHelpBot() {
+  const path = typeof window !== "undefined" ? window.location.pathname : "";
+  const publicPaths = ["/", "/auth", "/landing-test", "/about", "/contact", "/terms", "/privacy", "/tips"];
+  if (publicPaths.includes(path) || path.startsWith("/w/") || path.startsWith("/intake/") || path.startsWith("/quotes/") || path.startsWith("/invoices/")) {
+    return null;
+  }
+  return <HelpBot />;
+}
+
 const queryClient = new QueryClient();
 
 const ErrorFallback = () => (
@@ -92,7 +102,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
-          <HelpBot />
+          <AuthenticatedHelpBot />
         </TooltipProvider>
       </GuestProvider>
     </QueryClientProvider>
