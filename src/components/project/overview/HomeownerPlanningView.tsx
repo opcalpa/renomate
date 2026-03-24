@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Send, ClipboardList, Info, Columns3, Play } from "lucide-react";
+import { Plus, Trash2, Send, ClipboardList, Info, Columns3, Play, Bell, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   detectWorkType,
@@ -87,6 +87,15 @@ function loadVisibleExtras(projectId: string): Set<ExtraColumnKey> {
 // Props
 // ---------------------------------------------------------------------------
 
+interface ProjectReminder {
+  id: string;
+  titleKey: string;
+  bodyKey: string;
+  severity: "warning" | "info";
+  actionTarget?: string;
+  actionKey?: string;
+}
+
 interface HomeownerPlanningViewProps {
   projectId: string;
   projectName?: string;
@@ -95,6 +104,9 @@ interface HomeownerPlanningViewProps {
   onActivate?: () => void;
   /** When true, hides owner-only actions (activate, import quote, share RFQ) */
   contributorMode?: boolean;
+  reminders?: ProjectReminder[];
+  onDismissReminder?: (id: string) => void;
+  onDismissAllReminders?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -108,6 +120,9 @@ export function HomeownerPlanningView({
   currency,
   onActivate,
   contributorMode = false,
+  reminders = [],
+  onDismissReminder,
+  onDismissAllReminders,
 }: HomeownerPlanningViewProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -426,6 +441,46 @@ export function HomeownerPlanningView({
                     <Play className="h-3.5 w-3.5" />
                     {t("homeownerPlanning.activateProject", "Start project")}
                   </Button>
+                )}
+                {/* Reminders popover */}
+                {reminders.length > 0 && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button size="sm" variant="outline" className="gap-1.5 relative">
+                        <Bell className="h-3.5 w-3.5" />
+                        {t("reminders.sectionTitle", "Reminders")}
+                        <span className="h-4 min-w-4 px-1 rounded-full bg-blue-500 text-white text-[10px] font-medium flex items-center justify-center">
+                          {reminders.length}
+                        </span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-80 p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-medium">{t("reminders.sectionTitle", "Reminders")}</p>
+                        {onDismissAllReminders && (
+                          <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground" onClick={onDismissAllReminders}>
+                            {t("reminders.dismissAll", "Clear all")}
+                          </Button>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {reminders.map((r) => (
+                          <div key={r.id} className="flex items-start gap-2 text-sm p-2 rounded-md bg-muted/50">
+                            <Info className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-xs">{t(r.titleKey)}</p>
+                              <p className="text-xs text-muted-foreground">{t(r.bodyKey)}</p>
+                            </div>
+                            {onDismissReminder && (
+                              <button onClick={() => onDismissReminder(r.id)} className="text-muted-foreground hover:text-foreground shrink-0">
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 )}
               </div>
               )}

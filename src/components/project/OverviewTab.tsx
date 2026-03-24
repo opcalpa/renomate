@@ -283,6 +283,9 @@ const OverviewTab = ({
       currency={project.currency}
       onActivate={isPlanningContributor ? undefined : handleProjectUpdate}
       contributorMode={isPlanningContributor}
+      reminders={reminders}
+      onDismissReminder={dismissReminder}
+      onDismissAllReminders={dismissAllReminders}
     />
   ) : (
     <>
@@ -350,10 +353,10 @@ const OverviewTab = ({
         </div>
       )}
 
-      {/* Reminders + contextual tips — collapsible section */}
-      {!isGuest && !isPlanningContributor && (reminders.length > 0 || tips.length > 0) && (
+      {/* Contextual tips — shown when not in planning phase */}
+      {!isGuest && !isPlanningContributor && !isPlanning && tips.length > 0 && (
         <ReminderSection
-          reminders={reminders}
+          reminders={[]}
           tips={tips}
           onDismissReminder={dismissReminder}
           onDismissAllReminders={dismissAllReminders}
