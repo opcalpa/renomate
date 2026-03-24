@@ -8,7 +8,7 @@
  * Save triggers: click-outside, Escape.
  */
 
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FloorMapShape, TextCoordinates, ViewState } from '../types';
 import { Bold, Italic, Minus, Plus } from 'lucide-react';
 
