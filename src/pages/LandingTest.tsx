@@ -416,7 +416,7 @@ function VariantC({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
 
       {/* Screenshots bento grid */}
       <section className="max-w-6xl mx-auto px-6 pb-20">
-        <div className="grid md:grid-cols-5 gap-4">
+        <div className="grid lg:grid-cols-5 gap-4">
           <div className="md:col-span-3 rounded-2xl overflow-hidden border border-gray-200 shadow-md cursor-pointer hover:shadow-lg transition-shadow"
             onClick={() => nav.demoTab("contractor", "spaceplanner")}>
             <img src="/screenshots/Floorplan.png" alt="Floor planner" className="w-full h-full object-cover" loading="lazy" />

@@ -2503,7 +2503,15 @@
     "importDone": "Import klar!",
     "importResult": "Importerade {{rooms}} rum och {{tasks}} arbeten",
     "importError": "Importfel",
-    "couldNotImport": "Kunde inte importera data"
+    "couldNotImport": "Kunde inte importera data",
+    "linkToExisting": "Koppla till befintliga rum",
+    "linkToExistingTasks": "Koppla till befintliga arbeten",
+    "purchases": "Inköp",
+    "linkToPurchases": "Koppla detta dokument till befintliga inköp eller skapa ett nytt.",
+    "noPurchases": "Inga inköp ännu",
+    "createNewRoom": "Skapa nytt rum...",
+    "createNewTask": "Skapa nytt arbete...",
+    "createNewPurchase": "Skapa nytt inköp..."
   },
   "elevation": {
     "noWalls": "Inga väggar att visa",

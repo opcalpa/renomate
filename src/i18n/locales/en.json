@@ -1562,7 +1562,15 @@
     "importDone": "Import complete!",
     "importResult": "Imported {{rooms}} rooms and {{tasks}} tasks",
     "importError": "Import error",
-    "couldNotImport": "Could not import data"
+    "couldNotImport": "Could not import data",
+    "linkToExisting": "Link to existing rooms",
+    "linkToExistingTasks": "Link to existing tasks",
+    "purchases": "Purchases",
+    "linkToPurchases": "Link this document to existing purchases or create a new one.",
+    "noPurchases": "No purchases yet",
+    "createNewRoom": "Create new room...",
+    "createNewTask": "Create new task...",
+    "createNewPurchase": "Create new purchase..."
   },
   "elevation": {
     "noWalls": "No walls to display",

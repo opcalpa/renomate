@@ -125,39 +125,39 @@ export function AIDocumentImportModal({
   const [newPurchaseName, setNewPurchaseName] = useState("");
   const [creatingSub, setCreatingSub] = useState<"room" | "task" | "purchase" | null>(null);
 
+  const getProfileId = async (): Promise<string | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+    return data?.id || null;
+  };
+
   const handleCreateRoom = async () => {
-    if (!newRoomName.trim()) return;
+    if (!newRoomName.trim() || creatingSub) return;
     setCreatingSub("room");
     const { data, error } = await supabase.from("rooms").insert({ project_id: projectId, name: newRoomName.trim() }).select("id, name").single();
-    if (!error && data) {
-      setExistingRooms(prev => [...prev, data]);
-      setLinkedRoomIds(prev => new Set(prev).add(data.id));
-      setNewRoomName("");
-    }
+    if (error) { toast({ variant: "destructive", description: error.message }); }
+    else if (data) { setExistingRooms(prev => [...prev, data]); setLinkedRoomIds(prev => new Set(prev).add(data.id)); setNewRoomName(""); }
     setCreatingSub(null);
   };
 
   const handleCreateTask = async () => {
-    if (!newTaskName.trim()) return;
+    if (!newTaskName.trim() || creatingSub) return;
     setCreatingSub("task");
-    const { data, error } = await supabase.from("tasks").insert({ project_id: projectId, title: newTaskName.trim(), status: "to_do" }).select("id, title").single();
-    if (!error && data) {
-      setExistingTasks(prev => [...prev, data]);
-      setLinkedTaskIds(prev => new Set(prev).add(data.id));
-      setNewTaskName("");
-    }
+    const profileId = await getProfileId();
+    const { data, error } = await supabase.from("tasks").insert({ project_id: projectId, title: newTaskName.trim(), status: "to_do", created_by_user_id: profileId }).select("id, title").single();
+    if (error) { toast({ variant: "destructive", description: error.message }); }
+    else if (data) { setExistingTasks(prev => [...prev, data]); setLinkedTaskIds(prev => new Set(prev).add(data.id)); setNewTaskName(""); }
     setCreatingSub(null);
   };
 
   const handleCreatePurchase = async () => {
-    if (!newPurchaseName.trim()) return;
+    if (!newPurchaseName.trim() || creatingSub) return;
     setCreatingSub("purchase");
-    const { data, error } = await supabase.from("materials").insert({ project_id: projectId, name: newPurchaseName.trim(), status: "planned" }).select("id, name").single();
-    if (!error && data) {
-      setExistingPurchases(prev => [...prev, data]);
-      setLinkedPurchaseIds(prev => new Set(prev).add(data.id));
-      setNewPurchaseName("");
-    }
+    const profileId = await getProfileId();
+    const { data, error } = await supabase.from("materials").insert({ project_id: projectId, name: newPurchaseName.trim(), status: "planned", created_by_user_id: profileId }).select("id, name").single();
+    if (error) { toast({ variant: "destructive", description: error.message }); }
+    else if (data) { setExistingPurchases(prev => [...prev, data]); setLinkedPurchaseIds(prev => new Set(prev).add(data.id)); setNewPurchaseName(""); }
     setCreatingSub(null);
   };
 
@@ -415,15 +415,16 @@ export function AIDocumentImportModal({
 
       // 3. Save manual file links (room, task, purchase connections)
       if (file && (linkedRoomIds.size > 0 || linkedTaskIds.size > 0 || linkedPurchaseIds.size > 0)) {
+        const fileType = file.type?.includes("pdf") ? "document" : file.type?.startsWith("image/") ? "image" : "other";
         const linkInserts: Array<Record<string, unknown>> = [];
         for (const roomId of linkedRoomIds) {
-          linkInserts.push({ project_id: projectId, file_path: file.path, file_name: file.name, room_id: roomId });
+          linkInserts.push({ project_id: projectId, file_path: file.path, file_name: file.name, file_type: fileType, room_id: roomId });
         }
         for (const taskId of linkedTaskIds) {
-          linkInserts.push({ project_id: projectId, file_path: file.path, file_name: file.name, task_id: taskId });
+          linkInserts.push({ project_id: projectId, file_path: file.path, file_name: file.name, file_type: fileType, task_id: taskId });
         }
         for (const materialId of linkedPurchaseIds) {
-          linkInserts.push({ project_id: projectId, file_path: file.path, file_name: file.name, material_id: materialId });
+          linkInserts.push({ project_id: projectId, file_path: file.path, file_name: file.name, file_type: fileType, material_id: materialId });
         }
         if (linkInserts.length > 0) {
           await supabase.from("task_file_links").insert(linkInserts);
@@ -490,7 +491,7 @@ export function AIDocumentImportModal({
             )}
 
             {/* Three-column layout */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 min-h-0">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0">
               {/* Rooms Column */}
               <Card className="flex flex-col min-h-0 overflow-hidden">
                 <CardHeader className="pb-2 flex-shrink-0">
@@ -835,7 +836,7 @@ export function AIDocumentImportModal({
               disabled={
                 extracting ||
                 importing ||
-                (selectedRoomCount === 0 && selectedTaskCount === 0)
+                (selectedRoomCount === 0 && selectedTaskCount === 0 && linkedRoomIds.size === 0 && linkedTaskIds.size === 0 && linkedPurchaseIds.size === 0)
               }
             >
               {importing ? (

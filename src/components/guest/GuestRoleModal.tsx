@@ -29,7 +29,7 @@ export function GuestRoleModal({ open, onSelect, onOpenChange }: GuestRoleModalP
         <div className="grid grid-cols-1 gap-3 pt-2">
           <button
             onClick={() => onSelect("homeowner")}
-            className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-emerald-50 hover:border-emerald-300 transition-all text-left group"
+            className="flex items-center gap-4 p-4 min-h-[72px] rounded-xl border-2 border-transparent bg-emerald-50 hover:border-emerald-300 transition-all text-left group"
           >
             <div className="h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0 group-hover:bg-emerald-200 transition-colors">
               <Home className="h-6 w-6 text-emerald-600" />
@@ -44,7 +44,7 @@ export function GuestRoleModal({ open, onSelect, onOpenChange }: GuestRoleModalP
 
           <button
             onClick={() => onSelect("contractor")}
-            className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-blue-50 hover:border-blue-300 transition-all text-left group"
+            className="flex items-center gap-4 p-4 min-h-[72px] rounded-xl border-2 border-transparent bg-blue-50 hover:border-blue-300 transition-all text-left group"
           >
             <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center shrink-0 group-hover:bg-blue-200 transition-colors">
               <Building2 className="h-6 w-6 text-blue-600" />
