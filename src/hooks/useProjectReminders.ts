@@ -148,28 +148,37 @@ function computeReminders(
   return reminders;
 }
 
-const DISMISSED_KEY = "renomate_dismissed_reminders";
+const DISMISSED_KEY_PREFIX = "renomate_dismissed_reminders_";
 
-function loadDismissed(): Set<string> {
+function loadDismissed(projectId: string): Set<string> {
   try {
-    const raw = localStorage.getItem(DISMISSED_KEY);
+    // Try project-specific key first, fall back to old global key
+    const raw = localStorage.getItem(DISMISSED_KEY_PREFIX + projectId)
+      || localStorage.getItem("renomate_dismissed_reminders");
     if (raw) return new Set(JSON.parse(raw));
   } catch { /* ignore */ }
   return new Set();
 }
 
-function saveDismissed(ids: Set<string>) {
+function saveDismissed(projectId: string, ids: Set<string>) {
   try {
-    localStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids]));
+    localStorage.setItem(DISMISSED_KEY_PREFIX + projectId, JSON.stringify([...ids]));
   } catch { /* ignore */ }
 }
 
 export function useProjectReminders(ctx: ProjectReminderContext | null) {
-  const [dismissed, setDismissed] = useState<Set<string>>(loadDismissed);
+  const projectId = ctx?.projectId || "";
+  const [dismissed, setDismissed] = useState<Set<string>>(() => loadDismissed(projectId));
   const [roomCount, setRoomCount] = useState(0);
   const [unlinkedTaskCount, setUnlinkedTaskCount] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Fetch room count and unlinked task count
+  // Reload dismissed when project changes
+  useEffect(() => {
+    if (projectId) setDismissed(loadDismissed(projectId));
+  }, [projectId]);
+
+  // Fetch room count and unlinked task count — refetches on refreshKey
   useEffect(() => {
     if (!ctx) return;
     const fetchCounts = async () => {
@@ -188,7 +197,7 @@ export function useProjectReminders(ctx: ProjectReminderContext | null) {
       setUnlinkedTaskCount(tasks.filter(t => !t.room_id).length);
     };
     fetchCounts();
-  }, [ctx?.projectId, ctx?.taskCount]);
+  }, [ctx?.projectId, ctx?.taskCount, refreshKey]);
 
   const allReminders = useMemo(() => {
     if (!ctx) return [];
@@ -204,7 +213,7 @@ export function useProjectReminders(ctx: ProjectReminderContext | null) {
     setDismissed(prev => {
       const next = new Set(prev);
       next.add(id);
-      saveDismissed(next);
+      saveDismissed(projectId, next);
       return next;
     });
   };
@@ -213,10 +222,13 @@ export function useProjectReminders(ctx: ProjectReminderContext | null) {
     setDismissed(prev => {
       const next = new Set(prev);
       for (const r of allReminders) next.add(r.id);
-      saveDismissed(next);
+      saveDismissed(projectId, next);
       return next;
     });
   };
 
-  return { reminders, dismissReminder, dismissAll, totalCount: allReminders.length };
+  /** Call after actions that might resolve reminders (e.g. linking tasks to rooms) */
+  const refresh = () => setRefreshKey(k => k + 1);
+
+  return { reminders, dismissReminder, dismissAll, refresh, totalCount: allReminders.length };
 }
