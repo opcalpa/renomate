@@ -1141,7 +1141,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                     <Table className={compactRows ? 'text-xs' : ''}>
                       <TableHeader>
                         <TableRow className={compactRows ? '[&>th]:py-1.5' : ''}>
-                          <TableHead className="w-12">
+                          <TableHead className="w-12 sticky left-0 bg-background z-20">
                             <Checkbox
                               checked={allProjectFiles.length > 0 && selectedFiles.size === allProjectFiles.length}
                               onCheckedChange={() => {
@@ -1151,7 +1151,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                               className="h-4 w-4"
                             />
                           </TableHead>
-                          <TableHead>{t('common.name')}</TableHead>
+                          <TableHead className="sticky left-12 bg-background z-20 min-w-[200px]">{t('common.name')}</TableHead>
                           <TableHead className="hidden md:table-cell">{t('files.folder', 'Mapp')}</TableHead>
                           {visibleFileCols.map(col => (
                             <TableHead key={col} className="hidden md:table-cell">
@@ -1170,7 +1170,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           .filter(f => !fileSearch || f.name.toLowerCase().includes(fileSearch.toLowerCase()) || (f.folder || '').toLowerCase().includes(fileSearch.toLowerCase()))
                           .map((file) => (
                           <TableRow key={file.path} className={`group ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''} ${selectedFiles.has(file.path) ? 'bg-primary/5' : ''}`}>
-                            <TableCell className="w-12">
+                            <TableCell className="w-12 sticky left-0 bg-background z-10">
                               <span className="inline-flex items-center gap-1.5">
                                 <Checkbox
                                   checked={selectedFiles.has(file.path)}
@@ -1180,7 +1180,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                 {getFileIcon(file)}
                               </span>
                             </TableCell>
-                            <TableCell className="font-medium truncate max-w-[250px]">
+                            <TableCell className="font-medium truncate max-w-[250px] sticky left-12 bg-background z-10">
                               <button
                                 type="button"
                                 className="text-left hover:text-primary hover:underline transition-colors truncate block w-full"
@@ -1281,14 +1281,14 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
               <Table className={compactRows ? 'text-xs' : ''}>
                 <TableHeader>
                   <TableRow className={compactRows ? '[&>th]:py-1.5' : ''}>
-                    <TableHead className="w-12">
+                    <TableHead className="w-12 sticky left-0 bg-background z-20">
                       <Checkbox
                         checked={filteredFiles.length > 0 && selectedFiles.size === filteredFiles.length}
                         onCheckedChange={toggleSelectAll}
                         className="h-4 w-4"
                       />
                     </TableHead>
-                    <TableHead>{t('common.name')}</TableHead>
+                    <TableHead className="sticky left-12 bg-background z-20 min-w-[200px]">{t('common.name')}</TableHead>
                     {visibleFileCols.map(col => (
                       <TableHead key={col} className="hidden md:table-cell">
                         {fileColLabels[col]}
@@ -1332,7 +1332,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           className={`cursor-pointer hover:bg-muted/50 ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}
                         >
                           <TableCell
-                            className="w-12"
+                            className="w-12 sticky left-0 z-10 bg-white dark:bg-card"
                             onClick={(e) => { e.stopPropagation(); toggleFolder(folder.path); }}
                           >
                             <span className="inline-flex items-center gap-1">
@@ -1343,7 +1343,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                             </span>
                           </TableCell>
                           <TableCell
-                            className="font-medium"
+                            className="font-medium sticky left-12 z-10 bg-white dark:bg-card"
                             onClick={() => setCurrentFolder('/' + folder.path)}
                           >
                             {folder.name}
@@ -1361,8 +1361,8 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                         {/* Expanded sub-files */}
                         {isExpanded && subFiles.map((sf) => (
                           <TableRow key={sf.id} className={`group bg-muted/20 ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}>
-                            <TableCell className="w-12"></TableCell>
-                            <TableCell className="pl-6 text-sm truncate">{sf.name}</TableCell>
+                            <TableCell className="w-12 sticky left-0 z-10 bg-muted/20"></TableCell>
+                            <TableCell className="pl-6 text-sm truncate sticky left-12 z-10 bg-muted/20">{sf.name}</TableCell>
                             {visibleFileCols.map(col => (
                               <TableCell key={col} className="hidden md:table-cell text-muted-foreground text-xs">
                                 {col === 'size' && sf.size ? formatFileSize(sf.size) : ''}
@@ -1406,7 +1406,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                   {/* Files */}
                   {filteredFiles.map((file) => (
                     <TableRow key={file.id} className={`group ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''} ${selectedFiles.has(file.path) ? 'bg-primary/5' : ''}`}>
-                      <TableCell className="w-12">
+                      <TableCell className="w-12 sticky left-0 z-10 bg-white dark:bg-card">
                         <span className="inline-flex items-center gap-1.5">
                           <Checkbox
                             checked={selectedFiles.has(file.path)}
@@ -1416,7 +1416,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           {getFileIcon(file)}
                         </span>
                       </TableCell>
-                      <TableCell className="font-medium truncate max-w-[200px] lg:max-w-none">
+                      <TableCell className="font-medium truncate max-w-[200px] lg:max-w-none sticky left-12 z-10 bg-white dark:bg-card">
                         <button
                           type="button"
                           className="text-left hover:text-primary hover:underline transition-colors truncate block w-full"
