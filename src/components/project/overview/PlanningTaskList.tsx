@@ -1797,13 +1797,13 @@ export function PlanningTaskList({
                       onDragEnd={handleRowDragEnd}
                       onDragOver={(e) => handleRowDragOver(e, "task", task.id)}
                       onDrop={(e) => handleRowDrop(e, "task", task.id)}
-                      className={
+                      className={`bg-white dark:bg-card ${
                         dragOverTarget?.id === task.id
                           ? dragOverTarget.position === "above"
                             ? "border-t-2 border-t-primary"
                             : "border-b-2 border-b-primary"
-                          : undefined
-                      }
+                          : ""
+                      }`}
                     >
                       <TableCell className="font-medium py-2.5">
                         <div className="flex items-center gap-1">
