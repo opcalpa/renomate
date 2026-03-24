@@ -742,8 +742,10 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
         return <Clock className="h-4 w-4 text-warning" />;
       case "waiting":
         return <Clock className="h-4 w-4 text-muted-foreground" />;
+      case "on_hold":
+        return <XCircle className="h-4 w-4 text-muted-foreground" />;
       default:
-        return <Circle className="h-4 w-4 text-muted-foreground" />;
+        return <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/20 ml-[3px]" />;
     }
   };
 
