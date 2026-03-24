@@ -1151,7 +1151,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                               className="h-4 w-4"
                             />
                           </TableHead>
-                          <TableHead className="sticky left-12 bg-background z-20 min-w-[200px]">{t('common.name')}</TableHead>
+                          <TableHead className="sticky left-12 bg-background z-20 max-w-[220px]">{t('common.name')}</TableHead>
                           <TableHead className="hidden md:table-cell">{t('files.folder', 'Mapp')}</TableHead>
                           {visibleFileCols.map(col => (
                             <TableHead key={col} className="hidden md:table-cell">
@@ -1180,11 +1180,12 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                 {getFileIcon(file)}
                               </span>
                             </TableCell>
-                            <TableCell className="font-medium truncate max-w-[250px] sticky left-12 bg-background z-10">
+                            <TableCell className="font-medium sticky left-12 bg-background z-10 max-w-[220px]">
                               <button
                                 type="button"
                                 className="text-left hover:text-primary hover:underline transition-colors truncate block w-full"
                                 onClick={() => handlePreview(file)}
+                                title={file.name}
                               >
                                 {file.name}
                               </button>
@@ -1288,7 +1289,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                         className="h-4 w-4"
                       />
                     </TableHead>
-                    <TableHead className="sticky left-12 bg-background z-20 min-w-[200px]">{t('common.name')}</TableHead>
+                    <TableHead className="sticky left-12 bg-background z-20 max-w-[220px]">{t('common.name')}</TableHead>
                     {visibleFileCols.map(col => (
                       <TableHead key={col} className="hidden md:table-cell">
                         {fileColLabels[col]}
@@ -1416,11 +1417,12 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           {getFileIcon(file)}
                         </span>
                       </TableCell>
-                      <TableCell className="font-medium truncate max-w-[200px] lg:max-w-none sticky left-12 z-10 bg-white dark:bg-card">
+                      <TableCell className="font-medium sticky left-12 z-10 bg-white dark:bg-card max-w-[220px]">
                         <button
                           type="button"
                           className="text-left hover:text-primary hover:underline transition-colors truncate block w-full"
                           onClick={() => handlePreview(file)}
+                          title={file.name}
                         >
                           {file.name}
                         </button>
