@@ -134,7 +134,7 @@
     "tipCoats": "Number of coats of paint — typically 2 for good coverage",
     "tipWaste": "Waste factor: extra material for cuts and waste — 1.1 means 10% extra",
     "tipUnitPrice": "Average price per unit — varies by brand and quality",
-    "activateProject": "Activate project",
+    "activateProject": "Start project",
     "activateHintBoth": "Add at least 1 task and 1 room to activate",
     "activateHintTask": "Add at least 1 task to activate",
     "activateHintRoom": "Add at least 1 room to activate"
@@ -4351,7 +4351,7 @@
     "quoteVendor": "From",
     "analyzingQuote": "Reading quote...",
     "extractedAmount": "Detected amount: {{amount}}",
-    "activateProject": "Activate project",
+    "activateProject": "Start project",
     "projectActivated": "Project activated! Your tasks and rooms are now live.",
     "quoted": "Quoted",
     "totalArea": "Floor area"
@@ -4495,8 +4495,9 @@
       "action": "Set deadline"
     },
     "inviteBuilder": {
-      "title": "Ready to invite a builder?",
-      "body": "You have tasks listed — consider sending a quote request (RFQ) to builders to get price estimates for the work."
+      "title": "Ready to move forward?",
+      "body": "You can send a quote request to builders for price estimates, or start the project yourself and invite contractors to collaborate.",
+      "action": "See options"
     },
     "setBudget": {
       "title": "Set your project budget",

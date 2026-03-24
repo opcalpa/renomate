@@ -328,6 +328,7 @@ export const CONTEXTUAL_TIPS: ContextualTip[] = [
     priority: 8,
     dismissible: true,
     icon: "users",
+    actionKey: "nextSteps.inviteBuilder.action",
   },
   {
     id: "next_set_budget",

@@ -134,7 +134,7 @@
     "tipCoats": "Antal strykningar — normalt 2 för bra täckning",
     "tipWaste": "Spillfaktor: extra material för tillskärning och spill — 1.1 innebär 10% extra",
     "tipUnitPrice": "Genomsnittligt pris per enhet — varierar beroende på märke och kvalitet",
-    "activateProject": "Aktivera projekt",
+    "activateProject": "Påbörja projekt",
     "activateHintBoth": "Lägg till minst 1 arbete och 1 rum för att aktivera",
     "activateHintTask": "Lägg till minst 1 arbete för att aktivera",
     "activateHintRoom": "Lägg till minst 1 rum för att aktivera"
@@ -4348,7 +4348,7 @@
     "quoteVendor": "Från",
     "analyzingQuote": "Läser offert...",
     "extractedAmount": "Detekterat belopp: {{amount}}",
-    "activateProject": "Aktivera projekt",
+    "activateProject": "Påbörja projekt",
     "projectActivated": "Projektet aktiverat! Dina arbetsmoment och rum är nu live.",
     "quoted": "Offererat",
     "totalArea": "Golvyta"
@@ -4492,8 +4492,9 @@
       "action": "Sätt datum"
     },
     "inviteBuilder": {
-      "title": "Dags att bjuda in en byggare?",
-      "body": "Du har arbeten listade — skicka en offertförfrågan till byggare för att få prisuppskattningar."
+      "title": "Redo att gå vidare?",
+      "body": "Du kan skicka en offertförfrågan till byggare för prisuppskattningar, eller påbörja projektet själv och bjuda in hantverkare att samarbeta.",
+      "action": "Se alternativ"
     },
     "setBudget": {
       "title": "Sätt en projektbudget",
