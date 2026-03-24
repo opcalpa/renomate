@@ -31,6 +31,7 @@ import IntakeRequests from "./pages/IntakeRequests";
 import { lazy, Suspense } from "react";
 
 const WorkerView = lazy(() => import("./pages/WorkerView"));
+const LandingTest = lazy(() => import("./pages/LandingTest"));
 import { HelpBot } from "./components/HelpBot";
 import { BetaBanner } from "./components/BetaBanner";
 
@@ -85,6 +86,7 @@ const App = () => (
               <Route path="/clients" element={<ClientRegistry />} />
               <Route path="/intake/:token" element={<CustomerIntake />} />
               <Route path="/w/:token" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}><WorkerView /></Suspense>} />
+              <Route path="/landing-test" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}><LandingTest /></Suspense>} />
               <Route path="/intake-requests" element={<IntakeRequests />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
