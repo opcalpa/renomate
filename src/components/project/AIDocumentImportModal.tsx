@@ -38,6 +38,7 @@ import {
   Edit2,
   X,
   FileText,
+  Wallet,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useFloorMapStore } from '@/components/floormap/store';
@@ -112,8 +113,31 @@ export function AIDocumentImportModal({
   const [editingRoomIndex, setEditingRoomIndex] = useState<number | null>(null);
   const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null);
 
+  // Manual linking state
+  const [existingRooms, setExistingRooms] = useState<{ id: string; name: string }[]>([]);
+  const [existingTasks, setExistingTasks] = useState<{ id: string; title: string }[]>([]);
+  const [existingPurchases, setExistingPurchases] = useState<{ id: string; name: string }[]>([]);
+  const [linkedRoomIds, setLinkedRoomIds] = useState<Set<string>>(new Set());
+  const [linkedTaskIds, setLinkedTaskIds] = useState<Set<string>>(new Set());
+  const [linkedPurchaseIds, setLinkedPurchaseIds] = useState<Set<string>>(new Set());
+
   // Zustand store
   const { shapes, currentPlanId, addShape } = useFloorMapStore();
+
+  // Fetch existing entities for manual linking
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const [roomsRes, tasksRes, purchasesRes] = await Promise.all([
+        supabase.from("rooms").select("id, name").eq("project_id", projectId).order("name"),
+        supabase.from("tasks").select("id, title").eq("project_id", projectId).order("title"),
+        supabase.from("materials").select("id, name").eq("project_id", projectId).order("name"),
+      ]);
+      setExistingRooms(roomsRes.data || []);
+      setExistingTasks(tasksRes.data || []);
+      setExistingPurchases(purchasesRes.data || []);
+    })();
+  }, [open, projectId]);
 
   // Reset state when modal opens with a new file
   useEffect(() => {
@@ -123,6 +147,9 @@ export function AIDocumentImportModal({
       setTasks([]);
       setEditingRoomIndex(null);
       setEditingTaskIndex(null);
+      setLinkedRoomIds(new Set());
+      setLinkedTaskIds(new Set());
+      setLinkedPurchaseIds(new Set());
       handleExtract();
     }
   }, [open, file?.id]);
@@ -369,7 +396,7 @@ export function AIDocumentImportModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="!max-w-5xl !w-[calc(100vw-3rem)] !max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -404,8 +431,8 @@ export function AIDocumentImportModal({
               </Card>
             )}
 
-            {/* Two-column layout */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
+            {/* Three-column layout */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 min-h-0">
               {/* Rooms Column */}
               <Card className="flex flex-col min-h-0 overflow-hidden">
                 <CardHeader className="pb-2 flex-shrink-0">
@@ -506,6 +533,21 @@ export function AIDocumentImportModal({
                       )}
                     </div>
                   </ScrollArea>
+                  {/* Manual room linking */}
+                  <div className="mt-3 pt-3 border-t space-y-2">
+                    <Label className="text-xs text-muted-foreground">{t('aiDocumentImport.linkToExisting', 'Link to existing rooms')}</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {existingRooms.map((r) => (
+                        <button
+                          key={r.id}
+                          onClick={() => setLinkedRoomIds(prev => { const n = new Set(prev); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; })}
+                          className={`text-xs px-2 py-1 rounded-full border transition-colors ${linkedRoomIds.has(r.id) ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-muted'}`}
+                        >
+                          {r.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -615,6 +657,50 @@ export function AIDocumentImportModal({
                       )}
                     </div>
                   </ScrollArea>
+                  {/* Manual task linking */}
+                  <div className="mt-3 pt-3 border-t space-y-2">
+                    <Label className="text-xs text-muted-foreground">{t('aiDocumentImport.linkToExistingTasks', 'Link to existing tasks')}</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {existingTasks.map((tk) => (
+                        <button
+                          key={tk.id}
+                          onClick={() => setLinkedTaskIds(prev => { const n = new Set(prev); n.has(tk.id) ? n.delete(tk.id) : n.add(tk.id); return n; })}
+                          className={`text-xs px-2 py-1 rounded-full border transition-colors ${linkedTaskIds.has(tk.id) ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-muted'}`}
+                        >
+                          {tk.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Purchases Column */}
+              <Card className="flex flex-col min-h-0 overflow-hidden">
+                <CardHeader className="pb-2 flex-shrink-0">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Wallet className="h-4 w-4" />
+                    {t('aiDocumentImport.purchases', 'Purchases')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 min-h-0 pt-0">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {t('aiDocumentImport.linkToPurchases', 'Link this document to existing purchases or create a new one.')}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {existingPurchases.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => setLinkedPurchaseIds(prev => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })}
+                        className={`text-xs px-2 py-1 rounded-full border transition-colors ${linkedPurchaseIds.has(p.id) ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-muted'}`}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                    {existingPurchases.length === 0 && (
+                      <p className="text-xs text-muted-foreground">{t('aiDocumentImport.noPurchases', 'No purchases yet')}</p>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </div>
