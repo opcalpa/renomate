@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { GuestLoginPrompt } from "@/components/guest/GuestLoginPrompt";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -129,6 +130,7 @@ interface GuestPlanningSectionProps {
 
 export function GuestPlanningSection({ projectId, projectStatus, onActivate }: GuestPlanningSectionProps) {
   const { t } = useTranslation();
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   // Tasks
   const [tasks, setTasks] = useState<GuestTask[]>(() => getGuestTasks(projectId));
@@ -358,7 +360,7 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
             size="sm"
             disabled={!canActivate}
             className="gap-1.5"
-            onClick={onActivate}
+            onClick={() => setShowLoginPrompt(true)}
           >
             <Rocket className="h-4 w-4" />
             {t("guestEstimate.activateProject", "Activate project")}
@@ -935,6 +937,13 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
           onOpenChange={(open) => { if (!open) setSelectedTaskId(null); }}
         />
       )}
+      {/* Guest login prompt */}
+      <GuestLoginPrompt
+        open={showLoginPrompt}
+        onOpenChange={setShowLoginPrompt}
+        action="activate"
+        projectId={projectId}
+      />
     </>
   );
 }

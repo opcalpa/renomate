@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,11 +18,13 @@ import {
 } from "lucide-react";
 import Footer from "@/components/Footer";
 import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
+import { GuestRoleModal } from "@/components/guest/GuestRoleModal";
 
 const Index = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { enterGuestMode } = useGuestMode();
+  const [showRoleModal, setShowRoleModal] = useState(false);
 
   useEffect(() => {
     // Skip auto-redirect if user is in guest mode — they should
@@ -76,7 +78,7 @@ const Index = () => {
                 {t('landing.heroDescription')}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Button size="lg" onClick={() => { enterGuestMode(); navigate("/start"); }} className="text-lg px-8">
+                <Button size="lg" onClick={() => setShowRoleModal(true)} className="text-lg px-8">
                   {t('landing.startProject', 'Start your project')}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
@@ -292,6 +294,17 @@ const Index = () => {
       </main>
 
       <Footer />
+
+      <GuestRoleModal
+        open={showRoleModal}
+        onOpenChange={setShowRoleModal}
+        onSelect={(role) => {
+          setShowRoleModal(false);
+          localStorage.setItem("guest_user_type", role);
+          enterGuestMode();
+          navigate("/start");
+        }}
+      />
     </div>
   );
 };

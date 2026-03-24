@@ -230,7 +230,29 @@
     "timelineTitle": "Gantt Timeline",
     "timelineDesc": "Track progress and manage deadlines",
     "overviewTitle": "Project Overview",
-    "overviewDesc": "See everything at a glance"
+    "overviewDesc": "See everything at a glance",
+    "roleTitle": "How will you use Renomate?",
+    "roleDescription": "We'll customize the experience for you.",
+    "roleHomeowner": "Homeowner",
+    "roleHomeownerDesc": "I'm planning a renovation for my home",
+    "roleContractor": "Professional",
+    "roleContractorDesc": "I manage renovation projects for clients",
+    "stat1": "Projects managed",
+    "stat2": "Active companies",
+    "stat3": "Satisfaction rate"
+  },
+  "guest": {
+    "loginToActivate": "Sign in to activate your project",
+    "loginToActivateDesc": "Create a free account to activate your project and start collaborating with your team.",
+    "loginToShare": "Sign in to share your renovation plan",
+    "loginToShareDesc": "Create a free account to send your renovation plan to contractors and get quotes.",
+    "loginToSaveQuote": "Sign in to save your quote",
+    "loginToSaveQuoteDesc": "Create a free account to save, send, and track your quotes.",
+    "loginToSave": "Sign in to save your project",
+    "loginToSaveDesc": "Create a free account to save your project and access it from any device.",
+    "createAccount": "Create free account",
+    "signIn": "I already have an account",
+    "dataKept": "Your planning data will be saved to your account."
   },
   "auth": {
     "signInTitle": "Welcome Back",

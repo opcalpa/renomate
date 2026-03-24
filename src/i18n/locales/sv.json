@@ -230,7 +230,29 @@
     "timelineTitle": "Gantt-tidslinje",
     "timelineDesc": "Följ framstegen och hantera deadlines",
     "overviewTitle": "Projektöversikt",
-    "overviewDesc": "Se allt på ett ställe"
+    "overviewDesc": "Se allt på ett ställe",
+    "roleTitle": "Hur ska du använda Renomate?",
+    "roleDescription": "Vi anpassar upplevelsen för dig.",
+    "roleHomeowner": "Hemägare",
+    "roleHomeownerDesc": "Jag planerar en renovering av mitt hem",
+    "roleContractor": "Professionell",
+    "roleContractorDesc": "Jag hanterar renoveringsprojekt åt kunder",
+    "stat1": "Projekt hanterade",
+    "stat2": "Aktiva företag",
+    "stat3": "Nöjdhetsgrad"
+  },
+  "guest": {
+    "loginToActivate": "Logga in för att aktivera ditt projekt",
+    "loginToActivateDesc": "Skapa ett gratis konto för att aktivera ditt projekt och börja samarbeta med ditt team.",
+    "loginToShare": "Logga in för att dela din renoveringsplan",
+    "loginToShareDesc": "Skapa ett gratis konto för att skicka din renoveringsplan till hantverkare och få offerter.",
+    "loginToSaveQuote": "Logga in för att spara din offert",
+    "loginToSaveQuoteDesc": "Skapa ett gratis konto för att spara, skicka och följa upp dina offerter.",
+    "loginToSave": "Logga in för att spara ditt projekt",
+    "loginToSaveDesc": "Skapa ett gratis konto för att spara ditt projekt och komma åt det från vilken enhet som helst.",
+    "createAccount": "Skapa gratis konto",
+    "signIn": "Jag har redan ett konto",
+    "dataKept": "Din planeringsdata sparas till ditt konto."
   },
   "auth": {
     "signInTitle": "Välkommen tillbaka",
