@@ -9,7 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings2, ShoppingCart, FileText, Mail, ChevronDown, ChevronRight, ExternalLink, UserPlus } from "lucide-react";
+import { Settings2, ShoppingCart, FileText, Mail, ChevronDown, ChevronRight, ExternalLink, UserPlus, Bell, Info, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
 import { useOverviewData } from "./overview/useOverviewData";
@@ -353,16 +354,9 @@ const OverviewTab = ({
         </div>
       )}
 
-      {/* Contextual tips — shown when not in planning phase */}
+      {/* Contextual tips — shown inline when not in planning phase */}
       {!isGuest && !isPlanningContributor && !isPlanning && tips.length > 0 && (
-        <ReminderSection
-          reminders={[]}
-          tips={tips}
-          onDismissReminder={dismissReminder}
-          onDismissAllReminders={dismissAllReminders}
-          onDismissTip={dismiss}
-          onAction={handleTipAction}
-        />
+        <TipList tips={tips} onDismiss={dismiss} />
       )}
 
       {/* Dashboard toolbar + pulse cards — hidden during pure planning phase */}
@@ -417,6 +411,42 @@ const OverviewTab = ({
                 <ShoppingCart className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">{t("overview.addPurchase")}</span>
               </Button>
+              {/* Reminders popover — compact button */}
+              {reminders.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <Bell className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">{t("reminders.sectionTitle", "Reminders")}</span>
+                      <span className="h-4 min-w-4 px-1 rounded-full bg-blue-500 text-white text-[10px] font-medium flex items-center justify-center">
+                        {reminders.length}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-80 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium">{t("reminders.sectionTitle", "Reminders")}</p>
+                      <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground" onClick={dismissAllReminders}>
+                        {t("reminders.dismissAll", "Clear all")}
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {reminders.map((r) => (
+                        <div key={r.id} className="flex items-start gap-2 text-sm p-2 rounded-md bg-muted/50">
+                          <Info className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-xs">{t(r.titleKey)}</p>
+                            <p className="text-xs text-muted-foreground">{t(r.bodyKey)}</p>
+                          </div>
+                          <button onClick={() => dismissReminder(r.id)} className="text-muted-foreground hover:text-foreground shrink-0">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
