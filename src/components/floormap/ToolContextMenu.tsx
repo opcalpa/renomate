@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useState, useEffect, useRef, useCallback } from "react";
 import { Tool } from "./types";
 import {
   MousePointer2,
@@ -29,6 +29,9 @@ import {
   Unlock,
   ChevronRight,
   StickyNote,
+  Clock,
+  PenTool,
+  Plus,
 } from "lucide-react";
 
 // Custom icons
@@ -75,8 +78,8 @@ interface ToolContextMenuProps {
   // Selection-related actions
   hasSelection?: boolean;
   selectionCount?: number;
-  selectionType?: string; // 'wall', 'room', 'shape', etc.
-  hasRoomInSelection?: boolean; // True if at least one room is in the selection
+  selectionType?: string;
+  hasRoomInSelection?: boolean;
   onShowProperties?: () => void;
   onDeleteSelection?: () => void;
   // Layer ordering actions
@@ -86,7 +89,7 @@ interface ToolContextMenuProps {
   onSendToBack?: () => void;
   // Room-specific actions
   onCreateWallsFromRoom?: () => void;
-  // Elevation view - for rooms and walls
+  // Elevation view
   onViewElevation?: () => void;
   hasWallInSelection?: boolean;
   // Comments
@@ -143,20 +146,87 @@ const getToolName = (tool: Tool): string => {
 };
 
 // Submenu flyout item
-const SubMenuItem = ({ icon: Icon, label, onClick, iconClass = "text-gray-600" }: {
+const SubMenuItem = ({ icon: Icon, label, onClick, iconClass = "text-gray-600", shortcut }: {
   icon: IconComponent;
   label: string;
   onClick: () => void;
   iconClass?: string;
+  shortcut?: string;
 }) => (
   <button
-    className="w-full px-3 py-2 flex items-center gap-3 hover:bg-blue-50 transition-colors text-left"
+    className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-blue-50 transition-colors text-left"
     onClick={onClick}
   >
-    <Icon className={`w-4 h-4 ${iconClass}`} />
-    <span className="text-sm font-medium text-gray-700">{label}</span>
+    <Icon className={`w-3.5 h-3.5 ${iconClass}`} />
+    <span className="text-sm text-gray-700">{label}</span>
+    {shortcut && <span className="ml-auto text-[10px] text-gray-400">{shortcut}</span>}
   </button>
 );
+
+// Menu item with chevron for submenus
+const SubMenuTrigger = ({ icon: Icon, label, isOpen, iconClass = "text-gray-600", onMouseEnter, onMouseLeave, onClick }: {
+  icon: IconComponent;
+  label: string;
+  isOpen: boolean;
+  iconClass?: string;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  onClick: () => void;
+}) => (
+  <button
+    className={`w-full px-3 py-1.5 flex items-center gap-2.5 transition-colors text-left ${isOpen ? 'bg-blue-50' : 'hover:bg-blue-50'}`}
+    onMouseEnter={onMouseEnter}
+    onMouseLeave={onMouseLeave}
+    onClick={onClick}
+  >
+    <Icon className={`w-3.5 h-3.5 ${iconClass}`} />
+    <span className="text-sm text-gray-700">{label}</span>
+    <ChevronRight className="w-3 h-3 text-gray-400 ml-auto" />
+  </button>
+);
+
+// Flyout submenu container — opens left if near right edge
+const FlyoutSubmenu = ({ isOpen, parentRef, onMouseEnter, onMouseLeave, children }: {
+  isOpen: boolean;
+  parentRef: React.RefObject<HTMLDivElement | null>;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  children: React.ReactNode;
+}) => {
+  const [openLeft, setOpenLeft] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && parentRef.current) {
+      const rect = parentRef.current.getBoundingClientRect();
+      setOpenLeft(rect.right + 200 > window.innerWidth);
+    }
+  }, [isOpen, parentRef]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className={`absolute top-0 ${openLeft ? 'right-full mr-1' : 'left-full ml-1'} bg-white/95 backdrop-blur-xl rounded-lg shadow-2xl border border-gray-200/50 py-1 min-w-[170px] z-10`}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      {children}
+    </div>
+  );
+};
+
+// Drawing tools available in submenu
+const DRAW_TOOLS: { tool: Tool; icon: IconComponent; label: string; iconClass: string }[] = [
+  { tool: 'wall', icon: Minus, label: 'Vägg', iconClass: 'text-gray-600' },
+  { tool: 'room', icon: Home, label: 'Rum', iconClass: 'text-green-600' },
+  { tool: 'rectangle', icon: Square, label: 'Rektangel', iconClass: 'text-blue-500' },
+  { tool: 'circle', icon: Circle, label: 'Cirkel', iconClass: 'text-blue-500' },
+  { tool: 'freehand', icon: Pencil, label: 'Frihand', iconClass: 'text-orange-500' },
+  { tool: 'bezier', icon: Spline, label: 'Kurva', iconClass: 'text-purple-500' },
+  { tool: 'window_line', icon: WindowLineIcon, label: 'Fönster', iconClass: 'text-cyan-600' },
+  { tool: 'door_line', icon: DoorLineIcon, label: 'Dörr', iconClass: 'text-cyan-600' },
+  { tool: 'opening_line', icon: OpeningLineIcon, label: 'Väggöppning', iconClass: 'text-cyan-600' },
+];
 
 export const ToolContextMenu = memo(({
   x,
@@ -187,21 +257,28 @@ export const ToolContextMenu = memo(({
   onToggleLock,
   isSelectionLocked,
 }: ToolContextMenuProps) => {
-  const [importMenuOpen, setImportMenuOpen] = useState(false);
-  const [textMenuOpen, setTextMenuOpen] = useState(false);
+  const [openSub, setOpenSub] = useState<string | null>(null);
 
-  // Get top 3 unique recent tools
+  // Refs for flyout positioning
+  const layerRef = useRef<HTMLDivElement>(null);
+  const drawRef = useRef<HTMLDivElement>(null);
+  const addRef = useRef<HTMLDivElement>(null);
+  const importRef = useRef<HTMLDivElement>(null);
+  const recentRef = useRef<HTMLDivElement>(null);
+
   const topTools = recentTools.slice(0, 3);
-
   const hasImportActions = onOpenAIImport || onOpenImageImport || onOpenPinterestImport;
+  const hasLayerActions = onBringForward || onSendBackward || onBringToFront || onSendToBack;
 
   // Adjust position to keep menu on screen
-  const menuWidth = 200;
-  const menuHeight = hasSelection ? 450 : 250;
+  const menuWidth = 210;
+  const menuHeight = hasSelection ? 320 : 200;
   const adjustedX = Math.min(x, window.innerWidth - menuWidth - 20);
   const adjustedY = Math.min(y, window.innerHeight - menuHeight - 20);
 
-  // Get selection label
+  const openSubmenu = useCallback((name: string) => setOpenSub(name), []);
+  const closeSubmenu = useCallback(() => setOpenSub(null), []);
+
   const getSelectionLabel = () => {
     if (!hasSelection || !selectionCount) return '';
     if (selectionCount === 1) {
@@ -229,47 +306,41 @@ export const ToolContextMenu = memo(({
 
       {/* Context Menu */}
       <div
-        className="fixed z-[101] bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200/50 py-1.5 min-w-[200px] animate-in fade-in zoom-in-95 duration-100"
+        className="fixed z-[101] bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200/50 py-1 min-w-[210px] animate-in fade-in zoom-in-95 duration-100"
         style={{
           left: `${adjustedX}px`,
           top: `${adjustedY}px`,
         }}
       >
-        {/* Selection Actions Section - shown when something is selected */}
+        {/* === SELECTION SECTION === */}
         {hasSelection && (
           <>
-            <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+            <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
               {getSelectionLabel()}
             </div>
 
             {onShowProperties && (
               <button
-                className="w-full px-3 py-2 flex items-center gap-3 hover:bg-blue-50 transition-colors text-left"
-                onClick={() => {
-                  onShowProperties();
-                  onClose();
-                }}
+                className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-blue-50 transition-colors text-left"
+                onClick={() => { onShowProperties(); onClose(); }}
               >
-                <Info className="w-4 h-4 text-blue-500" />
-                <span className="text-sm font-medium text-gray-700">Visa egenskaper</span>
+                <Info className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-sm text-gray-700">Visa egenskaper</span>
                 <span className="ml-auto text-[10px] text-gray-400">⌘I</span>
               </button>
             )}
 
             {onAddComment && (
               <button
-                className={`w-full px-3 py-2 flex items-center gap-3 transition-colors text-left ${
+                className={`w-full px-3 py-1.5 flex items-center gap-2.5 transition-colors text-left ${
                   isCommentResolved ? 'hover:bg-green-50' : 'hover:bg-blue-50'
                 }`}
-                onClick={() => {
-                  onAddComment();
-                  onClose();
-                }}
+                onClick={() => { onAddComment(); onClose(); }}
               >
-                <MessageCircle className={`w-4 h-4 ${isCommentResolved ? 'text-green-500' : 'text-blue-500'}`} />
-                <span className="text-sm font-medium text-gray-700">
+                <MessageCircle className={`w-3.5 h-3.5 ${isCommentResolved ? 'text-green-500' : 'text-blue-500'}`} />
+                <span className="text-sm text-gray-700">
                   {isCommentResolved
-                    ? `Kommentarer ✓`
+                    ? 'Kommentarer \u2713'
                     : commentCount && commentCount > 0
                       ? `Kommentarer (${commentCount})`
                       : 'Lägg till kommentar'
@@ -280,18 +351,14 @@ export const ToolContextMenu = memo(({
 
             {onToggleLock && (
               <button
-                className="w-full px-3 py-2 flex items-center gap-3 hover:bg-amber-50 transition-colors text-left"
-                onClick={() => {
-                  onToggleLock();
-                  onClose();
-                }}
+                className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-amber-50 transition-colors text-left"
+                onClick={() => { onToggleLock(); onClose(); }}
               >
-                {isSelectionLocked ? (
-                  <Unlock className="w-4 h-4 text-amber-500" />
-                ) : (
-                  <Lock className="w-4 h-4 text-amber-500" />
-                )}
-                <span className="text-sm font-medium text-gray-700">
+                {isSelectionLocked
+                  ? <Unlock className="w-3.5 h-3.5 text-amber-500" />
+                  : <Lock className="w-3.5 h-3.5 text-amber-500" />
+                }
+                <span className="text-sm text-gray-700">
                   {isSelectionLocked ? 'Lås upp' : 'Lås'}
                 </span>
                 <span className="ml-auto text-[10px] text-gray-400">⌘L</span>
@@ -300,285 +367,233 @@ export const ToolContextMenu = memo(({
 
             {onDeleteSelection && (
               <button
-                className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-50 transition-colors text-left"
-                onClick={() => {
-                  onDeleteSelection();
-                  onClose();
-                }}
+                className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-red-50 transition-colors text-left"
+                onClick={() => { onDeleteSelection(); onClose(); }}
               >
-                <Trash2 className="w-4 h-4 text-red-500" />
-                <span className="text-sm font-medium text-gray-700">Ta bort</span>
+                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                <span className="text-sm text-gray-700">Ta bort</span>
                 <span className="ml-auto text-[10px] text-gray-400">⌫</span>
               </button>
             )}
 
             {/* Room-specific actions */}
             {(selectionType === 'room' || hasRoomInSelection) && onCreateWallsFromRoom && (
-              <>
-                <div className="my-1.5 border-t border-gray-100" />
-                <button
-                  className="w-full px-3 py-2 flex items-center gap-3 hover:bg-green-50 transition-colors text-left"
-                  onClick={() => {
-                    onCreateWallsFromRoom();
-                    onClose();
-                  }}
-                >
-                  <Grid3X3 className="w-4 h-4 text-green-600" />
-                  <span className="text-sm font-medium text-gray-700">Skapa väggar</span>
-                </button>
-              </>
+              <button
+                className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-green-50 transition-colors text-left"
+                onClick={() => { onCreateWallsFromRoom(); onClose(); }}
+              >
+                <Grid3X3 className="w-3.5 h-3.5 text-green-600" />
+                <span className="text-sm text-gray-700">Skapa väggar</span>
+              </button>
             )}
 
-            {/* Elevation view - for rooms and walls */}
+            {/* Elevation view */}
             {onViewElevation && (selectionType === 'room' || hasRoomInSelection || selectionType === 'wall' || hasWallInSelection) && (
-              <>
-                {!(selectionType === 'room' || hasRoomInSelection) && <div className="my-1.5 border-t border-gray-100" />}
-                <button
-                  className="w-full px-3 py-2 flex items-center gap-3 hover:bg-purple-50 transition-colors text-left"
-                  onClick={() => {
-                    onViewElevation();
-                    onClose();
-                  }}
-                >
-                  <PanelLeft className="w-4 h-4 text-purple-600" />
-                  <span className="text-sm font-medium text-gray-700">Väggvy</span>
-                  <span className="ml-auto text-[10px] text-gray-400">Elevation</span>
-                </button>
-              </>
+              <button
+                className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-purple-50 transition-colors text-left"
+                onClick={() => { onViewElevation(); onClose(); }}
+              >
+                <PanelLeft className="w-3.5 h-3.5 text-purple-600" />
+                <span className="text-sm text-gray-700">Väggvy</span>
+              </button>
             )}
 
-            {/* Divider before layer ordering */}
-            <div className="my-1.5 border-t border-gray-100" />
+            {/* Lagerordning submenu */}
+            {hasLayerActions && (
+              <div ref={layerRef} className="relative">
+                <SubMenuTrigger
+                  icon={Layers}
+                  label="Lagerordning"
+                  isOpen={openSub === 'layer'}
+                  iconClass="text-gray-500"
+                  onMouseEnter={() => openSubmenu('layer')}
+                  onMouseLeave={closeSubmenu}
+                  onClick={() => setOpenSub(s => s === 'layer' ? null : 'layer')}
+                />
+                <FlyoutSubmenu
+                  isOpen={openSub === 'layer'}
+                  parentRef={layerRef}
+                  onMouseEnter={() => openSubmenu('layer')}
+                  onMouseLeave={closeSubmenu}
+                >
+                  {onBringToFront && (
+                    <SubMenuItem icon={ArrowUpToLine} label="Överst" iconClass="text-gray-500" onClick={() => { onBringToFront(); onClose(); }} />
+                  )}
+                  {onSendToBack && (
+                    <SubMenuItem icon={ArrowDownToLine} label="Underst" iconClass="text-gray-500" onClick={() => { onSendToBack(); onClose(); }} />
+                  )}
+                  {onBringForward && (
+                    <SubMenuItem icon={ArrowUp} label="Framåt" iconClass="text-gray-500" onClick={() => { onBringForward(); onClose(); }} />
+                  )}
+                  {onSendBackward && (
+                    <SubMenuItem icon={ArrowDown} label="Bakåt" iconClass="text-gray-500" onClick={() => { onSendBackward(); onClose(); }} />
+                  )}
+                </FlyoutSubmenu>
+              </div>
+            )}
 
-            {/* Layer Ordering Section */}
-            <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Layers className="w-3 h-3" />
-              Lagerordning
-            </div>
-
-            <div className="grid grid-cols-2 gap-1 px-2 pb-1">
-              {onBringToFront && (
-                <button
-                  className="px-2 py-1.5 flex items-center gap-2 hover:bg-blue-50 transition-colors text-left rounded"
-                  onClick={() => {
-                    onBringToFront();
-                    onClose();
-                  }}
-                >
-                  <ArrowUpToLine className="w-3.5 h-3.5 text-gray-500" />
-                  <span className="text-xs text-gray-700">Överst</span>
-                </button>
-              )}
-              {onSendToBack && (
-                <button
-                  className="px-2 py-1.5 flex items-center gap-2 hover:bg-blue-50 transition-colors text-left rounded"
-                  onClick={() => {
-                    onSendToBack();
-                    onClose();
-                  }}
-                >
-                  <ArrowDownToLine className="w-3.5 h-3.5 text-gray-500" />
-                  <span className="text-xs text-gray-700">Underst</span>
-                </button>
-              )}
-              {onBringForward && (
-                <button
-                  className="px-2 py-1.5 flex items-center gap-2 hover:bg-blue-50 transition-colors text-left rounded"
-                  onClick={() => {
-                    onBringForward();
-                    onClose();
-                  }}
-                >
-                  <ArrowUp className="w-3.5 h-3.5 text-gray-500" />
-                  <span className="text-xs text-gray-700">Framåt</span>
-                </button>
-              )}
-              {onSendBackward && (
-                <button
-                  className="px-2 py-1.5 flex items-center gap-2 hover:bg-blue-50 transition-colors text-left rounded"
-                  onClick={() => {
-                    onSendBackward();
-                    onClose();
-                  }}
-                >
-                  <ArrowDown className="w-3.5 h-3.5 text-gray-500" />
-                  <span className="text-xs text-gray-700">Bakåt</span>
-                </button>
-              )}
-            </div>
-
-            {/* Divider */}
-            <div className="my-1.5 border-t border-gray-100" />
+            <div className="my-1 border-t border-gray-100" />
           </>
         )}
 
-        {/* Recent Tools Section */}
-        <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-          Senaste verktyg
-        </div>
-
-        {topTools.length > 0 ? (
-          topTools.map((tool, index) => {
-            const Icon = getToolIcon(tool);
-            return (
-              <button
-                key={`${tool}-${index}`}
-                className="w-full px-3 py-2 flex items-center gap-3 hover:bg-blue-50 transition-colors text-left"
-                onClick={() => {
-                  onSelectTool(tool);
-                  onClose();
-                }}
-              >
-                <Icon className="w-4 h-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">{getToolName(tool)}</span>
-                {index === 0 && (
-                  <span className="ml-auto text-[10px] text-blue-500 font-medium">Senast</span>
-                )}
-              </button>
-            );
-          })
-        ) : (
-          <div className="px-3 py-2 text-sm text-gray-400 italic">
-            Inga senaste verktyg
-          </div>
-        )}
-
-        {/* Divider */}
-        <div className="my-1.5 border-t border-gray-100" />
-
-        {/* Quick Actions Section */}
-        <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+        {/* === SNABBÅTGÄRDER === */}
+        <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
           Snabbåtgärder
         </div>
 
-        {/* Text — submenu flyout */}
-        <div className="relative">
-          <button
-            className={`w-full px-3 py-2 flex items-center gap-3 transition-colors text-left ${textMenuOpen ? 'bg-amber-50' : 'hover:bg-amber-50'}`}
-            onMouseEnter={() => setTextMenuOpen(true)}
-            onMouseLeave={() => setTextMenuOpen(false)}
-            onClick={() => setTextMenuOpen(v => !v)}
-          >
-            <Type className="w-4 h-4 text-amber-600" />
-            <span className="text-sm font-medium text-gray-700">Text & anteckningar</span>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-400 ml-auto" />
-          </button>
-
-          {textMenuOpen && (
-            <div
-              className="absolute left-full top-0 ml-1 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200/50 py-1.5 min-w-[190px] z-10"
-              onMouseEnter={() => setTextMenuOpen(true)}
-              onMouseLeave={() => setTextMenuOpen(false)}
+        {/* Senaste verktyg submenu */}
+        {topTools.length > 0 && (
+          <div ref={recentRef} className="relative">
+            <SubMenuTrigger
+              icon={Clock}
+              label="Senaste verktyg"
+              isOpen={openSub === 'recent'}
+              iconClass="text-gray-500"
+              onMouseEnter={() => openSubmenu('recent')}
+              onMouseLeave={closeSubmenu}
+              onClick={() => setOpenSub(s => s === 'recent' ? null : 'recent')}
+            />
+            <FlyoutSubmenu
+              isOpen={openSub === 'recent'}
+              parentRef={recentRef}
+              onMouseEnter={() => openSubmenu('recent')}
+              onMouseLeave={closeSubmenu}
             >
-              <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-                Lägg till
-              </div>
+              {topTools.map((tool, i) => {
+                const Icon = getToolIcon(tool);
+                return (
+                  <SubMenuItem
+                    key={`${tool}-${i}`}
+                    icon={Icon}
+                    label={getToolName(tool)}
+                    iconClass="text-gray-600"
+                    onClick={() => { onSelectTool(tool); onClose(); }}
+                    shortcut={i === 0 ? 'Senast' : undefined}
+                  />
+                );
+              })}
+            </FlyoutSubmenu>
+          </div>
+        )}
+
+        {/* Rita verktyg submenu */}
+        <div ref={drawRef} className="relative">
+          <SubMenuTrigger
+            icon={PenTool}
+            label="Rita verktyg"
+            isOpen={openSub === 'draw'}
+            iconClass="text-indigo-500"
+            onMouseEnter={() => openSubmenu('draw')}
+            onMouseLeave={closeSubmenu}
+            onClick={() => setOpenSub(s => s === 'draw' ? null : 'draw')}
+          />
+          <FlyoutSubmenu
+            isOpen={openSub === 'draw'}
+            parentRef={drawRef}
+            onMouseEnter={() => openSubmenu('draw')}
+            onMouseLeave={closeSubmenu}
+          >
+            {DRAW_TOOLS.map(({ tool, icon, label, iconClass }) => (
               <SubMenuItem
-                icon={Type}
-                label="Fri text"
-                iconClass="text-amber-600"
-                onClick={() => { onSelectTool('text'); onClose(); }}
+                key={tool}
+                icon={icon}
+                label={label}
+                iconClass={iconClass}
+                onClick={() => { onSelectTool(tool); onClose(); }}
               />
-              <SubMenuItem
-                icon={StickyNote}
-                label="Post-it lapp"
-                iconClass="text-amber-400"
-                onClick={() => { onSelectTool('sticky_note'); onClose(); }}
-              />
-              {/* Comment — always visible, disabled if nothing selected */}
-              {onAddComment ? (
-                <button
-                  className="w-full px-3 py-2 flex items-center gap-3 hover:bg-blue-50 transition-colors text-left"
-                  onClick={() => { onAddComment(); onClose(); }}
-                >
-                  <MessageCircle className="w-4 h-4 text-blue-500" />
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-medium text-gray-700">
-                      {isCommentResolved
-                        ? 'Kommentar ✓'
-                        : commentCount && commentCount > 0
-                          ? `Kommentar (${commentCount})`
-                          : 'Kommentar'}
-                    </span>
-                    <span className="text-[10px] text-gray-400">Tråd · markera som klar</span>
-                  </div>
-                </button>
-              ) : (
-                <div className="w-full px-3 py-2 flex items-center gap-3 opacity-40 cursor-default">
-                  <MessageCircle className="w-4 h-4 text-blue-500" />
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-medium text-gray-700">Kommentar</span>
-                    <span className="text-[10px] text-gray-400">Markera ett objekt först</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+            ))}
+          </FlyoutSubmenu>
         </div>
 
-        {/* Importera — submenu flyout */}
-        {hasImportActions && (
-          <div className="relative">
-            <button
-              className={`w-full px-3 py-2 flex items-center gap-3 transition-colors text-left ${importMenuOpen ? 'bg-blue-50' : 'hover:bg-blue-50'}`}
-              onMouseEnter={() => setImportMenuOpen(true)}
-              onMouseLeave={() => setImportMenuOpen(false)}
-              onClick={() => setImportMenuOpen(v => !v)}
-            >
-              <ImagePlus className="w-4 h-4 text-blue-500" />
-              <span className="text-sm font-medium text-gray-700">Importera bild</span>
-              <ChevronRight className="w-3.5 h-3.5 text-gray-400 ml-auto" />
-            </button>
-
-            {/* Flyout submenu */}
-            {importMenuOpen && (
-              <div
-                className="absolute left-full top-0 ml-1 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200/50 py-1.5 min-w-[190px] z-10"
-                onMouseEnter={() => setImportMenuOpen(true)}
-                onMouseLeave={() => setImportMenuOpen(false)}
-              >
-                <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-                  Välj källa
-                </div>
-                {onOpenImageImport && (
-                  <SubMenuItem
-                    icon={ImagePlus}
-                    label="Från dator"
-                    iconClass="text-blue-500"
-                    onClick={() => { onOpenImageImport(); onClose(); }}
-                  />
-                )}
-                {onOpenAIImport && (
-                  <SubMenuItem
-                    icon={Sparkles}
-                    label="AI-tolka ritning"
-                    iconClass="text-purple-500"
-                    onClick={() => { onOpenAIImport(); onClose(); }}
-                  />
-                )}
-                {onOpenPinterestImport && (
-                  <SubMenuItem
-                    icon={PinterestLogo}
-                    label="Pinterest pin"
-                    iconClass="text-[#E60023]"
-                    onClick={() => { onOpenPinterestImport(); onClose(); }}
-                  />
-                )}
+        {/* Lägg till submenu (text, sticky, comment) */}
+        <div ref={addRef} className="relative">
+          <SubMenuTrigger
+            icon={Plus}
+            label="Lägg till"
+            isOpen={openSub === 'add'}
+            iconClass="text-amber-600"
+            onMouseEnter={() => openSubmenu('add')}
+            onMouseLeave={closeSubmenu}
+            onClick={() => setOpenSub(s => s === 'add' ? null : 'add')}
+          />
+          <FlyoutSubmenu
+            isOpen={openSub === 'add'}
+            parentRef={addRef}
+            onMouseEnter={() => openSubmenu('add')}
+            onMouseLeave={closeSubmenu}
+          >
+            <SubMenuItem
+              icon={Type}
+              label="Fri text"
+              iconClass="text-amber-600"
+              onClick={() => { onSelectTool('text'); onClose(); }}
+            />
+            <SubMenuItem
+              icon={StickyNote}
+              label="Post-it lapp"
+              iconClass="text-amber-400"
+              onClick={() => { onSelectTool('sticky_note'); onClose(); }}
+            />
+            {onAddComment ? (
+              <SubMenuItem
+                icon={MessageCircle}
+                label={
+                  isCommentResolved
+                    ? 'Kommentar \u2713'
+                    : commentCount && commentCount > 0
+                      ? `Kommentar (${commentCount})`
+                      : 'Kommentar'
+                }
+                iconClass="text-blue-500"
+                onClick={() => { onAddComment(); onClose(); }}
+              />
+            ) : (
+              <div className="w-full px-3 py-1.5 flex items-center gap-2.5 opacity-40 cursor-default">
+                <MessageCircle className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-sm text-gray-700">Kommentar</span>
               </div>
             )}
+          </FlyoutSubmenu>
+        </div>
+
+        {/* Importera bild submenu */}
+        {hasImportActions && (
+          <div ref={importRef} className="relative">
+            <SubMenuTrigger
+              icon={ImagePlus}
+              label="Importera bild"
+              isOpen={openSub === 'import'}
+              iconClass="text-blue-500"
+              onMouseEnter={() => openSubmenu('import')}
+              onMouseLeave={closeSubmenu}
+              onClick={() => setOpenSub(s => s === 'import' ? null : 'import')}
+            />
+            <FlyoutSubmenu
+              isOpen={openSub === 'import'}
+              parentRef={importRef}
+              onMouseEnter={() => openSubmenu('import')}
+              onMouseLeave={closeSubmenu}
+            >
+              {onOpenImageImport && (
+                <SubMenuItem icon={ImagePlus} label="Från dator" iconClass="text-blue-500" onClick={() => { onOpenImageImport(); onClose(); }} />
+              )}
+              {onOpenAIImport && (
+                <SubMenuItem icon={Sparkles} label="AI-tolka ritning" iconClass="text-purple-500" onClick={() => { onOpenAIImport(); onClose(); }} />
+              )}
+              {onOpenPinterestImport && (
+                <SubMenuItem icon={PinterestLogo} label="Pinterest pin" iconClass="text-[#E60023]" onClick={() => { onOpenPinterestImport(); onClose(); }} />
+              )}
+            </FlyoutSubmenu>
           </div>
         )}
 
         {onOpenTemplates && (
           <button
-            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-blue-50 transition-colors text-left"
-            onClick={() => {
-              onOpenTemplates();
-              onClose();
-            }}
+            className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-blue-50 transition-colors text-left"
+            onClick={() => { onOpenTemplates(); onClose(); }}
           >
-            <Copy className="w-4 h-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">Mallar</span>
+            <Copy className="w-3.5 h-3.5 text-gray-600" />
+            <span className="text-sm text-gray-700">Mallar</span>
           </button>
         )}
       </div>
