@@ -189,12 +189,16 @@ export function useProjectReminders(ctx: ProjectReminderContext | null) {
           .eq("project_id", ctx.projectId),
         supabase
           .from("tasks")
-          .select("id, room_id", { count: "exact" })
+          .select("id, room_id, room_ids")
           .eq("project_id", ctx.projectId),
       ]);
       setRoomCount(roomRes.count ?? 0);
       const tasks = taskRes.data ?? [];
-      setUnlinkedTaskCount(tasks.filter(t => !t.room_id).length);
+      setUnlinkedTaskCount(tasks.filter(t => {
+        const hasRoomId = !!t.room_id;
+        const hasRoomIds = Array.isArray(t.room_ids) && t.room_ids.length > 0;
+        return !hasRoomId && !hasRoomIds;
+      }).length);
     };
     fetchCounts();
   }, [ctx?.projectId, ctx?.taskCount, refreshKey]);
