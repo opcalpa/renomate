@@ -120,6 +120,46 @@ export function AIDocumentImportModal({
   const [linkedRoomIds, setLinkedRoomIds] = useState<Set<string>>(new Set());
   const [linkedTaskIds, setLinkedTaskIds] = useState<Set<string>>(new Set());
   const [linkedPurchaseIds, setLinkedPurchaseIds] = useState<Set<string>>(new Set());
+  const [newRoomName, setNewRoomName] = useState("");
+  const [newTaskName, setNewTaskName] = useState("");
+  const [newPurchaseName, setNewPurchaseName] = useState("");
+  const [creatingSub, setCreatingSub] = useState<"room" | "task" | "purchase" | null>(null);
+
+  const handleCreateRoom = async () => {
+    if (!newRoomName.trim()) return;
+    setCreatingSub("room");
+    const { data, error } = await supabase.from("rooms").insert({ project_id: projectId, name: newRoomName.trim() }).select("id, name").single();
+    if (!error && data) {
+      setExistingRooms(prev => [...prev, data]);
+      setLinkedRoomIds(prev => new Set(prev).add(data.id));
+      setNewRoomName("");
+    }
+    setCreatingSub(null);
+  };
+
+  const handleCreateTask = async () => {
+    if (!newTaskName.trim()) return;
+    setCreatingSub("task");
+    const { data, error } = await supabase.from("tasks").insert({ project_id: projectId, title: newTaskName.trim(), status: "to_do" }).select("id, title").single();
+    if (!error && data) {
+      setExistingTasks(prev => [...prev, data]);
+      setLinkedTaskIds(prev => new Set(prev).add(data.id));
+      setNewTaskName("");
+    }
+    setCreatingSub(null);
+  };
+
+  const handleCreatePurchase = async () => {
+    if (!newPurchaseName.trim()) return;
+    setCreatingSub("purchase");
+    const { data, error } = await supabase.from("materials").insert({ project_id: projectId, name: newPurchaseName.trim(), status: "planned" }).select("id, name").single();
+    if (!error && data) {
+      setExistingPurchases(prev => [...prev, data]);
+      setLinkedPurchaseIds(prev => new Set(prev).add(data.id));
+      setNewPurchaseName("");
+    }
+    setCreatingSub(null);
+  };
 
   // Zustand store
   const { shapes, currentPlanId, addShape } = useFloorMapStore();
@@ -245,7 +285,8 @@ export function AIDocumentImportModal({
     const selectedRooms = rooms.filter((r) => r.selected);
     const selectedTasks = tasks.filter((t) => t.selected);
 
-    if (selectedRooms.length === 0 && selectedTasks.length === 0) {
+    const hasManualLinks = linkedRoomIds.size > 0 || linkedTaskIds.size > 0 || linkedPurchaseIds.size > 0;
+    if (selectedRooms.length === 0 && selectedTasks.length === 0 && !hasManualLinks) {
       toast({
         title: t('aiDocumentImport.nothingSelected'),
         description: t('aiDocumentImport.selectAtLeastOne'),
@@ -369,6 +410,23 @@ export function AIDocumentImportModal({
           if (taskError) {
             console.error('Error creating task:', taskError);
           }
+        }
+      }
+
+      // 3. Save manual file links (room, task, purchase connections)
+      if (file && (linkedRoomIds.size > 0 || linkedTaskIds.size > 0 || linkedPurchaseIds.size > 0)) {
+        const linkInserts: Array<Record<string, unknown>> = [];
+        for (const roomId of linkedRoomIds) {
+          linkInserts.push({ project_id: projectId, file_path: file.path, file_name: file.name, room_id: roomId });
+        }
+        for (const taskId of linkedTaskIds) {
+          linkInserts.push({ project_id: projectId, file_path: file.path, file_name: file.name, task_id: taskId });
+        }
+        for (const materialId of linkedPurchaseIds) {
+          linkInserts.push({ project_id: projectId, file_path: file.path, file_name: file.name, material_id: materialId });
+        }
+        if (linkInserts.length > 0) {
+          await supabase.from("task_file_links").insert(linkInserts);
         }
       }
 
@@ -547,6 +605,18 @@ export function AIDocumentImportModal({
                         </button>
                       ))}
                     </div>
+                    <div className="flex gap-1.5">
+                      <Input
+                        value={newRoomName}
+                        onChange={(e) => setNewRoomName(e.target.value)}
+                        placeholder={t('aiDocumentImport.createNewRoom', 'Create new room...')}
+                        className="h-7 text-xs"
+                        onKeyDown={(e) => e.key === "Enter" && handleCreateRoom()}
+                      />
+                      <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCreateRoom} disabled={creatingSub === "room" || !newRoomName.trim()}>
+                        {creatingSub === "room" ? <Loader2 className="h-3 w-3 animate-spin" /> : "+"}
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -671,6 +741,18 @@ export function AIDocumentImportModal({
                         </button>
                       ))}
                     </div>
+                    <div className="flex gap-1.5">
+                      <Input
+                        value={newTaskName}
+                        onChange={(e) => setNewTaskName(e.target.value)}
+                        placeholder={t('aiDocumentImport.createNewTask', 'Create new task...')}
+                        className="h-7 text-xs"
+                        onKeyDown={(e) => e.key === "Enter" && handleCreateTask()}
+                      />
+                      <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCreateTask} disabled={creatingSub === "task" || !newTaskName.trim()}>
+                        {creatingSub === "task" ? <Loader2 className="h-3 w-3 animate-spin" /> : "+"}
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -700,6 +782,18 @@ export function AIDocumentImportModal({
                     {existingPurchases.length === 0 && (
                       <p className="text-xs text-muted-foreground">{t('aiDocumentImport.noPurchases', 'No purchases yet')}</p>
                     )}
+                  </div>
+                  <div className="flex gap-1.5 mt-2">
+                    <Input
+                      value={newPurchaseName}
+                      onChange={(e) => setNewPurchaseName(e.target.value)}
+                      placeholder={t('aiDocumentImport.createNewPurchase', 'Create new purchase...')}
+                      className="h-7 text-xs"
+                      onKeyDown={(e) => e.key === "Enter" && handleCreatePurchase()}
+                    />
+                    <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCreatePurchase} disabled={creatingSub === "purchase" || !newPurchaseName.trim()}>
+                      {creatingSub === "purchase" ? <Loader2 className="h-3 w-3 animate-spin" /> : "+"}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
