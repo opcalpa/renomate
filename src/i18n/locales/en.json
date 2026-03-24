@@ -241,6 +241,14 @@
     "stat2": "Active companies",
     "stat3": "Satisfaction rate"
   },
+  "startProject": {
+    "title": "How do you want to proceed?",
+    "description": "Choose how to move forward with your renovation project.",
+    "selfManage": "Manage it yourself",
+    "selfManageDesc": "Start the project and invite contractors to collaborate on tasks, timeline and budget.",
+    "sendRfq": "Get quotes first",
+    "sendRfqDesc": "Share your renovation plan with builders and compare price estimates before starting."
+  },
   "guest": {
     "loginToActivate": "Sign in to activate your project",
     "loginToActivateDesc": "Create a free account to activate your project and start collaborating with your team.",

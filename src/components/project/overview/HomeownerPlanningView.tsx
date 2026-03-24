@@ -27,6 +27,7 @@ import { formatCurrency } from "@/lib/currency";
 import { PlanningRoomList } from "./PlanningRoomList";
 import { ShareRfqDialog } from "./ShareRfqDialog";
 import { GuestLoginPrompt } from "@/components/guest/GuestLoginPrompt";
+import { StartProjectModal } from "./StartProjectModal";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { ImportQuotePopover, type ExternalQuote } from "./ImportQuotePopover";
 import { ExternalQuoteCell, type QuoteAssignment } from "./ExternalQuoteCell";
@@ -116,6 +117,7 @@ export function HomeownerPlanningView({
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
   const [loginPromptAction, setLoginPromptAction] = useState<"activate" | "share_rfq" | null>(null);
+  const [showStartModal, setShowStartModal] = useState(false);
 
   // Inline add
   const [isAdding, setIsAdding] = useState(false);
@@ -413,16 +415,16 @@ export function HomeownerPlanningView({
               </div>
               {!contributorMode && (
               <div className="flex flex-wrap items-center gap-2">
-                {totalTasks >= 1 && onActivate && (
+                {totalTasks >= 1 && (
                   <Button
                     size="sm"
                     variant="default"
                     className="gap-1.5"
-                    onClick={() => isGuest ? setLoginPromptAction("activate") : handleActivate()}
+                    onClick={() => isGuest ? setLoginPromptAction("activate") : setShowStartModal(true)}
                     disabled={activating}
                   >
                     <Play className="h-3.5 w-3.5" />
-                    {t("homeownerPlanning.activateProject", "Activate project")}
+                    {t("homeownerPlanning.activateProject", "Start project")}
                   </Button>
                 )}
                 <ImportQuotePopover
@@ -431,12 +433,6 @@ export function HomeownerPlanningView({
                   currency={currency}
                   onQuotesChange={fetchExternalQuotes}
                 />
-                {totalTasks >= 1 && rooms.length >= 1 && (
-                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => isGuest ? setLoginPromptAction("share_rfq") : setShareDialogOpen(true)}>
-                    <Send className="h-3.5 w-3.5" />
-                    {t("homeownerPlanning.shareRfq", "Share as quote request")}
-                  </Button>
-                )}
               </div>
               )}
             </div>
@@ -773,6 +769,14 @@ export function HomeownerPlanningView({
         projectId={projectId}
         projectName={projectName}
         projectAddress={projectAddress}
+      />
+
+      {/* Start project modal — choose path */}
+      <StartProjectModal
+        open={showStartModal}
+        onOpenChange={setShowStartModal}
+        onStartSelf={handleActivate}
+        onSendRfq={() => setShareDialogOpen(true)}
       />
 
       {/* Guest login prompt */}

@@ -241,6 +241,14 @@
     "stat2": "Aktiva företag",
     "stat3": "Nöjdhetsgrad"
   },
+  "startProject": {
+    "title": "Hur vill du gå vidare?",
+    "description": "Välj hur du vill fortsätta med ditt renoveringsprojekt.",
+    "selfManage": "Projektled själv",
+    "selfManageDesc": "Påbörja projektet och bjud in hantverkare att samarbeta med uppgifter, tidslinje och budget.",
+    "sendRfq": "Få offerter först",
+    "sendRfqDesc": "Dela din renoveringsplan med byggare och jämför prisuppskattningar innan du startar."
+  },
   "guest": {
     "loginToActivate": "Logga in för att aktivera ditt projekt",
     "loginToActivateDesc": "Skapa ett gratis konto för att aktivera ditt projekt och börja samarbeta med ditt team.",
