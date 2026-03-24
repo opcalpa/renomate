@@ -44,10 +44,20 @@ export interface ExtractedTask {
 /**
  * Result from AI document analysis
  */
+export interface QuoteMetadata {
+  vendorName: string | null;
+  totalAmount: number | null;
+  vatAmount: number | null;
+  quoteDate: string | null;
+  quoteNumber: string | null;
+  paymentTerms: string | null;
+}
+
 export interface AIDocumentExtractionResult {
   rooms: ExtractedRoom[];
   tasks: ExtractedTask[];
   documentSummary: string;
+  quoteMetadata?: QuoteMetadata | null;
 }
 
 /**

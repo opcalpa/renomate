@@ -39,6 +39,7 @@ import {
   X,
   FileText,
   Wallet,
+  Building2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useFloorMapStore } from '@/components/floormap/store';
@@ -155,7 +156,12 @@ export function AIDocumentImportModal({
     if (!newPurchaseName.trim() || creatingSub) return;
     setCreatingSub("purchase");
     const profileId = await getProfileId();
-    const { data, error } = await supabase.from("materials").insert({ project_id: projectId, name: newPurchaseName.trim(), status: "planned", created_by_user_id: profileId }).select("id, name").single();
+    const amount = extractionResult?.quoteMetadata?.totalAmount || null;
+    const { data, error } = await supabase.from("materials").insert({
+      project_id: projectId, name: newPurchaseName.trim(), status: "planned",
+      created_by_user_id: profileId,
+      ...(amount ? { total_cost: amount } : {}),
+    }).select("id, name").single();
     if (error) { toast({ variant: "destructive", description: error.message }); }
     else if (data) { setExistingPurchases(prev => [...prev, data]); setLinkedPurchaseIds(prev => new Set(prev).add(data.id)); setNewPurchaseName(""); }
     setCreatingSub(null);
@@ -416,15 +422,22 @@ export function AIDocumentImportModal({
       // 3. Save manual file links (room, task, purchase connections)
       if (file && (linkedRoomIds.size > 0 || linkedTaskIds.size > 0 || linkedPurchaseIds.size > 0)) {
         const fileType = file.type?.includes("pdf") ? "document" : file.type?.startsWith("image/") ? "image" : "other";
+        const qm = extractionResult?.quoteMetadata;
+        const sharedMeta = {
+          project_id: projectId, file_path: file.path, file_name: file.name, file_type: fileType,
+          ...(qm?.vendorName ? { vendor_name: qm.vendorName } : {}),
+          ...(qm?.totalAmount ? { invoice_amount: qm.totalAmount } : {}),
+          ...(qm?.quoteDate ? { invoice_date: qm.quoteDate } : {}),
+        };
         const linkInserts: Array<Record<string, unknown>> = [];
         for (const roomId of linkedRoomIds) {
-          linkInserts.push({ project_id: projectId, file_path: file.path, file_name: file.name, file_type: fileType, room_id: roomId });
+          linkInserts.push({ ...sharedMeta, room_id: roomId });
         }
         for (const taskId of linkedTaskIds) {
-          linkInserts.push({ project_id: projectId, file_path: file.path, file_name: file.name, file_type: fileType, task_id: taskId });
+          linkInserts.push({ ...sharedMeta, task_id: taskId });
         }
         for (const materialId of linkedPurchaseIds) {
-          linkInserts.push({ project_id: projectId, file_path: file.path, file_name: file.name, file_type: fileType, material_id: materialId });
+          linkInserts.push({ ...sharedMeta, material_id: materialId });
         }
         if (linkInserts.length > 0) {
           await supabase.from("task_file_links").insert(linkInserts);
@@ -484,7 +497,29 @@ export function AIDocumentImportModal({
                 <CardContent className="pt-4">
                   <div className="flex gap-2 items-start">
                     <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-muted-foreground">{extractionResult.documentSummary}</p>
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground">{extractionResult.documentSummary}</p>
+                      {extractionResult.quoteMetadata && (
+                        <div className="flex flex-wrap gap-3 mt-2">
+                          {extractionResult.quoteMetadata.vendorName && (
+                            <Badge variant="outline" className="gap-1">
+                              <Building2 className="h-3 w-3" />
+                              {extractionResult.quoteMetadata.vendorName}
+                            </Badge>
+                          )}
+                          {extractionResult.quoteMetadata.totalAmount && (
+                            <Badge variant="outline" className="gap-1 font-semibold">
+                              {extractionResult.quoteMetadata.totalAmount.toLocaleString("sv-SE")} kr
+                            </Badge>
+                          )}
+                          {extractionResult.quoteMetadata.quoteDate && (
+                            <Badge variant="outline" className="gap-1">
+                              {extractionResult.quoteMetadata.quoteDate}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -510,7 +545,7 @@ export function AIDocumentImportModal({
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 min-h-0 pt-0 overflow-hidden">
+                <CardContent className="flex-1 min-h-0 pt-0 overflow-y-auto">
                   <ScrollArea className="h-full">
                     <div className="space-y-2 pr-4">
                       {rooms.length === 0 ? (
@@ -640,7 +675,7 @@ export function AIDocumentImportModal({
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 min-h-0 pt-0 overflow-hidden">
+                <CardContent className="flex-1 min-h-0 pt-0 overflow-y-auto">
                   <ScrollArea className="h-full">
                     <div className="space-y-2 pr-4">
                       {tasks.length === 0 ? (
