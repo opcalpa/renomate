@@ -354,11 +354,6 @@ const OverviewTab = ({
         </div>
       )}
 
-      {/* Contextual tips — shown inline when not in planning phase */}
-      {!isGuest && !isPlanningContributor && !isPlanning && tips.length > 0 && (
-        <TipList tips={tips} onDismiss={dismiss} />
-      )}
-
       {/* Dashboard toolbar + pulse cards — hidden during pure planning phase */}
       {!isPlanning && (
         <>
@@ -411,24 +406,26 @@ const OverviewTab = ({
                 <ShoppingCart className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">{t("overview.addPurchase")}</span>
               </Button>
-              {/* Reminders popover — compact button */}
-              {reminders.length > 0 && (
+              {/* Reminders + tips popover — compact button */}
+              {(reminders.length > 0 || tips.length > 0) && (
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-1.5">
                       <Bell className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">{t("reminders.sectionTitle", "Reminders")}</span>
                       <span className="h-4 min-w-4 px-1 rounded-full bg-blue-500 text-white text-[10px] font-medium flex items-center justify-center">
-                        {reminders.length}
+                        {reminders.length + tips.length}
                       </span>
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent align="end" className="w-80 p-3">
+                  <PopoverContent align="end" className="w-80 p-3 max-h-[400px] overflow-y-auto">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-medium">{t("reminders.sectionTitle", "Reminders")}</p>
-                      <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground" onClick={dismissAllReminders}>
-                        {t("reminders.dismissAll", "Clear all")}
-                      </Button>
+                      {reminders.length > 0 && (
+                        <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground" onClick={dismissAllReminders}>
+                          {t("reminders.dismissAll", "Clear all")}
+                        </Button>
+                      )}
                     </div>
                     <div className="space-y-2">
                       {reminders.map((r) => (
@@ -439,6 +436,18 @@ const OverviewTab = ({
                             <p className="text-xs text-muted-foreground">{t(r.bodyKey)}</p>
                           </div>
                           <button onClick={() => dismissReminder(r.id)} className="text-muted-foreground hover:text-foreground shrink-0">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                      {tips.map((tip) => (
+                        <div key={tip.id} className="flex items-start gap-2 text-sm p-2 rounded-md bg-blue-50/50 dark:bg-blue-950/20">
+                          <Info className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-xs">{t(tip.titleKey)}</p>
+                            <p className="text-xs text-muted-foreground">{t(tip.bodyKey)}</p>
+                          </div>
+                          <button onClick={() => dismiss(tip.id)} className="text-muted-foreground hover:text-foreground shrink-0">
                             <X className="h-3 w-3" />
                           </button>
                         </div>
