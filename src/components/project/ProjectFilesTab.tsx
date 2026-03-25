@@ -1327,7 +1327,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                     {t('common.download', 'Ladda ner')}
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => runSmartTolk(file)}>
+                                  <DropdownMenuItem onSelect={() => runSmartTolk(file)}>
                                     <Sparkles className="h-4 w-4 mr-2" />
                                     {t('files.smartTolk', 'Smart tolk')}
                                   </DropdownMenuItem>
@@ -1700,7 +1700,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                     {t('common.download', 'Ladda ner')}
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => runSmartTolk(sf)}>
+                                  <DropdownMenuItem onSelect={() => runSmartTolk(sf)}>
                                     <Sparkles className="h-4 w-4 mr-2" />
                                     {t('files.smartTolk', 'Smart tolk')}
                                   </DropdownMenuItem>
@@ -1957,7 +1957,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                               {t('common.download', 'Ladda ner')}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => runSmartTolk(file)}>
+                            <DropdownMenuItem onSelect={() => runSmartTolk(file)}>
                               <Sparkles className="h-4 w-4 mr-2" />
                               {t('files.smartTolk', 'Smart tolk')}
                             </DropdownMenuItem>
