@@ -40,6 +40,10 @@ import {
   FileText,
   Wallet,
   Building2,
+  ZoomIn,
+  ZoomOut,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useFloorMapStore } from '@/components/floormap/store';
@@ -113,6 +117,8 @@ export function AIDocumentImportModal({
   const [importing, setImporting] = useState(false);
   const [editingRoomIndex, setEditingRoomIndex] = useState<number | null>(null);
   const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null);
+  const [previewExpanded, setPreviewExpanded] = useState(true);
+  const [previewZoom, setPreviewZoom] = useState(100);
 
   // Manual linking state
   const [existingRooms, setExistingRooms] = useState<{ id: string; name: string }[]>([]);
@@ -523,6 +529,55 @@ export function AIDocumentImportModal({
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {/* Document Preview */}
+            {file && (
+              <div className="flex-shrink-0 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setPreviewExpanded(v => !v)}
+                  className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-2"
+                >
+                  {previewExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  {t('aiDocumentImport.documentPreview', 'Dokumentförhandsvisning')}
+                  {previewExpanded && (
+                    <span className="flex items-center gap-1 ml-2">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPreviewZoom(z => Math.max(50, z - 25)); }} className="p-0.5 hover:bg-muted rounded">
+                        <ZoomOut className="h-3 w-3" />
+                      </button>
+                      <span className="text-xs tabular-nums min-w-[32px] text-center">{previewZoom}%</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPreviewZoom(z => Math.min(200, z + 25)); }} className="p-0.5 hover:bg-muted rounded">
+                        <ZoomIn className="h-3 w-3" />
+                      </button>
+                    </span>
+                  )}
+                </button>
+                {previewExpanded && (
+                  <div className="border rounded-lg bg-muted/30 overflow-auto" style={{ maxHeight: '35vh' }}>
+                    {file.type?.includes('pdf') ? (
+                      <iframe
+                        src={getFilePublicUrl(file.path)}
+                        title={file.name}
+                        className="w-full border-0"
+                        style={{ height: '35vh', transform: `scale(${previewZoom / 100})`, transformOrigin: 'top left', width: `${100 / (previewZoom / 100)}%` }}
+                      />
+                    ) : file.type?.startsWith('image/') ? (
+                      <img
+                        src={getFilePublicUrl(file.path)}
+                        alt={file.name}
+                        className="max-w-full h-auto mx-auto"
+                        style={{ transform: `scale(${previewZoom / 100})`, transformOrigin: 'top center', maxHeight: '35vh' }}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
+                        <FileText className="h-8 w-8 mr-2" />
+                        {file.name}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Three-column layout */}
