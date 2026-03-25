@@ -450,8 +450,12 @@ export function AIDocumentImportModal({
             priority: 'medium',
             created_by_user_id: profileId,
             cost_center: costCenter,
-            estimated_cost: task.estimatedCost || null,
+            task_cost_type: 'subcontractor',
+            subcontractor_cost: task.estimatedCost || null,
             material_estimate: task.materialCost || null,
+            budget: (task.estimatedCost || 0) + (task.materialCost || 0) > 0
+              ? (task.estimatedCost || 0) + (task.materialCost || 0)
+              : null,
             rot_eligible: task.rotEligible || false,
             rot_amount: task.rotAmount || null,
           });

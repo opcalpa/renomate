@@ -401,8 +401,12 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
           priority: 'medium',
           created_by_user_id: profile.id,
           cost_center: costCenter,
-          estimated_cost: estimatedCost,
+          task_cost_type: 'subcontractor',
+          subcontractor_cost: estimatedCost,
           material_estimate: materialEstimateExVat,
+          budget: estimatedCost != null || materialEstimateExVat != null
+            ? (estimatedCost || 0) + (materialEstimateExVat || 0)
+            : null,
           rot_eligible: task.rotEligible || false,
           rot_amount: task.rotAmount || null,
         }).select('id').single();
