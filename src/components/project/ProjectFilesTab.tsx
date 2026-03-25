@@ -1279,43 +1279,43 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                   </p>
                 </div>
               ) : (
-              <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0 relative">
-                {/* Batch action bar — floating overlay above table */}
-                {selectedFiles.size > 0 && (
-                  <div className="absolute top-1 left-10 z-20 flex items-center gap-2 px-3 py-1.5 bg-background border shadow-sm rounded-lg">
-                    <span className="text-xs font-medium tabular-nums">
-                      {selectedFiles.size} {t('files.selected', 'valda')}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 gap-1.5 text-xs"
-                      disabled={batchProcessing}
-                      onClick={handleBatchSmartTolk}
-                    >
-                      {batchProcessing ? (
-                        <>
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          {batchProgress.done}/{batchProgress.total}
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-3 w-3" />
-                          {t('files.smartTolk', 'Smart tolk')} ({selectedFiles.size})
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 text-xs text-muted-foreground"
-                      onClick={() => setSelectedFiles(new Set())}
-                    >
-                      {t('common.cancel', 'Avbryt')}
-                    </Button>
-                  </div>
-                )}
+              {/* Batch action bar — above table, not inside overflow container */}
+              {selectedFiles.size > 0 && (
+                <div className="sticky top-0 z-30 flex items-center gap-2 px-3 py-1.5 mb-1 bg-background border shadow-sm rounded-lg w-fit">
+                  <span className="text-xs font-medium tabular-nums">
+                    {selectedFiles.size} {t('files.selected', 'valda')}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 gap-1.5 text-xs"
+                    disabled={batchProcessing}
+                    onClick={handleBatchSmartTolk}
+                  >
+                    {batchProcessing ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        {batchProgress.done}/{batchProgress.total}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3 w-3" />
+                        {t('files.smartTolk', 'Smart tolk')} ({selectedFiles.size})
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs text-muted-foreground"
+                    onClick={() => setSelectedFiles(new Set())}
+                  >
+                    {t('common.cancel', 'Avbryt')}
+                  </Button>
+                </div>
+              )}
 
+              <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0 relative">
               <Table className={compactRows ? 'text-xs' : ''}>
                 <TableHeader>
                   <TableRow className={compactRows ? '[&>th]:py-1.5' : ''}>
