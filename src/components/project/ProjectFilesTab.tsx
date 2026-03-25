@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, Fragment } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +43,7 @@ import {
   MessageSquare,
   FolderPlus,
   Folder,
+  ChevronLeft,
   ChevronRight,
   Eye,
   ZoomIn,
@@ -809,6 +810,42 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     setImageZoom(100);
     setImageRotation(0);
   };
+
+  // Flat list of all previewable files (expanded folder files + top-level files)
+  const allPreviewableFiles = useMemo(() => {
+    const result: ProjectFile[] = [];
+    for (const folder of filteredFolders) {
+      if (expandedFolders.has(folder.path)) {
+        const subFiles = folderContents.get(folder.path) || [];
+        result.push(...subFiles);
+      }
+    }
+    result.push(...filteredFiles);
+    return result;
+  }, [filteredFolders, filteredFiles, expandedFolders, folderContents]);
+
+  const previewFileIndex = previewFile ? allPreviewableFiles.findIndex(f => f.path === previewFile.path) : -1;
+  const hasPrevFile = previewFileIndex > 0;
+  const hasNextFile = previewFileIndex >= 0 && previewFileIndex < allPreviewableFiles.length - 1;
+
+  const goToPrevFile = useCallback(() => {
+    if (hasPrevFile) handlePreview(allPreviewableFiles[previewFileIndex - 1]);
+  }, [hasPrevFile, previewFileIndex, allPreviewableFiles]);
+
+  const goToNextFile = useCallback(() => {
+    if (hasNextFile) handlePreview(allPreviewableFiles[previewFileIndex + 1]);
+  }, [hasNextFile, previewFileIndex, allPreviewableFiles]);
+
+  // Keyboard navigation in preview (left/right arrows)
+  useEffect(() => {
+    if (!previewFile) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); goToPrevFile(); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); goToNextFile(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [previewFile, goToPrevFile, goToNextFile]);
 
   const handleDelete = async () => {
     if (!fileToDelete) return;
@@ -2073,8 +2110,30 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
               </div>
             </div>
 
+            {/* Prev/Next navigation arrows */}
+            {hasPrevFile && (
+              <button
+                type="button"
+                onClick={goToPrevFile}
+                className="absolute left-3 top-1/2 -translate-y-1/2 z-20 bg-background/80 hover:bg-background backdrop-blur rounded-full p-2 shadow-lg border transition-colors"
+                title={t('files.previousFile', 'Föregående fil')}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+            )}
+            {hasNextFile && (
+              <button
+                type="button"
+                onClick={goToNextFile}
+                className="absolute right-3 top-1/2 -translate-y-1/2 z-20 bg-background/80 hover:bg-background backdrop-blur rounded-full p-2 shadow-lg border transition-colors"
+                title={t('files.nextFile', 'Nästa fil')}
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            )}
+
             {/* Content container */}
-            <div className="pt-16 pb-0 px-0 h-[calc(100vh-4rem)] overflow-auto bg-muted/30">
+            <div className="pt-16 pb-8 px-0 h-[calc(100vh-4rem)] overflow-auto bg-muted/30">
               <div className="flex items-center justify-center min-h-full">
                 {previewUrl && previewFile?.type?.includes('pdf') ? (
                   <iframe
@@ -2097,12 +2156,18 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
               </div>
             </div>
 
-            {/* Footer with info */}
+            {/* Footer with navigation info */}
             <div className="absolute bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t p-2">
               <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+                {allPreviewableFiles.length > 1 && (
+                  <>
+                    <span>{previewFileIndex + 1} / {allPreviewableFiles.length}</span>
+                    <span>•</span>
+                    <span>← → {t('files.navigateFiles', 'bläddra mellan filer')}</span>
+                    <span>•</span>
+                  </>
+                )}
                 <span>{t('files.scrollToPan')}</span>
-                <span>•</span>
-                <span>{t('files.useZoomControls')}</span>
               </div>
             </div>
           </div>
