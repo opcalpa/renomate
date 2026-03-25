@@ -498,12 +498,11 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
       }
     }
 
-    // For floor plans: offer import
+    // For floor plans: offer canvas import
     if (result.type === 'floor_plan' && result.suggested_action === 'import_to_canvas') {
       setFloorPlanImportFile(file);
-    }
-    // For docs: offer task extraction
-    if (isDoc && result.suggested_action === 'extract_tasks') {
+    } else {
+      // For all other file types: open linking modal (task/purchase/room)
       setDocumentImportFile(file);
     }
 
