@@ -533,6 +533,7 @@ export function HomeownerPlanningView({
                   quotes={externalQuotes}
                   currency={currency}
                   onQuotesChange={fetchExternalQuotes}
+                  onSmartImport={() => setSmartImportOpen(true)}
                 />
               )}
               {/* Column toggle */}
@@ -789,26 +790,15 @@ export function HomeownerPlanningView({
               </Button>
             </div>
           ) : (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => setSmartImportOpen(true)}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                {t("homeownerPlanning.smartImport", "Smart import")}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => setIsAdding(true)}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {t("homeownerPlanning.addTask", "Add task")}
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setIsAdding(true)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t("homeownerPlanning.addTask", "Add task")}
+            </Button>
           )}
         </CardContent>
       </Card>

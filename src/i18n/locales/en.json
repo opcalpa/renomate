@@ -4392,7 +4392,11 @@
     "totalLabel": "Total",
     "allocatedToTask": "Allocated to this task",
     "changeQuote": "Change",
-    "noOtherQuotes": "No other quotes"
+    "noOtherQuotes": "No other quotes",
+    "smartPromptTitle": "Let AI create tasks and rooms?",
+    "smartPromptDesc": "AI can read the document and automatically create tasks, rooms, and pricing.",
+    "smartImportYes": "Yes, create tasks",
+    "smartImportNo": "Just attach"
   },
   "inviteCustomerPlanning": {
     "button": "Invite customer",

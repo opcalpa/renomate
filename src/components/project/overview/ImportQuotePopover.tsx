@@ -43,6 +43,8 @@ interface ImportQuotePopoverProps {
   quotes: ExternalQuote[];
   currency?: string | null;
   onQuotesChange: () => void;
+  /** Called when user chooses "smart import" — parent opens PlanningSmartImportDialog with the file */
+  onSmartImport?: (file: File) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -113,6 +115,7 @@ export function ImportQuotePopover({
   quotes,
   currency,
   onQuotesChange,
+  onSmartImport,
 }: ImportQuotePopoverProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -127,6 +130,7 @@ export function ImportQuotePopover({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [showSmartPrompt, setShowSmartPrompt] = useState(false);
 
   const resetForm = useCallback(() => {
     setBuilderName("");
@@ -134,6 +138,7 @@ export function ImportQuotePopover({
     setPendingFile(null);
     setAdding(false);
     setAnalyzing(false);
+    setShowSmartPrompt(false);
   }, []);
 
   // ---- File selected → AI extract ----
@@ -143,6 +148,12 @@ export function ImportQuotePopover({
       return;
     }
     setPendingFile(file);
+
+    // For documents (PDF, DOCX), offer smart import option
+    const isDocument = file.type === 'application/pdf' || file.name.endsWith('.docx') || file.name.endsWith('.doc') || file.name.endsWith('.txt');
+    if (isDocument && onSmartImport) {
+      setShowSmartPrompt(true);
+    }
 
     const isImage = file.type.startsWith("image/");
     if (isImage) {
@@ -387,6 +398,41 @@ export function ImportQuotePopover({
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Sparkles className="h-3 w-3 animate-pulse text-primary" />
                   {t("externalQuotes.analyzing", "Reading quote...")}
+                </div>
+              )}
+              {/* Smart import prompt — shown after document (PDF/DOCX) selected */}
+              {showSmartPrompt && pendingFile && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+                  <p className="text-xs font-medium">
+                    {t("externalQuotes.smartPromptTitle", "Vill du att AI skapar arbeten och rum?")}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {t("externalQuotes.smartPromptDesc", "AI kan läsa dokumentet och automatiskt skapa arbetsuppgifter, rum och prisuppgifter.")}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="flex-1 h-7 text-xs gap-1"
+                      onClick={() => {
+                        setOpen(false);
+                        setShowSmartPrompt(false);
+                        if (onSmartImport && pendingFile) onSmartImport(pendingFile);
+                        resetForm();
+                      }}
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      {t("externalQuotes.smartImportYes", "Ja, skapa arbeten")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 h-7 text-xs"
+                      onClick={() => setShowSmartPrompt(false)}
+                    >
+                      {t("externalQuotes.smartImportNo", "Bara bifoga")}
+                    </Button>
+                  </div>
                 </div>
               )}
               <div className="flex gap-2">

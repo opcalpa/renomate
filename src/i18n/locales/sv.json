@@ -4389,7 +4389,11 @@
     "totalLabel": "Totalt",
     "allocatedToTask": "Tilldelat denna uppgift",
     "changeQuote": "Ändra",
-    "noOtherQuotes": "Inga andra offerter"
+    "noOtherQuotes": "Inga andra offerter",
+    "smartPromptTitle": "Vill du att AI skapar arbeten och rum?",
+    "smartPromptDesc": "AI kan läsa dokumentet och automatiskt skapa arbetsuppgifter, rum och prisuppgifter.",
+    "smartImportYes": "Ja, skapa arbeten",
+    "smartImportNo": "Bara bifoga"
   },
   "inviteCustomerPlanning": {
     "button": "Bjud in kund",
