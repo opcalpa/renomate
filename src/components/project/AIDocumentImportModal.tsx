@@ -559,14 +559,14 @@ export function AIDocumentImportModal({
                   <div className="border rounded-lg bg-muted/30 overflow-auto" style={{ maxHeight: '35vh' }}>
                     {file.type?.includes('pdf') ? (
                       <iframe
-                        src={getFilePublicUrl(file.path)}
+                        src={`${getFilePublicUrl(file.path)}#navpanes=0&scrollbar=1&view=FitH`}
                         title={file.name}
                         className="w-full border-0"
                         style={{ height: '35vh', transform: `scale(${previewZoom / 100})`, transformOrigin: 'top left', width: `${100 / (previewZoom / 100)}%` }}
                       />
                     ) : file.type?.startsWith('image/') ? (
                       <img
-                        src={getFilePublicUrl(file.path)}
+                        src={`${getFilePublicUrl(file.path)}#navpanes=0&scrollbar=1&view=FitH`}
                         alt={file.name}
                         className="max-w-full h-auto mx-auto"
                         style={{ transform: `scale(${previewZoom / 100})`, transformOrigin: 'top center', maxHeight: '35vh' }}

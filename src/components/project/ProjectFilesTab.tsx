@@ -2213,7 +2213,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
               <div className="flex items-center justify-center min-h-full">
                 {previewUrl && previewFile?.type?.includes('pdf') ? (
                   <iframe
-                    src={previewUrl}
+                    src={`${previewUrl}#navpanes=0&scrollbar=1&view=FitH`}
                     title={previewFile?.name}
                     className="w-full h-full border-0 rounded"
                     style={{ minHeight: 'calc(100vh - 6rem)' }}
