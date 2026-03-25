@@ -666,10 +666,14 @@ export function PlanningSmartImportDialog({
   const formatCost = (amount: number, sourceIsIncVat: boolean) =>
     formatCostNum(amount, sourceIsIncVat, showIncVat).toLocaleString("sv-SE");
 
+  // Block closing while extracting or importing
+  const isBusy = extracting || step === "importing";
+
   return (
     <Dialog
       open={open}
       onOpenChange={(o) => {
+        if (!o && isBusy) return; // Don't close during active work
         if (!o && uploadedFile) {
           supabase.storage
             .from("project-files")
@@ -679,7 +683,11 @@ export function PlanningSmartImportDialog({
         if (!o) resetState();
       }}
     >
-      <DialogContent className="!max-w-6xl w-[calc(100%-2rem)] max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent
+        className="!max-w-6xl w-[calc(100%-2rem)] max-h-[90vh] flex flex-col overflow-hidden"
+        onPointerDownOutside={(e) => { if (isBusy) e.preventDefault(); }}
+        onEscapeKeyDown={(e) => { if (isBusy) e.preventDefault(); }}
+      >
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />

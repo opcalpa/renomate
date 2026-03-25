@@ -510,15 +510,22 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
   const selectedRoomCount = rooms.filter((r) => r.selected).length;
   const selectedTaskCount = tasks.filter((t) => t.selected).length;
 
+  const isBusy = extracting || step === 'creating';
+
   return (
     <Dialog open={open} onOpenChange={(o) => {
+      if (!o && isBusy) return;
       if (!o && uploadedFile) {
         supabase.storage.from('project-files').remove([uploadedFile.tempPath]);
       }
       onOpenChange(o);
       if (!o) resetState();
     }}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent
+        className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+        onPointerDownOutside={(e) => { if (isBusy) e.preventDefault(); }}
+        onEscapeKeyDown={(e) => { if (isBusy) e.preventDefault(); }}
+      >
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
