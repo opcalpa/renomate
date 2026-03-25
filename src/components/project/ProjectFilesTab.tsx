@@ -86,6 +86,7 @@ import { QuoteReviewDialog } from "./QuoteReviewDialog";
 import { LinkPurchaseDialog } from "./LinkPurchaseDialog";
 import { isDocumentFile } from "@/services/aiDocumentService";
 import { BatchSmartUploadDialog, readDroppedItems, type DroppedFile } from "./BatchSmartUploadDialog";
+import { BatchSmartTolkDialog } from "./batch-tolk";
 
 interface ProjectFile {
   id: string;
@@ -262,8 +263,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
   // Batch selection
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
-  const [batchProcessing, setBatchProcessing] = useState(false);
-  const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
+  // batchProcessing/batchProgress removed — BatchSmartTolkDialog handles its own state
 
   const toggleFileSelection = (path: string) => {
     setSelectedFiles(prev => {
@@ -535,19 +535,12 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     }
   };
 
-  const handleBatchSmartTolk = async () => {
+  // Batch Smart Tolk — opens dialog with parallel classification + linking
+  const [batchTolkFiles, setBatchTolkFiles] = useState<ProjectFile[]>([]);
+  const handleBatchSmartTolk = () => {
     const filesToProcess = filteredFiles.filter(f => selectedFiles.has(f.path));
     if (filesToProcess.length === 0) return;
-    setBatchProcessing(true);
-    setBatchProgress({ done: 0, total: filesToProcess.length });
-    for (const file of filesToProcess) {
-      try { await runSmartTolk(file); } catch (err) { console.error("Smart tolk failed:", err); }
-      setBatchProgress(prev => ({ ...prev, done: prev.done + 1 }));
-    }
-    setBatchProcessing(false);
-    setSelectedFiles(new Set());
-    toast({ title: t('files.smartTolkComplete', 'Smart tolk klar'), description: t('files.smartTolkCompleteDesc', '{{count}} filer tolkade', { count: filesToProcess.length }) });
-    fetchFiles();
+    setBatchTolkFiles(filesToProcess);
   };
 
   const visibleFileCols = ALL_FILE_COLS.filter(k => !hiddenFileCols.has(k));
@@ -1347,20 +1340,10 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                     size="sm"
                     variant="outline"
                     className="h-7 gap-1.5 text-xs"
-                    disabled={batchProcessing}
                     onClick={handleBatchSmartTolk}
                   >
-                    {batchProcessing ? (
-                      <>
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        {batchProgress.done}/{batchProgress.total}
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-3 w-3" />
-                        {t('files.smartTolk', 'Smart tolk')} ({selectedFiles.size})
-                      </>
-                    )}
+                    <Sparkles className="h-3 w-3" />
+                    {t('files.smartTolk', 'Smart tolk')} ({selectedFiles.size})
                   </Button>
                   <Button
                     size="sm"
@@ -2277,6 +2260,15 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
           });
           fetchFiles();
         }}
+      />
+
+      {/* Batch Smart Tolk Dialog */}
+      <BatchSmartTolkDialog
+        open={batchTolkFiles.length > 0}
+        onOpenChange={(open) => { if (!open) setBatchTolkFiles([]); }}
+        files={batchTolkFiles}
+        projectId={projectId}
+        onComplete={() => { setBatchTolkFiles([]); setSelectedFiles(new Set()); fetchFiles(); }}
       />
 
       {/* Document Upload AI Suggestion Dialog */}

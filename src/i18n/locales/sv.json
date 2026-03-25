@@ -4788,5 +4788,31 @@
     "tasksAssigned": "{{count}} uppgifter",
     "missingChecklists": "{{count}} uppgifter saknar steg-för-steg-instruktioner. Generera automatiskt från rumspecifikationer?",
     "generateChecklists": "Generera checklistor"
+  },
+  "batchTolk": {
+    "title": "Smart Tolk",
+    "filesCount": "filer",
+    "classifying": "Tolkar",
+    "suggestedName": "Nytt namn",
+    "category": "Kategori",
+    "vendor": "Leverantör",
+    "amount": "Belopp",
+    "date": "Datum",
+    "link": "Koppling",
+    "task": "Arbete",
+    "purchase": "Inköp",
+    "room": "Rum",
+    "newTask": "Nytt arbete...",
+    "newPurchase": "Nytt inköp...",
+    "newRoom": "Nytt rum...",
+    "selectAllRename": "Markera alla för namnbyte",
+    "skip": "Hoppa över",
+    "done": "Klar",
+    "renameAndDone": "Byt namn & klar",
+    "renaming": "Döper om...",
+    "renameSuccess": "{{count}} filer omdöpta",
+    "renameFailed": "{{failed}} filer kunde inte döpas om",
+    "classificationComplete": "Alla filer tolkade",
+    "completeWithErrors": "Klart ({{errors}} fel)"
   }
 }

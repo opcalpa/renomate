@@ -4791,5 +4791,31 @@
     "tasksAssigned": "{{count}} tasks",
     "missingChecklists": "{{count}} tasks have no step-by-step instructions. Generate them automatically from room specs?",
     "generateChecklists": "Generate checklists"
+  },
+  "batchTolk": {
+    "title": "Smart Tolk",
+    "filesCount": "files",
+    "classifying": "Analyzing",
+    "suggestedName": "Suggested name",
+    "category": "Category",
+    "vendor": "Vendor",
+    "amount": "Amount",
+    "date": "Date",
+    "link": "Link",
+    "task": "Task",
+    "purchase": "Purchase",
+    "room": "Room",
+    "newTask": "New task...",
+    "newPurchase": "New purchase...",
+    "newRoom": "New room...",
+    "selectAllRename": "Select all for rename",
+    "skip": "Skip",
+    "done": "Done",
+    "renameAndDone": "Rename & done",
+    "renaming": "Renaming...",
+    "renameSuccess": "{{count}} files renamed",
+    "renameFailed": "{{failed}} files could not be renamed",
+    "classificationComplete": "All files analyzed",
+    "completeWithErrors": "Done ({{errors}} errors)"
   }
 }
