@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Send, ClipboardList, Info, Columns3, Play, Bell, X } from "lucide-react";
+import { Plus, Trash2, Send, ClipboardList, Info, Columns3, Play, Bell, X, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   detectWorkType,
@@ -31,6 +31,7 @@ import { StartProjectModal } from "./StartProjectModal";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { ImportQuotePopover, type ExternalQuote } from "./ImportQuotePopover";
 import { ExternalQuoteCell, type QuoteAssignment } from "./ExternalQuoteCell";
+import { PlanningSmartImportDialog } from "./PlanningSmartImportDialog";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -136,6 +137,7 @@ export function HomeownerPlanningView({
 
   // Inline add
   const [isAdding, setIsAdding] = useState(false);
+  const [smartImportOpen, setSmartImportOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [addingLoading, setAddingLoading] = useState(false);
 
@@ -787,15 +789,26 @@ export function HomeownerPlanningView({
               </Button>
             </div>
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setIsAdding(true)}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {t("homeownerPlanning.addTask", "Add task")}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setSmartImportOpen(true)}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {t("homeownerPlanning.smartImport", "Smart import")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setIsAdding(true)}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {t("homeownerPlanning.addTask", "Add task")}
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -845,6 +858,14 @@ export function HomeownerPlanningView({
         onOpenChange={(open) => { if (!open) setLoginPromptAction(null); }}
         action={loginPromptAction || "save_project"}
         projectId={projectId}
+      />
+
+      {/* Smart import dialog — AI extract tasks + rooms from document */}
+      <PlanningSmartImportDialog
+        projectId={projectId}
+        open={smartImportOpen}
+        onOpenChange={setSmartImportOpen}
+        onImportComplete={() => { fetchTasks(); fetchRooms(); }}
       />
     </div>
   );

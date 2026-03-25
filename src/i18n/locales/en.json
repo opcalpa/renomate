@@ -4343,6 +4343,7 @@
     "whatToDoDesc": "List every type of work. Connect each task to a room for better estimates.",
     "costRange": "Est. range",
     "addTask": "Add task",
+    "smartImport": "Smart import",
     "taskPlaceholder": "e.g. Paint living room, new flooring in kitchen...",
     "addDetails": "Add details...",
     "descPlaceholder": "e.g. white matte paint, keep ceiling",

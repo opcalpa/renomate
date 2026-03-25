@@ -37,6 +37,7 @@ import { normalizeStatus, STATUS_META } from "@/lib/projectStatus";
 import { formatCurrency } from "@/lib/currency";
 import { LeadsPipelineSection } from "@/components/pipeline";
 import { FinancialAnalysisSection } from "@/components/project/FinancialAnalysisSection";
+import { AIProjectImportModal } from "@/components/project/AIProjectImportModal";
 import { HomeownerYearlyAnalysis } from "@/components/project/HomeownerYearlyAnalysis";
 import { GuestBanner } from "@/components/guest";
 import { CreateIntakeDialog } from "@/components/intake/CreateIntakeDialog";
@@ -101,6 +102,7 @@ const Projects = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
+  const [showAIImport, setShowAIImport] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteCounts, setDeleteCounts] = useState<{
@@ -700,8 +702,8 @@ const Projects = () => {
       // Open the create project dialog
       setDialogOpen(true);
     } else if (quickStart === "import") {
-      // Open the create project dialog (now includes AI import option)
-      setDialogOpen(true);
+      // Open AI project import modal directly
+      setShowAIImport(true);
     } else {
       // "explore" - just show toast about demo project
       toast({
@@ -921,7 +923,7 @@ const Projects = () => {
                   {/* Upload document option */}
                   <button
                     type="button"
-                    onClick={() => setCreateMethod("upload")}
+                    onClick={() => { setDialogOpen(false); setTimeout(() => setShowAIImport(true), 150); }}
                     className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98] border-border"
                   >
                     <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
@@ -1723,6 +1725,15 @@ const Projects = () => {
           )}
         </DialogContent>
       </Dialog>
+      {/* AI Project Import Modal */}
+      <AIProjectImportModal
+        open={showAIImport}
+        onOpenChange={setShowAIImport}
+        onProjectCreated={(projectId) => {
+          setShowAIImport(false);
+          navigate(`/projects/${projectId}`);
+        }}
+      />
     </div>
   );
 };

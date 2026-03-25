@@ -4340,6 +4340,7 @@
     "whatToDoDesc": "Lista alla typer av arbete. Koppla varje uppgift till ett rum för bättre uppskattningar.",
     "costRange": "Ca pris",
     "addTask": "Lägg till uppgift",
+    "smartImport": "Smart import",
     "taskPlaceholder": "t.ex. Måla vardagsrum, nytt golv i köket...",
     "addDetails": "Lägg till detaljer...",
     "descPlaceholder": "t.ex. vit matt färg, behåll taket",
