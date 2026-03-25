@@ -39,6 +39,12 @@ export interface ExtractedTask {
   roomName: string | null; // Reference to room by name for linking
   confidence: number; // 0-1, indicates AI confidence in extraction
   sourceText: string; // Original text from document
+  // Quote mode fields (populated when extracted from quotes/invoices)
+  estimatedCost: number | null;
+  laborCost: number | null;
+  materialCost: number | null;
+  startDate: string | null;
+  endDate: string | null;
 }
 
 /**

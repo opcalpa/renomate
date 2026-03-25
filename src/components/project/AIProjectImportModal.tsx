@@ -83,6 +83,7 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
   const [editingRoomIndex, setEditingRoomIndex] = useState<number | null>(null);
   const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null);
   const [summary, setSummary] = useState('');
+  const [quoteMetadata, setQuoteMetadata] = useState<{ vendorName?: string | null; totalAmount?: number | null; quoteDate?: string | null } | null>(null);
   const [uploadedFile, setUploadedFile] = useState<{ tempPath: string; name: string; file: File } | null>(null);
 
   const resetState = useCallback(() => {
@@ -94,6 +95,7 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
     setEditingRoomIndex(null);
     setEditingTaskIndex(null);
     setSummary('');
+    setQuoteMetadata(null);
     setUploadedFile(null);
   }, []);
 
@@ -135,12 +137,13 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
         .from('project-files')
         .getPublicUrl(tempPath);
 
-      // Call the existing process-document edge function
+      // Call process-document in quote mode (extracts prices + metadata)
       const { data, error } = await supabase.functions.invoke('process-document', {
         body: {
           fileUrl: urlData.publicUrl,
           fileType: file.type,
           fileName: file.name,
+          mode: 'quote',
         },
       });
 
@@ -158,8 +161,10 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
       result.tasks = result.tasks || [];
       result.documentSummary = result.documentSummary || '';
 
-      // Use document summary to suggest a project name
-      // Try to extract a short name from the summary, or use the filename
+      // Save quote metadata (vendor, total, date)
+      if (result.quoteMetadata) setQuoteMetadata(result.quoteMetadata);
+
+      // Suggest project name from AI summary (NOT filename)
       const suggestedName = extractProjectName(result.documentSummary, file.name);
       setProjectName(suggestedName);
       setSummary(result.documentSummary);
@@ -228,6 +233,7 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
         name: projectName.trim(),
         description: summary || null,
         owner_id: profile.id,
+        total_budget: quoteMetadata?.totalAmount || null,
       };
 
       // Try insert with select (same as Projects.tsx)
@@ -312,6 +318,7 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
           priority: 'medium',
           created_by_user_id: profile.id,
           cost_center: costCenter,
+          estimated_cost: task.estimatedCost || null,
         });
 
         if (taskErr) {
