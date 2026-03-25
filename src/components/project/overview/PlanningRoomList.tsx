@@ -544,17 +544,13 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
             <Skeleton className="h-8 w-full" />
           </div>
         ) : rooms.length === 0 && !isAdding ? (
-          <div className="text-center py-8">
-            <Home className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-            <p className="text-sm font-medium text-muted-foreground">
-              {t("planningRooms.empty", "No rooms yet")}
-            </p>
-            <p className="text-xs text-muted-foreground/70 mb-4">
+          <div className="flex items-center justify-between py-2">
+            <p className="text-sm text-muted-foreground">
               {t("planningRooms.emptyHint", "Add rooms to plan dimensions and estimate materials")}
             </p>
             {!locked && (
-              <Button size="sm" onClick={() => setIsAdding(true)}>
-                <Plus className="h-4 w-4 mr-1" />
+              <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={() => setIsAdding(true)}>
+                <Plus className="h-3.5 w-3.5" />
                 {t("planningRooms.addFirst", "Add first room")}
               </Button>
             )}
