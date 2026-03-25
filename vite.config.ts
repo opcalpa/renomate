@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     host: "::",
     port: 5173,
+    strictPort: true,
   },
   plugins: [react()],
   resolve: {
