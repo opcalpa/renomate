@@ -45,6 +45,14 @@ export interface ExtractedTask {
   materialCost: number | null;
   startDate: string | null;
   endDate: string | null;
+  // Material budget fields — material lines become planned materials, not tasks
+  isMaterialBudget: boolean;
+  parentTaskName: string | null; // e.g. "Målning" for "Material för målning"
+  // ROT deduction fields
+  rotEligible: boolean;
+  rotAmount: number | null;
+  // VAT context
+  isIncludingVat: boolean;
 }
 
 /**
@@ -57,6 +65,8 @@ export interface QuoteMetadata {
   quoteDate: string | null;
   quoteNumber: string | null;
   paymentTerms: string | null;
+  isIncludingVat: boolean; // Whether quoted prices include VAT
+  totalRotAmount: number | null; // Total ROT deduction if stated
 }
 
 export interface AIDocumentExtractionResult {
@@ -76,12 +86,14 @@ export interface SelectableRoom extends ExtractedRoom {
 }
 
 /**
- * Task with selection state for UI
+ * Task with selection state for UI (work items only, not material budget lines)
  */
 export interface SelectableTask extends ExtractedTask {
   index: number;
   selected: boolean;
   edited: boolean;
+  // Resolved material children (populated client-side from isMaterialBudget items)
+  materialChildren?: ExtractedTask[];
 }
 
 /**

@@ -2524,7 +2524,22 @@
     "noPurchases": "Inga inköp ännu",
     "createNewRoom": "Skapa nytt rum...",
     "createNewTask": "Skapa nytt arbete...",
-    "createNewPurchase": "Skapa nytt inköp..."
+    "createNewPurchase": "Skapa nytt inköp...",
+    "documentPreview": "Dokumentförhandsvisning"
+  },
+  "quoteImport": {
+    "exVat": "Ex. moms",
+    "incVat": "Ink. moms",
+    "costPlaceholder": "Kostnad (SEK)",
+    "rotDeduction": "ROT-avdrag",
+    "standaloneMaterials": "Fristående materialposter",
+    "laborTotal": "Arbete",
+    "materialTotal": "Material",
+    "totalExVat": "Summa ex. moms",
+    "vat": "Moms 25%",
+    "totalIncVat": "Summa ink. moms",
+    "toPay": "Att betala",
+    "importResult": "{{tasks}} arbeten och {{materials}} materialbudgetar importerade"
   },
   "elevation": {
     "noWalls": "Inga väggar att visa",

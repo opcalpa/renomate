@@ -42,6 +42,14 @@ interface ExtractedTask {
   materialCost: number | null;
   startDate: string | null;
   endDate: string | null;
+  // Material budget fields
+  isMaterialBudget: boolean;
+  parentTaskName: string | null;
+  // ROT fields
+  rotEligible: boolean;
+  rotAmount: number | null;
+  // VAT context
+  isIncludingVat: boolean;
 }
 
 interface QuoteMetadata {
@@ -52,6 +60,8 @@ interface QuoteMetadata {
   paymentTerms: string | null;
   quoteDate: string | null;
   quoteNumber: string | null;
+  isIncludingVat: boolean;
+  totalRotAmount: number | null;
 }
 
 interface ExtractionResult {
@@ -125,18 +135,37 @@ Analysera dokumentet och extrahera ALL information:
    - confidence: Din konfidens (0.0-1.0)
    - sourceText: Exakt text från dokumentet
 
-2. ARBETEN/POSTER - Varje arbetsmoment eller offertrad
+2. ARBETEN OCH MATERIALPOSTER - Varje arbetsmoment eller offertrad
+
+   För varje rad, avgör om det är en ARBETSPOST eller en MATERIALPOST:
+
+   ARBETSPOST (isMaterialBudget: false):
+   - Utför ett arbete (rivning, målning, rörarbete, etc.)
+   - Kan ha egen materialkostnad specificerad (materialCost)
+
+   MATERIALPOST (isMaterialBudget: true):
+   - En separat rad som enbart beskriver material (t.ex. "Material för målning", "Golvmaterial")
+   - Ska INTE bli en egen arbetsuppgift
+   - Ska kopplas till närmaste arbetspost via parentTaskName
+   - estimatedCost = materialbeloppet
+
+   Fält per post:
    - title: Kort titel (t.ex. "Rivning av befintligt kök")
    - description: Detaljerad beskrivning av arbetet
    - category: En av: rivning, el, vvs, malning, golv, kok, badrum, snickeri, kakel, ovrigt
    - roomName: Vilket rum uppgiften gäller (null om generellt)
    - confidence: Din konfidens (0.0-1.0)
    - sourceText: Exakt text från dokumentet
-   - estimatedCost: Totalkostnad för denna post i SEK (inkl. moms om angivet), null om okänt
+   - estimatedCost: Totalkostnad för denna post i SEK, null om okänt
    - laborCost: Arbetskostnad separat i SEK om angivet, annars null
    - materialCost: Materialkostnad separat i SEK om angivet, annars null
    - startDate: Planerat startdatum (YYYY-MM-DD) om angivet, annars null
    - endDate: Planerat slutdatum (YYYY-MM-DD) om angivet, annars null
+   - isMaterialBudget: true om detta är en ren materialpost, false om det är ett arbete
+   - parentTaskName: Om isMaterialBudget=true, ange EXAKT titel på den arbetspost materialet hör till (null om det inte går att matcha)
+   - rotEligible: true om arbetet är ROT-berättigat (gäller ALDRIG material — bara arbetskostnad)
+   - rotAmount: ROT-avdragsbelopp i SEK om angivet i offerten, annars null
+   - isIncludingVat: true om priset för denna post är inklusive moms
 
 3. OFFERTMETADATA - Övergripande information om offerten
    - vendorName: Företagsnamn som lämnar offerten
@@ -146,6 +175,8 @@ Analysera dokumentet och extrahera ALL information:
    - paymentTerms: Betalningsvillkor (t.ex. "30 dagar netto", "Delbetalning per etapp")
    - quoteDate: Offertdatum (YYYY-MM-DD) om angivet, annars null
    - quoteNumber: Offertnummer om angivet, annars null
+   - isIncludingVat: true om offerten generellt anger priser inklusive moms
+   - totalRotAmount: Totalt ROT-avdrag i SEK om angivet, annars null
 
 4. SAMMANFATTNING - Kort sammanfattning (2-3 meningar)
 
@@ -154,7 +185,9 @@ VIKTIGT:
 - Om priset inkluderar arbete + material men inte specificeras separat, sätt estimatedCost och lämna laborCost/materialCost som null
 - Om ROT-avdrag nämns, extrahera priset FÖRE avdrag (bruttopris)
 - Belopp ska vara tal (number), INTE strängar
-- Var noga med att skilja på ex. moms och inkl. moms — extrahera det som anges
+- MATERIALRADER (t.ex. "Material för målning 20 000 kr") ska ha isMaterialBudget: true och parentTaskName satt till närmaste arbetspost (t.ex. "Målning"). Dessa blir materialbudgetar, INTE arbetsuppgifter.
+- Om material ingår i en arbetspost (t.ex. "Målning inkl. material") — sätt materialCost på arbetsposten istället, INTE som separat materialrad. Undvik dubbelräkning.
+- ROT gäller BARA arbetskostnad, aldrig material. Sätt rotEligible: false på materialrader.
 - Confidence max 0.7 om det inte ordagrant nämns i texten
 
 Svara ENDAST med giltig JSON:
@@ -373,6 +406,11 @@ async function extractWithOpenAI(documentContent: string, mode: 'scope' | 'quote
       materialCost: typeof t.materialCost === 'number' ? t.materialCost : (typeof t.materialCost === 'string' ? parseFloat(t.materialCost) || null : null),
       startDate: t.startDate || null,
       endDate: t.endDate || null,
+      isMaterialBudget: !!t.isMaterialBudget,
+      parentTaskName: t.parentTaskName || null,
+      rotEligible: !!t.rotEligible,
+      rotAmount: typeof t.rotAmount === 'number' ? t.rotAmount : (typeof t.rotAmount === 'string' ? parseFloat(t.rotAmount) || null : null),
+      isIncludingVat: !!t.isIncludingVat,
     }));
 
     // Normalize quote metadata
@@ -387,6 +425,8 @@ async function extractWithOpenAI(documentContent: string, mode: 'scope' | 'quote
         paymentTerms: qm.paymentTerms || null,
         quoteDate: qm.quoteDate || null,
         quoteNumber: qm.quoteNumber || null,
+        isIncludingVat: !!qm.isIncludingVat,
+        totalRotAmount: typeof qm.totalRotAmount === 'number' ? qm.totalRotAmount : (typeof qm.totalRotAmount === 'string' ? parseFloat(qm.totalRotAmount) || null : null),
       };
     }
 

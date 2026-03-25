@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
 import {
   Sparkles,
   Loader2,
@@ -41,12 +42,15 @@ import {
   ZoomOut,
   ChevronUp,
   ChevronDown,
+  Package,
+  Shield,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ExtractedRoom,
   ExtractedTask,
   AIDocumentExtractionResult,
+  QuoteMetadata,
   TaskCategory,
   TASK_CATEGORY_LABELS,
   TASK_CATEGORY_TO_COST_CENTER,
@@ -62,6 +66,14 @@ interface EditableRoom extends ExtractedRoom {
 }
 
 interface EditableTask extends ExtractedTask {
+  index: number;
+  selected: boolean;
+  /** Material budget lines matched to this work task */
+  materialChildren: ExtractedTask[];
+}
+
+/** Standalone material items that couldn't be matched to a parent task */
+interface StandaloneMaterial extends ExtractedTask {
   index: number;
   selected: boolean;
 }
@@ -83,6 +95,128 @@ function ConfidenceIndicator({ confidence }: { confidence: number }) {
   if (confidence >= 0.5)
     return <span title={`${Math.round(confidence * 100)}%`}>🟡</span>;
   return <span title={`${Math.round(confidence * 100)}%`}>🔴</span>;
+}
+
+// ---------------------------------------------------------------------------
+// Price helpers
+// ---------------------------------------------------------------------------
+
+const VAT_RATE = 0.25;
+
+/** Convert a cost to the display mode (inc/ex VAT) */
+function convertVat(amount: number, sourceIsIncVat: boolean, displayIncVat: boolean): number {
+  if (sourceIsIncVat === displayIncVat) return amount;
+  if (sourceIsIncVat && !displayIncVat) return amount / (1 + VAT_RATE);
+  return amount * (1 + VAT_RATE);
+}
+
+/** Format cost for display using the current VAT toggle */
+function formatCostNum(amount: number, sourceIsIncVat: boolean, displayIncVat: boolean): number {
+  return Math.round(convertVat(amount, sourceIsIncVat, displayIncVat));
+}
+
+// ---------------------------------------------------------------------------
+// CostBreakdown — summary at the bottom of the task list
+// ---------------------------------------------------------------------------
+
+function CostBreakdown({
+  tasks,
+  standaloneMaterials,
+  showIncVat,
+  quoteMetadata,
+  t,
+}: {
+  tasks: EditableTask[];
+  standaloneMaterials: StandaloneMaterial[];
+  showIncVat: boolean;
+  quoteMetadata: QuoteMetadata | null;
+  t: (key: string, fallback?: string) => string;
+}) {
+  const selected = tasks.filter((t) => t.selected);
+
+  // Labor total (ex VAT)
+  let laborExVat = 0;
+  let materialExVat = 0;
+  let totalRotAmount = 0;
+
+  for (const task of selected) {
+    const cost = task.estimatedCost || 0;
+    const exVat = task.isIncludingVat ? cost / (1 + VAT_RATE) : cost;
+
+    // If labor/material split available, use it
+    if (task.laborCost != null || task.materialCost != null) {
+      const labor = task.laborCost || 0;
+      const mat = task.materialCost || 0;
+      laborExVat += task.isIncludingVat ? labor / (1 + VAT_RATE) : labor;
+      materialExVat += task.isIncludingVat ? mat / (1 + VAT_RATE) : mat;
+    } else {
+      // All goes to labor if no split
+      laborExVat += exVat;
+    }
+
+    // Material children
+    for (const child of task.materialChildren) {
+      const childCost = child.estimatedCost || 0;
+      materialExVat += child.isIncludingVat ? childCost / (1 + VAT_RATE) : childCost;
+    }
+
+    if (task.rotAmount) totalRotAmount += task.rotAmount;
+  }
+
+  // Standalone materials
+  for (const mat of standaloneMaterials.filter((m) => m.selected)) {
+    const cost = mat.estimatedCost || 0;
+    materialExVat += mat.isIncludingVat ? cost / (1 + VAT_RATE) : cost;
+  }
+
+  const totalExVat = laborExVat + materialExVat;
+  const vatAmount = totalExVat * VAT_RATE;
+  const totalIncVat = totalExVat + vatAmount;
+  const toPay = totalIncVat - totalRotAmount;
+
+  if (totalExVat === 0) return null;
+
+  const fmt = (n: number) => Math.round(n).toLocaleString("sv-SE");
+
+  return (
+    <div className="rounded-lg border bg-muted/30 p-3 space-y-1 text-sm">
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">{t("quoteImport.laborTotal", "Arbete")}</span>
+        <span className="tabular-nums">{fmt(showIncVat ? laborExVat * (1 + VAT_RATE) : laborExVat)} kr</span>
+      </div>
+      {materialExVat > 0 && (
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">{t("quoteImport.materialTotal", "Material")}</span>
+          <span className="tabular-nums">{fmt(showIncVat ? materialExVat * (1 + VAT_RATE) : materialExVat)} kr</span>
+        </div>
+      )}
+      <Separator className="!my-1.5" />
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">{t("quoteImport.totalExVat", "Summa ex. moms")}</span>
+        <span className="tabular-nums">{fmt(totalExVat)} kr</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">{t("quoteImport.vat", "Moms 25%")}</span>
+        <span className="tabular-nums">{fmt(vatAmount)} kr</span>
+      </div>
+      <div className="flex justify-between font-medium">
+        <span>{t("quoteImport.totalIncVat", "Summa ink. moms")}</span>
+        <span className="tabular-nums">{fmt(totalIncVat)} kr</span>
+      </div>
+      {totalRotAmount > 0 && (
+        <>
+          <div className="flex justify-between text-green-700">
+            <span>{t("quoteImport.rotDeduction", "ROT-avdrag")}</span>
+            <span className="tabular-nums">-{fmt(totalRotAmount)} kr</span>
+          </div>
+          <div className="flex justify-between font-bold text-base">
+            <span>{t("quoteImport.toPay", "Att betala")}</span>
+            <span className="tabular-nums">{fmt(toPay)} kr</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -112,6 +246,9 @@ export function PlanningSmartImportDialog({
   } | null>(null);
   const [previewExpanded, setPreviewExpanded] = useState(true);
   const [previewZoom, setPreviewZoom] = useState(100);
+  const [quoteMetadata, setQuoteMetadata] = useState<QuoteMetadata | null>(null);
+  const [showIncVat, setShowIncVat] = useState(true);
+  const [standaloneMaterials, setStandaloneMaterials] = useState<StandaloneMaterial[]>([]);
 
   const resetState = useCallback(() => {
     setStep("upload");
@@ -122,6 +259,9 @@ export function PlanningSmartImportDialog({
     setEditingRoomIndex(null);
     setEditingTaskIndex(null);
     setUploadedFile(null);
+    setQuoteMetadata(null);
+    setShowIncVat(true);
+    setStandaloneMaterials([]);
   }, []);
 
   // ---- File select + AI extraction ----
@@ -170,6 +310,7 @@ export function PlanningSmartImportDialog({
             fileUrl: urlData.publicUrl,
             fileType: file.type,
             fileName: file.name,
+            mode: "quote",
           },
         }
       );
@@ -187,6 +328,12 @@ export function PlanningSmartImportDialog({
       result.documentSummary = result.documentSummary || "";
 
       setSummary(result.documentSummary);
+      setQuoteMetadata(result.quoteMetadata || null);
+
+      // Set VAT display default from quote metadata
+      if (result.quoteMetadata?.isIncludingVat !== undefined) {
+        setShowIncVat(result.quoteMetadata.isIncludingVat);
+      }
 
       setRooms(
         result.rooms.map((room, index) => ({
@@ -196,11 +343,50 @@ export function PlanningSmartImportDialog({
         }))
       );
 
+      // Split work tasks from material budget lines
+      const workItems: ExtractedTask[] = [];
+      const materialItems: ExtractedTask[] = [];
+      for (const task of result.tasks) {
+        if (task.isMaterialBudget) {
+          materialItems.push(task);
+        } else {
+          workItems.push(task);
+        }
+      }
+
+      // Match material items to their parent work tasks
+      const unmatchedMaterials: ExtractedTask[] = [];
+      const materialByParent = new Map<number, ExtractedTask[]>();
+
+      for (const mat of materialItems) {
+        if (mat.parentTaskName) {
+          const parentIdx = workItems.findIndex(
+            (w) => w.title.toLowerCase() === mat.parentTaskName!.toLowerCase()
+          );
+          if (parentIdx >= 0) {
+            const existing = materialByParent.get(parentIdx) || [];
+            existing.push(mat);
+            materialByParent.set(parentIdx, existing);
+            continue;
+          }
+        }
+        unmatchedMaterials.push(mat);
+      }
+
       setTasks(
-        result.tasks.map((task, index) => ({
+        workItems.map((task, index) => ({
           ...task,
           index,
           selected: task.confidence >= 0.5,
+          materialChildren: materialByParent.get(index) || [],
+        }))
+      );
+
+      setStandaloneMaterials(
+        unmatchedMaterials.map((mat, index) => ({
+          ...mat,
+          index,
+          selected: mat.confidence >= 0.5,
         }))
       );
 
@@ -210,7 +396,7 @@ export function PlanningSmartImportDialog({
         title: t("aiDocumentImport.analysisDone"),
         description: t("aiDocumentImport.analysisResult", {
           rooms: result.rooms.length,
-          tasks: result.tasks.length,
+          tasks: workItems.length,
         }),
       });
     } catch (err) {
@@ -286,7 +472,10 @@ export function PlanningSmartImportDialog({
         createdRoomIds.set(room.name.toLowerCase(), roomData.id);
       }
 
-      // Create tasks linked to rooms
+      // Create tasks linked to rooms + material budgets
+      let createdTaskCount = 0;
+      let createdMaterialCount = 0;
+
       for (const task of selectedTasks) {
         let roomId: string | null = null;
         if (task.roomName) {
@@ -298,7 +487,22 @@ export function PlanningSmartImportDialog({
           TASK_CATEGORY_TO_COST_CENTER[task.category as TaskCategory] ||
           "construction";
 
-        const { error: taskErr } = await supabase.from("tasks").insert({
+        // Calculate material estimate from children
+        const materialEstimate = task.materialChildren.reduce(
+          (sum, child) => sum + (child.estimatedCost || 0),
+          0
+        ) || task.materialCost || null;
+
+        // Store costs ex VAT in database
+        const estimatedCost = task.estimatedCost != null
+          ? Math.round(task.isIncludingVat ? task.estimatedCost / (1 + VAT_RATE) : task.estimatedCost)
+          : null;
+
+        const materialEstimateExVat = materialEstimate != null
+          ? Math.round(task.isIncludingVat ? materialEstimate / (1 + VAT_RATE) : materialEstimate)
+          : null;
+
+        const { data: taskData, error: taskErr } = await supabase.from("tasks").insert({
           project_id: projectId,
           room_id: roomId,
           title: task.title,
@@ -307,18 +511,85 @@ export function PlanningSmartImportDialog({
           priority: "medium",
           created_by_user_id: profile.id,
           cost_center: costCenter,
-        });
+          estimated_cost: estimatedCost,
+          material_estimate: materialEstimateExVat,
+          rot_eligible: task.rotEligible || false,
+          rot_amount: task.rotAmount || null,
+        }).select("id").single();
 
         if (taskErr) {
           console.error("Error creating task:", taskErr);
+          continue;
         }
+
+        createdTaskCount++;
+
+        // Create planned material budget items for material children
+        for (const child of task.materialChildren) {
+          const matCostExVat = child.estimatedCost != null
+            ? Math.round(child.isIncludingVat ? child.estimatedCost / (1 + VAT_RATE) : child.estimatedCost)
+            : null;
+
+          const { error: matErr } = await supabase.from("materials").insert({
+            project_id: projectId,
+            task_id: taskData.id,
+            room_id: roomId,
+            name: child.title,
+            description: child.description,
+            price_total: matCostExVat,
+            status: "planned",
+            created_by_user_id: profile.id,
+          });
+
+          if (matErr) {
+            console.error("Error creating planned material:", matErr);
+          } else {
+            createdMaterialCount++;
+          }
+        }
+      }
+
+      // Create standalone materials (unmatched)
+      const selectedStandalone = standaloneMaterials.filter((m) => m.selected);
+      for (const mat of selectedStandalone) {
+        const matCostExVat = mat.estimatedCost != null
+          ? Math.round(mat.isIncludingVat ? mat.estimatedCost / (1 + VAT_RATE) : mat.estimatedCost)
+          : null;
+
+        const { error: matErr } = await supabase.from("materials").insert({
+          project_id: projectId,
+          task_id: null,
+          name: mat.title,
+          description: mat.description,
+          price_total: matCostExVat,
+          status: "planned",
+          created_by_user_id: profile.id,
+        });
+
+        if (matErr) {
+          console.error("Error creating standalone material:", matErr);
+        } else {
+          createdMaterialCount++;
+        }
+      }
+
+      // Update project total_budget from quote metadata
+      if (quoteMetadata?.totalAmount) {
+        const budgetExVat = quoteMetadata.isIncludingVat
+          ? Math.round(quoteMetadata.totalAmount / (1 + VAT_RATE))
+          : quoteMetadata.totalAmount;
+        await supabase
+          .from("projects")
+          .update({ total_budget: budgetExVat })
+          .eq("id", projectId);
       }
 
       toast({
         title: t("aiDocumentImport.importDone"),
-        description: t("aiDocumentImport.importResult", {
-          rooms: selectedRooms.length,
-          tasks: selectedTasks.length,
+        description: t("quoteImport.importResult", {
+          defaultValue: "{{tasks}} arbeten och {{materials}} materialbudgetar importerade",
+          tasks: createdTaskCount,
+          materials: createdMaterialCount,
         }),
       });
 
@@ -366,6 +637,11 @@ export function PlanningSmartImportDialog({
 
   const selectedRoomCount = rooms.filter((r) => r.selected).length;
   const selectedTaskCount = tasks.filter((t) => t.selected).length;
+  const selectedMaterialCount = standaloneMaterials.filter((m) => m.selected).length;
+
+  /** Format a cost for display respecting the VAT toggle */
+  const formatCost = (amount: number, sourceIsIncVat: boolean) =>
+    formatCostNum(amount, sourceIsIncVat, showIncVat).toLocaleString("sv-SE");
 
   return (
     <Dialog
@@ -622,7 +898,7 @@ export function PlanningSmartImportDialog({
 
               <Separator />
 
-              {/* Tasks */}
+              {/* Tasks + Prices */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-medium flex items-center gap-2">
@@ -631,31 +907,43 @@ export function PlanningSmartImportDialog({
                       count: tasks.length,
                     })}
                   </h4>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() =>
-                        setTasks((p) =>
-                          p.map((t) => ({ ...t, selected: true }))
-                        )
-                      }
-                    >
-                      {t("aiDocumentImport.all")}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() =>
-                        setTasks((p) =>
-                          p.map((t) => ({ ...t, selected: false }))
-                        )
-                      }
-                    >
-                      {t("aiDocumentImport.none")}
-                    </Button>
+                  <div className="flex items-center gap-2">
+                    {/* VAT toggle */}
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span>{t("quoteImport.exVat", "Ex. moms")}</span>
+                      <Switch
+                        checked={showIncVat}
+                        onCheckedChange={setShowIncVat}
+                        className="h-4 w-7 data-[state=checked]:bg-primary"
+                      />
+                      <span>{t("quoteImport.incVat", "Ink. moms")}</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() =>
+                          setTasks((p) =>
+                            p.map((t) => ({ ...t, selected: true }))
+                          )
+                        }
+                      >
+                        {t("aiDocumentImport.all")}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() =>
+                          setTasks((p) =>
+                            p.map((t) => ({ ...t, selected: false }))
+                          )
+                        }
+                      >
+                        {t("aiDocumentImport.none")}
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 {tasks.length === 0 ? (
@@ -665,102 +953,211 @@ export function PlanningSmartImportDialog({
                 ) : (
                   <div className="space-y-1.5">
                     {tasks.map((task) => (
-                      <div
-                        key={task.index}
-                        className={`flex items-start gap-2 p-2 rounded-lg border transition-colors ${
-                          task.selected
-                            ? "bg-primary/5 border-primary/20"
-                            : "bg-background"
-                        }`}
-                      >
-                        <Checkbox
-                          checked={task.selected}
-                          onCheckedChange={() =>
-                            toggleTaskSelection(task.index)
-                          }
-                          className="mt-0.5"
-                        />
-                        <div className="flex-1 min-w-0">
-                          {editingTaskIndex === task.index ? (
-                            <div className="space-y-1.5">
-                              <Input
-                                value={task.title}
-                                onChange={(e) =>
-                                  updateTask(task.index, {
-                                    title: e.target.value,
-                                  })
-                                }
-                                className="h-7 text-sm"
-                              />
-                              <Select
-                                value={task.category}
-                                onValueChange={(v) =>
-                                  updateTask(task.index, {
-                                    category: v as TaskCategory,
-                                  })
-                                }
-                              >
-                                <SelectTrigger className="h-7 text-sm">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Object.entries(TASK_CATEGORY_LABELS).map(
-                                    ([value, label]) => (
-                                      <SelectItem key={value} value={value}>
-                                        {label}
-                                      </SelectItem>
-                                    )
-                                  )}
-                                </SelectContent>
-                              </Select>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-6 text-xs"
-                                onClick={() => setEditingTaskIndex(null)}
-                              >
-                                {t("aiDocumentImport.done")}
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-sm font-medium">
-                                {task.title}
-                              </span>
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] px-1.5 py-0"
-                              >
-                                {TASK_CATEGORY_LABELS[
-                                  task.category as TaskCategory
-                                ] || task.category}
-                              </Badge>
-                              {task.roomName && (
-                                <span className="text-xs text-muted-foreground">
-                                  ({task.roomName})
+                      <div key={task.index}>
+                        <div
+                          className={`flex items-start gap-2 p-2 rounded-lg border transition-colors ${
+                            task.selected
+                              ? "bg-primary/5 border-primary/20"
+                              : "bg-background"
+                          }`}
+                        >
+                          <Checkbox
+                            checked={task.selected}
+                            onCheckedChange={() =>
+                              toggleTaskSelection(task.index)
+                            }
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1 min-w-0">
+                            {editingTaskIndex === task.index ? (
+                              <div className="space-y-1.5">
+                                <Input
+                                  value={task.title}
+                                  onChange={(e) =>
+                                    updateTask(task.index, {
+                                      title: e.target.value,
+                                    })
+                                  }
+                                  className="h-7 text-sm"
+                                />
+                                <div className="flex gap-2">
+                                  <Select
+                                    value={task.category}
+                                    onValueChange={(v) =>
+                                      updateTask(task.index, {
+                                        category: v as TaskCategory,
+                                      })
+                                    }
+                                  >
+                                    <SelectTrigger className="h-7 text-sm flex-1">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {Object.entries(TASK_CATEGORY_LABELS).map(
+                                        ([value, label]) => (
+                                          <SelectItem key={value} value={value}>
+                                            {label}
+                                          </SelectItem>
+                                        )
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                  <Input
+                                    type="number"
+                                    value={task.estimatedCost || ""}
+                                    onChange={(e) =>
+                                      updateTask(task.index, {
+                                        estimatedCost: e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : null,
+                                      })
+                                    }
+                                    placeholder={t("quoteImport.costPlaceholder", "Kostnad (SEK)")}
+                                    className="h-7 text-sm w-32"
+                                  />
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 text-xs"
+                                  onClick={() => setEditingTaskIndex(null)}
+                                >
+                                  {t("aiDocumentImport.done")}
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-sm font-medium">
+                                  {task.title}
                                 </span>
-                              )}
-                              <ConfidenceIndicator
-                                confidence={task.confidence}
-                              />
-                            </div>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] px-1.5 py-0"
+                                >
+                                  {TASK_CATEGORY_LABELS[
+                                    task.category as TaskCategory
+                                  ] || task.category}
+                                </Badge>
+                                {task.roomName && (
+                                  <span className="text-xs text-muted-foreground">
+                                    ({task.roomName})
+                                  </span>
+                                )}
+                                {task.rotEligible && (
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-green-100 text-green-700">
+                                    <Shield className="h-2.5 w-2.5 mr-0.5" />
+                                    ROT
+                                  </Badge>
+                                )}
+                                <ConfidenceIndicator
+                                  confidence={task.confidence}
+                                />
+                                {/* Price on the right */}
+                                {task.estimatedCost != null && (
+                                  <span className="ml-auto text-sm font-medium tabular-nums">
+                                    {formatCost(task.estimatedCost, task.isIncludingVat)} kr
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          {editingTaskIndex !== task.index && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0"
+                              onClick={() => setEditingTaskIndex(task.index)}
+                            >
+                              <Edit2 className="h-3 w-3" />
+                            </Button>
                           )}
                         </div>
-                        {editingTaskIndex !== task.index && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-5 w-5 p-0"
-                            onClick={() => setEditingTaskIndex(task.index)}
-                          >
-                            <Edit2 className="h-3 w-3" />
-                          </Button>
+                        {/* Material children nested under work task */}
+                        {task.materialChildren.length > 0 && (
+                          <div className="ml-8 mt-0.5 space-y-0.5">
+                            {task.materialChildren.map((mat, mi) => (
+                              <div
+                                key={`mat-${task.index}-${mi}`}
+                                className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground rounded bg-amber-50 border border-amber-100"
+                              >
+                                <Package className="h-3 w-3 text-amber-600 shrink-0" />
+                                <span className="truncate">{mat.title}</span>
+                                {mat.estimatedCost != null && (
+                                  <span className="ml-auto font-medium tabular-nums text-amber-700">
+                                    +{formatCost(mat.estimatedCost, mat.isIncludingVat)} kr
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {/* ROT deduction line */}
+                        {task.rotAmount != null && task.rotAmount > 0 && (
+                          <div className="ml-8 mt-0.5 flex items-center gap-2 px-2 py-1 text-xs text-green-700 rounded bg-green-50 border border-green-100">
+                            <Shield className="h-3 w-3 shrink-0" />
+                            <span>{t("quoteImport.rotDeduction", "ROT-avdrag")}</span>
+                            <span className="ml-auto font-medium tabular-nums">
+                              -{task.rotAmount.toLocaleString("sv-SE")} kr
+                            </span>
+                          </div>
                         )}
                       </div>
                     ))}
                   </div>
                 )}
+
+                {/* Standalone materials (unmatched) */}
+                {standaloneMaterials.length > 0 && (
+                  <div className="mt-3">
+                    <h5 className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                      <Package className="h-3.5 w-3.5" />
+                      {t("quoteImport.standaloneMaterials", "Fristående materialposter")}
+                    </h5>
+                    <div className="space-y-1">
+                      {standaloneMaterials.map((mat) => (
+                        <div
+                          key={`standalone-${mat.index}`}
+                          className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${
+                            mat.selected
+                              ? "bg-amber-50 border-amber-200"
+                              : "bg-background"
+                          }`}
+                        >
+                          <Checkbox
+                            checked={mat.selected}
+                            onCheckedChange={() =>
+                              setStandaloneMaterials((p) =>
+                                p.map((m) =>
+                                  m.index === mat.index
+                                    ? { ...m, selected: !m.selected }
+                                    : m
+                                )
+                              )
+                            }
+                            className="mt-0"
+                          />
+                          <Package className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                          <span className="text-sm truncate">{mat.title}</span>
+                          {mat.estimatedCost != null && (
+                            <span className="ml-auto text-sm font-medium tabular-nums">
+                              {formatCost(mat.estimatedCost, mat.isIncludingVat)} kr
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Cost breakdown */}
+              <CostBreakdown
+                tasks={tasks}
+                standaloneMaterials={standaloneMaterials}
+                showIncVat={showIncVat}
+                quoteMetadata={quoteMetadata}
+                t={t}
+              />
 
               {/* Legend */}
               <div className="flex items-center gap-4 text-xs text-muted-foreground">

@@ -1578,7 +1578,22 @@
     "noPurchases": "No purchases yet",
     "createNewRoom": "Create new room...",
     "createNewTask": "Create new task...",
-    "createNewPurchase": "Create new purchase..."
+    "createNewPurchase": "Create new purchase...",
+    "documentPreview": "Document preview"
+  },
+  "quoteImport": {
+    "exVat": "Ex. VAT",
+    "incVat": "Inc. VAT",
+    "costPlaceholder": "Cost (SEK)",
+    "rotDeduction": "ROT deduction",
+    "standaloneMaterials": "Standalone material items",
+    "laborTotal": "Labor",
+    "materialTotal": "Material",
+    "totalExVat": "Total ex. VAT",
+    "vat": "VAT 25%",
+    "totalIncVat": "Total inc. VAT",
+    "toPay": "To pay",
+    "importResult": "{{tasks}} tasks and {{materials}} material budgets imported"
   },
   "elevation": {
     "noWalls": "No walls to display",

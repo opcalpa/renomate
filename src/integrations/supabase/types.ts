@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       activity_log: {
@@ -2418,6 +2393,8 @@ export type Database = {
           project_id: string
           room_id: string | null
           room_ids: string[] | null
+          rot_amount: number | null
+          rot_eligible: boolean | null
           start_date: string | null
           status: string | null
           subcontractor_cost: number | null
@@ -2461,6 +2438,8 @@ export type Database = {
           project_id: string
           room_id?: string | null
           room_ids?: string[] | null
+          rot_amount?: number | null
+          rot_eligible?: boolean | null
           start_date?: string | null
           status?: string | null
           subcontractor_cost?: number | null
@@ -2504,6 +2483,8 @@ export type Database = {
           project_id?: string
           room_id?: string | null
           room_ids?: string[] | null
+          rot_amount?: number | null
+          rot_eligible?: boolean | null
           start_date?: string | null
           status?: string | null
           subcontractor_cost?: number | null
@@ -2979,9 +2960,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       contractor_role: [
