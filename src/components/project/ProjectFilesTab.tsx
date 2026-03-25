@@ -348,7 +348,21 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     })();
   }, [projectId, files]);
 
-  const getFileLinksForPath = (path: string) => fileLinks.filter(l => l.file_path === path);
+  // Precomputed Map for O(1) lookups instead of O(n) filter per cell
+  const fileLinksMap = useMemo(() => {
+    const map = new Map<string, typeof fileLinks>();
+    for (const link of fileLinks) {
+      const arr = map.get(link.file_path);
+      if (arr) arr.push(link);
+      else map.set(link.file_path, [link]);
+    }
+    return map;
+  }, [fileLinks]);
+
+  const getFileLinksForPath = useCallback(
+    (path: string) => fileLinksMap.get(path) || [],
+    [fileLinksMap],
+  );
 
   // Available entities for linking dropdowns
   const [availTasks, setAvailTasks] = useState<Array<{ id: string; name: string }>>([]);
@@ -467,13 +481,11 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     setSmartTolkLoading(file.path);
     toast({ title: `${t('files.smartTolk', 'Smart tolk')}...`, description: file.name });
     try {
-    const isDoc = isDocumentFile(file.name, file.type);
-
     // Fast path: let edge function fetch file directly from storage (no client download)
     const { data: result } = await supabase.functions.invoke('classify-document', {
       body: { filePath: file.path, fileName: file.name },
     });
-    if (!result) return;
+    if (!result) throw new Error('No classification result returned');
 
     // Auto-update category
     if (result.type && result.confidence > 0.6) {
@@ -957,8 +969,8 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
         bVal = b.uploaded_at || '';
       } else {
         // Link-based columns
-        const aLinks = getFileLinksForPath(a.path);
-        const bLinks = getFileLinksForPath(b.path);
+        const aLinks = fileLinksMap.get(a.path) || [];
+        const bLinks = fileLinksMap.get(b.path) || [];
         const field = fileSortKey === 'task' ? 'task_name' : fileSortKey === 'purchase' ? 'material_name' : fileSortKey === 'room' ? 'room_name' : fileSortKey === 'vendor' ? 'vendor_name' : fileSortKey === 'summary' ? 'ai_summary' : fileSortKey === 'invoiceDate' ? 'invoice_date' : fileSortKey === 'invoiceAmount' ? 'invoice_amount' : 'rot_amount';
         aVal = String((aLinks[0] as Record<string, unknown>)?.[field] || '').toLowerCase();
         bVal = String((bLinks[0] as Record<string, unknown>)?.[field] || '').toLowerCase();
@@ -967,7 +979,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
       return fileSortDir === 'asc' ? cmp : -cmp;
     });
     return sorted;
-  }, [filteredFiles, fileSortKey, fileSortDir, categoryOverrides, getFileLinksForPath]);
+  }, [filteredFiles, fileSortKey, fileSortDir, categoryOverrides, fileLinksMap]);
 
   // Flat list of all previewable files (expanded folder files + top-level files)
   const allPreviewableFiles = useMemo(() => {
