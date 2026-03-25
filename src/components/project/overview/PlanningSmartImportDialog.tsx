@@ -145,7 +145,8 @@ export function PlanningSmartImportDialog({
     setExtracting(true);
 
     try {
-      const tempPath = `temp/planning-import-${Date.now()}-${file.name}`;
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const tempPath = `projects/${projectId}/${Date.now()}-${safeName}`;
       const { error: uploadErr } = await supabase.storage
         .from("project-files")
         .upload(tempPath, file);
@@ -253,16 +254,7 @@ export function PlanningSmartImportDialog({
 
       if (!profile) throw new Error("Profil hittades inte");
 
-      // Move uploaded file into project folder
-      if (uploadedFile) {
-        const destPath = `projects/${projectId}/${Date.now()}-${uploadedFile.name}`;
-        await supabase.storage
-          .from("project-files")
-          .upload(destPath, uploadedFile.file);
-        supabase.storage
-          .from("project-files")
-          .remove([uploadedFile.tempPath]);
-      }
+      // File already uploaded to projects/{projectId}/ — no move needed
 
       const createdRoomIds = new Map<string, string>();
 
