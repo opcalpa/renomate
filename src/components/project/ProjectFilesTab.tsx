@@ -1359,47 +1359,258 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           ))}
                           <TableCell className="sticky right-0 bg-background"></TableCell>
                         </TableRow>
-                        {/* Expanded sub-files */}
-                        {isExpanded && subFiles.map((sf) => (
-                          <TableRow key={sf.id} className={`group bg-muted/20 ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}>
-                            <TableCell className="w-12 sticky left-0 z-10 bg-muted/20"></TableCell>
-                            <TableCell className="pl-6 text-sm truncate sticky left-12 z-10 bg-muted/20">{sf.name}</TableCell>
-                            {visibleFileCols.map(col => (
-                              <TableCell key={col} className="hidden md:table-cell text-muted-foreground text-xs">
-                                {col === 'size' && sf.size ? formatFileSize(sf.size) : ''}
-                                {col === 'uploaded' && sf.uploaded_at ? formatDate(sf.uploaded_at) : ''}
-                                {col === 'type' && sf.type ? <Badge variant="outline">{sf.type.split('/')[1] || '?'}</Badge> : ''}
-                                {col === 'category' ? '' : ''}
-                              </TableCell>
-                            ))}
-                            <TableCell className="text-right sticky right-0 bg-muted/20">
+                        {/* Expanded sub-files — rendered identically to top-level files */}
+                        {isExpanded && subFiles.map((sf) => {
+                          const sfBg = selectedFiles.has(sf.path) ? 'bg-primary/5' : 'bg-muted/20';
+                          return (
+                          <TableRow key={sf.id} className={`group ${sfBg} ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}>
+                            <TableCell className={`w-12 sticky left-0 z-10 ${sfBg}`}>
+                              <span className="inline-flex items-center gap-1.5 pl-4">
+                                <Checkbox
+                                  checked={selectedFiles.has(sf.path)}
+                                  onCheckedChange={() => toggleFileSelection(sf.path)}
+                                  className="h-4 w-4"
+                                />
+                                {getFileIcon(sf)}
+                              </span>
+                            </TableCell>
+                            <TableCell className={`font-medium sticky left-12 z-10 ${sfBg} max-w-[220px]`}>
+                              <button
+                                type="button"
+                                className="text-left hover:text-primary hover:underline transition-colors truncate block w-full"
+                                onClick={() => handlePreview(sf)}
+                                title={sf.name}
+                              >
+                                {sf.name}
+                              </button>
+                            </TableCell>
+                            {visibleFileCols.map(col => {
+                              const links = getFileLinksForPath(sf.path);
+                              const DEFAULT_CATS = ['Offert', 'Faktura', 'Kvitto', 'Ritning', 'Kontrakt', 'Specifikation', 'Bild', 'Dokument', 'Övrigt'];
+                              const allCats = [...DEFAULT_CATS, ...customCategories.filter(c => !DEFAULT_CATS.includes(c))];
+                              const fileCat = categoryOverrides[sf.path] || guessCategory(sf);
+
+                              if (col === 'category') {
+                                return (
+                                  <TableCell key={col} className="hidden md:table-cell">
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors">
+                                          <Badge variant="outline">{fileCat}</Badge>
+                                        </button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-40 p-1" align="start">
+                                        {allCats.map(cat => (
+                                          <button key={cat} type="button"
+                                            onClick={() => setCategoryForFile(sf.path, cat)}
+                                            className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted flex items-center gap-2 ${fileCat === cat ? 'bg-muted font-medium' : ''}`}
+                                          >
+                                            {fileCat === cat && <Check className="h-3 w-3 text-primary" />}
+                                            <span className={fileCat === cat ? '' : 'pl-5'}>{cat}</span>
+                                          </button>
+                                        ))}
+                                        <div className="border-t mt-1 pt-1">
+                                          <button type="button"
+                                            onClick={() => {
+                                              const name = prompt(t('files.newCategory', 'Ny kategori:'));
+                                              if (name?.trim()) {
+                                                const trimmed = name.trim();
+                                                setCustomCategories(prev => {
+                                                  const next = [...new Set([...prev, trimmed])];
+                                                  localStorage.setItem('files_custom_cats', JSON.stringify(next));
+                                                  return next;
+                                                });
+                                                setCategoryForFile(sf.path, trimmed);
+                                              }
+                                            }}
+                                            className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted flex items-center gap-2 text-primary"
+                                          >
+                                            <Plus className="h-3 w-3" />
+                                            {t('files.addCategory', 'Ny kategori...')}
+                                          </button>
+                                        </div>
+                                      </PopoverContent>
+                                    </Popover>
+                                  </TableCell>
+                                );
+                              }
+
+                              if (col === 'task' || col === 'purchase' || col === 'room') {
+                                const entityType = col === 'task' ? 'task' : col === 'purchase' ? 'material' : 'room';
+                                const nameField = col === 'task' ? 'task_name' : col === 'purchase' ? 'material_name' : 'room_name';
+                                const idField = col === 'task' ? 'task_id' : col === 'purchase' ? 'material_id' : 'room_id';
+                                const options = col === 'task' ? availTasks : col === 'purchase' ? availMaterials : availRooms;
+                                const linkedEntities = links.filter(l => (l as Record<string, unknown>)[nameField]);
+                                const linkedIds = new Set(links.map(l => (l as Record<string, unknown>)[idField] as string).filter(Boolean));
+
+                                return (
+                                  <TableCell key={col} className="hidden md:table-cell">
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors min-w-[40px]">
+                                          {linkedEntities.length > 0
+                                            ? <span className="text-foreground">{linkedEntities.map(l => (l as Record<string, unknown>)[nameField]).join(', ')}</span>
+                                            : <span className="text-muted-foreground/40">–</span>}
+                                        </button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-52 p-1 max-h-64 overflow-y-auto" align="start">
+                                        {options.length === 0 ? (
+                                          <p className="text-xs text-muted-foreground p-2">{t('common.noResults', 'Inga resultat')}</p>
+                                        ) : options.map(opt => {
+                                          const isLinked = linkedIds.has(opt.id);
+                                          return (
+                                            <button key={opt.id} type="button"
+                                              onClick={() => isLinked
+                                                ? unlinkFileEntity(sf, entityType, opt.id)
+                                                : linkFileToEntity(sf, entityType, opt.id)
+                                              }
+                                              className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted flex items-center gap-2 ${isLinked ? 'bg-primary/5 font-medium' : ''}`}
+                                            >
+                                              {isLinked && <Check className="h-3 w-3 text-primary shrink-0" />}
+                                              <span className={isLinked ? '' : 'pl-5'} title={opt.name}>{opt.name}</span>
+                                            </button>
+                                          );
+                                        })}
+                                      </PopoverContent>
+                                    </Popover>
+                                  </TableCell>
+                                );
+                              }
+
+                              if (col === 'vendor') {
+                                const link = links[0];
+                                const vendor = link?.vendor_name;
+                                return (
+                                  <TableCell key={col} className="hidden md:table-cell text-xs truncate max-w-[120px]">
+                                    {vendor || <span className="text-muted-foreground/40">–</span>}
+                                  </TableCell>
+                                );
+                              }
+
+                              if (col === 'summary') {
+                                const link = links[0];
+                                const summary = link?.ai_summary;
+                                return (
+                                  <TableCell key={col} className="hidden md:table-cell text-xs text-muted-foreground truncate max-w-[180px]" title={summary || ''}>
+                                    {summary || <span className="text-muted-foreground/40">–</span>}
+                                  </TableCell>
+                                );
+                              }
+
+                              if (col === 'invoiceDate' || col === 'invoiceAmount' || col === 'rotAmount') {
+                                const link = links[0];
+                                const dbField = col === 'invoiceDate' ? 'invoice_date' : col === 'invoiceAmount' ? 'invoice_amount' : 'rot_amount';
+                                const currentVal = link ? (link as Record<string, unknown>)[dbField] : null;
+                                const isDate = col === 'invoiceDate';
+                                const displayVal = isDate
+                                  ? (currentVal ? String(currentVal).slice(0, 10) : null)
+                                  : (currentVal != null ? `${Number(currentVal).toLocaleString('sv-SE')} kr` : null);
+
+                                return (
+                                  <TableCell key={col} className="hidden md:table-cell">
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors min-w-[40px]">
+                                          {displayVal || <span className="text-muted-foreground/40">–</span>}
+                                        </button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-48 p-3" align="start">
+                                        <div className="space-y-2">
+                                          <Label className="text-xs">{fileColLabels[col]}</Label>
+                                          <Input
+                                            type={isDate ? 'date' : 'number'}
+                                            step={isDate ? undefined : '1'}
+                                            defaultValue={currentVal != null ? String(currentVal) : ''}
+                                            className="h-8 text-sm"
+                                            autoFocus
+                                            onBlur={async (e) => {
+                                              const val = e.target.value;
+                                              let linkId = link?.id;
+                                              if (!linkId) linkId = await ensureFileLink(sf) || undefined;
+                                              if (!linkId) return;
+                                              await updateFileLink(linkId, {
+                                                [dbField]: isDate ? (val || null) : (val ? parseFloat(val) : null),
+                                              });
+                                            }}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                            }}
+                                          />
+                                        </div>
+                                      </PopoverContent>
+                                    </Popover>
+                                  </TableCell>
+                                );
+                              }
+
+                              return (
+                                <TableCell key={col} className="hidden md:table-cell text-muted-foreground">
+                                  {col === 'type' && <Badge variant="outline">{sf.type?.split('/')[1] || '?'}</Badge>}
+                                  {col === 'size' && sf.size ? formatFileSize(sf.size) : ''}
+                                  {col === 'uploaded' && sf.uploaded_at ? formatDate(sf.uploaded_at) : ''}
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="text-right sticky right-0 z-10" style={{ background: 'inherit' }}>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => {
-                                    const { data: { publicUrl } } = supabase.storage.from('project-files').getPublicUrl(sf.path);
-                                    if (sf.type?.startsWith('image/')) { setPreviewUrl(publicUrl); setPreviewFile(sf); setImageZoom(100); }
-                                    else window.open(publicUrl, '_blank');
-                                  }}>
+                                  <DropdownMenuItem onClick={() => handlePreview(sf)}>
                                     <Eye className="h-4 w-4 mr-2" />
                                     {t('files.preview', 'Förhandsgranska')}
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => {
-                                    const { data: { publicUrl } } = supabase.storage.from('project-files').getPublicUrl(sf.path);
-                                    const a = document.createElement('a'); a.href = publicUrl; a.download = sf.name; a.click();
-                                  }}>
+                                  <DropdownMenuItem onClick={() => handleDownload(sf)}>
                                     <Download className="h-4 w-4 mr-2" />
                                     {t('common.download', 'Ladda ner')}
                                   </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => runSmartTolk(sf)}>
+                                    <Sparkles className="h-4 w-4 mr-2" />
+                                    {t('files.smartTolk', 'Smart tolk')}
+                                  </DropdownMenuItem>
+                                  {sf.type?.startsWith('image/') && onUseAsBackground && (
+                                    <DropdownMenuItem onClick={() => {
+                                      const { data: { publicUrl } } = supabase.storage
+                                        .from('project-files')
+                                        .getPublicUrl(sf.path);
+                                      onUseAsBackground(publicUrl, sf.name);
+                                    }}>
+                                      <Layers className="h-4 w-4 mr-2" />
+                                      {t('files.useAsBackground', 'Använd som planritning')}
+                                    </DropdownMenuItem>
+                                  )}
+                                  {canEdit && (
+                                    <DropdownMenuItem onClick={() => setLinkFile(sf)}>
+                                      <Link className="h-4 w-4 mr-2" />
+                                      {t('files.linkToTask', 'Koppla till arbete')}
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onClick={() => setSelectedFileForComments(sf)}>
+                                    <MessageSquare className="h-4 w-4 mr-2" />
+                                    {t('common.comments', 'Kommentarer')}
+                                  </DropdownMenuItem>
+                                  {canEdit && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() => setFileToDelete(sf)}
+                                        className="text-destructive focus:text-destructive"
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        {t('common.delete', 'Ta bort')}
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </Fragment>
                     );
                   })}
