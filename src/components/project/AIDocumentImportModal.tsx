@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -40,6 +41,7 @@ import {
   FileText,
   Wallet,
   Building2,
+  Check,
   ZoomIn,
   ZoomOut,
   ChevronDown,
@@ -580,327 +582,173 @@ export function AIDocumentImportModal({
               </div>
             )}
 
-            {/* Three-column layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0">
-              {/* Rooms Column */}
-              <Card className="flex flex-col min-h-0 overflow-hidden">
-                <CardHeader className="pb-2 flex-shrink-0">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Home className="h-4 w-4" />
-                      {t('aiDocumentImport.roomsFound', { count: rooms.length })}
-                    </CardTitle>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={selectAllRooms}>
-                        {t('aiDocumentImport.all')}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={deselectAllRooms}>
-                        {t('aiDocumentImport.none')}
-                      </Button>
+            {/* AI-extracted items (rooms/tasks found in document) */}
+            {(rooms.length > 0 || tasks.length > 0) && (
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-3">
+                {rooms.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium flex items-center gap-1.5">
+                        <Home className="h-3.5 w-3.5" />
+                        {t('aiDocumentImport.roomsFound', { count: rooms.length })}
+                      </h4>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={selectAllRooms}>{t('aiDocumentImport.all')}</Button>
+                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={deselectAllRooms}>{t('aiDocumentImport.none')}</Button>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-0 pt-0 overflow-y-auto">
-                  <ScrollArea className="h-full">
-                    <div className="space-y-2 pr-4">
-                      {rooms.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">
-                          {t('aiDocumentImport.noRoomsFound')}
-                        </p>
-                      ) : (
-                        rooms.map((room) => (
-                          <div
-                            key={room.index}
-                            className={`flex items-start gap-2 p-2 rounded-lg border transition-colors ${
-                              room.selected ? 'bg-primary/5 border-primary/20' : 'bg-background'
-                            }`}
-                          >
-                            <Checkbox
-                              checked={room.selected}
-                              onCheckedChange={() => toggleRoomSelection(room.index)}
-                              className="mt-1"
-                            />
-                            <div className="flex-1 min-w-0">
-                              {editingRoomIndex === room.index ? (
-                                <div className="space-y-2">
-                                  <Input
-                                    value={room.name}
-                                    onChange={(e) => updateRoom(room.index, { name: e.target.value })}
-                                    placeholder={t('aiDocumentImport.roomNamePlaceholder')}
-                                    className="h-8"
-                                  />
-                                  <Input
-                                    type="number"
-                                    value={room.estimatedAreaSqm || ''}
-                                    onChange={(e) =>
-                                      updateRoom(room.index, {
-                                        estimatedAreaSqm: e.target.value ? parseFloat(e.target.value) : null,
-                                      })
-                                    }
-                                    placeholder={t('aiDocumentImport.areaPlaceholder')}
-                                    className="h-8"
-                                  />
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setEditingRoomIndex(null)}
-                                  >
-                                    {t('aiDocumentImport.done')}
-                                  </Button>
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium truncate">{room.name}</span>
-                                    {room.estimatedAreaSqm && (
-                                      <Badge variant="secondary" className="text-xs">
-                                        {room.estimatedAreaSqm} m²
-                                      </Badge>
-                                    )}
-                                    <ConfidenceIndicator confidence={room.confidence} />
-                                  </div>
-                                  {room.description && (
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {room.description}
-                                    </p>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                            {editingRoomIndex !== room.index && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                                onClick={() => setEditingRoomIndex(room.index)}
-                              >
-                                <Edit2 className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </ScrollArea>
-                  {/* Manual room linking */}
-                  <div className="mt-3 pt-3 border-t space-y-2">
-                    <Label className="text-xs text-muted-foreground">{t('aiDocumentImport.linkToExisting', 'Link to existing rooms')}</Label>
                     <div className="flex flex-wrap gap-1.5">
-                      {existingRooms.map((r) => (
-                        <button
-                          key={r.id}
-                          onClick={() => setLinkedRoomIds(prev => { const n = new Set(prev); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; })}
-                          className={`text-xs px-2 py-1 rounded-full border transition-colors ${linkedRoomIds.has(r.id) ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-muted'}`}
+                      {rooms.map((room) => (
+                        <button key={room.index} type="button"
+                          onClick={() => toggleRoomSelection(room.index)}
+                          className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors flex items-center gap-1.5 ${room.selected ? 'bg-primary/10 border-primary/30 text-foreground' : 'hover:bg-muted text-muted-foreground'}`}
                         >
-                          {r.name}
+                          {room.selected && <CheckCircle2 className="h-3 w-3 text-primary" />}
+                          {room.name}
+                          {room.estimatedAreaSqm && <span className="text-muted-foreground">({room.estimatedAreaSqm}m²)</span>}
                         </button>
                       ))}
                     </div>
-                    <div className="flex gap-1.5">
-                      <Input
-                        value={newRoomName}
-                        onChange={(e) => setNewRoomName(e.target.value)}
-                        placeholder={t('aiDocumentImport.createNewRoom', 'Create new room...')}
-                        className="h-7 text-xs"
-                        onKeyDown={(e) => e.key === "Enter" && handleCreateRoom()}
-                      />
-                      <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCreateRoom} disabled={creatingSub === "room" || !newRoomName.trim()}>
-                        {creatingSub === "room" ? <Loader2 className="h-3 w-3 animate-spin" /> : "+"}
-                      </Button>
-                    </div>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Tasks Column */}
-              <Card className="flex flex-col min-h-0 overflow-hidden">
-                <CardHeader className="pb-2 flex-shrink-0">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <ClipboardList className="h-4 w-4" />
-                      {t('aiDocumentImport.tasksFound', { count: tasks.length })}
-                    </CardTitle>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={selectAllTasks}>
-                        {t('aiDocumentImport.all')}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={deselectAllTasks}>
-                        {t('aiDocumentImport.none')}
-                      </Button>
+                )}
+                {tasks.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium flex items-center gap-1.5">
+                        <ClipboardList className="h-3.5 w-3.5" />
+                        {t('aiDocumentImport.tasksFound', { count: tasks.length })}
+                      </h4>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={selectAllTasks}>{t('aiDocumentImport.all')}</Button>
+                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={deselectAllTasks}>{t('aiDocumentImport.none')}</Button>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-0 pt-0 overflow-y-auto">
-                  <ScrollArea className="h-full">
-                    <div className="space-y-2 pr-4">
-                      {tasks.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">
-                          {t('aiDocumentImport.noTasksFound')}
-                        </p>
-                      ) : (
-                        tasks.map((task) => (
-                          <div
-                            key={task.index}
-                            className={`flex items-start gap-2 p-2 rounded-lg border transition-colors ${
-                              task.selected ? 'bg-primary/5 border-primary/20' : 'bg-background'
-                            }`}
-                          >
-                            <Checkbox
-                              checked={task.selected}
-                              onCheckedChange={() => toggleTaskSelection(task.index)}
-                              className="mt-1"
-                            />
-                            <div className="flex-1 min-w-0">
-                              {editingTaskIndex === task.index ? (
-                                <div className="space-y-2">
-                                  <Input
-                                    value={task.title}
-                                    onChange={(e) => updateTask(task.index, { title: e.target.value })}
-                                    placeholder={t('aiDocumentImport.taskTitlePlaceholder')}
-                                    className="h-8"
-                                  />
-                                  <Select
-                                    value={task.category}
-                                    onValueChange={(value) =>
-                                      updateTask(task.index, { category: value as TaskCategory })
-                                    }
-                                  >
-                                    <SelectTrigger className="h-8">
-                                      <SelectValue placeholder={t('aiDocumentImport.categoryPlaceholder')} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {Object.entries(TASK_CATEGORY_LABELS).map(([value, label]) => (
-                                        <SelectItem key={value} value={value}>
-                                          {label}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setEditingTaskIndex(null)}
-                                  >
-                                    {t('aiDocumentImport.done')}
-                                  </Button>
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-medium">{task.title}</span>
-                                    <ConfidenceIndicator confidence={task.confidence} />
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <Badge variant="outline" className="text-xs">
-                                      {TASK_CATEGORY_LABELS[task.category as TaskCategory] || task.category}
-                                    </Badge>
-                                    {task.roomName && (
-                                      <span className="text-xs text-muted-foreground">
-                                        {task.roomName}
-                                      </span>
-                                    )}
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                            {editingTaskIndex !== task.index && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                                onClick={() => setEditingTaskIndex(task.index)}
-                              >
-                                <Edit2 className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </ScrollArea>
-                  {/* Manual task linking */}
-                  <div className="mt-3 pt-3 border-t space-y-2">
-                    <Label className="text-xs text-muted-foreground">{t('aiDocumentImport.linkToExistingTasks', 'Link to existing tasks')}</Label>
                     <div className="flex flex-wrap gap-1.5">
-                      {existingTasks.map((tk) => (
-                        <button
-                          key={tk.id}
-                          onClick={() => setLinkedTaskIds(prev => { const n = new Set(prev); n.has(tk.id) ? n.delete(tk.id) : n.add(tk.id); return n; })}
-                          className={`text-xs px-2 py-1 rounded-full border transition-colors ${linkedTaskIds.has(tk.id) ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-muted'}`}
+                      {tasks.map((task) => (
+                        <button key={task.index} type="button"
+                          onClick={() => toggleTaskSelection(task.index)}
+                          className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors flex items-center gap-1.5 ${task.selected ? 'bg-primary/10 border-primary/30 text-foreground' : 'hover:bg-muted text-muted-foreground'}`}
                         >
-                          {tk.title}
+                          {task.selected && <CheckCircle2 className="h-3 w-3 text-primary" />}
+                          {task.title}
+                          {task.roomName && <span className="text-muted-foreground">· {task.roomName}</span>}
                         </button>
                       ))}
                     </div>
-                    <div className="flex gap-1.5">
-                      <Input
-                        value={newTaskName}
-                        onChange={(e) => setNewTaskName(e.target.value)}
-                        placeholder={t('aiDocumentImport.createNewTask', 'Create new task...')}
-                        className="h-7 text-xs"
-                        onKeyDown={(e) => e.key === "Enter" && handleCreateTask()}
-                      />
-                      <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCreateTask} disabled={creatingSub === "task" || !newTaskName.trim()}>
-                        {creatingSub === "task" ? <Loader2 className="h-3 w-3 animate-spin" /> : "+"}
-                      </Button>
-                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                )}
+              </div>
+            )}
 
-              {/* Purchases Column */}
-              <Card className="flex flex-col min-h-0 overflow-hidden">
-                <CardHeader className="pb-2 flex-shrink-0">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Wallet className="h-4 w-4" />
-                    {t('aiDocumentImport.purchases', 'Purchases')}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-0 pt-0">
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {t('aiDocumentImport.linkToPurchases', 'Link this document to existing purchases or create a new one.')}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {existingPurchases.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => setLinkedPurchaseIds(prev => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })}
-                        className={`text-xs px-2 py-1 rounded-full border transition-colors ${linkedPurchaseIds.has(p.id) ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-muted'}`}
+            {/* Sticky linking footer — Arbete, Inköp, Rum */}
+            <div className="flex-shrink-0 border-t pt-3 mt-3">
+              <p className="text-xs text-muted-foreground mb-2">{t('aiDocumentImport.linkFile', 'Koppla filen till:')}</p>
+              <div className="grid grid-cols-3 gap-3">
+                {/* Koppla till arbete */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-9">
+                      <ClipboardList className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate text-xs">
+                        {linkedTaskIds.size > 0
+                          ? `${linkedTaskIds.size} arbete${linkedTaskIds.size > 1 ? 'n' : ''}`
+                          : existingTasks.length > 0 ? t('aiDocumentImport.linkToTask', 'Koppla till arbete') : t('aiDocumentImport.createNewTask', 'Skapa nytt arbete')}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-1 max-h-64 overflow-y-auto" align="start">
+                    {existingTasks.map((tk) => (
+                      <button key={tk.id} type="button"
+                        onClick={() => setLinkedTaskIds(prev => { const n = new Set(prev); n.has(tk.id) ? n.delete(tk.id) : n.add(tk.id); return n; })}
+                        className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted flex items-center gap-2 ${linkedTaskIds.has(tk.id) ? 'bg-primary/5 font-medium' : ''}`}
                       >
-                        {p.name}
+                        {linkedTaskIds.has(tk.id) && <Check className="h-3 w-3 text-primary shrink-0" />}
+                        <span className={linkedTaskIds.has(tk.id) ? '' : 'pl-5'} title={tk.title}>{tk.title}</span>
                       </button>
                     ))}
-                    {existingPurchases.length === 0 && (
-                      <p className="text-xs text-muted-foreground">{t('aiDocumentImport.noPurchases', 'No purchases yet')}</p>
-                    )}
-                  </div>
-                  <div className="flex gap-1.5 mt-2">
-                    <Input
-                      value={newPurchaseName}
-                      onChange={(e) => setNewPurchaseName(e.target.value)}
-                      placeholder={t('aiDocumentImport.createNewPurchase', 'Create new purchase...')}
-                      className="h-7 text-xs"
-                      onKeyDown={(e) => e.key === "Enter" && handleCreatePurchase()}
-                    />
-                    <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCreatePurchase} disabled={creatingSub === "purchase" || !newPurchaseName.trim()}>
-                      {creatingSub === "purchase" ? <Loader2 className="h-3 w-3 animate-spin" /> : "+"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                    <div className="border-t mt-1 pt-1">
+                      <div className="flex gap-1 px-1">
+                        <Input value={newTaskName} onChange={(e) => setNewTaskName(e.target.value)}
+                          placeholder={t('aiDocumentImport.createNewTask', 'Skapa nytt arbete...')}
+                          className="h-7 text-xs" onKeyDown={(e) => e.key === "Enter" && handleCreateTask()} />
+                        <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCreateTask} disabled={creatingSub === "task" || !newTaskName.trim()}>
+                          {creatingSub === "task" ? <Loader2 className="h-3 w-3 animate-spin" /> : "+"}
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
 
-            {/* Legend */}
-            <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                {t('aiDocumentImport.highConfidence')}
-              </span>
-              <span className="flex items-center gap-1">
-                {t('aiDocumentImport.mediumConfidence')}
-              </span>
-              <span className="flex items-center gap-1">
-                {t('aiDocumentImport.lowConfidence')}
-              </span>
+                {/* Koppla till inköp */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-9">
+                      <Wallet className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate text-xs">
+                        {linkedPurchaseIds.size > 0
+                          ? `${linkedPurchaseIds.size} inköp`
+                          : existingPurchases.length > 0 ? t('aiDocumentImport.linkToPurchase', 'Koppla till inköp') : t('aiDocumentImport.createNewPurchase', 'Skapa nytt inköp')}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-1 max-h-64 overflow-y-auto" align="start">
+                    {existingPurchases.map((p) => (
+                      <button key={p.id} type="button"
+                        onClick={() => setLinkedPurchaseIds(prev => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })}
+                        className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted flex items-center gap-2 ${linkedPurchaseIds.has(p.id) ? 'bg-primary/5 font-medium' : ''}`}
+                      >
+                        {linkedPurchaseIds.has(p.id) && <Check className="h-3 w-3 text-primary shrink-0" />}
+                        <span className={linkedPurchaseIds.has(p.id) ? '' : 'pl-5'} title={p.name}>{p.name}</span>
+                      </button>
+                    ))}
+                    <div className="border-t mt-1 pt-1">
+                      <div className="flex gap-1 px-1">
+                        <Input value={newPurchaseName} onChange={(e) => setNewPurchaseName(e.target.value)}
+                          placeholder={t('aiDocumentImport.createNewPurchase', 'Skapa nytt inköp...')}
+                          className="h-7 text-xs" onKeyDown={(e) => e.key === "Enter" && handleCreatePurchase()} />
+                        <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCreatePurchase} disabled={creatingSub === "purchase" || !newPurchaseName.trim()}>
+                          {creatingSub === "purchase" ? <Loader2 className="h-3 w-3 animate-spin" /> : "+"}
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Koppla till rum */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-9">
+                      <Home className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate text-xs">
+                        {linkedRoomIds.size > 0
+                          ? `${linkedRoomIds.size} rum`
+                          : existingRooms.length > 0 ? t('aiDocumentImport.linkToRoom', 'Koppla till rum') : t('aiDocumentImport.createNewRoom', 'Skapa nytt rum')}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-1 max-h-64 overflow-y-auto" align="start">
+                    {existingRooms.map((r) => (
+                      <button key={r.id} type="button"
+                        onClick={() => setLinkedRoomIds(prev => { const n = new Set(prev); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; })}
+                        className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted flex items-center gap-2 ${linkedRoomIds.has(r.id) ? 'bg-primary/5 font-medium' : ''}`}
+                      >
+                        {linkedRoomIds.has(r.id) && <Check className="h-3 w-3 text-primary shrink-0" />}
+                        <span className={linkedRoomIds.has(r.id) ? '' : 'pl-5'} title={r.name}>{r.name}</span>
+                      </button>
+                    ))}
+                    <div className="border-t mt-1 pt-1">
+                      <div className="flex gap-1 px-1">
+                        <Input value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)}
+                          placeholder={t('aiDocumentImport.createNewRoom', 'Skapa nytt rum...')}
+                          className="h-7 text-xs" onKeyDown={(e) => e.key === "Enter" && handleCreateRoom()} />
+                        <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleCreateRoom} disabled={creatingSub === "room" || !newRoomName.trim()}>
+                          {creatingSub === "room" ? <Loader2 className="h-3 w-3 animate-spin" /> : "+"}
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
           </div>
         )}
