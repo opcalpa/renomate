@@ -260,11 +260,10 @@ export function ImportQuotePopover({
 
       <Popover open={open} onOpenChange={(isOpen) => { setOpen(isOpen); if (!isOpen) resetForm(); }}>
         <PopoverTrigger asChild>
-          <Button size="sm" variant="outline" className="gap-1.5">
+          <Button size="sm" variant="outline" className="gap-1.5" title={t("externalQuotes.importQuote", "Import quote")}>
             <FileText className="h-3.5 w-3.5" />
-            {t("externalQuotes.importQuote", "Import quote")}
             {quotes.length > 0 && (
-              <span className="ml-1 rounded-full bg-primary/10 text-primary text-xs px-1.5 py-0.5 tabular-nums">
+              <span className="rounded-full bg-primary/10 text-primary text-xs px-1.5 py-0.5 tabular-nums">
                 {quotes.length}
               </span>
             )}
