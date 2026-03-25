@@ -527,7 +527,7 @@ export function HelpBot() {
       {open && (
         <div
           ref={panelRef}
-          className="fixed inset-0 z-50 flex flex-col bg-background md:inset-auto md:bottom-6 md:right-6 md:h-[500px] md:w-[400px] md:max-w-[calc(100vw-2rem)] md:rounded-xl md:border md:shadow-2xl"
+          className="fixed inset-0 z-50 flex flex-col bg-background md:inset-auto md:bottom-6 md:right-6 md:h-[500px] md:w-[400px] md:max-w-[calc(100%-2rem)] md:rounded-xl md:border md:shadow-2xl"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b px-4 py-3">

@@ -337,7 +337,7 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
             </div>
           </PopoverTrigger>
           {quoteItems.length > 0 && (
-            <PopoverContent align="center" className="w-[calc(100vw-2rem)] sm:w-96 p-0">
+            <PopoverContent align="center" className="w-[calc(100%-2rem)] sm:w-96 p-0">
               <div className="px-3 py-2.5 border-b">
                 <h4 className="text-sm font-semibold">{t("homeownerBudget.quoteOverview", "Offertöversikt")}</h4>
               </div>
@@ -388,7 +388,7 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
             </div>
           </PopoverTrigger>
           {sentInvoices.length > 0 && (
-            <PopoverContent align="center" className="w-[calc(100vw-2rem)] sm:w-96 p-0">
+            <PopoverContent align="center" className="w-[calc(100%-2rem)] sm:w-96 p-0">
               <div className="px-3 py-2.5 border-b">
                 <h4 className="text-sm font-semibold">{t("homeownerBudget.invoices", "Fakturor")}</h4>
               </div>

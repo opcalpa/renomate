@@ -142,7 +142,7 @@ function PaintFormulaPopover({ settings, onSettingsChange, room, children }: Pai
   return (
     <Popover>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent className="w-[calc(100vw-2rem)] sm:w-72 p-3" align="start">
+      <PopoverContent className="w-[calc(100%-2rem)] sm:w-72 p-3" align="start">
         <div className="space-y-3">
           <div>
             <p className="text-xs font-medium mb-1">{t("estimation.paintFormula", "Paint formula")}</p>

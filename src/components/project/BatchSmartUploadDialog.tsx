@@ -261,7 +261,7 @@ export const BatchSmartUploadDialog: React.FC<BatchSmartUploadDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] sm:max-w-[calc(100vw-4rem)] max-h-[85vh] flex flex-col">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-7xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {t('files.batchUploadTitle', 'Smart uppladdning')}

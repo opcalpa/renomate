@@ -468,7 +468,7 @@ export function AIDocumentImportModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!max-w-5xl !w-[calc(100vw-3rem)] !max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="!max-w-5xl w-[calc(100%-3rem)] !max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
