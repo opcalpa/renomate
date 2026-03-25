@@ -185,10 +185,12 @@ VIKTIGT:
 - Om priset inkluderar arbete + material men inte specificeras separat, sätt estimatedCost och lämna laborCost/materialCost som null
 - Om ROT-avdrag nämns, extrahera priset FÖRE avdrag (bruttopris)
 - Belopp ska vara tal (number), INTE strängar
+- KRITISKT FÖR BELOPP: Använd EXAKT det belopp som står på raden i dokumentet. Beräkna ALDRIG egna belopp genom att multiplicera eller summera andra värden. Om en rad säger "Material för väggar 15 100 kr", ska estimatedCost vara exakt 15100, INTE ett beräknat värde.
 - MATERIALRADER (t.ex. "Material för målning 20 000 kr") ska ha isMaterialBudget: true och parentTaskName satt till närmaste arbetspost (t.ex. "Målning"). Dessa blir materialbudgetar, INTE arbetsuppgifter.
 - Om material ingår i en arbetspost (t.ex. "Målning inkl. material") — sätt materialCost på arbetsposten istället, INTE som separat materialrad. Undvik dubbelräkning.
 - ROT gäller BARA arbetskostnad, aldrig material. Sätt rotEligible: false på materialrader.
 - Confidence max 0.7 om det inte ordagrant nämns i texten
+- Om en rad har mängd (antal) OCH á-pris, extrahera TOTALBELOPPET (mängd × á-pris) som estimatedCost, INTE á-priset ensamt.
 
 Svara ENDAST med giltig JSON:
 {

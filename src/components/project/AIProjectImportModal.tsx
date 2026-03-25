@@ -103,6 +103,7 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
   const [uploadedFile, setUploadedFile] = useState<{ tempPath: string; name: string; file: File } | null>(null);
   const [showIncVat, setShowIncVat] = useState(true);
   const [standaloneMaterials, setStandaloneMaterials] = useState<StandaloneMaterial[]>([]);
+  const [editingMaterialKey, setEditingMaterialKey] = useState<string | null>(null);
 
   const resetState = useCallback(() => {
     setStep('upload');
@@ -117,6 +118,7 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
     setUploadedFile(null);
     setShowIncVat(true);
     setStandaloneMaterials([]);
+    setEditingMaterialKey(null);
   }, []);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -488,6 +490,23 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
     setTasks((prev) => prev.map((t) => (t.index === index ? { ...t, ...updates } : t)));
   };
 
+  const updateMaterialChild = (taskIndex: number, matIndex: number, cost: number | null) => {
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.index !== taskIndex) return t;
+        const updated = [...t.materialChildren];
+        updated[matIndex] = { ...updated[matIndex], estimatedCost: cost };
+        return { ...t, materialChildren: updated };
+      })
+    );
+  };
+
+  const updateStandaloneMaterial = (matIndex: number, cost: number | null) => {
+    setStandaloneMaterials((prev) =>
+      prev.map((m) => (m.index === matIndex ? { ...m, estimatedCost: cost } : m))
+    );
+  };
+
   const selectedRoomCount = rooms.filter((r) => r.selected).length;
   const selectedTaskCount = tasks.filter((t) => t.selected).length;
 
@@ -717,17 +736,48 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
                           {/* Material children */}
                           {task.materialChildren.length > 0 && (
                             <div className="ml-8 mt-0.5 space-y-0.5">
-                              {task.materialChildren.map((mat, mi) => (
-                                <div key={`mat-${task.index}-${mi}`} className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground rounded bg-amber-50 border border-amber-100">
-                                  <Package className="h-3 w-3 text-amber-600 shrink-0" />
-                                  <span className="truncate">{mat.title}</span>
-                                  {mat.estimatedCost != null && (
-                                    <span className="ml-auto font-medium tabular-nums text-amber-700">
-                                      +{fmtCost(mat.estimatedCost, mat.isIncludingVat)} kr
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
+                              {task.materialChildren.map((mat, mi) => {
+                                const matKey = `${task.index}-${mi}`;
+                                const isEditingMat = editingMaterialKey === matKey;
+                                return (
+                                  <div key={`mat-${matKey}`} className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground rounded bg-amber-50 border border-amber-100">
+                                    <Package className="h-3 w-3 text-amber-600 shrink-0" />
+                                    <span className="truncate">{mat.title}</span>
+                                    {isEditingMat ? (
+                                      <div className="ml-auto flex items-center gap-1">
+                                        <span className="text-amber-700">+</span>
+                                        <Input
+                                          type="number"
+                                          autoFocus
+                                          defaultValue={mat.estimatedCost ?? ''}
+                                          className="h-6 w-24 text-xs text-right tabular-nums"
+                                          onBlur={(e) => {
+                                            const val = e.target.value ? parseFloat(e.target.value) : null;
+                                            updateMaterialChild(task.index, mi, val);
+                                            setEditingMaterialKey(null);
+                                          }}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              const val = (e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null;
+                                              updateMaterialChild(task.index, mi, val);
+                                              setEditingMaterialKey(null);
+                                            }
+                                          }}
+                                        />
+                                        <span className="text-amber-700">kr</span>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className="ml-auto font-medium tabular-nums text-amber-700 hover:underline hover:text-amber-900 cursor-pointer"
+                                        onClick={() => setEditingMaterialKey(matKey)}
+                                      >
+                                        +{mat.estimatedCost != null ? fmtCost(mat.estimatedCost, mat.isIncludingVat) : '0'} kr
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                           {task.rotAmount != null && task.rotAmount > 0 && (
@@ -751,26 +801,56 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
                       {t('quoteImport.standaloneMaterials', 'Fristående materialposter')}
                     </h5>
                     <div className="space-y-1">
-                      {standaloneMaterials.map((mat) => (
-                        <div
-                          key={`standalone-${mat.index}`}
-                          className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${mat.selected ? 'bg-amber-50 border-amber-200' : 'bg-background'}`}
-                        >
-                          <Checkbox
-                            checked={mat.selected}
-                            onCheckedChange={() =>
-                              setStandaloneMaterials((p) => p.map((m) => m.index === mat.index ? { ...m, selected: !m.selected } : m))
-                            }
-                          />
-                          <Package className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                          <span className="text-sm truncate">{mat.title}</span>
-                          {mat.estimatedCost != null && (
-                            <span className="ml-auto text-sm font-medium tabular-nums">
-                              {formatCostNum(mat.estimatedCost, mat.isIncludingVat, showIncVat).toLocaleString('sv-SE')} kr
-                            </span>
-                          )}
-                        </div>
-                      ))}
+                      {standaloneMaterials.map((mat) => {
+                        const sKey = `standalone-${mat.index}`;
+                        const isEditingMat = editingMaterialKey === sKey;
+                        return (
+                          <div
+                            key={sKey}
+                            className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${mat.selected ? 'bg-amber-50 border-amber-200' : 'bg-background'}`}
+                          >
+                            <Checkbox
+                              checked={mat.selected}
+                              onCheckedChange={() =>
+                                setStandaloneMaterials((p) => p.map((m) => m.index === mat.index ? { ...m, selected: !m.selected } : m))
+                              }
+                            />
+                            <Package className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                            <span className="text-sm truncate">{mat.title}</span>
+                            {isEditingMat ? (
+                              <div className="ml-auto flex items-center gap-1">
+                                <Input
+                                  type="number"
+                                  autoFocus
+                                  defaultValue={mat.estimatedCost ?? ''}
+                                  className="h-6 w-24 text-xs text-right tabular-nums"
+                                  onBlur={(e) => {
+                                    const val = e.target.value ? parseFloat(e.target.value) : null;
+                                    updateStandaloneMaterial(mat.index, val);
+                                    setEditingMaterialKey(null);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const val = (e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null;
+                                      updateStandaloneMaterial(mat.index, val);
+                                      setEditingMaterialKey(null);
+                                    }
+                                  }}
+                                />
+                                <span className="text-sm">kr</span>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className="ml-auto text-sm font-medium tabular-nums hover:underline cursor-pointer"
+                                onClick={() => setEditingMaterialKey(sKey)}
+                              >
+                                {mat.estimatedCost != null ? formatCostNum(mat.estimatedCost, mat.isIncludingVat, showIncVat).toLocaleString('sv-SE') : '0'} kr
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
