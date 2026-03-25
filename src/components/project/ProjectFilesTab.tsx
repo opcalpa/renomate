@@ -1278,7 +1278,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                     {allProjectFiles.length} {t('files.totalFiles', 'filer totalt')}
                   </p>
                 </div>
-              ) : (
+              ) : (<>
               {/* Batch action bar — above table, not inside overflow container */}
               {selectedFiles.size > 0 && (
                 <div className="sticky top-0 z-30 flex items-center gap-2 px-3 py-1.5 mb-1 bg-background border shadow-sm rounded-lg w-fit">
@@ -1907,7 +1907,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                 </TableBody>
               </Table>
               </div>
-            )}
+            </>)}
           </CardContent>
         </Card>
 
