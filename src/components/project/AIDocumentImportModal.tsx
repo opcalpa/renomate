@@ -536,25 +536,23 @@ export function AIDocumentImportModal({
             {/* Document Preview */}
             {file && (
               <div className="flex-shrink-0 mb-4">
-                <button
-                  type="button"
-                  onClick={() => setPreviewExpanded(v => !v)}
-                  className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-2"
-                >
-                  {previewExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                  {t('aiDocumentImport.documentPreview', 'Dokumentförhandsvisning')}
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-2 cursor-pointer select-none">
+                  <span className="flex items-center gap-2" onClick={() => setPreviewExpanded(v => !v)}>
+                    {previewExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    {t('aiDocumentImport.documentPreview', 'Dokumentförhandsvisning')}
+                  </span>
                   {previewExpanded && (
                     <span className="flex items-center gap-1 ml-2">
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPreviewZoom(z => Math.max(50, z - 25)); }} className="p-0.5 hover:bg-muted rounded">
+                      <button type="button" onClick={() => setPreviewZoom(z => Math.max(50, z - 25))} className="p-0.5 hover:bg-muted rounded">
                         <ZoomOut className="h-3 w-3" />
                       </button>
                       <span className="text-xs tabular-nums min-w-[32px] text-center">{previewZoom}%</span>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPreviewZoom(z => Math.min(200, z + 25)); }} className="p-0.5 hover:bg-muted rounded">
+                      <button type="button" onClick={() => setPreviewZoom(z => Math.min(200, z + 25))} className="p-0.5 hover:bg-muted rounded">
                         <ZoomIn className="h-3 w-3" />
                       </button>
                     </span>
                   )}
-                </button>
+                </div>
                 {previewExpanded && (
                   <div className="border rounded-lg bg-muted/30 overflow-auto" style={{ maxHeight: '35vh' }}>
                     {file.type?.includes('pdf') ? (
