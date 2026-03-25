@@ -142,6 +142,15 @@ All colors MUST be HSL.
 
 /* Professional auto-hide scrollbars - like Figma/Linear */
 @layer utilities {
+  /* Completely hidden scrollbar (for nav tabs, etc.) */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Thin scrollbar that auto-hides */
   .scrollbar-thin {
     scrollbar-width: thin;
