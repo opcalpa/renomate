@@ -465,6 +465,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   const [smartTolkLoading, setSmartTolkLoading] = useState<string | null>(null);
   const runSmartTolk = async (file: ProjectFile) => {
     setSmartTolkLoading(file.path);
+    toast({ title: `${t('files.smartTolk', 'Smart tolk')}...`, description: file.name });
     try {
     const { data: { publicUrl } } = supabase.storage.from('project-files').getPublicUrl(file.path);
     const isImage = file.type.startsWith('image/');
@@ -1279,7 +1280,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                   onCheckedChange={() => toggleFileSelection(file.path)}
                                   className="h-4 w-4"
                                 />
-                                {getFileIcon(file)}
+                                {smartTolkLoading === file.path ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : getFileIcon(file)}
                               </span>
                             </TableCell>
                             <TableCell className="font-medium sticky left-12 bg-background z-10 max-w-[220px]">
@@ -1503,7 +1504,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                   onCheckedChange={() => toggleFileSelection(sf.path)}
                                   className="h-4 w-4"
                                 />
-                                {getFileIcon(sf)}
+                                {smartTolkLoading === sf.path ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : getFileIcon(sf)}
                               </span>
                             </TableCell>
                             <TableCell className={`font-medium ${sfBg} max-w-[220px] ${pinnedCol === 'name' ? 'sticky left-12 z-10' : ''}`}>
@@ -1757,7 +1758,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                             onCheckedChange={() => toggleFileSelection(file.path)}
                             className="h-4 w-4"
                           />
-                          {getFileIcon(file)}
+                          {smartTolkLoading === file.path ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : getFileIcon(file)}
                         </span>
                       </TableCell>
                       <TableCell className={`font-medium bg-white dark:bg-card max-w-[220px] ${pinnedCol === 'name' ? 'sticky left-12 z-10' : ''}`}>
