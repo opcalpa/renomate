@@ -62,6 +62,10 @@ import {
   Plus,
   Check,
   Search,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  Pin,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -185,6 +189,22 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   const toggleCompact = () => {
     setCompactRows(prev => { const next = !prev; localStorage.setItem('files_compact', String(next)); return next; });
   };
+
+  // File sorting
+  type FileSortKey = 'name' | 'category' | 'task' | 'purchase' | 'room' | 'vendor' | 'invoiceDate' | 'invoiceAmount' | 'rotAmount' | 'summary' | 'type' | 'size' | 'uploaded';
+  const [fileSortKey, setFileSortKey] = useState<FileSortKey | null>(null);
+  const [fileSortDir, setFileSortDir] = useState<'asc' | 'desc'>('asc');
+  const toggleFileSort = (key: FileSortKey) => {
+    if (fileSortKey === key) {
+      setFileSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setFileSortKey(key);
+      setFileSortDir('asc');
+    }
+  };
+
+  // Pinned column (sticky left after checkbox)
+  const [pinnedCol, setPinnedCol] = useState<'name' | FileSortKey | null>('name');
 
   // Flat view — show all files across all folders
   const [flatView, setFlatView] = useState(false);
@@ -923,6 +943,40 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     return links.some(l => l.task_name?.toLowerCase().includes(searchQ) || l.material_name?.toLowerCase().includes(searchQ) || l.room_name?.toLowerCase().includes(searchQ));
   }) : files;
 
+  // Sorted files
+  const sortedFiles = useMemo(() => {
+    if (!fileSortKey) return filteredFiles;
+    const sorted = [...filteredFiles].sort((a, b) => {
+      let aVal = '';
+      let bVal = '';
+      if (fileSortKey === 'name') {
+        aVal = a.name.toLowerCase();
+        bVal = b.name.toLowerCase();
+      } else if (fileSortKey === 'category') {
+        aVal = (categoryOverrides[a.path] || guessCategory(a)).toLowerCase();
+        bVal = (categoryOverrides[b.path] || guessCategory(b)).toLowerCase();
+      } else if (fileSortKey === 'type') {
+        aVal = (a.type || '').toLowerCase();
+        bVal = (b.type || '').toLowerCase();
+      } else if (fileSortKey === 'size') {
+        return fileSortDir === 'asc' ? (a.size || 0) - (b.size || 0) : (b.size || 0) - (a.size || 0);
+      } else if (fileSortKey === 'uploaded') {
+        aVal = a.uploaded_at || '';
+        bVal = b.uploaded_at || '';
+      } else {
+        // Link-based columns
+        const aLinks = getFileLinksForPath(a.path);
+        const bLinks = getFileLinksForPath(b.path);
+        const field = fileSortKey === 'task' ? 'task_name' : fileSortKey === 'purchase' ? 'material_name' : fileSortKey === 'room' ? 'room_name' : fileSortKey === 'vendor' ? 'vendor_name' : fileSortKey === 'summary' ? 'ai_summary' : fileSortKey === 'invoiceDate' ? 'invoice_date' : fileSortKey === 'invoiceAmount' ? 'invoice_amount' : 'rot_amount';
+        aVal = String((aLinks[0] as Record<string, unknown>)?.[field] || '').toLowerCase();
+        bVal = String((bLinks[0] as Record<string, unknown>)?.[field] || '').toLowerCase();
+      }
+      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return fileSortDir === 'asc' ? cmp : -cmp;
+    });
+    return sorted;
+  }, [filteredFiles, fileSortKey, fileSortDir, categoryOverrides, getFileLinksForPath]);
+
   // Flat list of all previewable files (expanded folder files + top-level files)
   const allPreviewableFiles = useMemo(() => {
     const result: ProjectFile[] = [];
@@ -1326,10 +1380,40 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                         className="h-4 w-4"
                       />
                     </TableHead>
-                    <TableHead className="sticky left-12 bg-background z-20 max-w-[220px]">{t('common.name')}</TableHead>
+                    <TableHead
+                      className={`max-w-[220px] bg-white dark:bg-card z-20 ${pinnedCol === 'name' ? 'sticky left-12' : ''}`}
+                    >
+                      <div className="flex items-center gap-1 group/hdr">
+                        <button type="button" onClick={() => toggleFileSort('name')} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                          {t('common.name')}
+                          {fileSortKey === 'name' ? (fileSortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-0 group-hover/hdr:opacity-40" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPinnedCol(pinnedCol === 'name' ? null : 'name')}
+                          className={`h-4 w-4 flex items-center justify-center rounded transition-opacity ${pinnedCol === 'name' ? 'opacity-50' : 'opacity-0 group-hover/hdr:opacity-30'}`}
+                          title={pinnedCol === 'name' ? 'Lossa kolumn' : 'Fäst kolumn'}
+                        >
+                          <Pin className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    </TableHead>
                     {visibleFileCols.map(col => (
-                      <TableHead key={col} className="hidden md:table-cell">
-                        {fileColLabels[col]}
+                      <TableHead key={col} className={`hidden md:table-cell ${pinnedCol === col ? 'sticky left-12 bg-white dark:bg-card z-20' : ''}`}>
+                        <div className="flex items-center gap-1 group/hdr">
+                          <button type="button" onClick={() => toggleFileSort(col as FileSortKey)} className="flex items-center gap-1 hover:text-foreground transition-colors whitespace-nowrap">
+                            {fileColLabels[col]}
+                            {fileSortKey === col ? (fileSortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-0 group-hover/hdr:opacity-40" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPinnedCol(pinnedCol === col ? null : col as FileSortKey)}
+                            className={`h-4 w-4 flex items-center justify-center rounded transition-opacity ${pinnedCol === col ? 'opacity-50' : 'opacity-0 group-hover/hdr:opacity-30'}`}
+                            title={pinnedCol === col ? 'Lossa kolumn' : 'Fäst kolumn'}
+                          >
+                            <Pin className="h-2.5 w-2.5" />
+                          </button>
+                        </div>
                       </TableHead>
                     ))}
                     <TableHead className="w-8 text-right sticky right-0 bg-white dark:bg-card z-10">
@@ -1381,7 +1465,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                             </span>
                           </TableCell>
                           <TableCell
-                            className="font-medium sticky left-12 z-10 bg-white dark:bg-card"
+                            className={`font-medium bg-white dark:bg-card ${pinnedCol === 'name' ? 'sticky left-12 z-10' : ''}`}
                             onClick={() => setCurrentFolder('/' + folder.path)}
                           >
                             {folder.name}
@@ -1411,7 +1495,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                 {getFileIcon(sf)}
                               </span>
                             </TableCell>
-                            <TableCell className={`font-medium sticky left-12 z-10 ${sfBg} max-w-[220px]`}>
+                            <TableCell className={`font-medium ${sfBg} max-w-[220px] ${pinnedCol === 'name' ? 'sticky left-12 z-10' : ''}`}>
                               <button
                                 type="button"
                                 className="text-left hover:text-primary hover:underline transition-colors truncate block w-full"
@@ -1653,7 +1737,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                   })}
 
                   {/* Files */}
-                  {filteredFiles.map((file) => (
+                  {sortedFiles.map((file) => (
                     <TableRow key={file.id} className={`group ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''} ${selectedFiles.has(file.path) ? 'bg-primary/5' : ''}`}>
                       <TableCell className="w-12 sticky left-0 z-10 bg-white dark:bg-card">
                         <span className="inline-flex items-center gap-1.5">
@@ -1665,7 +1749,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           {getFileIcon(file)}
                         </span>
                       </TableCell>
-                      <TableCell className="font-medium sticky left-12 z-10 bg-white dark:bg-card max-w-[220px]">
+                      <TableCell className={`font-medium bg-white dark:bg-card max-w-[220px] ${pinnedCol === 'name' ? 'sticky left-12 z-10' : ''}`}>
                         <button
                           type="button"
                           className="text-left hover:text-primary hover:underline transition-colors truncate block w-full"
