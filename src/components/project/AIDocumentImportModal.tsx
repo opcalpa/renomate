@@ -204,6 +204,27 @@ export function AIDocumentImportModal({
       setLinkedRoomIds(new Set());
       setLinkedTaskIds(new Set());
       setLinkedPurchaseIds(new Set());
+      setNewPurchaseName('');
+      setNewTaskName('');
+      setNewRoomName('');
+
+      // Pre-populate purchase name from existing fileLinks (saved by Smart tolk)
+      (async () => {
+        const { data: links } = await supabase
+          .from('task_file_links')
+          .select('vendor_name, invoice_date, invoice_amount')
+          .eq('file_path', file.path)
+          .limit(1);
+        if (links?.[0]) {
+          const l = links[0];
+          const parts: string[] = [];
+          if (l.invoice_date) parts.push(String(l.invoice_date).slice(0, 10));
+          if (l.vendor_name) parts.push(l.vendor_name);
+          if (l.invoice_amount) parts.push(`${Number(l.invoice_amount).toLocaleString('sv-SE')} kr`);
+          if (parts.length > 0) setNewPurchaseName(parts.join(' — '));
+        }
+      })();
+
       handleExtract();
     }
   }, [open, file?.id]);
@@ -237,6 +258,16 @@ export function AIDocumentImportModal({
           selected: task.confidence >= 0.5,
         }))
       );
+
+      // Auto-suggest purchase name from metadata: "YYYY-MM-DD — Vendor — Amount kr"
+      const meta = result.quoteMetadata;
+      if (meta) {
+        const parts: string[] = [];
+        if (meta.quoteDate) parts.push(meta.quoteDate);
+        if (meta.vendorName) parts.push(meta.vendorName);
+        if (meta.totalAmount) parts.push(`${meta.totalAmount.toLocaleString('sv-SE')} kr`);
+        if (parts.length > 0) setNewPurchaseName(parts.join(' — '));
+      }
 
       toast({
         title: t('aiDocumentImport.analysisDone'),
