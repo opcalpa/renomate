@@ -462,7 +462,10 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   };
 
   // Smart tolk — adaptive AI analysis per file
+  const [smartTolkLoading, setSmartTolkLoading] = useState<string | null>(null);
   const runSmartTolk = async (file: ProjectFile) => {
+    setSmartTolkLoading(file.path);
+    try {
     const { data: { publicUrl } } = supabase.storage.from('project-files').getPublicUrl(file.path);
     const isImage = file.type.startsWith('image/');
     const isDoc = isDocumentFile(file.name, file.type);
@@ -520,6 +523,14 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     // For docs: offer task extraction
     if (isDoc && result.suggested_action === 'extract_tasks') {
       setDocumentImportFile(file);
+    }
+
+    toast({ title: t('files.smartTolkDone', 'Fil tolkad'), description: `${file.name}: ${result.type || 'okänd typ'}` });
+    } catch (err) {
+      console.error('Smart tolk failed:', err);
+      toast({ title: t('files.smartTolkError', 'Smart tolk misslyckades'), description: file.name, variant: 'destructive' });
+    } finally {
+      setSmartTolkLoading(null);
     }
   };
 
