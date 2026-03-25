@@ -301,6 +301,8 @@ export function QuoteReviewDialog({
           budget: totalCost > 0 ? totalCost : null,
           start_date: task.startDate || null,
           finish_date: task.endDate || null,
+          rot_eligible: task.rotEligible || false,
+          rot_amount: task.rotAmount || null,
         });
 
         if (taskErr) {

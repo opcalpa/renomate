@@ -42,6 +42,11 @@ export interface ExtractedTask {
   materialCost: number | null;
   startDate: string | null;
   endDate: string | null;
+  isMaterialBudget: boolean;
+  parentTaskName: string | null;
+  rotEligible: boolean;
+  rotAmount: number | null;
+  isIncludingVat: boolean;
 }
 
 export interface ExtractedRoom {
@@ -60,6 +65,8 @@ export interface QuoteMetadata {
   paymentTerms: string | null;
   quoteDate: string | null;
   quoteNumber: string | null;
+  isIncludingVat: boolean;
+  totalRotAmount: number | null;
 }
 
 export interface DocumentExtractionResult {

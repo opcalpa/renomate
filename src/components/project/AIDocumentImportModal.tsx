@@ -450,6 +450,10 @@ export function AIDocumentImportModal({
             priority: 'medium',
             created_by_user_id: profileId,
             cost_center: costCenter,
+            estimated_cost: task.estimatedCost || null,
+            material_estimate: task.materialCost || null,
+            rot_eligible: task.rotEligible || false,
+            rot_amount: task.rotAmount || null,
           });
 
           if (taskError) {

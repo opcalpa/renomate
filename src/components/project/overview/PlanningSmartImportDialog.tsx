@@ -637,7 +637,6 @@ export function PlanningSmartImportDialog({
 
   const selectedRoomCount = rooms.filter((r) => r.selected).length;
   const selectedTaskCount = tasks.filter((t) => t.selected).length;
-  const selectedMaterialCount = standaloneMaterials.filter((m) => m.selected).length;
 
   /** Format a cost for display respecting the VAT toggle */
   const formatCost = (amount: number, sourceIsIncVat: boolean) =>

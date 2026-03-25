@@ -62,11 +62,12 @@ export interface QuoteMetadata {
   vendorName: string | null;
   totalAmount: number | null;
   vatAmount: number | null;
+  validUntil: string | null;
   quoteDate: string | null;
   quoteNumber: string | null;
   paymentTerms: string | null;
-  isIncludingVat: boolean; // Whether quoted prices include VAT
-  totalRotAmount: number | null; // Total ROT deduction if stated
+  isIncludingVat: boolean;
+  totalRotAmount: number | null;
 }
 
 export interface AIDocumentExtractionResult {
