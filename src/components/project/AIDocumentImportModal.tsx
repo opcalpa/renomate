@@ -168,7 +168,7 @@ export function AIDocumentImportModal({
     const { data, error } = await supabase.from("materials").insert({
       project_id: projectId, name: newPurchaseName.trim(), status: "planned",
       created_by_user_id: profileId,
-      ...(amount ? { total_cost: amount } : {}),
+      ...(amount ? { price_total: amount } : {}),
     }).select("id, name").single();
     if (error) { toast({ variant: "destructive", description: error.message }); }
     else if (data) { setExistingPurchases(prev => [...prev, data]); setLinkedPurchaseIds(prev => new Set(prev).add(data.id)); setNewPurchaseName(""); }
