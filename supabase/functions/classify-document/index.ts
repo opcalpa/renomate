@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
@@ -72,28 +73,74 @@ Return ONLY valid JSON:
 }`;
 }
 
-async function classifyDocument(
-  base64Content: string,
+/** Fetch file from Supabase Storage (server-to-server, fast) */
+async function fetchFileFromStorage(filePath: string): Promise<{ base64: string; mimeType: string }> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, serviceKey);
+
+  const { data, error } = await supabase.storage
+    .from('project-files')
+    .download(filePath);
+
+  if (error || !data) {
+    throw new Error(`Failed to download file: ${error?.message || 'unknown'}`);
+  }
+
+  const arrayBuffer = await data.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  // Convert to base64
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+  const mimeType = data.type || 'application/octet-stream';
+
+  return { base64, mimeType };
+}
+
+async function classifyWithContent(
+  content: string,
   fileName: string,
-  isImage: boolean
+  isImage: boolean,
+  isPdf: boolean,
+  base64Data?: string,
+  mimeType?: string,
 ): Promise<ClassificationResult> {
   const apiKey = Deno.env.get('OPENAI_API_KEY');
   if (!apiKey) throw new Error('OPENAI_API_KEY is not configured');
 
-  const userContent = isImage
-    ? [
-        {
-          type: 'image_url' as const,
-          image_url: { url: `data:image/jpeg;base64,${base64Content}`, detail: 'low' as const },
+  let userContent: unknown[];
+
+  if (isImage) {
+    userContent = [
+      {
+        type: 'image_url' as const,
+        image_url: { url: `data:${mimeType || 'image/jpeg'};base64,${content}`, detail: 'low' as const },
+      },
+      { type: 'text' as const, text: `File name: "${fileName}". Classify this document.` },
+    ];
+  } else if (isPdf && base64Data) {
+    // Send PDF directly to GPT-4o-mini (supports file input)
+    userContent = [
+      {
+        type: 'file' as const,
+        file: {
+          filename: fileName,
+          file_data: `data:application/pdf;base64,${base64Data}`,
         },
-        { type: 'text' as const, text: `File name: "${fileName}". Classify this document.` },
-      ]
-    : [
-        {
-          type: 'text' as const,
-          text: `File name: "${fileName}". Document text (first 5000 chars):\n\n${base64Content.substring(0, 5000)}\n\nClassify this document.`,
-        },
-      ];
+      },
+      { type: 'text' as const, text: `File name: "${fileName}". Classify this document.` },
+    ];
+  } else {
+    userContent = [
+      {
+        type: 'text' as const,
+        text: `File name: "${fileName}". Document text (first 5000 chars):\n\n${content.substring(0, 5000)}\n\nClassify this document.`,
+      },
+    ];
+  }
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -119,10 +166,10 @@ async function classifyDocument(
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) throw new Error('No content in OpenAI response');
+  const rawContent = data.choices?.[0]?.message?.content;
+  if (!rawContent) throw new Error('No content in OpenAI response');
 
-  let jsonText = content;
+  let jsonText = rawContent;
   const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (jsonMatch) jsonText = jsonMatch[1].trim();
   const jsonObjectMatch = jsonText.match(/\{[\s\S]*\}/);
@@ -154,18 +201,49 @@ serve(async (req) => {
   }
 
   try {
-    const { image, text, fileName } = await req.json();
+    const body = await req.json();
+
+    // NEW: Accept filePath for server-side file fetch (fast path)
+    if (body.filePath && body.fileName) {
+      const { filePath, fileName } = body;
+      console.log('Fast path: fetching file from storage:', filePath);
+
+      const { base64, mimeType } = await fetchFileFromStorage(filePath);
+      const isImage = mimeType.startsWith('image/');
+      const isPdf = mimeType === 'application/pdf';
+
+      console.log('Classifying document:', fileName, 'mimeType:', mimeType, 'size:', base64.length);
+
+      const result = await classifyWithContent(
+        isImage ? base64 : '', // For images, pass base64 directly
+        fileName,
+        isImage,
+        isPdf,
+        isPdf ? base64 : undefined,
+        mimeType,
+      );
+
+      console.log('Classification:', result.type, 'confidence:', result.confidence);
+
+      return new Response(JSON.stringify(result), {
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
+
+    // LEGACY: Accept base64 image/text directly (backward compatible)
+    const { image, text, fileName } = body;
 
     if (!image && !text) {
-      throw new Error('image or text is required');
+      throw new Error('filePath+fileName or image/text is required');
     }
 
     const isImage = !!image;
     const content = image || text;
 
-    console.log('Classifying document:', fileName, 'isImage:', isImage);
+    console.log('Legacy path: classifying document:', fileName, 'isImage:', isImage);
 
-    const result = await classifyDocument(content, fileName || 'unknown', isImage);
+    const result = await classifyWithContent(content, fileName || 'unknown', isImage, false);
 
     console.log('Classification:', result.type, 'confidence:', result.confidence);
 

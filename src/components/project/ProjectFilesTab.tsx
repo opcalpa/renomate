@@ -467,31 +467,12 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     setSmartTolkLoading(file.path);
     toast({ title: `${t('files.smartTolk', 'Smart tolk')}...`, description: file.name });
     try {
-    const { data: { publicUrl } } = supabase.storage.from('project-files').getPublicUrl(file.path);
-    const isImage = file.type.startsWith('image/');
     const isDoc = isDocumentFile(file.name, file.type);
 
-    // Download file and convert to base64 for AI processing
-    const res = await fetch(publicUrl);
-    const blob = await res.blob();
-    const base64 = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve((reader.result as string).split(',')[1] || '');
-      reader.readAsDataURL(blob);
+    // Fast path: let edge function fetch file directly from storage (no client download)
+    const { data: result } = await supabase.functions.invoke('classify-document', {
+      body: { filePath: file.path, fileName: file.name },
     });
-
-    const body: Record<string, string> = { fileName: file.name };
-    if (isImage) {
-      body.image = base64;
-    } else {
-      // Extract text from document (PDF etc.) via AI
-      const { data: textData } = await supabase.functions.invoke('extract-document-text', {
-        body: { fileBase64: base64, fileName: file.name, mimeType: file.type },
-      });
-      if (textData?.text) body.text = textData.text.slice(0, 5000);
-    }
-
-    const { data: result } = await supabase.functions.invoke('classify-document', { body });
     if (!result) return;
 
     // Auto-update category
