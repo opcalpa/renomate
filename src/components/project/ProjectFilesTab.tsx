@@ -1195,7 +1195,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                               {fileColLabels[col]}
                             </TableHead>
                           ))}
-                          <TableHead className="w-12 text-right sticky right-0 bg-background z-10">
+                          <TableHead className="w-8 text-right sticky right-0 bg-white dark:bg-card z-10">
                             <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setFlatView(false)}>
                               <X className="h-3 w-3" />
                             </Button>
@@ -1245,7 +1245,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                               }
                               return <TableCell key={col} className="hidden md:table-cell text-muted-foreground">–</TableCell>;
                             })}
-                            <TableCell className="text-right sticky right-0 bg-background z-10">
+                            <TableCell className="text-right sticky right-0 bg-white dark:bg-card z-10">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1332,7 +1332,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                         {fileColLabels[col]}
                       </TableHead>
                     ))}
-                    <TableHead className="w-12 text-right sticky right-0 bg-background z-10">
+                    <TableHead className="w-8 text-right sticky right-0 bg-white dark:bg-card z-10">
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs -mr-2">
@@ -1394,7 +1394,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                               {col === 'category' ? <Badge variant="secondary">{t('files.folder')}</Badge> : '–'}
                             </TableCell>
                           ))}
-                          <TableCell className="sticky right-0 bg-background"></TableCell>
+                          <TableCell className="sticky right-0 bg-white dark:bg-card z-10"></TableCell>
                         </TableRow>
                         {/* Expanded sub-files — rendered identically to top-level files */}
                         {isExpanded && subFiles.map((sf) => {
@@ -1588,7 +1588,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                 </TableCell>
                               );
                             })}
-                            <TableCell className="text-right sticky right-0 z-10" style={{ background: 'inherit' }}>
+                            <TableCell className="text-right sticky right-0 bg-white dark:bg-card z-10">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1845,7 +1845,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           </TableCell>
                         );
                       })}
-                      <TableCell className="text-right sticky right-0 bg-background z-10">
+                      <TableCell className="text-right sticky right-0 bg-white dark:bg-card z-10">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
