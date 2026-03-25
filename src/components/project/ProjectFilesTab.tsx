@@ -811,42 +811,6 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     setImageRotation(0);
   };
 
-  // Flat list of all previewable files (expanded folder files + top-level files)
-  const allPreviewableFiles = useMemo(() => {
-    const result: ProjectFile[] = [];
-    for (const folder of filteredFolders) {
-      if (expandedFolders.has(folder.path)) {
-        const subFiles = folderContents.get(folder.path) || [];
-        result.push(...subFiles);
-      }
-    }
-    result.push(...filteredFiles);
-    return result;
-  }, [filteredFolders, filteredFiles, expandedFolders, folderContents]);
-
-  const previewFileIndex = previewFile ? allPreviewableFiles.findIndex(f => f.path === previewFile.path) : -1;
-  const hasPrevFile = previewFileIndex > 0;
-  const hasNextFile = previewFileIndex >= 0 && previewFileIndex < allPreviewableFiles.length - 1;
-
-  const goToPrevFile = useCallback(() => {
-    if (hasPrevFile) handlePreview(allPreviewableFiles[previewFileIndex - 1]);
-  }, [hasPrevFile, previewFileIndex, allPreviewableFiles]);
-
-  const goToNextFile = useCallback(() => {
-    if (hasNextFile) handlePreview(allPreviewableFiles[previewFileIndex + 1]);
-  }, [hasNextFile, previewFileIndex, allPreviewableFiles]);
-
-  // Keyboard navigation in preview (left/right arrows)
-  useEffect(() => {
-    if (!previewFile) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') { e.preventDefault(); goToPrevFile(); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); goToNextFile(); }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [previewFile, goToPrevFile, goToNextFile]);
-
   const handleDelete = async () => {
     if (!fileToDelete) return;
 
@@ -958,6 +922,42 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     const links = getFileLinksForPath(f.path);
     return links.some(l => l.task_name?.toLowerCase().includes(searchQ) || l.material_name?.toLowerCase().includes(searchQ) || l.room_name?.toLowerCase().includes(searchQ));
   }) : files;
+
+  // Flat list of all previewable files (expanded folder files + top-level files)
+  const allPreviewableFiles = useMemo(() => {
+    const result: ProjectFile[] = [];
+    for (const folder of filteredFolders) {
+      if (expandedFolders.has(folder.path)) {
+        const subFiles = folderContents.get(folder.path) || [];
+        result.push(...subFiles);
+      }
+    }
+    result.push(...filteredFiles);
+    return result;
+  }, [filteredFolders, filteredFiles, expandedFolders, folderContents]);
+
+  const previewFileIndex = previewFile ? allPreviewableFiles.findIndex(f => f.path === previewFile.path) : -1;
+  const hasPrevFile = previewFileIndex > 0;
+  const hasNextFile = previewFileIndex >= 0 && previewFileIndex < allPreviewableFiles.length - 1;
+
+  const goToPrevFile = useCallback(() => {
+    if (hasPrevFile) handlePreview(allPreviewableFiles[previewFileIndex - 1]);
+  }, [hasPrevFile, previewFileIndex, allPreviewableFiles]);
+
+  const goToNextFile = useCallback(() => {
+    if (hasNextFile) handlePreview(allPreviewableFiles[previewFileIndex + 1]);
+  }, [hasNextFile, previewFileIndex, allPreviewableFiles]);
+
+  // Keyboard navigation in preview (left/right arrows)
+  useEffect(() => {
+    if (!previewFile) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); goToPrevFile(); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); goToNextFile(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [previewFile, goToPrevFile, goToNextFile]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
