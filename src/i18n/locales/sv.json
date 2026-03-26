@@ -2566,6 +2566,22 @@
     "used": "Utnyttjat",
     "remainingThisYear": "Kvar att nyttja {{year}}: {{amount}}"
   },
+  "rotRules": {
+    "title": "Så beräknar vi ROT",
+    "intro": "Beräkningarna baseras på Skatteverkets officiella regler. Nedan ser du exakt vilka parametrar vi använder.",
+    "materialRule": "Material",
+    "notEligible": "Ej ROT-berättigat",
+    "yearDeterminedBy": "ROT-år bestäms av",
+    "paymentDate": "Betalningsdatum",
+    "executorRequirement": "Krav på utförare",
+    "fTax": "F-skattsedel",
+    "period": "Period",
+    "subsidyRate": "Subventionsgrad",
+    "maxRot": "Max ROT per person",
+    "combinedCap": "Gemensamt tak ROT+RUT",
+    "source": "Källa: Skatteverket",
+    "disclaimer": "Renomate ansvarar inte för eventuella regeländringar. Kontrollera alltid aktuella regler på skatteverket.se."
+  },
   "household": {
     "title": "Fler i hushållet?",
     "description": "Är ni fler som genomför renoveringen? Med två personer kan ni nyttja dubbelt ROT-avdrag — upp till 100 000 kr.",

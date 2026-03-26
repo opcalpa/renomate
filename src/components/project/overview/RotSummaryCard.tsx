@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { RotRulesCard } from "./RotRulesCard";
 
 interface RotPerson {
   id: string;
@@ -390,6 +391,9 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
           <span className="font-medium text-green-700 tabular-nums">{formatCurrency(totalActual)} kr</span>
         </div>
       )}
+
+      {/* Rules transparency */}
+      <RotRulesCard />
     </div>
   );
 }

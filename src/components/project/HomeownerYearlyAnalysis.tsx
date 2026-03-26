@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { RotRulesCard } from "./overview/RotRulesCard";
 
 // --- Interfaces ---
 
@@ -641,6 +642,9 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
               )}
             </div>
           )}
+
+          {/* ROT rules transparency */}
+          <RotRulesCard />
 
           {/* Checklist */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1">

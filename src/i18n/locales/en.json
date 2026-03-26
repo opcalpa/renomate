@@ -1620,6 +1620,22 @@
     "used": "Used",
     "remainingThisYear": "Remaining {{year}}: {{amount}}"
   },
+  "rotRules": {
+    "title": "How we calculate ROT",
+    "intro": "Calculations are based on Skatteverket's official rules. Below you can see exactly which parameters we use.",
+    "materialRule": "Material",
+    "notEligible": "Not ROT-eligible",
+    "yearDeterminedBy": "ROT year determined by",
+    "paymentDate": "Payment date",
+    "executorRequirement": "Executor requirement",
+    "fTax": "F-tax certificate",
+    "period": "Period",
+    "subsidyRate": "Subsidy rate",
+    "maxRot": "Max ROT per person",
+    "combinedCap": "Combined ROT+RUT cap",
+    "source": "Source: Skatteverket",
+    "disclaimer": "Renomate is not responsible for regulatory changes. Always verify current rules at skatteverket.se."
+  },
   "household": {
     "title": "More people in the household?",
     "description": "Are there more people carrying out the renovation? With two persons you can use double ROT deduction — up to 100,000 kr.",
