@@ -1094,6 +1094,7 @@
       "architect": "Architect",
       "client": "Client / Orderer",
       "viewer": "Viewer",
+      "co_owner": "Co-Owner",
       "custom": "Custom"
     },
     "teamMembers": "Team Members",
@@ -1185,6 +1186,9 @@
       },
       "viewer": {
         "description": "Read-only access to timeline, tasks, and overview"
+      },
+      "co_owner": {
+        "description": "Same access as owner — full control, shared project management + double ROT"
       }
     }
   },

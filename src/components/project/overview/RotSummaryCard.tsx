@@ -116,6 +116,58 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
         setActualRotByYear(byYear);
       }
 
+      // Auto-add project owner as ROT person if homeowner with ROT data but no persons
+      if (
+        (!personsRes.data || personsRes.data.length === 0) &&
+        tasksRes.data &&
+        tasksRes.data.some((t) => (t.rot_amount || 0) > 0)
+      ) {
+        // Check if current user is the project owner and a homeowner
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id, name, personnummer, onboarding_user_type")
+            .eq("user_id", user.id)
+            .single();
+
+          if (profile?.onboarding_user_type === "homeowner" && profile.name) {
+            // Verify this user is the project owner
+            const { data: project } = await supabase
+              .from("projects")
+              .select("owner_id")
+              .eq("id", projectId)
+              .single();
+
+            if (project?.owner_id === profile.id) {
+              await supabase.from("project_rot_persons").insert({
+                project_id: projectId,
+                name: profile.name,
+                personnummer: profile.personnummer || null,
+                profile_id: profile.id,
+              });
+              // Re-fetch to show the new person
+              const { data: refreshed } = await supabase
+                .from("project_rot_persons")
+                .select("id, name, personnummer, custom_yearly_limit, profile_id")
+                .eq("project_id", projectId);
+              if (refreshed) {
+                setPersons(
+                  refreshed.map((p) => ({
+                    id: p.id,
+                    name: p.name,
+                    personnummer: p.personnummer,
+                    personnummerLast4: p.personnummer ? p.personnummer.slice(-4) : null,
+                    customYearlyLimit: p.custom_yearly_limit,
+                    isProfileLinked: !!p.profile_id,
+                  }))
+                );
+              }
+            }
+          }
+        }
+      }
+
       setLoading(false);
     };
 

@@ -36,6 +36,7 @@ import {
   Eye,
   Crown,
   Ruler,
+  Users,
 } from "lucide-react";
 import { z } from "zod";
 import { getAvatarColor } from "@/lib/avatarColor";
@@ -182,6 +183,21 @@ const ROLE_TEMPLATES: Record<string, { access: FeatureAccess }> = {
       files: "none",
     },
   },
+  co_owner: {
+    access: {
+      customerView: "none",
+      timeline: "edit",
+      tasks: "edit",
+      tasksScope: "all",
+      spacePlanner: "edit",
+      purchases: "edit",
+      purchasesScope: "all",
+      overview: "edit",
+      teams: "invite",
+      budget: "edit",
+      files: "edit",
+    },
+  },
 };
 
 const ROLE_ICONS: Record<string, typeof Wrench> = {
@@ -190,6 +206,7 @@ const ROLE_ICONS: Record<string, typeof Wrench> = {
   architect: Ruler,
   client: User,
   viewer: Eye,
+  co_owner: Users,
 };
 
 const invitationSchemaEmail = z.object({
@@ -464,9 +481,10 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
           invited_by_user_id: profile.id,
           email: validated.email,
           invited_name: inviteName.trim() || null,
-          role: selectedTemplate !== "custom" ? selectedTemplate : "viewer",
+          role: selectedTemplate === "co_owner" ? "homeowner" : (selectedTemplate !== "custom" ? selectedTemplate : "viewer"),
+          role_type: selectedTemplate === "co_owner" ? "co_owner" : null,
           ...permDb,
-          permissions_snapshot: permDb,
+          permissions_snapshot: { ...permDb, role_type: selectedTemplate === "co_owner" ? "co_owner" : null },
         } as Record<string, unknown>)
         .select()
         .single();
