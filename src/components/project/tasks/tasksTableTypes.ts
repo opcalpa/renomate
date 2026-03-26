@@ -23,7 +23,8 @@ export type TaskColumnKey =
   | "markupPercent"
   | "dependencies"
   | "attachment"
-  | "fileCategory";
+  | "fileCategory"
+  | "rotAmount";
 
 export interface TaskColumnDef {
   key: TaskColumnKey;
@@ -62,6 +63,7 @@ export const EXTRA_COLUMN_KEYS: TaskColumnKey[] = [
   "dependencies",
   "attachment",
   "fileCategory",
+  "rotAmount",
 ];
 
 export const DEFAULT_VISIBLE_EXTRAS: TaskColumnKey[] = [

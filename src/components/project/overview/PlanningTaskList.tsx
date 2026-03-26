@@ -79,6 +79,7 @@ interface PlanningTask {
   material_items: { amount: number; markup_percent: number | null; quantity?: number; unit?: string; unit_price?: number }[] | null;
   labor_cost_percent: number | null;
   cost_center: string | null;
+  rot_amount: number | null;
 }
 
 interface Room {
@@ -103,7 +104,7 @@ interface PlanningMaterial {
   kind: "material" | "subcontractor";
 }
 
-type ExtraColumnKey = "hours" | "hourlyRate" | "room" | "costType" | "profit" | "description" | "markup";
+type ExtraColumnKey = "hours" | "hourlyRate" | "room" | "costType" | "profit" | "description" | "markup" | "rotAmount";
 
 interface ExtraColumnDef {
   key: ExtraColumnKey;
@@ -121,6 +122,7 @@ const EXTRA_COLUMNS: ExtraColumnDef[] = [
   { key: "costType", labelKey: "planningTasks.costType", defaultOn: false, builderOnly: true },
   { key: "markup", labelKey: "planningTasks.markup", defaultOn: false, builderOnly: true },
   { key: "profit", labelKey: "taskCost.result", defaultOn: true, builderOnly: true },
+  { key: "rotAmount", labelKey: "files.rotAmount", defaultOn: false },
 ];
 
 function getDefaultExtras(isHomeowner: boolean): Set<ExtraColumnKey> {
@@ -284,6 +286,7 @@ export function PlanningTaskList({
       costType: visibleExtras.has("costType"),
       markup: visibleExtras.has("markup"),
       profit: visibleExtras.has("profit"),
+      rotAmount: visibleExtras.has("rotAmount"),
     }),
     [visibleExtras]
   );
@@ -1414,6 +1417,11 @@ export function PlanningTaskList({
                         </span>
                       </TableHead>
                     )}
+                    {show.rotAmount && (
+                      <TableHead className="hidden sm:table-cell text-right w-[110px]">
+                        {t("files.rotAmount", "ROT-avdrag")}
+                      </TableHead>
+                    )}
                     {!effectiveLock && <TableHead className="w-[40px]" />}
                   </TableRow>
                 </TableHeader>
@@ -1680,6 +1688,15 @@ export function PlanningTaskList({
                                         </div>
                                       </PopoverContent>
                                     </Popover>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">–</span>
+                                  )}
+                                </TableCell>
+                              )}
+                              {show.rotAmount && (
+                                <TableCell className="text-right hidden sm:table-cell py-2.5">
+                                  {task.rot_amount ? (
+                                    <span className="text-sm text-green-700">{formatCurrency(task.rot_amount, currency)}</span>
                                   ) : (
                                     <span className="text-xs text-muted-foreground">–</span>
                                   )}
@@ -2076,6 +2093,15 @@ export function PlanningTaskList({
                           </TableCell>
                         );
                       })()}
+                      {show.rotAmount && (
+                        <TableCell className="text-right hidden sm:table-cell py-2.5">
+                          {task.rot_amount ? (
+                            <span className="text-sm text-green-700">{formatCurrency(task.rot_amount, currency)}</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">–</span>
+                          )}
+                        </TableCell>
+                      )}
                       {!effectiveLock && (
                         <TableCell className="py-2.5">
                           <DropdownMenu>
@@ -2298,6 +2324,7 @@ export function PlanningTaskList({
                                     ) : null}
                                   </TableCell>
                                 )}
+                                {show.rotAmount && <TableCell className="hidden sm:table-cell py-2" />}
                               </>
                             );
                           })()}

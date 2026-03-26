@@ -85,6 +85,7 @@ interface Task {
   subcontractor_cost: number | null;
   markup_percent: number | null;
   material_estimate: number | null;
+  rot_amount: number | null;
   is_ata?: boolean;
   parent_task_id?: string | null;
 }
@@ -166,6 +167,7 @@ const SORT_FIELD_MAP: Record<TaskColumnKey, keyof Task | null> = {
   materialEstimate: "material_estimate",
   markupPercent: "markup_percent",
   dependencies: null,
+  rotAmount: "rot_amount",
 };
 
 export function TasksTableView({
@@ -646,6 +648,7 @@ export function TasksTableView({
       case "hourlyRate":
       case "subcontractorCost":
       case "materialEstimate":
+      case "rotAmount":
       case "markupPercent": {
         const fieldMap: Record<string, keyof Task> = {
           budget: "budget",
@@ -655,6 +658,7 @@ export function TasksTableView({
           subcontractorCost: "subcontractor_cost",
           materialEstimate: "material_estimate",
           markupPercent: "markup_percent",
+          rotAmount: "rot_amount",
         };
         const rawValue = task[fieldMap[col.key]] as number | null;
         const isCurrency = [
@@ -663,6 +667,7 @@ export function TasksTableView({
           "hourlyRate",
           "subcontractorCost",
           "materialEstimate",
+          "rotAmount",
         ].includes(col.key);
 
         if (isEditing && !isReadOnly) {

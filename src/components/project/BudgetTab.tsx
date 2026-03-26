@@ -80,9 +80,11 @@ interface BudgetRow {
   pricePerUnit?: number;
   orderedAmount?: number;
   vendor?: string;
+  // ROT
+  rotAmount?: number;
 }
 
-type ColumnKey = "name" | "type" | "status" | "budget" | "paid" | "remaining" | "margin" | "matBudget" | "matConsumed" | "matRemaining" | "room" | "assignee" | "costCenter" | "startDate" | "finishDate" | "attachment" | "estimatedHours" | "hourlyRate" | "subcontractorCost" | "paymentStatus" | "quantity" | "pricePerUnit" | "orderedAmount" | "vendor";
+type ColumnKey = "name" | "type" | "status" | "budget" | "paid" | "remaining" | "margin" | "matBudget" | "matConsumed" | "matRemaining" | "room" | "assignee" | "costCenter" | "startDate" | "finishDate" | "attachment" | "estimatedHours" | "hourlyRate" | "subcontractorCost" | "paymentStatus" | "quantity" | "pricePerUnit" | "orderedAmount" | "vendor" | "rotAmount";
 
 interface ColumnDef {
   key: ColumnKey;
@@ -97,6 +99,8 @@ const EXTRA_COLUMN_KEYS: ColumnKey[] = [
   "estimatedHours", "hourlyRate", "subcontractorCost", "paymentStatus",
   // Material-specific extras
   "quantity", "pricePerUnit", "orderedAmount", "vendor",
+  // ROT
+  "rotAmount",
 ];
 const HOMEOWNER_HIDDEN_COLUMNS = new Set<ColumnKey>([
   "margin", "matBudget", "matConsumed", "matRemaining",
@@ -252,6 +256,8 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
     { key: "pricePerUnit", label: t('budget.pricePerUnit', 'Price/unit'), align: "right", extra: true },
     { key: "orderedAmount", label: t('budget.orderedAmount', 'Ordered'), align: "right", extra: true },
     { key: "vendor", label: t('budget.vendor', 'Vendor'), extra: true },
+    // ROT
+    { key: "rotAmount", label: t('files.rotAmount', 'ROT-avdrag'), align: "right", extra: true },
   ], [t, isBuilder]);
 
   // For homeowners, filter out builder-only columns and remap certain core columns as extra
@@ -394,7 +400,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
       const [tasksRes, materialsRes, extraRes, projectRes, taskDocsRes, materialDocsRes] = await Promise.all([
         supabase
           .from("tasks")
-          .select("id, title, status, budget, ordered_amount, payment_status, paid_amount, room_id, cost_center, start_date, finish_date, is_ata, estimated_hours, hourly_rate, labor_cost_percent, subcontractor_cost, markup_percent, material_estimate, material_markup_percent, task_cost_type")
+          .select("id, title, status, budget, ordered_amount, payment_status, paid_amount, room_id, cost_center, start_date, finish_date, is_ata, estimated_hours, hourly_rate, labor_cost_percent, subcontractor_cost, markup_percent, material_estimate, material_markup_percent, task_cost_type, rot_amount")
           .eq("project_id", projectId),
         supabase
           .from("materials")
@@ -520,6 +526,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
           subcontractorCost: t.subcontractor_cost ?? undefined,
           paymentStatus: t.payment_status ?? undefined,
           orderedAmount: t.ordered_amount ?? undefined,
+          rotAmount: (t as Record<string, unknown>).rot_amount as number ?? undefined,
         };
       });
 
@@ -978,6 +985,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
       } else if (sortKey === "vendor") {
         av = a.vendor || "";
         bv = b.vendor || "";
+      } else if (sortKey === "rotAmount") {
+        av = a.rotAmount ?? 0;
+        bv = b.rotAmount ?? 0;
       } else {
         av = a[sortKey];
         bv = b[sortKey];
@@ -1317,6 +1327,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
       case "vendor":
         if (row.type !== "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
         return <span className="text-sm">{row.vendor || "\u2014"}</span>;
+      case "rotAmount":
+        if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        return <span className="text-sm">{row.rotAmount ? formatCurrency(row.rotAmount, currency) : "\u2014"}</span>;
       default:
         return null;
     }
@@ -1373,6 +1386,10 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
         if (matPctLeft <= 0) matFooterColor = "text-destructive";
         else if (matPctLeft <= 0.2) matFooterColor = "text-amber-500";
         return <span className={`font-bold ${totals.matBudget > 0 ? matFooterColor : ""}`}>{formatCurrency(totalMatRemaining, currency)}</span>;
+      }
+      case "rotAmount": {
+        const totalRot = rows.filter(r => r.type === "task").reduce((sum, r) => sum + (r.rotAmount ?? 0), 0);
+        return totalRot > 0 ? <span className="font-bold text-green-700">{formatCurrency(totalRot, currency)}</span> : null;
       }
       default:
         return null;
