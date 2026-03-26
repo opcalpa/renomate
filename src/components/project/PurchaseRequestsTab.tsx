@@ -78,6 +78,8 @@ interface Material {
   created_by_user_id: string | null;
   assigned_to_user_id: string | null;
   source_material_id?: string | null;
+  rot_amount?: number | null;
+  paid_date?: string | null;
   creator?: {
     name: string;
   } | null;
@@ -147,6 +149,8 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
     room_id: "none",
     task_id: "none",
     assigned_to_user_id: "none",
+    rot_amount: "",
+    paid_date: "",
   });
 
   const { toast } = useToast();
@@ -491,6 +495,8 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         assigned_to_user_id: (newMaterial.assigned_to_user_id && newMaterial.assigned_to_user_id !== "none") ? newMaterial.assigned_to_user_id : null,
         created_by_user_id: profile.id,
         status: "submitted",
+        rot_amount: newMaterial.rot_amount ? parseFloat(newMaterial.rot_amount) : null,
+        paid_date: newMaterial.paid_date || null,
       });
 
       if (error) throw error;
@@ -515,6 +521,8 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         room_id: "none",
         task_id: "none",
         assigned_to_user_id: "none",
+        rot_amount: "",
+        paid_date: "",
       });
       fetchMaterials();
     } catch (error: unknown) {
@@ -551,6 +559,8 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
           room_id: editingMaterial.room_id === "none" ? null : editingMaterial.room_id,
           task_id: editingMaterial.task_id === "none" ? null : editingMaterial.task_id,
           assigned_to_user_id: editingMaterial.assigned_to_user_id === "none" ? null : editingMaterial.assigned_to_user_id,
+          rot_amount: editingMaterial.rot_amount || null,
+          paid_date: editingMaterial.paid_date || null,
         })
         .eq("id", editingMaterial.id);
 
@@ -1619,6 +1629,29 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                 <Label htmlFor="edit-exclude-from-budget" className="text-sm font-normal cursor-pointer">
                   {t('purchases.excludeFromBudget')}
                 </Label>
+              </div>
+
+              {/* ROT + Betaldat */}
+              <div className="grid grid-cols-2 gap-4 mt-3">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-rot-amount">{t("files.rotAmount", "ROT-avdrag")}</Label>
+                  <Input
+                    id="edit-rot-amount"
+                    type="number"
+                    value={editingMaterial.rot_amount ?? ""}
+                    onChange={(e) => setEditingMaterial({ ...editingMaterial, rot_amount: e.target.value ? parseFloat(e.target.value) : null })}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-paid-date">{t("common.paidDate", "Betaldat")}</Label>
+                  <Input
+                    id="edit-paid-date"
+                    type="date"
+                    value={editingMaterial.paid_date ?? ""}
+                    onChange={(e) => setEditingMaterial({ ...editingMaterial, paid_date: e.target.value || null })}
+                  />
+                </div>
               </div>
 
               <Separator className="my-2" />

@@ -41,6 +41,7 @@
     "assignedTo": "Tilldelad till",
     "startDate": "Startdatum",
     "finishDate": "Slutdatum",
+    "paidDate": "Betaldat",
     "notes": "Anteckningar",
     "quantity": "Antal",
     "unit": "Enhet",

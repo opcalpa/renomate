@@ -104,6 +104,8 @@ const SORT_FIELD_MAP: Record<PurchaseColumnKey, string | null> = {
   createdAt: "created_at",
   attachment: null,
   actions: null,
+  rotAmount: "rot_amount",
+  paidDate: "paid_date",
 };
 
 const DB_FIELD_MAP: Record<PurchaseColumnKey, string> = {
@@ -122,6 +124,8 @@ const DB_FIELD_MAP: Record<PurchaseColumnKey, string> = {
   createdAt: "",
   attachment: "",
   actions: "",
+  rotAmount: "rot_amount",
+  paidDate: "paid_date",
 };
 
 export function PurchasesTableView({
@@ -314,11 +318,13 @@ export function PurchasesTableView({
 
       case "pricePerUnit":
       case "priceTotal":
+      case "rotAmount":
       case "paidAmount": {
         const fieldMap: Record<string, keyof Material> = {
           pricePerUnit: "price_per_unit",
           priceTotal: "price_total",
           paidAmount: "paid_amount",
+          rotAmount: "rot_amount",
         };
         const val = material[fieldMap[col.key]] as number | null;
         const isBold = col.key === "priceTotal";
@@ -387,6 +393,15 @@ export function PurchasesTableView({
         ) : (
           <span className="text-sm">{material.vendor_name}</span>
         );
+
+      case "paidDate": {
+        const dateStr = (material as Record<string, unknown>).paid_date as string | null;
+        return dateStr ? (
+          <span className="text-sm tabular-nums">{new Date(dateStr).toLocaleDateString("sv-SE")}</span>
+        ) : (
+          <span className="text-muted-foreground text-xs">-</span>
+        );
+      }
 
       case "room": {
         const roomName = material.room?.name;

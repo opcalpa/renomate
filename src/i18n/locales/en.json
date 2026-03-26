@@ -41,6 +41,7 @@
     "assignedTo": "Assigned To",
     "startDate": "Start Date",
     "finishDate": "Finish Date",
+    "paidDate": "Paid date",
     "notes": "Notes",
     "quantity": "Quantity",
     "unit": "Unit",
