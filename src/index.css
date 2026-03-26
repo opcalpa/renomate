@@ -141,20 +141,29 @@ All colors MUST be HSL.
 }
 
 /* react-day-picker dropdown selects (year/month navigation) */
+/* Hide the visible label next to each dropdown (causes duplicate text) */
+.rdp-caption_dropdowns .rdp-caption_label {
+  display: none;
+}
 .rdp-dropdown {
   appearance: none;
+  -webkit-appearance: none;
   background: transparent;
-  border: 1px solid hsl(var(--border));
-  border-radius: 6px;
-  padding: 2px 6px;
-  font-size: 0.8125rem;
+  border: none;
+  padding: 0 2px;
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
   outline: none;
+  color: inherit;
+  text-transform: capitalize;
 }
-.rdp-dropdown:focus {
-  border-color: hsl(var(--primary));
-  box-shadow: 0 0 0 1px hsl(var(--primary));
+.rdp-dropdown:hover {
+  color: hsl(var(--primary));
+}
+.rdp-dropdown:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* Professional auto-hide scrollbars - like Figma/Linear */
