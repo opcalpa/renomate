@@ -65,7 +65,7 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
     const fetchData = async () => {
       setLoading(true);
 
-      const [personsRes, limitsRes, tasksRes, materialsRes, allocRes] = await Promise.all([
+      const [personsRes, limitsRes, tasksRes, materialsRes] = await Promise.all([
         supabase
           .from("project_rot_persons")
           .select("id, name, personnummer, custom_yearly_limit, profile_id")
@@ -84,11 +84,16 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
           .eq("project_id", projectId)
           .not("rot_amount", "is", null)
           .not("paid_date", "is", null),
-        // Per-person ROT allocations
-        supabase
-          .from("material_rot_allocations")
-          .select("material_id, rot_person_id, amount"),
       ]);
+
+      // Per-person ROT allocations — fetch after materials to filter by material_id
+      const materialIds = (materialsRes.data || []).map((m) => m.id);
+      const allocRes = materialIds.length > 0
+        ? await supabase
+            .from("material_rot_allocations")
+            .select("material_id, rot_person_id, amount")
+            .in("material_id", materialIds)
+        : { data: [] };
 
       if (personsRes.data) {
         setPersons(

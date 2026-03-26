@@ -167,7 +167,7 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
 
     const fetchAll = async () => {
       try {
-        const [invRes, matRes, filesRes, metaRes, taskRotRes, rotPersonsRes, limitsRes, allocRes] = await Promise.all([
+        const [invRes, matRes, filesRes, metaRes, taskRotRes, rotPersonsRes, limitsRes] = await Promise.all([
           supabase
             .from("invoices")
             .select("id, project_id, title, invoice_number, total_amount, total_rot_deduction, paid_amount, status, is_ata, notes, paid_at, sent_at, created_at")
@@ -203,11 +203,16 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
           supabase
             .from("rot_yearly_limits")
             .select("year, max_amount_per_person"),
-          // Per-person ROT allocations
-          supabase
-            .from("material_rot_allocations")
-            .select("material_id, rot_person_id, amount"),
         ]);
+
+        // Per-person ROT allocations — fetch after materials to filter
+        const allMaterialIds = (matRes.data || []).map((m: { id: string }) => m.id);
+        const allocRes = allMaterialIds.length > 0
+          ? await supabase
+              .from("material_rot_allocations")
+              .select("material_id, rot_person_id, amount")
+              .in("material_id", allMaterialIds)
+          : { data: [] };
 
         const invoicesData = (invRes.data || []) as InvoiceRow[];
         setInvoices(invoicesData);
@@ -316,11 +321,11 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
 
     // ROT limit for this year
     const defaultLimit = rotYearlyLimits.get(activeYear) || 50000;
-    // Count unique persons across all projects
+    // Count unique persons across all projects (dedupe by personnummer if available, else by name)
     const uniquePersons = new Map<string, RotPersonRow>();
     rotPersons.forEach((p) => {
-      const key = p.personnummer || p.name;
-      if (!uniquePersons.has(key)) uniquePersons.set(key, p);
+      const dedupeKey = p.personnummer || `name:${p.name}`;
+      if (!uniquePersons.has(dedupeKey)) uniquePersons.set(dedupeKey, p);
     });
     const personCount = Math.max(uniquePersons.size, 1);
     const totalLimit = Array.from(uniquePersons.values()).reduce(
@@ -662,9 +667,9 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
                 </div>
               )}
               {/* Per-person breakdown */}
-              {rotSummary.perPerson.size > 0 && rotPersons.length > 1 && (
+              {rotSummary.perPerson.size > 0 && rotSummary.persons.length > 1 && (
                 <div className="space-y-0.5 pt-1.5 border-t">
-                  {rotPersons.map((p) => {
+                  {rotSummary.persons.map((p) => {
                     const personUsed = rotSummary.perPerson.get(p.id) || 0;
                     const defaultLimit = rotYearlyLimits.get(activeYear) || 50000;
                     const personLimit = p.custom_yearly_limit ?? defaultLimit;

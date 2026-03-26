@@ -1010,7 +1010,8 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
                 <button
                   type="button"
                   onClick={async () => {
-                    await supabase.from("project_rot_persons").delete().eq("id", person.id);
+                    const { error } = await supabase.from("project_rot_persons").delete().eq("id", person.id);
+                    if (error) console.error("Error removing ROT person:", error);
                     fetchTeamData();
                   }}
                   className="text-muted-foreground hover:text-destructive transition-colors"
