@@ -2549,7 +2549,11 @@
     "persons": "personer",
     "overLimit": "Överstiger ROT-tak med {{amount}} kr",
     "plannedTotal": "Planerat ROT-avdrag",
-    "actualTotal": "Faktiskt ROT-avdrag"
+    "actualTotal": "Faktiskt ROT-avdrag",
+    "addPerson": "Lägg till",
+    "addError": "Kunde inte lägga till ROT-person",
+    "namePlaceholder": "Namn",
+    "pnrPlaceholder": "Personnummer (valfritt)"
   },
   "elevation": {
     "noWalls": "Inga väggar att visa",

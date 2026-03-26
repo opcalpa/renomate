@@ -1603,7 +1603,11 @@
     "persons": "persons",
     "overLimit": "Exceeds ROT limit by {{amount}} kr",
     "plannedTotal": "Planned ROT deduction",
-    "actualTotal": "Actual ROT deduction"
+    "actualTotal": "Actual ROT deduction",
+    "addPerson": "Add person",
+    "addError": "Could not add ROT person",
+    "namePlaceholder": "Name",
+    "pnrPlaceholder": "Personal ID (optional)"
   },
   "elevation": {
     "noWalls": "No walls to display",

@@ -1,19 +1,23 @@
 /**
  * ROT Summary Card
  * Shows yearly ROT deduction breakdown per person with progress bars.
+ * Manage ROT persons (add/remove). Auto-adds project owner if none exist.
  * Data sourced from tasks.rot_amount (planned) and materials.rot_amount + paid_date (actual).
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Shield, AlertTriangle, Users, Plus } from "lucide-react";
+import { Shield, AlertTriangle, Users, Plus, X, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface RotPerson {
   id: string;
   name: string;
+  personnummer: string | null;
   personnummerLast4: string | null;
   customYearlyLimit: number | null;
   isProfileLinked: boolean;
@@ -22,8 +26,8 @@ interface RotPerson {
 interface YearlyRotData {
   year: number;
   limit: number;
-  planned: number; // from tasks.rot_amount
-  actual: number; // from materials.rot_amount with paid_date in this year
+  planned: number;
+  actual: number;
 }
 
 interface RotSummaryCardProps {
@@ -34,6 +38,11 @@ function formatCurrency(amount: number): string {
   return Math.round(amount).toLocaleString("sv-SE");
 }
 
+function maskPnr(pnr: string): string {
+  if (pnr.length <= 4) return pnr;
+  return "****-" + pnr.slice(-4);
+}
+
 export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
   const { t } = useTranslation();
   const [persons, setPersons] = useState<RotPerson[]>([]);
@@ -41,28 +50,31 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
   const [plannedRot, setPlannedRot] = useState(0);
   const [actualRotByYear, setActualRotByYear] = useState<Map<number, number>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newPnr, setNewPnr] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [fetchVersion, setFetchVersion] = useState(0);
+
+  const refetch = useCallback(() => setFetchVersion((v) => v + 1), []);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
 
       const [personsRes, limitsRes, tasksRes, materialsRes] = await Promise.all([
-        // ROT persons for this project
         supabase
           .from("project_rot_persons")
           .select("id, name, personnummer, custom_yearly_limit, profile_id")
           .eq("project_id", projectId),
-        // System ROT limits
         supabase
           .from("rot_yearly_limits")
           .select("year, max_amount_per_person"),
-        // Planned ROT from tasks
         supabase
           .from("tasks")
           .select("rot_amount")
           .eq("project_id", projectId)
           .eq("rot_eligible", true),
-        // Actual ROT from paid materials/invoices
         supabase
           .from("materials")
           .select("rot_amount, paid_date")
@@ -71,12 +83,12 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
           .not("paid_date", "is", null),
       ]);
 
-      // Process persons
       if (personsRes.data) {
         setPersons(
           personsRes.data.map((p) => ({
             id: p.id,
             name: p.name,
+            personnummer: p.personnummer,
             personnummerLast4: p.personnummer ? p.personnummer.slice(-4) : null,
             customYearlyLimit: p.custom_yearly_limit,
             isProfileLinked: !!p.profile_id,
@@ -84,22 +96,16 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
         );
       }
 
-      // Process yearly limits
       if (limitsRes.data) {
         const map = new Map<number, number>();
-        for (const l of limitsRes.data) {
-          map.set(l.year, l.max_amount_per_person);
-        }
+        for (const l of limitsRes.data) map.set(l.year, l.max_amount_per_person);
         setYearlyLimits(map);
       }
 
-      // Sum planned ROT
       if (tasksRes.data) {
-        const total = tasksRes.data.reduce((sum, t) => sum + (t.rot_amount || 0), 0);
-        setPlannedRot(total);
+        setPlannedRot(tasksRes.data.reduce((sum, t) => sum + (t.rot_amount || 0), 0));
       }
 
-      // Actual ROT grouped by year (from paid_date)
       if (materialsRes.data) {
         const byYear = new Map<number, number>();
         for (const m of materialsRes.data) {
@@ -114,7 +120,44 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
     };
 
     fetchData();
-  }, [projectId]);
+  }, [projectId, fetchVersion]);
+
+  // --- Add person ---
+  const handleAddPerson = async () => {
+    if (!newName.trim()) return;
+    setAdding(true);
+
+    const { error } = await supabase.from("project_rot_persons").insert({
+      project_id: projectId,
+      name: newName.trim(),
+      personnummer: newPnr.trim() || null,
+    });
+
+    if (error) {
+      console.error("Error adding ROT person:", error);
+      toast.error(t("rot.addError", "Kunde inte lägga till ROT-person"));
+    } else {
+      setNewName("");
+      setNewPnr("");
+      setShowAddForm(false);
+      refetch();
+    }
+    setAdding(false);
+  };
+
+  // --- Remove person ---
+  const handleRemovePerson = async (personId: string) => {
+    const { error } = await supabase
+      .from("project_rot_persons")
+      .delete()
+      .eq("id", personId);
+
+    if (error) {
+      console.error("Error removing ROT person:", error);
+    } else {
+      refetch();
+    }
+  };
 
   // Build yearly breakdown
   const currentYear = new Date().getFullYear();
@@ -129,10 +172,9 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
       .sort()
       .map((year) => {
         const defaultLimit = yearlyLimits.get(year) || 50000;
-        // Use custom limit if any person has one, else system default × person count
-        const totalLimit = persons.reduce((sum, p) => {
-          return sum + (p.customYearlyLimit ?? defaultLimit);
-        }, 0) || defaultLimit * personCount;
+        const totalLimit = persons.length > 0
+          ? persons.reduce((sum, p) => sum + (p.customYearlyLimit ?? defaultLimit), 0)
+          : defaultLimit * personCount;
 
         return {
           year,
@@ -151,32 +193,93 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
 
   return (
     <div className="rounded-lg border bg-card p-4 space-y-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Shield className="h-4 w-4 text-green-600" />
           {t("rot.summary", "ROT-avdrag")}
         </h3>
-        {persons.length > 0 && (
-          <Badge variant="secondary" className="text-xs gap-1">
-            <Users className="h-3 w-3" />
-            {persons.length} {persons.length === 1
-              ? t("rot.person", "person")
-              : t("rot.persons", "personer")}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {persons.length > 0 && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <Users className="h-3 w-3" />
+              {persons.length} {persons.length === 1
+                ? t("rot.person", "person")
+                : t("rot.persons", "personer")}
+            </Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() => setShowAddForm(!showAddForm)}
+          >
+            <UserPlus className="h-3 w-3" />
+            {t("rot.addPerson", "Lägg till")}
+          </Button>
+        </div>
       </div>
 
-      {/* Per-person list */}
+      {/* Add person form */}
+      {showAddForm && (
+        <div className="flex flex-col sm:flex-row gap-2 p-3 rounded-lg bg-muted/50 border">
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder={t("rot.namePlaceholder", "Namn")}
+            className="h-8 text-sm flex-1"
+            autoFocus
+          />
+          <Input
+            value={newPnr}
+            onChange={(e) => setNewPnr(e.target.value)}
+            placeholder={t("rot.pnrPlaceholder", "Personnummer (valfritt)")}
+            className="h-8 text-sm flex-1"
+          />
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              className="h-8"
+              onClick={handleAddPerson}
+              disabled={!newName.trim() || adding}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              {t("common.add", "Lägg till")}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8"
+              onClick={() => { setShowAddForm(false); setNewName(""); setNewPnr(""); }}
+            >
+              {t("common.cancel", "Avbryt")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Per-person list with remove */}
       {persons.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {persons.map((p) => (
-            <span key={p.id} className="text-xs text-muted-foreground">
+            <span
+              key={p.id}
+              className="inline-flex items-center gap-1 text-xs bg-muted/50 px-2 py-0.5 rounded-full"
+            >
               {p.name}
               {p.personnummerLast4 && (
-                <span className="ml-1 text-[10px] opacity-60">
-                  (****-{p.personnummerLast4})
+                <span className="text-[10px] opacity-60">
+                  ({maskPnr(p.personnummer || p.personnummerLast4)})
                 </span>
               )}
+              <button
+                type="button"
+                onClick={() => handleRemovePerson(p.id)}
+                className="ml-0.5 hover:text-destructive opacity-40 hover:opacity-100 transition-opacity"
+                title={t("common.remove", "Ta bort")}
+              >
+                <X className="h-3 w-3" />
+              </button>
             </span>
           ))}
         </div>
