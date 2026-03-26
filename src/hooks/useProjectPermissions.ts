@@ -161,9 +161,17 @@ export function useProjectPermissions(projectId: string | undefined): ProjectPer
       if (cancelled) return;
 
       if (share) {
-        // User is invited - use their share permissions
-        const customerView = share.customer_view_access || "none";
         const shareRoleType = (share as Record<string, unknown>).role_type as string | null;
+
+        // Co-owner gets full access (same as project owner)
+        if (shareRoleType === "co_owner") {
+          setPerms({ ...ALL_EDIT, isSystemAdmin: false, isDemoProject: isDemo });
+          setLoading(false);
+          return;
+        }
+
+        // Other roles - use their share permissions
+        const customerView = share.customer_view_access || "none";
         setPerms({
           isOwner: false,
           isSystemAdmin: false,

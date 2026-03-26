@@ -87,6 +87,43 @@ function buildRfqEmail(
   return { subject, html };
 }
 
+function buildCoOwnerEmail(
+  invitation: Record<string, unknown>,
+  invitationUrl: string
+): { subject: string; html: string } {
+  const project = invitation.project as { id: string; name: string };
+  const inviter = invitation.inviter as { name: string; email: string };
+  const inviterName = inviter.name || inviter.email;
+
+  const subject = `Du har bjudits in som delägare — ${project.name} — Renomate`;
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1a1a1a;max-width:560px;margin:0 auto;padding:20px;background:#fff}
+  .container{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:28px 24px;margin:20px 0}
+  h2{color:#15803d;font-size:20px;margin-bottom:12px}
+  .btn{display:inline-block;padding:14px 28px;background:#15803d;color:white!important;text-decoration:none;border-radius:8px;font-weight:600;margin:16px 0;font-size:16px}
+  .link{word-break:break-all;color:#666;font-size:12px;margin-top:8px}
+  .footer{text-align:center;color:#888;font-size:13px;margin-top:24px}
+</style></head><body>
+<div class="container">
+  <h2>Delad projektledning — ${project.name}</h2>
+  <p><strong>${inviterName}</strong> vill dela projektledningen med dig för renoveringen <strong>${project.name}</strong>.</p>
+  <p>Som delägare får du <strong>samma rättigheter</strong> som projektägaren — full tillgång till alla funktioner, uppgifter, budget och filer.</p>
+  <p>Ditt personnummer kan även användas för dubbelt ROT-avdrag.</p>
+  <a href="${invitationUrl}" class="btn">Acceptera inbjudan</a>
+  <p class="link">${invitationUrl}</p>
+</div>
+<div class="footer">
+  <p>Inbjudan gäller i 7 dagar.</p>
+  <p>Om du inte förväntade dig denna inbjudan kan du ignorera detta mejl.</p>
+</div>
+</body></html>`;
+
+  return { subject, html };
+}
+
 function buildStandardEmail(
   invitation: Record<string, unknown>,
   invitationUrl: string
@@ -221,7 +258,9 @@ serve(async (req) => {
       ? buildRfqEmail(invitation, invitationUrl)
       : roleType === "planning_contributor"
         ? buildPlanningContributorEmail(invitation, invitationUrl)
-        : buildStandardEmail(invitation, invitationUrl);
+        : roleType === "co_owner"
+          ? buildCoOwnerEmail(invitation, invitationUrl)
+          : buildStandardEmail(invitation, invitationUrl);
 
     const recipientEmail =
       invitation.invited_email || invitation.email;

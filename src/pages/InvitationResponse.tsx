@@ -205,31 +205,36 @@ const InvitationResponse = () => {
       // Detect special invitation types
       const isRfqBuilder = perms.role_type === "rfq_builder" || invitation.role_type === "rfq_builder";
       const isPlanningContributor = perms.role_type === "planning_contributor" || invitation.role_type === "planning_contributor";
+      const isCoOwner = perms.role_type === "co_owner" || invitation.role_type === "co_owner";
       const roleType = isRfqBuilder
         ? "rfq_builder"
         : isPlanningContributor
           ? "planning_contributor"
-          : invitation.role === "client"
-            ? "client"
-            : (isContractor ? 'contractor' : 'other');
+          : isCoOwner
+            ? "co_owner"
+            : invitation.role === "client"
+              ? "client"
+              : (isContractor ? 'contractor' : 'other');
       const contractorCategory = isContractor ? contractorRole : null;
 
       const isClientInvite = invitation.role === "client";
 
+      // Co-owners get full edit access on all features
+      const coOwnerAccess = isCoOwner ? 'edit' : null;
       const sharePayload = {
-        role: invitation.role,
+        role: isCoOwner ? invitation.role || 'homeowner' : invitation.role,
         role_type: roleType,
         contractor_role: contractorCategory,
-        timeline_access: perms.timeline_access || invitation.timeline_access || 'view',
-        tasks_access: isClientInvite ? (perms.tasks_access || 'none') : (perms.tasks_access || invitation.tasks_access || 'view'),
-        tasks_scope: perms.tasks_scope || invitation.tasks_scope || 'assigned',
-        space_planner_access: isClientInvite ? (perms.space_planner_access || 'none') : (perms.space_planner_access || invitation.space_planner_access || 'view'),
-        purchases_access: isClientInvite ? (perms.purchases_access || 'none') : (perms.purchases_access || invitation.purchases_access || 'view'),
-        purchases_scope: perms.purchases_scope || invitation.purchases_scope || 'assigned',
-        overview_access: isClientInvite ? (perms.overview_access || 'none') : (perms.overview_access || invitation.overview_access || 'view'),
-        teams_access: perms.teams_access || invitation.teams_access || 'none',
-        budget_access: perms.budget_access || invitation.budget_access || (isClientInvite ? 'view' : 'none'),
-        files_access: perms.files_access || invitation.files_access || 'none',
+        timeline_access: coOwnerAccess || perms.timeline_access || invitation.timeline_access || 'view',
+        tasks_access: coOwnerAccess || (isClientInvite ? (perms.tasks_access || 'none') : (perms.tasks_access || invitation.tasks_access || 'view')),
+        tasks_scope: isCoOwner ? 'all' : (perms.tasks_scope || invitation.tasks_scope || 'assigned'),
+        space_planner_access: coOwnerAccess || (isClientInvite ? (perms.space_planner_access || 'none') : (perms.space_planner_access || invitation.space_planner_access || 'view')),
+        purchases_access: coOwnerAccess || (isClientInvite ? (perms.purchases_access || 'none') : (perms.purchases_access || invitation.purchases_access || 'view')),
+        purchases_scope: isCoOwner ? 'all' : (perms.purchases_scope || invitation.purchases_scope || 'assigned'),
+        overview_access: coOwnerAccess || (isClientInvite ? (perms.overview_access || 'none') : (perms.overview_access || invitation.overview_access || 'view')),
+        teams_access: coOwnerAccess || perms.teams_access || invitation.teams_access || 'none',
+        budget_access: coOwnerAccess || perms.budget_access || invitation.budget_access || (isClientInvite ? 'view' : 'none'),
+        files_access: coOwnerAccess || perms.files_access || invitation.files_access || 'none',
       };
 
       // RFQ builders: skip share on homeowner's project — they only get the clone
@@ -271,9 +276,27 @@ const InvitationResponse = () => {
           .from("profiles")
           .update({
             onboarding_welcome_completed: true,
-            onboarding_user_type: isPlanningContributor ? "homeowner" : "invited_client",
+            onboarding_user_type: isCoOwner ? "homeowner" : (isPlanningContributor ? "homeowner" : "invited_client"),
           })
           .eq("id", profile.id);
+      }
+
+      // Co-owner: auto-add as ROT person if they have personnummer
+      if (isCoOwner) {
+        const { data: coOwnerProfile } = await supabase
+          .from("profiles")
+          .select("name, personnummer")
+          .eq("id", profile.id)
+          .single();
+
+        if (coOwnerProfile?.name) {
+          await supabase.from("project_rot_persons").insert({
+            project_id: invitation.project.id,
+            name: coOwnerProfile.name,
+            personnummer: coOwnerProfile.personnummer || null,
+            profile_id: profile.id,
+          });
+        }
       }
 
       setAccepted(true);
