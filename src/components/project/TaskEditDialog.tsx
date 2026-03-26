@@ -133,6 +133,51 @@ interface Task {
 // Smart Estimate Card — supports all work types (labor + optional material)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Task title — click-to-edit with read mode as default
+// ---------------------------------------------------------------------------
+
+function TaskTitleField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => { setDraft(value); }, [value]);
+
+  const commit = () => {
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== value) onChange(trimmed);
+    setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <DialogTitle
+        className="text-lg font-semibold truncate cursor-pointer hover:text-primary transition-colors py-1"
+        onClick={() => setEditing(true)}
+        title="Klicka för att redigera"
+      >
+        {value}
+      </DialogTitle>
+    );
+  }
+
+  return (
+    <input
+      className="text-lg font-semibold bg-transparent border-0 border-b-2 border-primary focus:outline-none w-full truncate px-0 py-1"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commit();
+        if (e.key === "Escape") { setDraft(value); setEditing(false); }
+      }}
+      autoFocus
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+
 interface SmartEstimateCardProps {
   task: Task;
   rooms: { id: string; name: string; dimensions?: RecipeRoom["dimensions"]; ceiling_height_mm?: number | null }[];
@@ -1012,11 +1057,9 @@ export const TaskEditDialog = ({
       <DialogContent className="max-w-3xl lg:max-w-5xl max-h-[90vh] h-[90vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="flex-shrink-0 px-6 pt-4 pb-2">
           {task ? (
-            <input
-              className="text-lg font-semibold bg-transparent border-0 border-b border-transparent hover:border-border focus:border-primary focus:outline-none w-full truncate transition-colors px-0 py-1"
+            <TaskTitleField
               value={task.title}
-              onChange={(e) => setTask({ ...task, title: e.target.value })}
-              required
+              onChange={(title) => setTask({ ...task, title })}
             />
           ) : (
             <DialogTitle className="truncate">{t("tasks.editTask")}</DialogTitle>
