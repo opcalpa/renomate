@@ -1614,6 +1614,19 @@
     "namePlaceholder": "Name",
     "pnrPlaceholder": "Personal ID (optional)"
   },
+  "household": {
+    "title": "More people in the household?",
+    "description": "Are there more people carrying out the renovation? With two persons you can use double ROT deduction — up to 100,000 kr.",
+    "addForRot": "Add for ROT deduction",
+    "addForRotDesc": "Enter name and personal ID — no invitation needed",
+    "inviteCoOwner": "Invite as co-owner",
+    "inviteCoOwnerDesc": "Shared project management with same access + double ROT",
+    "noThanks": "We are just one person",
+    "partnerNamePlaceholder": "Partner's name",
+    "pnrNote": "Needed for ROT deduction. Stored securely.",
+    "added": "ROT person added!",
+    "addedDesc": "Your ROT allowance has doubled. You can manage ROT persons in the project overview."
+  },
   "elevation": {
     "noWalls": "No walls to display",
     "drawWallsFirst": "Draw walls in Floor Plan view first",

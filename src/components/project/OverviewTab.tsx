@@ -32,6 +32,7 @@ import { GuestPlanningSection } from "./overview/GuestPlanningSection";
 import { ProjectHeader } from "./overview/ProjectHeader";
 import { RotDetailsCard } from "./overview/RotDetailsCard";
 import { RotSummaryCard } from "./overview/RotSummaryCard";
+import { HouseholdRotDialog } from "./overview/HouseholdRotDialog";
 import { ReminderSection } from "./overview/ReminderSection";
 import { normalizeStatus, isQuotePhase } from "@/lib/projectStatus";
 import { supabase } from "@/integrations/supabase/client";
@@ -121,6 +122,25 @@ const OverviewTab = ({
   const [inviteCustomerOpen, setInviteCustomerOpen] = useState(false);
   const [rotPersonnummer, setRotPersonnummer] = useState<string | null>(null);
   const [hasClient, setHasClient] = useState(false);
+  const [householdDialogOpen, setHouseholdDialogOpen] = useState(false);
+
+  // Check if household ROT dialog should show (once for homeowners)
+  useEffect(() => {
+    if (!isHomeowner || isGuest) return;
+    const checkHousehold = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_asked_household")
+        .eq("user_id", user.id)
+        .single();
+      if (profile && !(profile as Record<string, unknown>).onboarding_asked_household) {
+        setHouseholdDialogOpen(true);
+      }
+    };
+    checkHousehold();
+  }, [isHomeowner, isGuest]);
 
   // Fetch personnummer for ROT card
   useEffect(() => {
@@ -483,6 +503,15 @@ const OverviewTab = ({
       )}
 
       <RotSummaryCard projectId={project.id} />
+
+      {isHomeowner && (
+        <HouseholdRotDialog
+          projectId={project.id}
+          open={householdDialogOpen}
+          onOpenChange={setHouseholdDialogOpen}
+          onInviteCoOwner={() => onNavigateToEntity?.("teams", "")}
+        />
+      )}
 
       <ProjectChatSection
         projectId={project.id}
