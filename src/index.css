@@ -141,10 +141,6 @@ All colors MUST be HSL.
 }
 
 /* react-day-picker dropdown selects (year/month navigation) */
-/* Hide the visible label next to each dropdown (causes duplicate text) */
-.rdp-caption_dropdowns .rdp-caption_label {
-  display: none;
-}
 .rdp-dropdown {
   appearance: none;
   -webkit-appearance: none;
