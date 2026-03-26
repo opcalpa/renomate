@@ -1059,6 +1059,8 @@
     "invitationDeclined": "Invitation declined",
     "noMembers": "No team members yet",
     "noMembersDescription": "Invite contractors and collaborators to work on this project",
+    "rotPersons": "ROT persons",
+    "rotPersonsDescription": "People using ROT deduction in this project without their own account",
     "owner": "Owner",
     "member": "Member",
     "pending": "Pending",

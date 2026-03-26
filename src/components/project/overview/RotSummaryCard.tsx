@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { RotRulesCard } from "./RotRulesCard";
+import { RotRulesPopover } from "./RotRulesCard";
 
 interface RotPerson {
   id: string;
@@ -251,6 +251,7 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Shield className="h-4 w-4 text-green-600" />
           {t("rot.summary", "ROT-avdrag")}
+          <RotRulesPopover />
         </h3>
         <div className="flex items-center gap-2">
           {persons.length > 0 && (
@@ -392,8 +393,6 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
         </div>
       )}
 
-      {/* Rules transparency */}
-      <RotRulesCard />
     </div>
   );
 }

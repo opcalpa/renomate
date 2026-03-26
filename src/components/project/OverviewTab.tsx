@@ -502,8 +502,6 @@ const OverviewTab = ({
         />
       )}
 
-      <RotSummaryCard projectId={project.id} />
-
       {isHomeowner && (
         <HouseholdRotDialog
           projectId={project.id}
@@ -519,6 +517,8 @@ const OverviewTab = ({
         onNavigateToEntity={onNavigateToEntity}
         onNavigateToFiles={onNavigateToFiles}
       />
+
+      <RotSummaryCard projectId={project.id} />
 
       {/* Quotes & Invoices unified card - contractors, active phases */}
       {!isHomeowner && !isPlanning && (

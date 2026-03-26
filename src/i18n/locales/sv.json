@@ -1057,6 +1057,8 @@
     "invitationDeclined": "Inbjudan avböjd",
     "noMembers": "Inga teammedlemmar ännu",
     "noMembersDescription": "Bjud in entreprenörer och samarbetspartners att arbeta med detta projekt",
+    "rotPersons": "ROT-personer",
+    "rotPersonsDescription": "Personer som nyttjar ROT-avdrag i detta projekt utan eget konto",
     "owner": "Ägare",
     "member": "Medlem",
     "pending": "Väntande",

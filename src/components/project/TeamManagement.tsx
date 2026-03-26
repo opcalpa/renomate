@@ -37,6 +37,7 @@ import {
   Crown,
   Ruler,
   Users,
+  Shield,
 } from "lucide-react";
 import { z } from "zod";
 import { getAvatarColor } from "@/lib/avatarColor";
@@ -285,6 +286,7 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
   const [projectOwner, setProjectOwner] = useState<ProjectOwner | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [rotPersons, setRotPersons] = useState<{ id: string; name: string; personnummerLast4: string | null; profileId: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviting, setInviting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -443,6 +445,22 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
           .order("created_at", { ascending: false });
         setWorkerTokens((wTokens || []) as typeof workerTokens);
       }
+
+      // Fetch ROT persons (non-account partners)
+      const { data: rotData } = await supabase
+        .from("project_rot_persons")
+        .select("id, name, personnummer, profile_id")
+        .eq("project_id", projectId);
+      setRotPersons(
+        (rotData || [])
+          .filter((p) => !p.profile_id) // Only show those WITHOUT accounts (account holders appear as team members)
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            personnummerLast4: p.personnummer ? p.personnummer.slice(-4) : null,
+            profileId: p.profile_id,
+          }))
+      );
     } catch (error: unknown) {
       toast({
         title: t("roles.error"),
@@ -955,6 +973,39 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
                   </>
                 )}
                 </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ROT Persons (non-account partners) */}
+      {rotPersons.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Shield className="h-4 w-4 text-green-600" />
+              {t("roles.rotPersons", "ROT-personer")}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {t("roles.rotPersonsDescription", "Personer som nyttjar ROT-avdrag i detta projekt utan eget konto")}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {rotPersons.map((person) => (
+              <div key={person.id} className="flex items-center gap-3 p-2.5 border rounded-lg">
+                <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-xs font-medium text-green-700 shrink-0">
+                  {person.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{person.name}</p>
+                  {person.personnummerLast4 && (
+                    <p className="text-xs text-muted-foreground">****-{person.personnummerLast4}</p>
+                  )}
+                </div>
+                <Badge variant="outline" className="text-[10px] shrink-0 text-green-700 border-green-200">
+                  ROT
+                </Badge>
               </div>
             ))}
           </CardContent>
