@@ -572,6 +572,8 @@ export const TaskEditDialog = ({
   const [generatingChecklist, setGeneratingChecklist] = useState(false);
   const [customCostCenterValue, setCustomCostCenterValue] = useState("");
   const [perRowMarkup, setPerRowMarkup] = useState(false);
+  const [rotSubsidyPercent, setRotSubsidyPercent] = useState(30);
+  const [rotMaxPerPerson, setRotMaxPerPerson] = useState(50000);
   const [profileDefaultRate, setProfileDefaultRate] = useState<number | null>(null);
   const [profileLaborCostPercent, setProfileLaborCostPercent] = useState<number | null>(null);
   const [userType, setUserType] = useState<string | null>(null);
@@ -748,6 +750,21 @@ export const TaskEditDialog = ({
       fetchTask();
       fetchSupportingData();
       fetchProfileDefault();
+      // Fetch current ROT rate
+      const today = new Date().toISOString().slice(0, 10);
+      supabase
+        .from("rot_yearly_limits")
+        .select("subsidy_percent, max_amount_per_person")
+        .lte("valid_from", today)
+        .gte("valid_until", today)
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setRotSubsidyPercent(data.subsidy_percent);
+            setRotMaxPerPerson(data.max_amount_per_person);
+          }
+        });
     }
     if (!open) {
       hasAutoFilledRef.current = false;
@@ -1300,10 +1317,9 @@ export const TaskEditDialog = ({
                 const laborCost = task.task_cost_type === "subcontractor"
                   ? (task.subcontractor_cost || 0)
                   : (task.estimated_hours || 0) * (task.hourly_rate || 0);
-                // Default ROT rate — will be overridden by rot_yearly_limits if loaded
-                const rotPercent = 30;
+                const rotPercent = rotSubsidyPercent;
                 const suggestedRot = laborCost > 0 ? Math.round(laborCost * rotPercent / 100) : 0;
-                const cappedRot = Math.min(suggestedRot, 50000);
+                const cappedRot = Math.min(suggestedRot, rotMaxPerPerson);
 
                 return (
                   <div className="p-3 rounded-lg border bg-muted/30 space-y-2">
@@ -1349,10 +1365,10 @@ export const TaskEditDialog = ({
                           <span>{t("tasks.rotSubsidy", "Subventionsgrad")} {rotPercent}%</span>
                           <span className="tabular-nums">{suggestedRot.toLocaleString("sv-SE")} kr</span>
                         </div>
-                        {suggestedRot > 50000 && (
+                        {suggestedRot > rotMaxPerPerson && (
                           <div className="flex justify-between text-amber-600">
                             <span>{t("tasks.rotCapped", "Tak per person/år")}</span>
-                            <span className="tabular-nums">50 000 kr</span>
+                            <span className="tabular-nums">{rotMaxPerPerson.toLocaleString("sv-SE")} kr</span>
                           </div>
                         )}
                         {task.rot_amount !== cappedRot && task.rot_amount != null && (
