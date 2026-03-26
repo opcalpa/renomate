@@ -14,7 +14,9 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -173,6 +175,7 @@ export function FilePreviewPopover({
       {/* Full preview dialog */}
       <Dialog open={!!previewFile} onOpenChange={(o) => { if (!o) setPreviewFile(null); }}>
         <DialogContent className="max-w-4xl w-[calc(100%-2rem)] max-h-[90vh] p-0 gap-0 overflow-hidden">
+          <VisuallyHidden><DialogTitle>File preview</DialogTitle></VisuallyHidden>
           {previewFile && (
             <>
               {/* Header */}
