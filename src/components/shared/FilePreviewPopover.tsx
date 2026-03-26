@@ -174,7 +174,7 @@ export function FilePreviewPopover({
 
       {/* Full preview dialog */}
       <Dialog open={!!previewFile} onOpenChange={(o) => { if (!o) setPreviewFile(null); }}>
-        <DialogContent className="max-w-4xl w-[calc(100%-2rem)] max-h-[90vh] p-0 gap-0 overflow-hidden">
+        <DialogContent className="!max-w-[90vw] !w-[90vw] !h-[90vh] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
           <VisuallyHidden><DialogTitle>File preview</DialogTitle></VisuallyHidden>
           {previewFile && (
             <>
@@ -232,12 +232,12 @@ export function FilePreviewPopover({
                 </div>
               </div>
               {/* Content */}
-              <div className="flex-1 overflow-auto bg-muted/10" style={{ minHeight: 400 }}>
+              <div className="flex-1 overflow-auto bg-muted/10">
                 {isPdf(previewFile.file_name) ? (
                   <iframe
                     src={`${getFileUrl(previewFile.file_path)}#navpanes=0&scrollbar=1&view=FitH`}
-                    className="w-full h-full border-0"
-                    style={{ minHeight: 600 }}
+                    className="w-full border-0"
+                    style={{ height: "calc(90vh - 48px)" }}
                     title={previewFile.file_name}
                   />
                 ) : isImage(previewFile.file_name) ? (
