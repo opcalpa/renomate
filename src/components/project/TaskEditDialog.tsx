@@ -125,6 +125,8 @@ interface Task {
   material_markup_percent: number | null;
   labor_cost_percent: number | null;
   is_ata: boolean;
+  rot_eligible: boolean;
+  rot_amount: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -870,6 +872,12 @@ export const TaskEditDialog = ({
         payload.is_ata = task.is_ata;
       }
 
+      // ROT fields
+      if ("rot_eligible" in task) {
+        payload.rot_eligible = task.rot_eligible;
+        payload.rot_amount = task.rot_amount || null;
+      }
+
       const { error } = await supabase
         .from("tasks")
         .update(payload)
@@ -1285,6 +1293,38 @@ export const TaskEditDialog = ({
                   </div>
                 );
               })()}
+
+              {/* ROT deduction section */}
+              <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={task.rot_eligible ?? false}
+                    onCheckedChange={(checked) =>
+                      setTask({ ...task, rot_eligible: checked, rot_amount: checked ? task.rot_amount : null })
+                    }
+                    disabled={isReadOnly}
+                  />
+                  <div>
+                    <p className="text-sm font-medium">{t("tasks.rotEligible", "ROT-berättigat")}</p>
+                    <p className="text-xs text-muted-foreground">{t("tasks.rotDescription", "Avdrag gäller bara arbetskostnad")}</p>
+                  </div>
+                </div>
+                {task.rot_eligible && (
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      type="number"
+                      value={task.rot_amount ?? ""}
+                      onChange={(e) =>
+                        setTask({ ...task, rot_amount: e.target.value ? parseFloat(e.target.value) : null })
+                      }
+                      disabled={isReadOnly}
+                      className="h-8 w-28 text-right text-sm tabular-nums"
+                      placeholder="0"
+                    />
+                    <span className="text-sm text-muted-foreground">kr</span>
+                  </div>
+                )}
+              </div>
 
               {!isPlanning && (
               <div className="grid grid-cols-2 gap-4">

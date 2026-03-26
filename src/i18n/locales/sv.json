@@ -613,6 +613,8 @@
     "taskUpdatedDescription": "Arbetet har uppdaterats",
     "isAta": "ÄTA (Ändringsarbete)",
     "ataTooltip": "ÄTA = Ändrings- och tilläggsarbeten. Kostnader spåras separat från den ursprungliga offertbudgeten.",
+    "rotEligible": "ROT-berättigat",
+    "rotDescription": "Avdrag gäller bara arbetskostnad",
     "linkToBudgetPost": "Koppla till budgetpost",
     "standaloneTask": "Fristående arbete (ingen koppling)",
     "ataWarning": "Budget på fristående arbete ökar totalkostnaden utöver offerten"
