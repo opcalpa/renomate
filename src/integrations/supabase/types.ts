@@ -993,11 +993,13 @@ export type Database = {
           name: string
           ordered_amount: number | null
           paid_amount: number | null
+          paid_date: string | null
           price_per_unit: number | null
           price_total: number | null
           project_id: string | null
           quantity: number | null
           room_id: string | null
+          rot_amount: number | null
           source_material_id: string | null
           status: string
           task_id: string | null
@@ -1018,11 +1020,13 @@ export type Database = {
           name: string
           ordered_amount?: number | null
           paid_amount?: number | null
+          paid_date?: string | null
           price_per_unit?: number | null
           price_total?: number | null
           project_id?: string | null
           quantity?: number | null
           room_id?: string | null
+          rot_amount?: number | null
           source_material_id?: string | null
           status?: string
           task_id?: string | null
@@ -1043,11 +1047,13 @@ export type Database = {
           name?: string
           ordered_amount?: number | null
           paid_amount?: number | null
+          paid_date?: string | null
           price_per_unit?: number | null
           price_total?: number | null
           project_id?: string | null
           quantity?: number | null
           room_id?: string | null
+          rot_amount?: number | null
           source_material_id?: string | null
           status?: string
           task_id?: string | null
@@ -1546,6 +1552,61 @@ export type Database = {
             columns: ["related_quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_rot_persons: {
+        Row: {
+          created_at: string | null
+          custom_yearly_limit: number | null
+          id: string
+          name: string
+          personnummer: string | null
+          profile_id: string | null
+          project_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          custom_yearly_limit?: number | null
+          id?: string
+          name: string
+          personnummer?: string | null
+          profile_id?: string | null
+          project_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          custom_yearly_limit?: number | null
+          id?: string
+          name?: string
+          personnummer?: string | null
+          profile_id?: string | null
+          project_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_rot_persons_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_rot_persons_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_rot_persons_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -2134,6 +2195,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rot_yearly_limits: {
+        Row: {
+          created_at: string | null
+          max_amount_per_person: number
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          max_amount_per_person?: number
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          max_amount_per_person?: number
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: []
       }
       stakeholders: {
         Row: {
