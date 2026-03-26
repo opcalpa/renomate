@@ -1331,7 +1331,6 @@ export const TaskEditDialog = ({
                             const newAmount = checked && laborCost > 0 ? cappedRot : null;
                             setTask({ ...task, rot_eligible: checked, rot_amount: newAmount });
                           }}
-                          disabled={isReadOnly}
                         />
                         <div>
                           <p className="text-sm font-medium">{t("tasks.rotEligible", "ROT-berättigat")}</p>
@@ -1346,7 +1345,6 @@ export const TaskEditDialog = ({
                             onChange={(e) =>
                               setTask({ ...task, rot_amount: e.target.value ? parseFloat(e.target.value) : null })
                             }
-                            disabled={isReadOnly}
                             className="h-8 w-28 text-right text-sm tabular-nums"
                             placeholder="0"
                           />
