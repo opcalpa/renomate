@@ -1294,6 +1294,7 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           name: string
+          onboarding_asked_household: boolean | null
           onboarding_completed_at: string | null
           onboarding_completed_profile: boolean | null
           onboarding_created_project: boolean | null
@@ -1342,6 +1343,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           name: string
+          onboarding_asked_household?: boolean | null
           onboarding_completed_at?: string | null
           onboarding_completed_profile?: boolean | null
           onboarding_created_project?: boolean | null
@@ -1390,6 +1392,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           name?: string
+          onboarding_asked_household?: boolean | null
           onboarding_completed_at?: string | null
           onboarding_completed_profile?: boolean | null
           onboarding_created_project?: boolean | null
@@ -2198,21 +2201,42 @@ export type Database = {
       }
       rot_yearly_limits: {
         Row: {
+          combined_rot_rut_limit: number
           created_at: string | null
+          id: string
           max_amount_per_person: number
+          notes: string | null
+          source_url: string | null
+          subsidy_percent: number
           updated_at: string | null
+          valid_from: string | null
+          valid_until: string | null
           year: number
         }
         Insert: {
+          combined_rot_rut_limit?: number
           created_at?: string | null
+          id?: string
           max_amount_per_person?: number
+          notes?: string | null
+          source_url?: string | null
+          subsidy_percent?: number
           updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
           year: number
         }
         Update: {
+          combined_rot_rut_limit?: number
           created_at?: string | null
+          id?: string
           max_amount_per_person?: number
+          notes?: string | null
+          source_url?: string | null
+          subsidy_percent?: number
           updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
           year?: number
         }
         Relationships: []
