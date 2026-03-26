@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/currency";
 import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
+import { FilePreviewPopover } from "@/components/shared/FilePreviewPopover";
 import { getStatusBadgeColor } from "@/lib/statusColors";
 import {
   Pencil,
@@ -520,11 +521,19 @@ export function PurchasesTableView({
         );
 
       case "attachment":
+        if (!material.hasAttachment) return null;
         return (
-          <AttachmentIndicator
-            hasAttachment={material.hasAttachment || false}
-            count={material.attachmentCount}
-          />
+          <FilePreviewPopover
+            projectId={projectId}
+            materialId={material.id}
+          >
+            <button type="button" className="cursor-pointer">
+              <AttachmentIndicator
+                hasAttachment={material.hasAttachment || false}
+                count={material.attachmentCount}
+              />
+            </button>
+          </FilePreviewPopover>
         );
 
       case "fileCategory": {

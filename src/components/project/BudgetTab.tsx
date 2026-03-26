@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Package, Hammer, Handshake } from "lucide-react";
 import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
+import { FilePreviewPopover } from "@/components/shared/FilePreviewPopover";
 import { getStatusBadgeColor } from "@/lib/statusColors";
 import { BudgetChartsSection } from "./BudgetChartsSection";
 import { BuilderSummaryCards } from "./budget/BuilderSummaryCards";
@@ -1295,7 +1296,18 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
       case "finishDate":
         return <span className="text-sm">{formatDate(row.finishDate)}</span>;
       case "attachment":
-        return <AttachmentIndicator hasAttachment={row.hasAttachment} count={row.attachmentCount} />;
+        if (!row.hasAttachment) return null;
+        return (
+          <FilePreviewPopover
+            projectId={projectId}
+            taskId={row.type === "task" ? row.id : undefined}
+            materialId={row.type === "material" ? row.id : undefined}
+          >
+            <button type="button" className="cursor-pointer">
+              <AttachmentIndicator hasAttachment={row.hasAttachment} count={row.attachmentCount} />
+            </button>
+          </FilePreviewPopover>
+        );
       // Task-specific extras
       case "estimatedHours":
         if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;

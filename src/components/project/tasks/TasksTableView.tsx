@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { useTasksTableView, type TasksTableViewState } from "./useTasksTableView";
 import { TaskColumnKey, TaskColumnDef, EXTRA_COLUMN_KEYS } from "./tasksTableTypes";
+import { FilePreviewPopover } from "@/components/shared/FilePreviewPopover";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 import { getStatusBadgeColor } from "@/lib/statusColors";
 import {
@@ -887,10 +888,12 @@ export function TasksTableView({
         const count = (task as Record<string, unknown>).attachmentCount as number | undefined;
         if (!count) return <span className="text-muted-foreground/40">–</span>;
         return (
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <Paperclip className="h-3 w-3" />
-            {count}
-          </span>
+          <FilePreviewPopover projectId={projectId} taskId={task.id}>
+            <button type="button" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary cursor-pointer">
+              <Paperclip className="h-3 w-3" />
+              {count}
+            </button>
+          </FilePreviewPopover>
         );
       }
 
