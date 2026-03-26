@@ -16,6 +16,7 @@ import {
   Minus,
   Building2,
   Calendar,
+  Shield,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -63,6 +64,22 @@ interface MaterialRow {
   vendor_name: string | null;
   room_id: string | null;
   created_at: string;
+  rot_amount: number | null;
+  paid_date: string | null;
+}
+
+interface TaskRotRow {
+  id: string;
+  project_id: string;
+  title: string;
+  rot_amount: number | null;
+}
+
+interface RotPersonRow {
+  project_id: string;
+  name: string;
+  personnummer: string | null;
+  custom_yearly_limit: number | null;
 }
 
 interface FileLinkRow {
@@ -129,6 +146,9 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
   const [materials, setMaterials] = useState<MaterialRow[]>([]);
   const [fileLinks, setFileLinks] = useState<FileLinkRow[]>([]);
   const [projectMeta, setProjectMeta] = useState<ProjectMeta[]>([]);
+  const [taskRotRows, setTaskRotRows] = useState<TaskRotRow[]>([]);
+  const [rotPersons, setRotPersons] = useState<RotPersonRow[]>([]);
+  const [rotYearlyLimits, setRotYearlyLimits] = useState<Map<number, number>>(new Map());
 
   const [sectionExpanded, setSectionExpanded] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear() - 1);
@@ -144,7 +164,7 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
 
     const fetchAll = async () => {
       try {
-        const [invRes, matRes, filesRes, metaRes] = await Promise.all([
+        const [invRes, matRes, filesRes, metaRes, taskRotRes, rotPersonsRes, limitsRes] = await Promise.all([
           supabase
             .from("invoices")
             .select("id, project_id, title, invoice_number, total_amount, total_rot_deduction, paid_amount, status, is_ata, notes, paid_at, sent_at, created_at")
@@ -153,7 +173,7 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
             .neq("status", "draft"),
           supabase
             .from("materials")
-            .select("id, project_id, name, description, price_total, paid_amount, vendor_name, room_id, created_at")
+            .select("id, project_id, name, description, price_total, paid_amount, vendor_name, room_id, created_at, rot_amount, paid_date")
             .in("project_id", projectIds)
             .is("task_id", null),
           supabase
@@ -164,6 +184,22 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
             .from("projects")
             .select("id, name, address, property_designation")
             .in("id", projectIds),
+          // ROT tasks across all projects
+          supabase
+            .from("tasks")
+            .select("id, project_id, title, rot_amount")
+            .in("project_id", projectIds)
+            .eq("rot_eligible", true)
+            .not("rot_amount", "is", null),
+          // ROT persons across all projects
+          supabase
+            .from("project_rot_persons")
+            .select("project_id, name, personnummer, custom_yearly_limit")
+            .in("project_id", projectIds),
+          // System ROT limits
+          supabase
+            .from("rot_yearly_limits")
+            .select("year, max_amount_per_person"),
         ]);
 
         const invoicesData = (invRes.data || []) as InvoiceRow[];
@@ -171,6 +207,13 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
         setMaterials((matRes.data || []) as MaterialRow[]);
         setFileLinks((filesRes.data || []) as FileLinkRow[]);
         setProjectMeta((metaRes.data || []) as ProjectMeta[]);
+        setTaskRotRows((taskRotRes.data || []) as TaskRotRow[]);
+        setRotPersons((rotPersonsRes.data || []) as RotPersonRow[]);
+        if (limitsRes.data) {
+          const lm = new Map<number, number>();
+          for (const l of limitsRes.data) lm.set(l.year, l.max_amount_per_person);
+          setRotYearlyLimits(lm);
+        }
 
         const invoiceIds = invoicesData.map((i) => i.id);
         if (invoiceIds.length > 0) {
@@ -213,21 +256,79 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
       if (d) yearSet.add(new Date(d).getFullYear());
     });
     materials.forEach((mat) => {
-      if (mat.created_at) yearSet.add(new Date(mat.created_at).getFullYear());
+      const d = mat.paid_date || mat.created_at;
+      if (d) yearSet.add(new Date(d).getFullYear());
     });
     // Include years from file-based invoice dates
     fileLinks.forEach((fl) => {
       if (fl.invoice_date) yearSet.add(new Date(fl.invoice_date).getFullYear());
     });
+    const currentYear = new Date().getFullYear();
+    yearSet.add(currentYear);
     const arr = Array.from(yearSet).sort((a, b) => b - a);
     // Ensure at least previous year is available
-    const prevYear = new Date().getFullYear() - 1;
+    const prevYear = currentYear - 1;
     if (!arr.includes(prevYear)) arr.push(prevYear);
     arr.sort((a, b) => b - a);
     return arr;
-  }, [invoices, materials]);
+  }, [invoices, materials, fileLinks]);
 
   const activeYear = years.includes(selectedYear) ? selectedYear : years[0] || new Date().getFullYear() - 1;
+
+  // --- ROT summary for selected year (across all projects) ---
+  const rotSummary = useMemo(() => {
+    // Actual ROT: from materials with paid_date in activeYear
+    let actualRot = 0;
+    materials.forEach((mat) => {
+      if (mat.rot_amount && mat.paid_date) {
+        if (new Date(mat.paid_date).getFullYear() === activeYear) {
+          actualRot += mat.rot_amount;
+        }
+      }
+    });
+    // Also from invoices
+    invoices.forEach((inv) => {
+      if (inv.total_rot_deduction && inv.paid_at) {
+        if (new Date(inv.paid_at).getFullYear() === activeYear) {
+          actualRot += inv.total_rot_deduction;
+        }
+      }
+    });
+    // Also from file links
+    fileLinks.forEach((fl) => {
+      if (fl.rot_amount && fl.invoice_date) {
+        if (new Date(fl.invoice_date).getFullYear() === activeYear) {
+          actualRot += fl.rot_amount;
+        }
+      }
+    });
+
+    // Planned ROT (from tasks, year-agnostic — shown as reference)
+    const plannedRot = taskRotRows.reduce((sum, t) => sum + (t.rot_amount || 0), 0);
+
+    // ROT limit for this year
+    const defaultLimit = rotYearlyLimits.get(activeYear) || 50000;
+    // Count unique persons across all projects
+    const uniquePersons = new Map<string, RotPersonRow>();
+    rotPersons.forEach((p) => {
+      const key = p.personnummer || p.name;
+      if (!uniquePersons.has(key)) uniquePersons.set(key, p);
+    });
+    const personCount = Math.max(uniquePersons.size, 1);
+    const totalLimit = Array.from(uniquePersons.values()).reduce(
+      (sum, p) => sum + (p.custom_yearly_limit ?? defaultLimit),
+      0
+    ) || defaultLimit;
+
+    return {
+      actualRot,
+      plannedRot,
+      totalLimit,
+      personCount,
+      persons: Array.from(uniquePersons.values()),
+      remaining: totalLimit - actualRot,
+    };
+  }, [activeYear, materials, invoices, fileLinks, taskRotRows, rotPersons, rotYearlyLimits]);
 
   // --- Build project groups for active year ---
 
@@ -497,6 +598,49 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
               ))}
             </div>
           </div>
+
+          {/* ROT summary for selected year */}
+          {(rotSummary.actualRot > 0 || rotSummary.plannedRot > 0) && (
+            <div className="rounded-lg border bg-green-50/50 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium flex items-center gap-1.5">
+                  <Shield className="h-3.5 w-3.5 text-green-600" />
+                  {t("rot.summary", "ROT-avdrag")} {activeYear}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {rotSummary.personCount} {rotSummary.personCount === 1 ? t("rot.person", "person") : t("rot.persons", "personer")}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">{t("rot.used", "Utnyttjat")}</span>
+                <span className="tabular-nums">
+                  <span className={rotSummary.remaining < 0 ? "text-destructive font-medium" : "text-green-700 font-medium"}>
+                    {fc(rotSummary.actualRot)}
+                  </span>
+                  <span className="text-muted-foreground"> / {fc(rotSummary.totalLimit)}</span>
+                </span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    rotSummary.remaining < 0 ? "bg-destructive" : rotSummary.remaining < rotSummary.totalLimit * 0.2 ? "bg-amber-500" : "bg-green-500"
+                  }`}
+                  style={{ width: `${Math.min((rotSummary.actualRot / rotSummary.totalLimit) * 100, 100)}%` }}
+                />
+              </div>
+              {rotSummary.remaining < 0 && (
+                <div className="flex items-center gap-1 text-xs text-destructive">
+                  <AlertTriangle className="h-3 w-3" />
+                  {t("rot.overLimit", "Överstiger ROT-tak med {{amount}} kr", { amount: fc(Math.abs(rotSummary.remaining)) })}
+                </div>
+              )}
+              {rotSummary.remaining > 0 && rotSummary.actualRot > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  {t("rot.remainingThisYear", "Kvar att nyttja {{year}}: {{amount}}", { year: activeYear, amount: fc(rotSummary.remaining) })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Checklist */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1">

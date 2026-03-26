@@ -2558,7 +2558,9 @@
     "addPerson": "Lägg till",
     "addError": "Kunde inte lägga till ROT-person",
     "namePlaceholder": "Namn",
-    "pnrPlaceholder": "Personnummer (valfritt)"
+    "pnrPlaceholder": "Personnummer (valfritt)",
+    "used": "Utnyttjat",
+    "remainingThisYear": "Kvar att nyttja {{year}}: {{amount}}"
   },
   "household": {
     "title": "Fler i hushållet?",

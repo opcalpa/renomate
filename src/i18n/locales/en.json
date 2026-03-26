@@ -1612,7 +1612,9 @@
     "addPerson": "Add person",
     "addError": "Could not add ROT person",
     "namePlaceholder": "Name",
-    "pnrPlaceholder": "Personal ID (optional)"
+    "pnrPlaceholder": "Personal ID (optional)",
+    "used": "Used",
+    "remainingThisYear": "Remaining {{year}}: {{amount}}"
   },
   "household": {
     "title": "More people in the household?",
