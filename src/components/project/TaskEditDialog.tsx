@@ -1295,36 +1295,80 @@ export const TaskEditDialog = ({
               })()}
 
               {/* ROT deduction section */}
-              <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                <div className="flex items-center gap-3">
-                  <Switch
-                    checked={task.rot_eligible ?? false}
-                    onCheckedChange={(checked) =>
-                      setTask({ ...task, rot_eligible: checked, rot_amount: checked ? task.rot_amount : null })
-                    }
-                    disabled={isReadOnly}
-                  />
-                  <div>
-                    <p className="text-sm font-medium">{t("tasks.rotEligible", "ROT-berättigat")}</p>
-                    <p className="text-xs text-muted-foreground">{t("tasks.rotDescription", "Avdrag gäller bara arbetskostnad")}</p>
+              {(() => {
+                // Calculate labor cost for ROT suggestion
+                const laborCost = task.task_cost_type === "subcontractor"
+                  ? (task.subcontractor_cost || 0)
+                  : (task.estimated_hours || 0) * (task.hourly_rate || 0);
+                // Default ROT rate — will be overridden by rot_yearly_limits if loaded
+                const rotPercent = 30;
+                const suggestedRot = laborCost > 0 ? Math.round(laborCost * rotPercent / 100) : 0;
+                const cappedRot = Math.min(suggestedRot, 50000);
+
+                return (
+                  <div className="p-3 rounded-lg border bg-muted/30 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={task.rot_eligible ?? false}
+                          onCheckedChange={(checked) => {
+                            const newAmount = checked && laborCost > 0 ? cappedRot : null;
+                            setTask({ ...task, rot_eligible: checked, rot_amount: newAmount });
+                          }}
+                          disabled={isReadOnly}
+                        />
+                        <div>
+                          <p className="text-sm font-medium">{t("tasks.rotEligible", "ROT-berättigat")}</p>
+                          <p className="text-xs text-muted-foreground">{t("tasks.rotDescription", "Avdrag gäller bara arbetskostnad")}</p>
+                        </div>
+                      </div>
+                      {task.rot_eligible && (
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            type="number"
+                            value={task.rot_amount ?? ""}
+                            onChange={(e) =>
+                              setTask({ ...task, rot_amount: e.target.value ? parseFloat(e.target.value) : null })
+                            }
+                            disabled={isReadOnly}
+                            className="h-8 w-28 text-right text-sm tabular-nums"
+                            placeholder="0"
+                          />
+                          <span className="text-sm text-muted-foreground">kr</span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Calculation breakdown when ROT is enabled */}
+                    {task.rot_eligible && laborCost > 0 && (
+                      <div className="text-xs text-muted-foreground space-y-0.5 pt-1 border-t">
+                        <div className="flex justify-between">
+                          <span>{t("tasks.rotLaborCost", "Arbetskostnad")}</span>
+                          <span className="tabular-nums">{Math.round(laborCost).toLocaleString("sv-SE")} kr</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>{t("tasks.rotSubsidy", "Subventionsgrad")} {rotPercent}%</span>
+                          <span className="tabular-nums">{suggestedRot.toLocaleString("sv-SE")} kr</span>
+                        </div>
+                        {suggestedRot > 50000 && (
+                          <div className="flex justify-between text-amber-600">
+                            <span>{t("tasks.rotCapped", "Tak per person/år")}</span>
+                            <span className="tabular-nums">50 000 kr</span>
+                          </div>
+                        )}
+                        {task.rot_amount !== cappedRot && task.rot_amount != null && (
+                          <button
+                            type="button"
+                            className="text-primary hover:underline text-xs"
+                            onClick={() => setTask({ ...task, rot_amount: cappedRot })}
+                          >
+                            {t("tasks.rotResetSuggested", "Återställ till föreslaget belopp")} ({cappedRot.toLocaleString("sv-SE")} kr)
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-                {task.rot_eligible && (
-                  <div className="flex items-center gap-1.5">
-                    <Input
-                      type="number"
-                      value={task.rot_amount ?? ""}
-                      onChange={(e) =>
-                        setTask({ ...task, rot_amount: e.target.value ? parseFloat(e.target.value) : null })
-                      }
-                      disabled={isReadOnly}
-                      className="h-8 w-28 text-right text-sm tabular-nums"
-                      placeholder="0"
-                    />
-                    <span className="text-sm text-muted-foreground">kr</span>
-                  </div>
-                )}
-              </div>
+                );
+              })()}
 
               {!isPlanning && (
               <div className="grid grid-cols-2 gap-4">

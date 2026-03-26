@@ -616,6 +616,10 @@
     "ataTooltip": "ÄTA = Change & additional work. Costs are tracked separately from the original quote budget.",
     "rotEligible": "ROT eligible",
     "rotDescription": "Deduction applies to labor cost only",
+    "rotLaborCost": "Labor cost",
+    "rotSubsidy": "Subsidy rate",
+    "rotCapped": "Cap per person/year",
+    "rotResetSuggested": "Reset to suggested amount",
     "linkToBudgetPost": "Link to budget post",
     "standaloneTask": "Standalone task (no link)",
     "ataWarning": "Budget on a standalone task increases total cost beyond the original quote"

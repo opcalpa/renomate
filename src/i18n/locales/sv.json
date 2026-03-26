@@ -616,6 +616,10 @@
     "ataTooltip": "ÄTA = Ändrings- och tilläggsarbeten. Kostnader spåras separat från den ursprungliga offertbudgeten.",
     "rotEligible": "ROT-berättigat",
     "rotDescription": "Avdrag gäller bara arbetskostnad",
+    "rotLaborCost": "Arbetskostnad",
+    "rotSubsidy": "Subventionsgrad",
+    "rotCapped": "Tak per person/år",
+    "rotResetSuggested": "Återställ till föreslaget belopp",
     "linkToBudgetPost": "Koppla till budgetpost",
     "standaloneTask": "Fristående arbete (ingen koppling)",
     "ataWarning": "Budget på fristående arbete ökar totalkostnaden utöver offerten"
