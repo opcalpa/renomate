@@ -2543,6 +2543,14 @@
     "toPay": "Att betala",
     "importResult": "{{tasks}} arbeten och {{materials}} materialbudgetar importerade"
   },
+  "rot": {
+    "summary": "ROT-avdrag",
+    "person": "person",
+    "persons": "personer",
+    "overLimit": "Överstiger ROT-tak med {{amount}} kr",
+    "plannedTotal": "Planerat ROT-avdrag",
+    "actualTotal": "Faktiskt ROT-avdrag"
+  },
   "elevation": {
     "noWalls": "Inga väggar att visa",
     "drawWallsFirst": "Rita väggar i Floor Plan-vyn först",

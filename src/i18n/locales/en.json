@@ -1597,6 +1597,14 @@
     "toPay": "To pay",
     "importResult": "{{tasks}} tasks and {{materials}} material budgets imported"
   },
+  "rot": {
+    "summary": "ROT deduction",
+    "person": "person",
+    "persons": "persons",
+    "overLimit": "Exceeds ROT limit by {{amount}} kr",
+    "plannedTotal": "Planned ROT deduction",
+    "actualTotal": "Actual ROT deduction"
+  },
   "elevation": {
     "noWalls": "No walls to display",
     "drawWallsFirst": "Draw walls in Floor Plan view first",

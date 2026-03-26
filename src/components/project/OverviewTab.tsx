@@ -31,6 +31,7 @@ import { HomeownerPlanningView } from "./overview/HomeownerPlanningView";
 import { GuestPlanningSection } from "./overview/GuestPlanningSection";
 import { ProjectHeader } from "./overview/ProjectHeader";
 import { RotDetailsCard } from "./overview/RotDetailsCard";
+import { RotSummaryCard } from "./overview/RotSummaryCard";
 import { ReminderSection } from "./overview/ReminderSection";
 import { normalizeStatus, isQuotePhase } from "@/lib/projectStatus";
 import { supabase } from "@/integrations/supabase/client";
@@ -480,6 +481,8 @@ const OverviewTab = ({
           isBuilder={!isHomeowner}
         />
       )}
+
+      <RotSummaryCard projectId={project.id} />
 
       <ProjectChatSection
         projectId={project.id}
