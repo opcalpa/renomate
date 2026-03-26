@@ -980,6 +980,48 @@ export type Database = {
           },
         ]
       }
+      material_rot_allocations: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          material_id: string
+          rot_person_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          material_id: string
+          rot_person_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          material_id?: string
+          rot_person_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_rot_allocations_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_rot_allocations_rot_person_id_fkey"
+            columns: ["rot_person_id"]
+            isOneToOne: false
+            referencedRelation: "project_rot_persons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       materials: {
         Row: {
           assigned_to_user_id: string | null

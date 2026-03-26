@@ -50,6 +50,8 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
   const [yearlyLimits, setYearlyLimits] = useState<Map<number, number>>(new Map());
   const [plannedRot, setPlannedRot] = useState(0);
   const [actualRotByYear, setActualRotByYear] = useState<Map<number, number>>(new Map());
+  /** Per-person actual ROT: Map<personId, Map<year, amount>> */
+  const [perPersonRot, setPerPersonRot] = useState<Map<string, Map<number, number>>>(new Map());
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
@@ -63,7 +65,7 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
     const fetchData = async () => {
       setLoading(true);
 
-      const [personsRes, limitsRes, tasksRes, materialsRes] = await Promise.all([
+      const [personsRes, limitsRes, tasksRes, materialsRes, allocRes] = await Promise.all([
         supabase
           .from("project_rot_persons")
           .select("id, name, personnummer, custom_yearly_limit, profile_id")
@@ -78,10 +80,14 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
           .eq("rot_eligible", true),
         supabase
           .from("materials")
-          .select("rot_amount, paid_date")
+          .select("id, rot_amount, paid_date")
           .eq("project_id", projectId)
           .not("rot_amount", "is", null)
           .not("paid_date", "is", null),
+        // Per-person ROT allocations
+        supabase
+          .from("material_rot_allocations")
+          .select("material_id, rot_person_id, amount"),
       ]);
 
       if (personsRes.data) {
@@ -109,12 +115,28 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
 
       if (materialsRes.data) {
         const byYear = new Map<number, number>();
+        // Build material → paid_year lookup
+        const matYearMap = new Map<string, number>();
         for (const m of materialsRes.data) {
           if (!m.paid_date || !m.rot_amount) continue;
           const year = new Date(m.paid_date).getFullYear();
           byYear.set(year, (byYear.get(year) || 0) + m.rot_amount);
+          matYearMap.set(m.id, year);
         }
         setActualRotByYear(byYear);
+
+        // Build per-person breakdown from allocations
+        if (allocRes.data && allocRes.data.length > 0) {
+          const ppMap = new Map<string, Map<number, number>>();
+          for (const alloc of allocRes.data) {
+            const year = matYearMap.get(alloc.material_id);
+            if (!year) continue;
+            if (!ppMap.has(alloc.rot_person_id)) ppMap.set(alloc.rot_person_id, new Map());
+            const yearMap = ppMap.get(alloc.rot_person_id)!;
+            yearMap.set(year, (yearMap.get(year) || 0) + alloc.amount);
+          }
+          setPerPersonRot(ppMap);
+        }
       }
 
       // Auto-add project owner as ROT person if homeowner with ROT data but no persons
@@ -372,6 +394,26 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
                 <AlertTriangle className="h-3 w-3" />
                 {t("rot.overLimit", "Överstiger ROT-tak med {{amount}} kr", {
                   amount: formatCurrency(used - yd.limit),
+                })}
+              </div>
+            )}
+            {/* Per-person breakdown for this year */}
+            {perPersonRot.size > 0 && persons.length > 1 && (
+              <div className="space-y-0.5 pl-1">
+                {persons.map((p) => {
+                  const personYearMap = perPersonRot.get(p.id);
+                  const personUsed = personYearMap?.get(yd.year) || 0;
+                  if (personUsed === 0) return null;
+                  const defaultLimit = yearlyLimits.get(yd.year) || 50000;
+                  const personLimit = p.customYearlyLimit ?? defaultLimit;
+                  return (
+                    <div key={p.id} className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>{p.name}</span>
+                      <span className="tabular-nums">
+                        {formatCurrency(personUsed)} / {formatCurrency(personLimit)} kr
+                      </span>
+                    </div>
+                  );
                 })}
               </div>
             )}

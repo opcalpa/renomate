@@ -980,7 +980,8 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
       )}
 
       {/* ROT Persons (non-account partners) */}
-      {rotPersons.length > 0 && (
+      {/* ROT Persons — owner-only section */}
+      {isOwner && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -1006,8 +1007,22 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
                 <Badge variant="outline" className="text-[10px] shrink-0 text-green-700 border-green-200">
                   ROT
                 </Badge>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await supabase.from("project_rot_persons").delete().eq("id", person.id);
+                    fetchTeamData();
+                  }}
+                  className="text-muted-foreground hover:text-destructive transition-colors"
+                  title={t("common.remove", "Ta bort")}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
             ))}
+
+            {/* Inline add form */}
+            <RotPersonAddForm projectId={projectId} onAdded={fetchTeamData} t={t} />
           </CardContent>
         </Card>
       )}
@@ -1252,6 +1267,75 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
     </div>
   );
 };
+
+/* ── Role Card Grid ─────────────────────────────────────────── */
+
+/* ── ROT Person Add Form ───────────────────────────────────── */
+
+function RotPersonAddForm({ projectId, onAdded, t }: { projectId: string; onAdded: () => void; t: (key: string, fallback?: string) => string }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [pnr, setPnr] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleAdd = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    const { error } = await supabase.from("project_rot_persons").insert({
+      project_id: projectId,
+      name: name.trim(),
+      personnummer: pnr.trim() || null,
+    });
+    if (error) {
+      console.error("Error adding ROT person:", error);
+    } else {
+      setName("");
+      setPnr("");
+      setOpen(false);
+      onAdded();
+    }
+    setSaving(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-2 w-full p-2.5 border border-dashed rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
+      >
+        <UserPlus className="h-4 w-4" />
+        {t("roles.addRotPerson", "Lägg till ROT-person")}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col sm:flex-row gap-2 p-2.5 border rounded-lg bg-muted/30">
+      <Input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder={t("rot.namePlaceholder", "Namn")}
+        className="h-8 text-sm flex-1"
+        autoFocus
+      />
+      <Input
+        value={pnr}
+        onChange={(e) => setPnr(e.target.value)}
+        placeholder={t("rot.pnrPlaceholder", "Personnummer")}
+        className="h-8 text-sm flex-1"
+      />
+      <div className="flex gap-1 shrink-0">
+        <Button size="sm" className="h-8" onClick={handleAdd} disabled={!name.trim() || saving}>
+          {t("common.add", "Lägg till")}
+        </Button>
+        <Button size="sm" variant="ghost" className="h-8" onClick={() => { setOpen(false); setName(""); setPnr(""); }}>
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 /* ── Role Card Grid ─────────────────────────────────────────── */
 
