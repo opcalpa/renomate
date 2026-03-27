@@ -3895,6 +3895,8 @@
     "room": "Rum",
     "budget": "Budget",
     "materialEstimate": "Materialbudget",
+    "groupByCategory": "Gruppera per kategori",
+    "standaloneMaterials": "Fristående material",
     "priced": "prissatta",
     "noBudget": "–",
     "taskPlaceholder": "t.ex. Riva badrum",

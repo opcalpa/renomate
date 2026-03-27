@@ -3898,6 +3898,8 @@
     "room": "Room",
     "budget": "Budget",
     "materialEstimate": "Material budget",
+    "groupByCategory": "Group by category",
+    "standaloneMaterials": "Standalone materials",
     "priced": "priced",
     "noBudget": "–",
     "taskPlaceholder": "e.g. Demolish bathroom",

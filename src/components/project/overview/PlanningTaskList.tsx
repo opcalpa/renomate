@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { TASK_CATEGORY_LABELS, TaskCategory } from "@/services/aiDocumentService.types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -364,8 +365,8 @@ export function PlanningTaskList({
     return { byTask: map, standalone };
   }, [materials]);
 
-  // Unified display order: tasks and standalone materials can be freely intermixed
-  type DisplayItem = { type: "task"; id: string } | { type: "standalone"; id: string };
+  // Unified display order: tasks, standalone materials, and group headers
+  type DisplayItem = { type: "task"; id: string } | { type: "standalone"; id: string } | { type: "groupHeader"; category: string; count: number; budget: number };
   const [displayOrder, setDisplayOrder] = useState<DisplayItem[]>([]);
 
   // Rebuild display order when tasks/materials change, preserving existing order
@@ -394,6 +395,54 @@ export function PlanningTaskList({
       return [...kept, ...newItems];
     });
   }, [tasks, materialsByTask.standalone]);
+
+  // When grouping by category, sort by cost_center and inject group headers
+  const effectiveDisplayOrder = useMemo((): DisplayItem[] => {
+    if (!groupByCategory) return displayOrder;
+
+    // Sort tasks by category, keep standalone at the end
+    const taskItems = displayOrder.filter((d) => d.type === "task");
+    const standaloneItems = displayOrder.filter((d) => d.type === "standalone");
+
+    const taskMap = new Map(tasks.map((t) => [t.id, t]));
+    taskItems.sort((a, b) => {
+      const catA = taskMap.get(a.id)?.cost_center || "ovrigt";
+      const catB = taskMap.get(b.id)?.cost_center || "ovrigt";
+      return catA.localeCompare(catB, "sv");
+    });
+
+    // Insert group headers
+    const result: DisplayItem[] = [];
+    let lastCategory = "";
+    for (const item of taskItems) {
+      const task = taskMap.get(item.id);
+      const category = task?.cost_center || "ovrigt";
+      if (category !== lastCategory) {
+        const groupTasks = tasks.filter((t) => (t.cost_center || "ovrigt") === category);
+        result.push({
+          type: "groupHeader",
+          category,
+          count: groupTasks.length,
+          budget: groupTasks.reduce((sum, t) => sum + (t.budget || 0), 0),
+        });
+        lastCategory = category;
+      }
+      result.push(item);
+    }
+
+    // Standalone materials at the end (under "Material" header if any)
+    if (standaloneItems.length > 0) {
+      result.push({
+        type: "groupHeader",
+        category: "__standalone__",
+        count: standaloneItems.length,
+        budget: materialsByTask.standalone.reduce((sum, m) => sum + (m.price_total || 0), 0),
+      });
+      result.push(...standaloneItems);
+    }
+
+    return result;
+  }, [groupByCategory, displayOrder, tasks, materialsByTask.standalone]);
 
   const fetchProfileCostPercent = useCallback(async () => {
     try {
@@ -1444,7 +1493,51 @@ export function PlanningTaskList({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {displayOrder.map((displayItem, displayIdx) => {
+                  {effectiveDisplayOrder.map((displayItem, displayIdx) => {
+                  // --- Group header row ---
+                  if (displayItem.type === "groupHeader") {
+                    const isCollapsed = collapsedGroups.has(displayItem.category);
+                    const label = displayItem.category === "__standalone__"
+                      ? t("planningTasks.standaloneMaterials", "Fristående material")
+                      : (TASK_CATEGORY_LABELS[displayItem.category as TaskCategory] || displayItem.category);
+                    return (
+                      <TableRow
+                        key={`group-${displayItem.category}`}
+                        className="bg-muted/40 hover:bg-muted/60 cursor-pointer"
+                        onClick={() => setCollapsedGroups((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(displayItem.category)) next.delete(displayItem.category);
+                          else next.add(displayItem.category);
+                          return next;
+                        })}
+                      >
+                        <TableCell colSpan={99} className="py-2 px-3">
+                          <div className="flex items-center gap-2">
+                            <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+                            <span className="text-sm font-semibold">{label}</span>
+                            <span className="text-xs text-muted-foreground">
+                              ({displayItem.count})
+                            </span>
+                            {displayItem.budget > 0 && (
+                              <span className="ml-auto text-sm font-medium tabular-nums text-muted-foreground">
+                                {formatCurrency(displayItem.budget, currency)}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+
+                  // Skip items in collapsed groups
+                  if (groupByCategory) {
+                    if (displayItem.type === "task") {
+                      const t2 = tasks.find((t) => t.id === displayItem.id);
+                      if (t2 && collapsedGroups.has(t2.cost_center || "ovrigt")) return null;
+                    }
+                    if (displayItem.type === "standalone" && collapsedGroups.has("__standalone__")) return null;
+                  }
+
                   // --- Standalone material row ---
                   if (displayItem.type === "standalone") {
                     const mat = materialsByTask.standalone.find((m) => m.id === displayItem.id);
@@ -2574,6 +2667,18 @@ export function PlanningTaskList({
                           {t(col.labelKey)}
                         </label>
                       ))}
+                      <div className="border-t pt-2 mt-2">
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <Checkbox
+                            checked={groupByCategory}
+                            onCheckedChange={(v) => {
+                              setGroupByCategory(!!v);
+                              if (!v) setCollapsedGroups(new Set());
+                            }}
+                          />
+                          {t("planningTasks.groupByCategory", "Gruppera per kategori")}
+                        </label>
+                      </div>
                     </div>
                   </PopoverContent>
                 </Popover>
