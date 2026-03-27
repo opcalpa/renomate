@@ -147,36 +147,28 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
     setExtracting(true);
 
     try {
-      // Upload file to temp storage
-      const tempPath = `temp/ai-import-${Date.now()}-${file.name}`;
-      const { error: uploadErr } = await supabase.storage
-        .from('project-files')
-        .upload(tempPath, file);
+      // Convert file to base64 and send directly to edge function
+      // (no temp storage needed — project doesn't exist yet, RLS blocks temp/ paths)
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      const fileBase64 = btoa(binary);
 
-      if (uploadErr) throw new Error(uploadErr.message);
-
-      const { data: urlData } = supabase.storage
-        .from('project-files')
-        .getPublicUrl(tempPath);
-
-      // Call process-document in quote mode (extracts prices + metadata)
       const { data, error } = await supabase.functions.invoke('process-document', {
         body: {
-          fileUrl: urlData.publicUrl,
+          fileBase64,
+          mimeType: file.type,
           fileType: file.type,
           fileName: file.name,
           mode: 'quote',
         },
       });
 
-      if (error) {
-        // Clean up temp file on error
-        supabase.storage.from('project-files').remove([tempPath]);
-        throw new Error(error.message);
-      }
+      if (error) throw new Error(error.message);
 
-      // Keep reference to move file into project later
-      setUploadedFile({ tempPath, name: file.name, file });
+      // Keep file reference to upload into project after creation
+      setUploadedFile({ tempPath: '', name: file.name, file });
 
       const result = data as AIDocumentExtractionResult;
       result.rooms = result.rooms || [];
@@ -338,8 +330,10 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
         const destPath = `projects/${projectId}/${Date.now()}-${uploadedFile.name}`;
         // Re-upload the original file to the project path (Supabase has no move API)
         await supabase.storage.from('project-files').upload(destPath, uploadedFile.file);
-        // Remove temp file
-        supabase.storage.from('project-files').remove([uploadedFile.tempPath]);
+        // Remove temp file if one was created
+        if (uploadedFile.tempPath) {
+          supabase.storage.from('project-files').remove([uploadedFile.tempPath]);
+        }
       }
 
       const createdRoomIds = new Map<string, string>();
@@ -519,7 +513,7 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
   return (
     <Dialog open={open} onOpenChange={(o) => {
       if (!o && isBusy) return;
-      if (!o && uploadedFile) {
+      if (!o && uploadedFile?.tempPath) {
         supabase.storage.from('project-files').remove([uploadedFile.tempPath]);
       }
       onOpenChange(o);
