@@ -647,7 +647,22 @@
     "hourlyRate": "Timpris",
     "subcontractorCost": "UE-kostnad",
     "materialEstimate": "Materialkalkyl",
-    "markupPercent": "Påslag %"
+    "markupPercent": "Påslag %",
+    "bulkSelectAll": "Markera alla arbeten",
+    "bulkSelectTask": "Markera arbete",
+    "bulkSelected": "{{count}} markerade",
+    "bulkChangeStatus": "Status",
+    "bulkChangePriority": "Prioritet",
+    "bulkChangeAssignee": "Tilldelning",
+    "bulkChangeRoom": "Rum",
+    "bulkDelete": "Ta bort",
+    "bulkDeleteConfirmTitle": "Ta bort {{count}} arbeten?",
+    "bulkDeleteConfirmDesc": "Detta tar bort de markerade arbetena permanent. Åtgärden kan inte ångras.",
+    "bulkUpdateSuccess": "Uppdaterade {{count}} arbeten",
+    "bulkDeleteSuccess": "Tog bort {{count}} arbeten",
+    "bulkUpdateFailed": "Kunde inte uppdatera arbeten",
+    "bulkDeleteFailed": "Kunde inte ta bort arbeten",
+    "bulkClearSelection": "Rensa"
   },
   "purchasesTable": {
     "columns": "Kolumner",

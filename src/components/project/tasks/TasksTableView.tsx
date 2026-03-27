@@ -48,6 +48,8 @@ import {
 } from "lucide-react";
 import { useTasksTableView, type TasksTableViewState } from "./useTasksTableView";
 import { TaskColumnKey, TaskColumnDef, EXTRA_COLUMN_KEYS } from "./tasksTableTypes";
+import { useBulkTaskActions } from "./useBulkTaskActions";
+import { BulkActionBar } from "./BulkActionBar";
 import { FilePreviewPopover } from "@/components/shared/FilePreviewPopover";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 import { getStatusBadgeColor } from "@/lib/statusColors";
@@ -209,6 +211,8 @@ export function TasksTableView({
     compactRows,
     setCompactRows,
   } = externalState || internalState;
+
+  const bulk = useBulkTaskActions({ tasks, projectId, onTaskUpdated });
 
   // Dependencies map: taskId → array of { id, depends_on_task_id, title }
   const [depsMap, setDepsMap] = useState<Map<string, { depId: string; taskId: string; title: string }[]>>(new Map());
@@ -961,6 +965,24 @@ export function TasksTableView({
 
       </div>}
 
+      {/* Bulk action bar */}
+      {bulk.showBulkBar && !isReadOnly && (
+        <BulkActionBar
+          selectedCount={bulk.selectedCount}
+          statusLabels={statusLabels}
+          rooms={rooms}
+          stakeholders={stakeholders}
+          teamMembers={teamMembers}
+          onBulkStatus={(v) => bulk.bulkUpdateField("status", v)}
+          onBulkPriority={(v) => bulk.bulkUpdateField("priority", v)}
+          onBulkAssignee={(v) => bulk.bulkUpdateField("assigned_to_stakeholder_id", v)}
+          onBulkRoom={(v) => bulk.bulkUpdateField("room_id", v)}
+          onBulkDelete={bulk.bulkDelete}
+          onClearSelection={bulk.clearSelection}
+          isLoading={bulk.isBulkLoading}
+        />
+      )}
+
       {/* Table */}
       <Card>
         <CardContent className="p-0">
@@ -968,6 +990,16 @@ export function TasksTableView({
             <Table>
               <TableHeader>
                 <TableRow>
+                  {!isReadOnly && (
+                    <TableHead className="w-[40px] px-2">
+                      <Checkbox
+                        checked={bulk.allSelected ? true : bulk.someSelected ? "indeterminate" : false}
+                        onCheckedChange={() => bulk.toggleAll()}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={t("tasksTable.bulkSelectAll", "Select all")}
+                      />
+                    </TableHead>
+                  )}
                   {visibleColumns.map((col, idx) => (
                     <TableHead
                       key={col.key}
@@ -1007,7 +1039,7 @@ export function TasksTableView({
                 {sortedTasks.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={visibleColumns.length}
+                      colSpan={visibleColumns.length + (isReadOnly ? 0 : 1)}
                       className="py-12"
                     >
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -1021,9 +1053,21 @@ export function TasksTableView({
                   sortedTasks.map((task) => (
                     <TableRow
                       key={task.id}
-                      className="hover:bg-muted/50 cursor-pointer"
+                      className={cn(
+                        "hover:bg-muted/50 cursor-pointer",
+                        bulk.selectedIds.has(task.id) && "bg-primary/5",
+                      )}
                       onClick={() => onTaskClick(task)}
                     >
+                      {!isReadOnly && (
+                        <TableCell className="w-[40px] px-2" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={bulk.selectedIds.has(task.id)}
+                            onCheckedChange={() => bulk.toggleOne(task.id)}
+                            aria-label={t("tasksTable.bulkSelectTask", "Select task")}
+                          />
+                        </TableCell>
+                      )}
                       {visibleColumns.map((col, colIdx) => (
                         <TableCell
                           key={col.key}

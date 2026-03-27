@@ -647,7 +647,22 @@
     "hourlyRate": "Hourly rate",
     "subcontractorCost": "Subcontractor",
     "materialEstimate": "Material est.",
-    "markupPercent": "Markup %"
+    "markupPercent": "Markup %",
+    "bulkSelectAll": "Select all tasks",
+    "bulkSelectTask": "Select task",
+    "bulkSelected": "{{count}} selected",
+    "bulkChangeStatus": "Status",
+    "bulkChangePriority": "Priority",
+    "bulkChangeAssignee": "Assignee",
+    "bulkChangeRoom": "Room",
+    "bulkDelete": "Delete",
+    "bulkDeleteConfirmTitle": "Delete {{count}} tasks?",
+    "bulkDeleteConfirmDesc": "This will permanently delete the selected tasks. This action cannot be undone.",
+    "bulkUpdateSuccess": "Updated {{count}} tasks",
+    "bulkDeleteSuccess": "Deleted {{count}} tasks",
+    "bulkUpdateFailed": "Failed to update tasks",
+    "bulkDeleteFailed": "Failed to delete tasks",
+    "bulkClearSelection": "Clear"
   },
   "purchasesTable": {
     "columns": "Columns",
