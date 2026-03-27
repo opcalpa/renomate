@@ -3897,6 +3897,7 @@
     "taskName": "Task",
     "room": "Room",
     "budget": "Budget",
+    "materialEstimate": "Material budget",
     "priced": "priced",
     "noBudget": "–",
     "taskPlaceholder": "e.g. Demolish bathroom",

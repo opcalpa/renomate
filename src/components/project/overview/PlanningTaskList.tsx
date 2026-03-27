@@ -104,7 +104,7 @@ interface PlanningMaterial {
   kind: "material" | "subcontractor";
 }
 
-type ExtraColumnKey = "hours" | "hourlyRate" | "room" | "costType" | "profit" | "description" | "markup" | "rotAmount";
+type ExtraColumnKey = "hours" | "hourlyRate" | "room" | "costType" | "profit" | "description" | "markup" | "rotAmount" | "budget" | "materialEstimate";
 
 interface ExtraColumnDef {
   key: ExtraColumnKey;
@@ -123,6 +123,8 @@ const EXTRA_COLUMNS: ExtraColumnDef[] = [
   { key: "markup", labelKey: "planningTasks.markup", defaultOn: false, builderOnly: true },
   { key: "profit", labelKey: "taskCost.result", defaultOn: true, builderOnly: true },
   { key: "rotAmount", labelKey: "files.rotAmount", defaultOn: false },
+  { key: "budget", labelKey: "planningTasks.budget", defaultOn: false },
+  { key: "materialEstimate", labelKey: "planningTasks.materialEstimate", defaultOn: false },
 ];
 
 function getDefaultExtras(isHomeowner: boolean): Set<ExtraColumnKey> {
@@ -287,11 +289,17 @@ export function PlanningTaskList({
       markup: visibleExtras.has("markup"),
       profit: visibleExtras.has("profit"),
       rotAmount: visibleExtras.has("rotAmount"),
+      budget: visibleExtras.has("budget"),
+      materialEstimate: visibleExtras.has("materialEstimate"),
     }),
     [visibleExtras]
   );
 
   const extraCount = visibleExtras.size;
+
+  // Category grouping state
+  const [groupByCategory, setGroupByCategory] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   // Material/UE sub-rows state
   const [materials, setMaterials] = useState<PlanningMaterial[]>([]);
@@ -1422,6 +1430,16 @@ export function PlanningTaskList({
                         {t("files.rotAmount", "ROT-avdrag")}
                       </TableHead>
                     )}
+                    {show.budget && (
+                      <TableHead className="hidden sm:table-cell text-right w-[120px]">
+                        {t("planningTasks.budget", "Budget")}
+                      </TableHead>
+                    )}
+                    {show.materialEstimate && (
+                      <TableHead className="hidden sm:table-cell text-right w-[130px]">
+                        {t("planningTasks.materialEstimate", "Materialbudget")}
+                      </TableHead>
+                    )}
                     {!effectiveLock && <TableHead className="w-[40px]" />}
                   </TableRow>
                 </TableHeader>
@@ -1700,6 +1718,18 @@ export function PlanningTaskList({
                                   ) : (
                                     <span className="text-xs text-muted-foreground">–</span>
                                   )}
+                                </TableCell>
+                              )}
+                              {show.budget && (
+                                <TableCell className="text-right hidden sm:table-cell py-2.5">
+                                  {task.budget ? <span className="text-sm">{formatCurrency(task.budget, currency)}</span> : <span className="text-xs text-muted-foreground">–</span>}
+                                </TableCell>
+                              )}
+                              {show.materialEstimate && (
+                                <TableCell className="text-right hidden sm:table-cell py-2.5">
+                                  {task.material_estimate ? (
+                                    <span className="text-sm text-amber-700">{formatCurrency(task.material_estimate, currency)}</span>
+                                  ) : <span className="text-xs text-muted-foreground">–</span>}
                                 </TableCell>
                               )}
                             </>
@@ -2102,6 +2132,18 @@ export function PlanningTaskList({
                           )}
                         </TableCell>
                       )}
+                      {show.budget && (
+                        <TableCell className="text-right hidden sm:table-cell py-2.5">
+                          {task.budget ? <span className="text-sm">{formatCurrency(task.budget, currency)}</span> : <span className="text-xs text-muted-foreground">–</span>}
+                        </TableCell>
+                      )}
+                      {show.materialEstimate && (
+                        <TableCell className="text-right hidden sm:table-cell py-2.5">
+                          {task.material_estimate ? (
+                            <span className="text-sm text-amber-700">{formatCurrency(task.material_estimate, currency)}</span>
+                          ) : <span className="text-xs text-muted-foreground">–</span>}
+                        </TableCell>
+                      )}
                       {!effectiveLock && (
                         <TableCell className="py-2.5">
                           <DropdownMenu>
@@ -2325,6 +2367,8 @@ export function PlanningTaskList({
                                   </TableCell>
                                 )}
                                 {show.rotAmount && <TableCell className="hidden sm:table-cell py-2" />}
+                                {show.budget && <TableCell className="hidden sm:table-cell py-2" />}
+                                {show.materialEstimate && <TableCell className="hidden sm:table-cell py-2" />}
                               </>
                             );
                           })()}
