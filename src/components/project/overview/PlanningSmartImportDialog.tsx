@@ -580,6 +580,31 @@ export function PlanningSmartImportDialog({
         }
       }
 
+      // Link uploaded document to all created tasks
+      if (uploadedFile) {
+        const { data: newTasks } = await supabase
+          .from("tasks")
+          .select("id")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false })
+          .limit(createdTaskCount);
+
+        if (newTasks && newTasks.length > 0) {
+          const fileType = uploadedFile.file.type?.includes("pdf") ? "quote" : "document";
+          const links = newTasks.map((t) => ({
+            project_id: projectId,
+            task_id: t.id,
+            file_path: uploadedFile.tempPath,
+            file_name: uploadedFile.name,
+            file_type: fileType,
+            vendor_name: quoteMetadata?.vendorName || null,
+            invoice_amount: quoteMetadata?.totalAmount || null,
+            invoice_date: quoteMetadata?.quoteDate || null,
+          }));
+          await supabase.from("task_file_links").insert(links);
+        }
+      }
+
       // Update project total_budget from quote metadata
       if (quoteMetadata?.totalAmount) {
         const budgetExVat = quoteMetadata.isIncludingVat

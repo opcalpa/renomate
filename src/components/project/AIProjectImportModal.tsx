@@ -341,11 +341,12 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
       }
 
       // Move uploaded document into project files
+      let uploadedFilePath: string | null = null;
       if (uploadedFile) {
-        const destPath = `projects/${projectId}/${Date.now()}-${uploadedFile.name}`;
-        // Re-upload the original file to the project path (Supabase has no move API)
+        const safeName = uploadedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const destPath = `projects/${projectId}/${Date.now()}-${safeName}`;
         await supabase.storage.from('project-files').upload(destPath, uploadedFile.file);
-        // Remove temp file if one was created
+        uploadedFilePath = destPath;
         if (uploadedFile.tempPath) {
           supabase.storage.from('project-files').remove([uploadedFile.tempPath]);
         }
@@ -463,6 +464,30 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
         });
 
         if (!matErr) createdMaterialCount++;
+      }
+
+      // Link uploaded document to all created tasks (single source file, multiple links)
+      if (uploadedFilePath) {
+        const { data: allTasks } = await supabase
+          .from('tasks')
+          .select('id')
+          .eq('project_id', projectId);
+
+        if (allTasks && allTasks.length > 0) {
+          const fileType = uploadedFile?.file.type?.includes('pdf') ? 'quote' : 'document';
+          const links = allTasks.map((t) => ({
+            project_id: projectId,
+            task_id: t.id,
+            file_path: uploadedFilePath!,
+            file_name: uploadedFile?.name || 'document',
+            file_type: fileType,
+            vendor_name: quoteMetadata?.vendorName || null,
+            invoice_amount: quoteMetadata?.totalAmount || null,
+            invoice_date: quoteMetadata?.quoteDate || null,
+          }));
+
+          await supabase.from('task_file_links').insert(links);
+        }
       }
 
       toast({

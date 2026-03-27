@@ -1363,7 +1363,7 @@ export function PlanningTaskList({
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead>
+                    <TableHead className="min-w-[220px]">
                       {t("planningTasks.taskName", "Task")}
                     </TableHead>
                     {show.description && (
