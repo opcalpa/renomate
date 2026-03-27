@@ -4439,7 +4439,12 @@
     "activateProject": "Påbörja projekt",
     "projectActivated": "Projektet aktiverat! Dina arbetsmoment och rum är nu live.",
     "quoted": "Offererat",
-    "totalArea": "Golvyta"
+    "totalArea": "Golvyta",
+    "totalBudget": "Budget",
+    "totalMaterial": "Material",
+    "totalRot": "ROT",
+    "groupByCategory": "Gruppera per kategori",
+    "materialCount": "{{count}} material"
   },
   "externalQuotes": {
     "importQuote": "Importera offert",

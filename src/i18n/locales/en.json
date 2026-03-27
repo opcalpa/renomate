@@ -4442,7 +4442,12 @@
     "activateProject": "Start project",
     "projectActivated": "Project activated! Your tasks and rooms are now live.",
     "quoted": "Quoted",
-    "totalArea": "Floor area"
+    "totalArea": "Floor area",
+    "totalBudget": "Budget",
+    "totalMaterial": "Material",
+    "totalRot": "ROT",
+    "groupByCategory": "Group by category",
+    "materialCount": "{{count}} material(s)"
   },
   "externalQuotes": {
     "importQuote": "Import quote",

@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Send, ClipboardList, Info, Columns3, Play, Bell, X, Sparkles } from "lucide-react";
+import { Plus, Trash2, Send, ClipboardList, Info, Columns3, Play, Bell, X, Sparkles, ChevronDown, ChevronRight, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   detectWorkType,
@@ -32,6 +32,20 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { ImportQuotePopover, type ExternalQuote } from "./ImportQuotePopover";
 import { ExternalQuoteCell, type QuoteAssignment } from "./ExternalQuoteCell";
 import { PlanningSmartImportDialog } from "./PlanningSmartImportDialog";
+import {
+  TASK_CATEGORY_LABELS,
+  TASK_CATEGORY_TO_COST_CENTER,
+  type TaskCategory,
+} from "@/services/aiDocumentService.types";
+
+// Reverse map: cost_center value → Swedish label
+const COST_CENTER_LABELS: Record<string, string> = Object.entries(TASK_CATEGORY_TO_COST_CENTER).reduce(
+  (acc, [cat, cc]) => {
+    if (!acc[cc]) acc[cc] = TASK_CATEGORY_LABELS[cat as TaskCategory];
+    return acc;
+  },
+  {} as Record<string, string>
+);
 
 // ---------------------------------------------------------------------------
 // Types
@@ -163,6 +177,13 @@ export function HomeownerPlanningView({
   const [externalQuotes, setExternalQuotes] = useState<ExternalQuote[]>([]);
   const [quoteAssignments, setQuoteAssignments] = useState<QuoteAssignment[]>([]);
 
+  // Material counts per task
+  const [materialCounts, setMaterialCounts] = useState<Map<string, number>>(new Map());
+
+  // Category grouping
+  const [groupByCategory, setGroupByCategory] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
   // Persist column prefs
   useEffect(() => {
     localStorage.setItem(PREFS_KEY(projectId), JSON.stringify([...visibleExtras]));
@@ -257,11 +278,27 @@ export function HomeownerPlanningView({
     setExternalQuotes(enriched);
   }, [projectId]);
 
+  const fetchMaterialCounts = useCallback(async () => {
+    const { data } = await supabase
+      .from("materials")
+      .select("id, task_id")
+      .eq("project_id", projectId)
+      .not("task_id", "is", null);
+    if (data) {
+      const counts = new Map<string, number>();
+      for (const m of data) {
+        if (m.task_id) counts.set(m.task_id, (counts.get(m.task_id) || 0) + 1);
+      }
+      setMaterialCounts(counts);
+    }
+  }, [projectId]);
+
   useEffect(() => {
     fetchTasks();
     fetchRooms();
     fetchExternalQuotes();
-  }, [fetchTasks, fetchRooms, fetchExternalQuotes]);
+    fetchMaterialCounts();
+  }, [fetchTasks, fetchRooms, fetchExternalQuotes, fetchMaterialCounts]);
 
   // Resolve room names from room_ids
   const roomMap = new Map(rooms.map((r) => [r.id, r]));
@@ -423,6 +460,48 @@ export function HomeownerPlanningView({
     const area = computeFloorAreaSqm(room as RecipeRoom);
     return sum + (area ?? 0);
   }, 0);
+  const totalBudget = tasks.reduce((sum, t) => sum + (t.budget || 0), 0);
+  const totalMaterialEstimate = tasks.reduce((sum, t) => sum + (t.material_estimate || 0), 0);
+  const totalRot = tasks.reduce((sum, t) => sum + (t.rot_amount || 0), 0);
+
+  // ---------- Category grouping ----------
+  const toggleGroup = useCallback((category: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  }, []);
+
+  type DisplayItem =
+    | { type: "task"; task: HomeownerTask & { room_names: string[] } }
+    | { type: "groupHeader"; category: string; count: number; budget: number };
+
+  const displayItems = useMemo((): DisplayItem[] => {
+    const withRooms = tasksWithRoomNames;
+    if (!groupByCategory) return withRooms.map((t) => ({ type: "task" as const, task: t }));
+
+    // Group by cost_center
+    const groups = new Map<string, typeof withRooms>();
+    for (const task of withRooms) {
+      const cat = task.cost_center || "ovrigt";
+      if (!groups.has(cat)) groups.set(cat, []);
+      groups.get(cat)!.push(task);
+    }
+
+    const items: DisplayItem[] = [];
+    Array.from(groups.entries()).forEach(([category, groupTasks]) => {
+      const groupBudget = groupTasks.reduce((s, t) => s + (t.budget || 0), 0);
+      items.push({ type: "groupHeader", category, count: groupTasks.length, budget: groupBudget });
+      if (!collapsedGroups.has(category)) {
+        for (const task of groupTasks) {
+          items.push({ type: "task", task });
+        }
+      }
+    });
+    return items;
+  }, [tasksWithRoomNames, groupByCategory, collapsedGroups]);
 
   // ---------- Render ----------
   if (loading) {
@@ -500,7 +579,7 @@ export function HomeownerPlanningView({
               )}
             </div>
 
-            <div className={`grid gap-4 mt-4`} style={{ gridTemplateColumns: `repeat(${2 + (totalAreaSqm > 0 ? 1 : 0) + (externalQuotes.length > 0 ? 1 : 0)}, minmax(0, 1fr))` }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-4">
               <div className="rounded-lg border bg-white p-3 text-center">
                 <div className="text-2xl font-bold tabular-nums">{totalTasks}</div>
                 <div className="text-xs text-muted-foreground">{t("homeownerPlanning.tasks", "Tasks")}</div>
@@ -513,6 +592,24 @@ export function HomeownerPlanningView({
                 <div className="rounded-lg border bg-white p-3 text-center">
                   <div className="text-2xl font-bold tabular-nums">{Math.round(totalAreaSqm)} m²</div>
                   <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalArea", "Floor area")}</div>
+                </div>
+              )}
+              {totalBudget > 0 && (
+                <div className="rounded-lg border bg-white p-3 text-center">
+                  <div className="text-2xl font-bold tabular-nums">{formatCurrency(totalBudget, currency)}</div>
+                  <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalBudget", "Budget")}</div>
+                </div>
+              )}
+              {totalMaterialEstimate > 0 && (
+                <div className="rounded-lg border bg-white p-3 text-center">
+                  <div className="text-2xl font-bold tabular-nums text-amber-700">{formatCurrency(totalMaterialEstimate, currency)}</div>
+                  <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalMaterial", "Material")}</div>
+                </div>
+              )}
+              {totalRot > 0 && (
+                <div className="rounded-lg border bg-white p-3 text-center">
+                  <div className="text-2xl font-bold tabular-nums text-green-700">{formatCurrency(totalRot, currency)}</div>
+                  <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalRot", "ROT")}</div>
                 </div>
               )}
               {externalQuotes.length > 0 && (
@@ -548,6 +645,16 @@ export function HomeownerPlanningView({
                   onSmartImport={() => setSmartImportOpen(true)}
                 />
               )}
+              {/* Group by category toggle */}
+              <Button
+                variant={groupByCategory ? "default" : "outline"}
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                title={t("homeownerPlanning.groupByCategory", "Group by category")}
+                onClick={() => setGroupByCategory((prev) => !prev)}
+              >
+                <ClipboardList className="h-4 w-4" />
+              </Button>
               {/* Column toggle */}
               <Popover>
                 <PopoverTrigger asChild>
@@ -591,9 +698,37 @@ export function HomeownerPlanningView({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tasksWithRoomNames.map((task) => {
+                  {displayItems.map((item) => {
+                    if (item.type === "groupHeader") {
+                      const colSpan = 1 + (show.description ? 1 : 0) + (show.room ? 1 : 0) + (show.area ? 1 : 0) + (show.quote ? 1 : 0) + (show.budget ? 1 : 0) + (show.materialEstimate ? 1 : 0) + (show.rotAmount ? 1 : 0) + 1;
+                      const isCollapsed = collapsedGroups.has(item.category);
+                      const label = COST_CENTER_LABELS[item.category] || TASK_CATEGORY_LABELS[item.category as TaskCategory] || item.category;
+                      return (
+                        <TableRow key={`group-${item.category}`} className="bg-muted/50 hover:bg-muted/70">
+                          <TableCell colSpan={colSpan} className="py-2">
+                            <button
+                              type="button"
+                              className="flex items-center gap-2 w-full text-left font-medium text-sm"
+                              onClick={() => toggleGroup(item.category)}
+                            >
+                              {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              <span>{label}</span>
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{item.count}</Badge>
+                              {item.budget > 0 && (
+                                <span className="ml-auto text-xs tabular-nums text-muted-foreground font-normal">
+                                  {formatCurrency(item.budget, currency)}
+                                </span>
+                              )}
+                            </button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }
+
+                    const task = item.task;
                     const workType = detectWorkType(task);
                     const areaSqm = getTaskAreaSqm(task);
+                    const matCount = materialCounts.get(task.id) || 0;
                     return (
                       <TableRow key={task.id}>
                         {/* Title — always visible */}
@@ -613,7 +748,7 @@ export function HomeownerPlanningView({
                           ) : (
                             <button
                               type="button"
-                              className="text-left hover:bg-muted px-1.5 py-0.5 rounded cursor-text flex items-center gap-1.5 max-w-[180px] min-w-0"
+                              className="text-left hover:bg-muted px-1.5 py-0.5 rounded cursor-text flex items-center gap-1.5 max-w-[200px] min-w-0"
                               onClick={() => {
                                 setEditingCell({ taskId: task.id, field: "title" });
                                 setEditValue(task.title);
@@ -625,6 +760,12 @@ export function HomeownerPlanningView({
                                 </Badge>
                               )}
                               <span className="truncate">{task.title}</span>
+                              {matCount > 0 && (
+                                <span className="inline-flex items-center gap-0.5 text-amber-600 shrink-0" title={t("homeownerPlanning.materialCount", { count: matCount })}>
+                                  <Package className="h-3 w-3" />
+                                  <span className="text-[10px]">{matCount}</span>
+                                </span>
+                              )}
                             </button>
                           )}
                         </TableCell>
