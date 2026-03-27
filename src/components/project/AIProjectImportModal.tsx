@@ -36,6 +36,10 @@ import {
   Edit2,
   Upload,
   FileText,
+  ZoomIn,
+  ZoomOut,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Switch } from '@/components/ui/switch';
@@ -104,6 +108,10 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
   const [showIncVat, setShowIncVat] = useState(true);
   const [standaloneMaterials, setStandaloneMaterials] = useState<StandaloneMaterial[]>([]);
   const [editingMaterialKey, setEditingMaterialKey] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(true);
+  const [previewZoom, setPreviewZoom] = useState(100);
+  /** Base64 data URL for document preview (created from file) */
+  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
 
   const resetState = useCallback(() => {
     setStep('upload');
@@ -119,6 +127,9 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
     setShowIncVat(true);
     setStandaloneMaterials([]);
     setEditingMaterialKey(null);
+    setPreviewOpen(true);
+    setPreviewZoom(100);
+    setPreviewDataUrl(null);
   }, []);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -169,6 +180,10 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
 
       // Keep file reference to upload into project after creation
       setUploadedFile({ tempPath: '', name: file.name, file });
+
+      // Create data URL for preview
+      const blob = new Blob([file], { type: file.type });
+      setPreviewDataUrl(URL.createObjectURL(blob));
 
       const result = data as AIDocumentExtractionResult;
       result.rooms = result.rooms || [];
@@ -520,7 +535,7 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
       if (!o) resetState();
     }}>
       <DialogContent
-        className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+        className="!max-w-6xl w-[calc(100%-2rem)] max-h-[90vh] flex flex-col overflow-hidden"
         onPointerDownOutside={(e) => { if (isBusy) e.preventDefault(); }}
         onEscapeKeyDown={(e) => { if (isBusy) e.preventDefault(); }}
       >
@@ -571,6 +586,45 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
 
         {/* Review step */}
         {step === 'review' && (
+          <div className="flex-1 min-h-0 flex gap-4 overflow-hidden">
+            {/* Document preview panel */}
+            {previewDataUrl && previewOpen && (
+              <div className="w-[45%] hidden sm:flex flex-col min-h-0 shrink-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <button type="button" onClick={() => setPreviewOpen(false)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                    <PanelLeftClose className="h-3 w-3" />
+                    {t('aiDocumentImport.documentPreview', 'Dokumentförhandsvisning')}
+                  </button>
+                  <span className="flex items-center gap-1 ml-auto">
+                    <button type="button" onClick={() => setPreviewZoom(z => Math.max(50, z - 25))} className="p-0.5 hover:bg-muted rounded"><ZoomOut className="h-3 w-3" /></button>
+                    <span className="text-xs tabular-nums min-w-[32px] text-center">{previewZoom}%</span>
+                    <button type="button" onClick={() => setPreviewZoom(z => Math.min(200, z + 25))} className="p-0.5 hover:bg-muted rounded"><ZoomIn className="h-3 w-3" /></button>
+                  </span>
+                </div>
+                <div className="flex-1 border rounded-lg bg-muted/30 overflow-auto">
+                  {uploadedFile?.file.type?.includes('pdf') ? (
+                    <iframe
+                      src={`${previewDataUrl}#navpanes=0&scrollbar=1&view=FitH`}
+                      title={uploadedFile.name}
+                      className="w-full h-full border-0"
+                      style={{ minHeight: '400px', transform: `scale(${previewZoom / 100})`, transformOrigin: 'top left', width: `${100 / (previewZoom / 100)}%` }}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground py-12">
+                      <FileText className="h-10 w-10 mr-2" />
+                      <span className="text-sm">{uploadedFile?.name}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            {!previewOpen && previewDataUrl && (
+              <button type="button" onClick={() => setPreviewOpen(true)} className="hidden sm:flex text-xs text-muted-foreground hover:text-foreground items-center gap-1 self-start mt-1 shrink-0">
+                <PanelLeftOpen className="h-3 w-3" />
+              </button>
+            )}
+
+            {/* Results panel */}
           <div className="flex-1 min-h-0 overflow-y-auto pr-1">
             <div className="space-y-4">
               {/* Project name */}
@@ -868,6 +922,7 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
                 <span>{t('aiDocumentImport.lowConfidence')}</span>
               </div>
             </div>
+          </div>
           </div>
         )}
 
