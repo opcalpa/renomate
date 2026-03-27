@@ -4447,7 +4447,8 @@
     "totalMaterial": "Material",
     "totalRot": "ROT",
     "groupByCategory": "Group by category",
-    "materialCount": "{{count}} material(s)"
+    "materialCount": "{{count}} material(s)",
+    "materials": "Materials"
   },
   "externalQuotes": {
     "importQuote": "Import quote",

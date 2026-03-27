@@ -4444,7 +4444,8 @@
     "totalMaterial": "Material",
     "totalRot": "ROT",
     "groupByCategory": "Gruppera per kategori",
-    "materialCount": "{{count}} material"
+    "materialCount": "{{count}} material",
+    "materials": "Material"
   },
   "externalQuotes": {
     "importQuote": "Importera offert",

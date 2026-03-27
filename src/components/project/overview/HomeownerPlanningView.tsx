@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Trash2, Send, ClipboardList, Info, Columns3, Play, Bell, X, Sparkles, ChevronDown, ChevronRight, Package } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import {
   detectWorkType,
@@ -177,8 +178,9 @@ export function HomeownerPlanningView({
   const [externalQuotes, setExternalQuotes] = useState<ExternalQuote[]>([]);
   const [quoteAssignments, setQuoteAssignments] = useState<QuoteAssignment[]>([]);
 
-  // Material counts per task
-  const [materialCounts, setMaterialCounts] = useState<Map<string, number>>(new Map());
+  // Material info per task
+  interface TaskMaterial { name: string; price_total: number | null }
+  const [taskMaterials, setTaskMaterials] = useState<Map<string, TaskMaterial[]>>(new Map());
 
   // Category grouping
   const [groupByCategory, setGroupByCategory] = useState(false);
@@ -278,18 +280,20 @@ export function HomeownerPlanningView({
     setExternalQuotes(enriched);
   }, [projectId]);
 
-  const fetchMaterialCounts = useCallback(async () => {
+  const fetchTaskMaterials = useCallback(async () => {
     const { data } = await supabase
       .from("materials")
-      .select("id, task_id")
+      .select("task_id, name, price_total")
       .eq("project_id", projectId)
       .not("task_id", "is", null);
     if (data) {
-      const counts = new Map<string, number>();
+      const map = new Map<string, TaskMaterial[]>();
       for (const m of data) {
-        if (m.task_id) counts.set(m.task_id, (counts.get(m.task_id) || 0) + 1);
+        if (!m.task_id) continue;
+        if (!map.has(m.task_id)) map.set(m.task_id, []);
+        map.get(m.task_id)!.push({ name: m.name, price_total: m.price_total });
       }
-      setMaterialCounts(counts);
+      setTaskMaterials(map);
     }
   }, [projectId]);
 
@@ -297,8 +301,8 @@ export function HomeownerPlanningView({
     fetchTasks();
     fetchRooms();
     fetchExternalQuotes();
-    fetchMaterialCounts();
-  }, [fetchTasks, fetchRooms, fetchExternalQuotes, fetchMaterialCounts]);
+    fetchTaskMaterials();
+  }, [fetchTasks, fetchRooms, fetchExternalQuotes, fetchTaskMaterials]);
 
   // Resolve room names from room_ids
   const roomMap = new Map(rooms.map((r) => [r.id, r]));
@@ -728,7 +732,8 @@ export function HomeownerPlanningView({
                     const task = item.task;
                     const workType = detectWorkType(task);
                     const areaSqm = getTaskAreaSqm(task);
-                    const matCount = materialCounts.get(task.id) || 0;
+                    const mats = taskMaterials.get(task.id) || [];
+                    const matCount = mats.length;
                     return (
                       <TableRow key={task.id}>
                         {/* Title — always visible */}
@@ -746,27 +751,50 @@ export function HomeownerPlanningView({
                               className="h-7 text-sm"
                             />
                           ) : (
-                            <button
-                              type="button"
-                              className="text-left hover:bg-muted px-1.5 py-0.5 rounded cursor-text flex items-center gap-1.5 max-w-[200px] min-w-0"
-                              onClick={() => {
-                                setEditingCell({ taskId: task.id, field: "title" });
-                                setEditValue(task.title);
-                              }}
-                            >
-                              {workType && (
-                                <Badge variant="outline" className="text-[10px] px-1 py-0 font-normal shrink-0">
-                                  {t(WORK_TYPE_LABEL_KEYS[workType], workType)}
-                                </Badge>
-                              )}
-                              <span className="truncate">{task.title}</span>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <button
+                                type="button"
+                                className="text-left hover:bg-muted px-1.5 py-0.5 rounded cursor-text flex items-center gap-1.5 max-w-[180px] min-w-0"
+                                onClick={() => {
+                                  setEditingCell({ taskId: task.id, field: "title" });
+                                  setEditValue(task.title);
+                                }}
+                              >
+                                {workType && (
+                                  <Badge variant="outline" className="text-[10px] px-1 py-0 font-normal shrink-0">
+                                    {t(WORK_TYPE_LABEL_KEYS[workType], workType)}
+                                  </Badge>
+                                )}
+                                <span className="truncate">{task.title}</span>
+                              </button>
                               {matCount > 0 && (
-                                <span className="inline-flex items-center gap-0.5 text-amber-600 shrink-0" title={t("homeownerPlanning.materialCount", { count: matCount })}>
-                                  <Package className="h-3 w-3" />
-                                  <span className="text-[10px]">{matCount}</span>
-                                </span>
+                                <TooltipProvider delayDuration={200}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="inline-flex items-center gap-0.5 text-amber-600 shrink-0 cursor-default" onClick={(e) => e.stopPropagation()}>
+                                        <Package className="h-3 w-3" />
+                                        <span className="text-[10px]">{matCount}</span>
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" align="start" className="max-w-xs p-2">
+                                      <p className="text-xs font-medium mb-1">{t("homeownerPlanning.materials", "Material")}</p>
+                                      <ul className="space-y-0.5">
+                                        {mats.map((m, i) => (
+                                          <li key={i} className="text-xs flex justify-between gap-3">
+                                            <span className="truncate">{m.name}</span>
+                                            {m.price_total != null && m.price_total > 0 && (
+                                              <span className="tabular-nums text-muted-foreground shrink-0">
+                                                {Math.round(m.price_total).toLocaleString("sv-SE")} kr
+                                              </span>
+                                            )}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               )}
-                            </button>
+                            </div>
                           )}
                         </TableCell>
 
