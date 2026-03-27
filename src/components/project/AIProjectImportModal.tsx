@@ -536,9 +536,11 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
     }}>
       <DialogContent
         className={`flex flex-col overflow-hidden transition-all ${
-          step === 'review'
+          step === 'review' && previewOpen
             ? '!max-w-[95vw] !w-[95vw] !h-[92vh] max-h-[92vh]'
-            : 'max-w-lg max-h-[80vh]'
+            : step === 'review'
+              ? '!max-w-3xl !w-full !h-[92vh] max-h-[92vh]'
+              : 'max-w-lg max-h-[80vh]'
         }`}
         onPointerDownOutside={(e) => { if (isBusy) e.preventDefault(); }}
         onEscapeKeyDown={(e) => { if (isBusy) e.preventDefault(); }}
@@ -633,7 +635,7 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
             )}
 
             {/* Results panel */}
-          <div className={`flex-1 min-h-0 overflow-y-auto pr-1 ${!previewOpen ? 'max-w-3xl mx-auto' : ''}`}>
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1">
             <div className="space-y-4">
               {/* Project name */}
               <div className="space-y-2">
