@@ -46,6 +46,9 @@ interface HomeownerTask {
   room_names: string[];
   cost_center: string | null;
   status: string;
+  budget: number | null;
+  material_estimate: number | null;
+  rot_amount: number | null;
 }
 
 interface Room {
@@ -59,7 +62,7 @@ interface Room {
 // Column visibility config
 // ---------------------------------------------------------------------------
 
-type ExtraColumnKey = "description" | "room" | "area" | "quote";
+type ExtraColumnKey = "description" | "room" | "area" | "quote" | "budget" | "materialEstimate" | "rotAmount";
 
 interface ExtraColumnDef {
   key: ExtraColumnKey;
@@ -72,6 +75,9 @@ const EXTRA_COLUMNS: ExtraColumnDef[] = [
   { key: "room", labelKey: "tasks.room", defaultOn: true },
   { key: "area", labelKey: "homeownerPlanning.area", defaultOn: true },
   { key: "quote", labelKey: "homeownerPlanning.quote", defaultOn: true },
+  { key: "budget", labelKey: "planningTasks.budget", defaultOn: false },
+  { key: "materialEstimate", labelKey: "planningTasks.materialEstimate", defaultOn: false },
+  { key: "rotAmount", labelKey: "files.rotAmount", defaultOn: false },
 ];
 
 const PREFS_KEY = (projectId: string) => `homeowner-planning-cols-${projectId}`;
@@ -176,13 +182,16 @@ export function HomeownerPlanningView({
     room: visibleExtras.has("room"),
     area: visibleExtras.has("area"),
     quote: !contributorMode && visibleExtras.has("quote"),
+    budget: visibleExtras.has("budget"),
+    materialEstimate: visibleExtras.has("materialEstimate"),
+    rotAmount: visibleExtras.has("rotAmount"),
   }), [visibleExtras, contributorMode]);
 
   // ---------- Fetch ----------
   const fetchTasks = useCallback(async () => {
     const { data } = await supabase
       .from("tasks")
-      .select("id, title, description, room_id, room_ids, cost_center, status")
+      .select("id, title, description, room_id, room_ids, cost_center, status, budget, material_estimate, rot_amount")
       .eq("project_id", projectId)
       .order("created_at", { ascending: true });
 
@@ -197,6 +206,9 @@ export function HomeownerPlanningView({
           room_names: [],
           cost_center: t.cost_center,
           status: t.status,
+          budget: t.budget,
+          material_estimate: t.material_estimate,
+          rot_amount: t.rot_amount,
         }))
       );
     }
@@ -572,6 +584,9 @@ export function HomeownerPlanningView({
                     {show.room && <TableHead className="w-[160px]">{t("tasks.room", "Room")}</TableHead>}
                     {show.area && <TableHead className="w-[80px] text-right hidden sm:table-cell">{t("homeownerPlanning.area", "Area")}</TableHead>}
                     {show.quote && <TableHead className="w-[100px] text-center">{t("homeownerPlanning.quote", "Quote")}</TableHead>}
+                    {show.budget && <TableHead className="w-[120px] text-right">{t("planningTasks.budget", "Budget")}</TableHead>}
+                    {show.materialEstimate && <TableHead className="w-[130px] text-right">{t("planningTasks.materialEstimate", "Materialbudget")}</TableHead>}
+                    {show.rotAmount && <TableHead className="w-[110px] text-right">{t("files.rotAmount", "ROT-avdrag")}</TableHead>}
                     <TableHead className="w-[40px]" />
                   </TableRow>
                 </TableHeader>
@@ -747,6 +762,27 @@ export function HomeownerPlanningView({
                             onAssignmentChange={fetchExternalQuotes}
                           />
                         </TableCell>
+                        )}
+                        {show.budget && (
+                          <TableCell className="text-right py-2.5">
+                            {task.budget ? (
+                              <span className="text-sm tabular-nums">{Math.round(task.budget).toLocaleString("sv-SE")} kr</span>
+                            ) : <span className="text-xs text-muted-foreground">–</span>}
+                          </TableCell>
+                        )}
+                        {show.materialEstimate && (
+                          <TableCell className="text-right py-2.5">
+                            {task.material_estimate ? (
+                              <span className="text-sm tabular-nums text-amber-700">{Math.round(task.material_estimate).toLocaleString("sv-SE")} kr</span>
+                            ) : <span className="text-xs text-muted-foreground">–</span>}
+                          </TableCell>
+                        )}
+                        {show.rotAmount && (
+                          <TableCell className="text-right py-2.5">
+                            {task.rot_amount ? (
+                              <span className="text-sm tabular-nums text-green-700">{Math.round(task.rot_amount).toLocaleString("sv-SE")} kr</span>
+                            ) : <span className="text-xs text-muted-foreground">–</span>}
+                          </TableCell>
                         )}
 
                         {/* Delete — always visible */}
