@@ -535,7 +535,11 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
       if (!o) resetState();
     }}>
       <DialogContent
-        className="!max-w-[95vw] !w-[95vw] !h-[92vh] max-h-[92vh] flex flex-col overflow-hidden"
+        className={`flex flex-col overflow-hidden transition-all ${
+          step === 'review'
+            ? '!max-w-[95vw] !w-[95vw] !h-[92vh] max-h-[92vh]'
+            : 'max-w-lg max-h-[80vh]'
+        }`}
         onPointerDownOutside={(e) => { if (isBusy) e.preventDefault(); }}
         onEscapeKeyDown={(e) => { if (isBusy) e.preventDefault(); }}
       >
@@ -588,52 +592,48 @@ export function AIProjectImportModal({ open, onOpenChange, onProjectCreated }: A
         {step === 'review' && (
           <div className="flex-1 min-h-0 flex gap-4 overflow-hidden">
             {/* Document preview panel — collapsible */}
-            {previewDataUrl && (
-              <div className={`hidden sm:flex flex-col min-h-0 shrink-0 transition-all ${previewOpen ? 'w-[50%]' : 'w-8'}`}>
-                {previewOpen ? (
-                  <>
-                    <div className="flex items-center gap-2 mb-2">
-                      <button type="button" onClick={() => setPreviewOpen(false)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                        <PanelLeftClose className="h-3.5 w-3.5" />
-                        <span className="hidden lg:inline">{t('aiDocumentImport.documentPreview', 'Dokument')}</span>
-                      </button>
-                      <span className="flex items-center gap-1 ml-auto">
-                        <button type="button" onClick={() => setPreviewZoom(z => Math.max(50, z - 25))} className="p-0.5 hover:bg-muted rounded"><ZoomOut className="h-3 w-3" /></button>
-                        <span className="text-xs tabular-nums min-w-[32px] text-center">{previewZoom}%</span>
-                        <button type="button" onClick={() => setPreviewZoom(z => Math.min(200, z + 25))} className="p-0.5 hover:bg-muted rounded"><ZoomIn className="h-3 w-3" /></button>
-                      </span>
+            {previewDataUrl && previewOpen && (
+              <div className="w-[50%] hidden sm:flex flex-col min-h-0 shrink-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs text-muted-foreground">{t('aiDocumentImport.documentPreview', 'Dokument')}</span>
+                  <span className="flex items-center gap-1 ml-auto">
+                    <button type="button" onClick={() => setPreviewZoom(z => Math.max(50, z - 25))} className="p-0.5 hover:bg-muted rounded"><ZoomOut className="h-3 w-3" /></button>
+                    <span className="text-xs tabular-nums min-w-[32px] text-center">{previewZoom}%</span>
+                    <button type="button" onClick={() => setPreviewZoom(z => Math.min(200, z + 25))} className="p-0.5 hover:bg-muted rounded"><ZoomIn className="h-3 w-3" /></button>
+                  </span>
+                </div>
+                <div className="flex-1 border rounded-lg bg-muted/30 overflow-auto">
+                  {uploadedFile?.file.type?.includes('pdf') ? (
+                    <iframe
+                      src={`${previewDataUrl}#navpanes=0&scrollbar=1&view=FitH`}
+                      title={uploadedFile.name}
+                      className="w-full h-full border-0"
+                      style={{ minHeight: '400px', transform: `scale(${previewZoom / 100})`, transformOrigin: 'top left', width: `${100 / (previewZoom / 100)}%` }}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground py-12">
+                      <FileText className="h-10 w-10 mr-2" />
+                      <span className="text-sm">{uploadedFile?.name}</span>
                     </div>
-                    <div className="flex-1 border rounded-lg bg-muted/30 overflow-auto">
-                      {uploadedFile?.file.type?.includes('pdf') ? (
-                        <iframe
-                          src={`${previewDataUrl}#navpanes=0&scrollbar=1&view=FitH`}
-                          title={uploadedFile.name}
-                          className="w-full h-full border-0"
-                          style={{ minHeight: '400px', transform: `scale(${previewZoom / 100})`, transformOrigin: 'top left', width: `${100 / (previewZoom / 100)}%` }}
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-muted-foreground py-12">
-                          <FileText className="h-10 w-10 mr-2" />
-                          <span className="text-sm">{uploadedFile?.name}</span>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setPreviewOpen(true)}
-                    className="flex items-center justify-center h-full w-8 hover:bg-muted/50 rounded-lg border border-dashed transition-colors"
-                    title={t('aiDocumentImport.documentPreview', 'Visa dokument')}
-                  >
-                    <PanelLeftOpen className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                )}
+                  )}
+                </div>
               </div>
             )}
 
+            {/* Vertical resize bar — toggle preview */}
+            {previewDataUrl && (
+              <button
+                type="button"
+                onClick={() => setPreviewOpen(!previewOpen)}
+                className="hidden sm:flex items-center justify-center w-3 shrink-0 group cursor-col-resize"
+                title={previewOpen ? t('common.collapse', 'Minimera') : t('aiDocumentImport.documentPreview', 'Visa dokument')}
+              >
+                <div className="w-1 h-12 rounded-full bg-border group-hover:bg-primary/50 group-hover:h-16 transition-all" />
+              </button>
+            )}
+
             {/* Results panel */}
-          <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+          <div className={`flex-1 min-h-0 overflow-y-auto pr-1 ${!previewOpen ? 'max-w-3xl mx-auto' : ''}`}>
             <div className="space-y-4">
               {/* Project name */}
               <div className="space-y-2">
