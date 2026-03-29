@@ -475,6 +475,7 @@ export async function createTasksFromQuote(quoteId: string) {
   if (!profile) return;
 
   const projectId = result.quote.project_id;
+  const isChangeOrder = !!(result.quote as Record<string, unknown>).is_ata;
 
   // Group items by source_task_id for smart merging
   const itemsBySourceTask = new Map<string, typeof result.items>();
@@ -518,9 +519,21 @@ export async function createTasksFromQuote(quoteId: string) {
     const taskUpdates: Record<string, unknown> = {
       status: "to_do",
     };
+    if (isChangeOrder) taskUpdates.is_ata = true;
+
+    // Accumulate ROT from all items for this task
+    let taskRotEligible = false;
+    let taskRotAmount = 0;
 
     for (const item of items) {
       const sourceType = (item as Record<string, unknown>).source_type as string | null;
+      const isRotEligible = !!(item as Record<string, unknown>).is_rot_eligible;
+      const rotDeduction = ((item as Record<string, unknown>).rot_deduction as number) ?? 0;
+
+      if (isRotEligible) {
+        taskRotEligible = true;
+        taskRotAmount += rotDeduction;
+      }
 
       if (sourceType === "material") {
         // Planned materials row already exists as budget reference — skip creating duplicate to_order row
@@ -537,6 +550,11 @@ export async function createTasksFromQuote(quoteId: string) {
           taskUpdates.task_cost_type = "own_labor";
         }
       }
+    }
+
+    if (taskRotEligible) {
+      taskUpdates.rot_eligible = true;
+      taskUpdates.rot_amount = Math.round(taskRotAmount * 100) / 100;
     }
 
     const { error } = await supabase
@@ -601,6 +619,12 @@ export async function createTasksFromQuote(quoteId: string) {
       const orphanUpdates: Record<string, unknown> = { budget: item.total_price ?? null, status: "to_do" };
       if (orphanSourceType === "hours") orphanUpdates.task_cost_type = "own_labor";
       else if (orphanSourceType === "subcontractor") orphanUpdates.task_cost_type = "subcontractor";
+      if (isChangeOrder) orphanUpdates.is_ata = true;
+      const isRotEligible = !!(item as Record<string, unknown>).is_rot_eligible;
+      if (isRotEligible) {
+        orphanUpdates.rot_eligible = true;
+        orphanUpdates.rot_amount = ((item as Record<string, unknown>).rot_deduction as number) ?? 0;
+      }
       const { error } = await supabase
         .from("tasks")
         .update(orphanUpdates)
@@ -612,6 +636,8 @@ export async function createTasksFromQuote(quoteId: string) {
     } else {
       // Create new task for hours / subcontractor / fixed orphans
       const newTaskCostType = orphanSourceType === "subcontractor" ? "subcontractor" : "own_labor";
+      const isRotEligible = !!(item as Record<string, unknown>).is_rot_eligible;
+      const rotDeduction = ((item as Record<string, unknown>).rot_deduction as number) ?? 0;
       const { error } = await supabase.from("tasks").insert({
         project_id: projectId,
         title: item.description,
@@ -620,6 +646,9 @@ export async function createTasksFromQuote(quoteId: string) {
         room_id: item.room_id ?? null,
         budget: item.total_price ?? null,
         task_cost_type: newTaskCostType,
+        is_ata: isChangeOrder || undefined,
+        rot_eligible: isRotEligible || undefined,
+        rot_amount: isRotEligible ? rotDeduction : undefined,
         created_by_user_id: profile.id,
       });
       if (!error) created++;
@@ -635,7 +664,8 @@ export async function createTasksFromQuote(quoteId: string) {
     .eq("description", "__subcontractor__");
 
   // ── 4. Archive leftover planning tasks that weren't in the quote ──
-  if (existingTasks) {
+  // Skip for change orders — don't archive main quote tasks when accepting ÄTA
+  if (existingTasks && !isChangeOrder) {
     const planningLeftovers = existingTasks.filter(
       (t) => !alreadyUpdatedIds.has(t.id)
     );
