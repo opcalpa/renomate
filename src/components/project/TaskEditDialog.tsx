@@ -1055,7 +1055,7 @@ export const TaskEditDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl lg:max-w-5xl max-h-[90vh] h-[90vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="flex-shrink-0 px-6 pt-4 pb-2">
+        <DialogHeader className="flex-shrink-0 px-6 pt-5 pb-3 border-b bg-gradient-to-b from-background to-muted/20">
           {task ? (
             <TaskTitleField
               value={task.title}
@@ -1073,19 +1073,20 @@ export const TaskEditDialog = ({
           </div>
         ) : task ? (
           <form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0">
-            <div className="space-y-4 overflow-y-auto flex-1 py-4 px-6">
+            <div className="space-y-5 overflow-y-auto flex-1 py-5 px-6 bg-muted/20">
               {/* Contextual tips based on task title */}
               {taskTips.length > 0 && (
                 <TipList tips={taskTips} onDismiss={dismissTip} maxTips={1} compact />
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="edit-task-description">{t("tasks.description")}</Label>
+              <div className="space-y-2 rounded-lg border bg-background p-4 shadow-sm">
+                <Label htmlFor="edit-task-description" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tasks.description")}</Label>
                 <Textarea
                   id="edit-task-description"
                   value={task.description || ""}
                   onChange={(e) => setTask({ ...task, description: e.target.value })}
                   rows={2}
+                  className="border-muted-foreground/20 bg-background focus:border-primary/40"
                 />
               </div>
 
@@ -1174,14 +1175,15 @@ export const TaskEditDialog = ({
 
               {/* Cost estimation — planning mode gets the pricing form */}
               {isPlanning && isHomeowner ? (
-              <div className="space-y-2">
-                <Label htmlFor="edit-task-budget">{t("taskCost.budget", "Budget")}</Label>
+              <div className="space-y-2 rounded-lg border bg-background p-4 shadow-sm">
+                <Label htmlFor="edit-task-budget" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("taskCost.budget", "Budget")}</Label>
                 <Input
                   id="edit-task-budget"
                   type="number"
                   step="1"
                   min="0"
                   placeholder="SEK"
+                  className="border-muted-foreground/20 bg-background text-lg font-semibold tabular-nums focus:border-primary/40"
                   value={task.budget != null ? Math.round(task.budget).toString() : ""}
                   onChange={(e) =>
                     setTask({ ...task, budget: e.target.value ? parseFloat(e.target.value) : null })
@@ -1301,8 +1303,8 @@ export const TaskEditDialog = ({
                 );
               })()
               ) : (
-              <div className="space-y-2">
-                <Label htmlFor="edit-task-budget">
+              <div className="space-y-2 rounded-lg border bg-background p-4 shadow-sm">
+                <Label htmlFor="edit-task-budget" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {isBuilder ? t("tasks.contractValue", "Contract Value") : t("tasks.budget")}
                 </Label>
                 <Input
@@ -1310,6 +1312,7 @@ export const TaskEditDialog = ({
                   type="number"
                   step="0.01"
                   placeholder="SEK"
+                  className="border-muted-foreground/20 bg-background text-lg font-semibold tabular-nums focus:border-primary/40"
                   value={task.budget != null ? Math.round(task.budget).toString() : ""}
                   onChange={(e) =>
                     setTask({ ...task, budget: e.target.value ? parseFloat(e.target.value) : null })
@@ -1428,9 +1431,9 @@ export const TaskEditDialog = ({
               })()}
 
               {!isPlanning && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 rounded-lg border bg-background p-4 shadow-sm">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-task-start-date">{t("tasks.startDate")}</Label>
+                  <Label htmlFor="edit-task-start-date" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tasks.startDate")}</Label>
                   <DatePicker
                     date={task.start_date ? parseLocalDate(task.start_date) : undefined}
                     onDateChange={(date) =>
@@ -1440,7 +1443,7 @@ export const TaskEditDialog = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-task-finish-date">{t("tasks.finishDate")}</Label>
+                  <Label htmlFor="edit-task-finish-date" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tasks.finishDate")}</Label>
                   <DatePicker
                     date={task.finish_date ? parseLocalDate(task.finish_date) : undefined}
                     onDateChange={(date) =>
@@ -1454,16 +1457,16 @@ export const TaskEditDialog = ({
 
               {/* ── Collapsible sections ── */}
               {!isPlanning && (
-              <div className="space-y-1 pt-2">
+              <div className="space-y-1.5 pt-3">
 
                 {/* Status & Priority & Assignee */}
                 <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 text-sm font-medium hover:text-primary transition-colors group">
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
                     <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
                     {t("tasks.status")} / {t("tasks.priority")} / {t("tasks.assignTo")}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="pl-6 pb-3 space-y-3">
+                    <div className="ml-3 pl-4 pb-3 space-y-3 border-l-2 border-muted">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="edit-task-status">{t("tasks.status")}</Label>
@@ -1553,12 +1556,12 @@ export const TaskEditDialog = ({
 
                 {/* Progress */}
                 <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 text-sm font-medium hover:text-primary transition-colors group">
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
                     <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
                     {t("tasks.progress")}: {task.progress}%
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="pl-6 pb-3">
+                    <div className="ml-3 pl-4 pb-3 border-l-2 border-muted">
                       <Slider
                         id="edit-task-progress"
                         min={0}
@@ -1574,12 +1577,12 @@ export const TaskEditDialog = ({
 
                 {/* Room */}
                 <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 text-sm font-medium hover:text-primary transition-colors group">
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
                     <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
                     {t("tasks.room")}{task.room_id ? `: ${rooms.find(r => r.id === task.room_id)?.name || ""}` : ""}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="pl-6 pb-3">
+                    <div className="ml-3 pl-4 pb-3 border-l-2 border-muted">
                       <Select
                         value={task.room_id || "none"}
                         onValueChange={(value) =>
@@ -1604,12 +1607,12 @@ export const TaskEditDialog = ({
 
                 {/* Payment / cost tracking */}
                 <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 text-sm font-medium hover:text-primary transition-colors group">
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
                     <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
                     {isBuilder ? t("tasks.costTracking", "Cost Tracking") : t("tasks.paymentStatus")}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="pl-6 pb-3 space-y-3">
+                    <div className="ml-3 pl-4 pb-3 space-y-3 border-l-2 border-muted">
                       {/* Cost Breakdown — builder only */}
                       {isBuilder && task.budget ? (() => {
                         const laborTotal = (task.estimated_hours || 0) * (task.hourly_rate || 0);
@@ -1785,12 +1788,12 @@ export const TaskEditDialog = ({
 
                 {/* Cost Centers */}
                 <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 text-sm font-medium hover:text-primary transition-colors group">
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
                     <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
                     {t("tasks.costCentersMultiple")}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="pl-6 pb-3 space-y-2">
+                    <div className="ml-3 pl-4 pb-3 space-y-2 border-l-2 border-muted">
                       <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                         {DEFAULT_COST_CENTERS.map((cc) => {
                           const Icon = cc.icon;
@@ -1885,12 +1888,12 @@ export const TaskEditDialog = ({
 
                 {/* Dependencies */}
                 <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 text-sm font-medium hover:text-primary transition-colors group">
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
                     <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
                     {t("tasks.dependencies", "Dependencies")} {dependencies.length > 0 && `(${dependencies.length})`}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="pl-6 pb-3 space-y-2">
+                    <div className="ml-3 pl-4 pb-3 space-y-2 border-l-2 border-muted">
                       {/* Existing dependencies */}
                       {dependencies.map((dep) => {
                         const isReady = dep.status === "done" || dep.status === "completed";
@@ -1967,12 +1970,12 @@ export const TaskEditDialog = ({
 
                 {/* Checklists */}
                 <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 text-sm font-medium hover:text-primary transition-colors group">
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
                     <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
                     {t("tasks.checklists")} {(task.checklists || []).length > 0 && `(${(task.checklists || []).length})`}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="pl-6 pb-3 space-y-3">
+                    <div className="ml-3 pl-4 pb-3 space-y-3 border-l-2 border-muted">
                       <div className="flex gap-2 flex-wrap">
                         <Button
                           type="button"
@@ -2091,12 +2094,12 @@ export const TaskEditDialog = ({
 
                 {/* Photos */}
                 <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 text-sm font-medium hover:text-primary transition-colors group">
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
                     <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
                     {t("entityPhotos.photos", "Photos")}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="pl-6 pb-3">
+                    <div className="ml-3 pl-4 pb-3 border-l-2 border-muted">
                       <EntityPhotoGallery entityId={task.id} entityType="task" projectId={projectId} />
                     </div>
                   </CollapsibleContent>
@@ -2104,12 +2107,12 @@ export const TaskEditDialog = ({
 
                 {/* Files */}
                 <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 text-sm font-medium hover:text-primary transition-colors group">
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
                     <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
                     {t("tasks.linkedFiles", "Linked files")}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="pl-6 pb-3">
+                    <div className="ml-3 pl-4 pb-3 border-l-2 border-muted">
                       <TaskFilesList taskId={task.id} projectId={projectId} />
                     </div>
                   </CollapsibleContent>
@@ -2117,12 +2120,12 @@ export const TaskEditDialog = ({
 
                 {/* Comments */}
                 <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 text-sm font-medium hover:text-primary transition-colors group">
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
                     <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
                     {t("feed.comments", "Comments")}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="pl-6 pb-3">
+                    <div className="ml-3 pl-4 pb-3 border-l-2 border-muted">
                       <CommentsSection taskId={task.id} projectId={projectId} />
                     </div>
                   </CollapsibleContent>
@@ -2133,7 +2136,7 @@ export const TaskEditDialog = ({
 
             </div>
             {/* Sticky save footer */}
-            <div className="flex-shrink-0 border-t bg-background px-6 py-3">
+            <div className="flex-shrink-0 border-t bg-background px-6 py-4 shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
               <Button type="submit" className="w-full" disabled={saving}>
                 {saving ? (
                   <>
