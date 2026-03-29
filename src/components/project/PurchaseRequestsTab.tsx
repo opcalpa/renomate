@@ -742,13 +742,82 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
     <div className="space-y-6">
       <ProjectLockBanner lockStatus={lockStatus} />
 
+      {/* Materialbudget — informational overview above main purchase orders */}
+      {plannedMaterials.length > 0 && (
+        <Collapsible defaultOpen>
+          <div className="rounded-lg border bg-muted/20 p-4">
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground w-full group">
+                <ChevronDown className="h-4 w-4 transition-transform group-data-[state=closed]:-rotate-90" />
+                {t("purchases.materialBudget", "Materialbudget")}
+                <span className="ml-1 text-xs bg-muted rounded-full px-2 py-0.5">{plannedMaterials.length}</span>
+                <span className="ml-auto text-xs font-normal">
+                  {formatCurrency(plannedMaterials.reduce((s, m) => s + (m.price_total || 0), 0), currency)}
+                </span>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="rounded-lg border bg-background overflow-hidden mt-3">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/40">
+                      <th className="text-left px-4 py-2 font-medium text-muted-foreground">{t("purchases.materialName")}</th>
+                      <th className="text-left px-4 py-2 font-medium text-muted-foreground">{t("purchases.task")}</th>
+                      <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.quoteBudget", "Budget")}</th>
+                      <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.ordered", "Beställt")}</th>
+                      <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.paid", "Betalt")}</th>
+                      <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.remaining", "Kvar")}</th>
+                      <th className="px-4 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {plannedMaterials.map((m) => {
+                      const paid = paidByPlannedId.get(m.id) || 0;
+                      const ordered = orderedByPlannedId.get(m.id) || 0;
+                      const budget = m.price_total || 0;
+                      const remaining = budget - paid;
+                      return (
+                        <tr key={m.id} className="border-b last:border-0 hover:bg-muted/20">
+                          <td className="px-4 py-2.5 font-medium">{m.name}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{m.task?.title || "—"}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums">{formatCurrency(budget, currency)}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums text-amber-600">
+                            {ordered > 0 ? formatCurrency(ordered, currency) : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className="px-4 py-2.5 text-right tabular-nums text-emerald-600">
+                            {paid > 0 ? formatCurrency(paid, currency) : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className={`px-4 py-2.5 text-right tabular-nums font-medium ${remaining < 0 ? "text-destructive" : remaining === 0 && paid > 0 ? "text-muted-foreground" : ""}`}>
+                            {formatCurrency(remaining, currency)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => setBudgetPurchaseDialog({ open: true, planned: m, usedAmount: paid })}
+                            >
+                              {t("purchases.newPurchase", "+ Inköp")}
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      )}
+
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <ShoppingCart className="h-5 w-5" />
-                {t('purchases.title')} ({materials.length})
+                {t('purchases.title')} ({orderMaterials.length})
               </CardTitle>
               <CardDescription>
                 {t('purchases.description')}
@@ -1434,70 +1503,6 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                   </span>
                 )}
               </div>
-
-              {/* Materialposter från offert */}
-              {plannedMaterials.length > 0 && (
-                <Collapsible defaultOpen className="mb-4">
-                  <CollapsibleTrigger asChild>
-                    <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground w-full mb-2 group">
-                      <ChevronDown className="h-4 w-4 transition-transform group-data-[state=closed]:-rotate-90" />
-                      {t("purchases.materialBudget", "Materialbudget")}
-                      <span className="ml-1 text-xs bg-muted rounded-full px-2 py-0.5">{plannedMaterials.length}</span>
-                    </button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="rounded-lg border overflow-hidden mb-4">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b bg-muted/40">
-                            <th className="text-left px-4 py-2 font-medium text-muted-foreground">{t("purchases.materialName")}</th>
-                            <th className="text-left px-4 py-2 font-medium text-muted-foreground">{t("purchases.task")}</th>
-                            <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.quoteBudget", "Budget")}</th>
-                            <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.ordered", "Beställt")}</th>
-                            <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.paid", "Betalt")}</th>
-                            <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.remaining", "Kvar")}</th>
-                            <th className="px-4 py-2" />
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {plannedMaterials.map((m) => {
-                            const paid = paidByPlannedId.get(m.id) || 0;
-                            const ordered = orderedByPlannedId.get(m.id) || 0;
-                            const budget = m.price_total || 0;
-                            const remaining = budget - paid;
-                            return (
-                              <tr key={m.id} className="border-b last:border-0 hover:bg-muted/20">
-                                <td className="px-4 py-2.5 font-medium">{m.name}</td>
-                                <td className="px-4 py-2.5 text-muted-foreground">{m.task?.title || "—"}</td>
-                                <td className="px-4 py-2.5 text-right tabular-nums">{formatCurrency(budget, currency)}</td>
-                                <td className="px-4 py-2.5 text-right tabular-nums text-amber-600">
-                                  {ordered > 0 ? formatCurrency(ordered, currency) : <span className="text-muted-foreground">—</span>}
-                                </td>
-                                <td className="px-4 py-2.5 text-right tabular-nums text-emerald-600">
-                                  {paid > 0 ? formatCurrency(paid, currency) : <span className="text-muted-foreground">—</span>}
-                                </td>
-                                <td className={`px-4 py-2.5 text-right tabular-nums font-medium ${remaining < 0 ? "text-destructive" : remaining === 0 && paid > 0 ? "text-muted-foreground" : ""}`}>
-                                  {formatCurrency(remaining, currency)}
-                                </td>
-                                <td className="px-4 py-2.5 text-right">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs"
-                                    onClick={() => setBudgetPurchaseDialog({ open: true, planned: m, usedAmount: paid })}
-                                  >
-                                    {t("purchases.newPurchase", "+ Inköp")}
-                                  </Button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
 
               {/* Views */}
               {viewMode === 'kanban' ? (
