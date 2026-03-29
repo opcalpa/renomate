@@ -52,6 +52,7 @@ import { TaskColumnKey, TaskColumnDef, EXTRA_COLUMN_KEYS } from "./tasksTableTyp
 import { useBulkTaskActions } from "./useBulkTaskActions";
 import { BulkActionBar } from "./BulkActionBar";
 import { FilePreviewPopover } from "@/components/shared/FilePreviewPopover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 import { getStatusBadgeColor } from "@/lib/statusColors";
 import {
@@ -396,7 +397,14 @@ export function TasksTableView({
               {task.title}
             </span>
             {(task.material_estimate ?? 0) > 0 && (
-              <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 cursor-default" />
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">
+                  {t("tasks.materialBudget", "Materialbudget")}: {formatCurrency(task.material_estimate!, currency)}
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
         );
