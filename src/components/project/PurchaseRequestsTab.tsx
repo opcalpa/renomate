@@ -1588,7 +1588,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                     id="edit-quantity"
                     type="number"
                     step="0.01"
-                    value={editingMaterial.quantity}
+                    value={editingMaterial.quantity ?? ""}
                     onChange={(e) => setEditingMaterial({ ...editingMaterial, quantity: parseFloat(e.target.value) })}
                     required
                   />
@@ -1597,7 +1597,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                   <Label htmlFor="edit-unit">{t('common.unit')}*</Label>
                   <Input
                     id="edit-unit"
-                    value={editingMaterial.unit}
+                    value={editingMaterial.unit ?? ""}
                     onChange={(e) => setEditingMaterial({ ...editingMaterial, unit: e.target.value })}
                     required
                   />
