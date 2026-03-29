@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { analytics, AnalyticsEvents } from "@/lib/analytics";
+import { usePersistedPreference } from "@/hooks/usePersistedPreference";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -162,14 +163,8 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
   const [filterRooms, setFilterRooms] = useState<Set<string>>(new Set());
   const [filterCostCenters, setFilterCostCenters] = useState<Set<string>>(new Set());
   
-  // View mode — persisted per project
-  const [viewMode, setViewMode] = useState<'kanban' | 'table'>(() => {
-    return (localStorage.getItem(`tasks-view-mode-${projectId}`) as 'kanban' | 'table') || 'kanban';
-  });
-  const handleSetViewMode = (mode: 'kanban' | 'table') => {
-    setViewMode(mode);
-    localStorage.setItem(`tasks-view-mode-${projectId}`, mode);
-  };
+  // View mode — persisted per project + synced to server
+  const [viewMode, handleSetViewMode] = usePersistedPreference<'kanban' | 'table'>(`tasks-view-mode-${projectId}`, 'kanban');
 
   // Table view state (lifted so toolbar can render in parent)
   const tableViewState = useTasksTableView(projectId);

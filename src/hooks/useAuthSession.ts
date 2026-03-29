@@ -27,6 +27,11 @@ export const useAuthSession = (): AuthSession => {
         setUser(currentSession?.user ?? null);
         setLoading(false);
 
+        // Hydrate view preferences from server on sign in
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          import('./usePersistedPreference').then(m => m.hydratePreferencesFromServer());
+        }
+
         // Identify user in analytics when they sign in
         if (event === 'SIGNED_IN' && currentSession?.user) {
           analytics.identify(currentSession.user.id, {

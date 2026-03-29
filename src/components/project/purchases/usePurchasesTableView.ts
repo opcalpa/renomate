@@ -31,7 +31,9 @@ function loadPrefs(projectId: string, isMobile: boolean): TablePrefs | null {
 }
 
 function persistPrefs(projectId: string, isMobile: boolean, prefs: TablePrefs) {
-  localStorage.setItem(PREFS_KEY(projectId, isMobile), JSON.stringify(prefs));
+  const key = PREFS_KEY(projectId, isMobile);
+  localStorage.setItem(key, JSON.stringify(prefs));
+  import("@/hooks/usePersistedPreference").then(({ scheduleServerSync }) => scheduleServerSync(key, prefs));
 }
 
 export function usePurchasesTableView(projectId: string) {

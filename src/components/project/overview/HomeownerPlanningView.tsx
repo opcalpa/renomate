@@ -186,9 +186,12 @@ export function HomeownerPlanningView({
   const [groupByCategory, setGroupByCategory] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  // Persist column prefs
+  // Persist column prefs (localStorage + server sync)
   useEffect(() => {
-    localStorage.setItem(PREFS_KEY(projectId), JSON.stringify([...visibleExtras]));
+    const key = PREFS_KEY(projectId);
+    const arr = [...visibleExtras];
+    localStorage.setItem(key, JSON.stringify(arr));
+    import("@/hooks/usePersistedPreference").then(({ scheduleServerSync }) => scheduleServerSync(key, arr));
   }, [visibleExtras, projectId]);
 
   const toggleColumn = useCallback((key: ExtraColumnKey) => {

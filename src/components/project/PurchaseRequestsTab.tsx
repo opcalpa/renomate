@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { usePersistedPreference } from "@/hooks/usePersistedPreference";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -111,19 +112,12 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [budgetPurchaseDialog, setBudgetPurchaseDialog] = useState<{ open: boolean; planned: Material | null; usedAmount: number }>({ open: false, planned: null, usedAmount: 0 });
-  const [budgetExtraCols, setBudgetExtraCols] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem(`budget-cols-${projectId}`);
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch { return new Set(); }
-  });
+  const [budgetExtraColsArr, setBudgetExtraColsArr] = usePersistedPreference<string[]>(`budget-cols-${projectId}`, []);
+  const budgetExtraCols = new Set(budgetExtraColsArr);
   const toggleBudgetCol = (key: string) => {
-    setBudgetExtraCols((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      localStorage.setItem(`budget-cols-${projectId}`, JSON.stringify([...next]));
-      return next;
-    });
+    const next = new Set(budgetExtraColsArr);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    setBudgetExtraColsArr([...next]);
   };
   const [creating, setCreating] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
@@ -138,14 +132,8 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
 
   const [quickMode, setQuickMode] = useState(true);
 
-  // View mode — persisted per project
-  const [viewMode, setViewMode] = useState<'kanban' | 'table'>(() => {
-    return (localStorage.getItem(`purchases-view-mode-${projectId}`) as 'kanban' | 'table') || 'table';
-  });
-  const handleSetViewMode = (mode: 'kanban' | 'table') => {
-    setViewMode(mode);
-    localStorage.setItem(`purchases-view-mode-${projectId}`, mode);
-  };
+  // View mode — persisted per project + synced to server
+  const [viewMode, handleSetViewMode] = usePersistedPreference<'kanban' | 'table'>(`purchases-view-mode-${projectId}`, 'table');
 
   // Table view state (lifted so toolbar renders in parent row)
   const purchaseTableViewState = usePurchasesTableView(projectId);

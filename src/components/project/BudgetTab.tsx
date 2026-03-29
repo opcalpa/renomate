@@ -157,7 +157,9 @@ function loadBudgetPrefs(projectId: string): BudgetTablePrefs | null {
 }
 
 function persistBudgetPrefs(projectId: string, prefs: BudgetTablePrefs) {
-  localStorage.setItem(BUDGET_PREFS_KEY(projectId), JSON.stringify(prefs));
+  const key = BUDGET_PREFS_KEY(projectId);
+  localStorage.setItem(key, JSON.stringify(prefs));
+  import("@/hooks/usePersistedPreference").then(({ scheduleServerSync }) => scheduleServerSync(key, prefs));
 }
 
 // --- Cost helpers ---

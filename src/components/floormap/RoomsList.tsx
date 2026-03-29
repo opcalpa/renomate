@@ -122,11 +122,13 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
   const handleSortChange = useCallback((value: SortOption) => {
     setSortOption(value);
     localStorage.setItem(SORT_STORAGE_KEY, value);
+    import("@/hooks/usePersistedPreference").then(({ scheduleServerSync }) => scheduleServerSync(SORT_STORAGE_KEY, value));
   }, []);
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
     localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+    import("@/hooks/usePersistedPreference").then(({ scheduleServerSync }) => scheduleServerSync(VIEW_MODE_STORAGE_KEY, mode));
   }, []);
 
   const toggleFieldVisibility = useCallback((field: FieldKey) => {
@@ -137,7 +139,9 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
       } else {
         next.add(field);
       }
-      localStorage.setItem(VISIBLE_FIELDS_STORAGE_KEY, JSON.stringify(Array.from(next)));
+      const arr = Array.from(next);
+      localStorage.setItem(VISIBLE_FIELDS_STORAGE_KEY, JSON.stringify(arr));
+      import("@/hooks/usePersistedPreference").then(({ scheduleServerSync }) => scheduleServerSync(VISIBLE_FIELDS_STORAGE_KEY, arr));
       return next;
     });
   }, []);
