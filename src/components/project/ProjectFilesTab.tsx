@@ -1053,7 +1053,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
           <div className="flex items-center gap-3">
             <FolderOpen className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             <div>
-              <h1 className="text-xl sm:text-3xl font-bold">{t('files.title')}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{t('files.title')}</h1>
               <p className="text-muted-foreground text-sm sm:text-base">{projectName}</p>
             </div>
           </div>

@@ -1123,7 +1123,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
 
       <div className="flex flex-col gap-4">
         {/* Tasks section header */}
-        <h3 className="text-lg font-medium">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {t('tasks.tasks')}
         </h3>
 

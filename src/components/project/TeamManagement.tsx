@@ -749,7 +749,7 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium">{t("roles.title")}</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("roles.title")}</h3>
           <p className="text-sm text-muted-foreground">
             {t("roles.description")}
           </p>

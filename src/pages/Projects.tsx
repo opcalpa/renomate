@@ -821,7 +821,7 @@ const Projects = () => {
         <section id="projekt" className="scroll-mt-20">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h2 className="text-xl font-semibold">{t('projects.title')}</h2>
+            <h2 className="text-2xl font-bold tracking-tight">{t('projects.title')}</h2>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
               {visibleProjects.length > 0 && (
@@ -1492,7 +1492,7 @@ const Projects = () => {
               return (
                 <Card
                   key={project.id}
-                  className={`cursor-pointer card-elevated overflow-hidden ${isDemo ? 'ring-2 ring-primary/30' : ''}`}
+                  className={`cursor-pointer card-elevated overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${isDemo ? 'ring-2 ring-primary/30' : ''}`}
                   onClick={() => navigate(`/projects/${project.id}`)}
                 >
                   {isDemo && (

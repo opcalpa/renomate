@@ -856,8 +856,8 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <ShoppingCart className="h-4 w-4" />
                 {t('purchases.title')} ({orderMaterials.length})
               </CardTitle>
               <CardDescription>
