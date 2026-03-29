@@ -53,6 +53,7 @@ import { getStatusBadgeColor } from "@/lib/statusColors";
 import { ProjectLockBanner } from "./ProjectLockBanner";
 import { useProjectLock } from "@/hooks/useProjectLock";
 import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
+import { NewPurchaseFromBudgetDialog } from "./NewPurchaseFromBudgetDialog";
 import { PurchasesTableView } from "./purchases/PurchasesTableView";
 import { PurchasesKanbanView } from "./purchases/PurchasesKanbanView";
 import { usePurchasesTableView } from "./purchases/usePurchasesTableView";
@@ -109,6 +110,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [budgetPurchaseDialog, setBudgetPurchaseDialog] = useState<{ open: boolean; planned: Material | null; usedAmount: number }>({ open: false, planned: null, usedAmount: 0 });
   const [creating, setCreating] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
@@ -1482,9 +1484,9 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                                     size="sm"
                                     variant="outline"
                                     className="h-7 text-xs"
-                                    onClick={() => createOrderFromPlanned(m)}
+                                    onClick={() => setBudgetPurchaseDialog({ open: true, planned: m, usedAmount: paid })}
                                   >
-                                    {t("purchases.createOrder", "Skapa order")}
+                                    {t("purchases.newPurchase", "+ Inköp")}
                                   </Button>
                                 </td>
                               </tr>
@@ -1805,6 +1807,16 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
           )}
         </DialogContent>
       </Dialog>
+      <NewPurchaseFromBudgetDialog
+        open={budgetPurchaseDialog.open}
+        onOpenChange={(open) => setBudgetPurchaseDialog((prev) => ({ ...prev, open }))}
+        planned={budgetPurchaseDialog.planned}
+        projectId={projectId}
+        currentProfileId={currentProfileId}
+        currency={currency}
+        usedAmount={budgetPurchaseDialog.usedAmount}
+        onCreated={fetchMaterials}
+      />
     </div>
   );
 };
