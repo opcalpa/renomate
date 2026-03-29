@@ -111,6 +111,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [budgetPurchaseDialog, setBudgetPurchaseDialog] = useState<{ open: boolean; planned: Material | null; usedAmount: number }>({ open: false, planned: null, usedAmount: 0 });
+  const [budgetExtraCols, setBudgetExtraCols] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
@@ -746,23 +747,57 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
       {plannedMaterials.length > 0 && (
         <Collapsible defaultOpen>
           <div className="rounded-lg border bg-muted/20 p-4">
-            <CollapsibleTrigger asChild>
-              <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground w-full group">
-                <ChevronDown className="h-4 w-4 transition-transform group-data-[state=closed]:-rotate-90" />
-                {t("purchases.materialBudget", "Materialbudget")}
-                <span className="ml-1 text-xs bg-muted rounded-full px-2 py-0.5">{plannedMaterials.length}</span>
-                <span className="ml-auto text-xs font-normal">
-                  {formatCurrency(plannedMaterials.reduce((s, m) => s + (m.price_total || 0), 0), currency)}
-                </span>
-              </button>
-            </CollapsibleTrigger>
+            <div className="flex items-center gap-2">
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground flex-1 group">
+                  <ChevronDown className="h-4 w-4 transition-transform group-data-[state=closed]:-rotate-90" />
+                  {t("purchases.materialBudget", "Materialbudget")}
+                  <span className="ml-1 text-xs bg-muted rounded-full px-2 py-0.5">{plannedMaterials.length}</span>
+                  <span className="ml-auto text-xs font-normal">
+                    {formatCurrency(plannedMaterials.reduce((s, m) => s + (m.price_total || 0), 0), currency)}
+                  </span>
+                </button>
+              </CollapsibleTrigger>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+                    <Columns3 className="h-3.5 w-3.5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-44" align="end">
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">{t("tasksTable.columns", "Columns")}</p>
+                    {[
+                      { key: "description", label: t("tasks.description", "Beskrivning") },
+                      { key: "room", label: t("common.room", "Rum") },
+                      { key: "quantity", label: t("common.quantity", "Antal") },
+                    ].map((col) => (
+                      <label key={col.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={budgetExtraCols.has(col.key)}
+                          onCheckedChange={() => setBudgetExtraCols((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(col.key)) next.delete(col.key); else next.add(col.key);
+                            return next;
+                          })}
+                        />
+                        {col.label}
+                      </label>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
             <CollapsibleContent>
               <div className="rounded-lg border bg-background overflow-hidden mt-3">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/40">
-                      <th className="text-left px-4 py-2 font-medium text-muted-foreground">{t("purchases.materialName")}</th>
+                      <th className="text-left px-4 py-2 font-medium text-muted-foreground">{t("common.name", "Namn")}</th>
+                      {budgetExtraCols.has("description") && <th className="text-left px-4 py-2 font-medium text-muted-foreground">{t("tasks.description", "Beskrivning")}</th>}
                       <th className="text-left px-4 py-2 font-medium text-muted-foreground">{t("purchases.task")}</th>
+                      {budgetExtraCols.has("room") && <th className="text-left px-4 py-2 font-medium text-muted-foreground">{t("common.room", "Rum")}</th>}
+                      {budgetExtraCols.has("quantity") && <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("common.quantity", "Antal")}</th>}
                       <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.quoteBudget", "Budget")}</th>
                       <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.ordered", "Beställt")}</th>
                       <th className="text-right px-4 py-2 font-medium text-muted-foreground">{t("purchases.paid", "Betalt")}</th>
@@ -779,7 +814,10 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                       return (
                         <tr key={m.id} className="border-b last:border-0 hover:bg-muted/20">
                           <td className="px-4 py-2.5 font-medium">{m.name}</td>
+                          {budgetExtraCols.has("description") && <td className="px-4 py-2.5 text-muted-foreground max-w-[200px] truncate">{m.description || "—"}</td>}
                           <td className="px-4 py-2.5 text-muted-foreground">{m.task?.title || "—"}</td>
+                          {budgetExtraCols.has("room") && <td className="px-4 py-2.5 text-muted-foreground">{m.room?.name || "—"}</td>}
+                          {budgetExtraCols.has("quantity") && <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{m.quantity} {m.unit}</td>}
                           <td className="px-4 py-2.5 text-right tabular-nums">{formatCurrency(budget, currency)}</td>
                           <td className="px-4 py-2.5 text-right tabular-nums text-amber-600">
                             {ordered > 0 ? formatCurrency(ordered, currency) : <span className="text-muted-foreground">—</span>}
