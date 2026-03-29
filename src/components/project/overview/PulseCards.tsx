@@ -71,10 +71,10 @@ export function PulseCards({
   const { t } = useTranslation();
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
       {/* Tasks Card */}
       <Card
-        className="cursor-pointer hover:shadow-md transition-shadow min-w-0"
+        className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-w-0 shadow-sm"
         onClick={() => navigation.onNavigateToTasks()}
       >
         <CardContent className="pt-3 pb-3 px-3 sm:pt-4 sm:pb-4 sm:px-4">
@@ -114,7 +114,7 @@ export function PulseCards({
 
       {/* Timeline Card */}
       <Card
-        className="cursor-pointer hover:shadow-md transition-shadow min-w-0"
+        className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-w-0 shadow-sm"
         onClick={() => {
           if (timelineStats.daysRemaining === null) {
             navigation.onOpenSettings();
@@ -146,7 +146,7 @@ export function PulseCards({
 
       {/* Budget Card */}
       <Card
-        className="cursor-pointer hover:shadow-md transition-shadow min-w-0"
+        className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-w-0 shadow-sm"
         onClick={() => {
           if (!budgetStats.total && !budgetStats.contractTotal) {
             navigation.onOpenSettings();
@@ -212,7 +212,7 @@ export function PulseCards({
 
       {/* Orders Card */}
       <Card
-        className="cursor-pointer hover:shadow-md transition-shadow min-w-0"
+        className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-w-0 shadow-sm"
         onClick={() => navigation.onNavigateToPurchases()}
       >
         <CardContent className="pt-3 pb-3 px-3 sm:pt-4 sm:pb-4 sm:px-4">

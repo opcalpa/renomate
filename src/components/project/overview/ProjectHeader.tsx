@@ -114,7 +114,7 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
       {/* Title + status + address */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="text-lg font-semibold leading-tight">{project.name}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold leading-tight tracking-tight">{project.name}</h1>
           {onOpenSettings && (
             <Button
               variant="ghost"

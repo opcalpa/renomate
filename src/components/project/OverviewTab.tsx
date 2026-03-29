@@ -328,7 +328,7 @@ const OverviewTab = ({
 
   // ----- All phases: unified dashboard view -----
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-5 sm:space-y-8">
       <ProjectHeader project={project} onOpenSettings={() => setSettingsOpen(true)} />
 
       {/* RFQ banner — builder working on a homeowner's quote request */}
@@ -379,7 +379,7 @@ const OverviewTab = ({
       {!isPlanning && (
         <>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-medium text-muted-foreground">{t("overview.projectOverview")}</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("overview.projectOverview")}</h2>
             <div className="flex items-center gap-2 flex-wrap">
               {!isHomeowner && !projectStatus?.startsWith("active") && (
                 <DropdownMenu>
