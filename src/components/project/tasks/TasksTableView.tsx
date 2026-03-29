@@ -973,10 +973,7 @@ export function TasksTableView({
           rooms={rooms}
           stakeholders={stakeholders}
           teamMembers={teamMembers}
-          onBulkStatus={(v) => bulk.bulkUpdateField("status", v)}
-          onBulkPriority={(v) => bulk.bulkUpdateField("priority", v)}
-          onBulkAssignee={(v) => bulk.bulkUpdateField("assigned_to_stakeholder_id", v)}
-          onBulkRoom={(v) => bulk.bulkUpdateField("room_id", v)}
+          onBulkUpdate={bulk.bulkUpdateField}
           onBulkDelete={bulk.bulkDelete}
           onClearSelection={bulk.clearSelection}
           isLoading={bulk.isBulkLoading}

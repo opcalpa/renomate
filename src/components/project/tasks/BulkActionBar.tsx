@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
   SelectContent,
@@ -8,6 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,9 +25,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, X } from "lucide-react";
+import { Trash2, X, Plus } from "lucide-react";
 import { getStatusBadgeColor } from "@/lib/statusColors";
+import { DEFAULT_COST_CENTERS } from "@/lib/costCenters";
 import { cn } from "@/lib/utils";
+import { formatLocalDate } from "@/lib/dateUtils";
 
 interface Stakeholder {
   id: string;
@@ -41,19 +50,32 @@ interface BulkActionBarProps {
   rooms: { id: string; name: string }[];
   stakeholders: Stakeholder[];
   teamMembers: TeamMember[];
-  onBulkStatus: (status: string) => void;
-  onBulkPriority: (priority: string) => void;
-  onBulkAssignee: (assigneeId: string | null) => void;
-  onBulkRoom: (roomId: string | null) => void;
+  onBulkUpdate: (dbField: string, value: unknown) => void;
   onBulkDelete: () => void;
   onClearSelection: () => void;
   isLoading: boolean;
 }
 
+type ExtraFieldKey = "startDate" | "finishDate" | "costCenter" | "paymentStatus";
+
+const EXTRA_FIELDS: { key: ExtraFieldKey; labelKey: string }[] = [
+  { key: "startDate", labelKey: "tasksTable.bulkStartDate" },
+  { key: "finishDate", labelKey: "tasksTable.bulkFinishDate" },
+  { key: "costCenter", labelKey: "tasksTable.bulkCostCenter" },
+  { key: "paymentStatus", labelKey: "tasksTable.bulkPaymentStatus" },
+];
+
 const PRIORITY_OPTIONS = [
   { value: "low", labelKey: "priorities.low" },
   { value: "medium", labelKey: "priorities.medium" },
   { value: "high", labelKey: "priorities.high" },
+];
+
+const PAYMENT_STATUS_OPTIONS = [
+  { value: "not_paid", labelKey: "tasks.notPaid" },
+  { value: "paid", labelKey: "tasks.paid" },
+  { value: "billed", labelKey: "tasks.billed" },
+  { value: "partially_paid", labelKey: "tasks.partiallyPaid" },
 ];
 
 export function BulkActionBar({
@@ -62,16 +84,23 @@ export function BulkActionBar({
   rooms,
   stakeholders,
   teamMembers,
-  onBulkStatus,
-  onBulkPriority,
-  onBulkAssignee,
-  onBulkRoom,
+  onBulkUpdate,
   onBulkDelete,
   onClearSelection,
   isLoading,
 }: BulkActionBarProps) {
   const { t } = useTranslation();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [visibleExtras, setVisibleExtras] = useState<Set<ExtraFieldKey>>(new Set());
+
+  const toggleExtra = (key: ExtraFieldKey) => {
+    setVisibleExtras((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const allAssignees = [
     ...stakeholders.map((s) => ({ id: s.id, name: s.name })),
@@ -88,7 +117,7 @@ export function BulkActionBar({
         <div className="h-4 w-px bg-border" />
 
         {/* Status */}
-        <Select onValueChange={onBulkStatus} disabled={isLoading}>
+        <Select onValueChange={(v) => onBulkUpdate("status", v)} disabled={isLoading}>
           <SelectTrigger className="h-7 w-[130px] text-xs">
             <SelectValue placeholder={t("tasksTable.bulkChangeStatus", "Status")} />
           </SelectTrigger>
@@ -103,7 +132,7 @@ export function BulkActionBar({
         </Select>
 
         {/* Priority */}
-        <Select onValueChange={onBulkPriority} disabled={isLoading}>
+        <Select onValueChange={(v) => onBulkUpdate("priority", v)} disabled={isLoading}>
           <SelectTrigger className="h-7 w-[120px] text-xs">
             <SelectValue placeholder={t("tasksTable.bulkChangePriority", "Priority")} />
           </SelectTrigger>
@@ -119,7 +148,7 @@ export function BulkActionBar({
         {/* Assignee */}
         {allAssignees.length > 0 && (
           <Select
-            onValueChange={(v) => onBulkAssignee(v === "__unassigned__" ? null : v)}
+            onValueChange={(v) => onBulkUpdate("assigned_to_stakeholder_id", v === "__unassigned__" ? null : v)}
             disabled={isLoading}
           >
             <SelectTrigger className="h-7 w-[140px] text-xs">
@@ -141,7 +170,7 @@ export function BulkActionBar({
         {/* Room */}
         {rooms.length > 0 && (
           <Select
-            onValueChange={(v) => onBulkRoom(v === "__none__" ? null : v)}
+            onValueChange={(v) => onBulkUpdate("room_id", v === "__none__" ? null : v)}
             disabled={isLoading}
           >
             <SelectTrigger className="h-7 w-[120px] text-xs">
@@ -159,6 +188,94 @@ export function BulkActionBar({
             </SelectContent>
           </Select>
         )}
+
+        {/* Extra fields: Start date */}
+        {visibleExtras.has("startDate") && (
+          <DatePicker
+            date={undefined}
+            onDateChange={(date) => {
+              if (date) onBulkUpdate("start_date", formatLocalDate(date));
+            }}
+            placeholder={t("tasksTable.bulkStartDate", "Start date")}
+            className="h-7 w-[140px] text-xs"
+            disabled={isLoading}
+          />
+        )}
+
+        {/* Extra fields: Finish date */}
+        {visibleExtras.has("finishDate") && (
+          <DatePicker
+            date={undefined}
+            onDateChange={(date) => {
+              if (date) onBulkUpdate("finish_date", formatLocalDate(date));
+            }}
+            placeholder={t("tasksTable.bulkFinishDate", "Finish date")}
+            className="h-7 w-[140px] text-xs"
+            disabled={isLoading}
+          />
+        )}
+
+        {/* Extra fields: Cost center */}
+        {visibleExtras.has("costCenter") && (
+          <Select onValueChange={(v) => onBulkUpdate("cost_center", v === "__none__" ? null : v)} disabled={isLoading}>
+            <SelectTrigger className="h-7 w-[140px] text-xs">
+              <SelectValue placeholder={t("tasksTable.bulkCostCenter", "Cost center")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">{t("common.none", "None")}</SelectItem>
+              {DEFAULT_COST_CENTERS.map((cc) => (
+                <SelectItem key={cc.id} value={cc.id}>
+                  {cc.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Extra fields: Payment status */}
+        {visibleExtras.has("paymentStatus") && (
+          <Select onValueChange={(v) => onBulkUpdate("payment_status", v)} disabled={isLoading}>
+            <SelectTrigger className="h-7 w-[140px] text-xs">
+              <SelectValue placeholder={t("tasksTable.bulkPaymentStatus", "Payment")} />
+            </SelectTrigger>
+            <SelectContent>
+              {PAYMENT_STATUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {t(opt.labelKey, opt.value)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Add more fields popover */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-7 text-xs px-2" disabled={isLoading}>
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              {t("tasksTable.bulkMoreFields", "More")}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48" align="start">
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground mb-2">
+                {t("tasksTable.bulkExtraFields", "Extra bulk fields")}
+              </p>
+              {EXTRA_FIELDS.map((field) => (
+                <label
+                  key={field.key}
+                  className="flex items-center gap-2 text-sm cursor-pointer"
+                >
+                  <Checkbox
+                    checked={visibleExtras.has(field.key)}
+                    onCheckedChange={() => toggleExtra(field.key)}
+                  />
+                  {t(field.labelKey, field.key)}
+                </label>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         <div className="h-4 w-px bg-border" />
 
