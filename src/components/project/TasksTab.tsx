@@ -162,8 +162,14 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
   const [filterRooms, setFilterRooms] = useState<Set<string>>(new Set());
   const [filterCostCenters, setFilterCostCenters] = useState<Set<string>>(new Set());
   
-  // View mode
-  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
+  // View mode — persisted per project
+  const [viewMode, setViewMode] = useState<'kanban' | 'table'>(() => {
+    return (localStorage.getItem(`tasks-view-mode-${projectId}`) as 'kanban' | 'table') || 'kanban';
+  });
+  const handleSetViewMode = (mode: 'kanban' | 'table') => {
+    setViewMode(mode);
+    localStorage.setItem(`tasks-view-mode-${projectId}`, mode);
+  };
 
   // Table view state (lifted so toolbar can render in parent)
   const tableViewState = useTasksTableView(projectId);
@@ -1130,7 +1136,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
         <div>
         <div className="flex items-center gap-3 flex-wrap">
           {/* View Toggle */}
-          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'kanban' | 'table')}>
+          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && handleSetViewMode(value as 'kanban' | 'table')}>
             <ToggleGroupItem value="kanban" aria-label="Kanban view">
               <LayoutGrid className="h-4 w-4" />
             </ToggleGroupItem>

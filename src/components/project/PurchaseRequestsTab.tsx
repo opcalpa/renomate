@@ -111,7 +111,20 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [budgetPurchaseDialog, setBudgetPurchaseDialog] = useState<{ open: boolean; planned: Material | null; usedAmount: number }>({ open: false, planned: null, usedAmount: 0 });
-  const [budgetExtraCols, setBudgetExtraCols] = useState<Set<string>>(new Set());
+  const [budgetExtraCols, setBudgetExtraCols] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(`budget-cols-${projectId}`);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+  const toggleBudgetCol = (key: string) => {
+    setBudgetExtraCols((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      localStorage.setItem(`budget-cols-${projectId}`, JSON.stringify([...next]));
+      return next;
+    });
+  };
   const [creating, setCreating] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
@@ -125,8 +138,14 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
 
   const [quickMode, setQuickMode] = useState(true);
 
-  // View mode
-  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('table');
+  // View mode — persisted per project
+  const [viewMode, setViewMode] = useState<'kanban' | 'table'>(() => {
+    return (localStorage.getItem(`purchases-view-mode-${projectId}`) as 'kanban' | 'table') || 'table';
+  });
+  const handleSetViewMode = (mode: 'kanban' | 'table') => {
+    setViewMode(mode);
+    localStorage.setItem(`purchases-view-mode-${projectId}`, mode);
+  };
 
   // Table view state (lifted so toolbar renders in parent row)
   const purchaseTableViewState = usePurchasesTableView(projectId);
@@ -775,11 +794,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                       <label key={col.key} className="flex items-center gap-2 text-sm cursor-pointer">
                         <Checkbox
                           checked={budgetExtraCols.has(col.key)}
-                          onCheckedChange={() => setBudgetExtraCols((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(col.key)) next.delete(col.key); else next.add(col.key);
-                            return next;
-                          })}
+                          onCheckedChange={() => toggleBudgetCol(col.key)}
                         />
                         {col.label}
                       </label>
@@ -1333,7 +1348,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
               {/* Toolbar: View Toggle + Filter + Results count */}
               <div className="flex items-center gap-3 flex-wrap mb-4">
                 {/* View Toggle */}
-                <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'kanban' | 'table')}>
+                <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && handleSetViewMode(value as 'kanban' | 'table')}>
                   <ToggleGroupItem value="kanban" aria-label="Kanban view">
                     <LayoutGrid className="h-4 w-4" />
                   </ToggleGroupItem>
