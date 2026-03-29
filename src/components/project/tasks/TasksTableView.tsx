@@ -42,6 +42,7 @@ import {
   Rows3,
   Trash2,
   ClipboardList,
+  ShoppingCart,
   CheckSquare,
   Circle,
   Paperclip,
@@ -394,6 +395,9 @@ export function TasksTableView({
             >
               {task.title}
             </span>
+            {(task.material_estimate ?? 0) > 0 && (
+              <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+            )}
           </div>
         );
 
