@@ -26,6 +26,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { MapPin, Trash2 } from "lucide-react";
+import { getAreaUnitLabel } from "../utils/units";
+import { formatMeasurement } from "../utils/formatting";
 import {
   ROOM_STATUS_OPTIONS,
   PRIORITY_OPTIONS,
@@ -114,19 +116,19 @@ export function RoomsTableView({
       switch (field) {
         case "area":
           return room.dimensions?.area_sqm
-            ? `${room.dimensions.area_sqm.toFixed(2)} m\u00B2`
+            ? `${room.dimensions.area_sqm.toFixed(2)} ${getAreaUnitLabel('metric')}`
             : "\u2014";
         case "width":
           return room.dimensions?.width_mm
-            ? `${room.dimensions.width_mm} mm`
+            ? formatMeasurement(room.dimensions.width_mm, 'mm')
             : "\u2014";
         case "depth":
           return room.dimensions?.height_mm
-            ? `${room.dimensions.height_mm} mm`
+            ? formatMeasurement(room.dimensions.height_mm, 'mm')
             : "\u2014";
         case "perimeter":
           return room.dimensions?.perimeter_mm
-            ? `${(room.dimensions.perimeter_mm / 1000).toFixed(2)} m`
+            ? formatMeasurement(room.dimensions.perimeter_mm, 'm')
             : "\u2014";
         case "status":
           return getStatusLabel(room.status);
@@ -136,7 +138,7 @@ export function RoomsTableView({
           return room.wall_spec?.main_color || "\u2014";
         case "ceilingHeight":
           return room.ceiling_height_mm
-            ? `${(room.ceiling_height_mm / 1000).toFixed(2)} m`
+            ? formatMeasurement(room.ceiling_height_mm, 'm')
             : "\u2014";
         case "priority":
           return getPriorityLabel(room.priority);
@@ -154,7 +156,7 @@ export function RoomsTableView({
           return room.trim_color || "\u2014";
         case "wallArea": {
           const wa = computeWallArea(room);
-          return wa !== null ? `${wa.toFixed(1)} m\u00B2` : "\u2014";
+          return wa !== null ? `${wa.toFixed(1)} ${getAreaUnitLabel('metric')}` : "\u2014";
         }
         case "paintEstimate": {
           const pe = computePaintEstimate(room);

@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { FloorMapShape } from './types';
+import { formatMeasurement, formatArea as formatAreaShared } from './utils/formatting';
 import { Square, Circle, Minus, Palette, Ruler, Trash2, Layers, Package, Calculator, Paintbrush, AlertTriangle } from 'lucide-react';
 import {
   ELEVATION_OBJECT_MATERIAL_OPTIONS,
@@ -51,25 +52,11 @@ interface ElevationShapeDialogProps {
   elevationShapes?: FloorMapShape[];
 }
 
-// Helper to format dimension in mm/cm/m
+// Shared formatting helpers (unit-aware, ready for imperial swap)
 const formatDimension = (valuePx: number, unit: 'mm' | 'cm' | 'm' = 'mm'): string => {
-  // Assuming 1px = 1 unit in elevation view coordinates
-  const mm = valuePx;
-  switch (unit) {
-    case 'cm':
-      return `${(mm / 10).toFixed(1)} cm`;
-    case 'm':
-      return `${(mm / 1000).toFixed(2)} m`;
-    default:
-      return `${Math.round(mm)} mm`;
-  }
+  return formatMeasurement(valuePx, unit);
 };
-
-// Helper to format area
-const formatArea = (areaMM2: number): string => {
-  const areaSqm = areaMM2 / 1_000_000;
-  return `${areaSqm.toFixed(2)} m²`;
-};
+const formatArea = (areaMM2: number): string => formatAreaShared(areaMM2, 'm');
 
 // Calculate shape area in mm²
 const getShapeArea = (shape: FloorMapShape): number => {

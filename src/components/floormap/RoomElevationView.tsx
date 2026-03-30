@@ -43,6 +43,7 @@ import { FloorMapShape, PolygonCoordinates, LineCoordinates, WallObjectCategory,
 import { WallDirection, getDirectionLabel, getDirectionIcon } from './utils/roomWalls';
 import { getAdminDefaults } from './canvas/constants';
 import { cn } from '@/lib/utils';
+import { formatMeasurement } from './utils/formatting';
 import { wallRelativeToElevation, elevationToWallRelative } from './canvas/utils/wallCoordinates';
 import { ElevationObjectPanel } from './ElevationObjectPanel';
 import { saveShapesForPlan } from './utils/plans';
@@ -57,14 +58,11 @@ interface RoomElevationViewProps {
   initialWallId?: string;
 }
 
-// Helper to format dimension
+// Shared formatting helper (unit-aware, ready for imperial swap)
 const formatDim = (value: number): string => {
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(2)}m`;
-  } else if (value >= 10) {
-    return `${(value / 10).toFixed(1)}cm`;
-  }
-  return `${Math.round(value)}mm`;
+  if (value >= 1000) return formatMeasurement(value, 'm');
+  if (value >= 10) return formatMeasurement(value, 'cm');
+  return formatMeasurement(value, 'mm');
 };
 
 /**

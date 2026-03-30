@@ -18,6 +18,7 @@ import { X, ZoomIn, ZoomOut, RotateCcw, Layers, Ruler } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useFloorMapStore } from './store';
+import { formatMeasurement } from './utils/formatting';
 import { getCombinedWallElevationData, CombinedWallSegment } from './canvas/utils/wallCoordinates';
 import { getAdminDefaults } from './canvas/constants';
 
@@ -27,14 +28,11 @@ interface WallElevationViewProps {
   projectId: string;
 }
 
-// Helper to format dimension
+// Shared formatting helper (unit-aware, ready for imperial swap)
 const formatDim = (value: number): string => {
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(2)}m`;
-  } else if (value >= 10) {
-    return `${(value / 10).toFixed(1)}cm`;
-  }
-  return `${Math.round(value)}mm`;
+  if (value >= 1000) return formatMeasurement(value, 'm');
+  if (value >= 10) return formatMeasurement(value, 'cm');
+  return formatMeasurement(value, 'mm');
 };
 
 // Colors for different segment types

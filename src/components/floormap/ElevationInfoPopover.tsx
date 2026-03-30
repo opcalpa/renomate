@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { FloorMapShape } from './types';
+import { formatMeasurement, formatArea as formatAreaShared } from './utils/formatting';
 import { Square, Circle, Minus, Layers, Package, Ruler, Palette, Paintbrush } from 'lucide-react';
 import {
   ELEVATION_OBJECT_MATERIAL_OPTIONS,
@@ -32,21 +33,13 @@ interface ElevationInfoPopoverProps {
   elevationShapes?: FloorMapShape[];
 }
 
-// Helper to format dimension in mm/cm/m
+// Shared formatting helpers (unit-aware, ready for imperial swap)
 const formatDim = (value: number): string => {
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(2)}m`;
-  } else if (value >= 10) {
-    return `${(value / 10).toFixed(1)}cm`;
-  }
-  return `${Math.round(value)}mm`;
+  if (value >= 1000) return formatMeasurement(value, 'm');
+  if (value >= 10) return formatMeasurement(value, 'cm');
+  return formatMeasurement(value, 'mm');
 };
-
-// Helper to format area
-const formatArea = (areaMM2: number): string => {
-  const areaSqm = areaMM2 / 1_000_000;
-  return `${areaSqm.toFixed(2)} m²`;
-};
+const formatArea = (areaMM2: number): string => formatAreaShared(areaMM2, 'm');
 
 // Calculate shape area in mm²
 const getShapeArea = (shape: FloorMapShape): number => {

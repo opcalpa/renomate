@@ -25,6 +25,7 @@ import {
   type RecipeRoom,
 } from "@/lib/materialRecipes";
 import { formatCurrency } from "@/lib/currency";
+import { getAreaUnitLabel } from "@/components/floormap/utils/units";
 import { PlanningRoomList } from "./PlanningRoomList";
 import { ShareRfqDialog } from "./ShareRfqDialog";
 import { GuestLoginPrompt } from "@/components/guest/GuestLoginPrompt";
@@ -597,7 +598,7 @@ export function HomeownerPlanningView({
               </div>
               {totalAreaSqm > 0 && (
                 <div className="rounded-lg border bg-white p-3 text-center">
-                  <div className="text-2xl font-bold tabular-nums">{Math.round(totalAreaSqm)} m²</div>
+                  <div className="text-2xl font-bold tabular-nums">{Math.round(totalAreaSqm)} {getAreaUnitLabel('metric')}</div>
                   <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalArea", "Floor area")}</div>
                 </div>
               )}
@@ -919,7 +920,7 @@ export function HomeownerPlanningView({
                         {/* Area (m²) */}
                         {show.area && (
                         <TableCell className="text-right text-xs tabular-nums text-muted-foreground hidden sm:table-cell py-2.5">
-                          {areaSqm != null ? `${areaSqm.toFixed(1)} m²` : "–"}
+                          {areaSqm != null ? `${areaSqm.toFixed(1)} ${getAreaUnitLabel('metric')}` : "–"}
                         </TableCell>
                         )}
 

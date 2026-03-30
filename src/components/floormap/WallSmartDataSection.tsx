@@ -16,6 +16,7 @@ import {
   Ruler,
 } from 'lucide-react';
 import { FloorMapShape } from './types';
+import { formatMeasurement, formatArea as formatAreaShared } from './utils/formatting';
 import { Label } from '@/components/ui/label';
 import {
   Collapsible,
@@ -32,22 +33,9 @@ interface WallSmartDataSectionProps {
   wallHeightMM: number;
 }
 
-// Helper to format area
-const formatArea = (areaMM2: number): string => {
-  const areaSqm = areaMM2 / 1_000_000;
-  if (areaSqm >= 1) {
-    return `${areaSqm.toFixed(2)} m²`;
-  }
-  return `${(areaSqm * 10000).toFixed(0)} cm²`;
-};
-
-// Helper to format dimension
-const formatDim = (mm: number): string => {
-  if (mm >= 1000) {
-    return `${(mm / 1000).toFixed(2)} m`;
-  }
-  return `${Math.round(mm)} mm`;
-};
+// Shared formatting helpers (unit-aware, ready for imperial swap)
+const formatArea = (areaMM2: number): string => formatAreaShared(areaMM2, 'm');
+const formatDim = (mm: number): string => formatMeasurement(mm, mm >= 1000 ? 'm' : 'mm');
 
 // Calculate shape area in mm²
 const getShapeArea = (shape: FloorMapShape): number => {
