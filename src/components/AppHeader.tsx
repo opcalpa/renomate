@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, User, Globe, Lightbulb, MessageSquare, FolderOpen, ChevronDown, MoreHorizontal, Users, FileText, BarChart3 } from "lucide-react";
+import { LogOut, User, Globe, Lightbulb, MessageSquare, FolderOpen, ChevronDown, MoreHorizontal, Users, FileText, BarChart3, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -138,6 +138,15 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
       >
         <Lightbulb className="h-4 w-4" />
         <span className="hidden sm:inline">{t('nav.tips')}</span>
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className={`gap-1.5 text-sm ${isActive("/changelog") ? "bg-accent" : ""}`}
+        onClick={() => navigate("/changelog")}
+      >
+        <Sparkles className="h-4 w-4" />
+        <span className="hidden sm:inline">{t('nav.changelog', 'Nyheter')}</span>
       </Button>
       <Button
         variant="ghost"
@@ -299,6 +308,10 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
                   <Lightbulb className="mr-2 h-4 w-4" />
                   <span>{t('nav.tips')}</span>
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/changelog")} className="cursor-pointer">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  <span>{t('nav.changelog', 'Nyheter')}</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/feedback")} className="cursor-pointer">
                   <MessageSquare className="mr-2 h-4 w-4" />
                   <span>{t('nav.feedback')}</span>
@@ -326,6 +339,10 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
                   <DropdownMenuItem onClick={() => navigate("/tips")} className="cursor-pointer">
                     <Lightbulb className="mr-2 h-4 w-4" />
                     <span>{t('nav.tips')}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/changelog")} className="cursor-pointer">
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    <span>{t('nav.changelog', 'Nyheter')}</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/feedback")} className="cursor-pointer">
                     <MessageSquare className="mr-2 h-4 w-4" />
