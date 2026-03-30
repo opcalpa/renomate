@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { changelog } from "@/data/changelog";
@@ -81,19 +81,26 @@ export default function Changelog() {
                   >
                     <h3 className="text-base font-semibold leading-snug">{entry.title}</h3>
                     <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">{entry.description}</p>
-                    {entry.tags && entry.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {entry.tags.map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="outline"
-                            className={`text-[10px] px-1.5 py-0 font-medium ${TAG_COLORS[tag] || "bg-muted text-muted-foreground"}`}
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex items-center flex-wrap gap-1.5 mt-3">
+                      {entry.tags?.map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant="outline"
+                          className={`text-[10px] px-1.5 py-0 font-medium ${TAG_COLORS[tag] || "bg-muted text-muted-foreground"}`}
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                      {entry.demoPath && (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline ml-auto"
+                          onClick={() => navigate(entry.demoPath!)}
+                        >
+                          Testa i demo <ExternalLink className="h-2.5 w-2.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
