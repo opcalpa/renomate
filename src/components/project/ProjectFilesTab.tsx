@@ -553,17 +553,35 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     });
   };
 
-  // Guess file category from path/name/type
+  // Map DB file_type to Swedish display label
+  const FILE_TYPE_LABELS: Record<string, string> = {
+    quote: 'Offert',
+    invoice: 'Faktura',
+    receipt: 'Kvitto',
+    contract: 'Kontrakt',
+    specification: 'Specifikation',
+    floor_plan: 'Ritning',
+  };
+
+  // Guess file category: prioritize AI/DB classification, then path heuristics
   const guessCategory = (file: ProjectFile): string => {
+    // Check if any link for this file has a meaningful file_type from AI classification
+    const links = getFileLinksForPath(file.path);
+    for (const link of links) {
+      const label = FILE_TYPE_LABELS[link.file_type];
+      if (label) return label;
+    }
+
+    // Path-based heuristics
     const p = file.path.toLowerCase();
     if (p.includes('/offerter/') || p.includes('offert')) return 'Offert';
     if (p.includes('/fakturor/') || p.includes('faktura') || p.includes('invoice')) return 'Faktura';
     if (p.includes('/kvitton/') || p.includes('kvitto') || p.includes('receipt')) return 'Kvitto';
     if (p.includes('/ritningar/') || p.includes('ritning') || p.includes('floor-plan')) return 'Ritning';
     if (p.includes('/kontrakt/') || p.includes('kontrakt') || p.includes('contract')) return 'Kontrakt';
-    if (file.type.startsWith('image/')) return 'Bild';
-    if (file.type === 'application/pdf') return 'Dokument';
-    return 'Övrigt';
+
+    // No meaningful category — show nothing instead of redundant "Bild"/"Dokument"
+    return '';
   };
 
   // Helper to check if file is a document (PDF, DOC, DOCX, TXT)
@@ -1494,7 +1512,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                             </TableCell>
                             {visibleFileCols.map(col => {
                               const links = getFileLinksForPath(sf.path);
-                              const DEFAULT_CATS = ['Offert', 'Faktura', 'Kvitto', 'Ritning', 'Kontrakt', 'Specifikation', 'Bild', 'Dokument', 'Övrigt'];
+                              const DEFAULT_CATS = ['Offert', 'Faktura', 'Kvitto', 'Ritning', 'Kontrakt', 'Specifikation'];
                               const allCats = [...DEFAULT_CATS, ...customCategories.filter(c => !DEFAULT_CATS.includes(c))];
                               const fileCat = categoryOverrides[sf.path] || guessCategory(sf);
 
@@ -1504,7 +1522,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                     <Popover>
                                       <PopoverTrigger asChild>
                                         <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors">
-                                          <Badge variant="outline">{fileCat}</Badge>
+                                          {fileCat ? <Badge variant="outline">{fileCat}</Badge> : <span className="text-muted-foreground/40">–</span>}
                                         </button>
                                       </PopoverTrigger>
                                       <PopoverContent className="w-40 p-1" align="start">
@@ -1751,7 +1769,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                       </TableCell>
                       {visibleFileCols.map(col => {
                         const links = getFileLinksForPath(file.path);
-                        const DEFAULT_CATS = ['Offert', 'Faktura', 'Kvitto', 'Ritning', 'Kontrakt', 'Specifikation', 'Bild', 'Dokument', 'Övrigt'];
+                        const DEFAULT_CATS = ['Offert', 'Faktura', 'Kvitto', 'Ritning', 'Kontrakt', 'Specifikation'];
                         const allCats = [...DEFAULT_CATS, ...customCategories.filter(c => !DEFAULT_CATS.includes(c))];
                         const fileCat = categoryOverrides[file.path] || guessCategory(file);
 
@@ -1761,7 +1779,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors">
-                                    <Badge variant="outline">{fileCat}</Badge>
+                                    {fileCat ? <Badge variant="outline">{fileCat}</Badge> : <span className="text-muted-foreground/40">–</span>}
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-40 p-1" align="start">
