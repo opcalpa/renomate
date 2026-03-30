@@ -28,11 +28,47 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
   const containerRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [isAutoCover, setIsAutoCover] = useState(false);
+
   // Sync with prop changes
   useEffect(() => {
     setCoverPosition(project.cover_image_position ?? 50);
     setCoverZoom(project.cover_image_zoom ?? 100);
   }, [project.cover_image_position, project.cover_image_zoom]);
+
+  // Auto-cover: if no cover set, find first image uploaded to the project
+  useEffect(() => {
+    if (project.cover_image_url) return;
+    let cancelled = false;
+
+    (async () => {
+      const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "heic"];
+
+      // Search Storage for first image in project folder
+      const { data: files } = await supabase.storage
+        .from("project-files")
+        .list(`projects/${project.id}`, { limit: 50, sortBy: { column: "created_at", order: "asc" } });
+
+      if (cancelled || !files) return;
+
+      const firstImage = files.find((f) => {
+        const ext = f.name.split(".").pop()?.toLowerCase() || "";
+        return IMAGE_EXTENSIONS.includes(ext);
+      });
+
+      if (firstImage) {
+        const { data: { publicUrl } } = supabase.storage
+          .from("project-files")
+          .getPublicUrl(`projects/${project.id}/${firstImage.name}`);
+        if (!cancelled) {
+          setCoverUrl(publicUrl);
+          setIsAutoCover(true);
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [project.id, project.cover_image_url]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -213,6 +249,19 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
             {!repositioning && (
               <>
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
+                {/* Auto-cover hint */}
+                {isAutoCover && (
+                  <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 bg-black/60 text-white px-2.5 py-1 rounded-full text-[11px] font-medium hover:bg-black/80 transition-colors"
+                      onClick={() => fileRef.current?.click()}
+                    >
+                      <Camera className="h-3 w-3" />
+                      {t("overview.changeCover", "Byt omslagsbild")}
+                    </button>
+                  </div>
+                )}
                 <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
                     variant="secondary"

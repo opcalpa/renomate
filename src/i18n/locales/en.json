@@ -2222,6 +2222,7 @@
     "guestPlanningDesc": "Create an account to add rooms, tasks, and materials to your project. Your project will be saved and you can invite collaborators.",
     "addCoverPhoto": "Add project photo",
     "dragToReposition": "Drag to reposition",
+    "changeCover": "Change cover image",
     "addPurchase": "Register Purchase",
     "createQuote": "Create Quote",
     "createQuoteHint": "Create quote manually",
