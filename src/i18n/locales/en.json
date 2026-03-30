@@ -3041,6 +3041,8 @@
     "anonymous": "This form is anonymous. No personal data is collected unless you provide your email."
   },
   "tips": {
+    "showMore": "Show {{count}} more",
+    "showLess": "Show less",
     "title": "Renovation Tips & FAQ",
     "subtitle": "Answers to common questions about Swedish renovation permits, processes, and regulations",
     "searchPlaceholder": "Search articles...",
@@ -4674,10 +4676,7 @@
       "action": "Open chat"
     }
   },
-  "tips": {
-    "showMore": "Show {{count}} more",
-    "showLess": "Show less"
-  },
+  "_tips_merged_into_main_tips_block": {},
   "reminders": {
     "sectionTitle": "Reminders",
     "dismissAll": "Clear all",

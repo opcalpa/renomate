@@ -220,14 +220,18 @@ const Tips = () => {
         onSignOut={handleSignOut}
       />
 
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 max-w-5xl">
         {/* Hero */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Lightbulb className="h-6 w-6 text-yellow-500" />
-            <h1 className="text-3xl font-bold">{t("tips.title")}</h1>
+        <div className="mb-8 sm:mb-10">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-10 w-10 rounded-xl bg-yellow-100 flex items-center justify-center">
+              <Lightbulb className="h-5 w-5 text-yellow-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t("tips.title")}</h1>
+              <p className="text-muted-foreground text-sm mt-0.5">{t("tips.subtitle")}</p>
+            </div>
           </div>
-          <p className="text-muted-foreground">{t("tips.subtitle")}</p>
         </div>
 
         {/* Search */}
@@ -261,15 +265,15 @@ const Tips = () => {
             {t("tips.noResults")}
           </p>
         ) : (
-          <Accordion type="multiple" className="space-y-2">
+          <Accordion type="multiple" className="space-y-3">
             {filtered.map((article) => (
-              <AccordionItem key={article.id} value={article.id} className="border rounded-lg px-4">
-                <AccordionTrigger className="text-left">
-                  <div className="flex items-start gap-2">
-                    <Badge variant="secondary" className="shrink-0 text-xs">
+              <AccordionItem key={article.id} value={article.id} className="border rounded-xl px-5 shadow-sm hover:shadow-md transition-shadow">
+                <AccordionTrigger className="text-left py-4">
+                  <div className="flex items-start gap-3">
+                    <Badge variant="secondary" className="shrink-0 text-xs mt-0.5">
                       {t(`tips.categories.${article.category}`)}
                     </Badge>
-                    <span>{t(article.titleKey)}</span>
+                    <span className="font-medium">{t(article.titleKey)}</span>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>

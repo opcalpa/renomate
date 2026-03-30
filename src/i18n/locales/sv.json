@@ -3038,6 +3038,8 @@
     "anonymous": "Detta formulär är anonymt. Ingen personlig data samlas in om du inte anger din e-post."
   },
   "tips": {
+    "showMore": "Visa {{count}} till",
+    "showLess": "Visa färre",
     "title": "Renoveringstips & FAQ",
     "subtitle": "Svar på vanliga frågor om svenska renoveringstillstånd, processer och regler",
     "searchPlaceholder": "Sök artiklar...",
@@ -4671,10 +4673,7 @@
       "action": "Öppna chatt"
     }
   },
-  "tips": {
-    "showMore": "Visa {{count}} till",
-    "showLess": "Visa färre"
-  },
+  "_tips_merged_into_main_tips_block": {},
   "reminders": {
     "sectionTitle": "Påminnelser",
     "dismissAll": "Rensa alla",
