@@ -1303,22 +1303,49 @@ export const TaskEditDialog = ({
                 );
               })()
               ) : (
-              <div className="space-y-2 rounded-lg border bg-background p-4 shadow-sm">
-                <Label htmlFor="edit-task-budget" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {isBuilder ? t("tasks.contractValue", "Contract Value") : t("tasks.budget")}
-                </Label>
-                <Input
-                  id="edit-task-budget"
-                  type="number"
-                  step="0.01"
-                  placeholder="SEK"
-                  className="border-muted-foreground/20 bg-background text-lg font-semibold tabular-nums focus:border-primary/40"
-                  value={task.budget != null ? Math.round(task.budget).toString() : ""}
-                  onChange={(e) =>
-                    setTask({ ...task, budget: e.target.value ? parseFloat(e.target.value) : null })
-                  }
-                />
-              </div>
+              (() => {
+                const budgetVal = task.budget || 0;
+                const laborVal = task.task_cost_type === "subcontractor"
+                  ? (task.subcontractor_cost || 0)
+                  : (task.estimated_hours || 0) * (task.hourly_rate || 0);
+                const materialVal = task.material_estimate || 0;
+                const hasBreakdown = laborVal > 0 || materialVal > 0;
+
+                return (
+                  <div className="space-y-2 rounded-lg border bg-background p-4 shadow-sm">
+                    <Label htmlFor="edit-task-budget" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {isBuilder ? t("tasks.contractValue", "Contract Value") : t("tasks.budget")}
+                    </Label>
+                    <Input
+                      id="edit-task-budget"
+                      type="number"
+                      step="0.01"
+                      placeholder="SEK"
+                      className="border-muted-foreground/20 bg-background text-lg font-semibold tabular-nums focus:border-primary/40"
+                      value={task.budget != null ? Math.round(task.budget).toString() : ""}
+                      onChange={(e) =>
+                        setTask({ ...task, budget: e.target.value ? parseFloat(e.target.value) : null })
+                      }
+                    />
+                    {hasBreakdown && (
+                      <div className="text-xs text-muted-foreground space-y-0.5 pt-1 border-t">
+                        {laborVal > 0 && (
+                          <div className="flex justify-between">
+                            <span>{t("tasks.rotLaborCost", "Arbetskostnad")}</span>
+                            <span className="tabular-nums">{Math.round(laborVal).toLocaleString("sv-SE")} kr</span>
+                          </div>
+                        )}
+                        {materialVal > 0 && (
+                          <div className="flex justify-between">
+                            <span>{t("tasks.materialBudget", "Materialbudget")}</span>
+                            <span className="tabular-nums">{Math.round(materialVal).toLocaleString("sv-SE")} kr</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
               )}
 
               {/* Economics summary: material budget + consumed (non-planning, builder only) */}
@@ -1398,15 +1425,11 @@ export const TaskEditDialog = ({
                         </div>
                       )}
                     </div>
-                    {/* Calculation breakdown when ROT is enabled */}
+                    {/* Calculation hint when ROT is enabled */}
                     {task.rot_eligible && laborCost > 0 && (
                       <div className="text-xs text-muted-foreground space-y-0.5 pt-1 border-t">
                         <div className="flex justify-between">
-                          <span>{t("tasks.rotLaborCost", "Arbetskostnad")}</span>
-                          <span className="tabular-nums">{Math.round(laborCost).toLocaleString("sv-SE")} kr</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>{t("tasks.rotSubsidy", "Subventionsgrad")} {rotPercent}%</span>
+                          <span>{t("tasks.rotSubsidy", "ROT-avdrag")} {rotPercent}%</span>
                           <span className="tabular-nums">{suggestedRot.toLocaleString("sv-SE")} kr</span>
                         </div>
                         {suggestedRot > rotMaxPerPerson && (
