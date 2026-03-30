@@ -7,7 +7,8 @@
 import React from 'react';
 import { FloorMapShape } from './types';
 import { useTranslation } from 'react-i18next';
-import { formatMeasurement, formatArea } from './utils/formatting';
+import { formatMeasurement } from './utils/formatting';
+import { useMeasurement } from "@/contexts/MeasurementContext";
 
 interface HoverInfoTooltipProps {
   shape: FloorMapShape | null;
@@ -164,6 +165,7 @@ function getShapeDimensions(shape: FloorMapShape): {
 
 export function HoverInfoTooltip({ shape, mousePosition, unit }: HoverInfoTooltipProps) {
   const { t } = useTranslation();
+  const ms = useMeasurement();
 
   if (!shape || !mousePosition) return null;
 
@@ -238,7 +240,7 @@ export function HoverInfoTooltip({ shape, mousePosition, unit }: HoverInfoToolti
           {dims.area !== undefined && (
             <div className="flex justify-between gap-4">
               <span>{t('floormap.hoverInfo.area', 'Area')}:</span>
-              <span className="font-mono">{formatArea(dims.area * 1_000_000, 'm')}</span>
+              <span className="font-mono">{ms.fmtArea(dims.area * 1_000_000)}</span>
             </div>
           )}
         </div>

@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Home, Plus, Trash2, Columns3, Info, Paperclip } from "lucide-react";
-import { getAreaUnitLabel } from "@/components/floormap/utils/units";
+import { useMeasurement } from "@/contexts/MeasurementContext";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import type { Room } from "@/components/floormap/room-details/types";
 import {
@@ -112,6 +112,7 @@ interface PaintFormulaPopoverProps {
 
 function PaintFormulaPopover({ settings, onSettingsChange, room, children }: PaintFormulaPopoverProps) {
   const { t } = useTranslation();
+  const ms = useMeasurement();
   const [localCoverage, setLocalCoverage] = useState(String(settings.paint_coverage_sqm_per_liter));
   const [localCoats, setLocalCoats] = useState(String(settings.paint_coats));
 
@@ -157,17 +158,17 @@ function PaintFormulaPopover({ settings, onSettingsChange, room, children }: Pai
             <div className="bg-muted/50 rounded-md p-2 text-xs tabular-nums space-y-0.5">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("rooms.wallArea")}:</span>
-                <span>{wallArea?.toFixed(1)} {getAreaUnitLabel('metric')}</span>
+                <span>{wallArea?.toFixed(1)} {ms.areaLabel}</span>
               </div>
               {nonPaintable > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("estimation.nonPaintable", "Non-paintable")}:</span>
-                  <span>-{nonPaintable.toFixed(1)} {getAreaUnitLabel('metric')}</span>
+                  <span>-{nonPaintable.toFixed(1)} {ms.areaLabel}</span>
                 </div>
               )}
               <div className="flex justify-between border-t pt-0.5 mt-0.5">
                 <span className="text-muted-foreground">{t("estimation.paintableArea", "Paintable")}:</span>
-                <span>{paintable.toFixed(1)} {getAreaUnitLabel('metric')}</span>
+                <span>{paintable.toFixed(1)} {ms.areaLabel}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>{t("estimation.calculation", "Calculation")}:</span>
@@ -230,6 +231,7 @@ interface PlanningRoomListProps {
 
 export function PlanningRoomList({ projectId, locked = false, onRoomChange }: PlanningRoomListProps) {
   const { t } = useTranslation();
+  const ms = useMeasurement();
   const { user } = useAuthSession();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
@@ -523,11 +525,11 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
           {rooms.length > 0 && (
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span>
-                {t("planningRooms.totalArea", "Total area")}: <strong>{totalArea > 0 ? `${totalArea.toFixed(1)} ${getAreaUnitLabel('metric')}` : "–"}</strong>
+                {t("planningRooms.totalArea", "Total area")}: <strong>{totalArea > 0 ? `${totalArea.toFixed(1)} ${ms.areaLabel}` : "–"}</strong>
               </span>
               {show.wallArea && totalWallArea > 0 && (
                 <span>
-                  {t("rooms.wallArea")}: <strong>{totalWallArea.toFixed(1)} {getAreaUnitLabel('metric')}</strong>
+                  {t("rooms.wallArea")}: <strong>{totalWallArea.toFixed(1)} {ms.areaLabel}</strong>
                 </span>
               )}
               <span className="text-muted-foreground/60">
@@ -629,7 +631,7 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
                       {show.wallArea && (
                         <TableCell className="py-1.5 hidden sm:table-cell">
                           <span className="text-sm tabular-nums text-muted-foreground">
-                            {wallArea !== null ? `${wallArea.toFixed(1)} ${getAreaUnitLabel('metric')}` : "–"}
+                            {wallArea !== null ? `${wallArea.toFixed(1)} ${ms.areaLabel}` : "–"}
                           </span>
                         </TableCell>
                       )}

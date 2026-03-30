@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useFloorMapStore } from './store';
 import { formatMeasurement } from './utils/formatting';
+import { useMeasurement } from "@/contexts/MeasurementContext";
 import { getCombinedWallElevationData, CombinedWallSegment } from './canvas/utils/wallCoordinates';
 import { getAdminDefaults } from './canvas/constants';
 
@@ -28,12 +29,7 @@ interface WallElevationViewProps {
   projectId: string;
 }
 
-// Shared formatting helper (unit-aware, ready for imperial swap)
-const formatDim = (value: number): string => {
-  if (value >= 1000) return formatMeasurement(value, 'm');
-  if (value >= 10) return formatMeasurement(value, 'cm');
-  return formatMeasurement(value, 'mm');
-};
+// formatDim moved inside component to use measurement context
 
 // Colors for different segment types
 const segmentColors: Record<CombinedWallSegment['type'], { fill: string; stroke: string }> = {
@@ -50,6 +46,8 @@ export const WallElevationView: React.FC<WallElevationViewProps> = ({
   projectId,
 }) => {
   const { t } = useTranslation();
+  const ms = useMeasurement();
+  const formatDim = (value: number): string => ms.fmtLength(value);
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
 

@@ -44,6 +44,7 @@ import { WallDirection, getDirectionLabel, getDirectionIcon } from './utils/room
 import { getAdminDefaults } from './canvas/constants';
 import { cn } from '@/lib/utils';
 import { formatMeasurement } from './utils/formatting';
+import { useMeasurement } from "@/contexts/MeasurementContext";
 import { wallRelativeToElevation, elevationToWallRelative } from './canvas/utils/wallCoordinates';
 import { ElevationObjectPanel } from './ElevationObjectPanel';
 import { saveShapesForPlan } from './utils/plans';
@@ -58,12 +59,7 @@ interface RoomElevationViewProps {
   initialWallId?: string;
 }
 
-// Shared formatting helper (unit-aware, ready for imperial swap)
-const formatDim = (value: number): string => {
-  if (value >= 1000) return formatMeasurement(value, 'm');
-  if (value >= 10) return formatMeasurement(value, 'cm');
-  return formatMeasurement(value, 'mm');
-};
+// formatDim moved inside component to use measurement context
 
 /**
  * Represents a room edge (one side of the room polygon)
@@ -680,6 +676,8 @@ export const RoomElevationView: React.FC<RoomElevationViewProps> = ({
   initialWallId,
 }) => {
   const { t } = useTranslation();
+  const ms = useMeasurement();
+  const formatDim = (value: number): string => ms.fmtLength(value);
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
 

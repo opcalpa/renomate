@@ -27,7 +27,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { FloorMapShape } from './types';
-import { formatMeasurement, formatArea as formatAreaShared } from './utils/formatting';
+import { formatMeasurement } from './utils/formatting';
+import { useMeasurement } from "@/contexts/MeasurementContext";
 import { Square, Circle, Minus, Palette, Ruler, Trash2, Layers, Package, Calculator, Paintbrush, AlertTriangle } from 'lucide-react';
 import {
   ELEVATION_OBJECT_MATERIAL_OPTIONS,
@@ -52,11 +53,10 @@ interface ElevationShapeDialogProps {
   elevationShapes?: FloorMapShape[];
 }
 
-// Shared formatting helpers (unit-aware, ready for imperial swap)
+// formatDimension kept as static helper; formatArea moved inside component
 const formatDimension = (valuePx: number, unit: 'mm' | 'cm' | 'm' = 'mm'): string => {
   return formatMeasurement(valuePx, unit);
 };
-const formatArea = (areaMM2: number): string => formatAreaShared(areaMM2, 'm');
 
 // Calculate shape area in mm²
 const getShapeArea = (shape: FloorMapShape): number => {
@@ -83,6 +83,8 @@ export const ElevationShapeDialog: React.FC<ElevationShapeDialogProps> = ({
   elevationShapes = [],
 }) => {
   const { t } = useTranslation();
+  const ms = useMeasurement();
+  const formatArea = (areaMM2: number): string => ms.fmtArea(areaMM2);
   // Local state for editing
   const [fillColor, setFillColor] = useState('#93c5fd');
   const [strokeColor, setStrokeColor] = useState('#3b82f6');

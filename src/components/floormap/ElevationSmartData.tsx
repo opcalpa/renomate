@@ -21,7 +21,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { FloorMapShape } from './types';
 import { cn } from '@/lib/utils';
-import { formatMeasurement, formatArea as formatAreaShared } from './utils/formatting';
+import { formatMeasurement } from './utils/formatting';
+import { useMeasurement } from "@/contexts/MeasurementContext";
 import {
   Collapsible,
   CollapsibleContent,
@@ -43,8 +44,7 @@ interface ElevationSmartDataProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Shared formatting helpers (unit-aware, ready for imperial swap)
-const formatArea = (areaMM2: number): string => formatAreaShared(areaMM2, 'm');
+// formatDim kept as static helper — unit-awareness comes from context in the component
 const formatDim = (mm: number): string => formatMeasurement(mm, mm >= 1000 ? 'm' : 'mm');
 
 // Calculate shape area in mm²
@@ -141,6 +141,9 @@ export const ElevationSmartData: React.FC<ElevationSmartDataProps> = ({
   isOpen,
   onOpenChange,
 }) => {
+  const ms = useMeasurement();
+  const formatArea = (areaMM2: number): string => ms.fmtArea(areaMM2);
+
   // Calculate all values
   const calculations = useMemo(() => {
     // Total wall area

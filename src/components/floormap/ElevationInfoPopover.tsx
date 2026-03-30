@@ -12,7 +12,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { FloorMapShape } from './types';
-import { formatMeasurement, formatArea as formatAreaShared } from './utils/formatting';
+import { formatMeasurement } from './utils/formatting';
+import { useMeasurement } from "@/contexts/MeasurementContext";
 import { Square, Circle, Minus, Layers, Package, Ruler, Palette, Paintbrush } from 'lucide-react';
 import {
   ELEVATION_OBJECT_MATERIAL_OPTIONS,
@@ -39,7 +40,7 @@ const formatDim = (value: number): string => {
   if (value >= 10) return formatMeasurement(value, 'cm');
   return formatMeasurement(value, 'mm');
 };
-const formatArea = (areaMM2: number): string => formatAreaShared(areaMM2, 'm');
+// formatArea moved inside component to use measurement context
 
 // Calculate shape area in mm²
 const getShapeArea = (shape: FloorMapShape): number => {
@@ -71,6 +72,8 @@ export const ElevationInfoPopover: React.FC<ElevationInfoPopoverProps> = ({
   elevationShapes = [],
 }) => {
   const { t } = useTranslation();
+  const ms = useMeasurement();
+  const formatArea = (areaMM2: number): string => ms.fmtArea(areaMM2);
   // Calculate wall areas when it's a wall
   const wallAreas = useMemo(() => {
     if (!isWall || !wallLengthMM || !wallHeightMM) return null;

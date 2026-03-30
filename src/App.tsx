@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { GuestProvider } from "@/contexts/GuestContext";
+import { MeasurementProvider } from "@/contexts/MeasurementContext";
 import "@/i18n/config";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -69,6 +70,7 @@ const App = () => (
   <Sentry.ErrorBoundary fallback={<ErrorFallback />}>
     <QueryClientProvider client={queryClient}>
       <GuestProvider>
+        <MeasurementProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -106,6 +108,7 @@ const App = () => (
           </BrowserRouter>
           <AuthenticatedHelpBot />
         </TooltipProvider>
+        </MeasurementProvider>
       </GuestProvider>
     </QueryClientProvider>
   </Sentry.ErrorBoundary>

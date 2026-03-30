@@ -26,8 +26,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { MapPin, Trash2 } from "lucide-react";
-import { getAreaUnitLabel } from "../utils/units";
-import { formatMeasurement } from "../utils/formatting";
+import { useMeasurement } from "@/contexts/MeasurementContext";
 import {
   ROOM_STATUS_OPTIONS,
   PRIORITY_OPTIONS,
@@ -68,6 +67,7 @@ export function RoomsTableView({
   formatDate,
 }: RoomsTableViewProps) {
   const { t } = useTranslation();
+  const ms = useMeasurement();
   const {
     editingCell,
     editValue,
@@ -116,19 +116,19 @@ export function RoomsTableView({
       switch (field) {
         case "area":
           return room.dimensions?.area_sqm
-            ? `${room.dimensions.area_sqm.toFixed(2)} ${getAreaUnitLabel('metric')}`
+            ? `${room.dimensions.area_sqm.toFixed(2)} ${ms.areaLabel}`
             : "\u2014";
         case "width":
           return room.dimensions?.width_mm
-            ? formatMeasurement(room.dimensions.width_mm, 'mm')
+            ? ms.fmtLength(room.dimensions.width_mm)
             : "\u2014";
         case "depth":
           return room.dimensions?.height_mm
-            ? formatMeasurement(room.dimensions.height_mm, 'mm')
+            ? ms.fmtLength(room.dimensions.height_mm)
             : "\u2014";
         case "perimeter":
           return room.dimensions?.perimeter_mm
-            ? formatMeasurement(room.dimensions.perimeter_mm, 'm')
+            ? ms.fmtLength(room.dimensions.perimeter_mm)
             : "\u2014";
         case "status":
           return getStatusLabel(room.status);
@@ -138,7 +138,7 @@ export function RoomsTableView({
           return room.wall_spec?.main_color || "\u2014";
         case "ceilingHeight":
           return room.ceiling_height_mm
-            ? formatMeasurement(room.ceiling_height_mm, 'm')
+            ? ms.fmtLength(room.ceiling_height_mm)
             : "\u2014";
         case "priority":
           return getPriorityLabel(room.priority);
@@ -156,7 +156,7 @@ export function RoomsTableView({
           return room.trim_color || "\u2014";
         case "wallArea": {
           const wa = computeWallArea(room);
-          return wa !== null ? `${wa.toFixed(1)} ${getAreaUnitLabel('metric')}` : "\u2014";
+          return wa !== null ? `${wa.toFixed(1)} ${ms.areaLabel}` : "\u2014";
         }
         case "paintEstimate": {
           const pe = computePaintEstimate(room);

@@ -11,8 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "react-i18next";
-import { getAreaUnitLabel } from "./utils/units";
-import { formatMeasurement } from "./utils/formatting";
+import { useMeasurement } from "@/contexts/MeasurementContext";
 import { RoomsTableView } from "./rooms-table/RoomsTableView";
 import { FIELD_DEFINITIONS, DEFAULT_VISIBLE_FIELDS } from "./rooms-table/types";
 import type { Room, FieldKey } from "./rooms-table/types";
@@ -38,6 +37,7 @@ interface RoomsListProps {
 
 export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddRoom, onDeleteRoom, onNavigateToRoom, onPlaceRoom, onRoomUpdated }: RoomsListProps) => {
   const { t, i18n } = useTranslation();
+  const ms = useMeasurement();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(!externalRooms);
   const [searchTerm, setSearchTerm] = useState("");
@@ -234,28 +234,28 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
         return room.dimensions?.area_sqm ? (
           <span className="text-sm">
             <span className="text-muted-foreground">{t('rooms.area')}:</span>{' '}
-            <span className="font-medium text-blue-600">{room.dimensions.area_sqm.toFixed(2)} {getAreaUnitLabel('metric')}</span>
+            <span className="font-medium text-blue-600">{room.dimensions.area_sqm.toFixed(2)} {ms.areaLabel}</span>
           </span>
         ) : null;
       case 'width':
         return room.dimensions?.width_mm ? (
           <span className="text-sm">
             <span className="text-muted-foreground">{t('rooms.width')}:</span>{' '}
-            <span className="font-medium">{formatMeasurement(room.dimensions.width_mm, 'mm')}</span>
+            <span className="font-medium">{ms.fmtLength(room.dimensions.width_mm)}</span>
           </span>
         ) : null;
       case 'depth':
         return room.dimensions?.height_mm ? (
           <span className="text-sm">
             <span className="text-muted-foreground">{t('rooms.depth')}:</span>{' '}
-            <span className="font-medium">{formatMeasurement(room.dimensions.height_mm, 'mm')}</span>
+            <span className="font-medium">{ms.fmtLength(room.dimensions.height_mm)}</span>
           </span>
         ) : null;
       case 'perimeter':
         return room.dimensions?.perimeter_mm ? (
           <span className="text-sm">
             <span className="text-muted-foreground">{t('rooms.perimeter')}:</span>{' '}
-            <span className="font-medium">{formatMeasurement(room.dimensions.perimeter_mm, 'm')}</span>
+            <span className="font-medium">{ms.fmtLength(room.dimensions.perimeter_mm)}</span>
           </span>
         ) : null;
       case 'status':
@@ -280,7 +280,7 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
         return room.ceiling_height_mm ? (
           <span className="text-sm">
             <span className="text-muted-foreground">{t('rooms.ceilingHeight')}:</span>{' '}
-            <span className="font-medium">{formatMeasurement(room.ceiling_height_mm, 'm')}</span>
+            <span className="font-medium">{ms.fmtLength(room.ceiling_height_mm)}</span>
           </span>
         ) : null;
       case 'priority':
