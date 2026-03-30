@@ -1304,45 +1304,77 @@ export const TaskEditDialog = ({
               })()
               ) : (
               (() => {
-                const budgetVal = task.budget || 0;
                 const laborVal = task.task_cost_type === "subcontractor"
                   ? (task.subcontractor_cost || 0)
                   : (task.estimated_hours || 0) * (task.hourly_rate || 0);
                 const materialVal = task.material_estimate || 0;
-                const hasBreakdown = laborVal > 0 || materialVal > 0;
+                const computedTotal = laborVal + materialVal;
+                const displayTotal = (laborVal > 0 || materialVal > 0) ? computedTotal : (task.budget || 0);
+
+                const updateLabor = (val: number | null) => {
+                  const newLabor = val || 0;
+                  const newTotal = newLabor + materialVal;
+                  if (task.task_cost_type === "subcontractor") {
+                    setTask({ ...task, subcontractor_cost: val, budget: newTotal || null });
+                  } else {
+                    setTask({ ...task, subcontractor_cost: val, task_cost_type: val ? "subcontractor" : task.task_cost_type, budget: newTotal || null });
+                  }
+                };
+
+                const updateMaterial = (val: number | null) => {
+                  const newMaterial = val || 0;
+                  const newTotal = laborVal + newMaterial;
+                  setTask({ ...task, material_estimate: val, budget: newTotal || null });
+                };
 
                 return (
-                  <div className="space-y-2 rounded-lg border bg-background p-4 shadow-sm">
-                    <Label htmlFor="edit-task-budget" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {isBuilder ? t("tasks.contractValue", "Contract Value") : t("tasks.budget")}
-                    </Label>
-                    <Input
-                      id="edit-task-budget"
-                      type="number"
-                      step="0.01"
-                      placeholder="SEK"
-                      className="border-muted-foreground/20 bg-background text-lg font-semibold tabular-nums focus:border-primary/40"
-                      value={task.budget != null ? Math.round(task.budget).toString() : ""}
-                      onChange={(e) =>
-                        setTask({ ...task, budget: e.target.value ? parseFloat(e.target.value) : null })
-                      }
-                    />
-                    {hasBreakdown && (
-                      <div className="text-xs text-muted-foreground space-y-0.5 pt-1 border-t">
-                        {laborVal > 0 && (
-                          <div className="flex justify-between">
-                            <span>{t("tasks.rotLaborCost", "Arbetskostnad")}</span>
-                            <span className="tabular-nums">{Math.round(laborVal).toLocaleString("sv-SE")} kr</span>
-                          </div>
-                        )}
-                        {materialVal > 0 && (
-                          <div className="flex justify-between">
-                            <span>{t("tasks.materialBudget", "Materialbudget")}</span>
-                            <span className="tabular-nums">{Math.round(materialVal).toLocaleString("sv-SE")} kr</span>
-                          </div>
-                        )}
+                  <div className="space-y-3 rounded-lg border bg-background p-4 shadow-sm">
+                    <div className="flex items-baseline justify-between">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        {isBuilder ? t("tasks.contractValue", "Contract Value") : t("tasks.budget")}
+                      </Label>
+                      <span className="text-lg font-bold tabular-nums">
+                        {Math.round(displayTotal).toLocaleString("sv-SE")} kr
+                      </span>
+                    </div>
+                    <div className="space-y-2 pt-1 border-t">
+                      <div className="flex items-center justify-between gap-3">
+                        <Label htmlFor="edit-task-labor" className="text-xs text-muted-foreground whitespace-nowrap">
+                          {t("tasks.rotLaborCost", "Arbetskostnad")}
+                        </Label>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            id="edit-task-labor"
+                            type="number"
+                            step="1"
+                            min="0"
+                            placeholder="0"
+                            className="h-8 w-32 text-right text-sm tabular-nums"
+                            value={laborVal > 0 ? Math.round(laborVal).toString() : ""}
+                            onChange={(e) => updateLabor(e.target.value ? parseFloat(e.target.value) : null)}
+                          />
+                          <span className="text-xs text-muted-foreground">kr</span>
+                        </div>
                       </div>
-                    )}
+                      <div className="flex items-center justify-between gap-3">
+                        <Label htmlFor="edit-task-material" className="text-xs text-muted-foreground whitespace-nowrap">
+                          {t("tasks.materialBudget", "Materialbudget")}
+                        </Label>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            id="edit-task-material"
+                            type="number"
+                            step="1"
+                            min="0"
+                            placeholder="0"
+                            className="h-8 w-32 text-right text-sm tabular-nums"
+                            value={materialVal > 0 ? Math.round(materialVal).toString() : ""}
+                            onChange={(e) => updateMaterial(e.target.value ? parseFloat(e.target.value) : null)}
+                          />
+                          <span className="text-xs text-muted-foreground">kr</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 );
               })()
