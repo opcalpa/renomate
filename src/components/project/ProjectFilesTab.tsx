@@ -1555,9 +1555,12 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                   <TableCell key={col} className="hidden md:table-cell">
                                     <Popover>
                                       <PopoverTrigger asChild>
-                                        <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors min-w-[40px]">
+                                        <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors min-w-[40px] max-w-[180px] text-left">
                                           {linkedEntities.length > 0
-                                            ? <span className="text-foreground">{linkedEntities.map(l => (l as Record<string, unknown>)[nameField]).join(', ')}</span>
+                                            ? <span className="text-foreground truncate block">
+                                                {linkedEntities.slice(0, 2).map(l => (l as Record<string, unknown>)[nameField]).join(', ')}
+                                                {linkedEntities.length > 2 && <span className="text-muted-foreground ml-1">+{linkedEntities.length - 2}</span>}
+                                              </span>
                                             : <span className="text-muted-foreground/40">–</span>}
                                         </button>
                                       </PopoverTrigger>
@@ -1809,9 +1812,12 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                             <TableCell key={col} className="hidden md:table-cell">
                               <Popover>
                                 <PopoverTrigger asChild>
-                                  <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors min-w-[40px]">
+                                  <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors min-w-[40px] max-w-[180px] text-left">
                                     {linkedEntities.length > 0
-                                      ? <span className="text-foreground">{linkedEntities.map(l => (l as Record<string, unknown>)[nameField]).join(', ')}</span>
+                                      ? <span className="text-foreground truncate block">
+                                          {linkedEntities.slice(0, 2).map(l => (l as Record<string, unknown>)[nameField]).join(', ')}
+                                          {linkedEntities.length > 2 && <span className="text-muted-foreground ml-1">+{linkedEntities.length - 2}</span>}
+                                        </span>
                                       : <span className="text-muted-foreground/40">–</span>}
                                   </button>
                                 </PopoverTrigger>
