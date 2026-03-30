@@ -21,6 +21,7 @@ import NotFound from "./pages/NotFound";
 import PinterestCallback from "./pages/PinterestCallback";
 import Tips from "./pages/Tips";
 import Changelog from "./pages/Changelog";
+import EmailConfirmed from "./pages/EmailConfirmed";
 import Feedback from "./pages/Feedback";
 import FindProfessionals from "./pages/FindProfessionals";
 import CreateQuote from "./pages/CreateQuote";
@@ -91,6 +92,7 @@ const App = () => (
               <Route path="/pinterest/callback" element={<PinterestCallback />} />
               <Route path="/tips" element={<Tips />} />
               <Route path="/changelog" element={<Changelog />} />
+              <Route path="/auth/confirmed" element={<EmailConfirmed />} />
               <Route path="/feedback" element={<Feedback />} />
               <Route path="/find-pros" element={<FindProfessionals />} />
               <Route path="/quotes/new" element={<CreateQuote />} />
