@@ -70,6 +70,7 @@ interface Project {
   currency?: string | null;
   address?: string | null;
   cover_image_url?: string | null;
+  cover_image_position?: number | null;
 }
 
 const NoAccessPlaceholder = () => {

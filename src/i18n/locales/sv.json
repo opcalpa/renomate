@@ -1718,6 +1718,7 @@
     "guestPlanningTitle": "Logga in för att börja planera",
     "guestPlanningDesc": "Skapa ett konto för att lägga till rum, arbetsmoment och material i ditt projekt. Ditt projekt sparas och du kan bjuda in samarbetspartners.",
     "addCoverPhoto": "Lägg till projektfoto",
+    "dragToReposition": "Dra för att justera",
     "addPurchase": "Registrera inköp",
     "createQuote": "Skapa offert",
     "createQuoteHint": "Skapa offert manuellt",
