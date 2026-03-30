@@ -50,7 +50,10 @@ export function RoomsStep({ formData, updateFormData, token }: RoomsStepProps) {
   const [customRoomDialogOpen, setCustomRoomDialogOpen] = useState(false);
   const [customRoomName, setCustomRoomName] = useState("");
 
-  const roomSuggestions = getRoomSuggestions();
+  const roomSuggestions = getRoomSuggestions().map((r) => ({
+    ...r,
+    name: t(`intake.room.${r.nameKey}`, r.nameKey),
+  }));
   const workTypes = getWorkTypes();
 
   const selectedRoomNames = new Set(formData.rooms.map((r) => r.name));
@@ -395,7 +398,7 @@ export function RoomsStep({ formData, updateFormData, token }: RoomsStepProps) {
                 id="customRoomName"
                 value={customRoomName}
                 onChange={(e) => setCustomRoomName(e.target.value)}
-                placeholder="t.ex. Vinkällare, Ateljé..."
+                placeholder={t("intake.customRoomPlaceholder")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();

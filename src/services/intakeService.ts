@@ -744,26 +744,28 @@ function transformIntakeRequest(data: Record<string, unknown>): IntakeRequest {
 }
 
 /**
- * Get display label for work type
+ * Get i18n key for work type label.
+ * Use with t(`intake.workType.${workType}`) in components.
+ * This function returns a fallback label for non-i18n contexts.
  */
 export function getWorkTypeLabel(workType: WorkType): string {
-  const labels: Record<WorkType, string> = {
-    rivning: "Rivning",
-    el: "El",
-    vvs: "VVS",
-    kakel: "Kakel",
-    snickeri: "Snickeri",
-    malning: "Målning",
-    golv: "Golv",
-    kok: "Kök",
-    badrum: "Badrum",
-    fonster_dorrar: "Fönster/Dörrar",
-    fasad: "Fasad",
-    tak: "Tak",
-    tradgard: "Trädgård",
-    annat: "Övrigt",
+  const fallbacks: Record<WorkType, string> = {
+    rivning: "Demolition",
+    el: "Electrical",
+    vvs: "Plumbing",
+    kakel: "Tiling",
+    snickeri: "Carpentry",
+    malning: "Painting",
+    golv: "Flooring",
+    kok: "Kitchen",
+    badrum: "Bathroom",
+    fonster_dorrar: "Windows/Doors",
+    fasad: "Facade",
+    tak: "Roofing",
+    tradgard: "Garden",
+    annat: "Other",
   };
-  return labels[workType] || workType;
+  return fallbacks[workType] || workType;
 }
 
 /**
@@ -792,22 +794,27 @@ export function getWorkTypes(): Array<{ value: WorkType; label: string }> {
 /**
  * Get predefined room suggestions
  */
-export function getRoomSuggestions(): Array<{ name: string; icon: string }> {
+/**
+ * Room suggestions with i18n keys.
+ * `nameKey` maps to `intake.room.<key>` in locale files.
+ * Components use t(`intake.room.${r.nameKey}`) for display.
+ */
+export function getRoomSuggestions(): Array<{ nameKey: string; icon: string }> {
   return [
-    { name: "Kök", icon: "🍳" },
-    { name: "Badrum", icon: "🛁" },
-    { name: "Vardagsrum", icon: "🛋️" },
-    { name: "Sovrum", icon: "🛏️" },
-    { name: "WC/Dusch", icon: "🚿" },
-    { name: "Tvättstuga", icon: "👕" },
-    { name: "Hall", icon: "🚪" },
-    { name: "Kontor", icon: "💼" },
-    { name: "Barnrum", icon: "🧸" },
-    { name: "Balkong", icon: "🌿" },
-    { name: "Källare", icon: "🏚️" },
-    { name: "Vind", icon: "🏠" },
-    { name: "Garage", icon: "🚗" },
-    { name: "Uteplats", icon: "☀️" },
+    { nameKey: "kitchen", icon: "🍳" },
+    { nameKey: "bathroom", icon: "🛁" },
+    { nameKey: "livingRoom", icon: "🛋️" },
+    { nameKey: "bedroom", icon: "🛏️" },
+    { nameKey: "wcShower", icon: "🚿" },
+    { nameKey: "laundry", icon: "👕" },
+    { nameKey: "hallway", icon: "🚪" },
+    { nameKey: "office", icon: "💼" },
+    { nameKey: "kidsRoom", icon: "🧸" },
+    { nameKey: "balcony", icon: "🌿" },
+    { nameKey: "basement", icon: "🏚️" },
+    { nameKey: "attic", icon: "🏠" },
+    { nameKey: "garage", icon: "🚗" },
+    { nameKey: "patio", icon: "☀️" },
   ];
 }
 

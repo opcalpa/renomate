@@ -28,42 +28,38 @@ const PREVIEW_STEPS = [
   {
     icon: User,
     titleKey: "intake.preview.step1Title",
-    titleFallback: "Kontaktuppgifter",
     fields: [
-      { label: "Namn", required: true },
-      { label: "E-post", required: true },
-      { label: "Telefon", required: false },
+      { labelKey: "intake.preview.fieldName", required: true },
+      { labelKey: "intake.preview.fieldEmail", required: true },
+      { labelKey: "intake.preview.fieldPhone", required: false },
     ],
   },
   {
     icon: Home,
     titleKey: "intake.preview.step2Title",
-    titleFallback: "Om fastigheten",
     fields: [
-      { label: "Adress", required: true },
-      { label: "Postnummer", required: false },
-      { label: "Ort", required: false },
-      { label: "Typ av bostad (lägenhet, villa, etc.)", required: false },
+      { labelKey: "intake.preview.fieldAddress", required: true },
+      { labelKey: "intake.preview.fieldPostalCode", required: false },
+      { labelKey: "intake.preview.fieldCity", required: false },
+      { labelKey: "intake.preview.fieldPropertyType", required: false },
     ],
   },
   {
     icon: LayoutGrid,
     titleKey: "intake.preview.step3Title",
-    titleFallback: "Rum att renovera",
     fields: [
-      { label: "Lägg till rum (kök, badrum, sovrum, etc.)", required: true },
-      { label: "Beskrivning för varje rum", required: false },
-      { label: "Nuvarande skick", required: false },
-      { label: "Bilder (valfritt)", required: false },
+      { labelKey: "intake.preview.fieldAddRooms", required: true },
+      { labelKey: "intake.preview.fieldRoomDesc", required: false },
+      { labelKey: "intake.preview.fieldCondition", required: false },
+      { labelKey: "intake.preview.fieldImages", required: false },
     ],
   },
   {
     icon: FileText,
     titleKey: "intake.preview.step4Title",
-    titleFallback: "Sammanfattning",
     fields: [
-      { label: "Övriga kommentarer", required: false },
-      { label: "Bifoga filer (ritningar, inspiration, etc.)", required: false },
+      { labelKey: "intake.preview.fieldComments", required: false },
+      { labelKey: "intake.preview.fieldAttachments", required: false },
     ],
   },
 ];
@@ -81,10 +77,10 @@ export function IntakeFormPreview({ open, onOpenChange }: IntakeFormPreviewProps
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Eye className="h-5 w-5 text-muted-foreground" />
-            {t("intake.preview.title", "Förhandsvisning av formuläret")}
+            {t("intake.preview.title")}
           </DialogTitle>
           <DialogDescription>
-            {t("intake.preview.description", "Så här ser formuläret ut för din kund.")}
+            {t("intake.preview.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -117,31 +113,31 @@ export function IntakeFormPreview({ open, onOpenChange }: IntakeFormPreviewProps
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">
-                  {t("intake.preview.step", "Steg")} {activeStep + 1} / {PREVIEW_STEPS.length}
+                  {t("intake.preview.step")} {activeStep + 1} / {PREVIEW_STEPS.length}
                 </p>
                 <h3 className="font-medium">
-                  {t(currentStep.titleKey, currentStep.titleFallback)}
+                  {t(currentStep.titleKey)}
                 </h3>
               </div>
             </div>
 
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground mb-3">
-                {t("intake.preview.fieldsAsked", "Fält som efterfrågas:")}
+                {t("intake.preview.fieldsAsked")}
               </p>
               {currentStep.fields.map((field, index) => (
                 <div
                   key={index}
                   className="flex items-center gap-2 text-sm p-2 rounded bg-background"
                 >
-                  <span className="flex-1">{field.label}</span>
+                  <span className="flex-1">{t(field.labelKey)}</span>
                   {field.required ? (
                     <Badge variant="default" className="text-xs">
-                      {t("intake.preview.required", "Obligatoriskt")}
+                      {t("intake.preview.required")}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-xs">
-                      {t("intake.preview.optional", "Valfritt")}
+                      {t("intake.preview.optional")}
                     </Badge>
                   )}
                 </div>
@@ -158,7 +154,7 @@ export function IntakeFormPreview({ open, onOpenChange }: IntakeFormPreviewProps
               disabled={activeStep === 0}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
-              {t("intake.preview.prev", "Föregående")}
+              {t("intake.preview.prev")}
             </Button>
             <Button
               variant="outline"
@@ -166,23 +162,20 @@ export function IntakeFormPreview({ open, onOpenChange }: IntakeFormPreviewProps
               onClick={() => setActiveStep((prev) => Math.min(PREVIEW_STEPS.length - 1, prev + 1))}
               disabled={activeStep === PREVIEW_STEPS.length - 1}
             >
-              {t("intake.preview.next", "Nästa")}
+              {t("intake.preview.next")}
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
 
           {/* Info text */}
           <p className="text-xs text-center text-muted-foreground">
-            {t(
-              "intake.preview.infoText",
-              "Formuläret är mobilanpassat och tar ca 3-5 minuter att fylla i."
-            )}
+            {t("intake.preview.infoText")}
           </p>
         </div>
 
         <div className="flex justify-end">
           <Button onClick={() => onOpenChange(false)}>
-            {t("common.close", "Stäng")}
+            {t("common.close")}
           </Button>
         </div>
       </DialogContent>

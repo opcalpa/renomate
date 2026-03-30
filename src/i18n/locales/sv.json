@@ -3718,6 +3718,7 @@
     "selectRoomsDescription": "Klicka på de rum du vill inkludera",
     "addCustomRoom": "Lägg till eget rum",
     "customRoomName": "Rumsnamn",
+    "customRoomPlaceholder": "t.ex. Vinkällare, Ateljé...",
     "noRoomsSelected": "Inga rum valda ännu",
     "roomsSelected": "{{count}} rum valda",
 
@@ -3751,6 +3752,23 @@
       "tak": "Tak",
       "tradgard": "Trädgård",
       "annat": "Övrigt"
+    },
+
+    "room": {
+      "kitchen": "Kök",
+      "bathroom": "Badrum",
+      "livingRoom": "Vardagsrum",
+      "bedroom": "Sovrum",
+      "wcShower": "WC/Dusch",
+      "laundry": "Tvättstuga",
+      "hallway": "Hall",
+      "office": "Kontor",
+      "kidsRoom": "Barnrum",
+      "balcony": "Balkong",
+      "basement": "Källare",
+      "attic": "Vind",
+      "garage": "Garage",
+      "patio": "Uteplats"
     },
 
     "summary": "Granska din förfrågan",
@@ -3791,6 +3809,16 @@
     "greetingPlaceholder": "Hej! Tack för att du är intresserad av våra tjänster. Fyll gärna i formuläret så återkommer jag med en offert.",
     "greetingHint": "Din hälsning visas för kunden när de öppnar formuläret.",
 
+    "optionalFieldsHint": "Du kan lämna dessa fält tomma. Kunden fyller i sina uppgifter i formuläret.",
+    "requestCreated": "Förfrågan skapad! Dela länken med din kund.",
+    "sendVia": "Skicka denna länk till din kund via:",
+    "viaSms": "SMS",
+    "viaEmail": "E-post",
+    "viaMessenger": "Meddelandeapp (WhatsApp, Messenger, etc.)",
+    "linkValidity": "Länken är giltig i 30 dagar. Du får en notifikation när kunden fyller i formuläret.",
+    "roomCount": "{{count}} rum",
+    "roomCount_plural": "{{count}} rum",
+
     "preview": {
       "title": "Förhandsvisning av formuläret",
       "description": "Så här ser formuläret ut för din kund.",
@@ -3804,7 +3832,20 @@
       "optional": "Valfritt",
       "prev": "Föregående",
       "next": "Nästa",
-      "infoText": "Formuläret är mobilanpassat och tar ca 3-5 minuter att fylla i."
+      "infoText": "Formuläret är mobilanpassat och tar ca 3-5 minuter att fylla i.",
+      "fieldName": "Namn",
+      "fieldEmail": "E-post",
+      "fieldPhone": "Telefon",
+      "fieldAddress": "Adress",
+      "fieldPostalCode": "Postnummer",
+      "fieldCity": "Ort",
+      "fieldPropertyType": "Typ av bostad (lägenhet, villa, etc.)",
+      "fieldAddRooms": "Lägg till rum (kök, badrum, sovrum, etc.)",
+      "fieldRoomDesc": "Beskrivning för varje rum",
+      "fieldCondition": "Nuvarande skick",
+      "fieldImages": "Bilder (valfritt)",
+      "fieldComments": "Övriga kommentarer",
+      "fieldAttachments": "Bifoga filer (ritningar, inspiration, etc.)"
     },
 
     "statusPending": "Väntar på svar",

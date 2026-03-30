@@ -3721,6 +3721,7 @@
     "selectRoomsDescription": "Click on the rooms you want to include",
     "addCustomRoom": "Add custom room",
     "customRoomName": "Room name",
+    "customRoomPlaceholder": "e.g. Wine cellar, Studio...",
     "noRoomsSelected": "No rooms selected yet",
     "roomsSelected": "{{count}} room(s) selected",
 
@@ -3754,6 +3755,23 @@
       "tak": "Roofing",
       "tradgard": "Landscaping",
       "annat": "Other"
+    },
+
+    "room": {
+      "kitchen": "Kitchen",
+      "bathroom": "Bathroom",
+      "livingRoom": "Living room",
+      "bedroom": "Bedroom",
+      "wcShower": "WC/Shower",
+      "laundry": "Laundry room",
+      "hallway": "Hallway",
+      "office": "Office",
+      "kidsRoom": "Kids room",
+      "balcony": "Balcony",
+      "basement": "Basement",
+      "attic": "Attic",
+      "garage": "Garage",
+      "patio": "Patio"
     },
 
     "summary": "Review your request",
@@ -3794,6 +3812,16 @@
     "greetingPlaceholder": "Hi! Thanks for your interest in our services. Please fill in the form and I'll get back to you with a quote.",
     "greetingHint": "Your greeting will be shown to the customer when they open the form.",
 
+    "optionalFieldsHint": "You can leave these fields empty. The customer fills in their details in the form.",
+    "requestCreated": "Request created! Share the link with your customer.",
+    "sendVia": "Send this link to your customer via:",
+    "viaSms": "SMS",
+    "viaEmail": "Email",
+    "viaMessenger": "Messaging app (WhatsApp, Messenger, etc.)",
+    "linkValidity": "The link is valid for 30 days. You will be notified when the customer submits the form.",
+    "roomCount": "{{count}} room",
+    "roomCount_plural": "{{count}} rooms",
+
     "preview": {
       "title": "Form preview",
       "description": "This is how the form looks to your customer.",
@@ -3807,7 +3835,20 @@
       "optional": "Optional",
       "prev": "Previous",
       "next": "Next",
-      "infoText": "The form is mobile-friendly and takes about 3-5 minutes to complete."
+      "infoText": "The form is mobile-friendly and takes about 3-5 minutes to complete.",
+      "fieldName": "Name",
+      "fieldEmail": "Email",
+      "fieldPhone": "Phone",
+      "fieldAddress": "Address",
+      "fieldPostalCode": "Postal code",
+      "fieldCity": "City",
+      "fieldPropertyType": "Property type (apartment, house, etc.)",
+      "fieldAddRooms": "Add rooms (kitchen, bathroom, bedroom, etc.)",
+      "fieldRoomDesc": "Description for each room",
+      "fieldCondition": "Current condition",
+      "fieldImages": "Images (optional)",
+      "fieldComments": "Additional comments",
+      "fieldAttachments": "Attach files (drawings, inspiration, etc.)"
     },
 
     "statusPending": "Awaiting response",

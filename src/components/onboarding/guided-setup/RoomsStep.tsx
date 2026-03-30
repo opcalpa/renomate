@@ -21,7 +21,10 @@ export function RoomsStep({ formData, updateFormData }: StepProps) {
   const [customRoomName, setCustomRoomName] = useState("");
   const [expandedRoomId, setExpandedRoomId] = useState<string | null>(null);
 
-  const roomSuggestions = getRoomSuggestions();
+  const roomSuggestions = getRoomSuggestions().map((r) => ({
+    ...r,
+    name: t(`intake.room.${r.nameKey}`, r.nameKey),
+  }));
   const selectedRoomNames = new Set(formData.rooms.map((r) => r.name));
 
   const handleToggleRoom = (name: string) => {

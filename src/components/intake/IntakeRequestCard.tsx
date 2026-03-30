@@ -164,7 +164,7 @@ export function IntakeRequestCard({
                 <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                   <Home className="h-3 w-3 flex-shrink-0" />
                   <span>
-                    {roomCount} {roomCount === 1 ? "rum" : "rum"}
+                    {t("intake.roomCount", { count: roomCount })}
                   </span>
                 </p>
               )}

@@ -125,7 +125,7 @@ export function CreateIntakeDialog({
               </div>
 
               <p className="text-sm text-muted-foreground">
-                Du kan lämna dessa fält tomma. Kunden fyller i sina uppgifter i formuläret.
+                {t("intake.optionalFieldsHint")}
               </p>
 
               {/* Preview link */}
@@ -135,24 +135,24 @@ export function CreateIntakeDialog({
                 className="flex items-center gap-2 text-sm text-primary hover:underline"
               >
                 <Eye className="h-4 w-4" />
-                {t("intake.previewForm", "Se hur formuläret ser ut")}
+                {t("intake.previewForm")}
               </button>
 
               {/* Personal greeting */}
               <div className="space-y-2 pt-2">
                 <Label htmlFor="greeting">
-                  {t("intake.greetingLabel", "Personlig hälsning")} ({t("common.optional")})
+                  {t("intake.greetingLabel")} ({t("common.optional")})
                 </Label>
                 <Textarea
                   id="greeting"
                   value={greeting}
                   onChange={(e) => setGreeting(e.target.value)}
-                  placeholder={t("intake.greetingPlaceholder", "Hej! Tack för att du är intresserad av våra tjänster. Fyll gärna i formuläret så återkommer jag med en offert.")}
+                  placeholder={t("intake.greetingPlaceholder")}
                   rows={3}
                   className="resize-none"
                 />
                 <p className="text-xs text-muted-foreground">
-                  {t("intake.greetingHint", "Din hälsning visas för kunden när de öppnar formuläret.")}
+                  {t("intake.greetingHint")}
                 </p>
               </div>
             </div>
@@ -183,7 +183,7 @@ export function CreateIntakeDialog({
               <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400">
                 <Check className="h-5 w-5 flex-shrink-0" />
                 <span className="text-sm font-medium">
-                  Förfrågan skapad! Dela länken med din kund.
+                  {t("intake.requestCreated")}
                 </span>
               </div>
 
@@ -214,14 +214,14 @@ export function CreateIntakeDialog({
 
               {/* Instructions */}
               <div className="text-sm text-muted-foreground space-y-2">
-                <p>Skicka denna länk till din kund via:</p>
+                <p>{t("intake.sendVia")}</p>
                 <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>SMS</li>
-                  <li>E-post</li>
-                  <li>Meddelandeapp (WhatsApp, Messenger, etc.)</li>
+                  <li>{t("intake.viaSms")}</li>
+                  <li>{t("intake.viaEmail")}</li>
+                  <li>{t("intake.viaMessenger")}</li>
                 </ul>
                 <p className="mt-2">
-                  Länken är giltig i 30 dagar. Du får en notifikation när kunden fyller i formuläret.
+                  {t("intake.linkValidity")}
                 </p>
               </div>
             </div>
