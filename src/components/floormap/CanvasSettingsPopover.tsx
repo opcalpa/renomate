@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useMeasurement } from "@/contexts/MeasurementContext";
 import { Settings, Grid3x3, Ruler, Magnet, Maximize2, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,7 @@ const WALL_HEIGHT_KEY = "admin_wallHeight";
 
 export const CanvasSettingsPopover = () => {
   const { t } = useTranslation();
+  const { system, units: systemUnits } = useMeasurement();
   const {
     projectSettings,
     setScale,
@@ -219,7 +221,7 @@ export const CanvasSettingsPopover = () => {
           <div className="space-y-2">
             <Label>{t('canvas.displayUnit')}</Label>
             <div className="flex gap-2">
-              {(['mm', 'cm', 'm'] as Unit[]).map((unit) => (
+              {systemUnits.map((unit) => (
                 <Button
                   key={unit}
                   variant={projectSettings.unit === unit ? "default" : "outline"}
