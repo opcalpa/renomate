@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useMeasurement } from "@/contexts/MeasurementContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -78,7 +79,8 @@ interface MaterialItem {
   markup_percent: number | null; // null = use group markup
 }
 
-const MATERIAL_UNITS = ["st", "m²", "L", "kg", "m"] as const;
+const MATERIAL_UNITS_METRIC = ["st", "m²", "L", "kg", "m"] as const;
+const MATERIAL_UNITS_IMPERIAL = ["pcs", "sq ft", "gal", "lb", "ft"] as const;
 
 function normalizeMaterialItem(item: Partial<MaterialItem> & { id: string; name: string }): MaterialItem {
   const quantity = item.quantity ?? 1;
@@ -491,7 +493,7 @@ function SmartEstimateCard({ task, rooms, estimationSettings, onApply, onSaveDef
             {/* --- HOURS --- */}
             <span className="text-muted-foreground">{t("taskCost.estimatedHours", "Hours")}:</span>
             <span className="text-right">
-              {result.totalAreaSqm} m² ÷ {renderEditable("productivityRate", productivityRate, " m²/h")} = {renderEditable("hours", hours, "h")}
+              {ms.isImperial ? (result.totalAreaSqm * 10.7639).toFixed(1) : result.totalAreaSqm} {ms.areaLabel} ÷ {renderEditable("productivityRate", productivityRate, ` ${ms.areaLabel}/h`)} = {renderEditable("hours", hours, "h")}
               {hourlyRate > 0 && (
                 <span className="text-muted-foreground ml-2">
                   ({t("materialRecipes.hourlyRate", "hourly rate")}: {renderEditable("hourlyRate", hourlyRate, " SEK/h")})
@@ -507,7 +509,7 @@ function SmartEstimateCard({ task, rooms, estimationSettings, onApply, onSaveDef
                 <span className="text-right border-t pt-1 mt-1">
                   {hasPaintRecipe ? (
                     <>
-                      {mat.workAreaSqm.toFixed(1)} m² ÷ {renderEditable("coverage", coverage, " m²/L")} × {renderEditable("coats", coats, ` ${t("materialRecipes.coats", "coats")}`)} = {renderEditable("quantity", quantity, mat.unit)}
+                      {ms.isImperial ? (mat.workAreaSqm * 10.7639).toFixed(1) : mat.workAreaSqm.toFixed(1)} {ms.areaLabel} ÷ {renderEditable("coverage", coverage, ms.isImperial ? " sq ft/gal" : " m²/L")} × {renderEditable("coats", coats, ` ${t("materialRecipes.coats", "coats")}`)} = {renderEditable("quantity", quantity, mat.unit)}
                     </>
                   ) : hasWasteRecipe ? (
                     <>
@@ -537,7 +539,7 @@ function SmartEstimateCard({ task, rooms, estimationSettings, onApply, onSaveDef
               <>
                 <span className="text-muted-foreground">{t("materialRecipes.ceilingQty", "Ceiling qty")}:</span>
                 <span className="text-right">
-                  {ceilingExtra.workAreaSqm.toFixed(1)} m² ÷ {renderEditable("coverage", coverage, " m²/L")} × {renderEditable("coats", coats, ` ${t("materialRecipes.coats", "coats")}`)} = {renderEditable("ceilingQty", ceilingQty, ceilingExtra.unit)}
+                  {ms.isImperial ? (ceilingExtra.workAreaSqm * 10.7639).toFixed(1) : ceilingExtra.workAreaSqm.toFixed(1)} {ms.areaLabel} ÷ {renderEditable("coverage", coverage, ms.isImperial ? " sq ft/gal" : " m²/L")} × {renderEditable("coats", coats, ` ${t("materialRecipes.coats", "coats")}`)} = {renderEditable("ceilingQty", ceilingQty, ceilingExtra.unit)}
                 </span>
                 <span className="text-muted-foreground">{t(ceilingExtra.nameKey, ceilingExtra.nameFallback)}:</span>
                 <span className="text-right">
@@ -606,6 +608,7 @@ export const TaskEditDialog = ({
   const isPlanning = projectStatus === "planning";
   const { t } = useTranslation();
   const { toast } = useToast();
+  const ms = useMeasurement();
   const permissions = useProjectPermissions(projectId);
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);

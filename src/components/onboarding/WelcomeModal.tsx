@@ -14,7 +14,7 @@ import { Home, Wrench, Loader2, ArrowLeft, ChevronDown, FileText, Eye, MessageSq
 import { cn } from "@/lib/utils";
 
 type UserType = "homeowner" | "contractor";
-type Step = "language" | "userType" | "getStarted";
+type Step = "language" | "measurement" | "userType" | "getStarted";
 export type QuickStartChoice = "guided" | "import" | "blank" | "explore";
 
 // Primary languages shown by default (most common in Nordic construction)
@@ -48,6 +48,7 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
   const [step, setStep] = useState<Step>("language");
   const [selectedLanguage, setSelectedLanguage] = useState<string>(i18n.language);
   const [selectedType, setSelectedType] = useState<UserType | null>(null);
+  const [selectedMeasurement, setSelectedMeasurement] = useState<'metric' | 'imperial'>('metric');
   const [saving, setSaving] = useState(false);
   const [showAllLanguages, setShowAllLanguages] = useState(false);
 
@@ -85,6 +86,25 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
       step: "language",
       language: selectedLanguage,
     });
+    // Show measurement system choice for English speakers (may use imperial)
+    if (selectedLanguage === "en") {
+      setSelectedMeasurement(/^en-(US|LR|MM)$/i.test(navigator.language) ? "imperial" : "metric");
+      setStep("measurement");
+    } else {
+      setStep("userType");
+    }
+  };
+
+  const handleMeasurementContinue = async () => {
+    localStorage.setItem("renomate_measurement_system", selectedMeasurement);
+    if (profileId) {
+      try {
+        await supabase
+          .from("profiles")
+          .update({ measurement_system: selectedMeasurement } as Record<string, unknown>)
+          .eq("id", profileId);
+      } catch { /* ignore */ }
+    }
     setStep("userType");
   };
 
@@ -224,6 +244,42 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
               size="lg"
             >
               {t("welcome.continue", "Continue")}
+            </Button>
+          </>
+        )}
+
+        {step === "measurement" && (
+          <>
+            <DialogHeader className="text-center pb-2">
+              <DialogTitle className="text-xl font-bold">
+                {t("onboarding.measurementTitle", "Measurement system")}
+              </DialogTitle>
+              <DialogDescription>
+                {t("onboarding.measurementDesc", "How do you measure?")}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-3 py-4">
+              <button
+                type="button"
+                className={`flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all ${selectedMeasurement === "metric" ? "border-primary bg-primary/5" : "border-muted hover:border-muted-foreground/30"}`}
+                onClick={() => setSelectedMeasurement("metric")}
+              >
+                <span className="text-2xl">📏</span>
+                <span className="font-medium">Metric</span>
+                <span className="text-xs text-muted-foreground">m, cm, m²</span>
+              </button>
+              <button
+                type="button"
+                className={`flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all ${selectedMeasurement === "imperial" ? "border-primary bg-primary/5" : "border-muted hover:border-muted-foreground/30"}`}
+                onClick={() => setSelectedMeasurement("imperial")}
+              >
+                <span className="text-2xl">📐</span>
+                <span className="font-medium">Imperial</span>
+                <span className="text-xs text-muted-foreground">ft, in, sq ft</span>
+              </button>
+            </div>
+            <Button className="w-full" onClick={handleMeasurementContinue}>
+              {t("common.continue", "Continue")}
             </Button>
           </>
         )}

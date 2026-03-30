@@ -21,22 +21,29 @@ export const getPixelsPerMeter = (pixelsPerMm: number): number => pixelsPerMm * 
 
 /**
  * Get grid levels for different zoom ranges.
- * Simplified for practical floor plan work.
- * Range: 5m (overview) → 10cm (detailed work) - NO sub-10cm grids
+ * Supports both metric and imperial systems.
  *
- * IMPORTANT: Grid levels that appear together must be exact multiples
- * 5m/1m=5, 1m/50cm=2, 50cm/10cm=5
+ * Metric: 5m → 1m → 50cm → 10cm (ratios 5:1, 2:1, 5:1)
+ * Imperial: 10ft → 3ft → 1ft → 6in (practical architectural intervals)
  */
-export const getGridLevels = (pixelsPerMm: number): Record<string, GridLevel> => {
+export const getGridLevels = (pixelsPerMm: number, system: 'metric' | 'imperial' = 'metric'): Record<string, GridLevel> => {
   const pixelsPerMeter = getPixelsPerMeter(pixelsPerMm);
   const pixelsPerCm = getPixelsPerCm(pixelsPerMm);
 
+  if (system === 'imperial') {
+    const pixelsPerInch = pixelsPerMm * 25.4;
+    const pixelsPerFoot = pixelsPerInch * 12;
+    return {
+      METER_5: { size: pixelsPerFoot * 10, color: "#606060", lineWidth: 2, label: "10ft", opacity: 0.9 },
+      METER_1: { size: pixelsPerFoot * 3, color: "#808080", lineWidth: 1.5, label: "3ft", opacity: 0.7 },
+      CM_50: { size: pixelsPerFoot, color: "#a0a0a0", lineWidth: 1, label: "1ft", opacity: 0.5 },
+      CM_10: { size: pixelsPerInch * 6, color: "#c8c8c8", lineWidth: 0.6, label: "6in", opacity: 0.35 },
+    };
+  }
+
   return {
-    // Major grids - building/apartment overview
     METER_5: { size: pixelsPerMeter * 5, color: "#606060", lineWidth: 2, label: "5m", opacity: 0.9 },
     METER_1: { size: pixelsPerMeter, color: "#808080", lineWidth: 1.5, label: "1m", opacity: 0.7 },
-
-    // Working grids - standard architectural precision
     CM_50: { size: pixelsPerCm * 50, color: "#a0a0a0", lineWidth: 1, label: "50cm", opacity: 0.5 },
     CM_10: { size: pixelsPerCm * 10, color: "#c8c8c8", lineWidth: 0.6, label: "10cm", opacity: 0.35 },
   };
@@ -47,8 +54,8 @@ export const getGridLevels = (pixelsPerMm: number): Record<string, GridLevel> =>
  * Simplified zoom-based grid system for practical floor plan work.
  * All paired levels are exact multiples to prevent misaligned lines.
  */
-export const getActiveGridLevels = (zoomLevel: number, pixelsPerMm: number): GridLevel[] => {
-  const GRID_LEVELS = getGridLevels(pixelsPerMm);
+export const getActiveGridLevels = (zoomLevel: number, pixelsPerMm: number, system: 'metric' | 'imperial' = 'metric'): GridLevel[] => {
+  const GRID_LEVELS = getGridLevels(pixelsPerMm, system);
   const levels: GridLevel[] = [];
 
   // Level 1: Extreme zoom out - building overview (5m only)
@@ -90,13 +97,18 @@ export const getScaleRepresentation = (zoom: number, pixelsPerMm: number): strin
 };
 
 /**
- * Format dimension value in mm/cm/m for display.
+ * Format dimension value for display (system-aware).
  */
-export const formatDimension = (valueMm: number): string => {
-  if (valueMm >= 1000) {
-    return `${(valueMm / 1000).toFixed(2)}m`;
-  } else if (valueMm >= 10) {
-    return `${(valueMm / 10).toFixed(1)}cm`;
+export const formatDimension = (valueMm: number, system: 'metric' | 'imperial' = 'metric'): string => {
+  if (system === 'imperial') {
+    const totalInches = valueMm / 25.4;
+    if (totalInches < 12) return `${totalInches.toFixed(1)}in`;
+    const feet = Math.floor(totalInches / 12);
+    const inches = totalInches % 12;
+    if (inches < 0.5) return `${feet}ft`;
+    return `${feet}'${Math.round(inches)}"`;
   }
+  if (valueMm >= 1000) return `${(valueMm / 1000).toFixed(2)}m`;
+  if (valueMm >= 10) return `${(valueMm / 10).toFixed(1)}cm`;
   return `${Math.round(valueMm)}mm`;
 };
