@@ -923,6 +923,8 @@
     "defaultLanguage": "Default Language",
     "defaultCurrency": "Default Currency",
     "currencyDescription": "Currency for budgets, quotes, and invoices",
+    "measurementSystem": "Measurement system",
+    "measurementDescription": "Used for floor plans, room dimensions, and material calculations",
     "saveChanges": "Save Changes",
     "saving": "Saving...",
     "profileUpdated": "Profile updated",

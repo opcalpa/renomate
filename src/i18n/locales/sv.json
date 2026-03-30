@@ -895,6 +895,8 @@
     "defaultLanguage": "Standardspråk",
     "defaultCurrency": "Standardvaluta",
     "currencyDescription": "Valuta för budgetar, offerter och fakturor",
+    "measurementSystem": "Mätsystem",
+    "measurementDescription": "Används för ritningar, rumsmått och materialberäkningar",
     "saveChanges": "Spara ändringar",
     "saving": "Sparar...",
     "profileUpdated": "Profil uppdaterad",

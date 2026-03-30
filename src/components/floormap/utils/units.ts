@@ -1,4 +1,4 @@
-import { Unit } from '../types';
+import { Unit, MeasurementSystem } from '../types';
 
 // Conversion factors to mm
 const UNIT_TO_MM: Record<Unit, number> = {
@@ -6,6 +6,8 @@ const UNIT_TO_MM: Record<Unit, number> = {
   cm: 10,
   m: 1000,
   inch: 25.4,
+  ft: 304.8,
+  yd: 914.4,
 };
 
 // Conversion factors from mm
@@ -13,7 +15,9 @@ const MM_TO_UNIT: Record<Unit, number> = {
   mm: 1,
   cm: 0.1,
   m: 0.001,
-  inch: 0.0393701,
+  inch: 1 / 25.4,
+  ft: 1 / 304.8,
+  yd: 1 / 914.4,
 };
 
 /**
@@ -35,11 +39,26 @@ export const convertToMM = (value: number, fromUnit: Unit): number => {
  */
 export const formatWithUnit = (valueMM: number, unit: Unit, decimals: number = 1): string => {
   const converted = convertFromMM(valueMM, unit);
-  return `${converted.toFixed(decimals)}${unit}`;
+  return `${converted.toFixed(decimals)} ${getUnitLabel(unit)}`;
 };
 
 /**
- * Get unit display name
+ * Get short unit label for display
+ */
+export const getUnitLabel = (unit: Unit): string => {
+  const labels: Record<Unit, string> = {
+    mm: 'mm',
+    cm: 'cm',
+    m: 'm',
+    inch: 'in',
+    ft: 'ft',
+    yd: 'yd',
+  };
+  return labels[unit];
+};
+
+/**
+ * Get unit display name (full)
  */
 export const getUnitDisplayName = (unit: Unit): string => {
   const names: Record<Unit, string> = {
@@ -47,6 +66,8 @@ export const getUnitDisplayName = (unit: Unit): string => {
     cm: 'Centimeters',
     m: 'Meters',
     inch: 'Inches',
+    ft: 'Feet',
+    yd: 'Yards',
   };
   return names[unit];
 };
@@ -56,10 +77,99 @@ export const getUnitDisplayName = (unit: Unit): string => {
  */
 export const getDefaultGridSize = (unit: Unit): number => {
   const defaults: Record<Unit, number> = {
-    mm: 100, // 100mm
-    cm: 100, // 10cm = 100mm
-    m: 1000, // 1m = 1000mm
-    inch: 254, // 10 inches ≈ 254mm
+    mm: 100,      // 100mm
+    cm: 100,      // 10cm
+    m: 1000,      // 1m
+    inch: 25.4,   // 1 inch
+    ft: 304.8,    // 1 foot
+    yd: 914.4,    // 1 yard
   };
   return defaults[unit];
+};
+
+/**
+ * Get available units for a measurement system
+ */
+export const getSystemUnits = (system: MeasurementSystem): Unit[] => {
+  return system === 'imperial' ? ['inch', 'ft', 'yd'] : ['mm', 'cm', 'm'];
+};
+
+/**
+ * Get default unit for a measurement system
+ */
+export const getSystemDefaultUnit = (system: MeasurementSystem): Unit => {
+  return system === 'imperial' ? 'ft' : 'mm';
+};
+
+// ── Area conversion ──
+
+const SQ_MM_TO_SQ_M = 1e-6;
+const SQ_MM_TO_SQ_FT = 1.07639e-5;
+
+/**
+ * Format area (input in mm²) for display
+ */
+export const formatArea = (areaMmSq: number, system: MeasurementSystem): string => {
+  if (system === 'imperial') {
+    const sqFt = areaMmSq * SQ_MM_TO_SQ_FT;
+    return `${sqFt.toFixed(1)} sq ft`;
+  }
+  const sqM = areaMmSq * SQ_MM_TO_SQ_M;
+  return `${sqM.toFixed(1)} m²`;
+};
+
+/**
+ * Convert area from mm² to display unit value
+ */
+export const convertAreaFromMmSq = (areaMmSq: number, system: MeasurementSystem): number => {
+  return system === 'imperial' ? areaMmSq * SQ_MM_TO_SQ_FT : areaMmSq * SQ_MM_TO_SQ_M;
+};
+
+/**
+ * Get area unit label
+ */
+export const getAreaUnitLabel = (system: MeasurementSystem): string => {
+  return system === 'imperial' ? 'sq ft' : 'm²';
+};
+
+// ── Smart length formatting (auto-picks best unit) ──
+
+/**
+ * Format a length in mm using the best unit for the measurement system.
+ * Metric: mm < 10 → mm, < 1000 → cm, else → m
+ * Imperial: < 1 ft → in, < 100 ft → ft + in, else → ft
+ */
+export const formatLength = (valueMM: number, system: MeasurementSystem): string => {
+  if (system === 'imperial') {
+    const totalInches = valueMM / 25.4;
+    if (totalInches < 12) {
+      return `${totalInches.toFixed(1)} in`;
+    }
+    const feet = Math.floor(totalInches / 12);
+    const inches = totalInches % 12;
+    if (inches < 0.1) {
+      return `${feet} ft`;
+    }
+    return `${feet}' ${Math.round(inches)}"`;
+  }
+
+  // Metric
+  if (valueMM < 10) return `${valueMM.toFixed(1)} mm`;
+  if (valueMM < 1000) return `${(valueMM / 10).toFixed(1)} cm`;
+  return `${(valueMM / 1000).toFixed(2)} m`;
+};
+
+// ── Coverage conversion (paint etc.) ──
+
+/**
+ * Convert coverage rate between systems.
+ * Metric: m²/L, Imperial: sq ft/gallon (1 gallon = 3.78541 L)
+ */
+export const formatCoverage = (sqmPerLiter: number, system: MeasurementSystem): string => {
+  if (system === 'imperial') {
+    // 1 m² = 10.7639 sq ft, 1 gallon = 3.78541 L
+    const sqFtPerGallon = sqmPerLiter * 10.7639 * 3.78541;
+    return `${Math.round(sqFtPerGallon)} sq ft/gal`;
+  }
+  return `${sqmPerLiter.toFixed(1)} m²/L`;
 };

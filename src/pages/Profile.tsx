@@ -113,6 +113,10 @@ const Profile = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [defaultCurrency, setDefaultCurrency] = useState(() => localStorage.getItem("admin_currency") || "SEK");
+  const [measurementSystem, setMeasurementSystem] = useState<'metric' | 'imperial'>(() => {
+    const stored = localStorage.getItem("renomate_measurement_system");
+    return stored === 'imperial' ? 'imperial' : 'metric';
+  });
 
   // User type from onboarding
   const [userType, setUserType] = useState<"homeowner" | "contractor" | null>(null);
@@ -189,6 +193,9 @@ const Profile = () => {
       setName(data.name || "");
       setPhone(data.phone || "");
       setLanguagePreference(data.language_preference || "en");
+      if ((data as Record<string, unknown>).measurement_system) {
+        setMeasurementSystem((data as Record<string, unknown>).measurement_system as 'metric' | 'imperial');
+      }
       setUserType(data.onboarding_user_type || null);
       setIsProfessional(data.is_professional || false);
       setCompanyName(data.company_name || "");
@@ -291,6 +298,7 @@ const Profile = () => {
         phone,
         personnummer: personnummer.trim() || null,
         language_preference: languagePreference,
+        measurement_system: measurementSystem,
         onboarding_user_type: userType,
         is_professional: isProfessional,
         // Only update contractor fields when in contractor mode — preserve existing values when switching to homeowner
@@ -343,8 +351,9 @@ const Profile = () => {
         await i18n.changeLanguage(languagePreference);
       }
 
-      // Save currency preference to localStorage
+      // Save currency + measurement preferences to localStorage
       localStorage.setItem("admin_currency", defaultCurrency);
+      localStorage.setItem("renomate_measurement_system", measurementSystem);
 
       // Mark onboarding profile step complete
       // For contractors: requires professional fields (is_professional, company_name, contractor_category)
@@ -701,6 +710,22 @@ const Profile = () => {
                   </Select>
                   <p className="text-xs text-muted-foreground">
                     {t('profile.currencyDescription')}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="measurement">{t('profile.measurementSystem', 'Measurement system')}</Label>
+                  <Select value={measurementSystem} onValueChange={(v) => setMeasurementSystem(v as 'metric' | 'imperial')}>
+                    <SelectTrigger id="measurement">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="metric">📏 Metric (m, cm, m²)</SelectItem>
+                      <SelectItem value="imperial">📐 Imperial (ft, in, sq ft)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {t('profile.measurementDescription', 'Used for floor plans, room dimensions, and material calculations')}
                   </p>
                 </div>
 
