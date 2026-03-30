@@ -14,20 +14,7 @@ import { ShapeWithViewProps } from './types';
 import { LineCoordinates } from '../types';
 import { useFloorMapStore } from '../store';
 import { createUnifiedDragHandlers } from '../canvas/utils';
-
-// Shared measurement formatting
-const formatMeasurement = (lengthInMM: number, unit: 'mm' | 'cm' | 'm'): string => {
-  switch (unit) {
-    case 'mm':
-      return `${Math.round(lengthInMM)}mm`;
-    case 'cm':
-      return `${(lengthInMM / 10).toFixed(1)}cm`;
-    case 'm':
-      return `${(lengthInMM / 1000).toFixed(2)}m`;
-    default:
-      return `${Math.round(lengthInMM)}mm`;
-  }
-};
+import { formatMeasurement } from '../utils/formatting';
 
 // Extended props for opening shapes with batch length change support
 interface OpeningShapeProps extends ShapeWithViewProps {

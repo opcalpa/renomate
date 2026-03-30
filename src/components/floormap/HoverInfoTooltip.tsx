@@ -7,23 +7,12 @@
 import React from 'react';
 import { FloorMapShape } from './types';
 import { useTranslation } from 'react-i18next';
+import { formatMeasurement, formatArea } from './utils/formatting';
 
 interface HoverInfoTooltipProps {
   shape: FloorMapShape | null;
   mousePosition: { x: number; y: number } | null;
   unit: 'mm' | 'cm' | 'm';
-}
-
-// Format dimension based on unit preference
-function formatDimension(valueMM: number, unit: 'mm' | 'cm' | 'm'): string {
-  switch (unit) {
-    case 'm':
-      return `${(valueMM / 1000).toFixed(2)} m`;
-    case 'cm':
-      return `${(valueMM / 10).toFixed(1)} cm`;
-    default:
-      return `${Math.round(valueMM)} mm`;
-  }
 }
 
 // Calculate dimensions for different shape types
@@ -231,25 +220,25 @@ export function HoverInfoTooltip({ shape, mousePosition, unit }: HoverInfoToolti
           {dims.length !== undefined && (
             <div className="flex justify-between gap-4">
               <span>{t('floormap.hoverInfo.length', 'L')}:</span>
-              <span className="font-mono">{formatDimension(dims.length, unit)}</span>
+              <span className="font-mono">{formatMeasurement(dims.length, unit)}</span>
             </div>
           )}
           {dims.width !== undefined && (
             <div className="flex justify-between gap-4">
               <span>{t('floormap.hoverInfo.width', 'W')}:</span>
-              <span className="font-mono">{formatDimension(dims.width, unit)}</span>
+              <span className="font-mono">{formatMeasurement(dims.width, unit)}</span>
             </div>
           )}
           {dims.height !== undefined && (
             <div className="flex justify-between gap-4">
               <span>{t('floormap.hoverInfo.height', 'H')}:</span>
-              <span className="font-mono">{formatDimension(dims.height, unit)}</span>
+              <span className="font-mono">{formatMeasurement(dims.height, unit)}</span>
             </div>
           )}
           {dims.area !== undefined && (
             <div className="flex justify-between gap-4">
               <span>{t('floormap.hoverInfo.area', 'Area')}:</span>
-              <span className="font-mono">{dims.area.toFixed(1)} m²</span>
+              <span className="font-mono">{formatArea(dims.area * 1_000_000, 'm')}</span>
             </div>
           )}
         </div>

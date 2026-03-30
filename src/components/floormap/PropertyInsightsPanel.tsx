@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronUp, Home, Grid3X3 } from "lucide-react";
 import { useFloorMapStore } from "./store";
 import { computeRoomInsightsFromShapes } from "./utils/roomInsights";
+import { formatArea } from "./utils/formatting";
 import { cn } from "@/lib/utils";
 
 export const PropertyInsightsPanel: React.FC = () => {
@@ -62,7 +63,7 @@ export const PropertyInsightsPanel: React.FC = () => {
           >
             <div className="flex items-center gap-2 text-sm font-medium">
               <Home className="h-4 w-4 text-primary" />
-              <span>{totals.areaSqm.toFixed(1)} m²</span>
+              <span>{formatArea(totals.areaSqm * 1_000_000, 'm')}</span>
               <span className="text-muted-foreground">|</span>
               <span className="text-muted-foreground">
                 {totals.roomCount} {t("insights.rooms", "rooms")}
@@ -118,10 +119,10 @@ export const PropertyInsightsPanel: React.FC = () => {
                       {room.name}
                     </td>
                     <td className="text-right px-2 py-2 tabular-nums">
-                      {room.areaSqm.toFixed(1)} m²
+                      {formatArea(room.areaSqm * 1_000_000, 'm')}
                     </td>
                     <td className="text-right px-2 py-2 tabular-nums">
-                      {room.wallAreaSqm.toFixed(1)} m²
+                      {formatArea(room.wallAreaSqm * 1_000_000, 'm')}
                     </td>
                     <td className="text-right px-4 py-2 tabular-nums">
                       {room.paintLiters} {t("insights.liters", "L")}
@@ -135,10 +136,10 @@ export const PropertyInsightsPanel: React.FC = () => {
                     {t("insights.total", "Total")}
                   </td>
                   <td className="text-right px-2 py-2 tabular-nums">
-                    {totals.areaSqm.toFixed(1)} m²
+                    {formatArea(totals.areaSqm * 1_000_000, 'm')}
                   </td>
                   <td className="text-right px-2 py-2 tabular-nums">
-                    {totals.wallAreaSqm.toFixed(1)} m²
+                    {formatArea(totals.wallAreaSqm * 1_000_000, 'm')}
                   </td>
                   <td className="text-right px-4 py-2 tabular-nums">
                     {totals.paintLiters} {t("insights.liters", "L")}

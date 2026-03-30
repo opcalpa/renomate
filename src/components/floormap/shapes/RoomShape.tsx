@@ -10,6 +10,7 @@ import Konva from 'konva';
 import { useFloorMapStore } from '../store';
 import { RoomShapeProps } from './types';
 import { createUnifiedDragHandlers } from '../canvas/utils';
+import { formatMeasurement } from '../utils/formatting';
 import { toast } from 'sonner';
 
 /**
@@ -322,20 +323,6 @@ export const RoomShape = React.memo<RoomShapeProps>(({
 
   const isDraggable = !isReadOnly && !isDrawingMode;
   const canSelect = !isDrawingMode;
-
-  // Format measurement according to display unit preference
-  const formatMeasurement = (lengthInMM: number, unit: 'mm' | 'cm' | 'm'): string => {
-    switch (unit) {
-      case 'mm':
-        return `${Math.round(lengthInMM)}mm`;
-      case 'cm':
-        return `${(lengthInMM / 10).toFixed(1)}cm`;
-      case 'm':
-        return `${(lengthInMM / 1000).toFixed(2)}m`;
-      default:
-        return `${Math.round(lengthInMM)}mm`;
-    }
-  };
 
   // Calculate edge measurements
   const getEdgeMeasurement = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {

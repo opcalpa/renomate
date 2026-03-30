@@ -11,6 +11,7 @@ import { useFloorMapStore } from '../store';
 import { WallShapeProps } from './types';
 import { createUnifiedDragHandlers } from '../canvas/utils';
 import { getAdminDefaults } from '../canvas/constants';
+import { formatMeasurement } from '../utils/formatting';
 
 /**
  * Calculate wall rectangle corners from centerline endpoints and thickness
@@ -259,20 +260,6 @@ export const WallShape = React.memo<WallShapeProps>(({
   const dy = displayCoords.y2 - displayCoords.y1;
   const lengthPixels = Math.sqrt(dx * dx + dy * dy);
   const lengthMM = lengthPixels / pixelsPerMm;
-
-  // Format measurement according to display unit preference
-  const formatMeasurement = (lengthInMM: number, unit: 'mm' | 'cm' | 'm'): string => {
-    switch (unit) {
-      case 'mm':
-        return `${Math.round(lengthInMM)}mm`;
-      case 'cm':
-        return `${(lengthInMM / 10).toFixed(1)}cm`;
-      case 'm':
-        return `${(lengthInMM / 1000).toFixed(2)}m`;
-      default:
-        return `${Math.round(lengthInMM)}mm`;
-    }
-  };
 
   const measurement = formatMeasurement(lengthMM, displayUnit);
 
