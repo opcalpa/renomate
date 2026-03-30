@@ -71,6 +71,7 @@ interface Project {
   address?: string | null;
   cover_image_url?: string | null;
   cover_image_position?: number | null;
+  cover_image_zoom?: number | null;
 }
 
 const NoAccessPlaceholder = () => {

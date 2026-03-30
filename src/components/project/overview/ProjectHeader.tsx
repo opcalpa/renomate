@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { MapPin, Pencil, Camera, X, Loader2, GripVertical, Check } from "lucide-react";
+import { MapPin, Pencil, Camera, X, Loader2, GripVertical, Check, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { normalizeStatus, STATUS_META } from "@/lib/projectStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
   const [uploading, setUploading] = useState(false);
   const [coverUrl, setCoverUrl] = useState(project.cover_image_url || null);
   const [coverPosition, setCoverPosition] = useState(project.cover_image_position ?? 50);
+  const [coverZoom, setCoverZoom] = useState(project.cover_image_zoom ?? 100);
   const [repositioning, setRepositioning] = useState(false);
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const [dragStartPos, setDragStartPos] = useState(50);
@@ -29,7 +31,8 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
   // Sync with prop changes
   useEffect(() => {
     setCoverPosition(project.cover_image_position ?? 50);
-  }, [project.cover_image_position]);
+    setCoverZoom(project.cover_image_zoom ?? 100);
+  }, [project.cover_image_position, project.cover_image_zoom]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,10 +61,12 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
       const { data: { publicUrl } } = supabase.storage.from("project-files").getPublicUrl(path);
       setCoverUrl(publicUrl);
       setCoverPosition(50);
+      setCoverZoom(100);
 
       await supabase.from("projects").update({
         cover_image_url: publicUrl,
         cover_image_position: 50,
+        cover_image_zoom: 100,
       } as Record<string, unknown>).eq("id", project.id);
       onCoverChange?.(publicUrl);
     } catch {
@@ -81,6 +86,7 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
     await supabase.from("projects").update({
       cover_image_url: null,
       cover_image_position: 50,
+      cover_image_zoom: 100,
     } as Record<string, unknown>).eq("id", project.id);
     onCoverChange?.(null);
   };
@@ -113,18 +119,25 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
     setDragStartY(null);
   }, []);
 
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (!repositioning) return;
+    e.preventDefault();
+    setCoverZoom((prev) => Math.max(100, Math.min(300, prev - e.deltaY * 0.5)));
+  }, [repositioning]);
+
   const handleSavePosition = useCallback(async () => {
     setRepositioning(false);
-    const rounded = Math.round(coverPosition);
     await supabase.from("projects").update({
-      cover_image_position: rounded,
+      cover_image_position: Math.round(coverPosition),
+      cover_image_zoom: Math.round(coverZoom),
     } as Record<string, unknown>).eq("id", project.id);
-  }, [coverPosition, project.id]);
+  }, [coverPosition, coverZoom, project.id]);
 
   const handleCancelReposition = useCallback(() => {
     setRepositioning(false);
     setCoverPosition(project.cover_image_position ?? 50);
-  }, [project.cover_image_position]);
+    setCoverZoom(project.cover_image_zoom ?? 100);
+  }, [project.cover_image_position, project.cover_image_zoom]);
 
   return (
     <div className="space-y-3">
@@ -138,21 +151,41 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
+            onWheel={handleWheel}
           >
             <img
               src={coverUrl}
               alt={project.name}
               className="w-full h-full object-cover select-none"
-              style={{ objectPosition: `center ${coverPosition}%` }}
+              style={{
+                objectPosition: `center ${coverPosition}%`,
+                transform: coverZoom !== 100 ? `scale(${coverZoom / 100})` : undefined,
+                transformOrigin: `center ${coverPosition}%`,
+              }}
               draggable={false}
             />
             {/* Repositioning overlay */}
             {repositioning && (
-              <div className="absolute inset-0 bg-black/20 flex items-center justify-center pointer-events-none">
-                <div className="flex items-center gap-2 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs font-medium pointer-events-none">
+              <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center pointer-events-none">
+                <div className="flex items-center gap-2 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs font-medium">
                   <GripVertical className="h-3.5 w-3.5" />
                   {t("overview.dragToReposition", "Dra för att justera")}
                 </div>
+              </div>
+            )}
+            {/* Zoom slider */}
+            {repositioning && (
+              <div className="absolute bottom-14 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 rounded-full px-3 py-1.5 pointer-events-auto">
+                <ZoomOut className="h-3.5 w-3.5 text-white/70" />
+                <Slider
+                  min={100}
+                  max={300}
+                  step={5}
+                  value={[coverZoom]}
+                  onValueChange={([v]) => setCoverZoom(v)}
+                  className="w-28 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[role=slider]]:bg-white [&>span:first-child]:bg-white/30 [&>span:first-child>span]:bg-white"
+                />
+                <ZoomIn className="h-3.5 w-3.5 text-white/70" />
               </div>
             )}
             {/* Reposition save/cancel buttons */}
