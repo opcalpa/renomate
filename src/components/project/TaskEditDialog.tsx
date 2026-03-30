@@ -610,6 +610,7 @@ export const TaskEditDialog = ({
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingBudgetField, setEditingBudgetField] = useState<"labor" | "material" | null>(null);
   const [rooms, setRooms] = useState<{ id: string; name: string; dimensions?: RecipeRoom["dimensions"]; ceiling_height_mm?: number | null }[]>([]);
   const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; role?: string }[]>([]);
   const [customCostCenters, setCustomCostCenters] = useState<string[]>([]);
@@ -1337,42 +1338,66 @@ export const TaskEditDialog = ({
                         {Math.round(displayTotal).toLocaleString("sv-SE")} kr
                       </span>
                     </div>
-                    <div className="space-y-2 pt-1 border-t">
+                    <div className="space-y-1.5 pt-2 border-t">
+                      {/* Labor row — click to edit */}
                       <div className="flex items-center justify-between gap-3">
-                        <Label htmlFor="edit-task-labor" className="text-xs text-muted-foreground whitespace-nowrap">
-                          {t("tasks.rotLaborCost", "Arbetskostnad")}
-                        </Label>
-                        <div className="flex items-center gap-1">
-                          <Input
-                            id="edit-task-labor"
-                            type="number"
-                            step="1"
-                            min="0"
-                            placeholder="0"
-                            className="h-8 w-32 text-right text-sm tabular-nums"
-                            value={laborVal > 0 ? Math.round(laborVal).toString() : ""}
-                            onChange={(e) => updateLabor(e.target.value ? parseFloat(e.target.value) : null)}
-                          />
-                          <span className="text-xs text-muted-foreground">kr</span>
-                        </div>
+                        <span className="text-xs text-muted-foreground">{t("tasks.rotLaborCost", "Arbetskostnad")}</span>
+                        {editingBudgetField === "labor" ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              autoFocus
+                              type="number"
+                              step="1"
+                              min="0"
+                              placeholder="0"
+                              className="h-7 w-28 text-right text-sm tabular-nums"
+                              value={laborVal > 0 ? Math.round(laborVal).toString() : ""}
+                              onChange={(e) => updateLabor(e.target.value ? parseFloat(e.target.value) : null)}
+                              onBlur={() => setEditingBudgetField(null)}
+                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") setEditingBudgetField(null); }}
+                            />
+                            <span className="text-xs text-muted-foreground">kr</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="text-sm tabular-nums hover:bg-muted px-2 py-0.5 rounded transition-colors cursor-text"
+                            onDoubleClick={() => setEditingBudgetField("labor")}
+                            title={t("common.doubleClickToEdit", "Dubbelklicka för att redigera")}
+                          >
+                            {laborVal > 0 ? `${Math.round(laborVal).toLocaleString("sv-SE")} kr` : <span className="text-muted-foreground/40">0 kr</span>}
+                          </button>
+                        )}
                       </div>
+                      {/* Material row — click to edit */}
                       <div className="flex items-center justify-between gap-3">
-                        <Label htmlFor="edit-task-material" className="text-xs text-muted-foreground whitespace-nowrap">
-                          {t("tasks.materialBudget", "Materialbudget")}
-                        </Label>
-                        <div className="flex items-center gap-1">
-                          <Input
-                            id="edit-task-material"
-                            type="number"
-                            step="1"
-                            min="0"
-                            placeholder="0"
-                            className="h-8 w-32 text-right text-sm tabular-nums"
-                            value={materialVal > 0 ? Math.round(materialVal).toString() : ""}
-                            onChange={(e) => updateMaterial(e.target.value ? parseFloat(e.target.value) : null)}
-                          />
-                          <span className="text-xs text-muted-foreground">kr</span>
-                        </div>
+                        <span className="text-xs text-muted-foreground">{t("tasks.materialBudget", "Materialbudget")}</span>
+                        {editingBudgetField === "material" ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              autoFocus
+                              type="number"
+                              step="1"
+                              min="0"
+                              placeholder="0"
+                              className="h-7 w-28 text-right text-sm tabular-nums"
+                              value={materialVal > 0 ? Math.round(materialVal).toString() : ""}
+                              onChange={(e) => updateMaterial(e.target.value ? parseFloat(e.target.value) : null)}
+                              onBlur={() => setEditingBudgetField(null)}
+                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") setEditingBudgetField(null); }}
+                            />
+                            <span className="text-xs text-muted-foreground">kr</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="text-sm tabular-nums hover:bg-muted px-2 py-0.5 rounded transition-colors cursor-text"
+                            onDoubleClick={() => setEditingBudgetField("material")}
+                            title={t("common.doubleClickToEdit", "Dubbelklicka för att redigera")}
+                          >
+                            {materialVal > 0 ? `${Math.round(materialVal).toLocaleString("sv-SE")} kr` : <span className="text-muted-foreground/40">0 kr</span>}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
