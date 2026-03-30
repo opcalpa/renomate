@@ -19,6 +19,7 @@ import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 import PinterestCallback from "./pages/PinterestCallback";
 import Tips from "./pages/Tips";
+import Changelog from "./pages/Changelog";
 import Feedback from "./pages/Feedback";
 import FindProfessionals from "./pages/FindProfessionals";
 import CreateQuote from "./pages/CreateQuote";
@@ -87,6 +88,7 @@ const App = () => (
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/pinterest/callback" element={<PinterestCallback />} />
               <Route path="/tips" element={<Tips />} />
+              <Route path="/changelog" element={<Changelog />} />
               <Route path="/feedback" element={<Feedback />} />
               <Route path="/find-pros" element={<FindProfessionals />} />
               <Route path="/quotes/new" element={<CreateQuote />} />
