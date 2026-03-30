@@ -77,7 +77,7 @@ const Auth = () => {
           data: {
             name,
           },
-          emailRedirectTo: `${window.location.origin}/auth/confirmed`,
+          emailRedirectTo: `${window.location.origin}/start?confirmed=true`,
         },
       });
 

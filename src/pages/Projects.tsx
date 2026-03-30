@@ -195,6 +195,19 @@ const Projects = () => {
     }
   }, [user, authLoading, isGuest]);
 
+  // Show welcome toast after email confirmation
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("confirmed") === "true") {
+      toast({
+        title: "✅ Email verified — welcome to Renomate!",
+        description: "Your account is ready. Let's get started!",
+      });
+      // Clean URL
+      window.history.replaceState({}, "", "/start");
+    }
+  }, []);
+
   const fetchGuestProjects = () => {
     try {
       const guestProjects = getGuestProjects();
