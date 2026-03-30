@@ -25,10 +25,10 @@ interface GuidedSetupWizardProps {
 }
 
 const STEP_KEYS = [
-  "propertyStep",
   "roomsStep",
   "workTypesStep",
   "matrixStep",
+  "propertyStep",
   "summaryStep",
 ] as const;
 
@@ -78,19 +78,19 @@ export function GuidedSetupWizard({
 
   const canProceed = useCallback((): boolean => {
     switch (currentStep) {
-      case 1:
-        return !!formData.projectName.trim();
-      case 2:
+      case 1: // Rooms
         return formData.rooms.length > 0;
-      case 3:
+      case 2: // Work types
         return formData.workTypes.length > 0;
-      case 4: {
+      case 3: { // Matrix
         const hasSelection = Object.values(formData.matrix).some(
           (set) => set.size > 0
         );
         return hasSelection;
       }
-      case 5:
+      case 4: // Project name & address
+        return !!formData.projectName.trim();
+      case 5: // Summary
         return true;
       default:
         return false;
@@ -184,16 +184,16 @@ export function GuidedSetupWizard({
 
       {/* Step content */}
       {currentStep === 1 && (
-        <PropertyStep formData={formData} updateFormData={updateFormData} />
-      )}
-      {currentStep === 2 && (
         <RoomsStep formData={formData} updateFormData={updateFormData} />
       )}
-      {currentStep === 3 && (
+      {currentStep === 2 && (
         <WorkTypesStep formData={formData} updateFormData={updateFormData} />
       )}
-      {currentStep === 4 && (
+      {currentStep === 3 && (
         <TaskMatrixStep formData={formData} updateFormData={updateFormData} />
+      )}
+      {currentStep === 4 && (
+        <PropertyStep formData={formData} updateFormData={updateFormData} />
       )}
       {currentStep === 5 && (
         <SummaryStep formData={formData} updateFormData={updateFormData} />
