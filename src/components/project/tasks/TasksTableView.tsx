@@ -40,6 +40,8 @@ import {
   ArrowDown,
   Columns3,
   Rows3,
+  Layers,
+  ChevronDown,
   Trash2,
   ClipboardList,
   ShoppingCart,
@@ -213,6 +215,24 @@ export function TasksTableView({
     compactRows,
     setCompactRows,
   } = externalState || internalState;
+
+  // Grouping
+  type GroupByOption = "none" | "room" | "costCenter" | "status";
+  const [groupBy, setGroupBy] = useState<GroupByOption>(() =>
+    (localStorage.getItem(`tasks-groupby-${projectId}`) as GroupByOption) || "none"
+  );
+  const handleGroupByChange = (v: GroupByOption) => {
+    setGroupBy(v);
+    localStorage.setItem(`tasks-groupby-${projectId}`, v);
+  };
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroupCollapse = (key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
 
   const bulk = useBulkTaskActions({ tasks, projectId, onTaskUpdated });
 
@@ -929,6 +949,40 @@ export function TasksTableView({
     }
   };
 
+  const renderTaskRow = (task: typeof sortedTasks[0]) => (
+    <TableRow
+      key={task.id}
+      className={cn(
+        "hover:bg-muted/50 cursor-pointer",
+        bulk.selectedIds.has(task.id) && "bg-primary/5",
+      )}
+      onClick={() => onTaskClick(task)}
+    >
+      {!isReadOnly && (
+        <TableCell className="w-[40px] px-2" onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={bulk.selectedIds.has(task.id)}
+            onCheckedChange={() => bulk.toggleOne(task.id)}
+            aria-label={t("tasksTable.bulkSelectTask", "Select task")}
+          />
+        </TableCell>
+      )}
+      {visibleColumns.map((col, colIdx) => (
+        <TableCell
+          key={col.key}
+          className={cn(
+            col.align === "right" ? "text-right" : "",
+            compactRows && "py-1 text-xs",
+            dragOverIdx === colIdx && dragColIdx !== null && dragColIdx !== colIdx && "border-l-2 border-primary",
+            colIdx === 0 && "sticky left-0 z-10 bg-card after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border",
+          )}
+        >
+          {renderCell(col, task)}
+        </TableCell>
+      ))}
+    </TableRow>
+  );
+
   return (
     <div className="space-y-2">
       {/* Toolbar */}
@@ -974,6 +1028,37 @@ export function TasksTableView({
         >
           <Rows3 className="h-4 w-4" />
         </Button>
+
+        {/* Group by */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant={groupBy !== "none" ? "default" : "outline"}
+              size="icon"
+              className="h-8 w-8"
+              title={t("budget.groupBy")}
+            >
+              <Layers className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48" align="end">
+            <div className="space-y-1">
+              <p className="text-sm font-medium mb-2">{t("budget.groupBy")}</p>
+              {(["none", "room", "costCenter", "status"] as GroupByOption[]).map((opt) => (
+                <label
+                  key={opt}
+                  className={cn("flex items-center gap-2 text-sm cursor-pointer rounded-md px-2 py-1.5 hover:bg-accent", groupBy === opt && "bg-accent font-medium")}
+                  onClick={() => handleGroupByChange(opt)}
+                >
+                  {opt === "none" && t("budget.groupNone")}
+                  {opt === "room" && t("budget.groupByRoom")}
+                  {opt === "costCenter" && t("budget.groupByCostCenter")}
+                  {opt === "status" && t("budget.groupByStatus")}
+                </label>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
       </div>}
 
@@ -1059,39 +1144,59 @@ export function TasksTableView({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  sortedTasks.map((task) => (
-                    <TableRow
-                      key={task.id}
-                      className={cn(
-                        "hover:bg-muted/50 cursor-pointer",
-                        bulk.selectedIds.has(task.id) && "bg-primary/5",
-                      )}
-                      onClick={() => onTaskClick(task)}
-                    >
-                      {!isReadOnly && (
-                        <TableCell className="w-[40px] px-2" onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            checked={bulk.selectedIds.has(task.id)}
-                            onCheckedChange={() => bulk.toggleOne(task.id)}
-                            aria-label={t("tasksTable.bulkSelectTask", "Select task")}
-                          />
-                        </TableCell>
-                      )}
-                      {visibleColumns.map((col, colIdx) => (
-                        <TableCell
-                          key={col.key}
-                          className={cn(
-                            col.align === "right" ? "text-right" : "",
-                            compactRows && "py-1 text-xs",
-                            dragOverIdx === colIdx && dragColIdx !== null && dragColIdx !== colIdx && "border-l-2 border-primary",
-                            colIdx === 0 && "sticky left-0 z-10 bg-card after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border",
-                          )}
+                  (() => {
+                    // Build grouped display list
+                    const getGroupKey = (task: typeof sortedTasks[0]): string => {
+                      switch (groupBy) {
+                        case "room": return task.room_id || "__none__";
+                        case "costCenter": return task.cost_center || "__none__";
+                        case "status": return task.status || "__none__";
+                        default: return "__all__";
+                      }
+                    };
+                    const getGroupLabel = (key: string): string => {
+                      if (key === "__none__") return groupBy === "room" ? t("budget.noRoom") : groupBy === "costCenter" ? t("budget.noCostCenter") : t("budget.noStatus");
+                      if (groupBy === "room") return rooms.find((r) => r.id === key)?.name || key;
+                      if (groupBy === "costCenter") return t(`costCenters.${key}`, key);
+                      if (groupBy === "status") return statusLabels?.[key] || t(`statuses.${key}`, key);
+                      return key;
+                    };
+
+                    if (groupBy === "none") {
+                      // No grouping — render flat
+                      return sortedTasks.map((task) => renderTaskRow(task));
+                    }
+
+                    // Group tasks
+                    const groups = new Map<string, typeof sortedTasks>();
+                    const groupOrder: string[] = [];
+                    for (const task of sortedTasks) {
+                      const key = getGroupKey(task);
+                      if (!groups.has(key)) { groups.set(key, []); groupOrder.push(key); }
+                      groups.get(key)!.push(task);
+                    }
+
+                    return groupOrder.flatMap((key) => {
+                      const groupTasks = groups.get(key)!;
+                      const header = (
+                        <TableRow
+                          key={`group-${key}`}
+                          className="cursor-pointer hover:bg-muted/50 bg-primary/5 border-t-2 border-primary/20"
+                          onClick={() => toggleGroupCollapse(key)}
                         >
-                          {renderCell(col, task)}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
+                          <TableCell colSpan={visibleColumns.length + (isReadOnly ? 0 : 1)} className="py-2">
+                            <div className="flex items-center gap-2">
+                              <ChevronDown className={cn("h-4 w-4 text-primary transition-transform", collapsedGroups.has(key) && "-rotate-90")} />
+                              <span className="text-sm font-semibold">{getGroupLabel(key)}</span>
+                              <Badge variant="secondary" className="text-xs">{groupTasks.length}</Badge>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                      if (collapsedGroups.has(key)) return [header];
+                      return [header, ...groupTasks.map((task) => renderTaskRow(task))];
+                    });
+                  })()
                 )}
               </TableBody>
             </Table>

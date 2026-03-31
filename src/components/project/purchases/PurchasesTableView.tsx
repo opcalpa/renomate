@@ -39,6 +39,8 @@ import {
   ArrowDown,
   Columns3,
   Rows3,
+  Layers,
+  ChevronDown,
   Trash2,
   ExternalLink,
   Package,
@@ -165,6 +167,24 @@ export function PurchasesTableView({
     compactRows,
     setCompactRows,
   } = externalState || internalState;
+
+  // Grouping
+  type GroupByOption = "none" | "room" | "status" | "vendor";
+  const [groupBy, setGroupBy] = useState<GroupByOption>(() =>
+    (localStorage.getItem(`purchases-groupby-${projectId}`) as GroupByOption) || "none"
+  );
+  const handleGroupByChange = (v: GroupByOption) => {
+    setGroupBy(v);
+    localStorage.setItem(`purchases-groupby-${projectId}`, v);
+  };
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroupCollapse = (key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
 
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{
@@ -612,6 +632,37 @@ export function PurchasesTableView({
           <Rows3 className="h-4 w-4" />
         </Button>
 
+        {/* Group by */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant={groupBy !== "none" ? "default" : "outline"}
+              size="icon"
+              className="h-8 w-8"
+              title={t("budget.groupBy")}
+            >
+              <Layers className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48" align="end">
+            <div className="space-y-1">
+              <p className="text-sm font-medium mb-2">{t("budget.groupBy")}</p>
+              {(["none", "room", "status", "vendor"] as GroupByOption[]).map((opt) => (
+                <label
+                  key={opt}
+                  className={cn("flex items-center gap-2 text-sm cursor-pointer rounded-md px-2 py-1.5 hover:bg-accent", groupBy === opt && "bg-accent font-medium")}
+                  onClick={() => handleGroupByChange(opt)}
+                >
+                  {opt === "none" && t("budget.groupNone")}
+                  {opt === "room" && t("budget.groupByRoom")}
+                  {opt === "status" && t("budget.groupByStatus")}
+                  {opt === "vendor" && t("budget.groupByVendor", "Group by vendor")}
+                </label>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+
       </div>}
 
       {/* Table */}
@@ -671,27 +722,75 @@ export function PurchasesTableView({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  sortedMaterials.map((material) => (
-                    <TableRow
-                      key={material.id}
-                      className="hover:bg-muted/50 cursor-pointer"
-                      onClick={() => onMaterialClick(material)}
-                    >
-                      {visibleColumns.map((col, colIdx) => (
-                        <TableCell
-                          key={col.key}
-                          className={cn(
-                            col.align === "right" ? "text-right" : "",
-                            compactRows && "py-1 text-xs",
-                            dragOverIdx === colIdx && dragColIdx !== null && dragColIdx !== colIdx && "border-l-2 border-primary",
-                            colIdx === 0 && "sticky left-0 z-10 bg-card after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border",
-                          )}
+                  (() => {
+                    const renderMaterialRow = (material: typeof sortedMaterials[0]) => (
+                      <TableRow
+                        key={material.id}
+                        className="hover:bg-muted/50 cursor-pointer"
+                        onClick={() => onMaterialClick(material)}
+                      >
+                        {visibleColumns.map((col, colIdx) => (
+                          <TableCell
+                            key={col.key}
+                            className={cn(
+                              col.align === "right" ? "text-right" : "",
+                              compactRows && "py-1 text-xs",
+                              dragOverIdx === colIdx && dragColIdx !== null && dragColIdx !== colIdx && "border-l-2 border-primary",
+                              colIdx === 0 && "sticky left-0 z-10 bg-card after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border",
+                            )}
+                          >
+                            {renderCell(col, material)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    );
+
+                    if (groupBy === "none") return sortedMaterials.map(renderMaterialRow);
+
+                    const getGroupKey = (m: typeof sortedMaterials[0]): string => {
+                      switch (groupBy) {
+                        case "room": return m.room_id || "__none__";
+                        case "status": return m.status || "__none__";
+                        case "vendor": return m.vendor_name || "__none__";
+                        default: return "__all__";
+                      }
+                    };
+                    const getGroupLabel = (key: string): string => {
+                      if (key === "__none__") return groupBy === "room" ? t("budget.noRoom") : groupBy === "vendor" ? t("budget.noVendor", "No vendor") : t("budget.noStatus");
+                      if (groupBy === "room") return rooms.find((r) => r.id === key)?.name || key;
+                      if (groupBy === "status") return t(`materialStatuses.${key}`, key);
+                      return key; // vendor name as-is
+                    };
+
+                    const groups = new Map<string, typeof sortedMaterials>();
+                    const groupOrder: string[] = [];
+                    for (const m of sortedMaterials) {
+                      const key = getGroupKey(m);
+                      if (!groups.has(key)) { groups.set(key, []); groupOrder.push(key); }
+                      groups.get(key)!.push(m);
+                    }
+
+                    return groupOrder.flatMap((key) => {
+                      const groupItems = groups.get(key)!;
+                      const header = (
+                        <TableRow
+                          key={`group-${key}`}
+                          className="cursor-pointer hover:bg-muted/50 bg-primary/5 border-t-2 border-primary/20"
+                          onClick={() => toggleGroupCollapse(key)}
                         >
-                          {renderCell(col, material)}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
+                          <TableCell colSpan={visibleColumns.length} className="py-2">
+                            <div className="flex items-center gap-2">
+                              <ChevronDown className={cn("h-4 w-4 text-primary transition-transform", collapsedGroups.has(key) && "-rotate-90")} />
+                              <span className="text-sm font-semibold">{getGroupLabel(key)}</span>
+                              <Badge variant="secondary" className="text-xs">{groupItems.length}</Badge>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                      if (collapsedGroups.has(key)) return [header];
+                      return [header, ...groupItems.map(renderMaterialRow)];
+                    });
+                  })()
                 )}
               </TableBody>
             </Table>

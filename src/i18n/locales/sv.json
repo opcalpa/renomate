@@ -1963,6 +1963,8 @@
     "noRoom": "Inget rum",
     "noCostCenter": "Inget kostnadsställe",
     "noStatus": "Ingen status",
+    "noVendor": "Ingen leverantör",
+    "groupByVendor": "Gruppera per leverantör",
     "saveView": "Spara vy",
     "saveCurrentView": "Spara nuvarande vy",
     "saveViewDescription": "Sparar kolumnordning, synliga kolumner och sorteringsinställningar.",

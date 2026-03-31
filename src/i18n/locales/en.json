@@ -2466,6 +2466,8 @@
     "noRoom": "No room",
     "noCostCenter": "No cost center",
     "noStatus": "No status",
+    "noVendor": "No vendor",
+    "groupByVendor": "Group by vendor",
     "saveView": "Save View",
     "saveCurrentView": "Save Current View",
     "saveViewDescription": "Saves column order, visible columns, and sort settings.",
