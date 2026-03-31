@@ -5003,11 +5003,18 @@
   "dashboard": {
     "overdue": "Overdue",
     "allOnTrack": "All on track",
+    "overdueTooltip": "Tasks past their deadline, by project:",
+    "overdueTooltipNone": "No overdue tasks — all projects are on track.",
     "comments": "Comments",
     "lastWeek": "Last 7 days",
     "noRecent": "No recent activity",
+    "commentsTooltip": "Comments in the last 7 days, by project:",
+    "commentsTooltipNone": "No comments in the last week.",
     "purchases": "To order",
     "noPending": "Nothing pending",
-    "budget": "Budget"
+    "purchasesTooltip": "Materials ready to order, by project:",
+    "purchasesTooltipNone": "No pending purchase orders.",
+    "budget": "Budget",
+    "budgetTooltip": "Spent vs. budget per project:"
   }
 }

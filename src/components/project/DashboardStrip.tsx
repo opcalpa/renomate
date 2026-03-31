@@ -5,8 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/currency";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   AlertTriangle,
-  CheckCircle2,
   MessageSquare,
   ShoppingCart,
   TrendingUp,
@@ -17,10 +21,23 @@ interface DashboardStripProps {
   currency?: string;
 }
 
+interface ProjectStat {
+  projectId: string;
+  projectName: string;
+  count: number;
+}
+
+interface BudgetStat {
+  projectName: string;
+  budget: number;
+  spent: number;
+}
+
 interface StripData {
-  overdueTasks: Array<{ projectId: string; projectName: string; count: number }>;
-  unreadComments: Array<{ projectId: string; projectName: string; count: number }>;
-  pendingPurchases: Array<{ projectId: string; projectName: string; count: number }>;
+  overdueTasks: ProjectStat[];
+  recentComments: ProjectStat[];
+  pendingPurchases: ProjectStat[];
+  budgetByProject: BudgetStat[];
   totalBudget: number;
   totalSpent: number;
 }
@@ -34,9 +51,7 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
     queryFn: async () => {
       const today = new Date().toISOString().split("T")[0];
 
-      // Fetch in parallel
       const [overdueRes, commentsRes, purchasesRes, budgetRes] = await Promise.all([
-        // Overdue tasks (deadline passed, not completed)
         supabase
           .from("tasks")
           .select("id, project_id, projects!inner(name)")
@@ -44,85 +59,57 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
           .lt("due_date", today)
           .not("status", "eq", "done")
           .is("deleted_at", null),
-
-        // Recent comments (last 7 days)
         supabase
           .from("comments")
           .select("id, project_id, projects!inner(name)")
           .in("project_id", projectIds)
           .gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString()),
-
-        // Pending purchases (to_order status)
         supabase
           .from("materials")
           .select("id, project_id, projects!inner(name)")
           .in("project_id", projectIds)
           .eq("status", "to_order"),
-
-        // Budget aggregation
         supabase
           .from("projects")
-          .select("total_budget, spent_amount")
+          .select("id, name, total_budget, spent_amount")
           .in("id", projectIds),
       ]);
 
-      // Group overdue by project
-      const overdueByProject = new Map<string, { name: string; count: number }>();
-      for (const task of overdueRes.data || []) {
-        const proj = overdueByProject.get(task.project_id) || {
-          name: (task.projects as unknown as { name: string })?.name || "",
-          count: 0,
-        };
-        proj.count++;
-        overdueByProject.set(task.project_id, proj);
+      function groupByProject(rows: Array<{ project_id: string; projects: unknown }>) {
+        const map = new Map<string, { name: string; count: number }>();
+        for (const row of rows) {
+          const entry = map.get(row.project_id) || {
+            name: (row.projects as { name: string })?.name || "",
+            count: 0,
+          };
+          entry.count++;
+          map.set(row.project_id, entry);
+        }
+        return Array.from(map.entries()).map(([projectId, v]) => ({
+          projectId,
+          projectName: v.name,
+          count: v.count,
+        }));
       }
 
-      // Group comments by project
-      const commentsByProject = new Map<string, { name: string; count: number }>();
-      for (const comment of commentsRes.data || []) {
-        const proj = commentsByProject.get(comment.project_id) || {
-          name: (comment.projects as unknown as { name: string })?.name || "",
-          count: 0,
-        };
-        proj.count++;
-        commentsByProject.set(comment.project_id, proj);
-      }
-
-      // Group purchases by project
-      const purchasesByProject = new Map<string, { name: string; count: number }>();
-      for (const mat of purchasesRes.data || []) {
-        const proj = purchasesByProject.get(mat.project_id) || {
-          name: (mat.projects as unknown as { name: string })?.name || "",
-          count: 0,
-        };
-        proj.count++;
-        purchasesByProject.set(mat.project_id, proj);
-      }
-
-      // Budget totals
+      const budgetByProject: BudgetStat[] = [];
       let totalBudget = 0;
       let totalSpent = 0;
       for (const p of budgetRes.data || []) {
-        totalBudget += p.total_budget || 0;
-        totalSpent += p.spent_amount || 0;
+        const b = p.total_budget || 0;
+        const s = p.spent_amount || 0;
+        if (b > 0 || s > 0) {
+          budgetByProject.push({ projectName: p.name, budget: b, spent: s });
+        }
+        totalBudget += b;
+        totalSpent += s;
       }
 
       return {
-        overdueTasks: Array.from(overdueByProject.entries()).map(([projectId, v]) => ({
-          projectId,
-          projectName: v.name,
-          count: v.count,
-        })),
-        unreadComments: Array.from(commentsByProject.entries()).map(([projectId, v]) => ({
-          projectId,
-          projectName: v.name,
-          count: v.count,
-        })),
-        pendingPurchases: Array.from(purchasesByProject.entries()).map(([projectId, v]) => ({
-          projectId,
-          projectName: v.name,
-          count: v.count,
-        })),
+        overdueTasks: groupByProject(overdueRes.data || []),
+        recentComments: groupByProject(commentsRes.data || []),
+        pendingPurchases: groupByProject(purchasesRes.data || []),
+        budgetByProject,
         totalBudget,
         totalSpent,
       } satisfies StripData;
@@ -131,23 +118,13 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
     staleTime: 60 * 1000,
   });
 
-  const totalOverdue = useMemo(
-    () => data?.overdueTasks.reduce((s, p) => s + p.count, 0) ?? 0,
-    [data]
-  );
-  const totalComments = useMemo(
-    () => data?.unreadComments.reduce((s, p) => s + p.count, 0) ?? 0,
-    [data]
-  );
-  const totalPurchases = useMemo(
-    () => data?.pendingPurchases.reduce((s, p) => s + p.count, 0) ?? 0,
-    [data]
-  );
+  const totalOverdue = useMemo(() => data?.overdueTasks.reduce((s, p) => s + p.count, 0) ?? 0, [data]);
+  const totalComments = useMemo(() => data?.recentComments.reduce((s, p) => s + p.count, 0) ?? 0, [data]);
+  const totalPurchases = useMemo(() => data?.pendingPurchases.reduce((s, p) => s + p.count, 0) ?? 0, [data]);
 
   if (projectIds.length < 2 || isLoading || !data) return null;
 
-  // Don't show if there's nothing interesting to show
-  const hasContent = totalOverdue > 0 || totalComments > 0 || totalPurchases > 0 || (data.totalBudget > 0);
+  const hasContent = totalOverdue > 0 || totalComments > 0 || totalPurchases > 0 || data.totalBudget > 0;
   if (!hasContent) return null;
 
   const budgetPct = data.totalBudget > 0 ? Math.round((data.totalSpent / data.totalBudget) * 100) : 0;
@@ -155,119 +132,196 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
       {/* Overdue tasks */}
-      <button
-        type="button"
-        onClick={() => {
-          const first = data.overdueTasks[0];
-          if (first) navigate(`/projects/${first.projectId}?tab=tasks`);
-        }}
-        className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-shadow"
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <AlertTriangle className={`h-4 w-4 ${totalOverdue > 0 ? "text-red-500" : "text-green-500"}`} />
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {t("dashboard.overdue", "Overdue")}
-          </span>
-        </div>
-        {totalOverdue > 0 ? (
-          <>
-            <p className="text-2xl font-bold tabular-nums text-red-600">{totalOverdue}</p>
-            <p className="text-xs text-muted-foreground mt-1 truncate">
-              {data.overdueTasks.map((p) => `${p.projectName} (${p.count})`).join(", ")}
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-2xl font-bold tabular-nums text-green-600">0</p>
-            <p className="text-xs text-muted-foreground mt-1">{t("dashboard.allOnTrack", "All on track")}</p>
-          </>
-        )}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => {
+              const first = data.overdueTasks[0];
+              if (first) navigate(`/projects/${first.projectId}?tab=tasks`);
+            }}
+            className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className={`h-4 w-4 ${totalOverdue > 0 ? "text-red-500" : "text-green-500"}`} />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {t("dashboard.overdue")}
+              </span>
+            </div>
+            {totalOverdue > 0 ? (
+              <>
+                <p className="text-2xl font-bold tabular-nums text-red-600">{totalOverdue}</p>
+                <p className="text-xs text-muted-foreground mt-1 truncate">
+                  {data.overdueTasks.map((p) => `${p.projectName} (${p.count})`).join(", ")}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl font-bold tabular-nums text-green-600">0</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("dashboard.allOnTrack")}</p>
+              </>
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-xs">
+          {totalOverdue > 0 ? (
+            <div className="space-y-1.5">
+              <p className="font-medium text-sm">{t("dashboard.overdueTooltip")}</p>
+              {data.overdueTasks.map((p) => (
+                <div key={p.projectId} className="flex justify-between gap-4 text-xs">
+                  <span className="truncate">{p.projectName}</span>
+                  <span className="font-medium tabular-nums text-red-400">{p.count}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm">{t("dashboard.overdueTooltipNone")}</p>
+          )}
+        </TooltipContent>
+      </Tooltip>
 
       {/* Recent comments */}
-      <button
-        type="button"
-        onClick={() => {
-          const first = data.unreadComments[0];
-          if (first) navigate(`/projects/${first.projectId}?tab=overview`);
-        }}
-        className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-shadow"
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <MessageSquare className={`h-4 w-4 ${totalComments > 0 ? "text-blue-500" : "text-muted-foreground"}`} />
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {t("dashboard.comments", "Comments")}
-          </span>
-        </div>
-        {totalComments > 0 ? (
-          <>
-            <p className="text-2xl font-bold tabular-nums">{totalComments}</p>
-            <p className="text-xs text-muted-foreground mt-1 truncate">
-              {t("dashboard.lastWeek", "Last 7 days")}
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-2xl font-bold tabular-nums text-muted-foreground">0</p>
-            <p className="text-xs text-muted-foreground mt-1">{t("dashboard.noRecent", "No recent activity")}</p>
-          </>
-        )}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => {
+              const first = data.recentComments[0];
+              if (first) navigate(`/projects/${first.projectId}?tab=overview`);
+            }}
+            className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare className={`h-4 w-4 ${totalComments > 0 ? "text-blue-500" : "text-muted-foreground"}`} />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {t("dashboard.comments")}
+              </span>
+            </div>
+            {totalComments > 0 ? (
+              <>
+                <p className="text-2xl font-bold tabular-nums">{totalComments}</p>
+                <p className="text-xs text-muted-foreground mt-1 truncate">{t("dashboard.lastWeek")}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl font-bold tabular-nums text-muted-foreground">0</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("dashboard.noRecent")}</p>
+              </>
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-xs">
+          {totalComments > 0 ? (
+            <div className="space-y-1.5">
+              <p className="font-medium text-sm">{t("dashboard.commentsTooltip")}</p>
+              {data.recentComments.map((p) => (
+                <div key={p.projectId} className="flex justify-between gap-4 text-xs">
+                  <span className="truncate">{p.projectName}</span>
+                  <span className="font-medium tabular-nums">{p.count}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm">{t("dashboard.commentsTooltipNone")}</p>
+          )}
+        </TooltipContent>
+      </Tooltip>
 
       {/* Pending purchases */}
-      <button
-        type="button"
-        onClick={() => {
-          const first = data.pendingPurchases[0];
-          if (first) navigate(`/projects/${first.projectId}?tab=purchases`);
-        }}
-        className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-shadow"
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <ShoppingCart className={`h-4 w-4 ${totalPurchases > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {t("dashboard.purchases", "To order")}
-          </span>
-        </div>
-        {totalPurchases > 0 ? (
-          <>
-            <p className="text-2xl font-bold tabular-nums text-amber-600">{totalPurchases}</p>
-            <p className="text-xs text-muted-foreground mt-1 truncate">
-              {data.pendingPurchases.map((p) => `${p.projectName} (${p.count})`).join(", ")}
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-2xl font-bold tabular-nums text-muted-foreground">0</p>
-            <p className="text-xs text-muted-foreground mt-1">{t("dashboard.noPending", "Nothing pending")}</p>
-          </>
-        )}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => {
+              const first = data.pendingPurchases[0];
+              if (first) navigate(`/projects/${first.projectId}?tab=purchases`);
+            }}
+            className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <ShoppingCart className={`h-4 w-4 ${totalPurchases > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {t("dashboard.purchases")}
+              </span>
+            </div>
+            {totalPurchases > 0 ? (
+              <>
+                <p className="text-2xl font-bold tabular-nums text-amber-600">{totalPurchases}</p>
+                <p className="text-xs text-muted-foreground mt-1 truncate">
+                  {data.pendingPurchases.map((p) => `${p.projectName} (${p.count})`).join(", ")}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl font-bold tabular-nums text-muted-foreground">0</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("dashboard.noPending")}</p>
+              </>
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-xs">
+          {totalPurchases > 0 ? (
+            <div className="space-y-1.5">
+              <p className="font-medium text-sm">{t("dashboard.purchasesTooltip")}</p>
+              {data.pendingPurchases.map((p) => (
+                <div key={p.projectId} className="flex justify-between gap-4 text-xs">
+                  <span className="truncate">{p.projectName}</span>
+                  <span className="font-medium tabular-nums text-amber-400">{p.count}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm">{t("dashboard.purchasesTooltipNone")}</p>
+          )}
+        </TooltipContent>
+      </Tooltip>
 
       {/* Budget overview */}
       {data.totalBudget > 0 && (
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className={`h-4 w-4 ${budgetPct > 90 ? "text-red-500" : budgetPct > 70 ? "text-amber-500" : "text-green-500"}`} />
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {t("dashboard.budget", "Budget")}
-            </span>
-          </div>
-          <p className="text-2xl font-bold tabular-nums">
-            {formatCurrency(data.totalSpent, currency)}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            / {formatCurrency(data.totalBudget, currency)}
-          </p>
-          <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden mt-2">
-            <div
-              className={`h-full rounded-full transition-all ${
-                budgetPct > 90 ? "bg-red-500" : budgetPct > 70 ? "bg-amber-500" : "bg-green-500"
-              }`}
-              style={{ width: `${Math.min(budgetPct, 100)}%` }}
-            />
-          </div>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className={`h-4 w-4 ${budgetPct > 90 ? "text-red-500" : budgetPct > 70 ? "text-amber-500" : "text-green-500"}`} />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {t("dashboard.budget")}
+                </span>
+              </div>
+              <p className="text-2xl font-bold tabular-nums">
+                {formatCurrency(data.totalSpent, currency)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                / {formatCurrency(data.totalBudget, currency)}
+              </p>
+              <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden mt-2">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    budgetPct > 90 ? "bg-red-500" : budgetPct > 70 ? "bg-amber-500" : "bg-green-500"
+                  }`}
+                  style={{ width: `${Math.min(budgetPct, 100)}%` }}
+                />
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs">
+            <div className="space-y-1.5">
+              <p className="font-medium text-sm">{t("dashboard.budgetTooltip")}</p>
+              {data.budgetByProject.map((p) => (
+                <div key={p.projectName} className="flex justify-between gap-4 text-xs">
+                  <span className="truncate">{p.projectName}</span>
+                  <span className="tabular-nums">
+                    {formatCurrency(p.spent, currency)}
+                    <span className="text-muted-foreground"> / {formatCurrency(p.budget, currency)}</span>
+                  </span>
+                </div>
+              ))}
+              <div className="border-t pt-1.5 flex justify-between text-xs font-medium">
+                <span>{t("common.total")}</span>
+                <span className="tabular-nums">{budgetPct}%</span>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
       )}
     </div>
   );
