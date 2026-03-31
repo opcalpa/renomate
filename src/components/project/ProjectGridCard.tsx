@@ -67,15 +67,13 @@ export function ProjectGridCard({
         supabase
           .from("tasks")
           .select("id, status")
-          .eq("project_id", project.id)
-          .is("deleted_at", null),
+          .eq("project_id", project.id),
         supabase
           .from("tasks")
           .select("id", { count: "exact", head: true })
           .eq("project_id", project.id)
           .lt("due_date", today)
-          .not("status", "eq", "done")
-          .is("deleted_at", null),
+          .not("status", "eq", "done"),
         supabase
           .from("comments")
           .select("id", { count: "exact", head: true })

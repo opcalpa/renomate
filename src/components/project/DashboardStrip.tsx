@@ -58,8 +58,7 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
           .select("id, title, project_id, projects!inner(name)")
           .in("project_id", projectIds)
           .lt("due_date", today)
-          .not("status", "eq", "done")
-          .is("deleted_at", null),
+          .not("status", "eq", "done"),
         supabase
           .from("comments")
           .select("id, content, project_id, projects!inner(name)")
