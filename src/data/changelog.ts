@@ -13,6 +13,12 @@ export const changelog: ChangelogEntry[] = [
   // ── 2026-03-31 ──
   {
     date: "2026-03-31",
+    title: "Group budget rows by room, cost center, or status",
+    description: "New 'Group by' dropdown in the Budget table toolbar. Groups rows with collapsible headers, item counts, and budget subtotals per group. Preference saved per project.",
+    tags: ["Budget", "UX"],
+  },
+  {
+    date: "2026-03-31",
     title: "Richer project cards in grid view",
     description: "Project cards now show task progress bar, overdue count, recent comments, budget, and a visual placeholder when no cover image is set. Much more at-a-glance info without opening the project.",
     tags: ["UX", "Design"],
