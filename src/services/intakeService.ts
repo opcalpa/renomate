@@ -319,6 +319,7 @@ export async function createProjectFromGuidedSetup(
     address?: string;
     postalCode?: string;
     city?: string;
+    country?: string;
     rooms: Array<{
       name: string;
       area_sqm?: number;
@@ -343,6 +344,7 @@ export async function createProjectFromGuidedSetup(
       address: input.address || null,
       postal_code: input.postalCode || null,
       city: input.city || null,
+      country: input.country || "SE",
       status: "planning",
     })
     .select("id")

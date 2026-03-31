@@ -1335,6 +1335,7 @@ export type Database = {
           language_preference: string | null
           latitude: number | null
           longitude: number | null
+          measurement_system: string | null
           name: string
           onboarding_asked_household: boolean | null
           onboarding_completed_at: string | null
@@ -1354,6 +1355,7 @@ export type Database = {
           personnummer: string | null
           phone: string | null
           role: string | null
+          ui_preferences: Json | null
           updated_at: string
           user_id: string
         }
@@ -1384,6 +1386,7 @@ export type Database = {
           language_preference?: string | null
           latitude?: number | null
           longitude?: number | null
+          measurement_system?: string | null
           name: string
           onboarding_asked_household?: boolean | null
           onboarding_completed_at?: string | null
@@ -1403,6 +1406,7 @@ export type Database = {
           personnummer?: string | null
           phone?: string | null
           role?: string | null
+          ui_preferences?: Json | null
           updated_at?: string
           user_id: string
         }
@@ -1433,6 +1437,7 @@ export type Database = {
           language_preference?: string | null
           latitude?: number | null
           longitude?: number | null
+          measurement_system?: string | null
           name?: string
           onboarding_asked_household?: boolean | null
           onboarding_completed_at?: string | null
@@ -1452,6 +1457,7 @@ export type Database = {
           personnummer?: string | null
           phone?: string | null
           role?: string | null
+          ui_preferences?: Json | null
           updated_at?: string
           user_id?: string
         }
@@ -1771,7 +1777,10 @@ export type Database = {
           address: string | null
           city: string | null
           client_id: string | null
+          country: string
+          cover_image_position: number | null
           cover_image_url: string | null
+          cover_image_zoom: number | null
           created_at: string
           currency: string | null
           deleted_at: string | null
@@ -1798,7 +1807,10 @@ export type Database = {
           address?: string | null
           city?: string | null
           client_id?: string | null
+          country?: string
+          cover_image_position?: number | null
           cover_image_url?: string | null
+          cover_image_zoom?: number | null
           created_at?: string
           currency?: string | null
           deleted_at?: string | null
@@ -1825,7 +1837,10 @@ export type Database = {
           address?: string | null
           city?: string | null
           client_id?: string | null
+          country?: string
+          cover_image_position?: number | null
           cover_image_url?: string | null
+          cover_image_zoom?: number | null
           created_at?: string
           currency?: string | null
           deleted_at?: string | null

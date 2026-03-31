@@ -110,7 +110,7 @@ const OverviewTab = ({
 }: OverviewTabProps) => {
   const { t } = useTranslation();
   const { lockStatus } = useProjectLock(isGuest ? undefined : project.id);
-  const { showTaxDeduction } = useTaxDeductionVisible();
+  const { showTaxDeduction } = useTaxDeductionVisible(project.country);
   const isHomeowner = userType === "homeowner";
   const isInvitedClient = isHomeowner && !isProjectOwner;
   const projectStatus = normalizeStatus(project.status);
