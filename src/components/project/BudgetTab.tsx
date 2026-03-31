@@ -211,6 +211,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchExpanded, setSearchExpanded] = useState(false);
   const [filterType, setFilterType] = useState<"all" | "task" | "material">("all");
 
   // Grouping
@@ -1621,17 +1622,31 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
 
       {/* Filters */}
       <div className="flex flex-row flex-wrap items-end gap-2 md:gap-4 mb-4">
-        <div className="min-w-[140px] max-w-[200px]">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="budget-search"
-              placeholder={t('budget.filterByName')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-8"
-            />
-          </div>
+        <div className={`transition-all duration-200 ${searchQuery || searchExpanded ? "min-w-[140px] max-w-[200px]" : "w-8"}`}>
+          {searchQuery || searchExpanded ? (
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="budget-search"
+                autoFocus
+                placeholder={t('budget.filterByName')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onBlur={() => { if (!searchQuery) setSearchExpanded(false); }}
+                className="pl-9 h-8"
+              />
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setSearchExpanded(true)}
+              title={t('budget.filterByName')}
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         <div className="w-[130px]">
           <Select value={filterType} onValueChange={(v) => setFilterType(v as "all" | "task" | "material")}>
