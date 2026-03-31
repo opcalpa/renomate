@@ -1,8 +1,11 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
+import { Sparkles, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { AppHeader } from "@/components/AppHeader";
+import { supabase } from "@/integrations/supabase/client";
 import { changelog } from "@/data/changelog";
 
 const TAG_COLORS: Record<string, string> = {
@@ -28,6 +31,26 @@ function formatDate(dateStr: string) {
 
 export default function Changelog() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const { data: profile } = useQuery({
+    queryKey: ["profile-for-header"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("name, avatar_url")
+        .eq("user_id", user.id)
+        .single();
+      return { ...data, email: user.email };
+    },
+  });
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
+  };
 
   // Group entries by date
   const grouped = useMemo(() => {
@@ -42,20 +65,23 @@ export default function Changelog() {
 
   return (
     <div className="min-h-screen bg-muted/20">
-      {/* Header */}
+      <AppHeader
+        userName={profile?.name ?? undefined}
+        userEmail={profile?.email ?? undefined}
+        avatarUrl={profile?.avatar_url ?? undefined}
+        onSignOut={handleSignOut}
+      />
+
+      {/* Page header */}
       <div className="border-b bg-background">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-          <Button variant="ghost" size="sm" className="mb-4 -ml-2 text-muted-foreground" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Tillbaka
-          </Button>
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
               <Sparkles className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Nyheter</h1>
-              <p className="text-muted-foreground text-sm mt-0.5">Senaste uppdateringarna i Renomate</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t("nav.changelog", "Nyheter")}</h1>
+              <p className="text-muted-foreground text-sm mt-0.5">{t("changelog.subtitle", "Senaste uppdateringarna i Renomate")}</p>
             </div>
           </div>
         </div>
