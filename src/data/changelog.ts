@@ -13,6 +13,12 @@ export const changelog: ChangelogEntry[] = [
   // ── 2026-03-31 ──
   {
     date: "2026-03-31",
+    title: "Dashboard overview across all projects",
+    description: "Start page now shows aggregated stats when you have multiple projects: overdue tasks, recent comments, pending purchases, and total budget — all clickable to navigate directly.",
+    tags: ["UX", "Produktivitet"],
+  },
+  {
+    date: "2026-03-31",
     title: "Full i18n for onboarding & intake forms",
     description: "Room names, work types, builder dialogs, and form preview — all translated. No more Swedish strings leaking into English UI.",
     tags: ["i18n", "Onboarding"],
