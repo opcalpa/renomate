@@ -13,9 +13,9 @@ export const changelog: ChangelogEntry[] = [
   // ── 2026-03-31 ──
   {
     date: "2026-03-31",
-    title: "Group budget rows by room, cost center, or status",
-    description: "New 'Group by' dropdown in the Budget table toolbar. Groups rows with collapsible headers, item counts, and budget subtotals per group. Preference saved per project.",
-    tags: ["Budget", "UX"],
+    title: "Group any table by room, cost center, status, or vendor",
+    description: "New grouping button (layers icon) in Budget, Tasks, and Purchases tables. Collapsible groups with item counts and subtotals. Like Excel grouping but prettier. Preference saved per project.",
+    tags: ["Budget", "Arbeten", "Inköp", "UX"],
   },
   {
     date: "2026-03-31",
