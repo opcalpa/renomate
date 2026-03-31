@@ -95,6 +95,24 @@ export function usePurchasesTableView(projectId: string) {
     () => saved.current?.compactRows ?? false
   );
 
+  // Grouping
+  type GroupByOption = "none" | "room" | "status" | "vendor";
+  const [groupBy, setGroupBy] = useState<GroupByOption>(() =>
+    (localStorage.getItem(`purchases-groupby-${projectId}`) as GroupByOption) || "none"
+  );
+  const handleGroupByChange = useCallback((v: string) => {
+    setGroupBy(v as GroupByOption);
+    localStorage.setItem(`purchases-groupby-${projectId}`, v);
+  }, [projectId]);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroupCollapse = useCallback((key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
+
   // Auto-persist on every change
   useEffect(() => {
     persistPrefs(projectId, isMobile, {
@@ -190,6 +208,10 @@ export function usePurchasesTableView(projectId: string) {
     dragOverIdx,
     compactRows,
     setCompactRows,
+    groupBy,
+    handleGroupByChange,
+    collapsedGroups,
+    toggleGroupCollapse,
   };
 }
 

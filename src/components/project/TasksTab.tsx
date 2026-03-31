@@ -19,7 +19,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map as MapIcon, Loader2, AlertTriangle, Link2, ImageIcon, MessageSquare, Columns3, AlignJustify } from "lucide-react";
+import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map as MapIcon, Loader2, AlertTriangle, Link2, ImageIcon, MessageSquare, Columns3, AlignJustify, Layers } from "lucide-react";
 import { TaskListSkeleton } from "@/components/ui/skeleton-screens";
 import { DEFAULT_COST_CENTERS, getCostCenterIcon, getCostCenterLabel } from "@/lib/costCenters";
 import { formatCurrency } from "@/lib/currency";
@@ -1373,6 +1373,39 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
           >
             <AlignJustify className="h-4 w-4" />
           </Button>
+
+          {/* Group by — table/list views only */}
+          {(viewMode === "table" || viewMode === "list") && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={tableViewState.groupBy !== "none" ? "default" : "outline"}
+                  size="icon"
+                  className="h-9 w-9"
+                  title={t("budget.groupBy")}
+                >
+                  <Layers className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48" align="end">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium mb-2">{t("budget.groupBy")}</p>
+                  {(["none", "room", "costCenter", "status"] as const).map((opt) => (
+                    <label
+                      key={opt}
+                      className={`flex items-center gap-2 text-sm cursor-pointer rounded-md px-2 py-1.5 hover:bg-accent ${tableViewState.groupBy === opt ? "bg-accent font-medium" : ""}`}
+                      onClick={() => tableViewState.handleGroupByChange(opt)}
+                    >
+                      {opt === "none" && t("budget.groupNone")}
+                      {opt === "room" && t("budget.groupByRoom")}
+                      {opt === "costCenter" && t("budget.groupByCostCenter")}
+                      {opt === "status" && t("budget.groupByStatus")}
+                    </label>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
 
           {/* Spacer to push Add Task to the right */}
           <div className="flex-1" />

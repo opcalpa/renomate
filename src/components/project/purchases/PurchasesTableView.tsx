@@ -166,25 +166,11 @@ export function PurchasesTableView({
     dragOverIdx,
     compactRows,
     setCompactRows,
+    groupBy,
+    handleGroupByChange,
+    collapsedGroups,
+    toggleGroupCollapse,
   } = externalState || internalState;
-
-  // Grouping
-  type GroupByOption = "none" | "room" | "status" | "vendor";
-  const [groupBy, setGroupBy] = useState<GroupByOption>(() =>
-    (localStorage.getItem(`purchases-groupby-${projectId}`) as GroupByOption) || "none"
-  );
-  const handleGroupByChange = (v: GroupByOption) => {
-    setGroupBy(v);
-    localStorage.setItem(`purchases-groupby-${projectId}`, v);
-  };
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const toggleGroupCollapse = (key: string) => {
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  };
 
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{

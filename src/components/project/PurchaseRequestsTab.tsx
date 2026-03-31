@@ -21,6 +21,7 @@ import {
   Table as TableIcon,
   Columns3,
   Rows3,
+  Layers,
   Trash2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -1533,6 +1534,36 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                     >
                       <Rows3 className="h-4 w-4" />
                     </Button>
+                    {/* Group by */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={purchaseTableViewState.groupBy !== "none" ? "default" : "outline"}
+                          size="icon"
+                          className="h-8 w-8"
+                          title={t("budget.groupBy")}
+                        >
+                          <Layers className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48" align="end">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium mb-2">{t("budget.groupBy")}</p>
+                          {(["none", "room", "status", "vendor"] as const).map((opt) => (
+                            <label
+                              key={opt}
+                              className={`flex items-center gap-2 text-sm cursor-pointer rounded-md px-2 py-1.5 hover:bg-accent ${purchaseTableViewState.groupBy === opt ? "bg-accent font-medium" : ""}`}
+                              onClick={() => purchaseTableViewState.handleGroupByChange(opt)}
+                            >
+                              {opt === "none" && t("budget.groupNone")}
+                              {opt === "room" && t("budget.groupByRoom")}
+                              {opt === "status" && t("budget.groupByStatus")}
+                              {opt === "vendor" && t("budget.groupByVendor")}
+                            </label>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </>
                 )}
 
