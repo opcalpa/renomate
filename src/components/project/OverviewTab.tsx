@@ -30,9 +30,9 @@ import { PlanningRoomList } from "./overview/PlanningRoomList";
 import { HomeownerPlanningView } from "./overview/HomeownerPlanningView";
 import { GuestPlanningSection } from "./overview/GuestPlanningSection";
 import { ProjectHeader } from "./overview/ProjectHeader";
-import { RotDetailsCard } from "./overview/RotDetailsCard";
 import { RotSummaryCard } from "./overview/RotSummaryCard";
 import { HouseholdRotDialog } from "./overview/HouseholdRotDialog";
+import { useTaxDeductionVisible } from "@/hooks/useTaxDeduction";
 import { ReminderSection } from "./overview/ReminderSection";
 import { normalizeStatus, isQuotePhase } from "@/lib/projectStatus";
 import { supabase } from "@/integrations/supabase/client";
@@ -110,6 +110,7 @@ const OverviewTab = ({
 }: OverviewTabProps) => {
   const { t } = useTranslation();
   const { lockStatus } = useProjectLock(isGuest ? undefined : project.id);
+  const { showTaxDeduction } = useTaxDeductionVisible();
   const isHomeowner = userType === "homeowner";
   const isInvitedClient = isHomeowner && !isProjectOwner;
   const projectStatus = normalizeStatus(project.status);
@@ -258,7 +259,8 @@ const OverviewTab = ({
     isHomeowner,
     propertyDesignation: project.property_designation,
     rotPersonnummer,
-  }), [project, taskStats, budgetStats, hasClient, isPlanning, isHomeowner, rotPersonnummer]);
+    showTaxDeduction,
+  }), [project, taskStats, budgetStats, hasClient, isPlanning, isHomeowner, rotPersonnummer, showTaxDeduction]);
 
   const { reminders, dismissReminder, dismissAll: dismissAllReminders } = useProjectReminders(reminderCtx);
 
@@ -502,7 +504,7 @@ const OverviewTab = ({
         />
       )}
 
-      {isHomeowner && (
+      {isHomeowner && showTaxDeduction && (
         <HouseholdRotDialog
           projectId={project.id}
           open={householdDialogOpen}
@@ -518,7 +520,7 @@ const OverviewTab = ({
         onNavigateToFiles={onNavigateToFiles}
       />
 
-      <RotSummaryCard projectId={project.id} />
+      {showTaxDeduction && <RotSummaryCard projectId={project.id} />}
 
       {/* Quotes & Invoices unified card - contractors, active phases */}
       {!isHomeowner && !isPlanning && (

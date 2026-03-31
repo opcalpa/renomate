@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePersistedPreference } from "@/hooks/usePersistedPreference";
+import { useTaxDeductionVisible } from "@/hooks/useTaxDeduction";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -107,6 +108,7 @@ interface PurchaseRequestsTabProps {
 
 const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency }: PurchaseRequestsTabProps) => {
   const { t } = useTranslation();
+  const { showTaxDeduction } = useTaxDeductionVisible();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -1680,17 +1682,19 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
               </div>
 
               {/* ROT + Betaldat */}
-              <div className="grid grid-cols-2 gap-4 mt-3">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-rot-amount">{t("files.rotAmount", "ROT-avdrag")}</Label>
-                  <Input
-                    id="edit-rot-amount"
-                    type="number"
-                    value={editingMaterial.rot_amount ?? ""}
-                    onChange={(e) => setEditingMaterial({ ...editingMaterial, rot_amount: e.target.value ? parseFloat(e.target.value) : null })}
-                    placeholder="0"
-                  />
-                </div>
+              <div className={`grid ${showTaxDeduction ? "grid-cols-2" : "grid-cols-1"} gap-4 mt-3`}>
+                {showTaxDeduction && (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-rot-amount">{t("files.rotAmount", "ROT-avdrag")}</Label>
+                    <Input
+                      id="edit-rot-amount"
+                      type="number"
+                      value={editingMaterial.rot_amount ?? ""}
+                      onChange={(e) => setEditingMaterial({ ...editingMaterial, rot_amount: e.target.value ? parseFloat(e.target.value) : null })}
+                      placeholder="0"
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="edit-paid-date">{t("common.paidDate", "Betaldat")}</Label>
                   <Input

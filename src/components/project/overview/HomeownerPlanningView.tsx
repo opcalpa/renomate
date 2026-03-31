@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useTaxDeductionVisible } from "@/hooks/useTaxDeduction";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -150,6 +151,7 @@ export function HomeownerPlanningView({
   const { t } = useTranslation();
   const { toast } = useToast();
   const ms = useMeasurement();
+  const { showTaxDeduction } = useTaxDeductionVisible();
   const { isGuest } = useGuestMode();
   const [tasks, setTasks] = useState<HomeownerTask[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -212,8 +214,8 @@ export function HomeownerPlanningView({
     quote: !contributorMode && visibleExtras.has("quote"),
     budget: visibleExtras.has("budget"),
     materialEstimate: visibleExtras.has("materialEstimate"),
-    rotAmount: visibleExtras.has("rotAmount"),
-  }), [visibleExtras, contributorMode]);
+    rotAmount: showTaxDeduction && visibleExtras.has("rotAmount"),
+  }), [visibleExtras, contributorMode, showTaxDeduction]);
 
   // ---------- Fetch ----------
   const fetchTasks = useCallback(async () => {
@@ -615,7 +617,7 @@ export function HomeownerPlanningView({
                   <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalMaterial", "Material")}</div>
                 </div>
               )}
-              {totalRot > 0 && (
+              {showTaxDeduction && totalRot > 0 && (
                 <div className="rounded-lg border bg-white p-3 text-center">
                   <div className="text-2xl font-bold tabular-nums text-green-700">{formatCurrency(totalRot, currency)}</div>
                   <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalRot", "ROT")}</div>
@@ -674,7 +676,7 @@ export function HomeownerPlanningView({
               <PopoverContent className="w-52" align="end">
                 <div className="space-y-2">
                   <p className="text-sm font-medium mb-2">{t("planningTasks.showColumns", "Show columns")}</p>
-                  {EXTRA_COLUMNS.filter((col) => !contributorMode || col.key !== "quote").map((col) => (
+                  {EXTRA_COLUMNS.filter((col) => (!contributorMode || col.key !== "quote") && (showTaxDeduction || col.key !== "rotAmount")).map((col) => (
                     <label key={col.key} className="flex items-center gap-2 text-sm cursor-pointer">
                       <Checkbox
                         checked={visibleExtras.has(col.key)}

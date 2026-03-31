@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useMeasurement } from "@/contexts/MeasurementContext";
+import { useTaxDeductionVisible } from "@/hooks/useTaxDeduction";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -609,6 +610,7 @@ export const TaskEditDialog = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const ms = useMeasurement();
+  const { showTaxDeduction } = useTaxDeductionVisible();
   const permissions = useProjectPermissions(projectId);
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);
@@ -1444,8 +1446,8 @@ export const TaskEditDialog = ({
                 );
               })()}
 
-              {/* ROT deduction section */}
-              {(() => {
+              {/* ROT deduction section — only for Swedish market */}
+              {showTaxDeduction && (() => {
                 // Calculate labor cost for ROT suggestion
                 const laborCost = task.task_cost_type === "subcontractor"
                   ? (task.subcontractor_cost || 0)

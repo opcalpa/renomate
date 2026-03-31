@@ -30,6 +30,7 @@ interface ProjectReminderContext {
   isHomeowner: boolean;
   propertyDesignation?: string | null;
   rotPersonnummer?: string | null;
+  showTaxDeduction?: boolean;
 }
 
 function computeReminders(
@@ -99,8 +100,8 @@ function computeReminders(
     });
   }
 
-  // ROT: missing personnummer (active phase, homeowner)
-  if (!ctx.isPlanning && ctx.isHomeowner && !ctx.rotPersonnummer) {
+  // ROT: missing personnummer (active phase, homeowner, Swedish market only)
+  if (ctx.showTaxDeduction !== false && !ctx.isPlanning && ctx.isHomeowner && !ctx.rotPersonnummer) {
     reminders.push({
       id: "rot_personnummer",
       titleKey: "reminders.rotPersonnummer.title",
@@ -109,8 +110,8 @@ function computeReminders(
     });
   }
 
-  // ROT: missing property designation (active phase)
-  if (!ctx.isPlanning && !ctx.propertyDesignation) {
+  // ROT: missing property designation (active phase, Swedish market only)
+  if (ctx.showTaxDeduction !== false && !ctx.isPlanning && !ctx.propertyDesignation) {
     reminders.push({
       id: "rot_property",
       titleKey: "reminders.rotProperty.title",
