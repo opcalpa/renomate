@@ -13,6 +13,12 @@ export const changelog: ChangelogEntry[] = [
   // ── 2026-03-31 ──
   {
     date: "2026-03-31",
+    title: "Richer project cards in grid view",
+    description: "Project cards now show task progress bar, overdue count, recent comments, budget, and a visual placeholder when no cover image is set. Much more at-a-glance info without opening the project.",
+    tags: ["UX", "Design"],
+  },
+  {
+    date: "2026-03-31",
     title: "Dashboard overview across all projects",
     description: "Start page now shows aggregated stats when you have multiple projects: overdue tasks, recent comments, pending purchases, and total budget — all clickable to navigate directly.",
     tags: ["UX", "Produktivitet"],
