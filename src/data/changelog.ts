@@ -10,6 +10,26 @@ export interface ChangelogEntry {
 export const DEMO_PROJECT_PATH = "/projects/demo";
 
 export const changelog: ChangelogEntry[] = [
+  // ── 2026-03-31 ──
+  {
+    date: "2026-03-31",
+    title: "Full i18n for onboarding & intake forms",
+    description: "Room names, work types, builder dialogs, and form preview — all translated. No more Swedish strings leaking into English UI.",
+    tags: ["i18n", "Onboarding"],
+  },
+  {
+    date: "2026-03-31",
+    title: "Onboarding starts with rooms, not paperwork",
+    description: "New wizard order: pick rooms first, then work types and task mapping. Project name comes last with a smart auto-suggestion based on address + rooms.",
+    tags: ["Onboarding", "UX"],
+  },
+  {
+    date: "2026-03-31",
+    title: "ROT tax deduction hidden for international users",
+    description: "Swedish ROT features now only show for Swedish-language users or profiles with country set to SE. International beta testers get a clean, uncluttered experience.",
+    tags: ["i18n", "ROT"],
+  },
+
   // ── 2026-03-30 ──
   {
     date: "2026-03-30",
