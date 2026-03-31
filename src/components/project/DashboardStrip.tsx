@@ -159,7 +159,7 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
         type="button"
         onClick={() => {
           const first = data.overdueTasks[0];
-          if (first) navigate(`/projects/${first.projectId}#arbeten`);
+          if (first) navigate(`/projects/${first.projectId}?tab=tasks`);
         }}
         className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-shadow"
       >
@@ -189,7 +189,7 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
         type="button"
         onClick={() => {
           const first = data.unreadComments[0];
-          if (first) navigate(`/projects/${first.projectId}`);
+          if (first) navigate(`/projects/${first.projectId}?tab=overview`);
         }}
         className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-shadow"
       >
@@ -219,7 +219,7 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
         type="button"
         onClick={() => {
           const first = data.pendingPurchases[0];
-          if (first) navigate(`/projects/${first.projectId}#inkop`);
+          if (first) navigate(`/projects/${first.projectId}?tab=purchases`);
         }}
         className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-shadow"
       >
