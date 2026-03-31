@@ -213,6 +213,24 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "task" | "material">("all");
 
+  // Grouping
+  type GroupByOption = "none" | "room" | "costCenter" | "status";
+  const [groupBy, setGroupBy] = useState<GroupByOption>(() =>
+    (localStorage.getItem(`budget-groupby-${projectId}`) as GroupByOption) || "none"
+  );
+  const handleGroupByChange = (v: GroupByOption) => {
+    setGroupBy(v);
+    localStorage.setItem(`budget-groupby-${projectId}`, v);
+  };
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroupCollapse = (key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
   // Advanced filters
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [filterRoom, setFilterRoom] = useState("all");
@@ -1075,8 +1093,100 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
       }
     }
 
-    return result;
-  }, [filtered, expandedTasks, unlinkedExpanded, t]);
+    // Apply grouping if active
+    if (groupBy === "none") return result;
+
+    const getGroupKey = (row: BudgetRow): string => {
+      switch (groupBy) {
+        case "room": return row.roomId || "__no_room__";
+        case "costCenter": return row.costCenter || "__no_cc__";
+        case "status": return row.status || "__no_status__";
+        default: return "__ungrouped__";
+      }
+    };
+
+    const getGroupLabel = (key: string): string => {
+      if (key === "__no_room__") return t("budget.noRoom", "No room");
+      if (key === "__no_cc__") return t("budget.noCostCenter", "No cost center");
+      if (key === "__no_status__") return t("budget.noStatus", "No status");
+      switch (groupBy) {
+        case "room": {
+          const row = result.find((r) => !r.isSectionHeader && r.roomId === key);
+          return row?.room || key;
+        }
+        case "costCenter": {
+          const ccLabels: Record<string, string> = {
+            demolition: t("costCenters.demolition", "Demolition"),
+            electrical: t("costCenters.electrical", "Electrical"),
+            plumbing: t("costCenters.plumbing", "Plumbing"),
+            tiling: t("costCenters.tiling", "Tiling"),
+            carpentry: t("costCenters.carpentry", "Carpentry"),
+            painting: t("costCenters.painting", "Painting"),
+            flooring: t("costCenters.flooring", "Flooring"),
+            kitchen: t("costCenters.kitchen", "Kitchen"),
+            bathroom: t("costCenters.bathroom", "Bathroom"),
+            other: t("costCenters.other", "Other"),
+          };
+          return ccLabels[key] || key;
+        }
+        case "status": {
+          return t(`statuses.${key}`, t(`materialStatuses.${key}`, key));
+        }
+        default: return key;
+      }
+    };
+
+    // Group rows (skip section headers — they'll be replaced)
+    const groups = new Map<string, Array<typeof result[0]>>();
+    const groupOrder: string[] = [];
+    for (const row of result) {
+      if (row.isSectionHeader || row.isChild) continue;
+      const key = getGroupKey(row);
+      if (!groups.has(key)) {
+        groups.set(key, []);
+        groupOrder.push(key);
+      }
+      groups.get(key)!.push(row);
+      // Also add children if expanded
+      if (row.type === "task" && expandedTasks.has(row.id)) {
+        const children = result.filter((r) => r.isChild && r.taskId === row.id);
+        groups.get(key)!.push(...children);
+      }
+    }
+    // Also add unlinked section rows
+    const unlinkedRows = result.filter((r) => r.isSectionHeader || (r.isChild && r.isUnlinked));
+
+    const grouped: typeof result = [];
+    for (const key of groupOrder) {
+      const groupRows = groups.get(key)!;
+      const topRows = groupRows.filter((r) => !r.isChild);
+      const groupBudget = topRows.reduce((s, r) => s + r.budget, 0);
+      const groupPaid = topRows.reduce((s, r) => s + r.paid, 0);
+      grouped.push({
+        id: `__group_${key}__`,
+        name: getGroupLabel(key),
+        type: "task",
+        budget: groupBudget,
+        paid: groupPaid,
+        estimatedCost: 0,
+        isEstimated: false,
+        materialBudget: 0,
+        materialConsumed: 0,
+        childCount: topRows.length,
+        isSectionHeader: true,
+        hasAttachment: false,
+        attachmentCount: 0,
+        _groupKey: key,
+      } as typeof result[0] & { _groupKey?: string });
+      if (!collapsedGroups.has(key)) {
+        grouped.push(...groupRows);
+      }
+    }
+    // Append unlinked materials at the end
+    grouped.push(...unlinkedRows);
+
+    return grouped;
+  }, [filtered, expandedTasks, unlinkedExpanded, groupBy, collapsedGroups, t]);
 
   const clearAllFilters = () => {
     setSearchQuery("");
@@ -1641,6 +1751,18 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
           <Rows3 className="h-4 w-4" />
         </Button>
 
+        {/* Group by */}
+        <Select value={groupBy} onValueChange={(v) => handleGroupByChange(v as GroupByOption)}>
+          <SelectTrigger className={`h-8 w-[160px] ${groupBy !== "none" ? "border-primary text-primary" : ""}`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">{t("budget.groupNone", "No grouping")}</SelectItem>
+            <SelectItem value="room">{t("budget.groupByRoom", "Group by room")}</SelectItem>
+            <SelectItem value="costCenter">{t("budget.groupByCostCenter", "Group by cost center")}</SelectItem>
+            <SelectItem value="status">{t("budget.groupByStatus", "Group by status")}</SelectItem>
+          </SelectContent>
+        </Select>
 
         {(searchQuery || filterType !== "all" || hasAdvancedFilter) && (
           <Button
@@ -1785,23 +1907,52 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
                 </TableCell>
               </TableRow>
             ) : (
-              displayRows.map((row) => (row as unknown as { isSectionHeader?: boolean }).isSectionHeader ? (
-                <TableRow
-                  key="unlinked-header"
-                  className={`cursor-pointer hover:bg-muted/50 bg-amber-50/50 border-t-2 border-amber-200${compactRows ? " h-8" : ""}`}
-                  onClick={() => setUnlinkedExpanded(!unlinkedExpanded)}
-                >
-                  <TableCell colSpan={visibleColumns.length + (isBuilder ? 1 : 0)} className="py-2">
-                    <div className="flex items-center gap-2">
-                      <ChevronDown className={`h-4 w-4 text-amber-500 transition-transform ${unlinkedExpanded ? "" : "-rotate-90"}`} />
-                      <Package className="h-4 w-4 text-amber-500" />
-                      <span className="text-sm font-medium text-amber-700">{row.name}</span>
-                      <Badge variant="secondary" className="text-xs">{(row as unknown as { childCount?: number }).childCount}</Badge>
-                      <span className="text-xs text-muted-foreground ml-auto">{formatCurrency(row.estimatedCost, currency)}</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
+              displayRows.map((row) => {
+                const rowMeta = row as unknown as { isSectionHeader?: boolean; childCount?: number; _groupKey?: string };
+
+                // Unlinked materials section header
+                if (rowMeta.isSectionHeader && row.id === "__unlinked_header__") return (
+                  <TableRow
+                    key="unlinked-header"
+                    className={`cursor-pointer hover:bg-muted/50 bg-amber-50/50 border-t-2 border-amber-200${compactRows ? " h-8" : ""}`}
+                    onClick={() => setUnlinkedExpanded(!unlinkedExpanded)}
+                  >
+                    <TableCell colSpan={visibleColumns.length + (isBuilder ? 1 : 0)} className="py-2">
+                      <div className="flex items-center gap-2">
+                        <ChevronDown className={`h-4 w-4 text-amber-500 transition-transform ${unlinkedExpanded ? "" : "-rotate-90"}`} />
+                        <Package className="h-4 w-4 text-amber-500" />
+                        <span className="text-sm font-medium text-amber-700">{row.name}</span>
+                        <Badge variant="secondary" className="text-xs">{rowMeta.childCount}</Badge>
+                        <span className="text-xs text-muted-foreground ml-auto">{formatCurrency(row.estimatedCost, currency)}</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+
+                // Group header (from groupBy)
+                if (rowMeta.isSectionHeader && rowMeta._groupKey != null) return (
+                  <TableRow
+                    key={row.id}
+                    className={`cursor-pointer hover:bg-muted/50 bg-primary/5 border-t-2 border-primary/20${compactRows ? " h-8" : ""}`}
+                    onClick={() => toggleGroupCollapse(rowMeta._groupKey!)}
+                  >
+                    <TableCell colSpan={visibleColumns.length + (isBuilder ? 1 : 0)} className="py-2">
+                      <div className="flex items-center gap-2">
+                        <ChevronDown className={`h-4 w-4 text-primary transition-transform ${collapsedGroups.has(rowMeta._groupKey!) ? "-rotate-90" : ""}`} />
+                        <span className="text-sm font-semibold">{row.name}</span>
+                        <Badge variant="secondary" className="text-xs">{rowMeta.childCount}</Badge>
+                        {row.budget > 0 && (
+                          <span className="text-xs text-muted-foreground ml-auto tabular-nums">
+                            {t("dashboard.budget")}: {formatCurrency(row.budget, currency)}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+
+                // Regular row
+                return (
                 <TableRow
                   key={`${row.type}-${row.id}`}
                   className={`cursor-pointer hover:bg-muted/50${compactRows ? " h-8" : ""}${row.isChild ? " bg-muted/30" : ""}`}
@@ -1841,7 +1992,8 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
                     </TableCell>
                   )}
                 </TableRow>
-              ))
+                );
+              })
             )}
 
             {/* Inline Add Row (builder only) */}
