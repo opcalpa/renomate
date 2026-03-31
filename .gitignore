@@ -26,6 +26,9 @@ dist-ssr
 # Cursor MCP configuration (contains sensitive tokens)
 .cursor/mcp.json
 
+# Claude Code local files (personas, briefs, memory, worktrees)
+.claude/
+
 # Playwright
 test-results/
 playwright-report/
