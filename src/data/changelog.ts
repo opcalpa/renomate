@@ -25,8 +25,8 @@ export const changelog: ChangelogEntry[] = [
   },
   {
     date: "2026-03-31",
-    title: "ROT tax deduction hidden for international users",
-    description: "Swedish ROT features now only show for Swedish-language users or profiles with country set to SE. International beta testers get a clean, uncluttered experience.",
+    title: "Smart ROT visibility per project country",
+    description: "ROT tax deduction features now resolve per-project based on country field. Swedish projects show ROT, international projects don't. Users with mixed projects see ROT only where it applies.",
     tags: ["i18n", "ROT"],
   },
 
