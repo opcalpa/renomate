@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Package, Hammer, Handshake } from "lucide-react";
+import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Layers, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Package, Hammer, Handshake } from "lucide-react";
 import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
 import { FilePreviewPopover } from "@/components/shared/FilePreviewPopover";
 import { getStatusBadgeColor } from "@/lib/statusColors";
@@ -1752,17 +1752,35 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
         </Button>
 
         {/* Group by */}
-        <Select value={groupBy} onValueChange={(v) => handleGroupByChange(v as GroupByOption)}>
-          <SelectTrigger className={`h-8 w-[160px] ${groupBy !== "none" ? "border-primary text-primary" : ""}`}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">{t("budget.groupNone", "No grouping")}</SelectItem>
-            <SelectItem value="room">{t("budget.groupByRoom", "Group by room")}</SelectItem>
-            <SelectItem value="costCenter">{t("budget.groupByCostCenter", "Group by cost center")}</SelectItem>
-            <SelectItem value="status">{t("budget.groupByStatus", "Group by status")}</SelectItem>
-          </SelectContent>
-        </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant={groupBy !== "none" ? "default" : "outline"}
+              size="icon"
+              className="h-8 w-8"
+              title={t("budget.groupNone")}
+            >
+              <Layers className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48" align="end">
+            <div className="space-y-1">
+              <p className="text-sm font-medium mb-2">{t("budget.groupBy", "Group by")}</p>
+              {(["none", "room", "costCenter", "status"] as GroupByOption[]).map((opt) => (
+                <label
+                  key={opt}
+                  className={`flex items-center gap-2 text-sm cursor-pointer rounded-md px-2 py-1.5 hover:bg-accent ${groupBy === opt ? "bg-accent font-medium" : ""}`}
+                  onClick={() => handleGroupByChange(opt)}
+                >
+                  {opt === "none" && t("budget.groupNone")}
+                  {opt === "room" && t("budget.groupByRoom")}
+                  {opt === "costCenter" && t("budget.groupByCostCenter")}
+                  {opt === "status" && t("budget.groupByStatus")}
+                </label>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {(searchQuery || filterType !== "all" || hasAdvancedFilter) && (
           <Button

@@ -1955,6 +1955,7 @@
     "extraColumns": "Extra kolumner",
     "columns": "Kolumner",
     "compactRows": "Kompakt",
+    "groupBy": "Gruppera",
     "groupNone": "Ingen gruppering",
     "groupByRoom": "Gruppera per rum",
     "groupByCostCenter": "Gruppera per kostnadsställe",
