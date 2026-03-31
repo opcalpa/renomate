@@ -25,6 +25,7 @@ interface ProjectStat {
   projectId: string;
   projectName: string;
   count: number;
+  items: string[]; // individual item names for tooltip detail
 }
 
 interface BudgetStat {
@@ -54,19 +55,19 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
       const [overdueRes, commentsRes, purchasesRes, budgetRes] = await Promise.all([
         supabase
           .from("tasks")
-          .select("id, project_id, projects!inner(name)")
+          .select("id, title, project_id, projects!inner(name)")
           .in("project_id", projectIds)
           .lt("due_date", today)
           .not("status", "eq", "done")
           .is("deleted_at", null),
         supabase
           .from("comments")
-          .select("id, project_id, projects!inner(name)")
+          .select("id, content, project_id, projects!inner(name)")
           .in("project_id", projectIds)
           .gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString()),
         supabase
           .from("materials")
-          .select("id, project_id, projects!inner(name)")
+          .select("id, name, project_id, projects!inner(name)")
           .in("project_id", projectIds)
           .eq("status", "to_order"),
         supabase
@@ -75,20 +76,29 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
           .in("id", projectIds),
       ]);
 
-      function groupByProject(rows: Array<{ project_id: string; projects: unknown }>) {
-        const map = new Map<string, { name: string; count: number }>();
+      function groupByProject(
+        rows: Array<{ project_id: string; projects: unknown; [k: string]: unknown }>,
+        itemNameKey: string
+      ) {
+        const map = new Map<string, { name: string; count: number; items: string[] }>();
         for (const row of rows) {
           const entry = map.get(row.project_id) || {
             name: (row.projects as { name: string })?.name || "",
             count: 0,
+            items: [],
           };
           entry.count++;
+          const itemName = row[itemNameKey] as string | undefined;
+          if (itemName && entry.items.length < 5) {
+            entry.items.push(itemName.length > 40 ? itemName.slice(0, 40) + "…" : itemName);
+          }
           map.set(row.project_id, entry);
         }
         return Array.from(map.entries()).map(([projectId, v]) => ({
           projectId,
           projectName: v.name,
           count: v.count,
+          items: v.items,
         }));
       }
 
@@ -106,9 +116,9 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
       }
 
       return {
-        overdueTasks: groupByProject(overdueRes.data || []),
-        recentComments: groupByProject(commentsRes.data || []),
-        pendingPurchases: groupByProject(purchasesRes.data || []),
+        overdueTasks: groupByProject(overdueRes.data || [], "title"),
+        recentComments: groupByProject(commentsRes.data || [], "content"),
+        pendingPurchases: groupByProject(purchasesRes.data || [], "name"),
         budgetByProject,
         totalBudget,
         totalSpent,
@@ -165,12 +175,21 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-xs">
           {totalOverdue > 0 ? (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <p className="font-medium text-sm">{t("dashboard.overdueTooltip")}</p>
               {data.overdueTasks.map((p) => (
-                <div key={p.projectId} className="flex justify-between gap-4 text-xs">
-                  <span className="truncate">{p.projectName}</span>
-                  <span className="font-medium tabular-nums text-red-400">{p.count}</span>
+                <div key={p.projectId}>
+                  <div className="flex justify-between gap-4 text-xs font-medium">
+                    <span className="truncate">{p.projectName}</span>
+                    <span className="tabular-nums text-red-400">{p.count}</span>
+                  </div>
+                  {p.items.length > 0 && (
+                    <ul className="mt-0.5 space-y-0.5">
+                      {p.items.map((item, i) => (
+                        <li key={i} className="text-xs text-muted-foreground truncate pl-2">· {item}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               ))}
             </div>
@@ -212,12 +231,21 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-xs">
           {totalComments > 0 ? (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <p className="font-medium text-sm">{t("dashboard.commentsTooltip")}</p>
               {data.recentComments.map((p) => (
-                <div key={p.projectId} className="flex justify-between gap-4 text-xs">
-                  <span className="truncate">{p.projectName}</span>
-                  <span className="font-medium tabular-nums">{p.count}</span>
+                <div key={p.projectId}>
+                  <div className="flex justify-between gap-4 text-xs font-medium">
+                    <span className="truncate">{p.projectName}</span>
+                    <span className="tabular-nums">{p.count}</span>
+                  </div>
+                  {p.items.length > 0 && (
+                    <ul className="mt-0.5 space-y-0.5">
+                      {p.items.map((item, i) => (
+                        <li key={i} className="text-xs text-muted-foreground truncate pl-2">· {item}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               ))}
             </div>
@@ -261,12 +289,21 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-xs">
           {totalPurchases > 0 ? (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <p className="font-medium text-sm">{t("dashboard.purchasesTooltip")}</p>
               {data.pendingPurchases.map((p) => (
-                <div key={p.projectId} className="flex justify-between gap-4 text-xs">
-                  <span className="truncate">{p.projectName}</span>
-                  <span className="font-medium tabular-nums text-amber-400">{p.count}</span>
+                <div key={p.projectId}>
+                  <div className="flex justify-between gap-4 text-xs font-medium">
+                    <span className="truncate">{p.projectName}</span>
+                    <span className="tabular-nums text-amber-400">{p.count}</span>
+                  </div>
+                  {p.items.length > 0 && (
+                    <ul className="mt-0.5 space-y-0.5">
+                      {p.items.map((item, i) => (
+                        <li key={i} className="text-xs text-muted-foreground truncate pl-2">· {item}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               ))}
             </div>
