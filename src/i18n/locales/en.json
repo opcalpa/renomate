@@ -5015,6 +5015,7 @@
     "purchasesTooltip": "Materials ready to order, by project:",
     "purchasesTooltipNone": "No pending purchase orders.",
     "budget": "Budget",
-    "budgetTooltip": "Spent vs. budget per project:"
+    "budgetTooltip": "Spent vs. budget per project:",
+    "tasksComplete": "tasks"
   }
 }

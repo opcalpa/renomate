@@ -40,6 +40,7 @@ import { FinancialAnalysisSection } from "@/components/project/FinancialAnalysis
 import { AIProjectImportModal } from "@/components/project/AIProjectImportModal";
 import { HomeownerYearlyAnalysis } from "@/components/project/HomeownerYearlyAnalysis";
 import { DashboardStrip } from "@/components/project/DashboardStrip";
+import { ProjectGridCard } from "@/components/project/ProjectGridCard";
 import { GuestBanner } from "@/components/guest";
 import { CreateIntakeDialog } from "@/components/intake/CreateIntakeDialog";
 import {
@@ -1509,135 +1510,26 @@ const Projects = () => {
               const isDemo = isDemoProject(project.project_type);
               const projectStatus = normalizeStatus(project.status);
               const statusMeta = STATUS_META[projectStatus];
+              const fin = projectFinancials[project.id];
               return (
-                <Card
+                <ProjectGridCard
                   key={project.id}
-                  className={`cursor-pointer card-elevated overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${isDemo ? 'ring-2 ring-primary/30' : ''}`}
-                  onClick={() => navigate(`/projects/${project.id}`)}
-                >
-                  {isDemo && (
-                    <div className="bg-primary text-primary-foreground px-4 py-2 flex items-center gap-2 text-sm font-medium">
-                      <BookOpen className="h-4 w-4" />
-                      <span>Demo</span>
-                      <span className="text-primary-foreground/70 font-normal">– {t("demoProject.description")}</span>
-                    </div>
-                  )}
-                  {project.cover_image_url && (
-                    <div className="h-32 overflow-hidden">
-                      <img
-                        src={project.cover_image_url}
-                        alt={project.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-2">
-                    <CardTitle className="text-base font-semibold">{project.name}</CardTitle>
-                    <CardDescription className="space-y-1">
-                      {project.address && (
-                        <span className="block">
-                          {[project.address, project.city].filter(Boolean).join(", ")}
-                        </span>
-                      )}
-                      {project.description ? (
-                        <span className="block">
-                          {project.description.length > 150 && !expandedDescriptions.has(project.id) ? (
-                            <>
-                              {project.description.slice(0, 150).trim()}...
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setExpandedDescriptions(prev => new Set([...prev, project.id]));
-                                }}
-                                className="inline-flex items-center gap-0.5 ml-1 text-primary hover:underline"
-                              >
-                                {t('projects.showMore')}
-                                <ChevronDown className="h-3 w-3" />
-                              </button>
-                            </>
-                          ) : project.description.length > 150 ? (
-                            <>
-                              {project.description}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setExpandedDescriptions(prev => {
-                                    const next = new Set(prev);
-                                    next.delete(project.id);
-                                    return next;
-                                  });
-                                }}
-                                className="inline-flex items-center gap-0.5 ml-1 text-primary hover:underline"
-                              >
-                                {t('projects.showLess')}
-                                <ChevronUp className="h-3 w-3" />
-                              </button>
-                            </>
-                          ) : (
-                            project.description
-                          )}
-                        </span>
-                      ) : !project.address && (
-                        <span className="block text-muted-foreground">{t('projects.noDescription')}</span>
-                      )}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-4 sm:p-5 pt-0 sm:pt-0">
-                    {(() => {
-                      const fin = projectFinancials[project.id];
-                      if (!fin || fin.budget <= 0) return null;
-                      return (
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
-                          <span>
-                            {t("planningTasks.estimatedBudget", "Estimated budget")}: <span className="font-medium text-foreground">{formatCurrency(fin.budget)}</span>
-                          </span>
-                          {isContractor && fin.profit > 0 && (
-                            <span>
-                              {t("planningTasks.estimatedProfit", "Est. profit")}: <span className="font-medium text-green-600">{formatCurrency(fin.profit)}</span>
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })()}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusMeta.color}`}>
-                          {t(statusMeta.labelKey)}
-                        </span>
-                        <span>•</span>
-                        <span>
-                          {new Date(project.created_at).toLocaleDateString()}
-                        </span>
-                        {project.owner_id && (
-                          <>
-                            <span>•</span>
-                            <span className="inline-flex items-center gap-1 text-xs">
-                              <User className="h-3 w-3" />
-                              {project.owner_id === profileId
-                                ? t("projects.ownerYou", "You")
-                                : ownerNames[project.owner_id] || t("common.loading")}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      {(isGuest || (profileId && project.owner_id === profileId)) && !isDemo && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteTarget(project);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                  project={project}
+                  isDemo={isDemo}
+                  statusLabel={t(statusMeta.labelKey)}
+                  statusColor={statusMeta.color}
+                  budget={fin?.budget ?? 0}
+                  profit={fin?.profit ?? 0}
+                  ownerName={
+                    project.owner_id === profileId
+                      ? t("projects.ownerYou", "You")
+                      : ownerNames[project.owner_id ?? ""] || t("common.loading")
+                  }
+                  isOwnProject={!!(isGuest || (profileId && project.owner_id === profileId))}
+                  isContractor={isContractor}
+                  currency={project.currency || "SEK"}
+                  onDelete={() => setDeleteTarget(project)}
+                />
               );
             })}
           </div>

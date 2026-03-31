@@ -5012,6 +5012,7 @@
     "purchasesTooltip": "Material redo att beställa, per projekt:",
     "purchasesTooltipNone": "Inga väntande beställningar.",
     "budget": "Budget",
-    "budgetTooltip": "Spenderat vs. budget per projekt:"
+    "budgetTooltip": "Spenderat vs. budget per projekt:",
+    "tasksComplete": "arbeten"
   }
 }
