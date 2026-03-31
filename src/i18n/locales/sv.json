@@ -4996,5 +4996,15 @@
     "renameFailed": "{{failed}} filer kunde inte döpas om",
     "classificationComplete": "Alla filer tolkade",
     "completeWithErrors": "Klart ({{errors}} fel)"
+  },
+  "dashboard": {
+    "overdue": "Försenade",
+    "allOnTrack": "Allt i fas",
+    "comments": "Kommentarer",
+    "lastWeek": "Senaste 7 dagarna",
+    "noRecent": "Ingen ny aktivitet",
+    "purchases": "Att beställa",
+    "noPending": "Inget väntar",
+    "budget": "Budget"
   }
 }

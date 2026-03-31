@@ -4999,5 +4999,15 @@
     "renameFailed": "{{failed}} files could not be renamed",
     "classificationComplete": "All files analyzed",
     "completeWithErrors": "Done ({{errors}} errors)"
+  },
+  "dashboard": {
+    "overdue": "Overdue",
+    "allOnTrack": "All on track",
+    "comments": "Comments",
+    "lastWeek": "Last 7 days",
+    "noRecent": "No recent activity",
+    "purchases": "To order",
+    "noPending": "Nothing pending",
+    "budget": "Budget"
   }
 }

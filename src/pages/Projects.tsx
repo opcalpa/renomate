@@ -39,6 +39,7 @@ import { LeadsPipelineSection } from "@/components/pipeline";
 import { FinancialAnalysisSection } from "@/components/project/FinancialAnalysisSection";
 import { AIProjectImportModal } from "@/components/project/AIProjectImportModal";
 import { HomeownerYearlyAnalysis } from "@/components/project/HomeownerYearlyAnalysis";
+import { DashboardStrip } from "@/components/project/DashboardStrip";
 import { GuestBanner } from "@/components/guest";
 import { CreateIntakeDialog } from "@/components/intake/CreateIntakeDialog";
 import {
@@ -830,6 +831,12 @@ const Projects = () => {
             />
           </section>
         )}
+
+        {/* Dashboard strip — aggregated stats across projects */}
+        <DashboardStrip
+          projectIds={visibleProjects.map((p) => p.id)}
+          currency={visibleProjects[0]?.currency || "SEK"}
+        />
 
         <section id="projekt" className="scroll-mt-20">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
