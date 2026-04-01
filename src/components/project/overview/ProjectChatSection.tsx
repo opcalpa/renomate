@@ -181,7 +181,23 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
   const [activities, setActivities] = useState<ActivityLogItem[]>([]);
   const [photos, setPhotos] = useState<PhotoFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterMode, setFilterMode] = useState<FeedFilterMode>("all");
+  const [activeFilters, setActiveFilters] = useState<Set<"comments" | "activity" | "photos">>(
+    new Set(["comments", "activity", "photos"])
+  );
+  const toggleFilter = (f: "comments" | "activity" | "photos") => {
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(f)) {
+        if (next.size > 1) next.delete(f); // don't allow empty
+      } else {
+        next.add(f);
+      }
+      return next;
+    });
+  };
+  // Derive filterMode for backward compat with filtering logic
+  const filterMode: FeedFilterMode = activeFilters.size === 3 ? "all" :
+    activeFilters.size === 1 ? [...activeFilters][0] as FeedFilterMode : "all";
   const [replyingTo, setReplyingTo] = useState<FeedComment | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -470,11 +486,15 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
     ...visiblePhotos.map((p) => ({ type: "photo" as const, created_at: p.createdAt, photo: p })),
   ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-  let filteredFeed: UnifiedFeedItem[];
-  if (filterMode === "comments") filteredFeed = fullFeed.filter((i) => i.type === "comment");
-  else if (filterMode === "activity") filteredFeed = fullFeed.filter((i) => i.type === "activity");
-  else if (filterMode === "photos") filteredFeed = fullFeed.filter((i) => i.type === "photo");
-  else filteredFeed = fullFeed;
+  // Multi-select filter
+  const typeMap: Record<string, "comments" | "activity" | "photos"> = {
+    comment: "comments",
+    activity: "activity",
+    photo: "photos",
+  };
+  const filteredFeed = activeFilters.size === 3
+    ? fullFeed
+    : fullFeed.filter((i) => activeFilters.has(typeMap[i.type]));
 
   // Search filter
   const searchedFeed = searchQuery.trim()
@@ -559,7 +579,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
     return null;
   };
 
-  const filterModes: FeedFilterMode[] = ["all", "comments", "activity", "photos"];
+  const filterOptions: Array<"comments" | "activity" | "photos"> = ["comments", "activity", "photos"];
 
   const showDmFeed = !!dmRecipient;
   const chatInputRef = useRef<HTMLDivElement>(null);
@@ -723,15 +743,15 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
         <div className="flex flex-col rounded-lg border bg-background max-h-[calc(100dvh-12rem)] md:max-h-[70vh]">
           {/* Sticky header: filter tabs + search */}
           <div className="flex items-center gap-1 px-3 py-2 border-b bg-muted/30 shrink-0">
-            {!searchOpen && filterModes.map((mode) => (
+            {!searchOpen && filterOptions.map((opt) => (
               <Button
-                key={mode}
-                variant={filterMode === mode ? "default" : "outline"}
+                key={opt}
+                variant={activeFilters.has(opt) ? "default" : "outline"}
                 size="sm"
                 className="h-7 px-3 text-xs"
-                onClick={() => { setFilterMode(mode); setShowAll(false); }}
+                onClick={() => { toggleFilter(opt); setShowAll(false); }}
               >
-                {t(`feed.filter${mode.charAt(0).toUpperCase() + mode.slice(1)}`)}
+                {t(`feed.filter${opt.charAt(0).toUpperCase() + opt.slice(1)}`)}
               </Button>
             ))}
             {searchOpen ? (
