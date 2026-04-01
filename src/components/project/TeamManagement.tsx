@@ -490,9 +490,8 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
           invited_by_user_id: profile.id,
           email: validated.email,
           invited_name: inviteName.trim() || null,
-          role: selectedTemplate === "co_owner" ? "homeowner" : (selectedTemplate !== "custom" ? selectedTemplate : "viewer"),
+          role: selectedTemplate === "co_owner" ? "homeowner" : (selectedTemplate !== "custom" ? selectedTemplate : "collaborator"),
           role_type: selectedTemplate === "co_owner" ? "co_owner" : null,
-          ...permDb,
           permissions_snapshot: { ...permDb, role_type: selectedTemplate === "co_owner" ? "co_owner" : null },
         } as Record<string, unknown>)
         .select()
