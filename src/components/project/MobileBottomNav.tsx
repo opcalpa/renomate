@@ -20,6 +20,7 @@ interface MobileBottomNavProps {
 
 const ALL_TABS: TabConfig[] = [
   { tab: "overview", icon: LayoutDashboard, labelKey: "nav.mobileNav.overview" },
+  { tab: "chat", icon: MessageSquare, labelKey: "nav.mobileNav.chat" },
   { tab: "tasks", icon: CheckSquare, labelKey: "nav.mobileNav.tasks" },
   { tab: "purchases", icon: ShoppingCart, labelKey: "nav.mobileNav.purchases" },
   { tab: "budget", icon: PiggyBank, labelKey: "nav.mobileNav.budget" },
