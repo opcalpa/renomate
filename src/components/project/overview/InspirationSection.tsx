@@ -221,10 +221,16 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
       if (pinUrl) {
         try {
           const pinData = await fetchPinterestPin(pinUrl, projectId);
+          // Only save if we got a Storage URL (Pinterest blocks hotlinking)
+          if (!pinData.storageUrl) {
+            console.error("Pinterest pin fetch: no storageUrl returned, imageUrl:", pinData.imageUrl);
+            toast.error(t("inspiration.pinFetchFailed"));
+            return;
+          }
           await supabase.from("photos").insert({
             linked_to_type: "project",
             linked_to_id: projectId,
-            url: pinData.storageUrl || pinData.imageUrl,
+            url: pinData.storageUrl,
             caption: pinData.title || null,
             source: "pinterest",
             source_url: pinUrl,
