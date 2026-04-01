@@ -5030,10 +5030,18 @@
   },
   "inspiration": {
     "title": "Inspiration",
-    "openRoom": "Öppna rum",
-    "viewBoard": "Visa Pinterest-board",
+    "add": "Lägg till",
+    "addMore": "Lägg till",
+    "upload": "Ladda upp bilder",
+    "fromUrl": "Klistra länk",
+    "camera": "Kamera",
+    "urlPlaceholder": "Klistra bild- eller Pinterest-URL...",
+    "imported": "Bild importerad!",
+    "uploaded": "{{count}} bild(er) uppladdade!",
+    "assignRoom": "Koppla till rum...",
+    "untagged": "Ej taggade",
     "linkedMaterials": "Material för detta rum",
-    "empty": "Inga bilder ännu för detta rum",
-    "emptyHint": "Ladda upp foton eller länka ett Pinterest-board i rumsdetaljerna"
+    "emptyTitle": "Lägg till din första inspiration",
+    "emptyDesc": "Släpp bilder, klistra en Pinterest-länk eller ta ett foto. Du kan tagga rum efteråt."
   }
 }

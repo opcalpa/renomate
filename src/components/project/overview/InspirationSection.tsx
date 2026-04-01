@@ -1,37 +1,57 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/currency";
-import { ImageIcon, Plus, ExternalLink, ShoppingCart, ChevronDown } from "lucide-react";
+import {
+  ImageIcon,
+  Camera,
+  Link2,
+  Upload,
+  X,
+  ShoppingCart,
+  Sparkles,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface InspirationSectionProps {
   projectId: string;
   currency: string;
-  onNavigateToRoom?: (roomId: string) => void;
 }
 
-interface RoomInspo {
-  roomId: string;
-  roomName: string;
-  photos: Array<{ id: string; url: string; caption: string | null; source: string }>;
-  pinterestBoardUrl: string | null;
-  materials: Array<{ id: string; name: string; price: number; photoUrl: string | null }>;
+interface InspoPhoto {
+  id: string;
+  url: string;
+  caption: string | null;
+  source: string;
+  roomId: string | null;
+  roomName: string | null;
 }
 
-export function InspirationSection({ projectId, currency, onNavigateToRoom }: InspirationSectionProps) {
+interface Room {
+  id: string;
+  name: string;
+}
+
+export function InspirationSection({ projectId, currency }: InspirationSectionProps) {
   const { t } = useTranslation();
-  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedRoom, setSelectedRoom] = useState<string>("all");
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
+  const [showUrlInput, setShowUrlInput] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  // Fetch rooms + all inspiration photos
+  const { data } = useQuery({
     queryKey: ["inspiration", projectId],
     queryFn: async () => {
-      // Fetch rooms, room photos, and materials with photos in parallel
-      const [roomsRes, photosRes, materialsRes, materialPhotosRes] = await Promise.all([
+      const [roomsRes, photosRes, matPhotosRes] = await Promise.all([
         supabase
           .from("rooms")
           .select("id, name")
@@ -39,122 +59,266 @@ export function InspirationSection({ projectId, currency, onNavigateToRoom }: In
           .order("name"),
         supabase
           .from("photos")
-          .select("id, url, caption, linked_to_id, source")
-          .eq("linked_to_type", "room")
+          .select("id, url, caption, linked_to_id, linked_to_type, source")
+          .or(`linked_to_type.eq.room,linked_to_type.eq.project`)
           .order("created_at", { ascending: false }),
         supabase
           .from("materials")
-          .select("id, name, price_total, room_id")
+          .select("id, name, price_total, room_id, photos:photos!inner(url)")
           .eq("project_id", projectId)
           .not("room_id", "is", null),
-        supabase
-          .from("photos")
-          .select("id, url, linked_to_id")
-          .eq("linked_to_type", "material"),
       ]);
 
-      const rooms = roomsRes.data || [];
-      const allPhotos = photosRes.data || [];
-      const allMaterials = materialsRes.data || [];
-      const allMaterialPhotos = materialPhotosRes.data || [];
-
-      // Build material photo map
-      const matPhotoMap = new Map<string, string>();
-      for (const p of allMaterialPhotos) {
-        if (!matPhotoMap.has(p.linked_to_id)) matPhotoMap.set(p.linked_to_id, p.url);
-      }
-
-      // Filter to only rooms in this project
+      const rooms: Room[] = roomsRes.data || [];
       const roomIds = new Set(rooms.map((r) => r.id));
+      const roomMap = new Map(rooms.map((r) => [r.id, r.name]));
 
-      const result: RoomInspo[] = rooms.map((room) => ({
-        roomId: room.id,
-        roomName: room.name,
-        photos: allPhotos
-          .filter((p) => p.linked_to_id === room.id)
-          .slice(0, 12)
-          .map((p) => ({ id: p.id, url: p.url, caption: p.caption, source: p.source || "upload" })),
-        pinterestBoardUrl: null, // Pinterest board URL fetched separately if needed
-        materials: allMaterials
-          .filter((m) => m.room_id === room.id)
-          .map((m) => ({
-            id: m.id,
-            name: m.name,
-            price: m.price_total || 0,
-            photoUrl: matPhotoMap.get(m.id) || null,
-          })),
-      }));
+      // Room photos + project-level photos
+      const photos: InspoPhoto[] = (photosRes.data || [])
+        .filter((p) => p.linked_to_type === "project" ? p.linked_to_id === projectId : roomIds.has(p.linked_to_id))
+        .map((p) => ({
+          id: p.id,
+          url: p.url,
+          caption: p.caption,
+          source: p.source || "upload",
+          roomId: p.linked_to_type === "room" ? p.linked_to_id : null,
+          roomName: p.linked_to_type === "room" ? (roomMap.get(p.linked_to_id) || null) : null,
+        }));
 
-      // Only return rooms that have some visual content
-      return result.filter((r) => r.photos.length > 0 || r.pinterestBoardUrl || r.materials.some((m) => m.photoUrl));
+      // Material photos with room context
+      const materialCards = (matPhotosRes.data || [])
+        .filter((m) => (m.photos as unknown as Array<{ url: string }>)?.length > 0)
+        .map((m) => ({
+          id: m.id,
+          name: m.name,
+          price: m.price_total || 0,
+          roomId: m.room_id,
+          roomName: roomMap.get(m.room_id!) || null,
+          photoUrl: (m.photos as unknown as Array<{ url: string }>)[0]?.url,
+        }));
+
+      return { rooms, photos, materialCards };
     },
-    staleTime: 2 * 60 * 1000,
+    staleTime: 60 * 1000,
   });
 
-  const rooms = data || [];
+  const rooms = data?.rooms || [];
+  const allPhotos = data?.photos || [];
+  const materialCards = data?.materialCards || [];
 
-  // Auto-select first room if none selected
-  const activeRoom = useMemo(() => {
-    if (rooms.length === 0) return null;
-    if (selectedRoom && rooms.find((r) => r.roomId === selectedRoom)) return selectedRoom;
-    return rooms[0].roomId;
-  }, [rooms, selectedRoom]);
+  const filteredPhotos = useMemo(() => {
+    if (selectedRoom === "all") return allPhotos;
+    if (selectedRoom === "untagged") return allPhotos.filter((p) => !p.roomId);
+    return allPhotos.filter((p) => p.roomId === selectedRoom);
+  }, [allPhotos, selectedRoom]);
 
-  const activeData = rooms.find((r) => r.roomId === activeRoom);
+  const totalCount = allPhotos.length + materialCards.filter((m) => m.photoUrl).length;
 
-  if (isLoading || rooms.length === 0) return null;
+  // Upload handler
+  const handleUpload = useCallback(async (files: FileList | File[]) => {
+    if (uploading) return;
+    setUploading(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+      if (!profile) throw new Error("No profile");
+
+      let uploaded = 0;
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith("image/")) continue;
+
+        // Compress large images
+        let uploadFile: File | Blob = file;
+        if (file.size > 500_000) {
+          const img = new Image();
+          const url = URL.createObjectURL(file);
+          await new Promise((resolve) => { img.onload = resolve; img.src = url; });
+          const canvas = document.createElement("canvas");
+          const max = 1200;
+          let { width, height } = img;
+          if (width > max || height > max) {
+            const ratio = Math.min(max / width, max / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+          uploadFile = await new Promise<Blob>((resolve) =>
+            canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.8)
+          );
+          URL.revokeObjectURL(url);
+        }
+
+        const ext = file.name.split(".").pop() || "jpg";
+        const path = `projects/${projectId}/inspiration/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("project-files")
+          .upload(path, uploadFile, { contentType: file.type });
+        if (uploadError) continue;
+
+        const { data: publicUrl } = supabase.storage.from("project-files").getPublicUrl(path);
+
+        await supabase.from("photos").insert({
+          linked_to_type: "project",
+          linked_to_id: projectId,
+          url: publicUrl.publicUrl,
+          caption: file.name.replace(/\.[^/.]+$/, ""),
+          uploaded_by_user_id: profile.id,
+          source: "upload",
+        });
+        uploaded++;
+      }
+
+      if (uploaded > 0) {
+        toast.success(t("inspiration.uploaded", { count: uploaded }));
+        queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+      }
+    } catch {
+      toast.error(t("common.error"));
+    } finally {
+      setUploading(false);
+    }
+  }, [projectId, uploading, queryClient, t]);
+
+  // URL import handler
+  const handleUrlImport = useCallback(async () => {
+    const url = urlInput.trim();
+    if (!url) return;
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+      if (!profile) throw new Error("No profile");
+
+      const isPinterest = url.includes("pinterest");
+      await supabase.from("photos").insert({
+        linked_to_type: "project",
+        linked_to_id: projectId,
+        url,
+        source: isPinterest ? "pinterest" : "url",
+        source_url: url,
+        uploaded_by_user_id: profile.id,
+      });
+      toast.success(t("inspiration.imported"));
+      setUrlInput("");
+      setShowUrlInput(false);
+      queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+    } catch {
+      toast.error(t("common.error"));
+    } finally {
+      setUploading(false);
+    }
+  }, [urlInput, projectId, queryClient, t]);
+
+  // Drag and drop
+  const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setDragging(true); };
+  const onDragLeave = () => setDragging(false);
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    if (e.dataTransfer.files.length) handleUpload(e.dataTransfer.files);
+  };
+
+  // Assign room to photo
+  const assignRoom = useCallback(async (photoId: string, roomId: string | null) => {
+    if (roomId) {
+      await supabase.from("photos").update({ linked_to_type: "room", linked_to_id: roomId }).eq("id", photoId);
+    } else {
+      await supabase.from("photos").update({ linked_to_type: "project", linked_to_id: projectId }).eq("id", photoId);
+    }
+    queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+  }, [projectId, queryClient]);
+
+  const hasPhotos = totalCount > 0;
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-            <ImageIcon className="h-4 w-4" />
-            {t("inspiration.title", "Inspiration")}
-          </CardTitle>
-          {activeRoom && onNavigateToRoom && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs h-7"
-              onClick={() => onNavigateToRoom(activeRoom)}
-            >
-              {t("inspiration.openRoom", "Open room")}
-              <ExternalLink className="h-3 w-3 ml-1" />
-            </Button>
+      <CardContent className="p-4 sm:p-5">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            {t("inspiration.title")}
+          </h3>
+          {hasPhotos && (
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-3 w-3" />
+                {t("inspiration.add")}
+              </Button>
+            </div>
           )}
         </div>
 
-        {/* Room tabs */}
-        <div className="flex gap-1.5 flex-wrap mt-2">
-          {rooms.map((room) => (
+        {/* Room filter chips — only show when there are photos */}
+        {hasPhotos && rooms.length > 0 && (
+          <div className="flex gap-1.5 flex-wrap mb-3">
             <button
-              key={room.roomId}
               type="button"
-              onClick={() => setSelectedRoom(room.roomId)}
+              onClick={() => setSelectedRoom("all")}
               className={cn(
-                "px-3 py-1 rounded-full text-xs font-medium transition-colors",
-                activeRoom === room.roomId
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-accent"
+                "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors",
+                selectedRoom === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
               )}
             >
-              {room.roomName}
-              <span className="ml-1 opacity-60">{room.photos.length}</span>
+              {t("common.all")} ({allPhotos.length})
             </button>
-          ))}
-        </div>
-      </CardHeader>
+            {rooms.map((room) => {
+              const count = allPhotos.filter((p) => p.roomId === room.id).length;
+              return (
+                <button
+                  key={room.id}
+                  type="button"
+                  onClick={() => setSelectedRoom(room.id)}
+                  className={cn(
+                    "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors",
+                    selectedRoom === room.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
+                  )}
+                >
+                  {room.name} {count > 0 && `(${count})`}
+                </button>
+              );
+            })}
+            {allPhotos.some((p) => !p.roomId) && (
+              <button
+                type="button"
+                onClick={() => setSelectedRoom("untagged")}
+                className={cn(
+                  "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors",
+                  selectedRoom === "untagged" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
+                )}
+              >
+                {t("inspiration.untagged")} ({allPhotos.filter((p) => !p.roomId).length})
+              </button>
+            )}
+          </div>
+        )}
 
-      {activeData && (
-        <CardContent className="pt-0 space-y-4">
-          {/* Photo grid — masonry-style */}
-          {activeData.photos.length > 0 && (
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {activeData.photos.map((photo) => (
+        {/* Photo grid + drop zone */}
+        <div
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+          className={cn(
+            "rounded-xl border-2 border-dashed transition-colors min-h-[120px]",
+            dragging ? "border-primary bg-primary/5" : hasPhotos ? "border-transparent" : "border-muted",
+          )}
+        >
+          {filteredPhotos.length > 0 ? (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 p-1">
+              {filteredPhotos.map((photo) => (
                 <div
                   key={photo.id}
-                  className="relative aspect-square rounded-lg overflow-hidden group cursor-pointer"
+                  className="relative aspect-square rounded-lg overflow-hidden group"
                 >
                   <img
                     src={photo.url}
@@ -163,82 +327,148 @@ export function InspirationSection({ projectId, currency, onNavigateToRoom }: In
                     loading="lazy"
                   />
                   {photo.source === "pinterest" && (
-                    <Badge
-                      variant="secondary"
-                      className="absolute top-1 right-1 text-[9px] px-1 py-0 bg-red-100 text-red-700"
-                    >
+                    <Badge variant="secondary" className="absolute top-1 right-1 text-[9px] px-1 py-0 bg-red-100 text-red-700">
                       Pin
                     </Badge>
                   )}
-                  {photo.caption && (
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <p className="text-[10px] text-white truncate">{photo.caption}</p>
-                    </div>
-                  )}
+                  {/* Room tag or assign button */}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {photo.roomName ? (
+                      <span className="text-[10px] text-white/90 font-medium">{photo.roomName}</span>
+                    ) : rooms.length > 0 ? (
+                      <select
+                        className="text-[10px] bg-black/50 text-white rounded px-1 py-0.5 w-full"
+                        value=""
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => { if (e.target.value) assignRoom(photo.id, e.target.value); }}
+                      >
+                        <option value="">{t("inspiration.assignRoom")}</option>
+                        {rooms.map((r) => (
+                          <option key={r.id} value={r.id}>{r.name}</option>
+                        ))}
+                      </select>
+                    ) : null}
+                  </div>
                 </div>
               ))}
+
+              {/* Add more button inline */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="aspect-square rounded-lg border-2 border-dashed border-muted flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+              >
+                <Upload className="h-5 w-5" />
+                <span className="text-[10px]">{t("inspiration.addMore")}</span>
+              </button>
+            </div>
+          ) : (
+            /* Empty state — welcoming, not sterile */
+            <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-pink-100 to-purple-100 dark:from-pink-900/30 dark:to-purple-900/30 flex items-center justify-center mb-4">
+                <ImageIcon className="h-8 w-8 text-pink-500/70" />
+              </div>
+              <h4 className="text-sm font-medium mb-1">
+                {t("inspiration.emptyTitle")}
+              </h4>
+              <p className="text-xs text-muted-foreground mb-4 max-w-[300px]">
+                {t("inspiration.emptyDesc")}
+              </p>
+              <div className="flex gap-2 flex-wrap justify-center">
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="gap-1.5 h-8"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  {t("inspiration.upload")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 h-8"
+                  onClick={() => setShowUrlInput(true)}
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  {t("inspiration.fromUrl")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 h-8 sm:hidden"
+                  onClick={() => {
+                    const input = fileInputRef.current;
+                    if (input) { input.setAttribute("capture", "environment"); input.click(); input.removeAttribute("capture"); }
+                  }}
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                  {t("inspiration.camera")}
+                </Button>
+              </div>
             </div>
           )}
+        </div>
 
-          {/* Pinterest board embed placeholder */}
-          {activeData.pinterestBoardUrl && (
-            <a
-              href={activeData.pinterestBoardUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed hover:bg-accent transition-colors text-sm text-muted-foreground"
-            >
-              <svg className="h-4 w-4 text-red-600" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738.098.119.112.224.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.632-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z" />
-              </svg>
-              {t("inspiration.viewBoard", "View Pinterest board")}
-              <ExternalLink className="h-3 w-3 ml-auto" />
-            </a>
-          )}
+        {/* URL input overlay */}
+        {showUrlInput && (
+          <div className="flex gap-2 mt-3">
+            <input
+              type="url"
+              autoFocus
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleUrlImport(); }}
+              placeholder={t("inspiration.urlPlaceholder")}
+              className="flex-1 px-3 py-1.5 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <Button size="sm" onClick={handleUrlImport} disabled={!urlInput.trim() || uploading}>
+              {t("common.add")}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { setShowUrlInput(false); setUrlInput(""); }}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
 
-          {/* Linked materials with photos */}
-          {activeData.materials.some((m) => m.photoUrl) && (
-            <div>
+        {/* Material cards — only show when viewing a specific room */}
+        {selectedRoom !== "all" && selectedRoom !== "untagged" && (() => {
+          const roomMats = materialCards.filter((m) => m.roomId === selectedRoom && m.photoUrl);
+          if (roomMats.length === 0) return null;
+          return (
+            <div className="mt-4">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
                 <ShoppingCart className="h-3 w-3" />
-                {t("inspiration.linkedMaterials", "Materials for this room")}
+                {t("inspiration.linkedMaterials")}
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {activeData.materials.filter((m) => m.photoUrl).map((mat) => (
-                  <div
-                    key={mat.id}
-                    className="rounded-lg border overflow-hidden bg-card"
-                  >
+                {roomMats.map((mat) => (
+                  <div key={mat.id} className="rounded-lg border overflow-hidden bg-card">
                     <div className="aspect-video overflow-hidden">
-                      <img
-                        src={mat.photoUrl!}
-                        alt={mat.name}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
+                      <img src={mat.photoUrl!} alt={mat.name} className="w-full h-full object-cover" loading="lazy" />
                     </div>
                     <div className="p-2">
                       <p className="text-xs font-medium truncate">{mat.name}</p>
-                      {mat.price > 0 && (
-                        <p className="text-[10px] text-muted-foreground">{formatCurrency(mat.price, currency)}</p>
-                      )}
+                      {mat.price > 0 && <p className="text-[10px] text-muted-foreground">{formatCurrency(mat.price, currency)}</p>}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          )}
+          );
+        })()}
 
-          {/* Empty state for rooms with no visual content */}
-          {activeData.photos.length === 0 && !activeData.pinterestBoardUrl && !activeData.materials.some((m) => m.photoUrl) && (
-            <div className="text-center py-6 text-muted-foreground">
-              <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">{t("inspiration.empty", "No images yet for this room")}</p>
-              <p className="text-xs mt-1">{t("inspiration.emptyHint", "Upload photos or link a Pinterest board in the room details")}</p>
-            </div>
-          )}
-        </CardContent>
-      )}
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => { if (e.target.files?.length) handleUpload(e.target.files); e.target.value = ""; }}
+        />
+      </CardContent>
     </Card>
   );
 }

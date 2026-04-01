@@ -5033,10 +5033,18 @@
   },
   "inspiration": {
     "title": "Inspiration",
-    "openRoom": "Open room",
-    "viewBoard": "View Pinterest board",
+    "add": "Add",
+    "addMore": "Add",
+    "upload": "Upload photos",
+    "fromUrl": "Paste link",
+    "camera": "Camera",
+    "urlPlaceholder": "Paste image or Pinterest URL...",
+    "imported": "Image imported!",
+    "uploaded": "{{count}} image(s) uploaded!",
+    "assignRoom": "Assign to room...",
+    "untagged": "Untagged",
     "linkedMaterials": "Materials for this room",
-    "empty": "No images yet for this room",
-    "emptyHint": "Upload photos or link a Pinterest board in the room details"
+    "emptyTitle": "Add your first inspiration",
+    "emptyDesc": "Drop photos, paste a Pinterest link, or snap a picture. You can tag rooms later."
   }
 }
