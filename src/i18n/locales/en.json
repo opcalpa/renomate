@@ -1125,7 +1125,7 @@
       "architect": "Collaborator",
       "viewer": "Collaborator",
       "client": "Client",
-      "co_owner": "Co-Owner",
+      "co_owner": "Project Manager",
       "custom": "Custom"
     },
     "cards": {
@@ -1135,6 +1135,8 @@
       "client": { "description": "Follows project progress, photos, and messages — no pricing visible" },
       "co_owner": { "description": "Same access as the owner — full control, shared project management + double ROT" }
     },
+    "coOwnerOption": "Co-owner (double ROT)",
+    "coOwnerOptionDesc": "Same access as owner + doubles the ROT deduction to 100,000 kr",
     "teamMembers": "Team Members",
     "pendingInvitations": "Pending Invitations",
     "editMemberTitle": "Edit Team Member Permissions",

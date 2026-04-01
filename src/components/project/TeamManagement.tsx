@@ -137,7 +137,7 @@ const ROLE_TEMPLATES: Record<string, { access: FeatureAccess }> = {
       purchasesScope: "all",
       overview: "edit",
       teams: "invite",
-      budget: "view",
+      budget: "edit",
       files: "edit",
     },
   },
@@ -171,27 +171,13 @@ const ROLE_TEMPLATES: Record<string, { access: FeatureAccess }> = {
       files: "upload",
     },
   },
-  co_owner: {
-    access: {
-      customerView: "none",
-      timeline: "edit",
-      tasks: "edit",
-      tasksScope: "all",
-      spacePlanner: "edit",
-      purchases: "edit",
-      purchasesScope: "all",
-      overview: "edit",
-      teams: "invite",
-      budget: "edit",
-      files: "edit",
-    },
-  },
 };
 
 // Legacy mapping — existing DB shares with old keys still resolve correctly
 const LEGACY_ROLE_MAP: Record<string, string> = {
   architect: "collaborator",
   viewer: "collaborator",
+  co_owner: "project_manager",
 };
 
 const ROLE_ICONS: Record<string, typeof Wrench> = {
@@ -199,7 +185,6 @@ const ROLE_ICONS: Record<string, typeof Wrench> = {
   project_manager: ClipboardList,
   collaborator: Eye,
   client: User,
-  co_owner: Users,
 };
 
 const invitationSchemaEmail = z.object({
@@ -305,6 +290,7 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("contractor");
+  const [isCoOwner, setIsCoOwner] = useState(false);
   const [featureAccess, setFeatureAccess] = useState<FeatureAccess>({
     ...ROLE_TEMPLATES.contractor.access,
   });
@@ -493,9 +479,9 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
           invited_email: validated.email,
           invited_name: inviteName.trim() || null,
           contractor_role: "other",
-          role: selectedTemplate === "co_owner" ? "homeowner" : (selectedTemplate !== "custom" ? selectedTemplate : "collaborator"),
-          role_type: selectedTemplate === "co_owner" ? "co_owner" : null,
-          permissions_snapshot: { ...permDb, role_type: selectedTemplate === "co_owner" ? "co_owner" : null },
+          role: isCoOwner ? "homeowner" : (selectedTemplate !== "custom" ? selectedTemplate : "collaborator"),
+          role_type: isCoOwner ? "co_owner" : null,
+          permissions_snapshot: { ...permDb, role_type: isCoOwner ? "co_owner" : null },
         } as Record<string, unknown>)
         .select()
         .single();
@@ -533,6 +519,7 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
       setInviteName("");
       setInviteEmail("");
       setSelectedTemplate("contractor");
+      setIsCoOwner(false);
       setFeatureAccess({ ...ROLE_TEMPLATES.contractor.access });
       fetchTeamData();
     } catch (error: unknown) {
@@ -819,6 +806,20 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
+
+                {/* Co-owner checkbox — only for project_manager on Swedish projects */}
+                {selectedTemplate === "project_manager" && showTaxDeduction && (
+                  <label className="flex items-center gap-2 text-sm cursor-pointer p-2 rounded-lg border hover:bg-accent transition-colors">
+                    <Checkbox
+                      checked={isCoOwner}
+                      onCheckedChange={(checked) => setIsCoOwner(!!checked)}
+                    />
+                    <div>
+                      <span className="font-medium">{t("roles.coOwnerOption", "Co-owner (double ROT)")}</span>
+                      <p className="text-xs text-muted-foreground">{t("roles.coOwnerOptionDesc", "Same access as owner + doubles ROT deduction to 100,000 kr")}</p>
+                    </div>
+                  </label>
+                )}
 
                 <div className="flex justify-end pt-2">
                   <Button type="submit" disabled={inviting}>

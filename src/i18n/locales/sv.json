@@ -1123,7 +1123,7 @@
       "architect": "Samarbetspartner",
       "viewer": "Samarbetspartner",
       "client": "Kund",
-      "co_owner": "Delägare",
+      "co_owner": "Projektledare",
       "custom": "Anpassad"
     },
     "cards": {
@@ -1133,6 +1133,8 @@
       "client": { "description": "Följer projektets framsteg, foton och meddelanden — inga priser synliga" },
       "co_owner": { "description": "Samma åtkomst som ägaren — full kontroll, delad projektledning + dubbelt ROT" }
     },
+    "coOwnerOption": "Delägare (dubbelt ROT)",
+    "coOwnerOptionDesc": "Samma åtkomst som ägare + fördubblar ROT-avdraget till 100 000 kr",
     "teamMembers": "Teammedlemmar",
     "pendingInvitations": "Väntande inbjudningar",
     "editMemberTitle": "Redigera medlem",
