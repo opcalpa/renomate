@@ -7,13 +7,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/currency";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   ImageIcon,
   Camera,
   Link2,
   Upload,
   X,
+  Trash2,
   ShoppingCart,
   Sparkles,
+  Home,
+  Hammer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -223,13 +231,30 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
     if (e.dataTransfer.files.length) handleUpload(e.dataTransfer.files);
   };
 
-  // Assign room to photo
-  const assignRoom = useCallback(async (photoId: string, roomId: string | null) => {
-    if (roomId) {
-      await supabase.from("photos").update({ linked_to_type: "room", linked_to_id: roomId }).eq("id", photoId);
-    } else {
-      await supabase.from("photos").update({ linked_to_type: "project", linked_to_id: projectId }).eq("id", photoId);
-    }
+  // Fetch tasks for linking
+  const { data: tasks } = useQuery({
+    queryKey: ["project-tasks-names", projectId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tasks")
+        .select("id, title")
+        .eq("project_id", projectId)
+        .order("title");
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Assign photo to entity
+  const assignPhoto = useCallback(async (photoId: string, type: string, entityId: string) => {
+    await supabase.from("photos").update({ linked_to_type: type, linked_to_id: entityId }).eq("id", photoId);
+    queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+    toast.success(t("inspiration.linked"));
+  }, [projectId, queryClient, t]);
+
+  // Delete photo
+  const deletePhoto = useCallback(async (photoId: string) => {
+    await supabase.from("photos").delete().eq("id", photoId);
     queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
   }, [projectId, queryClient]);
 
@@ -326,28 +351,85 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                     className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     loading="lazy"
                   />
-                  {photo.source === "pinterest" && (
-                    <Badge variant="secondary" className="absolute top-1 right-1 text-[9px] px-1 py-0 bg-red-100 text-red-700">
-                      Pin
-                    </Badge>
-                  )}
-                  {/* Room tag or assign button */}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {photo.roomName ? (
-                      <span className="text-[10px] text-white/90 font-medium">{photo.roomName}</span>
-                    ) : rooms.length > 0 ? (
-                      <select
-                        className="text-[10px] bg-black/50 text-white rounded px-1 py-0.5 w-full"
-                        value=""
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => { if (e.target.value) assignRoom(photo.id, e.target.value); }}
-                      >
-                        <option value="">{t("inspiration.assignRoom")}</option>
-                        {rooms.map((r) => (
-                          <option key={r.id} value={r.id}>{r.name}</option>
-                        ))}
-                      </select>
-                    ) : null}
+                  {/* Badges — top right */}
+                  <div className="absolute top-1 right-1 flex gap-1">
+                    {photo.source === "pinterest" && (
+                      <Badge variant="secondary" className="text-[9px] px-1 py-0 bg-red-100 text-red-700">Pin</Badge>
+                    )}
+                    {photo.roomName && (
+                      <Badge variant="secondary" className="text-[9px] px-1 py-0">{photo.roomName}</Badge>
+                    )}
+                  </div>
+
+                  {/* Hover action bar */}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                    {/* Link to entity */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="h-6 w-6 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Link2 className="h-3 w-3 text-white" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-1" align="start" side="top">
+                        {rooms.length > 0 && (
+                          <>
+                            <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">{t("inspiration.linkRoom")}</p>
+                            {rooms.map((r) => (
+                              <button
+                                key={r.id}
+                                type="button"
+                                className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                                onClick={() => assignPhoto(photo.id, "room", r.id)}
+                              >
+                                <Home className="h-3 w-3 text-muted-foreground" />
+                                {r.name}
+                              </button>
+                            ))}
+                          </>
+                        )}
+                        {(tasks?.length ?? 0) > 0 && (
+                          <>
+                            <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase mt-1">{t("inspiration.linkTask")}</p>
+                            <div className="max-h-[120px] overflow-y-auto">
+                              {(tasks || []).slice(0, 15).map((task) => (
+                                <button
+                                  key={task.id}
+                                  type="button"
+                                  className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                                  onClick={() => assignPhoto(photo.id, "task", task.id)}
+                                >
+                                  <Hammer className="h-3 w-3 text-muted-foreground" />
+                                  <span className="truncate">{task.title}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                        {photo.roomId && (
+                          <button
+                            type="button"
+                            className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left text-muted-foreground mt-1 border-t"
+                            onClick={() => assignPhoto(photo.id, "project", projectId)}
+                          >
+                            <X className="h-3 w-3" />
+                            {t("inspiration.unlink")}
+                          </button>
+                        )}
+                      </PopoverContent>
+                    </Popover>
+
+                    {/* Delete */}
+                    <button
+                      type="button"
+                      className="h-6 w-6 rounded-full bg-white/20 hover:bg-red-500/80 flex items-center justify-center transition-colors"
+                      onClick={(e) => { e.stopPropagation(); deletePhoto(photo.id); }}
+                    >
+                      <Trash2 className="h-3 w-3 text-white" />
+                    </button>
                   </div>
                 </div>
               ))}
