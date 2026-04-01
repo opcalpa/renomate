@@ -5040,6 +5040,8 @@
     "camera": "Camera",
     "urlPlaceholder": "Paste image or Pinterest URL...",
     "imported": "Image imported!",
+    "pinImported": "Pinterest pin imported!",
+    "boardHint": "Pinterest boards are best linked per room — open the room details in the floor planner to connect a board.",
     "uploaded": "{{count}} image(s) uploaded!",
     "assignRoom": "Assign to room...",
     "linkRoom": "Room",

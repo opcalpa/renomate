@@ -5037,6 +5037,8 @@
     "camera": "Kamera",
     "urlPlaceholder": "Klistra bild- eller Pinterest-URL...",
     "imported": "Bild importerad!",
+    "pinImported": "Pinterest-pin importerad!",
+    "boardHint": "Pinterest-boards kopplas bäst per rum — öppna rumsdetaljerna i ritverktyget för att länka ett board.",
     "uploaded": "{{count}} bild(er) uppladdade!",
     "assignRoom": "Koppla till rum...",
     "linkRoom": "Rum",

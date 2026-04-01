@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { fetchPinterestPin, parsePinterestPinUrl } from "@/services/pinterestOEmbed";
+import { parsePinterestBoardUrl } from "@/components/pinterest";
 
 interface InspirationSectionProps {
   projectId: string;
@@ -191,7 +193,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
     }
   }, [projectId, uploading, queryClient, t]);
 
-  // URL import handler
+  // URL import handler — smart detection for Pinterest pins, boards, or plain image URLs
   const handleUrlImport = useCallback(async () => {
     const url = urlInput.trim();
     if (!url) return;
@@ -202,12 +204,44 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
       const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
       if (!profile) throw new Error("No profile");
 
-      const isPinterest = url.includes("pinterest");
+      // Check if it's a Pinterest pin URL
+      const pinUrl = parsePinterestPinUrl(url);
+      if (pinUrl) {
+        const pinData = await fetchPinterestPin(pinUrl);
+        if (pinData) {
+          await supabase.from("photos").insert({
+            linked_to_type: "project",
+            linked_to_id: projectId,
+            url: pinData.storageUrl || pinData.imageUrl,
+            caption: pinData.title || null,
+            source: "pinterest",
+            source_url: pinUrl,
+            pinterest_pin_id: pinData.pinId,
+            uploaded_by_user_id: profile.id,
+          });
+          toast.success(t("inspiration.pinImported"));
+          setUrlInput("");
+          setShowUrlInput(false);
+          queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+          return;
+        }
+      }
+
+      // Check if it's a Pinterest board URL
+      const boardParsed = parsePinterestBoardUrl(url);
+      if (boardParsed) {
+        toast.info(t("inspiration.boardHint"));
+        setUrlInput("");
+        setShowUrlInput(false);
+        return;
+      }
+
+      // Plain image URL
       await supabase.from("photos").insert({
         linked_to_type: "project",
         linked_to_id: projectId,
         url,
-        source: isPinterest ? "pinterest" : "url",
+        source: "url",
         source_url: url,
         uploaded_by_user_id: profile.id,
       });
