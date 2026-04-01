@@ -38,7 +38,7 @@ export const MentionTextarea = ({
     if (membersLoaded) return;
     const { data } = await supabase
       .from("project_shares")
-      .select("profile:profiles!project_shares_profile_id_fkey(id, name, email, avatar_url)")
+      .select("profile:profiles!project_shares_shared_with_user_id_fkey(id, name, email, avatar_url)")
       .eq("project_id", projectId);
 
     if (data) {
