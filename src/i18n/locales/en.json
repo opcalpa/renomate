@@ -5030,5 +5030,13 @@
     "budget": "Budget",
     "budgetTooltip": "Spent vs. budget per project:",
     "tasksComplete": "tasks"
+  },
+  "inspiration": {
+    "title": "Inspiration",
+    "openRoom": "Open room",
+    "viewBoard": "View Pinterest board",
+    "linkedMaterials": "Materials for this room",
+    "empty": "No images yet for this room",
+    "emptyHint": "Upload photos or link a Pinterest board in the room details"
   }
 }

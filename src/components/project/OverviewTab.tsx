@@ -34,6 +34,7 @@ import { RotSummaryCard } from "./overview/RotSummaryCard";
 import { HouseholdRotDialog } from "./overview/HouseholdRotDialog";
 import { useTaxDeductionVisible } from "@/hooks/useTaxDeduction";
 import { ReminderSection } from "./overview/ReminderSection";
+import { InspirationSection } from "./overview/InspirationSection";
 import { normalizeStatus, isQuotePhase } from "@/lib/projectStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { updateGuestProject } from "@/services/guestStorageService";
@@ -521,6 +522,12 @@ const OverviewTab = ({
       />
 
       {showTaxDeduction && <RotSummaryCard projectId={project.id} />}
+
+      {/* Inspiration — room photos, Pinterest, material images */}
+      <InspirationSection
+        projectId={project.id}
+        currency={project.currency || "SEK"}
+      />
 
       {/* Quotes & Invoices unified card - contractors, active phases */}
       {!isHomeowner && !isPlanning && (

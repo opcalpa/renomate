@@ -5027,5 +5027,13 @@
     "budget": "Budget",
     "budgetTooltip": "Spenderat vs. budget per projekt:",
     "tasksComplete": "arbeten"
+  },
+  "inspiration": {
+    "title": "Inspiration",
+    "openRoom": "Öppna rum",
+    "viewBoard": "Visa Pinterest-board",
+    "linkedMaterials": "Material för detta rum",
+    "empty": "Inga bilder ännu för detta rum",
+    "emptyHint": "Ladda upp foton eller länka ett Pinterest-board i rumsdetaljerna"
   }
 }
