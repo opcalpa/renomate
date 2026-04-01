@@ -219,8 +219,8 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
       const pinUrl = parsePinterestPinUrl(url);
 
       if (pinUrl) {
-        const pinData = await fetchPinterestPin(pinUrl);
-        if (pinData) {
+        try {
+          const pinData = await fetchPinterestPin(pinUrl, projectId);
           await supabase.from("photos").insert({
             linked_to_type: "project",
             linked_to_id: projectId,
@@ -235,10 +235,10 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           setUrlInput("");
           setShowUrlInput(false);
           queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
-          return;
+        } catch (pinErr) {
+          console.error("Pinterest pin fetch failed:", pinErr);
+          toast.error(t("inspiration.pinFetchFailed"));
         }
-        // Pin fetch failed — don't save raw Pinterest URL as image
-        toast.error(t("inspiration.pinFetchFailed"));
         return;
       }
 
