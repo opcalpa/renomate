@@ -10,6 +10,20 @@ export interface ChangelogEntry {
 export const DEMO_PROJECT_PATH = "/projects/demo";
 
 export const changelog: ChangelogEntry[] = [
+  // ── 2026-04-01 ──
+  {
+    date: "2026-04-01",
+    title: "Group tasks by assignee",
+    description: "New grouping option for tasks: see all work per person at a glance. Perfect for coordinating multiple contractors on the same project.",
+    tags: ["Arbeten", "UX"],
+  },
+  {
+    date: "2026-04-01",
+    title: "Planned vs. actual margin in budget table",
+    description: "Margin column now shows both actual margin % and the planned markup from the planning phase. Spot deviations early when actuals drift from your pricing assumptions.",
+    tags: ["Budget", "Produktivitet"],
+  },
+
   // ── 2026-03-31 ──
   {
     date: "2026-03-31",
