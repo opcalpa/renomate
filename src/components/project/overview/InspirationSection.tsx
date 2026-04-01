@@ -344,7 +344,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                 <button
                   type="button"
                   className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
-                  onClick={() => setShowUrlInput(true)}
+                  onClick={() => setTimeout(() => setShowUrlInput(true), 100)}
                 >
                   <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
                   {t("inspiration.fromUrl")}
@@ -538,7 +538,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                   <button
                     type="button"
                     className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
-                    onClick={() => setShowUrlInput(true)}
+                    onClick={() => setTimeout(() => setShowUrlInput(true), 100)}
                   >
                     <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
                     {t("inspiration.fromUrl")}
@@ -573,7 +573,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                   size="sm"
                   variant="outline"
                   className="gap-1.5 h-8"
-                  onClick={() => setShowUrlInput(true)}
+                  onClick={() => setTimeout(() => setShowUrlInput(true), 100)}
                 >
                   <Link2 className="h-3.5 w-3.5" />
                   {t("inspiration.fromUrl")}
