@@ -383,6 +383,14 @@ const OverviewTab = ({
         </div>
       )}
 
+      {/* Inspiration — shown during planning for homeowners & planning contributors */}
+      {isPlanning && isHomeowner && (
+        <InspirationSection
+          projectId={project.id}
+          currency={project.currency || "SEK"}
+        />
+      )}
+
       {/* Dashboard toolbar + pulse cards — hidden during pure planning phase */}
       {!isPlanning && (
         <>
