@@ -493,7 +493,6 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
           contractor_role: "other",
           role: selectedTemplate === "co_owner" ? "homeowner" : (selectedTemplate !== "custom" ? selectedTemplate : "collaborator"),
           role_type: selectedTemplate === "co_owner" ? "co_owner" : null,
-          ...permDb,
           permissions_snapshot: { ...permDb, role_type: selectedTemplate === "co_owner" ? "co_owner" : null },
         } as Record<string, unknown>)
         .select()
