@@ -810,38 +810,23 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
                   />
                 </div>
 
-                {/* More info - collapsible */}
+                {/* Permissions — compact dropdown-per-feature list */}
                 <Collapsible>
                   <CollapsibleTrigger className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                     <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-90" />
-                    {t("roles.moreInfo")}
+                    {t("roles.permissions", "Permissions")}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <RoleInfoPanel
-                      templateKey={selectedTemplate}
-                      t={t}
-                    />
+                    <div className="pt-2">
+                      <FeatureAccessEditor
+                        featureAccess={featureAccess}
+                        onChange={handleFeatureAccessChange}
+                        idPrefix="invite"
+                        readOnly={!isOwner}
+                      />
+                    </div>
                   </CollapsibleContent>
                 </Collapsible>
-
-                {/* Customize permissions - only for owners */}
-                {isOwner && (
-                  <Collapsible>
-                    <CollapsibleTrigger className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                      <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-90" />
-                      {t("roles.customizeAccess")}
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="pt-3">
-                        <FeatureAccessEditor
-                          featureAccess={featureAccess}
-                          onChange={handleFeatureAccessChange}
-                          idPrefix="invite"
-                        />
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
 
                 <div className="flex justify-end pt-2">
                   <Button type="submit" disabled={inviting}>
@@ -1200,24 +1185,23 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
               />
             </div>
 
-            {/* Customize permissions - only for owners */}
-            {isOwner && (
-              <Collapsible defaultOpen={selectedTemplate === "custom"}>
-                <CollapsibleTrigger className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-90" />
-                  {t("roles.customizeAccess")}
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="pt-3">
-                    <FeatureAccessEditor
-                      featureAccess={featureAccess}
-                      onChange={handleFeatureAccessChange}
-                      idPrefix="edit"
-                    />
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
+            {/* Permissions — compact dropdown-per-feature list */}
+            <Collapsible defaultOpen={selectedTemplate === "custom"}>
+              <CollapsibleTrigger className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-90" />
+                {t("roles.permissions", "Permissions")}
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="pt-2">
+                  <FeatureAccessEditor
+                    featureAccess={featureAccess}
+                    onChange={handleFeatureAccessChange}
+                    idPrefix="edit"
+                    readOnly={!isOwner}
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
 
           <div className="flex gap-3 pt-4 border-t shrink-0">

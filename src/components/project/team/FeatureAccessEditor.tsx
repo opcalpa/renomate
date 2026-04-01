@@ -1,7 +1,12 @@
 import { useTranslation } from "react-i18next";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Eye, Edit3, Plus, UserPlus } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Eye, Edit3, Plus, UserPlus, Ban } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface FeatureAccess {
@@ -30,8 +35,8 @@ interface FeatureConfig {
   };
 }
 
-const OPTION_ICONS: Record<string, LucideIcon | undefined> = {
-  none: undefined,
+const OPTION_ICONS: Record<string, LucideIcon> = {
+  none: Ban,
   view: Eye,
   edit: Edit3,
   create: Plus,
@@ -90,61 +95,82 @@ interface FeatureAccessEditorProps {
   featureAccess: FeatureAccess;
   onChange: (updates: Partial<FeatureAccess>) => void;
   idPrefix: string;
+  readOnly?: boolean;
 }
 
-export function FeatureAccessEditor({ featureAccess, onChange, idPrefix }: FeatureAccessEditorProps) {
+export function FeatureAccessEditor({ featureAccess, onChange, readOnly }: FeatureAccessEditorProps) {
   const { t } = useTranslation();
 
   return (
-    <div className="space-y-4">
-      {FEATURES.map((feature) => (
-        <div key={feature.key} className="space-y-2">
-          <div className="flex items-center justify-between space-x-4">
-            <Label className="flex-1">{t(feature.labelKey)}</Label>
-            <RadioGroup
-              value={featureAccess[feature.key]}
-              onValueChange={(value) => onChange({ [feature.key]: value } as Partial<FeatureAccess>)}
-              className="flex gap-2"
-            >
-              {feature.options.map((opt) => {
-                const Icon = OPTION_ICONS[opt];
-                const id = `${idPrefix}-${feature.key}-${opt}`;
-                return (
-                  <div key={opt} className="flex items-center space-x-1">
-                    <RadioGroupItem value={opt} id={id} />
-                    <Label htmlFor={id} className="text-xs cursor-pointer font-normal flex items-center gap-1">
-                      {Icon && <Icon className="h-3 w-3" />}
-                      {t(OPTION_LABEL_KEYS[opt])}
-                    </Label>
-                  </div>
-                );
-              })}
-            </RadioGroup>
-          </div>
-          {feature.scope && feature.scope.showWhen.includes(featureAccess[feature.key]) && (
-            <div className="ml-4 flex items-center gap-2 text-sm">
-              <Label className="text-xs text-muted-foreground">{t(feature.scope.labelKey)}:</Label>
-              <RadioGroup
-                value={featureAccess[feature.scope.key]}
-                onValueChange={(value) => onChange({ [feature.scope!.key]: value } as Partial<FeatureAccess>)}
-                className="flex gap-3"
-              >
-                {feature.scope.options.map((scopeOpt) => {
-                  const scopeId = `${idPrefix}-${feature.scope!.key}-${scopeOpt.value}`;
-                  return (
-                    <div key={scopeOpt.value} className="flex items-center space-x-1">
-                      <RadioGroupItem value={scopeOpt.value} id={scopeId} />
-                      <Label htmlFor={scopeId} className="text-xs cursor-pointer font-normal">
-                        {t(scopeOpt.labelKey)}
-                      </Label>
+    <div className="divide-y">
+      {FEATURES.map((feature) => {
+        const currentValue = featureAccess[feature.key];
+        const Icon = OPTION_ICONS[currentValue] || Ban;
+        const isNone = currentValue === "none";
+
+        return (
+          <div key={feature.key} className="py-2 first:pt-0 last:pb-0">
+            <div className="flex items-center justify-between gap-3">
+              <span className={`text-sm ${isNone ? "text-muted-foreground" : "text-foreground font-medium"}`}>
+                {t(feature.labelKey)}
+              </span>
+              {readOnly ? (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Icon className="h-3 w-3" />
+                  {t(OPTION_LABEL_KEYS[currentValue])}
+                </span>
+              ) : (
+                <Select
+                  value={currentValue}
+                  onValueChange={(value) => onChange({ [feature.key]: value } as Partial<FeatureAccess>)}
+                >
+                  <SelectTrigger className={`h-7 w-[110px] text-xs ${isNone ? "text-muted-foreground" : ""}`}>
+                    <div className="flex items-center gap-1.5">
+                      <Icon className="h-3 w-3" />
+                      <SelectValue />
                     </div>
-                  );
-                })}
-              </RadioGroup>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {feature.options.map((opt) => {
+                      const OptIcon = OPTION_ICONS[opt] || Ban;
+                      return (
+                        <SelectItem key={opt} value={opt}>
+                          <span className="flex items-center gap-1.5">
+                            <OptIcon className="h-3 w-3" />
+                            {t(OPTION_LABEL_KEYS[opt])}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
-          )}
-        </div>
-      ))}
+
+            {/* Scope sub-option */}
+            {feature.scope && feature.scope.showWhen.includes(currentValue) && !readOnly && (
+              <div className="ml-4 mt-1 flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground">{t(feature.scope.labelKey)}:</span>
+                <Select
+                  value={featureAccess[feature.scope.key]}
+                  onValueChange={(value) => onChange({ [feature.scope!.key]: value } as Partial<FeatureAccess>)}
+                >
+                  <SelectTrigger className="h-6 w-auto text-[11px] px-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {feature.scope.options.map((scopeOpt) => (
+                      <SelectItem key={scopeOpt.value} value={scopeOpt.value}>
+                        {t(scopeOpt.labelKey)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

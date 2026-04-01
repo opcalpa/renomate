@@ -1212,6 +1212,7 @@
     "selectRole": "Select a role",
     "moreInfo": "More info",
     "customizeAccess": "Customize permissions",
+    "permissions": "Permissions",
     "cards": {
       "contractor": {
         "description": "Can view timeline, edit assigned tasks, and create purchase orders"

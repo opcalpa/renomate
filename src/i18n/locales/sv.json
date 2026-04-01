@@ -1210,6 +1210,7 @@
     "selectRole": "Välj en roll",
     "moreInfo": "Mer info",
     "customizeAccess": "Anpassa behörigheter",
+    "permissions": "Behörigheter",
     "cards": {
       "contractor": {
         "description": "Kan visa tidslinje, redigera tilldelade arbeten och skapa inköpsordrar"
