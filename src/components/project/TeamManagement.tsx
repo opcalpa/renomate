@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useTaxDeductionVisible } from "@/hooks/useTaxDeduction";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -310,6 +311,7 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
 
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { showTaxDeduction } = useTaxDeductionVisible();
 
   const handleTemplateChange = (templateKey: string) => {
     setSelectedTemplate(templateKey);
@@ -955,55 +957,6 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
         </Card>
       )}
 
-      {/* ROT Persons (non-account partners) */}
-      {/* ROT Persons — owner-only section */}
-      {isOwner && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Shield className="h-4 w-4 text-green-600" />
-              {t("roles.rotPersons", "ROT-personer")}
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              {t("roles.rotPersonsDescription", "Personer som nyttjar ROT-avdrag i detta projekt utan eget konto")}
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {rotPersons.map((person) => (
-              <div key={person.id} className="flex items-center gap-3 p-2.5 border rounded-lg">
-                <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-xs font-medium text-green-700 shrink-0">
-                  {person.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{person.name}</p>
-                  {person.personnummerLast4 && (
-                    <p className="text-xs text-muted-foreground">****-{person.personnummerLast4}</p>
-                  )}
-                </div>
-                <Badge variant="outline" className="text-[10px] shrink-0 text-green-700 border-green-200">
-                  ROT
-                </Badge>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const { error } = await supabase.from("project_rot_persons").delete().eq("id", person.id);
-                    if (error) console.error("Error removing ROT person:", error);
-                    fetchTeamData();
-                  }}
-                  className="text-muted-foreground hover:text-destructive transition-colors"
-                  title={t("common.remove", "Ta bort")}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
-
-            {/* Inline add form */}
-            <RotPersonAddForm projectId={projectId} onAdded={fetchTeamData} t={t} />
-          </CardContent>
-        </Card>
-      )}
-
       {/* Pending Invitations */}
       {canManageTeam && invitations.length > 0 && (
         <Card>
@@ -1133,6 +1086,52 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
                 );
               })
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ROT Persons — owner-only, lowest priority */}
+      {isOwner && showTaxDeduction && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Shield className="h-4 w-4 text-green-600" />
+              {t("roles.rotPersons")}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {t("roles.rotPersonsDescription")}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {rotPersons.map((person) => (
+              <div key={person.id} className="flex items-center gap-3 p-2.5 border rounded-lg">
+                <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-xs font-medium text-green-700 shrink-0">
+                  {person.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{person.name}</p>
+                  {person.personnummerLast4 && (
+                    <p className="text-xs text-muted-foreground">****-{person.personnummerLast4}</p>
+                  )}
+                </div>
+                <Badge variant="outline" className="text-[10px] shrink-0 text-green-700 border-green-200">
+                  ROT
+                </Badge>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const { error } = await supabase.from("project_rot_persons").delete().eq("id", person.id);
+                    if (error) console.error("Error removing ROT person:", error);
+                    fetchTeamData();
+                  }}
+                  className="text-muted-foreground hover:text-destructive transition-colors"
+                  title={t("common.remove")}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+            <RotPersonAddForm projectId={projectId} onAdded={fetchTeamData} t={t} />
           </CardContent>
         </Card>
       )}
