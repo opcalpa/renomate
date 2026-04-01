@@ -1127,6 +1127,14 @@
       "co_owner": "Co-Owner",
       "custom": "Custom"
     },
+    "cards": {
+      "contractor": { "description": "Can view timeline, edit assigned tasks, and create purchase orders" },
+      "project_manager": { "description": "Full access to all project features, can invite team members" },
+      "client": { "description": "Can view all project information including budget" },
+      "architect": { "description": "Can view plans, tasks, and overview. Can upload files" },
+      "viewer": { "description": "Read-only access to timeline, tasks, overview, and purchases" },
+      "co_owner": { "description": "Same access as the owner — full control, shared project management + double ROT" }
+    },
     "teamMembers": "Team Members",
     "pendingInvitations": "Pending Invitations",
     "editMemberTitle": "Edit Team Member Permissions",

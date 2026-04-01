@@ -1125,6 +1125,14 @@
       "co_owner": "Delägare",
       "custom": "Anpassad"
     },
+    "cards": {
+      "contractor": { "description": "Kan visa tidslinje, redigera tilldelade arbeten och skapa inköpsordrar" },
+      "project_manager": { "description": "Full åtkomst till alla projektfunktioner, kan bjuda in teammedlemmar" },
+      "client": { "description": "Kan visa all projektinformation inklusive budget" },
+      "architect": { "description": "Kan visa ritningar, arbeten och översikt. Kan ladda upp filer" },
+      "viewer": { "description": "Skrivskyddad åtkomst till tidslinje, arbeten, översikt och inköp" },
+      "co_owner": { "description": "Samma åtkomst som ägaren — full kontroll, delad projektledning + dubbelt ROT" }
+    },
     "teamMembers": "Teammedlemmar",
     "pendingInvitations": "Väntande inbjudningar",
     "editMemberTitle": "Redigera medlem",
