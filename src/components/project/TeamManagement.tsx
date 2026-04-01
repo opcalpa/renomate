@@ -155,22 +155,7 @@ const ROLE_TEMPLATES: Record<string, { access: FeatureAccess }> = {
       files: "view",
     },
   },
-  architect: {
-    access: {
-      customerView: "none",
-      timeline: "view",
-      tasks: "view",
-      tasksScope: "all",
-      spacePlanner: "view",
-      purchases: "none",
-      purchasesScope: "all",
-      overview: "view",
-      teams: "none",
-      budget: "none",
-      files: "upload",
-    },
-  },
-  viewer: {
+  collaborator: {
     access: {
       customerView: "none",
       timeline: "view",
@@ -182,7 +167,7 @@ const ROLE_TEMPLATES: Record<string, { access: FeatureAccess }> = {
       overview: "view",
       teams: "none",
       budget: "none",
-      files: "none",
+      files: "upload",
     },
   },
   co_owner: {
@@ -202,12 +187,17 @@ const ROLE_TEMPLATES: Record<string, { access: FeatureAccess }> = {
   },
 };
 
+// Legacy mapping — existing DB shares with old keys still resolve correctly
+const LEGACY_ROLE_MAP: Record<string, string> = {
+  architect: "collaborator",
+  viewer: "collaborator",
+};
+
 const ROLE_ICONS: Record<string, typeof Wrench> = {
   contractor: Wrench,
   project_manager: ClipboardList,
-  architect: Ruler,
+  collaborator: Eye,
   client: User,
-  viewer: Eye,
   co_owner: Users,
 };
 

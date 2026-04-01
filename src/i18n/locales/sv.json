@@ -1119,18 +1119,18 @@
     "roleTemplates": {
       "contractor": "Entreprenör",
       "project_manager": "Projektledare",
-      "architect": "Arkitekt",
+      "collaborator": "Samarbetspartner",
+      "architect": "Samarbetspartner",
+      "viewer": "Samarbetspartner",
       "client": "Kund",
-      "viewer": "Betraktare",
       "co_owner": "Delägare",
       "custom": "Anpassad"
     },
     "cards": {
-      "contractor": { "description": "Kan visa tidslinje, redigera tilldelade arbeten och skapa inköpsordrar" },
+      "contractor": { "description": "Ser tilldelade arbeten, kan uppdatera status och skapa inköpsordrar" },
       "project_manager": { "description": "Full åtkomst till alla projektfunktioner, kan bjuda in teammedlemmar" },
-      "client": { "description": "Kan visa all projektinformation inklusive budget" },
-      "architect": { "description": "Kan visa ritningar, arbeten och översikt. Kan ladda upp filer" },
-      "viewer": { "description": "Skrivskyddad åtkomst till tidslinje, arbeten, översikt och inköp" },
+      "collaborator": { "description": "Läsbehörighet med filuppladdning — för arkitekter, konsulter och rådgivare" },
+      "client": { "description": "Följer projektets framsteg, foton och meddelanden — inga priser synliga" },
       "co_owner": { "description": "Samma åtkomst som ägaren — full kontroll, delad projektledning + dubbelt ROT" }
     },
     "teamMembers": "Teammedlemmar",
