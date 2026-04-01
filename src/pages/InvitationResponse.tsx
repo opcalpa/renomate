@@ -221,8 +221,23 @@ const InvitationResponse = () => {
 
       // Co-owners get full edit access on all features
       const coOwnerAccess = isCoOwner ? 'edit' : null;
+      // Map template role names to DB-allowed values (viewer/editor/admin/client)
+      const dbRoleMap: Record<string, string> = {
+        contractor: "editor",
+        project_manager: "admin",
+        collaborator: "viewer",
+        client: "client",
+        homeowner: "editor",
+        // Legacy
+        architect: "viewer",
+        viewer: "viewer",
+        editor: "editor",
+        admin: "admin",
+      };
+      const dbRole = dbRoleMap[invitation.role || ""] || "viewer";
+
       const sharePayload = {
-        role: isCoOwner ? invitation.role || 'homeowner' : invitation.role,
+        role: isCoOwner ? "admin" : dbRole,
         role_type: roleType,
         contractor_role: contractorCategory,
         timeline_access: coOwnerAccess || perms.timeline_access || invitation.timeline_access || 'view',
