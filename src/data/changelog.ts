@@ -13,6 +13,12 @@ export const changelog: ChangelogEntry[] = [
   // ── 2026-04-01 ──
   {
     date: "2026-04-01",
+    title: "Timeline: assignee avatars, room names, faster hover",
+    description: "Task bars now show the assigned person's initial and room name directly on the bar. Hover details appear twice as fast. Dependencies scoped to project only.",
+    tags: ["Arbeten", "UX", "Design"],
+  },
+  {
+    date: "2026-04-01",
     title: "Inspiration board on project overview",
     description: "Drop photos, paste Pinterest links, or snap a picture — directly on the overview page. Tag rooms later. Visual inspiration lives alongside your planning data, not buried in menus.",
     tags: ["UX", "Design", "Planering"],
