@@ -242,6 +242,7 @@ const OverviewTab = ({
     projectStatus: projectStatus || undefined,
     userRole: isHomeowner ? "homeowner" : "contractor",
     contexts: isPlanning ? ["planningPhase"] : [],
+    showTaxDeduction,
     taskCount: taskStats?.total ?? 0,
     completionPct: taskStats?.percentage ?? 0,
     hasBudget: (project.total_budget ?? 0) > 0,
@@ -271,9 +272,9 @@ const OverviewTab = ({
 
   // Sync reminders to Junior store
   useEffect(() => {
-    useJuniorStore.getState().setReminders(reminders, project.name);
+    useJuniorStore.getState().setReminders(reminders, project.name, project.country);
     return () => useJuniorStore.getState().clear();
-  }, [reminders, project.name]);
+  }, [reminders, project.name, project.country]);
 
   const handleTipAction = useCallback((target: string) => {
     switch (target) {

@@ -453,6 +453,7 @@ export interface TipContext {
   projectStatus?: string | null;
   contexts?: string[];             // named contexts like "budgetTab", "firstProject"
   userRole?: "homeowner" | "contractor" | null;
+  showTaxDeduction?: boolean;
   // Extended context for smart next-step tips
   taskCount?: number;
   completionPct?: number;          // 0-100
@@ -516,6 +517,8 @@ export function findMatchingTips(
       if (dismissedIds.has(tip.id)) return false;
       // Role filter
       if (tip.role !== "all" && ctx.userRole && tip.role !== ctx.userRole) return false;
+      // Hide tax/ROT tips for non-Swedish projects
+      if (tip.category === "tax" && ctx.showTaxDeduction === false) return false;
       // matchAll: ALL triggers must match. Otherwise: ANY trigger match = show tip
       return tip.matchAll
         ? tip.triggers.every((trigger) => matchesTrigger(trigger, ctx))

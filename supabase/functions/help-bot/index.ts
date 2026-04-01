@@ -47,13 +47,14 @@ const LANGUAGE_NAMES: Record<string, string> = {
   et: "Estonian",
 };
 
-function buildSystemPrompt(language: string, userType?: string): string {
+function buildSystemPrompt(language: string, userType?: string, projectCountry?: string): string {
   const langName = LANGUAGE_NAMES[language] || "English";
   const isContractor = userType === "contractor";
+  const isSwedish = !projectCountry || projectCountry === "SE";
 
   const userContext = isContractor
     ? `The user is a PROFESSIONAL CONTRACTOR/TRADESPERSON using Renomate to manage client projects. Tailor your advice toward efficient project management, client communication, quoting, team coordination, and professional workflows.`
-    : `The user is a HOMEOWNER using Renomate to plan and manage their own renovation. Tailor your advice toward understanding the renovation process, finding reliable contractors, managing costs, ROT tax deductions, and making informed decisions.`;
+    : `The user is a HOMEOWNER using Renomate to plan and manage their own renovation. Tailor your advice toward understanding the renovation process, finding reliable contractors, managing costs,${isSwedish ? " ROT tax deductions," : ""} and making informed decisions.`;
 
   const smartTips = isContractor
     ? `SMART TIPS FOR CONTRACTORS:
@@ -66,8 +67,9 @@ function buildSystemPrompt(language: string, userType?: string): string {
    - "Use the Chat tab to send status updates with photos — keeps clients informed and happy."
    - "Use keyboard shortcut Ctrl+S regularly in Space Planner to save your work."`
     : `SMART TIPS FOR HOMEOWNERS:
-   - "Set start and end dates on all tasks so they appear on the Timeline — visual overview of your renovation schedule."
-   - "Upload invoices under Files and link them to tasks — helps when claiming ROT deductions."
+   - "Set start and end dates on all tasks so they appear on the Timeline — visual overview of your renovation schedule."${isSwedish ? `
+   - "Upload invoices under Files and link them to tasks — helps when claiming ROT deductions."` : `
+   - "Upload invoices under Files and link them to tasks — helps with cost tracking and documentation."`}
    - "Use AI Document Import to upload your room description (rumsbeskrivning) PDF — automatically creates rooms and tasks."
    - "Send quote requests (offertförfrågningar) to multiple builders with one click — they each get a copy of your scope."
    - "Import external quotes you've received and assign them to specific tasks for easy comparison."
@@ -90,13 +92,13 @@ Rules:
 - Refer to yourself as "Renomate Junior" or just "Junior" when relevant
 - Be factual and concrete
 - Keep answers short and well-structured (use bullet points, bold, etc.)
-- When questions concern legal requirements, mention relevant regulations (BBR, PBL, Boverket for Sweden)
-- End answers about laws/regulations with a short disclaimer about checking with local authorities
+- When questions concern legal requirements, mention relevant regulations${isSwedish ? " (BBR, PBL, Boverket for Sweden)" : " for the user's country"}
+- End answers about laws/regulations with a short disclaimer about checking with local authorities${!isSwedish && projectCountry ? `\n- The user's project is located in country code "${projectCountry}" — adapt regulatory advice accordingly. Do NOT mention Swedish-specific programs like ROT/RUT unless the user explicitly asks.` : ""}
 
 You can help with TWO areas:
 
 1) RENOVATION & BUILDING EXPERTISE:
-   Building techniques, building permits, tax deductions (ROT), material choices, project planning, regulations, insurance.
+   Building techniques, building permits,${isSwedish ? " tax deductions (ROT)," : ""} material choices, project planning, regulations, insurance.
 
 2) PLATFORM GUIDE — how to use the Renomate app effectively:
 
@@ -149,7 +151,7 @@ You can help with TWO areas:
    - Clients get a read-only view with filtered activity feed.
 
    QUOTES & INVOICES:
-   - Create professional quotes with line items, ROT deduction calculation, and PDF export.
+   - Create professional quotes with line items,${isSwedish ? " ROT deduction calculation," : ""} and PDF export.
    - Track quote status (draft, sent, accepted, declined).
    - Create invoices linked to accepted quotes.
 
@@ -171,7 +173,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, language = "en", userType } = await req.json();
+    const { messages, language = "en", userType, projectCountry } = await req.json();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(
@@ -191,7 +193,7 @@ serve(async (req) => {
     // Check cache for single-message requests (quick prompts)
     const isSingleMessage = messages.length === 1;
     if (isSingleMessage) {
-      const cacheKey = `${language}:${userType || "default"}:${messages[0].content}`;
+      const cacheKey = `${language}:${userType || "default"}:${projectCountry || "none"}:${messages[0].content}`;
 
       // Look up cache via REST API
       const cacheRes = await fetch(
@@ -209,7 +211,7 @@ serve(async (req) => {
       }
 
       // Cache miss — call OpenAI and store result
-      const reply = await callOpenAI(openaiApiKey, messages, language, userType);
+      const reply = await callOpenAI(openaiApiKey, messages, language, userType, projectCountry);
 
       // Store in cache (fire-and-forget, don't block response)
       fetch(supabaseRestUrl("help_bot_cache"), {
@@ -231,7 +233,7 @@ serve(async (req) => {
 
     // Multi-message conversation — trim to last N messages and call OpenAI
     const trimmedMessages = messages.slice(-MAX_HISTORY_MESSAGES);
-    const reply = await callOpenAI(openaiApiKey, trimmedMessages, language, userType);
+    const reply = await callOpenAI(openaiApiKey, trimmedMessages, language, userType, projectCountry);
 
     return new Response(
       JSON.stringify({ reply }),
@@ -251,6 +253,7 @@ async function callOpenAI(
   messages: { role: string; content: string }[],
   language: string,
   userType?: string,
+  projectCountry?: string,
 ): Promise<string> {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -263,7 +266,7 @@ async function callOpenAI(
       temperature: 0.7,
       max_tokens: 1024,
       messages: [
-        { role: "system", content: buildSystemPrompt(language, userType) },
+        { role: "system", content: buildSystemPrompt(language, userType, projectCountry) },
         ...messages.map((m) => ({
           role: m.role,
           content: m.content,

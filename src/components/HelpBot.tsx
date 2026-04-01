@@ -302,8 +302,9 @@ export function HelpBot() {
 
       const conversationMessages = allConversation.slice(-8);
 
+      const projectCountry = useJuniorStore.getState().projectCountry;
       const { data, error } = await supabase.functions.invoke("help-bot", {
-        body: { messages: conversationMessages, language: i18n.language, userType },
+        body: { messages: conversationMessages, language: i18n.language, userType, projectCountry },
       });
 
       if (error) throw error;
