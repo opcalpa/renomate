@@ -521,8 +521,6 @@ const OverviewTab = ({
         onNavigateToFiles={onNavigateToFiles}
       />
 
-      {showTaxDeduction && <RotSummaryCard projectId={project.id} />}
-
       {/* Inspiration — room photos, Pinterest, material images */}
       <InspirationSection
         projectId={project.id}
@@ -543,6 +541,9 @@ const OverviewTab = ({
       {/* Planning reference removed from active phase — data already migrated
          to Tasks, Purchases, and Rooms tabs via quote acceptance. Original
          planning is accessible via the accepted quote in Documents section. */}
+
+      {/* ROT — bottom of overview, only Swedish projects */}
+      {showTaxDeduction && <RotSummaryCard projectId={project.id} />}
 
       <ProjectSettingsDialog
         open={settingsOpen}
