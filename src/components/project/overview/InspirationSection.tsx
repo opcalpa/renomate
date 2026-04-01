@@ -221,16 +221,38 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
       if (pinUrl) {
         try {
           const pinData = await fetchPinterestPin(pinUrl, projectId);
-          // Only save if we got a Storage URL (Pinterest blocks hotlinking)
-          if (!pinData.storageUrl) {
-            console.error("Pinterest pin fetch: no storageUrl returned, imageUrl:", pinData.imageUrl);
+          let finalUrl = pinData.storageUrl;
+
+          // If edge function couldn't download to Storage, do it client-side
+          if (!finalUrl && pinData.imageUrl) {
+            try {
+              const imgRes = await fetch(pinData.imageUrl);
+              if (imgRes.ok) {
+                const blob = await imgRes.blob();
+                const ext = blob.type.includes("png") ? "png" : "jpg";
+                const path = `projects/${projectId}/inspiration/${Date.now()}-pin-${pinData.pinId}.${ext}`;
+                const { error: upErr } = await supabase.storage
+                  .from("project-files")
+                  .upload(path, blob, { contentType: blob.type });
+                if (!upErr) {
+                  const { data: pubUrl } = supabase.storage.from("project-files").getPublicUrl(path);
+                  finalUrl = pubUrl.publicUrl;
+                }
+              }
+            } catch {
+              // Client-side download also failed
+            }
+          }
+
+          if (!finalUrl) {
             toast.error(t("inspiration.pinFetchFailed"));
             return;
           }
+
           await supabase.from("photos").insert({
             linked_to_type: "project",
             linked_to_id: projectId,
-            url: pinData.storageUrl,
+            url: finalUrl,
             caption: pinData.title || null,
             source: "pinterest",
             source_url: pinUrl,
