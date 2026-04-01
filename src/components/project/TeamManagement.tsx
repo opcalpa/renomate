@@ -742,7 +742,7 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
                 {t("roles.inviteButton")}
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
               <DialogHeader>
                 <DialogTitle>{t("roles.inviteTitle")}</DialogTitle>
                 <DialogDescription>
@@ -1147,7 +1147,7 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
 
       {/* Unified Edit Dialog (members + invitations) */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>
               {editTarget?.type === "member"
