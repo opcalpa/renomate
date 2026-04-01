@@ -270,17 +270,43 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
             {t("inspiration.title")}
           </h3>
           {hasPhotos && (
-            <div className="flex gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs gap-1"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="h-3 w-3" />
-                {t("inspiration.add")}
-              </Button>
-            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                  <Upload className="h-3 w-3" />
+                  {t("inspiration.add")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-1" align="end">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="h-3.5 w-3.5 text-muted-foreground" />
+                  {t("inspiration.upload")}
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left sm:hidden"
+                  onClick={() => {
+                    const input = fileInputRef.current;
+                    if (input) { input.setAttribute("capture", "environment"); input.click(); input.removeAttribute("capture"); }
+                  }}
+                >
+                  <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+                  {t("inspiration.camera")}
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                  onClick={() => setShowUrlInput(true)}
+                >
+                  <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  {t("inspiration.fromUrl")}
+                </button>
+              </PopoverContent>
+            </Popover>
           )}
         </div>
 
@@ -434,15 +460,47 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                 </div>
               ))}
 
-              {/* Add more button inline */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="aspect-square rounded-lg border-2 border-dashed border-muted flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-              >
-                <Upload className="h-5 w-5" />
-                <span className="text-[10px]">{t("inspiration.addMore")}</span>
-              </button>
+              {/* Add more tile — popover with all input options */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="aspect-square rounded-lg border-2 border-dashed border-muted flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                  >
+                    <Upload className="h-5 w-5" />
+                    <span className="text-[10px]">{t("inspiration.addMore")}</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-1" align="start" side="top">
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-3.5 w-3.5 text-muted-foreground" />
+                    {t("inspiration.upload")}
+                  </button>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left sm:hidden"
+                    onClick={() => {
+                      const input = fileInputRef.current;
+                      if (input) { input.setAttribute("capture", "environment"); input.click(); input.removeAttribute("capture"); }
+                    }}
+                  >
+                    <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+                    {t("inspiration.camera")}
+                  </button>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                    onClick={() => setShowUrlInput(true)}
+                  >
+                    <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    {t("inspiration.fromUrl")}
+                  </button>
+                </PopoverContent>
+              </Popover>
             </div>
           ) : (
             /* Empty state — welcoming, not sterile */
