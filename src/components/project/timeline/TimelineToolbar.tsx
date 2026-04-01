@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTimelineStore } from "./store";
 import type { TimelineTask, TeamMember, GroupByOption } from "./types";
 
 interface TimelineToolbarProps {
@@ -219,6 +220,11 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
 
         <div className="w-px h-5 bg-border mx-1 hidden sm:block" />
 
+        {/* Visibility toggles */}
+        <VisibilityToggles t={t} />
+
+        <div className="w-px h-5 bg-border mx-1 hidden sm:block" />
+
         {/* Zoom controls */}
         <div className="flex items-center gap-0.5 border rounded-md p-0.5">
           <Button variant="ghost" size="icon" onClick={onZoomOut} className="h-7 w-7">
@@ -260,3 +266,39 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
     </div>
   );
 };
+
+function VisibilityToggles({ t }: { t: (key: string, fallback?: string) => string }) {
+  const showTasks = useTimelineStore((s) => s.showTasks);
+  const showPhases = useTimelineStore((s) => s.showPhases);
+  const showMilestones = useTimelineStore((s) => s.showMilestones);
+  const { setShowTasks, setShowPhases, setShowMilestones } = useTimelineStore.getState();
+
+  return (
+    <div className="flex items-center gap-0.5 border rounded-md p-0.5">
+      <Button
+        variant={showTasks ? "default" : "ghost"}
+        size="sm"
+        className="h-7 px-2 text-[10px]"
+        onClick={() => setShowTasks(!showTasks)}
+      >
+        {t("timeline.tasks", "Tasks")}
+      </Button>
+      <Button
+        variant={showPhases ? "default" : "ghost"}
+        size="sm"
+        className="h-7 px-2 text-[10px]"
+        onClick={() => setShowPhases(!showPhases)}
+      >
+        {t("timeline.phases", "Phases")}
+      </Button>
+      <Button
+        variant={showMilestones ? "default" : "ghost"}
+        size="sm"
+        className="h-7 px-2 text-[10px]"
+        onClick={() => setShowMilestones(!showMilestones)}
+      >
+        {t("timeline.milestones", "Milestones")}
+      </Button>
+    </div>
+  );
+}

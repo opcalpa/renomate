@@ -352,6 +352,59 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
           />
         </Layer>
 
+        {/* Phase overlay layer */}
+        {useTimelineStore.getState().showPhases && (
+          <Layer listening={false}>
+            {(() => {
+              // Group tasks by cost_center to compute phase spans
+              const phaseMap = new Map<string, { minDate: string; maxDate: string; color: string }>();
+              const PHASE_COLORS: Record<string, string> = {
+                demolition: "#f59e0b20", electrical: "#3b82f620", plumbing: "#06b6d420",
+                tiling: "#8b5cf620", carpentry: "#f97316e0", painting: "#ec489920",
+                flooring: "#84cc1620", kitchen: "#ef444420", bathroom: "#6366f120",
+                other: "#94a3b820",
+              };
+              for (const task of tasks) {
+                if (!task.start_date || !task.finish_date) continue;
+                const cc = (task as unknown as { cost_center?: string }).cost_center || "other";
+                const existing = phaseMap.get(cc);
+                if (!existing) {
+                  phaseMap.set(cc, { minDate: task.start_date, maxDate: task.finish_date, color: PHASE_COLORS[cc] || PHASE_COLORS.other });
+                } else {
+                  if (task.start_date < existing.minDate) existing.minDate = task.start_date;
+                  if (task.finish_date > existing.maxDate) existing.maxDate = task.finish_date;
+                }
+              }
+              return Array.from(phaseMap.entries()).map(([cc, phase]) => {
+                const x1 = dateToX(new Date(phase.minDate), originDate, pixelsPerDay, panX);
+                const x2 = dateToX(new Date(phase.maxDate), originDate, pixelsPerDay, panX) + pixelsPerDay;
+                if (x2 < 0 || x1 > stageWidth) return null;
+                return (
+                  <Group key={`phase-${cc}`}>
+                    <Rect
+                      x={x1}
+                      y={0}
+                      width={x2 - x1}
+                      height={stageHeight}
+                      fill={phase.color}
+                      perfectDrawEnabled={false}
+                    />
+                    <KonvaText
+                      x={Math.max(x1 + 4, 4)}
+                      y={4}
+                      text={cc.charAt(0).toUpperCase() + cc.slice(1)}
+                      fontSize={10}
+                      fontStyle="bold"
+                      fill={phase.color.replace("20", "90")}
+                      listening={false}
+                    />
+                  </Group>
+                );
+              });
+            })()}
+          </Layer>
+        )}
+
         {/* Content layer */}
         <Layer>
           {rows.map((row) => {
@@ -377,6 +430,8 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
                 </Group>
               );
             }
+
+            if (!useTimelineStore.getState().showTasks) return null;
 
             const task = row.task;
             if (!task?.start_date || !task?.finish_date) return null;

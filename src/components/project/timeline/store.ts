@@ -32,6 +32,11 @@ interface TimelineStoreState {
   selectedAssignee: string;
   collapsedGroups: Set<string>;
 
+  // Visibility toggles
+  showTasks: boolean;
+  showPhases: boolean;
+  showMilestones: boolean;
+
   // Actions
   setPan: (panX: number, panY: number) => void;
   setZoom: (pixelsPerDay: number, anchorX?: number) => void;
@@ -44,6 +49,9 @@ interface TimelineStoreState {
   setGroupBy: (groupBy: GroupByOption) => void;
   setSelectedAssignee: (assignee: string) => void;
   toggleGroup: (groupId: string) => void;
+  setShowTasks: (v: boolean) => void;
+  setShowPhases: (v: boolean) => void;
+  setShowMilestones: (v: boolean) => void;
 }
 
 export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
@@ -59,6 +67,10 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
   groupBy: "none",
   selectedAssignee: "all",
   collapsedGroups: new Set<string>(),
+
+  showTasks: true,
+  showPhases: true,
+  showMilestones: true,
 
   setPan: (panX, panY) => set({ panX, panY }),
 
@@ -95,6 +107,10 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
 
   setGroupBy: (groupBy) => set({ groupBy }),
   setSelectedAssignee: (assignee) => set({ selectedAssignee: assignee }),
+
+  setShowTasks: (v) => set({ showTasks: v }),
+  setShowPhases: (v) => set({ showPhases: v }),
+  setShowMilestones: (v) => set({ showMilestones: v }),
 
   toggleGroup: (groupId) => {
     const { collapsedGroups } = get();
