@@ -214,8 +214,10 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
       const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
       if (!profile) throw new Error("No profile");
 
-      // Check if it's a Pinterest pin URL
+      // Detect Pinterest URLs
+      const isPinterest = url.includes("pinterest");
       const pinUrl = parsePinterestPinUrl(url);
+
       if (pinUrl) {
         const pinData = await fetchPinterestPin(pinUrl);
         if (pinData) {
@@ -235,14 +237,22 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
           return;
         }
+        // Pin fetch failed — don't save raw Pinterest URL as image
+        toast.error(t("inspiration.pinFetchFailed"));
+        return;
       }
 
-      // Check if it's a Pinterest board URL
       const boardParsed = parsePinterestBoardUrl(url);
       if (boardParsed) {
         toast.info(t("inspiration.boardHint"));
         setUrlInput("");
         setShowUrlInput(false);
+        return;
+      }
+
+      // Other Pinterest URLs we can't parse
+      if (isPinterest) {
+        toast.error(t("inspiration.pinterestInvalid"));
         return;
       }
 

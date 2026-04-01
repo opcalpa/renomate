@@ -5049,6 +5049,8 @@
     "urlPlaceholder": "Klistra bild- eller Pinterest-URL...",
     "imported": "Bild importerad!",
     "pinImported": "Pinterest-pin importerad!",
+    "pinFetchFailed": "Kunde inte hämta bilden från Pinterest. Prova kopiera bild-URL:en direkt istället.",
+    "pinterestInvalid": "Kunde inte tolka denna Pinterest-URL. Prova en direkt pin-länk (pinterest.com/pin/...).",
     "boardHint": "Pinterest-boards kopplas bäst per rum — öppna rumsdetaljerna i ritverktyget för att länka ett board.",
     "uploaded": "{{count}} bild(er) uppladdade!",
     "assignRoom": "Koppla till rum...",

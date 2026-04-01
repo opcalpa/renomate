@@ -5052,6 +5052,8 @@
     "urlPlaceholder": "Paste image or Pinterest URL...",
     "imported": "Image imported!",
     "pinImported": "Pinterest pin imported!",
+    "pinFetchFailed": "Could not fetch Pinterest pin image. Try copying the image URL directly instead.",
+    "pinterestInvalid": "Could not recognize this Pinterest URL. Try a direct pin link (pinterest.com/pin/...).",
     "boardHint": "Pinterest boards are best linked per room — open the room details in the floor planner to connect a board.",
     "uploaded": "{{count}} image(s) uploaded!",
     "assignRoom": "Assign to room...",
