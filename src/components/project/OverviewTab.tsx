@@ -505,7 +505,7 @@ const OverviewTab = ({
         />
       )}
 
-      {isHomeowner && showTaxDeduction && (
+      {isHomeowner && isProjectOwner && showTaxDeduction && (
         <HouseholdRotDialog
           projectId={project.id}
           open={householdDialogOpen}
