@@ -55,7 +55,7 @@ export const TimelineHoverCard: React.FC<TimelineHoverCardProps> = ({
     const timer = setTimeout(() => {
       setDelayedTaskId(hoveredTaskId);
       setVisible(true);
-    }, 400);
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [hoveredTaskId, dragState]);

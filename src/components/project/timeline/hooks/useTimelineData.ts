@@ -53,16 +53,25 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
   }, [projectId]);
 
   const fetchDependencies = useCallback(async () => {
+    // Only fetch dependencies for tasks in this project
+    const { data: projectTasks } = await supabase
+      .from("tasks")
+      .select("id")
+      .eq("project_id", projectId);
+    const taskIds = (projectTasks || []).map((t) => t.id);
+    if (taskIds.length === 0) { setDependencies([]); return; }
+
     const { data, error } = await supabase
       .from("task_dependencies")
-      .select("*");
+      .select("*")
+      .in("task_id", taskIds);
 
     if (error) {
       console.error("Failed to fetch dependencies:", error);
       return;
     }
     setDependencies(data || []);
-  }, []);
+  }, [projectId]);
 
   const fetchProjectDates = useCallback(async () => {
     const { data } = await supabase

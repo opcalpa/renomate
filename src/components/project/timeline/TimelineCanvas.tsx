@@ -38,6 +38,8 @@ interface TimelineCanvasProps {
   daysToRender: number;
   projectStartDate?: string | null;
   projectFinishDate?: string | null;
+  teamMembers?: Array<{ id: string; name: string }>;
+  rooms?: Array<{ id: string; name: string }>;
   onTaskClick: (taskId: string) => void;
   onRefetch: () => void;
 }
@@ -55,6 +57,8 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
   daysToRender,
   projectStartDate,
   projectFinishDate,
+  teamMembers,
+  rooms,
   onTaskClick,
   onRefetch,
 }) => {
@@ -380,6 +384,9 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
             const pos = taskPositions.get(task.id);
             if (!pos) return null;
 
+            const assignee = teamMembers?.find((m) => m.id === task.assigned_to_stakeholder_id);
+            const room = rooms?.find((r) => r.id === task.room_id);
+
             return (
               <TimelineTaskBar
                 key={task.id}
@@ -394,6 +401,8 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
                   useTimelineStore.getState().selectedTaskId === task.id
                 }
                 isDragging={dragState?.taskId === task.id}
+                assigneeInitial={assignee?.name?.charAt(0)?.toUpperCase()}
+                roomName={room?.name}
                 onDragStart={handleDragStart}
                 onDragMove={handleDragMove}
                 onDragEnd={handleDragEnd}

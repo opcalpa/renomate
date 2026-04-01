@@ -241,6 +241,8 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
         daysToRender={daysToRender}
         projectStartDate={projectStartDate}
         projectFinishDate={projectFinishDate}
+        teamMembers={teamMembers}
+        rooms={rooms}
         onTaskClick={handleTaskClick}
         onRefetch={refetch}
       />

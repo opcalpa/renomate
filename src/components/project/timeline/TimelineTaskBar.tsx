@@ -20,6 +20,8 @@ interface TimelineTaskBarProps {
   width: number;
   isSelected: boolean;
   isDragging: boolean;
+  assigneeInitial?: string;
+  roomName?: string;
   onDragStart: (taskId: string, evt: KonvaEventObject<DragEvent>) => void;
   onDragMove: (taskId: string, evt: KonvaEventObject<DragEvent>) => void;
   onDragEnd: (taskId: string, evt: KonvaEventObject<DragEvent>) => void;
@@ -52,6 +54,8 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
   onDragEnd,
   onResizeStart,
   onClick,
+  assigneeInitial,
+  roomName,
 }) => {
   const barY = y + BAR_PADDING_Y;
   const color = getTaskColor(status);
@@ -251,11 +255,37 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
       {/* Grip dots */}
       {gripDots}
 
-      {/* Title text with ellipsis */}
+      {/* Assignee initial circle (right side) */}
+      {assigneeInitial && width > 60 && (
+        <>
+          <Circle
+            x={width - 18}
+            y={BAR_HEIGHT / 2}
+            radius={10}
+            fill="rgba(255,255,255,0.25)"
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+          <KonvaText
+            x={width - 25}
+            y={BAR_HEIGHT / 2 - 5}
+            width={14}
+            text={assigneeInitial}
+            fontSize={9}
+            fontStyle="bold"
+            fill="#ffffff"
+            align="center"
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        </>
+      )}
+
+      {/* Title text */}
       <KonvaText
         x={24}
-        y={BAR_HEIGHT / 2 - 6}
-        width={Math.max(0, width - 40)}
+        y={roomName && width > 80 ? BAR_HEIGHT / 2 - 11 : BAR_HEIGHT / 2 - 6}
+        width={Math.max(0, width - (assigneeInitial && width > 60 ? 56 : 32))}
         height={14}
         text={title}
         fontSize={12}
@@ -267,10 +297,27 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
         perfectDrawEnabled={false}
       />
 
-      {/* Progress % text (if enough room) */}
-      {progress > 0 && width > 100 && (
+      {/* Room name subtitle (if enough space) */}
+      {roomName && width > 80 && (
         <KonvaText
-          x={width - 38}
+          x={24}
+          y={BAR_HEIGHT / 2 + 2}
+          width={Math.max(0, width - (assigneeInitial && width > 60 ? 56 : 32))}
+          height={11}
+          text={roomName}
+          fontSize={9}
+          fill="rgba(255,255,255,0.7)"
+          ellipsis
+          wrap="none"
+          listening={false}
+          perfectDrawEnabled={false}
+        />
+      )}
+
+      {/* Progress % text (if enough room and no room name) */}
+      {progress > 0 && width > 100 && !roomName && (
+        <KonvaText
+          x={width - (assigneeInitial ? 50 : 38)}
           y={BAR_HEIGHT / 2 - 5}
           width={30}
           text={`${Math.round(progress)}%`}
