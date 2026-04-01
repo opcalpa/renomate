@@ -540,15 +540,9 @@ const OverviewTab = ({
         />
       )}
 
-      {/* Collapsible planning reference — after planning phase, at bottom */}
-      {!isPlanning && (!isInvitedClient || isPlanningContributor) && (
-        <CollapsibleSection
-          title={t("overview.planningReference", "Planning reference")}
-          icon={<FileText className="h-4 w-4" />}
-        >
-          {planningSection}
-        </CollapsibleSection>
-      )}
+      {/* Planning reference removed from active phase — data already migrated
+         to Tasks, Purchases, and Rooms tabs via quote acceptance. Original
+         planning is accessible via the accepted quote in Documents section. */}
 
       <ProjectSettingsDialog
         open={settingsOpen}
