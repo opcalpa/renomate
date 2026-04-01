@@ -75,6 +75,9 @@ interface BudgetRow {
   estimatedHours?: number;
   hourlyRate?: number;
   subcontractorCost?: number;
+  markupPercent?: number;
+  materialMarkupPercent?: number;
+  laborCostPercent?: number;
   paymentStatus?: string;
   // Material-specific
   quantity?: number;
@@ -546,6 +549,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
           estimatedHours: t.estimated_hours ?? undefined,
           hourlyRate: t.hourly_rate ?? undefined,
           subcontractorCost: t.subcontractor_cost ?? undefined,
+          markupPercent: t.markup_percent ?? undefined,
+          materialMarkupPercent: t.material_markup_percent ?? undefined,
+          laborCostPercent: t.labor_cost_percent ?? undefined,
           paymentStatus: t.payment_status ?? undefined,
           orderedAmount: t.ordered_amount ?? undefined,
           rotAmount: (t as Record<string, unknown>).rot_amount as number ?? undefined,
@@ -1372,11 +1378,21 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
         const effectiveCost = getEffectiveCost(row);
         const result = row.budget - effectiveCost;
         const marginPct = row.budget > 0 ? Math.round((result / row.budget) * 100) : 0;
+        const plannedMarkup = row.markupPercent;
         let colorClass = "text-muted-foreground";
         if (marginPct < 0) colorClass = "text-destructive";
         else if (marginPct < 15) colorClass = "text-amber-500";
         else if (marginPct >= 30) colorClass = "text-green-600";
-        return <span className={colorClass}>{marginPct}%</span>;
+        return (
+          <div className="text-right">
+            <span className={colorClass}>{marginPct}%</span>
+            {plannedMarkup != null && plannedMarkup > 0 && marginPct !== plannedMarkup && (
+              <span className="block text-[10px] text-muted-foreground">
+                {t("budget.planned", "Plan")}: {plannedMarkup}%
+              </span>
+            )}
+          </div>
+        );
       }
       case "matBudget":
         if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;

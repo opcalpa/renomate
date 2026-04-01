@@ -1137,14 +1137,21 @@ export function TasksTableView({
                         case "room": return task.room_id || "__none__";
                         case "costCenter": return task.cost_center || "__none__";
                         case "status": return task.status || "__none__";
+                        case "assignee": return task.assigned_to_stakeholder_id || "__none__";
                         default: return "__all__";
                       }
                     };
                     const getGroupLabel = (key: string): string => {
-                      if (key === "__none__") return groupBy === "room" ? t("budget.noRoom") : groupBy === "costCenter" ? t("budget.noCostCenter") : t("budget.noStatus");
+                      if (key === "__none__") {
+                        if (groupBy === "room") return t("budget.noRoom");
+                        if (groupBy === "costCenter") return t("budget.noCostCenter");
+                        if (groupBy === "assignee") return t("budget.noAssignee");
+                        return t("budget.noStatus");
+                      }
                       if (groupBy === "room") return rooms.find((r) => r.id === key)?.name || key;
                       if (groupBy === "costCenter") return t(`costCenters.${key}`, key);
                       if (groupBy === "status") return statusLabels?.[key] || t(`statuses.${key}`, key);
+                      if (groupBy === "assignee") return getAssignedMemberName?.(key) || key;
                       return key;
                     };
 

@@ -1390,7 +1390,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
               <PopoverContent className="w-48" align="end">
                 <div className="space-y-1">
                   <p className="text-sm font-medium mb-2">{t("budget.groupBy")}</p>
-                  {(["none", "room", "costCenter", "status"] as const).map((opt) => (
+                  {(["none", "room", "costCenter", "status", "assignee"] as const).map((opt) => (
                     <label
                       key={opt}
                       className={`flex items-center gap-2 text-sm cursor-pointer rounded-md px-2 py-1.5 hover:bg-accent ${tableViewState.groupBy === opt ? "bg-accent font-medium" : ""}`}
@@ -1400,6 +1400,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
                       {opt === "room" && t("budget.groupByRoom")}
                       {opt === "costCenter" && t("budget.groupByCostCenter")}
                       {opt === "status" && t("budget.groupByStatus")}
+                      {opt === "assignee" && t("budget.groupByAssignee")}
                     </label>
                   ))}
                 </div>

@@ -498,15 +498,23 @@ export async function createTasksFromQuote(quoteId: string) {
   let materialsCreated = 0;
 
   // ── 1. Smart-merge items that have a source task ──
-  // First verify which source tasks still exist
+  // First verify which source tasks still exist and load their markup settings
   const sourceTaskIds = Array.from(itemsBySourceTask.keys());
   const existingSourceIds = new Set<string>();
+  const sourceTaskMarkups = new Map<string, { markup_percent: number | null; material_markup_percent: number | null; labor_cost_percent: number | null }>();
   if (sourceTaskIds.length > 0) {
     const { data: found } = await supabase
       .from("tasks")
-      .select("id")
+      .select("id, markup_percent, material_markup_percent, labor_cost_percent")
       .in("id", sourceTaskIds);
-    for (const t of found || []) existingSourceIds.add(t.id);
+    for (const t of found || []) {
+      existingSourceIds.add(t.id);
+      sourceTaskMarkups.set(t.id, {
+        markup_percent: t.markup_percent,
+        material_markup_percent: t.material_markup_percent,
+        labor_cost_percent: t.labor_cost_percent,
+      });
+    }
   }
 
   for (const [sourceTaskId, items] of itemsBySourceTask) {

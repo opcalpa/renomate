@@ -104,7 +104,7 @@ export function useTasksTableView(projectId: string) {
   );
 
   // Grouping
-  type GroupByOption = "none" | "room" | "costCenter" | "status";
+  type GroupByOption = "none" | "room" | "costCenter" | "status" | "assignee";
   const [groupBy, setGroupBy] = useState<GroupByOption>(() =>
     (localStorage.getItem(`tasks-groupby-${projectId}`) as GroupByOption) || "none"
   );
