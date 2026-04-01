@@ -61,7 +61,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   const { data } = useQuery({
     queryKey: ["inspiration", projectId],
     queryFn: async () => {
-      const [roomsRes, photosRes, matPhotosRes] = await Promise.all([
+      const [roomsRes, photosRes, materialsRes, materialPhotosRes] = await Promise.all([
         supabase
           .from("rooms")
           .select("id, name")
@@ -74,9 +74,13 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           .order("created_at", { ascending: false }),
         supabase
           .from("materials")
-          .select("id, name, price_total, room_id, photos:photos!inner(url)")
+          .select("id, name, price_total, room_id")
           .eq("project_id", projectId)
           .not("room_id", "is", null),
+        supabase
+          .from("photos")
+          .select("id, url, linked_to_id")
+          .eq("linked_to_type", "material"),
       ]);
 
       const rooms: Room[] = roomsRes.data || [];
@@ -95,16 +99,22 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           roomName: p.linked_to_type === "room" ? (roomMap.get(p.linked_to_id) || null) : null,
         }));
 
-      // Material photos with room context
-      const materialCards = (matPhotosRes.data || [])
-        .filter((m) => (m.photos as unknown as Array<{ url: string }>)?.length > 0)
+      // Build material photo map
+      const matPhotoMap = new Map<string, string>();
+      for (const p of (materialPhotosRes.data || [])) {
+        if (!matPhotoMap.has(p.linked_to_id)) matPhotoMap.set(p.linked_to_id, p.url);
+      }
+
+      // Material cards with room context
+      const materialCards = (materialsRes.data || [])
+        .filter((m) => matPhotoMap.has(m.id))
         .map((m) => ({
           id: m.id,
           name: m.name,
           price: m.price_total || 0,
           roomId: m.room_id,
           roomName: roomMap.get(m.room_id!) || null,
-          photoUrl: (m.photos as unknown as Array<{ url: string }>)[0]?.url,
+          photoUrl: matPhotoMap.get(m.id) || null,
         }));
 
       return { rooms, photos, materialCards };
