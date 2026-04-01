@@ -1,6 +1,7 @@
 {
   "common": {
     "total": "Total",
+    "all": "All",
     "actions": "Actions",
     "change": "change",
     "signIn": "Sign In",
