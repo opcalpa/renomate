@@ -84,6 +84,8 @@ interface OverviewTabProps {
   isGuest?: boolean;
   isProjectOwner?: boolean;
   isPlanningContributor?: boolean;
+  purchasesAccess?: string;
+  overviewAccess?: string;
   onProjectUpdate?: () => void;
   onNavigateToEntity?: (comment: FeedComment) => void;
   onNavigateToPurchases?: (materialId?: string) => void;
@@ -100,6 +102,8 @@ const OverviewTab = ({
   isGuest,
   isProjectOwner = false,
   isPlanningContributor = false,
+  purchasesAccess = 'none',
+  overviewAccess = 'none',
   onProjectUpdate,
   onNavigateToEntity,
   onNavigateToPurchases,
@@ -332,7 +336,7 @@ const OverviewTab = ({
   // ----- All phases: unified dashboard view -----
   return (
     <div className="space-y-5 sm:space-y-8">
-      <ProjectHeader project={project} onOpenSettings={() => setSettingsOpen(true)} />
+      <ProjectHeader project={project} onOpenSettings={(isProjectOwner || overviewAccess === 'edit') ? () => setSettingsOpen(true) : undefined} />
 
       {/* RFQ banner — builder working on a homeowner's quote request */}
       {isRfqProject && !isHomeowner && isPlanning && (
@@ -421,6 +425,7 @@ const OverviewTab = ({
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
+              {(isProjectOwner || purchasesAccess === 'edit' || purchasesAccess === 'create') && (
               <Button
                 variant="outline"
                 size="sm"
@@ -430,6 +435,7 @@ const OverviewTab = ({
                 <ShoppingCart className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">{t("overview.addPurchase")}</span>
               </Button>
+              )}
               {/* Reminders + tips popover — compact button */}
               {(reminders.length > 0 || tips.length > 0) && (
                 <Popover>
@@ -480,6 +486,7 @@ const OverviewTab = ({
                   </PopoverContent>
                 </Popover>
               )}
+              {(isProjectOwner || overviewAccess === 'edit') && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -488,6 +495,7 @@ const OverviewTab = ({
               >
                 <Settings2 className="h-5 w-5" />
               </Button>
+              )}
             </div>
           </div>
         </>

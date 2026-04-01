@@ -867,6 +867,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                 {t('purchases.description')}
               </CardDescription>
             </div>
+            {(isProjectOwner || userPurchasesAccess === 'edit' || userPurchasesAccess === 'create') && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm">
@@ -1320,6 +1321,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                 </form>
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </CardHeader>
 

@@ -1135,6 +1135,8 @@ const ProjectDetail = () => {
                 isGuest={isGuest}
                 isProjectOwner={permissions.isOwner}
                 isPlanningContributor={permissions.isPlanningContributor}
+                purchasesAccess={permissions.purchases}
+                overviewAccess={permissions.overview}
                 onProjectUpdate={isGuest ? loadGuestData : loadData}
                 onNavigateToEntity={handleFeedNavigate}
                 onNavigateToPurchases={(materialId?: string) => {
@@ -1248,6 +1250,7 @@ const ProjectDetail = () => {
                 projectName={project.name}
                 projectStatus={effectiveProject?.status}
                 tasksScope={permissions.tasksScope as 'all' | 'assigned'}
+                tasksAccess={permissions.tasks as 'none' | 'view' | 'edit'}
                 openEntityId={activeTab === "tasks" ? openEntityId : null}
                 onEntityOpened={() => setOpenEntityId(null)}
                 onNavigateToRoom={handleNavigateToRoomById}

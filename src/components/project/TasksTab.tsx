@@ -108,6 +108,7 @@ interface TasksTabProps {
   projectName?: string;
   projectStatus?: string | null;
   tasksScope?: 'all' | 'assigned';
+  tasksAccess?: 'none' | 'view' | 'edit';
   openEntityId?: string | null;
   onEntityOpened?: () => void;
   onNavigateToRoom?: (roomId: string) => void;
@@ -116,10 +117,11 @@ interface TasksTabProps {
   userType?: string | null;
 }
 
-const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', openEntityId, onEntityOpened, onNavigateToRoom, showTimeline = true, currency, userType }: TasksTabProps) => {
+const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', tasksAccess = 'edit', openEntityId, onEntityOpened, onNavigateToRoom, showTimeline = true, currency, userType }: TasksTabProps) => {
   const { t } = useTranslation();
   const isPlanning = projectStatus === "planning";
   const isBuilder = userType !== "homeowner";
+  const canEditTasks = tasksAccess === 'edit';
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -1412,6 +1414,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
           <div className="flex-1" />
 
           {/* Add Task button */}
+          {canEditTasks && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="h-9">
@@ -1724,6 +1727,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
             </form>
           </DialogContent>
         </Dialog>
+        )}
 
         <TaskEditDialog
           taskId={editingTask?.id ?? null}
@@ -1884,7 +1888,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', o
           stakeholders={stakeholders}
           teamMembers={teamMembers}
           currency={currency}
-          isReadOnly={lockStatus.isLocked}
+          isReadOnly={lockStatus.isLocked || !canEditTasks}
           onTaskClick={(task) => { setEditingTask(task); setEditDialogOpen(true); }}
           onTaskUpdated={fetchTasks}
           statusLabels={statusLabels}
