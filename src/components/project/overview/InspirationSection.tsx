@@ -223,24 +223,17 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           const pinData = await fetchPinterestPin(pinUrl, projectId);
           let finalUrl = pinData.storageUrl;
 
-          // If edge function couldn't download to Storage, do it client-side
+          // If edge function couldn't download to Storage, use proxy-image function
           if (!finalUrl && pinData.imageUrl) {
             try {
-              const imgRes = await fetch(pinData.imageUrl);
-              if (imgRes.ok) {
-                const blob = await imgRes.blob();
-                const ext = blob.type.includes("png") ? "png" : "jpg";
-                const path = `projects/${projectId}/inspiration/${Date.now()}-pin-${pinData.pinId}.${ext}`;
-                const { error: upErr } = await supabase.storage
-                  .from("project-files")
-                  .upload(path, blob, { contentType: blob.type });
-                if (!upErr) {
-                  const { data: pubUrl } = supabase.storage.from("project-files").getPublicUrl(path);
-                  finalUrl = pubUrl.publicUrl;
-                }
+              const { data: proxyResult, error: proxyErr } = await supabase.functions.invoke("proxy-image", {
+                body: { imageUrl: pinData.imageUrl, projectId, filename: `pin-${pinData.pinId}` },
+              });
+              if (!proxyErr && proxyResult?.storageUrl) {
+                finalUrl = proxyResult.storageUrl;
               }
             } catch {
-              // Client-side download also failed
+              // Proxy also failed
             }
           }
 
