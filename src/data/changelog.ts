@@ -13,6 +13,12 @@ export const changelog: ChangelogEntry[] = [
   // ── 2026-04-01 ──
   {
     date: "2026-04-01",
+    title: "Inspiration gallery per room on project overview",
+    description: "See all room photos, Pinterest pins, and material images in one place. Tab between rooms for visual inspiration alongside your planning data. Perfect for sharing vision with clients.",
+    tags: ["UX", "Design", "Planering"],
+  },
+  {
+    date: "2026-04-01",
     title: "Group tasks by assignee",
     description: "New grouping option for tasks: see all work per person at a glance. Perfect for coordinating multiple contractors on the same project.",
     tags: ["Arbeten", "UX"],
