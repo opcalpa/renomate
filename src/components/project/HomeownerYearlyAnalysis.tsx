@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/currency";
@@ -137,6 +137,29 @@ interface ProjectGroup {
   materialItems: CostItem[];
 }
 
+// --- Förbättringsutgifter interfaces ---
+
+interface FuYearGroup {
+  year: number;
+  totalAmount: number;
+  totalLabor: number;
+  totalMaterial: number;
+  totalRot: number;
+  totalNet: number;
+  qualifies: boolean;
+  items: CostItem[];
+  hasAllDocs: boolean;
+}
+
+interface FuPropertySummary {
+  propertyKey: string;
+  address: string;
+  projects: string[];
+  years: FuYearGroup[];
+  grandTotalNet: number;
+  grandTotalAll: number;
+}
+
 // --- Component ---
 
 export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
@@ -156,6 +179,9 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
   const [sectionExpanded, setSectionExpanded] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear() - 1);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<"yearly" | "forbattringsutgifter">("yearly");
+  const [expandedProperties, setExpandedProperties] = useState<Set<string>>(new Set());
+  const [expandedFuYears, setExpandedFuYears] = useState<Set<string>>(new Set());
 
   const projectIds = useMemo(() => projects.map((p) => p.id), [projects]);
 
@@ -524,6 +550,147 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
     );
   }, [projectGroups]);
 
+  // --- Förbättringsutgifter: cross-year aggregation by property ---
+
+  const fuSummary = useMemo((): FuPropertySummary[] => {
+    const metaMap = new Map<string, ProjectMeta>();
+    projectMeta.forEach((p) => metaMap.set(p.id, p));
+
+    const invoiceMap = new Map<string, InvoiceItemRow[]>();
+    invoiceItems.forEach((item) => {
+      const arr = invoiceMap.get(item.invoice_id) || [];
+      arr.push(item);
+      invoiceMap.set(item.invoice_id, arr);
+    });
+
+    // Flat list: { propertyKey, year, item }
+    type Tagged = { propertyKey: string; address: string; projectId: string; year: number; item: CostItem };
+    const tagged: Tagged[] = [];
+
+    const getPropertyKey = (pid: string) => {
+      const meta = metaMap.get(pid);
+      return meta?.address || meta?.name || pid;
+    };
+    const getAddress = (pid: string) => {
+      const meta = metaMap.get(pid);
+      return meta?.address || meta?.name || "—";
+    };
+
+    // Invoices
+    invoices.forEach((inv) => {
+      const invDate = inv.sent_at || inv.created_at;
+      if (!invDate) return;
+      const year = new Date(invDate).getFullYear();
+      const items = invoiceMap.get(inv.id) || [];
+      const laborAmount = items.filter((i) => i.is_rot_eligible).reduce((s, i) => s + (i.total_price || 0), 0);
+      const amount = inv.total_amount || 0;
+      const rot = inv.total_rot_deduction || 0;
+      const hasDoc = entityHasFile.has(`project-${inv.project_id}`);
+
+      tagged.push({
+        propertyKey: getPropertyKey(inv.project_id),
+        address: getAddress(inv.project_id),
+        projectId: inv.project_id,
+        year,
+        item: {
+          id: inv.id, type: "invoice",
+          vendor: inv.title || inv.invoice_number || t("invoices.untitled", "Faktura"),
+          description: items.map((i) => i.description).filter(Boolean).join(", ") || inv.title || "",
+          date: invDate, amount, laborAmount, rotDeduction: rot, netCost: amount - rot,
+          hasDocuments: hasDoc, notes: inv.notes || null, isAta: inv.is_ata,
+        },
+      });
+    });
+
+    // Materials
+    materials.forEach((mat) => {
+      const matDate = mat.paid_date || mat.created_at;
+      if (!matDate) return;
+      const year = new Date(matDate).getFullYear();
+      const amount = mat.price_total || 0;
+      const hasDoc = entityHasFile.has(`material-${mat.id}`);
+
+      tagged.push({
+        propertyKey: getPropertyKey(mat.project_id),
+        address: getAddress(mat.project_id),
+        projectId: mat.project_id,
+        year,
+        item: {
+          id: mat.id, type: "material",
+          vendor: mat.vendor_name || "—", description: mat.name,
+          date: matDate, amount, laborAmount: 0, rotDeduction: 0, netCost: amount,
+          hasDocuments: hasDoc, notes: mat.description || null, isAta: false,
+        },
+      });
+    });
+
+    // File-based invoices
+    fileLinks.forEach((fl) => {
+      if (!fl.invoice_amount && !fl.rot_amount) return;
+      if (!fl.invoice_date) return;
+      const year = new Date(fl.invoice_date).getFullYear();
+      const amount = fl.invoice_amount || 0;
+      const rot = fl.rot_amount || 0;
+
+      tagged.push({
+        propertyKey: getPropertyKey(fl.project_id),
+        address: getAddress(fl.project_id),
+        projectId: fl.project_id,
+        year,
+        item: {
+          id: fl.id, type: "file",
+          vendor: fl.file_name || "—",
+          description: fl.file_type === "invoice" ? t("files.invoice", "Faktura") : fl.file_type,
+          date: fl.invoice_date, amount, laborAmount: rot > 0 ? amount : 0,
+          rotDeduction: rot, netCost: amount - rot, hasDocuments: true, notes: null, isAta: false,
+        },
+      });
+    });
+
+    // Group by property → year
+    const propMap = new Map<string, { address: string; projects: Set<string>; yearMap: Map<number, CostItem[]> }>();
+    tagged.forEach(({ propertyKey, address, projectId, year, item }) => {
+      if (!propMap.has(propertyKey)) {
+        propMap.set(propertyKey, { address, projects: new Set(), yearMap: new Map() });
+      }
+      const prop = propMap.get(propertyKey)!;
+      prop.projects.add(projectId);
+      if (!prop.yearMap.has(year)) prop.yearMap.set(year, []);
+      prop.yearMap.get(year)!.push(item);
+    });
+
+    // Build summaries
+    const result: FuPropertySummary[] = [];
+    propMap.forEach((prop, key) => {
+      const years: FuYearGroup[] = [];
+      prop.yearMap.forEach((items, year) => {
+        const totalAmount = items.reduce((s, i) => s + i.amount, 0);
+        const totalLabor = items.reduce((s, i) => s + i.laborAmount, 0);
+        const totalMaterial = items.reduce((s, i) => s + (i.type === "material" ? i.amount : Math.max(0, i.amount - i.laborAmount)), 0);
+        const totalRot = items.reduce((s, i) => s + i.rotDeduction, 0);
+        const totalNet = items.reduce((s, i) => s + i.netCost, 0);
+        const hasAllDocs = items.every((i) => i.hasDocuments);
+        years.push({ year, totalAmount, totalLabor, totalMaterial, totalRot, totalNet, qualifies: totalNet >= 5000, items, hasAllDocs });
+      });
+      years.sort((a, b) => b.year - a.year);
+      const grandTotalNet = years.filter((y) => y.qualifies).reduce((s, y) => s + y.totalNet, 0);
+      const grandTotalAll = years.reduce((s, y) => s + y.totalNet, 0);
+      result.push({ propertyKey: key, address: prop.address, projects: Array.from(prop.projects), years, grandTotalNet, grandTotalAll });
+    });
+
+    return result.sort((a, b) => b.grandTotalNet - a.grandTotalNet);
+  }, [invoices, invoiceItems, materials, fileLinks, projectMeta, entityHasFile, t]);
+
+  const fuGrandTotal = useMemo(() => {
+    const allYears = fuSummary.flatMap((p) => p.years);
+    const qualifying = allYears.filter((y) => y.qualifies);
+    return {
+      net: qualifying.reduce((s, y) => s + y.totalNet, 0),
+      qualifyingYears: qualifying.length,
+      totalYears: allYears.length,
+    };
+  }, [fuSummary]);
+
   // Readiness checks
   const checks = useMemo(() => {
     const relevantProjects = projectMeta.filter((p) =>
@@ -556,6 +723,22 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
     setExpandedProjects((prev) => {
       const next = new Set(prev);
       next.has(pid) ? next.delete(pid) : next.add(pid);
+      return next;
+    });
+  };
+
+  const toggleProperty = (key: string) => {
+    setExpandedProperties((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const toggleFuYear = (key: string) => {
+    setExpandedFuYears((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
   };
@@ -602,6 +785,36 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
 
       {sectionExpanded && (
         <div className="px-4 sm:px-5 pb-5 space-y-4">
+          {/* View toggle */}
+          <div className="flex rounded-lg border bg-muted/30 p-0.5 w-fit">
+            <button
+              type="button"
+              onClick={() => setViewMode("yearly")}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === "yearly"
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Calendar className="h-3.5 w-3.5 inline mr-1.5" />
+              {t("analysis.taxYear", "Beskattningsår")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("forbattringsutgifter")}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === "forbattringsutgifter"
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Building2 className="h-3.5 w-3.5 inline mr-1.5" />
+              {t("analysis.improvementCosts", "Förbättringsutgifter")}
+            </button>
+          </div>
+
+          {/* ===== YEARLY VIEW (existing) ===== */}
+          {viewMode === "yearly" && (<>
           {/* Year selector — prominent */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -785,9 +998,210 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
               </div>
             </>
           )}
+          </>)}
+
+          {/* ===== FÖRBÄTTRINGSUTGIFTER VIEW ===== */}
+          {viewMode === "forbattringsutgifter" && (<>
+            {/* Explanation */}
+            <div className="rounded-lg border bg-indigo-50/50 dark:bg-indigo-950/20 p-3 space-y-1">
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                <Building2 className="h-3.5 w-3.5 text-indigo-600" />
+                {t("analysis.improvementCosts", "Förbättringsutgifter")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("analysis.fuExplanation", "Dokumenterade renoveringskostnader som kan dras av från reavinstskatten vid försäljning. Minst 5 000 kr per år krävs. Spara alla kvitton och fakturor.")}
+              </p>
+            </div>
+
+            {fuSummary.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                {t("analysis.noDataForYear", "Inga kostnader registrerade för detta år")}
+              </p>
+            ) : (
+              <>
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/50 border-b">
+                        <th className="px-2 py-2 w-8" />
+                        <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
+                          {t("declaration.colProject", "Projekt")}
+                        </th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground whitespace-nowrap" style={{ minWidth: "90px" }}>
+                          {t("declaration.colLabor", "Arbete")}
+                        </th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground whitespace-nowrap" style={{ minWidth: "90px" }}>
+                          {t("declaration.categoryMaterial", "Material")}
+                        </th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground whitespace-nowrap" style={{ minWidth: "90px" }}>
+                          {t("declaration.colAmount", "Totalt")}
+                        </th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground whitespace-nowrap" style={{ minWidth: "90px" }}>
+                          {t("declaration.colRot", "ROT")}
+                        </th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground whitespace-nowrap" style={{ minWidth: "100px" }}>
+                          {t("declaration.colNetCost", "Netto")}
+                        </th>
+                        <th className="px-2 py-2 text-center text-xs font-medium text-muted-foreground" style={{ minWidth: "50px" }}>
+                          {t("declaration.colDocuments", "Dok")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fuSummary.map((prop) => (
+                        <FuPropertyRows
+                          key={prop.propertyKey}
+                          property={prop}
+                          isOpen={expandedProperties.has(prop.propertyKey)}
+                          expandedYears={expandedFuYears}
+                          onToggleProperty={() => toggleProperty(prop.propertyKey)}
+                          onToggleYear={toggleFuYear}
+                          fc={fc}
+                          formatDate={formatDate}
+                          t={t}
+                        />
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-muted/50 border-t font-medium text-sm">
+                        <td className="px-2 py-2.5" />
+                        <td className="px-3 py-2.5">
+                          <div>
+                            <span className="text-xs text-muted-foreground">{t("analysis.improvementCosts", "Förbättringsutgifter")}</span>
+                            <span className="text-[11px] text-muted-foreground block">
+                              {t("analysis.qualifyingTotal", "{{count}} av {{total}} år kvalificerar", { count: fuGrandTotal.qualifyingYears, total: fuGrandTotal.totalYears })}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5" />
+                        <td className="px-3 py-2.5" />
+                        <td className="px-3 py-2.5" />
+                        <td className="px-3 py-2.5" />
+                        <td className="px-3 py-2.5 text-right tabular-nums font-bold text-base">
+                          {fc(fuGrandTotal.net)}
+                        </td>
+                        <td className="px-2 py-2.5" />
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </>
+            )}
+          </>)}
         </div>
       )}
     </div>
+  );
+}
+
+// --- Förbättringsutgifter property rows (3-level drill-down) ---
+
+interface FuPropertyRowsProps {
+  property: FuPropertySummary;
+  isOpen: boolean;
+  expandedYears: Set<string>;
+  onToggleProperty: () => void;
+  onToggleYear: (key: string) => void;
+  fc: (amount: number) => string;
+  formatDate: (dateStr: string | null) => string;
+  t: (key: string, fallback?: string) => string;
+}
+
+function FuPropertyRows({ property, isOpen, expandedYears, onToggleProperty, onToggleYear, fc, formatDate, t }: FuPropertyRowsProps) {
+  const qualifyingNet = property.years.filter((y) => y.qualifies).reduce((s, y) => s + y.totalNet, 0);
+
+  return (
+    <>
+      {/* Level 1: Property row */}
+      <tr className="border-b hover:bg-muted/30 transition-colors cursor-pointer" onClick={onToggleProperty}>
+        <td className="px-2 py-2.5">
+          <button type="button" className="p-0.5 rounded hover:bg-muted">
+            {isOpen ? <Minus className="h-3.5 w-3.5 text-muted-foreground" /> : <Plus className="h-3.5 w-3.5 text-muted-foreground" />}
+          </button>
+        </td>
+        <td className="px-3 py-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <span className="font-medium truncate block">{property.address}</span>
+              <span className="text-xs text-muted-foreground">
+                {property.years.length} {property.years.length === 1 ? "år" : "år"}
+              </span>
+            </div>
+          </div>
+        </td>
+        <td className="px-3 py-2.5" />
+        <td className="px-3 py-2.5" />
+        <td className="px-3 py-2.5" />
+        <td className="px-3 py-2.5" />
+        <td className="px-3 py-2.5 text-right tabular-nums font-bold">
+          {fc(qualifyingNet)}
+        </td>
+        <td className="px-2 py-2.5" />
+      </tr>
+
+      {/* Level 2: Year rows */}
+      {isOpen && property.years.map((yg) => {
+        const yearKey = `${property.propertyKey}:${yg.year}`;
+        const yearOpen = expandedYears.has(yearKey);
+
+        return (
+          <React.Fragment key={yg.year}>
+            <tr
+              className={`border-b hover:bg-muted/20 transition-colors cursor-pointer ${!yg.qualifies ? "opacity-50" : ""}`}
+              onClick={() => onToggleYear(yearKey)}
+            >
+              <td className="px-2 py-1.5 pl-6">
+                <button type="button" className="p-0.5 rounded hover:bg-muted">
+                  {yearOpen ? <Minus className="h-3 w-3 text-muted-foreground" /> : <Plus className="h-3 w-3 text-muted-foreground" />}
+                </button>
+              </td>
+              <td className="px-3 py-1.5">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-sm font-medium">{yg.year}</span>
+                  <Badge variant="outline" className="text-[10px] shrink-0">
+                    {yg.items.length} {t("declaration.rowCount", "rader")}
+                  </Badge>
+                  {!yg.qualifies && (
+                    <Badge variant="secondary" className="text-[9px] text-amber-600 bg-amber-50 border-amber-200">
+                      {t("analysis.belowThreshold", "Under 5 000 kr")}
+                    </Badge>
+                  )}
+                </div>
+              </td>
+              <td className="px-3 py-1.5 text-right tabular-nums text-xs">
+                {yg.totalLabor > 0 ? fc(yg.totalLabor) : "—"}
+              </td>
+              <td className="px-3 py-1.5 text-right tabular-nums text-xs">
+                {yg.totalMaterial > 0 ? fc(yg.totalMaterial) : "—"}
+              </td>
+              <td className="px-3 py-1.5 text-right tabular-nums text-xs font-medium">
+                {fc(yg.totalAmount)}
+              </td>
+              <td className="px-3 py-1.5 text-right tabular-nums text-xs text-green-600">
+                {yg.totalRot > 0 ? <>&minus;{fc(yg.totalRot)}</> : <span className="text-muted-foreground">—</span>}
+              </td>
+              <td className="px-3 py-1.5 text-right tabular-nums text-xs font-medium">
+                {fc(yg.totalNet)}
+              </td>
+              <td className="px-2 py-1.5 text-center">
+                {yg.hasAllDocs ? (
+                  <CheckCircle2 className="h-3 w-3 text-green-600 mx-auto" />
+                ) : (
+                  <XCircle className="h-3 w-3 text-red-400 mx-auto" />
+                )}
+              </td>
+            </tr>
+
+            {/* Level 3: Individual items */}
+            {yearOpen && yg.items.map((item) => (
+              <CostItemRow key={item.id} item={item} fc={fc} formatDate={formatDate} />
+            ))}
+          </React.Fragment>
+        );
+      })}
+    </>
   );
 }
 

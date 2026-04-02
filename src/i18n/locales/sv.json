@@ -4834,7 +4834,11 @@
     "taxYear": "Beskattningsår",
     "noDataForYear": "Inga kostnader registrerade för detta år",
     "laborCosts": "Arbetskostnader",
-    "materialCosts": "Materialkostnader"
+    "materialCosts": "Materialkostnader",
+    "improvementCosts": "Förbättringsutgifter",
+    "fuExplanation": "Dokumenterade renoveringskostnader som kan dras av från reavinstskatten vid försäljning. Minst 5 000 kr per år krävs. Spara alla kvitton och fakturor.",
+    "belowThreshold": "Under 5 000 kr",
+    "qualifyingTotal": "{{count}} av {{total}} år kvalificerar"
   },
   "declaration": {
     "colVendor": "Leverantör",
