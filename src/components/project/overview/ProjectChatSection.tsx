@@ -48,7 +48,7 @@ interface ProjectChatSectionProps {
   onNavigateToFiles?: () => void;
 }
 
-const ITEMS_LIMIT = 15;
+const ITEMS_LIMIT = 7;
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"];
 
 
@@ -182,7 +182,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
   const [photos, setPhotos] = useState<PhotoFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilters, setActiveFilters] = useState<Set<"comments" | "activity" | "photos">>(
-    new Set(["comments", "activity", "photos"])
+    new Set(["comments"])
   );
   const toggleFilter = (f: "comments" | "activity" | "photos") => {
     setActiveFilters((prev) => {
