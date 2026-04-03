@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { compressImage } from "@/lib/compressImage";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -54,52 +55,7 @@ interface CommentsSectionProps {
 
 const COLLAPSED_REPLY_THRESHOLD = 2;
 
-// Compress image function
-const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.8): Promise<File> => {
-  return new Promise((resolve) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-
-    img.onload = () => {
-      // Calculate new dimensions
-      let { width, height } = img;
-
-      if (width > height) {
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
-      } else {
-        if (height > maxHeight) {
-          width = (width * maxHeight) / height;
-          height = maxHeight;
-        }
-      }
-
-      // Set canvas size
-      canvas.width = width;
-      canvas.height = height;
-
-      // Draw and compress
-      ctx?.drawImage(img, 0, 0, width, height);
-
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const compressedFile = new File([blob], file.name, {
-            type: 'image/jpeg',
-            lastModified: Date.now(),
-          });
-          resolve(compressedFile);
-        } else {
-          resolve(file); // Return original if compression fails
-        }
-      }, 'image/jpeg', quality);
-    };
-
-    img.src = URL.createObjectURL(file);
-  });
-};
+// compressImage imported from @/lib/compressImage
 
 export const CommentsSection = ({ taskId, materialId, entityId, entityType, drawingObjectId, projectId, chatMode = false }: CommentsSectionProps) => {
   const { t, i18n } = useTranslation();

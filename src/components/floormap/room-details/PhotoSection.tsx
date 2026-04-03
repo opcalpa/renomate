@@ -23,6 +23,7 @@ import {
 import { PinterestBoardEmbed, parsePinterestBoardUrl } from "@/components/pinterest";
 import { fetchPinterestPin, parsePinterestPinUrl } from "@/services/pinterestOEmbed";
 import { PhotoCarousel } from "@/components/ui/photo-carousel";
+import { compressImage } from "@/lib/compressImage";
 import { useTranslation } from "react-i18next";
 import type { Photo } from "./types";
 
@@ -136,12 +137,15 @@ export function PhotoSection({ roomId, showPinterest = false }: PhotoSectionProp
           continue;
         }
 
-        const fileExt = file.name.split(".").pop();
+        // Compress image before upload
+        const uploadFile = await compressImage(file);
+
+        const fileExt = uploadFile.type === "image/jpeg" ? "jpg" : file.name.split(".").pop();
         const fileName = `${roomId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from("room-photos")
-          .upload(fileName, file);
+          .upload(fileName, uploadFile);
 
         if (uploadError) {
           console.error("Upload error:", uploadError);

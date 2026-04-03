@@ -27,6 +27,7 @@ import { useDirectMessages, useUnreadDmCounts } from "@/hooks/useDirectMessages"
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { compressImage } from "@/lib/compressImage";
 import { formatDistanceToNow } from "date-fns";
 import { getDateLocale } from "@/lib/dateFnsLocale";
 import type { FeedComment, UnifiedFeedItem, FeedFilterMode, PhotoFeedItem, ActivityLogItem } from "../feed/types";
@@ -353,9 +354,10 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
       let uploadedImages: { id: string; url: string; filename: string }[] = [];
       if (dmImages.length > 0) {
         for (const image of dmImages) {
+          const compressed = await compressImage(image);
           const fileName = `${Date.now()}-${image.name}`;
           const filePath = `projects/${projectId}/dm-images/${fileName}`;
-          const { error } = await supabase.storage.from("project-files").upload(filePath, image);
+          const { error } = await supabase.storage.from("project-files").upload(filePath, compressed, { contentType: compressed.type || "image/jpeg" });
           if (error) { console.error("DM image upload error:", error); continue; }
           const { data: { publicUrl } } = supabase.storage.from("project-files").getPublicUrl(filePath);
           uploadedImages.push({ id: Date.now().toString(), url: publicUrl, filename: image.name });
@@ -404,9 +406,10 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
       let uploadedImages: { id: string; url: string; filename: string }[] = [];
       if (selectedImages.length > 0) {
         for (const image of selectedImages) {
+          const compressed = await compressImage(image);
           const fileName = `${Date.now()}-${image.name}`;
           const filePath = `projects/${projectId}/comment-images/${fileName}`;
-          const { error } = await supabase.storage.from("project-files").upload(filePath, image);
+          const { error } = await supabase.storage.from("project-files").upload(filePath, compressed, { contentType: compressed.type || "image/jpeg" });
           if (error) { console.error("Upload error:", error); continue; }
           const { data: { publicUrl } } = supabase.storage.from("project-files").getPublicUrl(filePath);
           uploadedImages.push({ id: Date.now().toString(), url: publicUrl, filename: image.name });

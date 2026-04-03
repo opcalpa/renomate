@@ -32,6 +32,7 @@ import {
   Type,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { compressImage } from "@/lib/compressImage";
 import { toast } from "sonner";
 import { fetchPinterestPin, parsePinterestPinUrl } from "@/services/pinterestOEmbed";
 import { parsePinterestBoardUrl } from "@/components/pinterest";
@@ -160,28 +161,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
       for (const file of Array.from(files)) {
         if (!file.type.startsWith("image/")) continue;
 
-        // Compress large images
-        let uploadFile: File | Blob = file;
-        if (file.size > 500_000) {
-          const img = new Image();
-          const url = URL.createObjectURL(file);
-          await new Promise((resolve) => { img.onload = resolve; img.src = url; });
-          const canvas = document.createElement("canvas");
-          const max = 1200;
-          let { width, height } = img;
-          if (width > max || height > max) {
-            const ratio = Math.min(max / width, max / height);
-            width = Math.round(width * ratio);
-            height = Math.round(height * ratio);
-          }
-          canvas.width = width;
-          canvas.height = height;
-          canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
-          uploadFile = await new Promise<Blob>((resolve) =>
-            canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.8)
-          );
-          URL.revokeObjectURL(url);
-        }
+        const uploadFile = await compressImage(file);
 
         const ext = file.name.split(".").pop() || "jpg";
         const path = `projects/${projectId}/inspiration/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;

@@ -6,38 +6,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Send, Camera, X } from "lucide-react";
 import { MentionTextarea } from "./MentionTextarea";
 import { parseMentions } from "./utils";
+import { compressImage } from "@/lib/compressImage";
 
 interface GeneralCommentInputProps {
   projectId: string;
   onPosted: () => void;
 }
-
-const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.8): Promise<File> => {
-  return new Promise((resolve) => {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.onload = () => {
-      let { width, height } = img;
-      if (width > height) {
-        if (width > maxWidth) { height = (height * maxWidth) / width; width = maxWidth; }
-      } else {
-        if (height > maxHeight) { width = (width * maxHeight) / height; height = maxHeight; }
-      }
-      canvas.width = width;
-      canvas.height = height;
-      ctx?.drawImage(img, 0, 0, width, height);
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(new File([blob], file.name, { type: "image/jpeg", lastModified: Date.now() }));
-        } else {
-          resolve(file);
-        }
-      }, "image/jpeg", quality);
-    };
-    img.src = URL.createObjectURL(file);
-  });
-};
 
 export const GeneralCommentInput = ({ projectId, onPosted }: GeneralCommentInputProps) => {
   const { t } = useTranslation();
@@ -56,7 +30,10 @@ export const GeneralCommentInput = ({ projectId, onPosted }: GeneralCommentInput
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (file.type.startsWith("image/")) {
-        const compressed = await compressImage(file);
+        const result = await compressImage(file);
+        const compressed = result instanceof File
+          ? result
+          : new File([result], file.name, { type: "image/jpeg", lastModified: Date.now() });
         newFiles.push(compressed);
         newPreviews.push(URL.createObjectURL(compressed));
       }
@@ -74,9 +51,10 @@ export const GeneralCommentInput = ({ projectId, onPosted }: GeneralCommentInput
   const uploadImages = async () => {
     const uploaded: { id: string; url: string; filename: string }[] = [];
     for (const image of selectedImages) {
+      const compressed = await compressImage(image);
       const fileName = `${Date.now()}-${image.name}`;
       const filePath = `comment-images/${fileName}`;
-      const { error } = await supabase.storage.from("project-files").upload(filePath, image);
+      const { error } = await supabase.storage.from("project-files").upload(filePath, compressed);
       if (error) { console.error("Upload error:", error); continue; }
       const { data: { publicUrl } } = supabase.storage.from("project-files").getPublicUrl(filePath);
       uploaded.push({ id: Date.now().toString(), url: publicUrl, filename: image.name });
