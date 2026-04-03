@@ -322,7 +322,12 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
 
   // Assign photo to entity
   const assignPhoto = useCallback(async (photoId: string, type: string, entityId: string) => {
-    await supabase.from("photos").update({ linked_to_type: type, linked_to_id: entityId }).eq("id", photoId);
+    const { error } = await supabase.from("photos").update({ linked_to_type: type, linked_to_id: entityId }).eq("id", photoId);
+    if (error) {
+      console.error("Failed to link photo:", error);
+      toast.error(t("common.error"));
+      return;
+    }
     queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
     toast.success(t("inspiration.linked"));
   }, [projectId, queryClient, t]);
