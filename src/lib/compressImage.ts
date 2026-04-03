@@ -5,6 +5,7 @@
  * - Converts to JPEG at given quality (default 0.82)
  * - Only compresses if file is an image and exceeds minSize (default 200KB)
  * - Returns original file unchanged for non-images or small files
+ * - Never throws — returns original file on any error
  */
 export async function compressImage(
   file: File | Blob,
@@ -28,34 +29,40 @@ export async function compressImage(
   // Skip SVGs (vector, no point compressing)
   if (type === "image/svg+xml") return file;
 
-  const img = new Image();
-  const url = URL.createObjectURL(file);
-
   try {
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = () => reject(new Error("Failed to load image"));
-      img.src = url;
-    });
+    const img = new Image();
+    const url = URL.createObjectURL(file);
 
-    let { width, height } = img;
-    if (width > maxDim || height > maxDim) {
-      const ratio = Math.min(maxDim / width, maxDim / height);
-      width = Math.round(width * ratio);
-      height = Math.round(height * ratio);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Failed to load image"));
+        img.src = url;
+      });
+
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        const ratio = Math.min(maxDim / width, maxDim / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), "image/jpeg", quality),
+      );
+
+      if (!blob) return file;
+      return blob;
+    } finally {
+      URL.revokeObjectURL(url);
     }
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
-
-    const blob = await new Promise<Blob>((resolve) =>
-      canvas.toBlob((b) => resolve(b!), "image/jpeg", quality),
-    );
-
-    return blob;
-  } finally {
-    URL.revokeObjectURL(url);
+  } catch {
+    // On any error, return original file unmodified
+    return file;
   }
 }

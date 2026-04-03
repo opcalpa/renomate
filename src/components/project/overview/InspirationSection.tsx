@@ -162,12 +162,13 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
         if (!file.type.startsWith("image/")) continue;
 
         const uploadFile = await compressImage(file);
+        const isCompressed = uploadFile !== file;
 
-        const ext = file.name.split(".").pop() || "jpg";
+        const ext = isCompressed ? "jpg" : (file.name.split(".").pop() || "jpg");
         const path = `projects/${projectId}/inspiration/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("project-files")
-          .upload(path, uploadFile, { contentType: file.type });
+          .upload(path, uploadFile, { contentType: isCompressed ? "image/jpeg" : file.type });
         if (uploadError) {
           console.error("Inspiration upload failed:", uploadError);
           toast.error(uploadError.message || t("common.error"));
@@ -374,7 +375,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                 <button
                   type="button"
                   className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => setTimeout(() => fileInputRef.current?.click(), 100)}
                 >
                   <Upload className="h-3.5 w-3.5 text-muted-foreground" />
                   {t("inspiration.upload")}
@@ -384,7 +385,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                   className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left sm:hidden"
                   onClick={() => {
                     const input = fileInputRef.current;
-                    if (input) { input.setAttribute("capture", "environment"); input.click(); input.removeAttribute("capture"); }
+                    if (input) { setTimeout(() => { input.setAttribute("capture", "environment"); input.click(); input.removeAttribute("capture"); }, 100); }
                   }}
                 >
                   <Camera className="h-3.5 w-3.5 text-muted-foreground" />
@@ -576,7 +577,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                   <button
                     type="button"
                     className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => setTimeout(() => fileInputRef.current?.click(), 100)}
                   >
                     <Upload className="h-3.5 w-3.5 text-muted-foreground" />
                     {t("inspiration.upload")}
@@ -586,7 +587,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                     className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left sm:hidden"
                     onClick={() => {
                       const input = fileInputRef.current;
-                      if (input) { input.setAttribute("capture", "environment"); input.click(); input.removeAttribute("capture"); }
+                      if (input) { setTimeout(() => { input.setAttribute("capture", "environment"); input.click(); input.removeAttribute("capture"); }, 100); }
                     }}
                   >
                     <Camera className="h-3.5 w-3.5 text-muted-foreground" />
@@ -620,7 +621,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                   size="sm"
                   variant="default"
                   className="gap-1.5 h-8"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => setTimeout(() => fileInputRef.current?.click(), 100)}
                   disabled={uploading}
                 >
                   <Upload className="h-3.5 w-3.5" />
@@ -641,7 +642,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                   className="gap-1.5 h-8 sm:hidden"
                   onClick={() => {
                     const input = fileInputRef.current;
-                    if (input) { input.setAttribute("capture", "environment"); input.click(); input.removeAttribute("capture"); }
+                    if (input) { setTimeout(() => { input.setAttribute("capture", "environment"); input.click(); input.removeAttribute("capture"); }, 100); }
                   }}
                 >
                   <Camera className="h-3.5 w-3.5" />
