@@ -12,6 +12,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
+import {
   ImageIcon,
   Camera,
   Link2,
@@ -22,6 +26,9 @@ import {
   Sparkles,
   Home,
   Hammer,
+  ChevronLeft,
+  ChevronRight,
+  Type,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -55,6 +62,9 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [urlInput, setUrlInput] = useState("");
+  const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
+  const [editingCaption, setEditingCaption] = useState<string | null>(null);
+  const [captionDraft, setCaptionDraft] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
 
   // Fetch rooms + all inspiration photos
@@ -338,7 +348,25 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
     queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
   }, [projectId, queryClient]);
 
+  // Update caption
+  const updateCaption = useCallback(async (photoId: string, caption: string) => {
+    const { error } = await supabase.from("photos").update({ caption: caption || null }).eq("id", photoId);
+    if (error) {
+      toast.error(t("common.error"));
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+    setEditingCaption(null);
+  }, [projectId, queryClient, t]);
+
   const hasPhotos = totalCount > 0;
+
+  // Gallery navigation
+  const openGallery = (index: number) => setGalleryIndex(index);
+  const closeGallery = () => { setGalleryIndex(null); setEditingCaption(null); };
+  const galleryPhoto = galleryIndex !== null ? filteredPhotos[galleryIndex] : null;
+  const galleryPrev = () => setGalleryIndex((i) => i !== null && i > 0 ? i - 1 : i);
+  const galleryNext = () => setGalleryIndex((i) => i !== null && i < filteredPhotos.length - 1 ? i + 1 : i);
 
   return (
     <Card>
@@ -446,10 +474,11 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
         >
           {filteredPhotos.length > 0 ? (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 p-1">
-              {filteredPhotos.map((photo) => (
+              {filteredPhotos.map((photo, idx) => (
                 <div
                   key={photo.id}
-                  className="relative aspect-square rounded-lg overflow-hidden group"
+                  className="relative aspect-square rounded-lg overflow-hidden group cursor-pointer"
+                  onClick={() => openGallery(idx)}
                 >
                   <img
                     src={photo.url}
@@ -466,6 +495,13 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                       <Badge variant="secondary" className="text-[9px] px-1 py-0">{photo.roomName}</Badge>
                     )}
                   </div>
+
+                  {/* Caption overlay — always visible if caption exists */}
+                  {photo.caption && (
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-5 pointer-events-none">
+                      <p className="text-[10px] text-white/90 truncate">{photo.caption}</p>
+                    </div>
+                  )}
 
                   {/* Hover action bar */}
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
@@ -689,6 +725,163 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           onChange={(e) => { if (e.target.files?.length) handleUpload(e.target.files); e.target.value = ""; }}
         />
       </CardContent>
+
+      {/* ===== Fullscreen Gallery Dialog ===== */}
+      <Dialog open={galleryIndex !== null} onOpenChange={(open) => { if (!open) closeGallery(); }}>
+        <DialogContent
+          className="max-w-5xl w-[95vw] h-[85vh] p-0 gap-0 flex flex-col sm:flex-row overflow-hidden"
+          onKeyDown={(e) => {
+            if (e.key === "ArrowLeft") galleryPrev();
+            if (e.key === "ArrowRight") galleryNext();
+          }}
+        >
+          {galleryPhoto && (
+            <>
+              {/* Image area */}
+              <div className="relative flex-1 bg-black flex items-center justify-center min-h-0">
+                <img
+                  src={galleryPhoto.url}
+                  alt={galleryPhoto.caption || ""}
+                  className="max-w-full max-h-full object-contain"
+                />
+                {/* Nav arrows */}
+                {galleryIndex !== null && galleryIndex > 0 && (
+                  <button
+                    type="button"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center transition-colors"
+                    onClick={(e) => { e.stopPropagation(); galleryPrev(); }}
+                  >
+                    <ChevronLeft className="h-5 w-5 text-white" />
+                  </button>
+                )}
+                {galleryIndex !== null && galleryIndex < filteredPhotos.length - 1 && (
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center transition-colors"
+                    onClick={(e) => { e.stopPropagation(); galleryNext(); }}
+                  >
+                    <ChevronRight className="h-5 w-5 text-white" />
+                  </button>
+                )}
+                {/* Counter */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full tabular-nums">
+                  {(galleryIndex ?? 0) + 1} / {filteredPhotos.length}
+                </div>
+              </div>
+
+              {/* Side panel */}
+              <div className="w-full sm:w-72 shrink-0 border-t sm:border-t-0 sm:border-l bg-background p-4 space-y-4 overflow-y-auto">
+                {/* Caption */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                    <Type className="h-3 w-3" />
+                    {t("inspiration.caption", "Beskrivning")}
+                  </label>
+                  {editingCaption === galleryPhoto.id ? (
+                    <div className="space-y-1.5">
+                      <textarea
+                        autoFocus
+                        className="w-full px-2 py-1.5 text-sm rounded-md border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                        rows={3}
+                        value={captionDraft}
+                        onChange={(e) => setCaptionDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); updateCaption(galleryPhoto.id, captionDraft); }
+                          if (e.key === "Escape") setEditingCaption(null);
+                        }}
+                        placeholder={t("inspiration.captionPlaceholder", "Beskriv din inspiration...")}
+                      />
+                      <div className="flex gap-1">
+                        <Button size="sm" className="h-7 text-xs" onClick={() => updateCaption(galleryPhoto.id, captionDraft)}>
+                          {t("common.save")}
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingCaption(null)}>
+                          {t("common.cancel")}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="w-full text-left px-2 py-1.5 rounded-md text-sm hover:bg-muted transition-colors min-h-[36px]"
+                      onClick={() => { setEditingCaption(galleryPhoto.id); setCaptionDraft(galleryPhoto.caption || ""); }}
+                    >
+                      {galleryPhoto.caption || (
+                        <span className="text-muted-foreground italic">{t("inspiration.addCaption", "Lägg till beskrivning...")}</span>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {/* Room */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                    <Home className="h-3 w-3" />
+                    {t("inspiration.room", "Rum")}
+                  </label>
+                  <div className="flex flex-wrap gap-1">
+                    {rooms.map((r) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        className={cn(
+                          "px-2 py-1 rounded-md text-xs transition-colors",
+                          galleryPhoto.roomId === r.id
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-accent"
+                        )}
+                        onClick={() => assignPhoto(galleryPhoto.id, "room", r.id)}
+                      >
+                        {r.name}
+                      </button>
+                    ))}
+                    {galleryPhoto.roomId && (
+                      <button
+                        type="button"
+                        className="px-2 py-1 rounded-md text-xs bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                        onClick={() => assignPhoto(galleryPhoto.id, "project", projectId)}
+                      >
+                        <X className="h-3 w-3 inline mr-0.5" />
+                        {t("inspiration.unlink")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Metadata */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {t("inspiration.details", "Detaljer")}
+                  </label>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span>{t("inspiration.source", "Källa")}</span>
+                      <span className="capitalize">{galleryPhoto.source === "pinterest" ? "Pinterest" : galleryPhoto.source === "url" ? "URL" : t("inspiration.upload")}</span>
+                    </div>
+                    {galleryPhoto.roomName && (
+                      <div className="flex items-center justify-between">
+                        <span>{t("inspiration.room", "Rum")}</span>
+                        <span>{galleryPhoto.roomName}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Delete */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1"
+                  onClick={() => { deletePhoto(galleryPhoto.id); closeGallery(); }}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  {t("common.delete")}
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
