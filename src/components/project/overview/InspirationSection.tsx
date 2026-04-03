@@ -729,7 +729,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
       {/* ===== Fullscreen Gallery Dialog ===== */}
       <Dialog open={galleryIndex !== null} onOpenChange={(open) => { if (!open) closeGallery(); }}>
         <DialogContent
-          className="max-w-5xl w-[95vw] h-[85vh] p-0 gap-0 flex flex-col sm:flex-row overflow-hidden"
+          className="max-w-[95vw] w-[95vw] h-[92vh] p-0 gap-0 flex flex-col sm:flex-row overflow-hidden"
           onKeyDown={(e) => {
             if (e.key === "ArrowLeft") galleryPrev();
             if (e.key === "ArrowRight") galleryNext();
@@ -813,57 +813,53 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                   )}
                 </div>
 
-                {/* Room */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                    <Home className="h-3 w-3" />
-                    {t("inspiration.room", "Rum")}
-                  </label>
-                  <div className="flex flex-wrap gap-1">
-                    {rooms.map((r) => (
-                      <button
-                        key={r.id}
-                        type="button"
-                        className={cn(
-                          "px-2 py-1 rounded-md text-xs transition-colors",
-                          galleryPhoto.roomId === r.id
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground hover:bg-accent"
-                        )}
-                        onClick={() => assignPhoto(galleryPhoto.id, "room", r.id)}
-                      >
-                        {r.name}
-                      </button>
-                    ))}
-                    {galleryPhoto.roomId && (
-                      <button
-                        type="button"
-                        className="px-2 py-1 rounded-md text-xs bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                        onClick={() => assignPhoto(galleryPhoto.id, "project", projectId)}
-                      >
-                        <X className="h-3 w-3 inline mr-0.5" />
-                        {t("inspiration.unlink")}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Metadata */}
+                {/* Details table */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     {t("inspiration.details", "Detaljer")}
                   </label>
-                  <div className="text-xs text-muted-foreground space-y-1">
+                  <div className="text-xs space-y-2">
+                    {/* Room — clickable popover to change */}
                     <div className="flex items-center justify-between">
-                      <span>{t("inspiration.source", "Källa")}</span>
-                      <span className="capitalize">{galleryPhoto.source === "pinterest" ? "Pinterest" : galleryPhoto.source === "url" ? "URL" : t("inspiration.upload")}</span>
+                      <span className="text-muted-foreground">{t("inspiration.room", "Rum")}</span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button type="button" className="text-sm font-medium hover:underline transition-colors">
+                            {galleryPhoto.roomName || <span className="text-muted-foreground italic">{t("inspiration.noRoom", "Ej kopplat")}</span>}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-40 p-1" align="end" side="bottom">
+                          {rooms.map((r) => (
+                            <button
+                              key={r.id}
+                              type="button"
+                              className={cn(
+                                "flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded text-left transition-colors",
+                                galleryPhoto.roomId === r.id ? "bg-primary/10 font-medium" : "hover:bg-accent"
+                              )}
+                              onClick={() => assignPhoto(galleryPhoto.id, "room", r.id)}
+                            >
+                              <Home className="h-3 w-3 text-muted-foreground" />
+                              {r.name}
+                            </button>
+                          ))}
+                          {galleryPhoto.roomId && (
+                            <button
+                              type="button"
+                              className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded text-left text-muted-foreground hover:bg-destructive/10 hover:text-destructive mt-1 border-t"
+                              onClick={() => assignPhoto(galleryPhoto.id, "project", projectId)}
+                            >
+                              <X className="h-3 w-3" />
+                              {t("inspiration.unlink")}
+                            </button>
+                          )}
+                        </PopoverContent>
+                      </Popover>
                     </div>
-                    {galleryPhoto.roomName && (
-                      <div className="flex items-center justify-between">
-                        <span>{t("inspiration.room", "Rum")}</span>
-                        <span>{galleryPhoto.roomName}</span>
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">{t("inspiration.source", "Källa")}</span>
+                      <span>{galleryPhoto.source === "pinterest" ? "Pinterest" : galleryPhoto.source === "url" ? "URL" : t("inspiration.upload")}</span>
+                    </div>
                   </div>
                 </div>
 
