@@ -729,7 +729,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
       {/* ===== Fullscreen Gallery Dialog ===== */}
       <Dialog open={galleryIndex !== null} onOpenChange={(open) => { if (!open) closeGallery(); }}>
         <DialogContent
-          className="max-w-[95vw] w-[95vw] h-[92vh] p-0 gap-0 flex flex-col sm:flex-row overflow-hidden"
+          className="!max-w-[95vw] w-[95vw] !max-h-[92vh] h-[92vh] !p-0 gap-0 flex flex-col sm:flex-row overflow-hidden !rounded-xl"
           onKeyDown={(e) => {
             if (e.key === "ArrowLeft") galleryPrev();
             if (e.key === "ArrowRight") galleryNext();
