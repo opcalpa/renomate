@@ -14,6 +14,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   ImageIcon,
@@ -187,7 +188,11 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
         const { error: uploadError } = await supabase.storage
           .from("project-files")
           .upload(path, uploadFile, { contentType: file.type });
-        if (uploadError) continue;
+        if (uploadError) {
+          console.error("Inspiration upload failed:", uploadError);
+          toast.error(uploadError.message || t("common.error"));
+          continue;
+        }
 
         const { data: publicUrl } = supabase.storage.from("project-files").getPublicUrl(path);
 
@@ -735,6 +740,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
             if (e.key === "ArrowRight") galleryNext();
           }}
         >
+          <DialogTitle className="sr-only">{t("inspiration.gallery", "Inspiration gallery")}</DialogTitle>
           {galleryPhoto && (
             <>
               {/* Image area */}
