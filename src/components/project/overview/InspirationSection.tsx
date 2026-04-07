@@ -981,13 +981,16 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                           }}
                           onClick={(e) => { e.stopPropagation(); setSelectedPhotoId(isSelected ? null : photo.id); }}
                           onDoubleClick={(e) => { e.stopPropagation(); openGallery(filteredPhotos.indexOf(photo)); }}
-                          onWheel={(e) => {
-                            if (!isSelected) return;
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const delta = e.deltaY > 0 ? -0.1 : 0.1;
-                            const newZoom = Math.max(1, Math.min(4, photo.cropZoom + delta));
-                            saveCropTransform(photo.id, newZoom, photo.cropOffsetX, photo.cropOffsetY);
+                          ref={(el) => {
+                            if (!el) return;
+                            // Native wheel listener with passive:false to allow preventDefault
+                            el.onwheel = isSelected ? (ev) => {
+                              ev.preventDefault();
+                              ev.stopPropagation();
+                              const delta = ev.deltaY > 0 ? -0.1 : 0.1;
+                              const newZoom = Math.max(1, Math.min(4, photo.cropZoom + delta));
+                              saveCropTransform(photo.id, newZoom, photo.cropOffsetX, photo.cropOffsetY);
+                            } : null;
                           }}
                           onMouseDown={(e) => {
                             if (!isSelected || e.button !== 0) return;
