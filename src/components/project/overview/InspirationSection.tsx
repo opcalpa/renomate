@@ -948,7 +948,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                         landscape: { col: 3 * sizeMultiplier, row: 2 * sizeMultiplier },
                         square: { col: 2 * sizeMultiplier, row: 2 * sizeMultiplier },
                         portrait: { col: 2 * sizeMultiplier, row: 3 * sizeMultiplier },
-                        circle: { col: 2 * sizeMultiplier, row: 2 * sizeMultiplier },
+                        circle: { col: 2 * sizeMultiplier, row: 3 * sizeMultiplier },
                       };
                       const spans = shapeSpans[photo.cropShape] || shapeSpans.landscape;
                       const isSelected = selectedPhotoId === photo.id;
@@ -977,7 +977,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                           )}
                           style={{
                             gridColumn: `span ${Math.min(isCircle ? spans.row : spans.col, 6)}`,
-                            gridRow: `span ${spans.row}`,
+                            gridRow: isCircle ? `span ${Math.ceil(spans.col * 1.1)}` : `span ${spans.row}`,
                             aspectRatio: isCircle ? "1" : undefined,
                           }}
                           onClick={(e) => { e.stopPropagation(); setSelectedPhotoId(isSelected ? null : photo.id); }}
