@@ -31,6 +31,8 @@ import {
   ChevronRight,
   Type,
   Plus,
+  LayoutGrid,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/compressImage";
@@ -43,6 +45,8 @@ interface InspirationSectionProps {
   currency: string;
 }
 
+type DisplaySize = "sm" | "md" | "lg";
+
 interface InspoPhoto {
   id: string;
   url: string;
@@ -51,7 +55,20 @@ interface InspoPhoto {
   sourceUrl: string | null;
   roomId: string | null;
   roomName: string | null;
+  displaySize: DisplaySize;
+  sortOrder: number;
 }
+
+const MOODBOARD_BACKGROUNDS = [
+  { id: "white", color: "#ffffff", label: "Vit" },
+  { id: "offwhite", color: "#f5f0eb", label: "Off-white" },
+  { id: "warmgrey", color: "#e8e4df", label: "Warm grey" },
+  { id: "charcoal", color: "#3a3a3a", label: "Charcoal" },
+  { id: "black", color: "#1a1a1a", label: "Svart" },
+  { id: "sage", color: "#c5cfc0", label: "Sage" },
+  { id: "dustyrose", color: "#d4b5b0", label: "Dusty rose" },
+  { id: "navy", color: "#2c3e50", label: "Navy" },
+] as const;
 
 interface Room {
   id: string;
@@ -73,6 +90,9 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
   const [creatingRoom, setCreatingRoom] = useState(false);
+  const [inspoView, setInspoView] = useState<"gallery" | "moodboard">("gallery");
+  const [moodboardBg, setMoodboardBg] = useState("#f5f0eb");
+  const [moodboardGap, setMoodboardGap] = useState(true);
 
   // Fetch rooms + all inspiration photos
   const { data } = useQuery({
@@ -86,7 +106,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           .order("name"),
         supabase
           .from("photos")
-          .select("id, url, caption, linked_to_id, linked_to_type, source, source_url")
+          .select("id, url, caption, linked_to_id, linked_to_type, source, source_url, display_size, sort_order")
           .or(`linked_to_type.eq.room,linked_to_type.eq.project`)
           .order("created_at", { ascending: false }),
         supabase
@@ -113,6 +133,8 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           caption: p.caption,
           source: p.source || "upload",
           sourceUrl: p.source_url || null,
+          displaySize: (p.display_size as DisplaySize) || "md",
+          sortOrder: p.sort_order || 0,
           roomId: p.linked_to_type === "room" ? p.linked_to_id : null,
           roomName: p.linked_to_type === "room" ? (roomMap.get(p.linked_to_id) || null) : null,
         }));
@@ -367,6 +389,12 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
     } catch { toast.error(t("common.error")); } finally { setCreatingRoom(false); }
   }, [projectId, creatingRoom, queryClient, t]);
 
+  // Update photo display size
+  const updatePhotoSize = useCallback(async (photoId: string, size: DisplaySize) => {
+    await supabase.from("photos").update({ display_size: size }).eq("id", photoId);
+    queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+  }, [projectId, queryClient]);
+
   const hasPhotos = totalCount > 0;
 
   // Gallery navigation
@@ -385,6 +413,30 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
             <Sparkles className="h-4 w-4" />
             {t("inspiration.title")}
           </h3>
+          <div className="flex items-center gap-2">
+          {hasPhotos && (
+            <>
+            {/* View toggle */}
+            <div className="flex rounded-md border bg-muted/30 p-0.5">
+              <button
+                type="button"
+                onClick={() => setInspoView("gallery")}
+                className={cn("px-2 py-0.5 rounded text-[10px] font-medium transition-colors", inspoView === "gallery" ? "bg-background shadow-sm" : "text-muted-foreground")}
+              >
+                <LayoutGrid className="h-3 w-3 inline mr-1" />
+                {t("inspiration.gallery", "Galleri")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setInspoView("moodboard")}
+                className={cn("px-2 py-0.5 rounded text-[10px] font-medium transition-colors", inspoView === "moodboard" ? "bg-background shadow-sm" : "text-muted-foreground")}
+              >
+                <Palette className="h-3 w-3 inline mr-1" />
+                Moodboard
+              </button>
+            </div>
+            </>
+          )}
           {hasPhotos && (
             <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
               <PopoverTrigger asChild>
@@ -425,6 +477,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               </PopoverContent>
             </Popover>
           )}
+          </div>
         </div>
 
         {/* Room filter chips — only show when there are photos */}
@@ -471,6 +524,9 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           </div>
         )}
 
+        {/* ===== GALLERY VIEW ===== */}
+        {inspoView === "gallery" && (
+        <>
         {/* Photo grid + drop zone */}
         <div
           onDragOver={onDragOver}
@@ -727,6 +783,132 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
             </div>
           );
         })()}
+
+        </>
+        )}
+
+        {/* ===== MOODBOARD VIEW ===== */}
+        {inspoView === "moodboard" && (
+          <div className="space-y-3">
+            {/* Moodboard toolbar */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Background color */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs hover:bg-accent transition-colors"
+                  >
+                    <div className="h-3.5 w-3.5 rounded-full border" style={{ backgroundColor: moodboardBg }} />
+                    {t("inspiration.background", "Bakgrund")}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" align="start">
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {MOODBOARD_BACKGROUNDS.map((bg) => (
+                      <button
+                        key={bg.id}
+                        type="button"
+                        title={bg.label}
+                        className={cn(
+                          "h-7 w-7 rounded-full border-2 transition-transform hover:scale-110",
+                          moodboardBg === bg.color ? "border-primary scale-110" : "border-transparent"
+                        )}
+                        style={{ backgroundColor: bg.color }}
+                        onClick={() => setMoodboardBg(bg.color)}
+                      />
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Gap toggle */}
+              <button
+                type="button"
+                onClick={() => setMoodboardGap(!moodboardGap)}
+                className={cn(
+                  "px-2 py-1 rounded-md border text-xs transition-colors",
+                  moodboardGap ? "bg-accent" : "hover:bg-accent"
+                )}
+              >
+                {moodboardGap ? t("inspiration.withGap", "Med mellanrum") : t("inspiration.noGap", "Utan mellanrum")}
+              </button>
+            </div>
+
+            {/* Masonry grid */}
+            <div
+              className="rounded-xl overflow-hidden transition-colors"
+              style={{ backgroundColor: moodboardBg, padding: moodboardGap ? "12px" : "0" }}
+            >
+              {filteredPhotos.length === 0 ? (
+                <div className="flex items-center justify-center py-12 text-sm" style={{ color: moodboardBg === "#1a1a1a" || moodboardBg === "#3a3a3a" || moodboardBg === "#2c3e50" ? "#999" : "#888" }}>
+                  {t("inspiration.emptyTitle")}
+                </div>
+              ) : (
+                <div
+                  className="columns-2 sm:columns-3 md:columns-4"
+                  style={{ gap: moodboardGap ? "8px" : "0" }}
+                >
+                  {filteredPhotos
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .map((photo) => {
+                      const sizeClass = photo.displaySize === "lg" ? "col-span-1 mb-2" : photo.displaySize === "sm" ? "col-span-1 mb-2" : "col-span-1 mb-2";
+                      const heightClass = photo.displaySize === "lg" ? "min-h-[280px]" : photo.displaySize === "sm" ? "min-h-[100px] max-h-[160px]" : "min-h-[160px]";
+                      const isDark = moodboardBg === "#1a1a1a" || moodboardBg === "#3a3a3a" || moodboardBg === "#2c3e50";
+
+                      return (
+                        <div
+                          key={photo.id}
+                          className={cn("break-inside-avoid group relative overflow-hidden cursor-pointer", sizeClass)}
+                          style={{ marginBottom: moodboardGap ? "8px" : "0", borderRadius: moodboardGap ? "6px" : "0" }}
+                          onClick={() => openGallery(filteredPhotos.indexOf(photo))}
+                        >
+                          <img
+                            src={photo.url}
+                            alt={photo.caption || ""}
+                            className={cn("w-full object-cover transition-transform group-hover:scale-[1.02]", heightClass)}
+                            loading="lazy"
+                          />
+                          {/* Caption overlay */}
+                          {photo.caption && (
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-4 pointer-events-none">
+                              <p className="text-[10px] text-white/90 truncate">{photo.caption}</p>
+                            </div>
+                          )}
+                          {/* Size toggle on hover */}
+                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
+                            {(["sm", "md", "lg"] as const).map((s) => (
+                              <button
+                                key={s}
+                                type="button"
+                                className={cn(
+                                  "h-5 px-1.5 rounded text-[9px] font-bold transition-colors",
+                                  photo.displaySize === s
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-black/40 text-white hover:bg-black/60"
+                                )}
+                                onClick={(e) => { e.stopPropagation(); updatePhotoSize(photo.id, s); }}
+                              >
+                                {s.toUpperCase()}
+                              </button>
+                            ))}
+                          </div>
+                          {/* Room badge */}
+                          {photo.roomName && (
+                            <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Badge variant="secondary" className={cn("text-[9px] px-1 py-0", isDark ? "bg-white/20 text-white" : "")}>
+                                {photo.roomName}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* File input — sr-only (not display:none) so label htmlFor works */}
         <input
