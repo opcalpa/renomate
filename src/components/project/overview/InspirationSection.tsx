@@ -898,11 +898,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">{t("inspiration.source", "Källa")}</span>
-                      <span>{galleryPhoto.source === "pinterest" ? "Pinterest" : galleryPhoto.source === "url" ? "URL" : t("inspiration.upload")}</span>
-                    </div>
-                    {galleryPhoto.sourceUrl && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">{t("inspiration.link", "Länk")}</span>
+                      {galleryPhoto.sourceUrl ? (
                         <a
                           href={galleryPhoto.sourceUrl}
                           target="_blank"
@@ -910,10 +906,12 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                           className="text-primary hover:underline truncate max-w-[140px]"
                           title={galleryPhoto.sourceUrl}
                         >
-                          {new URL(galleryPhoto.sourceUrl).hostname.replace("www.", "")}
+                          {galleryPhoto.source === "pinterest" ? "Pinterest" : new URL(galleryPhoto.sourceUrl).hostname.replace("www.", "")}
                         </a>
-                      </div>
-                    )}
+                      ) : (
+                        <span>{t("inspiration.upload")}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
