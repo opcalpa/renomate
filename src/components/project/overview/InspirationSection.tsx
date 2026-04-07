@@ -93,6 +93,9 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   const [inspoView, setInspoView] = useState<"gallery" | "moodboard">("gallery");
   const [moodboardBg, setMoodboardBg] = useState("#f5f0eb");
   const [moodboardGap, setMoodboardGap] = useState(true);
+  const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
+  const [dragPhotoId, setDragPhotoId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   // Fetch rooms + all inspiration photos
   const { data } = useQuery({
@@ -394,6 +397,23 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
     await supabase.from("photos").update({ display_size: size }).eq("id", photoId);
     queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
   }, [projectId, queryClient]);
+
+  // Reorder: move dragId to position of targetId
+  const reorderPhotos = useCallback(async (dragId: string, targetId: string) => {
+    if (dragId === targetId) return;
+    const sorted = [...filteredPhotos].sort((a, b) => a.sortOrder - b.sortOrder);
+    const dragIdx = sorted.findIndex((p) => p.id === dragId);
+    const targetIdx = sorted.findIndex((p) => p.id === targetId);
+    if (dragIdx === -1 || targetIdx === -1) return;
+
+    const moved = sorted.splice(dragIdx, 1)[0];
+    sorted.splice(targetIdx, 0, moved);
+
+    // Batch update sort_order
+    const updates = sorted.map((p, i) => ({ id: p.id, sort_order: i }));
+    await Promise.all(updates.map((u) => supabase.from("photos").update({ sort_order: u.sort_order }).eq("id", u.id)));
+    queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+  }, [filteredPhotos, projectId, queryClient]);
 
   const hasPhotos = totalCount > 0;
 
@@ -835,10 +855,11 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               </button>
             </div>
 
-            {/* Masonry grid */}
+            {/* Interactive grid */}
             <div
               className="rounded-xl overflow-hidden transition-colors"
               style={{ backgroundColor: moodboardBg, padding: moodboardGap ? "12px" : "0" }}
+              onClick={() => setSelectedPhotoId(null)}
             >
               {filteredPhotos.length === 0 ? (
                 <div className="flex items-center justify-center py-12 text-sm" style={{ color: moodboardBg === "#1a1a1a" || moodboardBg === "#3a3a3a" || moodboardBg === "#2c3e50" ? "#999" : "#888" }}>
@@ -846,37 +867,68 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                 </div>
               ) : (
                 <div
-                  className="columns-2 sm:columns-3 md:columns-4"
-                  style={{ gap: moodboardGap ? "8px" : "0" }}
+                  className="grid grid-cols-6 auto-rows-[80px] sm:auto-rows-[100px] md:auto-rows-[120px]"
+                  style={{ gap: moodboardGap ? "8px" : "2px" }}
                 >
                   {filteredPhotos
                     .sort((a, b) => a.sortOrder - b.sortOrder)
                     .map((photo) => {
-                      const sizeClass = photo.displaySize === "lg" ? "col-span-1 mb-2" : photo.displaySize === "sm" ? "col-span-1 mb-2" : "col-span-1 mb-2";
-                      const heightClass = photo.displaySize === "lg" ? "min-h-[280px]" : photo.displaySize === "sm" ? "min-h-[100px] max-h-[160px]" : "min-h-[160px]";
+                      const colSpan = photo.displaySize === "lg" ? 4 : photo.displaySize === "sm" ? 1 : 2;
+                      const rowSpan = photo.displaySize === "lg" ? 3 : photo.displaySize === "sm" ? 1 : 2;
+                      const isSelected = selectedPhotoId === photo.id;
+                      const isDragging = dragPhotoId === photo.id;
+                      const isDragOver = dragOverId === photo.id;
                       const isDark = moodboardBg === "#1a1a1a" || moodboardBg === "#3a3a3a" || moodboardBg === "#2c3e50";
 
                       return (
                         <div
                           key={photo.id}
-                          className={cn("break-inside-avoid group relative overflow-hidden cursor-pointer", sizeClass)}
-                          style={{ marginBottom: moodboardGap ? "8px" : "0", borderRadius: moodboardGap ? "6px" : "0" }}
-                          onClick={() => openGallery(filteredPhotos.indexOf(photo))}
+                          draggable
+                          onDragStart={(e) => { setDragPhotoId(photo.id); e.dataTransfer.effectAllowed = "move"; }}
+                          onDragEnd={() => { setDragPhotoId(null); setDragOverId(null); }}
+                          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOverId(photo.id); }}
+                          onDragLeave={() => setDragOverId(null)}
+                          onDrop={(e) => { e.preventDefault(); if (dragPhotoId) reorderPhotos(dragPhotoId, photo.id); setDragPhotoId(null); setDragOverId(null); }}
+                          className={cn(
+                            "relative overflow-hidden cursor-grab active:cursor-grabbing group transition-all",
+                            isDragging && "opacity-40 scale-95",
+                            isDragOver && !isDragging && "ring-2 ring-primary ring-offset-2",
+                            isSelected && "ring-2 ring-primary ring-offset-1",
+                          )}
+                          style={{
+                            gridColumn: `span ${colSpan}`,
+                            gridRow: `span ${rowSpan}`,
+                            borderRadius: moodboardGap ? "6px" : "0",
+                          }}
+                          onClick={(e) => { e.stopPropagation(); setSelectedPhotoId(isSelected ? null : photo.id); }}
+                          onDoubleClick={(e) => { e.stopPropagation(); openGallery(filteredPhotos.indexOf(photo)); }}
                         >
                           <img
                             src={photo.url}
                             alt={photo.caption || ""}
-                            className={cn("w-full object-cover transition-transform group-hover:scale-[1.02]", heightClass)}
+                            className="w-full h-full object-cover"
                             loading="lazy"
+                            draggable={false}
                           />
                           {/* Caption overlay */}
                           {photo.caption && (
-                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-4 pointer-events-none">
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-5 pointer-events-none">
                               <p className="text-[10px] text-white/90 truncate">{photo.caption}</p>
                             </div>
                           )}
-                          {/* Size toggle on hover */}
-                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
+                          {/* Room badge — always visible on selected, hover otherwise */}
+                          {photo.roomName && (
+                            <div className={cn("absolute top-1 left-1 transition-opacity", isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
+                              <Badge variant="secondary" className={cn("text-[9px] px-1 py-0", isDark ? "bg-white/20 text-white" : "")}>
+                                {photo.roomName}
+                              </Badge>
+                            </div>
+                          )}
+                          {/* Size controls — visible on selected or hover */}
+                          <div className={cn(
+                            "absolute top-1 right-1 flex gap-0.5 transition-opacity",
+                            isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                          )}>
                             {(["sm", "md", "lg"] as const).map((s) => (
                               <button
                                 key={s}
@@ -893,12 +945,16 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                               </button>
                             ))}
                           </div>
-                          {/* Room badge */}
-                          {photo.roomName && (
-                            <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Badge variant="secondary" className={cn("text-[9px] px-1 py-0", isDark ? "bg-white/20 text-white" : "")}>
-                                {photo.roomName}
-                              </Badge>
+                          {/* Drag handle indicator */}
+                          {isSelected && (
+                            <div className="absolute bottom-1 right-1">
+                              <div className="h-4 w-4 rounded bg-black/40 flex items-center justify-center">
+                                <svg className="h-3 w-3 text-white" viewBox="0 0 16 16" fill="currentColor">
+                                  <circle cx="5" cy="4" r="1.2" /><circle cx="11" cy="4" r="1.2" />
+                                  <circle cx="5" cy="8" r="1.2" /><circle cx="11" cy="8" r="1.2" />
+                                  <circle cx="5" cy="12" r="1.2" /><circle cx="11" cy="12" r="1.2" />
+                                </svg>
+                              </div>
                             </div>
                           )}
                         </div>
