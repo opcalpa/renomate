@@ -48,6 +48,7 @@ interface InspoPhoto {
   url: string;
   caption: string | null;
   source: string;
+  sourceUrl: string | null;
   roomId: string | null;
   roomName: string | null;
 }
@@ -85,7 +86,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           .order("name"),
         supabase
           .from("photos")
-          .select("id, url, caption, linked_to_id, linked_to_type, source")
+          .select("id, url, caption, linked_to_id, linked_to_type, source, source_url")
           .or(`linked_to_type.eq.room,linked_to_type.eq.project`)
           .order("created_at", { ascending: false }),
         supabase
@@ -111,6 +112,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           url: p.url,
           caption: p.caption,
           source: p.source || "upload",
+          sourceUrl: p.source_url || null,
           roomId: p.linked_to_type === "room" ? p.linked_to_id : null,
           roomName: p.linked_to_type === "room" ? (roomMap.get(p.linked_to_id) || null) : null,
         }));
@@ -898,6 +900,20 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                       <span className="text-muted-foreground">{t("inspiration.source", "Källa")}</span>
                       <span>{galleryPhoto.source === "pinterest" ? "Pinterest" : galleryPhoto.source === "url" ? "URL" : t("inspiration.upload")}</span>
                     </div>
+                    {galleryPhoto.sourceUrl && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">{t("inspiration.link", "Länk")}</span>
+                        <a
+                          href={galleryPhoto.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline truncate max-w-[140px]"
+                          title={galleryPhoto.sourceUrl}
+                        >
+                          {new URL(galleryPhoto.sourceUrl).hostname.replace("www.", "")}
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
 
