@@ -76,14 +76,14 @@ const CROP_POSITIONS: { pos: CropPosition; label: string; row: number; col: numb
 ];
 
 const MOODBOARD_BACKGROUNDS = [
-  { id: "white", color: "#ffffff", label: "Vit" },
-  { id: "offwhite", color: "#f5f0eb", label: "Off-white" },
-  { id: "warmgrey", color: "#e8e4df", label: "Warm grey" },
-  { id: "charcoal", color: "#3a3a3a", label: "Charcoal" },
-  { id: "black", color: "#1a1a1a", label: "Svart" },
-  { id: "sage", color: "#c5cfc0", label: "Sage" },
-  { id: "dustyrose", color: "#d4b5b0", label: "Dusty rose" },
-  { id: "navy", color: "#2c3e50", label: "Navy" },
+  { id: "white", color: "#ffffff", label: "Pure White" },
+  { id: "linen", color: "#F3EDE4", label: "Warm Linen" },
+  { id: "greige", color: "#D6CFC7", label: "Soft Greige" },
+  { id: "sage", color: "#C5CDB0", label: "Pale Sage" },
+  { id: "mauve", color: "#C4AEAD", label: "Dusty Mauve" },
+  { id: "charcoal", color: "#4A4A48", label: "Warm Charcoal" },
+  { id: "navy", color: "#1E2A3A", label: "Deep Navy" },
+  { id: "black", color: "#141414", label: "Rich Black" },
 ] as const;
 
 interface Room {
@@ -856,8 +856,8 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                     {t("inspiration.background", "Bakgrund")}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" align="start">
-                  <div className="grid grid-cols-4 gap-1.5">
+                <PopoverContent className="w-auto p-2.5 space-y-2.5" align="start">
+                  <div className="grid grid-cols-4 gap-2">
                     {MOODBOARD_BACKGROUNDS.map((bg) => (
                       <button
                         key={bg.id}
@@ -865,12 +865,27 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                         title={bg.label}
                         className={cn(
                           "h-7 w-7 rounded-full border-2 transition-transform hover:scale-110",
-                          moodboardBg === bg.color ? "border-primary scale-110" : "border-transparent"
+                          moodboardBg === bg.color ? "border-primary scale-110" : "border-muted"
                         )}
                         style={{ backgroundColor: bg.color }}
                         onClick={() => setMoodboardBg(bg.color)}
                       />
                     ))}
+                  </div>
+                  <div className="flex items-center gap-1.5 pt-1 border-t">
+                    <input
+                      type="color"
+                      value={moodboardBg}
+                      onChange={(e) => setMoodboardBg(e.target.value)}
+                      className="h-6 w-6 rounded cursor-pointer border-0 p-0 bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={moodboardBg}
+                      onChange={(e) => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setMoodboardBg(e.target.value); }}
+                      className="flex-1 px-1.5 py-0.5 text-[10px] font-mono rounded border bg-background w-16 focus:outline-none focus:ring-1 focus:ring-primary"
+                      maxLength={7}
+                    />
                   </div>
                 </PopoverContent>
               </Popover>
@@ -895,7 +910,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               onClick={() => setSelectedPhotoId(null)}
             >
               {filteredPhotos.length === 0 ? (
-                <div className="flex items-center justify-center py-12 text-sm" style={{ color: moodboardBg === "#1a1a1a" || moodboardBg === "#3a3a3a" || moodboardBg === "#2c3e50" ? "#999" : "#888" }}>
+                <div className="flex items-center justify-center py-12 text-sm" style={{ color: (() => { const h = moodboardBg.replace("#",""); const lum = (parseInt(h.substring(0,2),16)||0)*0.299+(parseInt(h.substring(2,4),16)||0)*0.587+(parseInt(h.substring(4,6),16)||0)*0.114; return lum < 128 ? "#999" : "#888"; })() }}>
                   {t("inspiration.emptyTitle")}
                 </div>
               ) : (
@@ -911,7 +926,12 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                       const isSelected = selectedPhotoId === photo.id;
                       const isDragging = dragPhotoId === photo.id;
                       const isDragOver = dragOverId === photo.id;
-                      const isDark = moodboardBg === "#1a1a1a" || moodboardBg === "#3a3a3a" || moodboardBg === "#2c3e50";
+                      // Detect dark background by luminance
+                      const hex = moodboardBg.replace("#", "");
+                      const r = parseInt(hex.substring(0, 2), 16) || 0;
+                      const g = parseInt(hex.substring(2, 4), 16) || 0;
+                      const b = parseInt(hex.substring(4, 6), 16) || 0;
+                      const isDark = (r * 0.299 + g * 0.587 + b * 0.114) < 128;
 
                       return (
                         <div
