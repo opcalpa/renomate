@@ -30,6 +30,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Type,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/compressImage";
@@ -69,6 +70,8 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   const [editingCaption, setEditingCaption] = useState<string | null>(null);
   const [captionDraft, setCaptionDraft] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [newRoomName, setNewRoomName] = useState("");
+  const [creatingRoom, setCreatingRoom] = useState(false);
 
   // Fetch rooms + all inspiration photos
   const { data } = useQuery({
@@ -346,6 +349,22 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
     setEditingCaption(null);
   }, [projectId, queryClient, t]);
 
+  // Create room and optionally link a photo to it
+  const createRoomAndLink = useCallback(async (name: string, photoId?: string) => {
+    if (!name.trim() || creatingRoom) return;
+    setCreatingRoom(true);
+    try {
+      const { data, error } = await supabase.from("rooms").insert({ project_id: projectId, name: name.trim() }).select("id").single();
+      if (error) { toast.error(error.message); return; }
+      if (photoId && data) {
+        await supabase.from("photos").update({ linked_to_type: "room", linked_to_id: data.id }).eq("id", photoId);
+      }
+      queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+      setNewRoomName("");
+      toast.success(t("rooms.created", "Rum skapat"));
+    } catch { toast.error(t("common.error")); } finally { setCreatingRoom(false); }
+  }, [projectId, creatingRoom, queryClient, t]);
+
   const hasPhotos = totalCount > 0;
 
   // Gallery navigation
@@ -505,22 +524,37 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                         </button>
                       </PopoverTrigger>
                       <PopoverContent className="w-48 p-1" align="start" side="top">
-                        {rooms.length > 0 && (
-                          <>
-                            <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">{t("inspiration.linkRoom")}</p>
-                            {rooms.map((r) => (
-                              <button
-                                key={r.id}
-                                type="button"
-                                className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
-                                onClick={() => assignPhoto(photo.id, "room", r.id)}
-                              >
-                                <Home className="h-3 w-3 text-muted-foreground" />
-                                {r.name}
-                              </button>
-                            ))}
-                          </>
-                        )}
+                        <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">{t("inspiration.linkRoom")}</p>
+                        {rooms.map((r) => (
+                          <button
+                            key={r.id}
+                            type="button"
+                            className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                            onClick={() => assignPhoto(photo.id, "room", r.id)}
+                          >
+                            <Home className="h-3 w-3 text-muted-foreground" />
+                            {r.name}
+                          </button>
+                        ))}
+                        <div className="flex items-center gap-1 px-1 py-1">
+                          <input
+                            type="text"
+                            placeholder={t("inspiration.newRoom", "Nytt rum...")}
+                            className="flex-1 px-2 py-1 text-xs rounded border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                            value={newRoomName}
+                            onChange={(e) => setNewRoomName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") createRoomAndLink(newRoomName, photo.id); }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <button
+                            type="button"
+                            className="h-6 w-6 rounded flex items-center justify-center hover:bg-accent text-muted-foreground hover:text-primary"
+                            onClick={(e) => { e.stopPropagation(); createRoomAndLink(newRoomName, photo.id); }}
+                            disabled={!newRoomName.trim() || creatingRoom}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                         {(tasks?.length ?? 0) > 0 && (
                           <>
                             <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase mt-1">{t("inspiration.linkTask")}</p>
@@ -839,6 +873,24 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                               {t("inspiration.unlink")}
                             </button>
                           )}
+                          <div className="flex items-center gap-1 px-1 py-1 mt-1 border-t">
+                            <input
+                              type="text"
+                              placeholder={t("inspiration.newRoom", "Nytt rum...")}
+                              className="flex-1 px-2 py-1 text-xs rounded border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                              value={newRoomName}
+                              onChange={(e) => setNewRoomName(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === "Enter") createRoomAndLink(newRoomName, galleryPhoto.id); }}
+                            />
+                            <button
+                              type="button"
+                              className="h-6 w-6 rounded flex items-center justify-center hover:bg-accent text-muted-foreground hover:text-primary"
+                              onClick={() => createRoomAndLink(newRoomName, galleryPhoto.id)}
+                              disabled={!newRoomName.trim() || creatingRoom}
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </PopoverContent>
                       </Popover>
                     </div>
