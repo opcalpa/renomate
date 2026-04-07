@@ -466,23 +466,23 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           <div className="flex items-center gap-2">
           {hasPhotos && (
             <>
-            {/* View toggle */}
+            {/* View toggle — icon only */}
             <div className="flex rounded-md border bg-muted/30 p-0.5">
               <button
                 type="button"
                 onClick={() => setInspoView("gallery")}
-                className={cn("px-2 py-0.5 rounded text-[10px] font-medium transition-colors", inspoView === "gallery" ? "bg-background shadow-sm" : "text-muted-foreground")}
+                title={t("inspiration.gallery", "Galleri")}
+                className={cn("p-1 rounded transition-colors", inspoView === "gallery" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
               >
-                <LayoutGrid className="h-3 w-3 inline mr-1" />
-                {t("inspiration.gallery", "Galleri")}
+                <LayoutGrid className="h-3.5 w-3.5" />
               </button>
               <button
                 type="button"
                 onClick={() => setInspoView("moodboard")}
-                className={cn("px-2 py-0.5 rounded text-[10px] font-medium transition-colors", inspoView === "moodboard" ? "bg-background shadow-sm" : "text-muted-foreground")}
+                title="Moodboard"
+                className={cn("p-1 rounded transition-colors", inspoView === "moodboard" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
               >
-                <Palette className="h-3 w-3 inline mr-1" />
-                Moodboard
+                <Palette className="h-3.5 w-3.5" />
               </button>
             </div>
             </>
@@ -490,10 +490,13 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           {hasPhotos && (
             <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
-                  <Upload className="h-3 w-3" />
-                  {t("inspiration.add")}
-                </Button>
+                <button
+                  type="button"
+                  className="p-1 rounded-md border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  title={t("inspiration.add")}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
               </PopoverTrigger>
               <PopoverContent className="w-48 p-1" align="end">
                 <button
