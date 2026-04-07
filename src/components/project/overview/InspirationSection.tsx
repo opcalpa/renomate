@@ -48,6 +48,7 @@ interface InspirationSectionProps {
 type DisplaySize = "sm" | "md" | "lg";
 type CropPosition = "center" | "top" | "bottom" | "left" | "right" | "top left" | "top right" | "bottom left" | "bottom right";
 type FitMode = "cover" | "contain";
+type CropShape = "landscape" | "square" | "portrait" | "circle";
 
 interface InspoPhoto {
   id: string;
@@ -61,6 +62,10 @@ interface InspoPhoto {
   sortOrder: number;
   cropPosition: CropPosition;
   fitMode: FitMode;
+  cropZoom: number;
+  cropOffsetX: number;
+  cropOffsetY: number;
+  cropShape: CropShape;
 }
 
 const CROP_POSITIONS: { pos: CropPosition; label: string; row: number; col: number }[] = [
@@ -125,7 +130,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           .order("name"),
         supabase
           .from("photos")
-          .select("id, url, caption, linked_to_id, linked_to_type, source, source_url, display_size, sort_order, crop_position, fit_mode")
+          .select("id, url, caption, linked_to_id, linked_to_type, source, source_url, display_size, sort_order, crop_position, fit_mode, crop_zoom, crop_offset_x, crop_offset_y, crop_shape")
           .or(`linked_to_type.eq.room,linked_to_type.eq.project`)
           .order("created_at", { ascending: false }),
         supabase
@@ -156,6 +161,10 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           sortOrder: p.sort_order || 0,
           cropPosition: (p.crop_position as CropPosition) || "center",
           fitMode: (p.fit_mode as FitMode) || "cover",
+          cropZoom: p.crop_zoom ?? 1.0,
+          cropOffsetX: p.crop_offset_x ?? 50,
+          cropOffsetY: p.crop_offset_y ?? 50,
+          cropShape: (p.crop_shape as CropShape) || "landscape",
           roomId: p.linked_to_type === "room" ? p.linked_to_id : null,
           roomName: p.linked_to_type === "room" ? (roomMap.get(p.linked_to_id) || null) : null,
         }));
@@ -425,6 +434,18 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   // Toggle fit mode
   const toggleFitMode = useCallback(async (photoId: string, mode: FitMode) => {
     await supabase.from("photos").update({ fit_mode: mode }).eq("id", photoId);
+    queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+  }, [projectId, queryClient]);
+
+  // Update crop shape
+  const updateCropShape = useCallback(async (photoId: string, shape: CropShape) => {
+    await supabase.from("photos").update({ crop_shape: shape }).eq("id", photoId);
+    queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+  }, [projectId, queryClient]);
+
+  // Save zoom + pan (debounced on interaction end)
+  const saveCropTransform = useCallback(async (photoId: string, zoom: number, offsetX: number, offsetY: number) => {
+    await supabase.from("photos").update({ crop_zoom: zoom, crop_offset_x: offsetX, crop_offset_y: offsetY }).eq("id", photoId);
     queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
   }, [projectId, queryClient]);
 
@@ -921,68 +942,110 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                   {filteredPhotos
                     .sort((a, b) => a.sortOrder - b.sortOrder)
                     .map((photo) => {
-                      const colSpan = photo.displaySize === "lg" ? 4 : photo.displaySize === "sm" ? 1 : 2;
-                      const rowSpan = photo.displaySize === "lg" ? 3 : photo.displaySize === "sm" ? 1 : 2;
+                      // Shape determines grid span ratios
+                      const sizeMultiplier = photo.displaySize === "lg" ? 2 : photo.displaySize === "sm" ? 1 : 1;
+                      const shapeSpans = {
+                        landscape: { col: 3 * sizeMultiplier, row: 2 * sizeMultiplier },
+                        square: { col: 2 * sizeMultiplier, row: 2 * sizeMultiplier },
+                        portrait: { col: 2 * sizeMultiplier, row: 3 * sizeMultiplier },
+                        circle: { col: 2 * sizeMultiplier, row: 2 * sizeMultiplier },
+                      };
+                      const spans = shapeSpans[photo.cropShape] || shapeSpans.landscape;
                       const isSelected = selectedPhotoId === photo.id;
                       const isDragging = dragPhotoId === photo.id;
                       const isDragOver = dragOverId === photo.id;
-                      // Detect dark background by luminance
                       const hex = moodboardBg.replace("#", "");
-                      const r = parseInt(hex.substring(0, 2), 16) || 0;
-                      const g = parseInt(hex.substring(2, 4), 16) || 0;
-                      const b = parseInt(hex.substring(4, 6), 16) || 0;
-                      const isDark = (r * 0.299 + g * 0.587 + b * 0.114) < 128;
+                      const isDark = ((parseInt(hex.substring(0, 2), 16) || 0) * 0.299 + (parseInt(hex.substring(2, 4), 16) || 0) * 0.587 + (parseInt(hex.substring(4, 6), 16) || 0) * 0.114) < 128;
+                      const isCircle = photo.cropShape === "circle";
 
                       return (
                         <div
                           key={photo.id}
-                          draggable
-                          onDragStart={(e) => { setDragPhotoId(photo.id); e.dataTransfer.effectAllowed = "move"; }}
+                          draggable={!isSelected}
+                          onDragStart={(e) => { if (!isSelected) { setDragPhotoId(photo.id); e.dataTransfer.effectAllowed = "move"; } }}
                           onDragEnd={() => { setDragPhotoId(null); setDragOverId(null); }}
                           onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOverId(photo.id); }}
                           onDragLeave={() => setDragOverId(null)}
                           onDrop={(e) => { e.preventDefault(); if (dragPhotoId) reorderPhotos(dragPhotoId, photo.id); setDragPhotoId(null); setDragOverId(null); }}
                           className={cn(
-                            "relative overflow-hidden cursor-grab active:cursor-grabbing group transition-all",
+                            "relative overflow-hidden group transition-all",
+                            !isSelected && "cursor-grab active:cursor-grabbing",
                             isDragging && "opacity-40 scale-95",
                             isDragOver && !isDragging && "ring-2 ring-primary ring-offset-2",
                             isSelected && "ring-2 ring-primary ring-offset-1",
                           )}
                           style={{
-                            gridColumn: `span ${colSpan}`,
-                            gridRow: `span ${rowSpan}`,
-                            borderRadius: moodboardGap ? "6px" : "0",
+                            gridColumn: `span ${Math.min(spans.col, 6)}`,
+                            gridRow: `span ${spans.row}`,
+                            borderRadius: isCircle ? "50%" : moodboardGap ? "6px" : "0",
                           }}
                           onClick={(e) => { e.stopPropagation(); setSelectedPhotoId(isSelected ? null : photo.id); }}
                           onDoubleClick={(e) => { e.stopPropagation(); openGallery(filteredPhotos.indexOf(photo)); }}
+                          onWheel={(e) => {
+                            if (!isSelected) return;
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                            const newZoom = Math.max(1, Math.min(4, photo.cropZoom + delta));
+                            saveCropTransform(photo.id, newZoom, photo.cropOffsetX, photo.cropOffsetY);
+                          }}
+                          onMouseDown={(e) => {
+                            if (!isSelected || e.button !== 0) return;
+                            // Ignore clicks on controls
+                            if ((e.target as HTMLElement).closest('button')) return;
+                            e.preventDefault();
+                            const startX = e.clientX;
+                            const startY = e.clientY;
+                            const startOx = photo.cropOffsetX;
+                            const startOy = photo.cropOffsetY;
+                            const onMove = (me: MouseEvent) => {
+                              const dx = (me.clientX - startX) * 0.15;
+                              const dy = (me.clientY - startY) * 0.15;
+                              const nx = Math.max(0, Math.min(100, startOx - dx));
+                              const ny = Math.max(0, Math.min(100, startOy - dy));
+                              // Use direct DOM update for smooth dragging
+                              const img = (e.currentTarget as HTMLElement).querySelector('img');
+                              if (img) img.style.objectPosition = `${nx}% ${ny}%`;
+                            };
+                            const onUp = (me: MouseEvent) => {
+                              const dx = (me.clientX - startX) * 0.15;
+                              const dy = (me.clientY - startY) * 0.15;
+                              const nx = Math.max(0, Math.min(100, startOx - dx));
+                              const ny = Math.max(0, Math.min(100, startOy - dy));
+                              saveCropTransform(photo.id, photo.cropZoom, nx, ny);
+                              window.removeEventListener("mousemove", onMove);
+                              window.removeEventListener("mouseup", onUp);
+                            };
+                            window.addEventListener("mousemove", onMove);
+                            window.addEventListener("mouseup", onUp);
+                          }}
                         >
                           <img
                             src={photo.url}
                             alt={photo.caption || ""}
-                            className="w-full h-full"
+                            className="w-full h-full object-cover"
                             style={{
-                              objectFit: photo.fitMode,
-                              objectPosition: photo.cropPosition,
-                              backgroundColor: photo.fitMode === "contain" ? moodboardBg : undefined,
+                              objectPosition: `${photo.cropOffsetX}% ${photo.cropOffsetY}%`,
+                              transform: photo.cropZoom > 1 ? `scale(${photo.cropZoom})` : undefined,
                             }}
                             loading="lazy"
                             draggable={false}
                           />
                           {/* Caption overlay */}
-                          {photo.caption && (
+                          {photo.caption && !isCircle && (
                             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-5 pointer-events-none">
                               <p className="text-[10px] text-white/90 truncate">{photo.caption}</p>
                             </div>
                           )}
-                          {/* Room badge — always visible on selected, hover otherwise */}
-                          {photo.roomName && (
+                          {/* Room badge */}
+                          {photo.roomName && !isCircle && (
                             <div className={cn("absolute top-1 left-1 transition-opacity", isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
                               <Badge variant="secondary" className={cn("text-[9px] px-1 py-0", isDark ? "bg-white/20 text-white" : "")}>
                                 {photo.roomName}
                               </Badge>
                             </div>
                           )}
-                          {/* Top-right: Size controls — visible on selected or hover */}
+                          {/* Top-right: Size + Shape controls */}
                           <div className={cn(
                             "absolute top-1 right-1 flex gap-0.5 transition-opacity",
                             isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
@@ -1003,41 +1066,38 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                               </button>
                             ))}
                           </div>
-                          {/* Bottom-right: Fit toggle + crop position — only when selected */}
+                          {/* Bottom-right: Shape controls — only when selected */}
                           {isSelected && (
-                            <div className="absolute bottom-1 right-1 flex items-end gap-1" onClick={(e) => e.stopPropagation()}>
-                              {/* Fit mode toggle */}
-                              <button
-                                type="button"
-                                className={cn(
-                                  "h-5 px-1.5 rounded text-[9px] font-medium transition-colors",
-                                  photo.fitMode === "contain"
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-black/40 text-white hover:bg-black/60"
-                                )}
-                                onClick={() => toggleFitMode(photo.id, photo.fitMode === "cover" ? "contain" : "cover")}
-                              >
-                                {photo.fitMode === "cover" ? "Crop" : "Hel"}
-                              </button>
-                              {/* 9-point crop position grid — only for cover mode */}
-                              {photo.fitMode === "cover" && (
-                                <div className="grid grid-cols-3 gap-[2px] bg-black/40 rounded p-[3px]">
-                                  {CROP_POSITIONS.map((cp) => (
-                                    <button
-                                      key={cp.pos}
-                                      type="button"
-                                      className={cn(
-                                        "h-3 w-3 rounded-full transition-colors",
-                                        photo.cropPosition === cp.pos
-                                          ? "bg-primary"
-                                          : "bg-white/30 hover:bg-white/60"
-                                      )}
-                                      onClick={() => updateCropPosition(photo.id, cp.pos)}
-                                      title={cp.pos}
-                                    />
-                                  ))}
-                                </div>
-                              )}
+                            <div className="absolute bottom-1 right-1 flex items-center gap-0.5 bg-black/40 rounded p-0.5" onClick={(e) => e.stopPropagation()}>
+                              {([
+                                { shape: "landscape" as const, icon: "▬" },
+                                { shape: "square" as const, icon: "□" },
+                                { shape: "portrait" as const, icon: "▯" },
+                                { shape: "circle" as const, icon: "○" },
+                              ]).map(({ shape, icon }) => (
+                                <button
+                                  key={shape}
+                                  type="button"
+                                  className={cn(
+                                    "h-5 w-5 rounded flex items-center justify-center text-[11px] transition-colors",
+                                    photo.cropShape === shape
+                                      ? "bg-primary text-primary-foreground"
+                                      : "text-white/60 hover:text-white"
+                                  )}
+                                  onClick={() => updateCropShape(photo.id, shape)}
+                                  title={shape}
+                                >
+                                  {icon}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {/* Selected: zoom hint */}
+                          {isSelected && photo.cropZoom > 1 && (
+                            <div className="absolute top-1 left-1/2 -translate-x-1/2">
+                              <span className="bg-black/40 text-white text-[9px] px-1.5 py-0.5 rounded-full tabular-nums">
+                                {photo.cropZoom.toFixed(1)}×
+                              </span>
                             </div>
                           )}
                         </div>
