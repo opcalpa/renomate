@@ -671,18 +671,17 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           );
         })()}
 
+        {/* File input — sr-only (not display:none) so label htmlFor works */}
+        <input
+          id={`inspo-file-${projectId}`}
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="sr-only"
+          onChange={(e) => { if (e.target.files?.length) handleUpload(e.target.files); e.target.value = ""; }}
+        />
       </CardContent>
-
-      {/* Hidden file input — outside Card to avoid Popover focus trap */}
-      <input
-        id={`inspo-file-${projectId}`}
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        className="hidden"
-        onChange={(e) => { if (e.target.files?.length) handleUpload(e.target.files); e.target.value = ""; }}
-      />
 
       {/* ===== Fullscreen Gallery Dialog ===== */}
       <Dialog open={galleryIndex !== null} onOpenChange={(open) => { if (!open) closeGallery(); }}>
