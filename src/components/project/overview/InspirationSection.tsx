@@ -948,7 +948,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                         landscape: { col: 3 * sizeMultiplier, row: 2 * sizeMultiplier },
                         square: { col: 2 * sizeMultiplier, row: 2 * sizeMultiplier },
                         portrait: { col: 2 * sizeMultiplier, row: 3 * sizeMultiplier },
-                        circle: { col: 2 * sizeMultiplier, row: 3 * sizeMultiplier },
+                        circle: { col: 2 * sizeMultiplier, row: 2 * sizeMultiplier },
                       };
                       const spans = shapeSpans[photo.cropShape] || shapeSpans.landscape;
                       const isSelected = selectedPhotoId === photo.id;
@@ -976,9 +976,8 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                             isSelected && "ring-2 ring-primary ring-offset-1",
                           )}
                           style={{
-                            gridColumn: `span ${Math.min(isCircle ? spans.row : spans.col, 6)}`,
-                            gridRow: isCircle ? `span ${Math.ceil(spans.col * 1.1)}` : `span ${spans.row}`,
-                            aspectRatio: isCircle ? "1" : undefined,
+                            gridColumn: `span ${Math.min(spans.col, 6)}`,
+                            gridRow: `span ${spans.row}`,
                           }}
                           onClick={(e) => { e.stopPropagation(); setSelectedPhotoId(isSelected ? null : photo.id); }}
                           onDoubleClick={(e) => { e.stopPropagation(); openGallery(filteredPhotos.indexOf(photo)); }}
@@ -1024,7 +1023,10 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                           }}
                         >
                           {/* Image wrapper — clips at circle boundary */}
-                          <div className="absolute inset-0 overflow-hidden" style={{ borderRadius: isCircle ? "50%" : moodboardGap ? "6px" : "0" }}>
+                          <div
+                            className={cn("overflow-hidden", isCircle ? "h-full mx-auto rounded-full" : "absolute inset-0")}
+                            style={isCircle ? { aspectRatio: "1" } : { borderRadius: moodboardGap ? "6px" : "0" }}
+                          >
                             <img
                               src={photo.url}
                               alt={photo.caption || ""}
