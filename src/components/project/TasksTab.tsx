@@ -38,6 +38,7 @@ import { useProjectLock } from "@/hooks/useProjectLock";
 import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
 import { getStatusSolidColor } from "@/lib/statusColors";
 import { TasksTableView, useTasksTableView, EXTRA_COLUMN_KEYS } from "./tasks";
+import { SwipeableRoomInstructions, useRoomInstructionsData } from "@/components/room-instructions";
 
 interface ChecklistItem {
   id: string;
@@ -166,10 +167,13 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
   const [filterCostCenters, setFilterCostCenters] = useState<Set<string>>(new Set());
   
   // View mode — persisted per project + synced to server
-  const [viewMode, handleSetViewMode] = usePersistedPreference<'kanban' | 'table'>(`tasks-view-mode-${projectId}`, 'kanban');
+  const [viewMode, handleSetViewMode] = usePersistedPreference<'kanban' | 'table' | 'rooms'>(`tasks-view-mode-${projectId}`, tasksScope === 'assigned' ? 'rooms' : 'kanban');
 
   // Table view state (lifted so toolbar can render in parent)
   const tableViewState = useTasksTableView(projectId);
+
+  // Room instructions data (for rooms view mode)
+  const { rooms: roomInstructions } = useRoomInstructionsData(projectId, viewMode === "rooms" ? currentProfileId : null);
 
   // Timeline visibility
   const [timelineOpen, setTimelineOpen] = useState(true);
@@ -1133,12 +1137,15 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
         <div>
         <div className="flex items-center gap-3 flex-wrap">
           {/* View Toggle */}
-          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && handleSetViewMode(value as 'kanban' | 'table')}>
+          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && handleSetViewMode(value as 'kanban' | 'table' | 'rooms')}>
             <ToggleGroupItem value="kanban" aria-label="Kanban view">
               <LayoutGrid className="h-4 w-4" />
             </ToggleGroupItem>
             <ToggleGroupItem value="table" aria-label="Table view">
               <TableIcon className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="rooms" aria-label="Room instructions view">
+              <Layers className="h-4 w-4" />
             </ToggleGroupItem>
           </ToggleGroup>
 
@@ -1879,6 +1886,24 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
             })}
           </div>
         </div>
+      ) : viewMode === 'rooms' ? (
+        /* Room Instructions View */
+        <SwipeableRoomInstructions
+          rooms={roomInstructions}
+          canToggleChecklist={canEditTasks}
+          onChecklistToggle={async (taskId, checklistId, itemId, completed) => {
+            const task = tasks.find((t) => t.id === taskId);
+            if (!task) return;
+            const checklists = Array.isArray(task.checklists) ? [...task.checklists as Array<{ id: string; title: string; items: Array<{ id: string; title: string; completed: boolean }> }>] : [];
+            const cl = checklists.find((c) => c.id === checklistId);
+            if (!cl) return;
+            const item = cl.items.find((i) => i.id === itemId);
+            if (!item) return;
+            item.completed = completed;
+            await supabase.from("tasks").update({ checklists }).eq("id", taskId);
+            fetchTasks();
+          }}
+        />
       ) : (
         /* Table View */
         <TasksTableView

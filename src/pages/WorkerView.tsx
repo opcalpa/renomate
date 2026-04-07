@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Loader2, AlertCircle, Wrench } from "lucide-react";
+import { Loader2, AlertCircle, Wrench, Layers, List } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { WorkerTaskCard, type WorkerTask } from "@/components/worker/WorkerTaskCard";
+import { SwipeableRoomInstructions, groupWorkerTasksByRoom } from "@/components/room-instructions";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,6 +41,13 @@ export default function WorkerView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorState>(null);
   const [data, setData] = useState<WorkerViewData | null>(null);
+  const [workerViewMode, setWorkerViewMode] = useState<"rooms" | "list">("rooms");
+
+  // Group tasks by room for swipe view
+  const roomInstructions = useMemo(
+    () => (data?.tasks ? groupWorkerTasksByRoom(data.tasks) : []),
+    [data?.tasks]
+  );
 
   useEffect(() => {
     if (!token) {
@@ -155,40 +163,65 @@ export default function WorkerView() {
           <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
             <Wrench className="h-4 w-4 text-primary" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="text-sm font-semibold truncate">{data.projectName}</h1>
             <p className="text-xs text-muted-foreground truncate">
               {t("worker.hello", "Hello")}, {data.workerName}
             </p>
           </div>
+          {/* View toggle */}
+          <div className="flex rounded-md border bg-muted/30 p-0.5">
+            <button
+              type="button"
+              onClick={() => setWorkerViewMode("rooms")}
+              className={`p-1.5 rounded transition-colors ${workerViewMode === "rooms" ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+            >
+              <Layers className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setWorkerViewMode("list")}
+              className={`p-1.5 rounded transition-colors ${workerViewMode === "list" ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Task cards */}
-      <main className="max-w-lg mx-auto px-4 py-4 space-y-4 pb-[env(safe-area-inset-bottom,16px)]">
-        {data.tasks.length === 0 ? (
+      {/* Content */}
+      {data.tasks.length === 0 ? (
+        <main className="max-w-lg mx-auto px-4 py-4 pb-[env(safe-area-inset-bottom,16px)]">
           <div className="text-center py-12 text-muted-foreground">
             <p className="text-sm">{t("worker.noTasks", "No tasks assigned yet.")}</p>
           </div>
-        ) : (
-          <>
-            <p className="text-xs text-muted-foreground">
-              {t("worker.taskCount", "{{count}} tasks", { count: data.tasks.length })}
-            </p>
-            {data.tasks.map((task) => (
-              <WorkerTaskCard
-                key={task.id}
-                task={task}
-                token={token!}
-                canToggleChecklist={data.canToggleChecklist}
-                canUploadPhotos={data.canUploadPhotos}
-                floorPlan={data.floorPlan}
-                onTaskUpdate={handleTaskUpdate}
-              />
-            ))}
-          </>
-        )}
-      </main>
+        </main>
+      ) : workerViewMode === "rooms" ? (
+        <main className="max-w-lg mx-auto flex-1 flex flex-col pb-[env(safe-area-inset-bottom,16px)]">
+          <SwipeableRoomInstructions
+            rooms={roomInstructions}
+            canToggleChecklist={data.canToggleChecklist}
+            canUploadPhotos={data.canUploadPhotos}
+          />
+        </main>
+      ) : (
+        <main className="max-w-lg mx-auto px-4 py-4 space-y-4 pb-[env(safe-area-inset-bottom,16px)]">
+          <p className="text-xs text-muted-foreground">
+            {t("worker.taskCount", "{{count}} tasks", { count: data.tasks.length })}
+          </p>
+          {data.tasks.map((task) => (
+            <WorkerTaskCard
+              key={task.id}
+              task={task}
+              token={token!}
+              canToggleChecklist={data.canToggleChecklist}
+              canUploadPhotos={data.canUploadPhotos}
+              floorPlan={data.floorPlan}
+              onTaskUpdate={handleTaskUpdate}
+            />
+          ))}
+        </main>
+      )}
 
       {/* Footer */}
       <footer className="text-center py-6 text-xs text-muted-foreground/50">
