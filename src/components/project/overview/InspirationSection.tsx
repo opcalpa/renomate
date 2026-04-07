@@ -679,7 +679,14 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           accept="image/*"
           multiple
           className="sr-only"
-          onChange={(e) => { if (e.target.files?.length) handleUpload(e.target.files); e.target.value = ""; }}
+          onChange={(e) => {
+            const files = e.target.files;
+            if (files?.length) {
+              const fileArray = Array.from(files);
+              e.target.value = "";
+              handleUpload(fileArray);
+            }
+          }}
         />
       </CardContent>
 

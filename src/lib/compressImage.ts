@@ -17,7 +17,7 @@ export async function compressImage(
 ): Promise<File | Blob> {
   const maxDim = options?.maxDimension ?? 1600;
   const quality = options?.quality ?? 0.82;
-  const minSize = options?.minSize ?? 200_000;
+  const minSize = options?.minSize ?? 50_000;
 
   // Skip non-images
   const type = file instanceof File ? file.type : (file as Blob).type;
