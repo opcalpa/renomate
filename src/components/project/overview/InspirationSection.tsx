@@ -968,16 +968,17 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                           onDragLeave={() => setDragOverId(null)}
                           onDrop={(e) => { e.preventDefault(); if (dragPhotoId) reorderPhotos(dragPhotoId, photo.id); setDragPhotoId(null); setDragOverId(null); }}
                           className={cn(
-                            "relative overflow-hidden group transition-all",
+                            "relative group transition-all",
+                            isSelected && isCircle ? "overflow-visible" : "overflow-hidden",
                             !isSelected && "cursor-grab active:cursor-grabbing",
                             isDragging && "opacity-40 scale-95",
                             isDragOver && !isDragging && "ring-2 ring-primary ring-offset-2",
                             isSelected && "ring-2 ring-primary ring-offset-1",
                           )}
                           style={{
-                            gridColumn: `span ${Math.min(spans.col, 6)}`,
+                            gridColumn: `span ${Math.min(isCircle ? spans.row : spans.col, 6)}`,
                             gridRow: `span ${spans.row}`,
-                            borderRadius: isCircle ? "50%" : moodboardGap ? "6px" : "0",
+                            aspectRatio: isCircle ? "1" : undefined,
                           }}
                           onClick={(e) => { e.stopPropagation(); setSelectedPhotoId(isSelected ? null : photo.id); }}
                           onDoubleClick={(e) => { e.stopPropagation(); openGallery(filteredPhotos.indexOf(photo)); }}
@@ -1023,23 +1024,26 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                             window.addEventListener("mouseup", onUp);
                           }}
                         >
-                          <img
-                            src={photo.url}
-                            alt={photo.caption || ""}
-                            className="w-full h-full object-cover"
-                            style={{
-                              objectPosition: `${photo.cropOffsetX}% ${photo.cropOffsetY}%`,
-                              transform: photo.cropZoom > 1 ? `scale(${photo.cropZoom})` : undefined,
-                            }}
-                            loading="lazy"
-                            draggable={false}
-                          />
-                          {/* Caption overlay */}
-                          {photo.caption && !isCircle && (
-                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-5 pointer-events-none">
-                              <p className="text-[10px] text-white/90 truncate">{photo.caption}</p>
-                            </div>
-                          )}
+                          {/* Image wrapper — clips at circle boundary */}
+                          <div className="absolute inset-0 overflow-hidden" style={{ borderRadius: isCircle ? "50%" : moodboardGap ? "6px" : "0" }}>
+                            <img
+                              src={photo.url}
+                              alt={photo.caption || ""}
+                              className="w-full h-full object-cover"
+                              style={{
+                                objectPosition: `${photo.cropOffsetX}% ${photo.cropOffsetY}%`,
+                                transform: photo.cropZoom > 1 ? `scale(${photo.cropZoom})` : undefined,
+                              }}
+                              loading="lazy"
+                              draggable={false}
+                            />
+                            {/* Caption overlay */}
+                            {photo.caption && !isCircle && (
+                              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-5 pointer-events-none">
+                                <p className="text-[10px] text-white/90 truncate">{photo.caption}</p>
+                              </div>
+                            )}
+                          </div>
                           {/* Room badge */}
                           {photo.roomName && !isCircle && (
                             <div className={cn("absolute top-1 left-1 transition-opacity", isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
@@ -1048,9 +1052,10 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                               </Badge>
                             </div>
                           )}
-                          {/* Top-right: Size + Shape controls */}
+                          {/* Top-right: Size controls */}
                           <div className={cn(
-                            "absolute top-1 right-1 flex gap-0.5 transition-opacity",
+                            "absolute flex gap-0.5 transition-opacity z-10",
+                            isCircle ? "top-[-24px] right-0" : "top-1 right-1",
                             isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                           )}>
                             {(["sm", "md", "lg"] as const).map((s) => (
@@ -1069,9 +1074,15 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                               </button>
                             ))}
                           </div>
-                          {/* Bottom-right: Shape controls — only when selected */}
+                          {/* Shape controls — only when selected. Outside circle to stay visible */}
                           {isSelected && (
-                            <div className="absolute bottom-1 right-1 flex items-center gap-0.5 bg-black/40 rounded p-0.5" onClick={(e) => e.stopPropagation()}>
+                            <div
+                              className={cn(
+                                "absolute flex items-center gap-0.5 bg-black/40 rounded p-0.5",
+                                isCircle ? "bottom-[-28px] left-1/2 -translate-x-1/2 z-10" : "bottom-1 right-1"
+                              )}
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               {([
                                 { shape: "landscape" as const, icon: "▬" },
                                 { shape: "square" as const, icon: "□" },
