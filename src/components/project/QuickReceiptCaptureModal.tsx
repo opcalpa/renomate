@@ -35,6 +35,9 @@ import {
   Receipt,
   FileText,
   Link2,
+  ShoppingCart,
+  ClipboardList,
+  PenLine,
 } from "lucide-react";
 import {
   analyzeDocument,
@@ -195,6 +198,9 @@ export function QuickReceiptCaptureModal({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Flow step: choose → scan (existing) or manual
+  const [flowStep, setFlowStep] = useState<"choose" | "scan" | "manual">("choose");
+
   // Image state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -247,6 +253,7 @@ export function QuickReceiptCaptureModal({
   }, [open]);
 
   const resetForm = () => {
+    setFlowStep("choose");
     setSelectedFile(null);
     setPreviewUrl(null);
     setAnalyzing(false);
@@ -427,7 +434,11 @@ export function QuickReceiptCaptureModal({
   };
 
   const handleSave = async () => {
-    if (!selectedFile || !vendorName.trim()) {
+    if (flowStep === "scan" && !selectedFile) {
+      toast.error(t("receipt.vendorRequired"));
+      return;
+    }
+    if (!vendorName.trim()) {
       toast.error(t("receipt.vendorRequired"));
       return;
     }
@@ -510,7 +521,7 @@ export function QuickReceiptCaptureModal({
               price_per_unit: amount,
               quantity: 1,
               unit: "st",
-              status: "submitted",
+              status: flowStep === "manual" ? "to_order" : "submitted",
               created_by_user_id: profile.id,
               room_id: roomId !== "none" ? roomId : null,
               task_id: selectedTaskId || null,
@@ -524,15 +535,16 @@ export function QuickReceiptCaptureModal({
         }
       }
 
-      // Upload document image
-      const { error: uploadError } = await supabase.storage
-        .from("project-files")
-        .upload(storagePath, selectedFile, { upsert: true });
+      // Upload document image (only if file exists — scan flow)
+      if (selectedFile) {
+        const { error: uploadError } = await supabase.storage
+          .from("project-files")
+          .upload(storagePath, selectedFile, { upsert: true });
 
-      if (uploadError) {
-        console.error("Upload error:", uploadError);
-        toast.error(t("receipt.uploadError"));
-      } else if (entityId) {
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          toast.error(t("receipt.uploadError"));
+        } else if (entityId) {
         // Create task_file_links record
         const linkData: Record<string, unknown> = {
           project_id: projectId,
@@ -569,6 +581,7 @@ export function QuickReceiptCaptureModal({
           uploaded_by_user_id: profile.id,
         });
       }
+      }
 
       // Track document saved
       analytics.capture(AnalyticsEvents.RECEIPT_CAPTURED, {
@@ -580,7 +593,11 @@ export function QuickReceiptCaptureModal({
       });
 
       // Show success message
-      if (linkOption === "link") {
+      if (flowStep === "manual") {
+        toast.success(t("purchases.purchaseCreated", "Inköp registrerat"), {
+          description: t("purchases.addReceiptLater", "Du kan bifoga underlag senare"),
+        });
+      } else if (linkOption === "link") {
         toast.success(t("document.documentLinked"), {
           description: t("document.documentLinkedDescription"),
         });
@@ -618,13 +635,57 @@ export function QuickReceiptCaptureModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col !inset-auto !bottom-0 !left-0 !right-0 !rounded-t-2xl !rounded-b-none md:!inset-auto md:!left-[50%] md:!top-[50%] md:!translate-x-[-50%] md:!translate-y-[-50%] md:!rounded-lg">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>{t("document.title")}</DialogTitle>
-          <DialogDescription>{t("document.description")}</DialogDescription>
+          <DialogTitle>
+            {flowStep === "choose"
+              ? t("purchases.registerPurchase", "Registrera inköp")
+              : flowStep === "manual"
+                ? t("purchases.manualEntry", "Snabbregistrering")
+                : t("document.title")}
+          </DialogTitle>
+          <DialogDescription>
+            {flowStep === "choose"
+              ? t("purchases.chooseType", "Vad vill du registrera?")
+              : flowStep === "manual"
+                ? t("purchases.manualEntryDesc", "Lägg till ett inköp snabbt — bifoga underlag senare")
+                : t("document.description")}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="overflow-y-auto space-y-4 py-4">
-          {/* Image capture section */}
-          {!previewUrl ? (
+          {/* Step 1: Choose flow */}
+          {flowStep === "choose" && (
+            <div className="grid gap-2">
+              <button
+                type="button"
+                className="flex items-center gap-3 p-3 rounded-lg border hover:bg-emerald-50 hover:border-emerald-200 transition-colors text-left"
+                onClick={() => setFlowStep("scan")}
+              >
+                <div className="h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                  <Receipt className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{t("purchases.completedPurchase", "Utfört inköp")}</p>
+                  <p className="text-xs text-muted-foreground">{t("purchases.completedPurchaseDesc", "Har kvitto eller faktura att skanna")}</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                className="flex items-center gap-3 p-3 rounded-lg border hover:bg-blue-50 hover:border-blue-200 transition-colors text-left"
+                onClick={() => setFlowStep("manual")}
+              >
+                <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                  <PenLine className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{t("purchases.manualEntry", "Snabbregistrering")}</p>
+                  <p className="text-xs text-muted-foreground">{t("purchases.manualEntryDesc", "Lägg till ett inköp snabbt — bifoga underlag senare")}</p>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* Step 2a: Scan flow — existing document capture */}
+          {flowStep === "scan" && !previewUrl ? (
             <div className="space-y-3">
               <input
                 ref={cameraInputRef}
@@ -661,6 +722,14 @@ export function QuickReceiptCaptureModal({
                   {t("receipt.chooseFile")}
                 </Button>
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-muted-foreground"
+                onClick={() => setFlowStep("choose")}
+              >
+                {t("common.back", "Tillbaka")}
+              </Button>
             </div>
           ) : (
             <>
@@ -960,10 +1029,70 @@ export function QuickReceiptCaptureModal({
               )}
             </>
           )}
+          {/* Step 2b: Manual entry form */}
+          {flowStep === "manual" && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t("receipt.vendorName", "Butik / leverantör")}</Label>
+                <Input
+                  placeholder={t("receipt.vendorPlaceholder", "t.ex. Bauhaus, IKEA...")}
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">{t("receipt.amount", "Belopp")}</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={totalAmount}
+                    onChange={(e) => setTotalAmount(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">{t("receipt.date", "Datum")}</Label>
+                  <DatePicker
+                    date={purchaseDate}
+                    onSelect={setPurchaseDate}
+                    placeholder={t("common.selectDate", "Välj datum")}
+                  />
+                </div>
+              </div>
+              {rooms.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">{t("receipt.room", "Rum")}</Label>
+                  <Select value={roomId} onValueChange={setRoomId}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder={t("receipt.noRoom", "Inget rum")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t("receipt.noRoom", "Inget rum")}</SelectItem>
+                      {rooms.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground">
+                {t("purchases.manualNote", "Du kan bifoga kvitto eller faktura senare via Inköpslistan.")}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-muted-foreground"
+                onClick={() => setFlowStep("choose")}
+              >
+                {t("common.back", "Tillbaka")}
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Save button - only show when form is visible */}
-        {(analysisResult || analysisError) && previewUrl && (
+        {/* Save button — scan flow (after analysis) or manual flow */}
+        {((flowStep === "scan" && (analysisResult || analysisError) && previewUrl) || flowStep === "manual") && (
           <div className="flex-shrink-0 pt-4 border-t">
             <Button
               onClick={handleSave}
@@ -979,6 +1108,8 @@ export function QuickReceiptCaptureModal({
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   {t("receipt.saving")}
                 </>
+              ) : flowStep === "manual" ? (
+                t("purchases.savePurchase", "Registrera inköp")
               ) : documentType === "invoice" ? (
                 t("document.saveInvoice")
               ) : (

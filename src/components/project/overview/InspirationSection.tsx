@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { usePersistedPreference } from "@/hooks/usePersistedPreference";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,12 +28,14 @@ import {
   Sparkles,
   Home,
   Hammer,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Type,
   Plus,
   LayoutGrid,
   Palette,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/compressImage";
@@ -66,19 +69,10 @@ interface InspoPhoto {
   cropOffsetX: number;
   cropOffsetY: number;
   cropShape: CropShape;
+  gridColSpan: number;
+  gridRowSpan: number;
 }
 
-const CROP_POSITIONS: { pos: CropPosition; label: string; row: number; col: number }[] = [
-  { pos: "top left", label: "↖", row: 0, col: 0 },
-  { pos: "top", label: "↑", row: 0, col: 1 },
-  { pos: "top right", label: "↗", row: 0, col: 2 },
-  { pos: "left", label: "←", row: 1, col: 0 },
-  { pos: "center", label: "●", row: 1, col: 1 },
-  { pos: "right", label: "→", row: 1, col: 2 },
-  { pos: "bottom left", label: "↙", row: 2, col: 0 },
-  { pos: "bottom", label: "↓", row: 2, col: 1 },
-  { pos: "bottom right", label: "↘", row: 2, col: 2 },
-];
 
 const MOODBOARD_BACKGROUNDS = [
   { id: "white", color: "#ffffff", label: "Pure White" },
@@ -111,12 +105,31 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
   const [creatingRoom, setCreatingRoom] = useState(false);
-  const [inspoView, setInspoView] = useState<"gallery" | "moodboard">("gallery");
-  const [moodboardBg, setMoodboardBg] = useState("#f5f0eb");
-  const [moodboardGap, setMoodboardGap] = useState(true);
+  const [inspoView, setInspoView] = usePersistedPreference<"gallery" | "moodboard">("inspo-view-mode", "gallery");
+  const [collapsed, setCollapsed] = usePersistedPreference("inspo-collapsed", false);
+  const [moodboardBg, setMoodboardBg] = usePersistedPreference("moodboard-bg", "#f5f0eb");
+  const [moodboardGap, setMoodboardGap] = usePersistedPreference("moodboard-gap", true);
+  const [moodboardGapSize, setMoodboardGapSize] = usePersistedPreference("moodboard-gap-size", 8);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
   const [dragPhotoId, setDragPhotoId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const moodboardGridRef = useRef<HTMLDivElement>(null);
+  const inspoRef = useRef<HTMLDivElement>(null);
+
+  // Check for room filter deep-link from room details
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("inspo-room-filter");
+      if (stored) {
+        const roomId = JSON.parse(stored) as string;
+        localStorage.removeItem("inspo-room-filter");
+        setSelectedRoom(roomId);
+        setCollapsed(false);
+        // Scroll into view after render
+        setTimeout(() => inspoRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   // Fetch rooms + all inspiration photos
   const { data } = useQuery({
@@ -130,7 +143,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           .order("name"),
         supabase
           .from("photos")
-          .select("id, url, caption, linked_to_id, linked_to_type, source, source_url, display_size, sort_order, crop_position, fit_mode, crop_zoom, crop_offset_x, crop_offset_y, crop_shape")
+          .select("id, url, caption, linked_to_id, linked_to_type, source, source_url, display_size, sort_order, crop_position, fit_mode, crop_zoom, crop_offset_x, crop_offset_y, crop_shape, grid_col_span, grid_row_span")
           .or(`linked_to_type.eq.room,linked_to_type.eq.project`)
           .order("created_at", { ascending: false }),
         supabase
@@ -165,6 +178,8 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           cropOffsetX: p.crop_offset_x ?? 50,
           cropOffsetY: p.crop_offset_y ?? 50,
           cropShape: (p.crop_shape as CropShape) || "landscape",
+          gridColSpan: p.grid_col_span ?? 3,
+          gridRowSpan: p.grid_row_span ?? 2,
           roomId: p.linked_to_type === "room" ? p.linked_to_id : null,
           roomName: p.linked_to_type === "room" ? (roomMap.get(p.linked_to_id) || null) : null,
         }));
@@ -419,35 +434,56 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
     } catch { toast.error(t("common.error")); } finally { setCreatingRoom(false); }
   }, [projectId, creatingRoom, queryClient, t]);
 
-  // Update photo display size
-  const updatePhotoSize = useCallback(async (photoId: string, size: DisplaySize) => {
-    await supabase.from("photos").update({ display_size: size }).eq("id", photoId);
-    queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
-  }, [projectId, queryClient]);
+  // Update grid span — optimistic + debounced DB write
+  const spanSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const updateGridSpan = useCallback((photoId: string, colSpan: number, rowSpan: number) => {
+    const clamped = { col: Math.max(1, Math.min(6, colSpan)), row: Math.max(1, Math.min(6, rowSpan)) };
+    queryClient.setQueryData(["inspiration", projectId], (old: typeof data) => {
+      if (!old) return old;
+      return { ...old, photos: old.photos.map((p: InspoPhoto) => p.id === photoId ? { ...p, gridColSpan: clamped.col, gridRowSpan: clamped.row } : p) };
+    });
+    if (spanSaveTimer.current) clearTimeout(spanSaveTimer.current);
+    spanSaveTimer.current = setTimeout(async () => {
+      await supabase.from("photos").update({ grid_col_span: clamped.col, grid_row_span: clamped.row }).eq("id", photoId);
+    }, 300);
+  }, [projectId, queryClient, data]);
 
-  // Update crop position
-  const updateCropPosition = useCallback(async (photoId: string, pos: CropPosition) => {
-    await supabase.from("photos").update({ crop_position: pos }).eq("id", photoId);
-    queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
-  }, [projectId, queryClient]);
+  // Toggle circle shape
+  const toggleCircle = useCallback(async (photoId: string, isCircle: boolean) => {
+    const shape = isCircle ? "landscape" : "circle";
+    // Circle defaults to 3×3 for a nice visible size
+    const updates = shape === "circle"
+      ? { crop_shape: shape, grid_col_span: 3, grid_row_span: 3 }
+      : { crop_shape: shape };
+    queryClient.setQueryData(["inspiration", projectId], (old: typeof data) => {
+      if (!old) return old;
+      return { ...old, photos: old.photos.map((p: InspoPhoto) => p.id === photoId
+        ? { ...p, cropShape: shape as CropShape, ...(shape === "circle" ? { gridColSpan: 3, gridRowSpan: 3 } : {}) }
+        : p
+      )};
+    });
+    await supabase.from("photos").update(updates).eq("id", photoId);
+  }, [projectId, queryClient, data]);
 
-  // Toggle fit mode
-  const toggleFitMode = useCallback(async (photoId: string, mode: FitMode) => {
-    await supabase.from("photos").update({ fit_mode: mode }).eq("id", photoId);
-    queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
-  }, [projectId, queryClient]);
-
-  // Update crop shape
-  const updateCropShape = useCallback(async (photoId: string, shape: CropShape) => {
-    await supabase.from("photos").update({ crop_shape: shape }).eq("id", photoId);
-    queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
-  }, [projectId, queryClient]);
-
-  // Save zoom + pan (debounced on interaction end)
-  const saveCropTransform = useCallback(async (photoId: string, zoom: number, offsetX: number, offsetY: number) => {
-    await supabase.from("photos").update({ crop_zoom: zoom, crop_offset_x: offsetX, crop_offset_y: offsetY }).eq("id", photoId);
-    queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
-  }, [projectId, queryClient]);
+  // Save zoom + pan — optimistic cache update + debounced DB write
+  const cropSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveCropTransform = useCallback((photoId: string, zoom: number, offsetX: number, offsetY: number) => {
+    // Optimistic: update cache immediately so UI responds instantly
+    queryClient.setQueryData(["inspiration", projectId], (old: typeof data) => {
+      if (!old) return old;
+      return {
+        ...old,
+        photos: old.photos.map((p: InspoPhoto) =>
+          p.id === photoId ? { ...p, cropZoom: zoom, cropOffsetX: offsetX, cropOffsetY: offsetY } : p
+        ),
+      };
+    });
+    // Debounce DB write
+    if (cropSaveTimer.current) clearTimeout(cropSaveTimer.current);
+    cropSaveTimer.current = setTimeout(async () => {
+      await supabase.from("photos").update({ crop_zoom: zoom, crop_offset_x: offsetX, crop_offset_y: offsetY }).eq("id", photoId);
+    }, 300);
+  }, [projectId, queryClient, data]);
 
   // Reorder: move dragId to position of targetId
   const reorderPhotos = useCallback(async (dragId: string, targetId: string) => {
@@ -476,14 +512,19 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   const galleryNext = () => setGalleryIndex((i) => i !== null && i < filteredPhotos.length - 1 ? i + 1 : i);
 
   return (
-    <Card>
+    <Card ref={inspoRef}>
       <CardContent className="p-4 sm:p-5">
         {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+        <div className={cn("flex items-center justify-between", !collapsed && "mb-3")}>
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2 hover:text-foreground transition-colors"
+          >
             <Sparkles className="h-4 w-4" />
             {t("inspiration.title")}
-          </h3>
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", collapsed && "-rotate-90")} />
+          </button>
           <div className="flex items-center gap-2">
           {hasPhotos && (
             <>
@@ -507,6 +548,87 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               </button>
             </div>
             </>
+          )}
+          {/* Moodboard settings — only when moodboard active */}
+          {hasPhotos && inspoView === "moodboard" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="p-1 rounded-md border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  title={t("common.settings", "Inställningar")}
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-3 space-y-3" align="end">
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{t("inspiration.background", "Bakgrund")}</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {MOODBOARD_BACKGROUNDS.map((bg) => (
+                      <button
+                        key={bg.id}
+                        type="button"
+                        title={bg.label}
+                        className={cn(
+                          "h-7 w-7 rounded-full border-2 transition-transform hover:scale-110",
+                          moodboardBg === bg.color ? "border-primary scale-110" : "border-muted"
+                        )}
+                        style={{ backgroundColor: bg.color }}
+                        onClick={() => setMoodboardBg(bg.color)}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1.5 pt-1 border-t">
+                    <input
+                      type="color"
+                      value={moodboardBg}
+                      onChange={(e) => setMoodboardBg(e.target.value)}
+                      className="h-6 w-6 rounded cursor-pointer border-0 p-0 bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={moodboardBg}
+                      onChange={(e) => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setMoodboardBg(e.target.value); }}
+                      className="flex-1 px-1.5 py-0.5 text-[10px] font-mono rounded border bg-background w-16 focus:outline-none focus:ring-1 focus:ring-primary"
+                      maxLength={7}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 pt-1 border-t">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs">{t("inspiration.withGap", "Med mellanrum")}</span>
+                    <button
+                      type="button"
+                      onClick={() => setMoodboardGap(!moodboardGap)}
+                      className={cn(
+                        "h-5 w-9 rounded-full transition-colors relative",
+                        moodboardGap ? "bg-primary" : "bg-muted"
+                      )}
+                    >
+                      <div className={cn(
+                        "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform",
+                        moodboardGap ? "translate-x-4" : "translate-x-0.5"
+                      )} />
+                    </button>
+                  </div>
+                  {moodboardGap && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min={2}
+                        max={24}
+                        step={2}
+                        value={moodboardGapSize}
+                        onChange={(e) => setMoodboardGapSize(parseInt(e.target.value))}
+                        className="flex-1 h-1 accent-primary cursor-pointer"
+                      />
+                      <span className="text-[10px] text-muted-foreground tabular-nums w-6 text-right">{moodboardGapSize}px</span>
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           )}
           {hasPhotos && (
             <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
@@ -554,6 +676,8 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           </div>
         </div>
 
+        {/* Collapsible content */}
+        {!collapsed && (<>
         {/* Room filter chips — only show when there are photos */}
         {hasPhotos && rooms.length > 0 && (
           <div className="flex gap-1.5 flex-wrap mb-3">
@@ -864,70 +988,14 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
         {/* ===== MOODBOARD VIEW ===== */}
         {inspoView === "moodboard" && (
           <div className="space-y-3">
-            {/* Moodboard toolbar */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Background color */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs hover:bg-accent transition-colors"
-                  >
-                    <div className="h-3.5 w-3.5 rounded-full border" style={{ backgroundColor: moodboardBg }} />
-                    {t("inspiration.background", "Bakgrund")}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-2.5 space-y-2.5" align="start">
-                  <div className="grid grid-cols-4 gap-2">
-                    {MOODBOARD_BACKGROUNDS.map((bg) => (
-                      <button
-                        key={bg.id}
-                        type="button"
-                        title={bg.label}
-                        className={cn(
-                          "h-7 w-7 rounded-full border-2 transition-transform hover:scale-110",
-                          moodboardBg === bg.color ? "border-primary scale-110" : "border-muted"
-                        )}
-                        style={{ backgroundColor: bg.color }}
-                        onClick={() => setMoodboardBg(bg.color)}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-1.5 pt-1 border-t">
-                    <input
-                      type="color"
-                      value={moodboardBg}
-                      onChange={(e) => setMoodboardBg(e.target.value)}
-                      className="h-6 w-6 rounded cursor-pointer border-0 p-0 bg-transparent"
-                    />
-                    <input
-                      type="text"
-                      value={moodboardBg}
-                      onChange={(e) => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setMoodboardBg(e.target.value); }}
-                      className="flex-1 px-1.5 py-0.5 text-[10px] font-mono rounded border bg-background w-16 focus:outline-none focus:ring-1 focus:ring-primary"
-                      maxLength={7}
-                    />
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              {/* Gap toggle */}
-              <button
-                type="button"
-                onClick={() => setMoodboardGap(!moodboardGap)}
-                className={cn(
-                  "px-2 py-1 rounded-md border text-xs transition-colors",
-                  moodboardGap ? "bg-accent" : "hover:bg-accent"
-                )}
-              >
-                {moodboardGap ? t("inspiration.withGap", "Med mellanrum") : t("inspiration.noGap", "Utan mellanrum")}
-              </button>
-            </div>
-
-            {/* Interactive grid */}
+            {/* Interactive grid — horizontal scroll on mobile */}
             <div
-              className="rounded-xl overflow-hidden transition-colors"
-              style={{ backgroundColor: moodboardBg, padding: moodboardGap ? "12px" : "0" }}
+              className="rounded-xl overflow-x-auto overflow-y-hidden transition-colors -mx-1 px-1"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
+            <div
+              className="rounded-xl overflow-hidden transition-colors min-w-[600px]"
+              style={{ backgroundColor: moodboardBg, padding: moodboardGap ? `${moodboardGapSize + 4}px` : "0" }}
               onClick={() => setSelectedPhotoId(null)}
             >
               {filteredPhotos.length === 0 ? (
@@ -936,27 +1004,29 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                 </div>
               ) : (
                 <div
+                  ref={moodboardGridRef}
                   className="grid grid-cols-6 auto-rows-[80px] sm:auto-rows-[100px] md:auto-rows-[120px]"
-                  style={{ gap: moodboardGap ? "8px" : "2px" }}
+                  style={{ gap: moodboardGap ? `${moodboardGapSize}px` : "0px" }}
                 >
                   {filteredPhotos
                     .sort((a, b) => a.sortOrder - b.sortOrder)
                     .map((photo) => {
-                      // Shape determines grid span ratios
-                      const sizeMultiplier = photo.displaySize === "lg" ? 2 : photo.displaySize === "sm" ? 1 : 1;
-                      const shapeSpans = {
-                        landscape: { col: 3 * sizeMultiplier, row: 2 * sizeMultiplier },
-                        square: { col: 2 * sizeMultiplier, row: 2 * sizeMultiplier },
-                        portrait: { col: 2 * sizeMultiplier, row: 3 * sizeMultiplier },
-                        circle: { col: 2 * sizeMultiplier, row: 2 * sizeMultiplier },
-                      };
-                      const spans = shapeSpans[photo.cropShape] || shapeSpans.landscape;
+                      const isCircle = photo.cropShape === "circle";
+                      // For circles: compute col-span so cell width ≈ cell height (square)
+                      let circleColSpan = photo.gridColSpan;
+                      if (isCircle && moodboardGridRef.current) {
+                        const colW = moodboardGridRef.current.clientWidth / 6;
+                        const gap = moodboardGap ? moodboardGapSize : 0;
+                        const rowH = 120; // md auto-rows
+                        const totalH = photo.gridRowSpan * rowH + (photo.gridRowSpan - 1) * gap;
+                        circleColSpan = Math.max(1, Math.min(6, Math.round((totalH + gap) / (colW + gap))));
+                      }
+                      const spans = { col: isCircle ? circleColSpan : photo.gridColSpan, row: photo.gridRowSpan };
                       const isSelected = selectedPhotoId === photo.id;
                       const isDragging = dragPhotoId === photo.id;
                       const isDragOver = dragOverId === photo.id;
                       const hex = moodboardBg.replace("#", "");
                       const isDark = ((parseInt(hex.substring(0, 2), 16) || 0) * 0.299 + (parseInt(hex.substring(2, 4), 16) || 0) * 0.587 + (parseInt(hex.substring(4, 6), 16) || 0) * 0.114) < 128;
-                      const isCircle = photo.cropShape === "circle";
 
                       return (
                         <div
@@ -983,18 +1053,11 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                           onDoubleClick={(e) => { e.stopPropagation(); openGallery(filteredPhotos.indexOf(photo)); }}
                           ref={(el) => {
                             if (!el) return;
-                            // Native wheel listener with passive:false to allow preventDefault
-                            el.onwheel = isSelected ? (ev) => {
-                              ev.preventDefault();
-                              ev.stopPropagation();
-                              const delta = ev.deltaY > 0 ? -0.1 : 0.1;
-                              const newZoom = Math.max(1, Math.min(4, photo.cropZoom + delta));
-                              saveCropTransform(photo.id, newZoom, photo.cropOffsetX, photo.cropOffsetY);
-                            } : null;
+                            el.onwheel = null;
                           }}
                           onMouseDown={(e) => {
                             if (!isSelected || e.button !== 0) return;
-                            if ((e.target as HTMLElement).closest('button')) return;
+                            if ((e.target as HTMLElement).closest('button, input')) return;
                             e.preventDefault();
                             const el = e.currentTarget as HTMLElement;
                             const img = el.querySelector('img');
@@ -1024,8 +1087,11 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                         >
                           {/* Image wrapper — clips at circle boundary */}
                           <div
-                            className={cn("overflow-hidden", isCircle ? "h-full mx-auto rounded-full" : "absolute inset-0")}
-                            style={isCircle ? { aspectRatio: "1" } : { borderRadius: moodboardGap ? "6px" : "0" }}
+                            className={cn("overflow-hidden", isCircle ? "rounded-full absolute inset-0 m-auto" : "absolute inset-0")}
+                            style={isCircle
+                              ? { aspectRatio: "1", maxHeight: "100%", maxWidth: "100%" }
+                              : { borderRadius: moodboardGap ? "6px" : "0" }
+                            }
                           >
                             <img
                               src={photo.url}
@@ -1053,66 +1119,157 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                               </Badge>
                             </div>
                           )}
-                          {/* Top-right: Size controls */}
+                          {/* Hover action bar — link room + delete */}
                           <div className={cn(
-                            "absolute flex gap-0.5 transition-opacity z-10",
-                            isCircle ? "top-[-24px] right-0" : "top-1 right-1",
-                            isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                            "absolute bottom-1 left-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10",
+                            isSelected && "opacity-100"
                           )}>
-                            {(["sm", "md", "lg"] as const).map((s) => (
-                              <button
-                                key={s}
-                                type="button"
-                                className={cn(
-                                  "h-5 px-1.5 rounded text-[9px] font-bold transition-colors",
-                                  photo.displaySize === s
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-black/40 text-white hover:bg-black/60"
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="h-6 w-6 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center transition-colors"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Link2 className="h-3 w-3 text-white" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-48 p-1" align="start" side="top">
+                                <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">{t("inspiration.linkRoom")}</p>
+                                {rooms.map((r) => (
+                                  <button
+                                    key={r.id}
+                                    type="button"
+                                    className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                                    onClick={() => assignPhoto(photo.id, "room", r.id)}
+                                  >
+                                    <Home className="h-3 w-3 text-muted-foreground" />
+                                    {r.name}
+                                  </button>
+                                ))}
+                                <div className="flex items-center gap-1 px-1 py-1">
+                                  <input
+                                    type="text"
+                                    placeholder={t("inspiration.newRoom", "Nytt rum...")}
+                                    className="flex-1 px-2 py-1 text-xs rounded border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                                    value={newRoomName}
+                                    onChange={(e) => setNewRoomName(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === "Enter") createRoomAndLink(newRoomName, photo.id); }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="h-6 w-6 rounded flex items-center justify-center hover:bg-accent text-muted-foreground hover:text-primary"
+                                    onClick={(e) => { e.stopPropagation(); createRoomAndLink(newRoomName, photo.id); }}
+                                    disabled={!newRoomName.trim() || creatingRoom}
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                                {photo.roomId && (
+                                  <button
+                                    type="button"
+                                    className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left text-muted-foreground mt-1 border-t"
+                                    onClick={() => assignPhoto(photo.id, "project", projectId)}
+                                  >
+                                    <X className="h-3 w-3" />
+                                    {t("inspiration.unlink")}
+                                  </button>
                                 )}
-                                onClick={(e) => { e.stopPropagation(); updatePhotoSize(photo.id, s); }}
-                              >
-                                {s.toUpperCase()}
-                              </button>
-                            ))}
+                              </PopoverContent>
+                            </Popover>
+                            <button
+                              type="button"
+                              className="h-6 w-6 rounded-full bg-black/40 hover:bg-red-500/80 flex items-center justify-center transition-colors"
+                              onClick={(e) => { e.stopPropagation(); deletePhoto(photo.id); }}
+                            >
+                              <Trash2 className="h-3 w-3 text-white" />
+                            </button>
                           </div>
-                          {/* Shape controls — only when selected. Outside circle to stay visible */}
+                          {/* Controls — circle toggle + zoom */}
                           {isSelected && (
                             <div
-                              className={cn(
-                                "absolute flex items-center gap-0.5 bg-black/40 rounded p-0.5",
-                                isCircle ? "bottom-[-28px] left-1/2 -translate-x-1/2 z-10" : "bottom-1 right-1"
-                              )}
+                              className="absolute top-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 bg-black/50 backdrop-blur-sm rounded-full px-2 py-1"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              {([
-                                { shape: "landscape" as const, icon: "▬" },
-                                { shape: "square" as const, icon: "□" },
-                                { shape: "portrait" as const, icon: "▯" },
-                                { shape: "circle" as const, icon: "○" },
-                              ]).map(({ shape, icon }) => (
-                                <button
-                                  key={shape}
-                                  type="button"
-                                  className={cn(
-                                    "h-5 w-5 rounded flex items-center justify-center text-[11px] transition-colors",
-                                    photo.cropShape === shape
-                                      ? "bg-primary text-primary-foreground"
-                                      : "text-white/60 hover:text-white"
-                                  )}
-                                  onClick={() => updateCropShape(photo.id, shape)}
-                                  title={shape}
-                                >
-                                  {icon}
-                                </button>
-                              ))}
+                              {/* Circle toggle */}
+                              <button
+                                type="button"
+                                className={cn(
+                                  "h-5 w-5 rounded-full flex items-center justify-center text-[11px] transition-colors",
+                                  isCircle ? "bg-white text-black" : "text-white/60 hover:text-white"
+                                )}
+                                onClick={() => toggleCircle(photo.id, isCircle)}
+                                title="Circle"
+                              >○</button>
+                              <div className="w-px h-3 bg-white/20" />
+                              {/* Zoom slider */}
+                              <button
+                                type="button"
+                                className="text-[9px] text-white/60 hover:text-white px-0.5"
+                                onClick={() => saveCropTransform(photo.id, Math.max(1, photo.cropZoom - 0.2), photo.cropOffsetX, photo.cropOffsetY)}
+                              >−</button>
+                              <input
+                                type="range"
+                                min={1}
+                                max={4}
+                                step={0.1}
+                                value={photo.cropZoom}
+                                onChange={(e) => {
+                                  const z = parseFloat(e.target.value);
+                                  saveCropTransform(photo.id, z, photo.cropOffsetX, photo.cropOffsetY);
+                                }}
+                                className="w-14 h-1 accent-white cursor-pointer"
+                                style={{ WebkitAppearance: "none", appearance: "none", background: "rgba(255,255,255,0.3)", borderRadius: "2px" }}
+                              />
+                              <button
+                                type="button"
+                                className="text-[9px] text-white/60 hover:text-white px-0.5"
+                                onClick={() => saveCropTransform(photo.id, Math.min(4, photo.cropZoom + 0.2), photo.cropOffsetX, photo.cropOffsetY)}
+                              >+</button>
+                              <span className="text-[9px] text-white/70 tabular-nums w-6 text-center">{photo.cropZoom.toFixed(1)}×</span>
                             </div>
                           )}
-                          {/* Selected: zoom hint */}
-                          {isSelected && photo.cropZoom > 1 && (
-                            <div className="absolute top-1 left-1/2 -translate-x-1/2">
-                              <span className="bg-black/40 text-white text-[9px] px-1.5 py-0.5 rounded-full tabular-nums">
-                                {photo.cropZoom.toFixed(1)}×
-                              </span>
+                          {/* Resize handle — bottom-right corner drag */}
+                          {isSelected && (
+                            <div
+                              className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize z-10 flex items-end justify-end"
+                              onClick={(e) => e.stopPropagation()}
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                const startX = e.clientX;
+                                const startY = e.clientY;
+                                const startCol = photo.gridColSpan;
+                                const startRow = photo.gridRowSpan;
+                                const gridEl = (e.target as HTMLElement).closest('.grid');
+                                const cellW = gridEl ? gridEl.clientWidth / 6 : 80;
+                                const cellH = 120;
+                                const onMove = (me: MouseEvent) => {
+                                  const dx = me.clientX - startX;
+                                  const dy = me.clientY - startY;
+                                  if (isCircle) {
+                                    // Circle: uniform resize — use the larger delta
+                                    const delta = Math.abs(dx) > Math.abs(dy) ? dx / cellW : dy / cellH;
+                                    const newSpan = Math.max(1, Math.min(6, Math.round(startCol + delta)));
+                                    updateGridSpan(photo.id, newSpan, newSpan);
+                                  } else {
+                                    const newCol = Math.max(1, Math.min(6, Math.round(startCol + dx / cellW)));
+                                    const newRow = Math.max(1, Math.min(6, Math.round(startRow + dy / cellH)));
+                                    updateGridSpan(photo.id, newCol, newRow);
+                                  }
+                                };
+                                const onUp = () => {
+                                  window.removeEventListener("mousemove", onMove);
+                                  window.removeEventListener("mouseup", onUp);
+                                };
+                                window.addEventListener("mousemove", onMove);
+                                window.addEventListener("mouseup", onUp);
+                              }}
+                            >
+                              <svg width="10" height="10" viewBox="0 0 10 10" className="text-white drop-shadow-md">
+                                <path d="M9 1L1 9M9 5L5 9M9 9L9 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                              </svg>
                             </div>
                           )}
                         </div>
@@ -1121,9 +1278,11 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                 </div>
               )}
             </div>
+            </div>
           </div>
         )}
 
+        </>)}
         {/* File input — sr-only (not display:none) so label htmlFor works */}
         <input
           id={`inspo-file-${projectId}`}

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Upload, Image as ImageIcon, XCircle, Link as LinkIcon, Plus, Maximize2, Camera } from "lucide-react";
+import { Loader2, Upload, Image as ImageIcon, XCircle, Link as LinkIcon, Plus, Maximize2, Camera, Palette } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -628,6 +629,11 @@ export function PhotoSection({ roomId, showPinterest = false }: PhotoSectionProp
         </div>
       )}
 
+      {/* Moodboard link */}
+      {photos.length > 0 && (
+        <MoodboardLink roomId={roomId} />
+      )}
+
       {/* Pinterest Board Embed - Only for homeowners */}
       {showPinterest && pinterestBoardUrl && (
         <PinterestBoardEmbed
@@ -645,5 +651,28 @@ export function PhotoSection({ roomId, showPinterest = false }: PhotoSectionProp
         onOpenChange={setCarouselOpen}
       />
     </div>
+  );
+}
+
+/** Small link that navigates to Overview moodboard filtered to this room */
+function MoodboardLink({ roomId }: { roomId: string }) {
+  const { t } = useTranslation();
+  const [, setSearchParams] = useSearchParams();
+
+  return (
+    <button
+      type="button"
+      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full justify-center py-1"
+      onClick={() => {
+        // Persist moodboard view + room filter via localStorage (read by InspirationSection)
+        localStorage.setItem("inspo-view-mode", JSON.stringify("moodboard"));
+        localStorage.setItem("inspo-room-filter", JSON.stringify(roomId));
+        // Navigate to overview tab
+        setSearchParams({ tab: "overview" });
+      }}
+    >
+      <Palette className="h-3 w-3" />
+      {t("rooms.viewMoodboard", "Visa i moodboard →")}
+    </button>
   );
 }
