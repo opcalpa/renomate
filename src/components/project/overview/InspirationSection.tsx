@@ -995,9 +995,10 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                           }}
                           onMouseDown={(e) => {
                             if (!isSelected || e.button !== 0) return;
-                            // Ignore clicks on controls
                             if ((e.target as HTMLElement).closest('button')) return;
                             e.preventDefault();
+                            const el = e.currentTarget as HTMLElement;
+                            const img = el.querySelector('img');
                             const startX = e.clientX;
                             const startY = e.clientY;
                             const startOx = photo.cropOffsetX;
@@ -1007,8 +1008,6 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                               const dy = (me.clientY - startY) * 0.15;
                               const nx = Math.max(0, Math.min(100, startOx - dx));
                               const ny = Math.max(0, Math.min(100, startOy - dy));
-                              // Use direct DOM update for smooth dragging
-                              const img = (e.currentTarget as HTMLElement).querySelector('img');
                               if (img) img.style.objectPosition = `${nx}% ${ny}%`;
                             };
                             const onUp = (me: MouseEvent) => {
