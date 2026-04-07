@@ -564,14 +564,35 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                 </div>
               ))}
 
-              {/* Add more tile — direct file input trigger */}
-              <label
-                htmlFor={`inspo-file-${projectId}`}
-                className="aspect-square rounded-lg border-2 border-dashed border-muted flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
-              >
-                <Upload className="h-5 w-5" />
-                <span className="text-[10px]">{t("inspiration.addMore")}</span>
-              </label>
+              {/* Add more tile — same popover as header button */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="aspect-square rounded-lg border-2 border-dashed border-muted flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                  >
+                    <Upload className="h-5 w-5" />
+                    <span className="text-[10px]">{t("inspiration.addMore")}</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-1" align="start" side="top">
+                  <label
+                    htmlFor={`inspo-file-${projectId}`}
+                    className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left cursor-pointer"
+                  >
+                    <Upload className="h-3.5 w-3.5 text-muted-foreground" />
+                    {t("inspiration.upload")}
+                  </label>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                    onClick={() => setShowUrlInput(true)}
+                  >
+                    <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    {t("inspiration.fromUrl")}
+                  </button>
+                </PopoverContent>
+              </Popover>
             </div>
           ) : (
             /* Empty state — welcoming, not sterile */
