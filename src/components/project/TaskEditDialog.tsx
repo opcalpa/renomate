@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useMeasurement } from "@/contexts/MeasurementContext";
 import { useTaxDeductionVisible } from "@/hooks/useTaxDeduction";
 import { supabase } from "@/integrations/supabase/client";
+import { MultiRoomSelect } from "@/components/shared/MultiRoomSelect";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -1664,28 +1665,19 @@ export const TaskEditDialog = ({
                 <Collapsible>
                   <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
                     <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
-                    {t("tasks.room")}{task.room_id ? `: ${rooms.find(r => r.id === task.room_id)?.name || ""}` : ""}
+                    {t("tasks.room")}{(() => {
+                      const ids = task.room_ids?.length ? task.room_ids : (task.room_id ? [task.room_id] : []);
+                      const names = ids.map((id: string) => rooms.find(r => r.id === id)?.name).filter(Boolean);
+                      return names.length > 0 ? `: ${names.join(", ")}` : "";
+                    })()}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="ml-3 pl-4 pb-3 border-l-2 border-muted">
-                      <Select
-                        value={task.room_id || "none"}
-                        onValueChange={(value) =>
-                          setTask({ ...task, room_id: value === "none" ? null : value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={t("tasks.noRoom")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">{t("tasks.noRoom")}</SelectItem>
-                          {rooms.map((room) => (
-                            <SelectItem key={room.id} value={room.id}>
-                              {room.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <MultiRoomSelect
+                        rooms={rooms}
+                        selectedIds={task.room_ids?.length ? task.room_ids : (task.room_id ? [task.room_id] : [])}
+                        onChange={(ids) => setTask({ ...task, room_ids: ids, room_id: ids[0] || null })}
+                      />
                     </div>
                   </CollapsibleContent>
                 </Collapsible>

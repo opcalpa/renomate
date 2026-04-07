@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { MultiRoomSelect } from "@/components/shared/MultiRoomSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +66,7 @@ interface Material {
   created_at: string;
   task_id: string | null;
   room_id: string | null;
+  room_ids: string[] | null;
   created_by_user_id: string | null;
   assigned_to_user_id: string | null;
   creator?: { name: string } | null;
@@ -411,36 +413,32 @@ export function PurchasesTableView({
       }
 
       case "room": {
-        const roomName = material.room?.name;
+        const roomIds = material.room_ids?.length ? material.room_ids : (material.room_id ? [material.room_id] : []);
         if (isReadOnly) {
-          return roomName ? (
-            <span className="text-sm">{roomName}</span>
+          const names = roomIds.map((id) => rooms.find((r) => r.id === id)?.name).filter(Boolean);
+          return names.length > 0 ? (
+            <span className="text-sm truncate">{names.join(", ")}</span>
           ) : (
             <span className="text-muted-foreground text-xs">-</span>
           );
         }
         return (
-          <Select
-            value={material.room_id || "none"}
-            onValueChange={(v) =>
-              handleCellSave(material.id, "room", v === "none" ? null : v)
-            }
-          >
-            <SelectTrigger
-              className="h-8 w-[110px] text-xs"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">{t("purchasesTable.noRoom")}</SelectItem>
-              {rooms.map((r) => (
-                <SelectItem key={r.id} value={r.id}>
-                  {r.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MultiRoomSelect
+            rooms={rooms}
+            selectedIds={roomIds}
+            onChange={async (ids) => {
+              const { error } = await supabase
+                .from("materials")
+                .update({ room_ids: ids, room_id: ids[0] || null })
+                .eq("id", material.id);
+              if (error) {
+                toast({ title: t("common.error"), variant: "destructive" });
+              } else {
+                onMaterialUpdated();
+              }
+            }}
+            compact
+          />
         );
       }
 
@@ -751,9 +749,13 @@ export function PurchasesTableView({
                     const groups = new Map<string, typeof sortedMaterials>();
                     const groupOrder: string[] = [];
                     for (const m of sortedMaterials) {
-                      const key = getGroupKey(m);
-                      if (!groups.has(key)) { groups.set(key, []); groupOrder.push(key); }
-                      groups.get(key)!.push(m);
+                      const keys = groupBy === "room"
+                        ? (m.room_ids?.length ? m.room_ids : (m.room_id ? [m.room_id] : ["__none__"]))
+                        : [getGroupKey(m)];
+                      for (const key of keys) {
+                        if (!groups.has(key)) { groups.set(key, []); groupOrder.push(key); }
+                        groups.get(key)!.push(m);
+                      }
                     }
 
                     return groupOrder.flatMap((key) => {

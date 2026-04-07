@@ -28,6 +28,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Card, CardContent } from "@/components/ui/card";
+import { MultiRoomSelect } from "@/components/shared/MultiRoomSelect";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/currency";
@@ -80,6 +81,7 @@ interface Task {
   progress: number;
   assigned_to_stakeholder_id: string | null;
   room_id: string | null;
+  room_ids: string[] | null;
   budget: number | null;
   ordered_amount: number | null;
   payment_status: string | null;
@@ -543,10 +545,11 @@ export function TasksTableView({
       }
 
       case "room": {
+        const roomIds = task.room_ids?.length ? task.room_ids : (task.room_id ? [task.room_id] : []);
         if (isReadOnly) {
-          const roomName = rooms.find((r) => r.id === task.room_id)?.name;
-          return roomName ? (
-            <span className="text-sm">{roomName}</span>
+          const names = roomIds.map((id) => rooms.find((r) => r.id === id)?.name).filter(Boolean);
+          return names.length > 0 ? (
+            <span className="text-sm truncate">{names.join(", ")}</span>
           ) : (
             <span className="text-muted-foreground text-xs">
               {t("tasks.noRoom")}
@@ -554,27 +557,22 @@ export function TasksTableView({
           );
         }
         return (
-          <Select
-            value={task.room_id || "none"}
-            onValueChange={(v) =>
-              handleCellSave(task.id, "room", v === "none" ? null : v)
-            }
-          >
-            <SelectTrigger
-              className="h-8 w-[120px] text-xs"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">{t("tasks.noRoom")}</SelectItem>
-              {rooms.map((r) => (
-                <SelectItem key={r.id} value={r.id}>
-                  {r.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MultiRoomSelect
+            rooms={rooms}
+            selectedIds={roomIds}
+            onChange={async (ids) => {
+              const { error } = await supabase
+                .from("tasks")
+                .update({ room_ids: ids, room_id: ids[0] || null })
+                .eq("id", task.id);
+              if (error) {
+                toast({ title: t("common.error"), variant: "destructive" });
+              } else {
+                onTaskUpdated();
+              }
+            }}
+            compact
+          />
         );
       }
 
@@ -1160,13 +1158,17 @@ export function TasksTableView({
                       return sortedTasks.map((task) => renderTaskRow(task));
                     }
 
-                    // Group tasks
+                    // Group tasks — room grouping places task in each room group
                     const groups = new Map<string, typeof sortedTasks>();
                     const groupOrder: string[] = [];
                     for (const task of sortedTasks) {
-                      const key = getGroupKey(task);
-                      if (!groups.has(key)) { groups.set(key, []); groupOrder.push(key); }
-                      groups.get(key)!.push(task);
+                      const keys = groupBy === "room"
+                        ? (task.room_ids?.length ? task.room_ids : (task.room_id ? [task.room_id] : ["__none__"]))
+                        : [getGroupKey(task)];
+                      for (const key of keys) {
+                        if (!groups.has(key)) { groups.set(key, []); groupOrder.push(key); }
+                        groups.get(key)!.push(task);
+                      }
                     }
 
                     return groupOrder.flatMap((key) => {
