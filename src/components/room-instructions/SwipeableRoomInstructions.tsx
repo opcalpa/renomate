@@ -59,6 +59,7 @@ export function SwipeableRoomInstructions({
       <div className="flex items-center justify-between px-4 py-3 border-b bg-background sticky top-0 z-10">
         <button
           type="button"
+          aria-label={t("common.previous", "Föregående")}
           className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-30"
           onClick={() => scrollTo(activeIndex - 1)}
           disabled={activeIndex === 0}
@@ -70,10 +71,11 @@ export function SwipeableRoomInstructions({
           <span className="text-sm font-semibold">{rooms[activeIndex]?.name}</span>
           {/* Dots */}
           <div className="flex items-center gap-1.5">
-            {rooms.map((_, i) => (
+            {rooms.map((room, i) => (
               <button
-                key={i}
+                key={room.id}
                 type="button"
+                aria-label={`${room.name} (${i + 1}/${rooms.length})`}
                 className={cn(
                   "h-1.5 rounded-full transition-all",
                   i === activeIndex ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50"
@@ -89,6 +91,7 @@ export function SwipeableRoomInstructions({
 
         <button
           type="button"
+          aria-label={t("common.next", "Nästa")}
           className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-30"
           onClick={() => scrollTo(activeIndex + 1)}
           disabled={activeIndex === rooms.length - 1}

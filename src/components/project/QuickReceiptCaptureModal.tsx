@@ -516,7 +516,7 @@ export function QuickReceiptCaptureModal({
             .from("materials")
             .insert({
               project_id: projectId,
-              name: `${t("receipt.receiptPurchase")} - ${vendorName}`,
+              name: flowStep === "manual" ? vendorName : `${t("receipt.receiptPurchase")} - ${vendorName}`,
               vendor_name: vendorName,
               price_per_unit: amount,
               quantity: 1,

@@ -74,6 +74,13 @@ interface InspoPhoto {
 }
 
 
+const hexLuminance = (hex: string) => {
+  const h = hex.replace("#", "");
+  return (parseInt(h.substring(0, 2), 16) || 0) * 0.299
+    + (parseInt(h.substring(2, 4), 16) || 0) * 0.587
+    + (parseInt(h.substring(4, 6), 16) || 0) * 0.114;
+};
+
 const MOODBOARD_BACKGROUNDS = [
   { id: "white", color: "#ffffff", label: "Pure White" },
   { id: "linen", color: "#F3EDE4", label: "Warm Linen" },
@@ -484,6 +491,14 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
       await supabase.from("photos").update({ crop_zoom: zoom, crop_offset_x: offsetX, crop_offset_y: offsetY }).eq("id", photoId);
     }, 300);
   }, [projectId, queryClient, data]);
+
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    return () => {
+      if (spanSaveTimer.current) clearTimeout(spanSaveTimer.current);
+      if (cropSaveTimer.current) clearTimeout(cropSaveTimer.current);
+    };
+  }, []);
 
   // Reorder: move dragId to position of targetId
   const reorderPhotos = useCallback(async (dragId: string, targetId: string) => {
@@ -999,7 +1014,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               onClick={() => setSelectedPhotoId(null)}
             >
               {filteredPhotos.length === 0 ? (
-                <div className="flex items-center justify-center py-12 text-sm" style={{ color: (() => { const h = moodboardBg.replace("#",""); const lum = (parseInt(h.substring(0,2),16)||0)*0.299+(parseInt(h.substring(2,4),16)||0)*0.587+(parseInt(h.substring(4,6),16)||0)*0.114; return lum < 128 ? "#999" : "#888"; })() }}>
+                <div className="flex items-center justify-center py-12 text-sm" style={{ color: hexLuminance(moodboardBg) < 128 ? "#999" : "#888" }}>
                   {t("inspiration.emptyTitle")}
                 </div>
               ) : (
@@ -1025,8 +1040,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                       const isSelected = selectedPhotoId === photo.id;
                       const isDragging = dragPhotoId === photo.id;
                       const isDragOver = dragOverId === photo.id;
-                      const hex = moodboardBg.replace("#", "");
-                      const isDark = ((parseInt(hex.substring(0, 2), 16) || 0) * 0.299 + (parseInt(hex.substring(2, 4), 16) || 0) * 0.587 + (parseInt(hex.substring(4, 6), 16) || 0) * 0.114) < 128;
+                      const isDark = hexLuminance(moodboardBg) < 128;
 
                       return (
                         <div
