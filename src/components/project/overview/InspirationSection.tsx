@@ -64,6 +64,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [urlInput, setUrlInput] = useState("");
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
   const [editingCaption, setEditingCaption] = useState<string | null>(null);
   const [captionDraft, setCaptionDraft] = useState("");
@@ -364,7 +365,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
             {t("inspiration.title")}
           </h3>
           {hasPhotos && (
-            <Popover>
+            <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
                   <Upload className="h-3 w-3" />
@@ -375,7 +376,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                 <button
                   type="button"
                   className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
-                  onClick={() => setTimeout(() => fileInputRef.current?.click(), 100)}
+                  onClick={() => { setAddMenuOpen(false); setTimeout(() => fileInputRef.current?.click(), 150); }}
                 >
                   <Upload className="h-3.5 w-3.5 text-muted-foreground" />
                   {t("inspiration.upload")}
@@ -384,8 +385,9 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                   type="button"
                   className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left sm:hidden"
                   onClick={() => {
+                    setAddMenuOpen(false);
                     const input = fileInputRef.current;
-                    if (input) { setTimeout(() => { input.setAttribute("capture", "environment"); input.click(); input.removeAttribute("capture"); }, 100); }
+                    if (input) { setTimeout(() => { input.setAttribute("capture", "environment"); input.click(); input.removeAttribute("capture"); }, 150); }
                   }}
                 >
                   <Camera className="h-3.5 w-3.5 text-muted-foreground" />
@@ -394,7 +396,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                 <button
                   type="button"
                   className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
-                  onClick={() => setTimeout(() => setShowUrlInput(true), 100)}
+                  onClick={() => { setAddMenuOpen(false); setTimeout(() => setShowUrlInput(true), 100); }}
                 >
                   <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
                   {t("inspiration.fromUrl")}
@@ -562,47 +564,14 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                 </div>
               ))}
 
-              {/* Add more tile — popover with all input options */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="aspect-square rounded-lg border-2 border-dashed border-muted flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                  >
-                    <Upload className="h-5 w-5" />
-                    <span className="text-[10px]">{t("inspiration.addMore")}</span>
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48 p-1" align="start" side="top">
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
-                    onClick={() => setTimeout(() => fileInputRef.current?.click(), 100)}
-                  >
-                    <Upload className="h-3.5 w-3.5 text-muted-foreground" />
-                    {t("inspiration.upload")}
-                  </button>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left sm:hidden"
-                    onClick={() => {
-                      const input = fileInputRef.current;
-                      if (input) { setTimeout(() => { input.setAttribute("capture", "environment"); input.click(); input.removeAttribute("capture"); }, 100); }
-                    }}
-                  >
-                    <Camera className="h-3.5 w-3.5 text-muted-foreground" />
-                    {t("inspiration.camera")}
-                  </button>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
-                    onClick={() => setTimeout(() => setShowUrlInput(true), 100)}
-                  >
-                    <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    {t("inspiration.fromUrl")}
-                  </button>
-                </PopoverContent>
-              </Popover>
+              {/* Add more tile — direct file input trigger */}
+              <label
+                htmlFor={`inspo-file-${projectId}`}
+                className="aspect-square rounded-lg border-2 border-dashed border-muted flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
+              >
+                <Upload className="h-5 w-5" />
+                <span className="text-[10px]">{t("inspiration.addMore")}</span>
+              </label>
             </div>
           ) : (
             /* Empty state — welcoming, not sterile */
@@ -617,16 +586,17 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                 {t("inspiration.emptyDesc")}
               </p>
               <div className="flex gap-2 flex-wrap justify-center">
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="gap-1.5 h-8"
-                  onClick={() => setTimeout(() => fileInputRef.current?.click(), 100)}
-                  disabled={uploading}
+                <label
+                  htmlFor={uploading ? undefined : `inspo-file-${projectId}`}
+                  className={cn(
+                    "inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md text-sm font-medium cursor-pointer",
+                    "bg-primary text-primary-foreground hover:bg-primary/90",
+                    uploading && "opacity-50 pointer-events-none"
+                  )}
                 >
                   <Upload className="h-3.5 w-3.5" />
                   {t("inspiration.upload")}
-                </Button>
+                </label>
                 <Button
                   size="sm"
                   variant="outline"
@@ -701,16 +671,18 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           );
         })()}
 
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={(e) => { if (e.target.files?.length) handleUpload(e.target.files); e.target.value = ""; }}
-        />
       </CardContent>
+
+      {/* Hidden file input — outside Card to avoid Popover focus trap */}
+      <input
+        id={`inspo-file-${projectId}`}
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => { if (e.target.files?.length) handleUpload(e.target.files); e.target.value = ""; }}
+      />
 
       {/* ===== Fullscreen Gallery Dialog ===== */}
       <Dialog open={galleryIndex !== null} onOpenChange={(open) => { if (!open) closeGallery(); }}>
