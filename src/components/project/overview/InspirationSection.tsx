@@ -46,6 +46,8 @@ interface InspirationSectionProps {
 }
 
 type DisplaySize = "sm" | "md" | "lg";
+type CropPosition = "center" | "top" | "bottom" | "left" | "right" | "top left" | "top right" | "bottom left" | "bottom right";
+type FitMode = "cover" | "contain";
 
 interface InspoPhoto {
   id: string;
@@ -57,7 +59,21 @@ interface InspoPhoto {
   roomName: string | null;
   displaySize: DisplaySize;
   sortOrder: number;
+  cropPosition: CropPosition;
+  fitMode: FitMode;
 }
+
+const CROP_POSITIONS: { pos: CropPosition; label: string; row: number; col: number }[] = [
+  { pos: "top left", label: "↖", row: 0, col: 0 },
+  { pos: "top", label: "↑", row: 0, col: 1 },
+  { pos: "top right", label: "↗", row: 0, col: 2 },
+  { pos: "left", label: "←", row: 1, col: 0 },
+  { pos: "center", label: "●", row: 1, col: 1 },
+  { pos: "right", label: "→", row: 1, col: 2 },
+  { pos: "bottom left", label: "↙", row: 2, col: 0 },
+  { pos: "bottom", label: "↓", row: 2, col: 1 },
+  { pos: "bottom right", label: "↘", row: 2, col: 2 },
+];
 
 const MOODBOARD_BACKGROUNDS = [
   { id: "white", color: "#ffffff", label: "Vit" },
@@ -109,7 +125,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           .order("name"),
         supabase
           .from("photos")
-          .select("id, url, caption, linked_to_id, linked_to_type, source, source_url, display_size, sort_order")
+          .select("id, url, caption, linked_to_id, linked_to_type, source, source_url, display_size, sort_order, crop_position, fit_mode")
           .or(`linked_to_type.eq.room,linked_to_type.eq.project`)
           .order("created_at", { ascending: false }),
         supabase
@@ -138,6 +154,8 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           sourceUrl: p.source_url || null,
           displaySize: (p.display_size as DisplaySize) || "md",
           sortOrder: p.sort_order || 0,
+          cropPosition: (p.crop_position as CropPosition) || "center",
+          fitMode: (p.fit_mode as FitMode) || "cover",
           roomId: p.linked_to_type === "room" ? p.linked_to_id : null,
           roomName: p.linked_to_type === "room" ? (roomMap.get(p.linked_to_id) || null) : null,
         }));
@@ -395,6 +413,18 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   // Update photo display size
   const updatePhotoSize = useCallback(async (photoId: string, size: DisplaySize) => {
     await supabase.from("photos").update({ display_size: size }).eq("id", photoId);
+    queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+  }, [projectId, queryClient]);
+
+  // Update crop position
+  const updateCropPosition = useCallback(async (photoId: string, pos: CropPosition) => {
+    await supabase.from("photos").update({ crop_position: pos }).eq("id", photoId);
+    queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+  }, [projectId, queryClient]);
+
+  // Toggle fit mode
+  const toggleFitMode = useCallback(async (photoId: string, mode: FitMode) => {
+    await supabase.from("photos").update({ fit_mode: mode }).eq("id", photoId);
     queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
   }, [projectId, queryClient]);
 
@@ -906,7 +936,12 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                           <img
                             src={photo.url}
                             alt={photo.caption || ""}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full"
+                            style={{
+                              objectFit: photo.fitMode,
+                              objectPosition: photo.cropPosition,
+                              backgroundColor: photo.fitMode === "contain" ? moodboardBg : undefined,
+                            }}
                             loading="lazy"
                             draggable={false}
                           />
@@ -924,7 +959,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                               </Badge>
                             </div>
                           )}
-                          {/* Size controls — visible on selected or hover */}
+                          {/* Top-right: Size controls — visible on selected or hover */}
                           <div className={cn(
                             "absolute top-1 right-1 flex gap-0.5 transition-opacity",
                             isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
@@ -945,16 +980,41 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                               </button>
                             ))}
                           </div>
-                          {/* Drag handle indicator */}
+                          {/* Bottom-right: Fit toggle + crop position — only when selected */}
                           {isSelected && (
-                            <div className="absolute bottom-1 right-1">
-                              <div className="h-4 w-4 rounded bg-black/40 flex items-center justify-center">
-                                <svg className="h-3 w-3 text-white" viewBox="0 0 16 16" fill="currentColor">
-                                  <circle cx="5" cy="4" r="1.2" /><circle cx="11" cy="4" r="1.2" />
-                                  <circle cx="5" cy="8" r="1.2" /><circle cx="11" cy="8" r="1.2" />
-                                  <circle cx="5" cy="12" r="1.2" /><circle cx="11" cy="12" r="1.2" />
-                                </svg>
-                              </div>
+                            <div className="absolute bottom-1 right-1 flex items-end gap-1" onClick={(e) => e.stopPropagation()}>
+                              {/* Fit mode toggle */}
+                              <button
+                                type="button"
+                                className={cn(
+                                  "h-5 px-1.5 rounded text-[9px] font-medium transition-colors",
+                                  photo.fitMode === "contain"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-black/40 text-white hover:bg-black/60"
+                                )}
+                                onClick={() => toggleFitMode(photo.id, photo.fitMode === "cover" ? "contain" : "cover")}
+                              >
+                                {photo.fitMode === "cover" ? "Crop" : "Hel"}
+                              </button>
+                              {/* 9-point crop position grid — only for cover mode */}
+                              {photo.fitMode === "cover" && (
+                                <div className="grid grid-cols-3 gap-[2px] bg-black/40 rounded p-[3px]">
+                                  {CROP_POSITIONS.map((cp) => (
+                                    <button
+                                      key={cp.pos}
+                                      type="button"
+                                      className={cn(
+                                        "h-3 w-3 rounded-full transition-colors",
+                                        photo.cropPosition === cp.pos
+                                          ? "bg-primary"
+                                          : "bg-white/30 hover:bg-white/60"
+                                      )}
+                                      onClick={() => updateCropPosition(photo.id, cp.pos)}
+                                      title={cp.pos}
+                                    />
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
