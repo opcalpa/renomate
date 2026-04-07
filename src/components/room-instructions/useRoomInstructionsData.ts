@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { RoomInstruction, RoomTask, RoomMaterial, Photo, Checklist } from "./types";
+import type { RoomInstruction, RoomTask, RoomMaterial, Photo, Checklist, FloorPlanShape } from "./types";
 
 /**
  * Fetches and groups tasks by room for the authenticated builder view.
@@ -31,7 +31,7 @@ export function useRoomInstructionsData(projectId: string, profileId: string | n
       const roomIds = Array.from(roomIdSet);
 
       // Parallel fetches
-      const [roomsRes, photosRes, materialsRes, taskPhotosRes] = await Promise.all([
+      const [roomsRes, photosRes, materialsRes, taskPhotosRes, floorPlanRes] = await Promise.all([
         roomIds.length > 0
           ? supabase.from("rooms").select("id, name, wall_color, ceiling_color, trim_color, wall_spec, floor_spec, ceiling_spec, joinery_spec, dimensions, ceiling_height_mm").in("id", roomIds)
           : { data: [] },
@@ -42,14 +42,40 @@ export function useRoomInstructionsData(projectId: string, profileId: string | n
           ? supabase.from("materials").select("id, name, quantity, unit, vendor_name, room_id, task_id").eq("project_id", projectId).in("room_id", roomIds)
           : { data: [] },
         supabase.from("photos").select("id, url, caption, source, linked_to_id").eq("linked_to_type", "task").in("linked_to_id", tasks.map((t) => t.id)),
+        supabase.from("floor_map_shapes").select("id, room_id, points, fill_color, stroke_color, name").eq("project_id", projectId).eq("shape_type", "room"),
       ]);
 
       const roomMap = new Map((roomsRes.data || []).map((r) => [r.id, r]));
-      const roomPhotos = new Map<string, Photo[]>();
+
+      // Build floor plan shapes
+      const floorPlanShapes: FloorPlanShape[] = (floorPlanRes.data || []).map((s) => ({
+        id: s.id,
+        roomId: s.room_id,
+        points: Array.isArray(s.points) ? s.points as Array<{ x: number; y: number }> : [],
+        color: s.fill_color || "#e5e7eb",
+        strokeColor: s.stroke_color || "#9ca3af",
+        name: s.name,
+      }));
+
+      // Categorize room photos: reference vs progress vs completed
+      const roomRefPhotos = new Map<string, Photo[]>();
+      const roomProgressPhotos = new Map<string, Photo[]>();
+      const roomCompletedPhotos = new Map<string, Photo[]>();
       for (const p of (photosRes.data || [])) {
-        const arr = roomPhotos.get(p.linked_to_id) || [];
-        arr.push({ id: p.id, url: p.url, caption: p.caption, source: p.source || undefined });
-        roomPhotos.set(p.linked_to_id, arr);
+        const photo: Photo = { id: p.id, url: p.url, caption: p.caption, source: p.source || undefined };
+        if (p.source === "worker_progress") {
+          const arr = roomProgressPhotos.get(p.linked_to_id) || [];
+          arr.push(photo);
+          roomProgressPhotos.set(p.linked_to_id, arr);
+        } else if (p.source === "worker_completed") {
+          const arr = roomCompletedPhotos.get(p.linked_to_id) || [];
+          arr.push(photo);
+          roomCompletedPhotos.set(p.linked_to_id, arr);
+        } else {
+          const arr = roomRefPhotos.get(p.linked_to_id) || [];
+          arr.push(photo);
+          roomRefPhotos.set(p.linked_to_id, arr);
+        }
       }
       const taskPhotoMap = new Map<string, Photo[]>();
       for (const p of (taskPhotosRes.data || [])) {
@@ -111,7 +137,9 @@ export function useRoomInstructionsData(projectId: string, profileId: string | n
           ceilingSpec: dbRoom?.ceiling_spec as RoomInstruction["ceilingSpec"],
           joinerySpec: dbRoom?.joinery_spec as RoomInstruction["joinerySpec"],
           dimensions: dbRoom?.dimensions as RoomInstruction["dimensions"],
-          referencePhotos: roomPhotos.get(rid) || [],
+          referencePhotos: roomRefPhotos.get(rid) || [],
+          progressPhotos: roomProgressPhotos.get(rid) || [],
+          completedPhotos: roomCompletedPhotos.get(rid) || [],
           tasks: rtasks,
           materials: materialsByRoom.get(rid) || [],
           progress: {
@@ -128,12 +156,12 @@ export function useRoomInstructionsData(projectId: string, profileId: string | n
         return aPct - bPct;
       });
 
-      return { rooms };
+      return { rooms, floorPlanShapes };
     },
     staleTime: 30_000,
   });
 
-  return { rooms: data?.rooms || [], isLoading };
+  return { rooms: data?.rooms || [], floorPlanShapes: data?.floorPlanShapes || [], isLoading };
 }
 
 /**
@@ -197,6 +225,8 @@ export function groupWorkerTasksByRoom(
       joinerySpec: room?.joinerySpec as RoomInstruction["joinerySpec"],
       dimensions: room?.dimensions || null,
       referencePhotos: [],
+      progressPhotos: [],
+      completedPhotos: [],
       tasks: rtasks,
       materials: [],
       progress: {

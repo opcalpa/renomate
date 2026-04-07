@@ -3,10 +3,11 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RoomInstructionCard } from "./RoomInstructionCard";
-import type { RoomInstruction } from "./types";
+import type { RoomInstruction, FloorPlanShape } from "./types";
 
 interface SwipeableRoomInstructionsProps {
   rooms: RoomInstruction[];
+  floorPlanShapes?: FloorPlanShape[];
   canToggleChecklist?: boolean;
   canUploadPhotos?: boolean;
   onChecklistToggle?: (taskId: string, checklistId: string, itemId: string, completed: boolean) => void;
@@ -15,6 +16,7 @@ interface SwipeableRoomInstructionsProps {
 
 export function SwipeableRoomInstructions({
   rooms,
+  floorPlanShapes,
   canToggleChecklist,
   canUploadPhotos,
   onChecklistToggle,
@@ -112,6 +114,7 @@ export function SwipeableRoomInstructions({
           >
             <RoomInstructionCard
               room={room}
+              floorPlanShapes={floorPlanShapes}
               canToggleChecklist={canToggleChecklist}
               canUploadPhotos={canUploadPhotos}
               onChecklistToggle={onChecklistToggle}

@@ -173,7 +173,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
   const tableViewState = useTasksTableView(projectId);
 
   // Room instructions data (for rooms view mode)
-  const { rooms: roomInstructions } = useRoomInstructionsData(projectId, viewMode === "rooms" ? currentProfileId : null);
+  const { rooms: roomInstructions, floorPlanShapes } = useRoomInstructionsData(projectId, viewMode === "rooms" ? currentProfileId : null);
 
   // Timeline visibility
   const [timelineOpen, setTimelineOpen] = useState(true);
@@ -1890,6 +1890,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
         /* Room Instructions View */
         <SwipeableRoomInstructions
           rooms={roomInstructions}
+          floorPlanShapes={floorPlanShapes}
           canToggleChecklist={canEditTasks}
           onChecklistToggle={async (taskId, checklistId, itemId, completed) => {
             const task = tasks.find((t) => t.id === taskId);

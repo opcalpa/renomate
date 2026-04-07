@@ -3,22 +3,25 @@ import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
 import { getStatusBadgeColor } from "@/lib/statusColors";
+import { ColorSwatchRow } from "@/components/worker/ColorSwatchRow";
+import { RoomMiniMap } from "@/components/worker/RoomMiniMap";
 import {
   ChevronDown,
   Camera,
   Loader2,
   ImageIcon,
-  Paintbrush,
   Ruler,
   Package,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { RoomInstruction, RoomTask, ChecklistItem } from "./types";
+import type { RoomInstruction, RoomTask, FloorPlanShape } from "./types";
 
 interface RoomInstructionCardProps {
   room: RoomInstruction;
+  floorPlanShapes?: FloorPlanShape[];
   canToggleChecklist?: boolean;
   canUploadPhotos?: boolean;
   onChecklistToggle?: (taskId: string, checklistId: string, itemId: string, completed: boolean) => void;
@@ -34,13 +37,14 @@ const statusKey = (s: string) => {
 
 export function RoomInstructionCard({
   room,
+  floorPlanShapes,
   canToggleChecklist = false,
   canUploadPhotos = false,
   onChecklistToggle,
   onPhotoUpload,
 }: RoomInstructionCardProps) {
   const { t } = useTranslation();
-  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(() => new Set(room.tasks.map((t) => t.id)));
   const [uploading, setUploading] = useState(false);
 
   const toggleTask = (taskId: string) => {
@@ -89,67 +93,29 @@ export function RoomInstructionCard({
         </div>
       </div>
 
-      {/* Color specs */}
-      {(room.wallColor || room.ceilingColor || room.trimColor || room.wallSpec?.main_color) && (
-        <div className="rounded-lg border p-3 space-y-2">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase">
-            <Paintbrush className="h-3.5 w-3.5" />
-            {t("rooms.colorSpec", "Färgval")}
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {(room.wallSpec?.main_color || room.wallColor) && (
-              <ColorSwatch
-                label={t("rooms.wall", "Vägg")}
-                color={room.wallSpec?.main_color || room.wallColor!}
-              />
-            )}
-            {room.wallSpec?.has_accent_wall && room.wallSpec.accent_wall_color && (
-              <ColorSwatch
-                label={t("rooms.accentWall", "Fondvägg")}
-                color={room.wallSpec.accent_wall_color}
-              />
-            )}
-            {(room.ceilingSpec?.color || room.ceilingColor) && (
-              <ColorSwatch
-                label={t("rooms.ceiling", "Tak")}
-                color={room.ceilingSpec?.color || room.ceilingColor!}
-              />
-            )}
-            {room.trimColor && (
-              <ColorSwatch
-                label={t("rooms.trim", "Snickerier")}
-                color={room.trimColor}
-              />
-            )}
-            {room.floorSpec?.skirting_color && (
-              <ColorSwatch
-                label={t("rooms.skirting", "Golvsockel")}
-                color={room.floorSpec.skirting_color}
-              />
-            )}
-          </div>
-        </div>
+      {/* Floor plan minimap */}
+      {floorPlanShapes && floorPlanShapes.length > 0 && room.id !== "__none__" && (
+        <RoomMiniMap
+          shapes={floorPlanShapes}
+          highlightRoomId={room.id}
+          className="rounded-lg border"
+        />
       )}
+
+      {/* Color specs — reuse existing ColorSwatchRow */}
+      <ColorSwatchRow
+        wallSpec={room.wallSpec}
+        ceilingSpec={room.ceilingSpec}
+        floorSpec={room.floorSpec}
+      />
 
       {/* Reference / instruction images */}
       {room.referencePhotos.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1.5">
-            <ImageIcon className="h-3.5 w-3.5" />
-            {t("rooms.referenceImages", "Förebilder")}
-          </p>
-          <div className="flex gap-2 overflow-x-auto pb-1" style={{ WebkitOverflowScrolling: "touch" }}>
-            {room.referencePhotos.map((photo) => (
-              <img
-                key={photo.id}
-                src={photo.url}
-                alt={photo.caption || ""}
-                className="h-24 w-32 rounded-lg object-cover flex-shrink-0 border"
-                loading="lazy"
-              />
-            ))}
-          </div>
-        </div>
+        <PhotoStrip
+          label={t("rooms.referenceImages", "Förebilder")}
+          icon={<ImageIcon className="h-3.5 w-3.5" />}
+          photos={room.referencePhotos}
+        />
       )}
 
       {/* Tasks with checklists */}
@@ -161,10 +127,7 @@ export function RoomInstructionCard({
             expanded={expandedTasks.has(task.id)}
             onToggle={() => toggleTask(task.id)}
             canToggleChecklist={canToggleChecklist}
-            canUploadPhotos={canUploadPhotos}
-            uploading={uploading}
             onChecklistToggle={onChecklistToggle}
-            onFileUpload={(category, e) => handleFileUpload(task.id, category, e)}
           />
         ))}
       </div>
@@ -190,7 +153,25 @@ export function RoomInstructionCard({
         </div>
       )}
 
-      {/* Room-level photo upload (progress + completed) */}
+      {/* Progress photos */}
+      {room.progressPhotos.length > 0 && (
+        <PhotoStrip
+          label={t("rooms.progressPhotos", "Progressbilder")}
+          icon={<Clock className="h-3.5 w-3.5" />}
+          photos={room.progressPhotos}
+        />
+      )}
+
+      {/* Completed photos */}
+      {room.completedPhotos.length > 0 && (
+        <PhotoStrip
+          label={t("rooms.completedPhotos", "Slutförda bilder")}
+          icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+          photos={room.completedPhotos}
+        />
+      )}
+
+      {/* Photo upload buttons */}
       {canUploadPhotos && (
         <div className="grid grid-cols-2 gap-2">
           <UploadButton
@@ -211,18 +192,23 @@ export function RoomInstructionCard({
 
 // --- Sub-components ---
 
-function ColorSwatch({ label, color }: { label: string; color: string }) {
-  const isHex = color.startsWith("#");
+function PhotoStrip({ label, icon, photos }: { label: string; icon: React.ReactNode; photos: Array<{ id: string; url: string; caption: string | null }> }) {
   return (
-    <div className="flex items-center gap-2">
-      {isHex ? (
-        <div className="h-5 w-5 rounded-full border shadow-sm flex-shrink-0" style={{ backgroundColor: color }} />
-      ) : (
-        <div className="h-5 w-5 rounded-full border shadow-sm flex-shrink-0 bg-muted" />
-      )}
-      <div className="min-w-0">
-        <p className="text-[10px] text-muted-foreground">{label}</p>
-        <p className="text-xs font-medium truncate">{color}</p>
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1.5">
+        {icon}
+        {label}
+      </p>
+      <div className="flex gap-2 overflow-x-auto pb-1" style={{ WebkitOverflowScrolling: "touch" }}>
+        {photos.map((photo) => (
+          <img
+            key={photo.id}
+            src={photo.url}
+            alt={photo.caption || ""}
+            className="h-24 w-32 rounded-lg object-cover flex-shrink-0 border"
+            loading="lazy"
+          />
+        ))}
       </div>
     </div>
   );
@@ -233,19 +219,13 @@ function TaskSection({
   expanded,
   onToggle,
   canToggleChecklist,
-  canUploadPhotos,
-  uploading,
   onChecklistToggle,
-  onFileUpload,
 }: {
   task: RoomTask;
   expanded: boolean;
   onToggle: () => void;
   canToggleChecklist: boolean;
-  canUploadPhotos: boolean;
-  uploading: boolean;
   onChecklistToggle?: (taskId: string, checklistId: string, itemId: string, completed: boolean) => void;
-  onFileUpload: (category: "progress" | "completed", e: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
   const { t } = useTranslation();
   const totalItems = task.checklists.reduce((sum, cl) => sum + cl.items.length, 0);
@@ -270,12 +250,10 @@ function TaskSection({
 
       {expanded && (
         <div className="px-3 pb-3 space-y-3 border-t bg-muted/20">
-          {/* Description */}
           {task.description && (
             <p className="text-xs text-muted-foreground pt-2 whitespace-pre-line">{task.description}</p>
           )}
 
-          {/* Checklists */}
           {task.checklists.map((cl) => (
             <div key={cl.id} className="space-y-1">
               {cl.title && <p className="text-xs font-medium">{cl.title}</p>}
@@ -299,7 +277,6 @@ function TaskSection({
             </div>
           ))}
 
-          {/* Task photos */}
           {task.photos.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {task.photos.map((photo) => (

@@ -1459,6 +1459,8 @@
     "referenceImages": "Reference images",
     "progressPhoto": "Progress photo",
     "completedPhoto": "Completed photo",
+    "progressPhotos": "Progress photos",
+    "completedPhotos": "Completed photos",
     "noAssignedRooms": "No rooms with assigned tasks",
     "roomsLabel": "rooms",
     "wall": "Wall",

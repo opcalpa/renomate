@@ -61,6 +61,15 @@ export interface RoomMaterial {
   vendorName: string | null;
 }
 
+export interface FloorPlanShape {
+  id: string;
+  roomId: string | null;
+  points: Array<{ x: number; y: number }>;
+  color: string;
+  strokeColor: string;
+  name: string | null;
+}
+
 export interface RoomInstruction {
   id: string;
   name: string;
@@ -73,6 +82,8 @@ export interface RoomInstruction {
   joinerySpec: JoinerySpec | null;
   dimensions: { area_sqm?: number; ceiling_height_mm?: number } | null;
   referencePhotos: Photo[];
+  progressPhotos: Photo[];
+  completedPhotos: Photo[];
   tasks: RoomTask[];
   materials: RoomMaterial[];
   progress: { completed: number; total: number };
