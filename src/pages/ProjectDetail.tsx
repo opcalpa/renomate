@@ -1106,11 +1106,11 @@ const ProjectDetail = () => {
         <TabsContent value="overview" className="m-0 pb-8">
           <ErrorBoundary>
           {isTabBlocked("overview") ? null : activeSubTab === 'feed' ? (
-            <div className="w-full px-3 md:px-6 lg:px-8 py-4 md:py-8">
+            <div className="container py-4 md:py-8">
               <ProjectFeedTab projectId={project.id} onNavigateToEntity={handleFeedNavigate} />
             </div>
           ) : (
-            <div className="w-full px-3 md:px-6 lg:px-8 py-4 md:py-8">
+            <div className="container py-4 md:py-8">
               {showInvitedWelcome && (
                 <Card className="mb-4 border-primary/20 bg-primary/5">
                   <CardContent className="p-4">
@@ -1192,7 +1192,7 @@ const ProjectDetail = () => {
                 />
               )}
               {(!activeSubTab || activeSubTab === 'rooms') && (
-                <div className="w-full px-3 md:px-6 lg:px-8 py-4 md:py-8">
+                <div className="container py-4 md:py-8">
                   <h2 className="text-2xl font-bold mb-4">{t('projectDetail.roomManagement')}</h2>
                   <p className="text-muted-foreground mb-6">{t('projectDetail.roomManagementDescription')}</p>
                   {roomsLoading ? (
@@ -1244,7 +1244,7 @@ const ProjectDetail = () => {
           {isTabBlocked("tasks") ? (
             <NoAccessPlaceholder />
           ) : (
-            <div className="w-full px-3 md:px-6 lg:px-8 py-4 md:py-8">
+            <div className="container py-4 md:py-8">
               <TasksTab
                 projectId={project.id}
                 projectName={project.name}
@@ -1268,7 +1268,7 @@ const ProjectDetail = () => {
           {isTabBlocked("purchases") ? (
             <NoAccessPlaceholder />
           ) : (
-            <div className="w-full px-3 md:px-6 lg:px-8 py-4 md:py-8">
+            <div className="container py-4 md:py-8">
               <PurchaseRequestsTab projectId={project.id} openEntityId={activeTab === "purchases" ? openEntityId : null} onEntityOpened={() => setOpenEntityId(null)} currency={project?.currency} />
             </div>
           )}
@@ -1280,7 +1280,7 @@ const ProjectDetail = () => {
           {isTabBlocked("budget") ? (
             <NoAccessPlaceholder />
           ) : (
-            <div className="w-full px-3 md:px-6 lg:px-8 py-4 md:py-8">
+            <div className="container py-4 md:py-8">
               <BudgetTab
                 projectId={project.id}
                 currency={project?.currency}
@@ -1297,7 +1297,7 @@ const ProjectDetail = () => {
           {isTabBlocked("table") ? (
             <NoAccessPlaceholder />
           ) : (
-            <div className="w-full px-3 md:px-6 lg:px-8 py-4 md:py-8">
+            <div className="container py-4 md:py-8">
               <UnifiedTableTab
                 projectId={project.id}
                 currency={project?.currency}
@@ -1314,7 +1314,7 @@ const ProjectDetail = () => {
           {isTabBlocked("planning") ? (
             <NoAccessPlaceholder />
           ) : (
-            <div className="w-full px-3 md:px-6 lg:px-8 py-4 md:py-8">
+            <div className="container py-4 md:py-8">
               <HomeownerPlanningView
                 projectId={project.id}
                 projectName={project.name}
@@ -1331,7 +1331,7 @@ const ProjectDetail = () => {
           {isTabBlocked("customer") ? (
             <NoAccessPlaceholder />
           ) : (
-            <div className="w-full px-3 md:px-6 lg:px-8 py-4 md:py-8">
+            <div className="container py-4 md:py-8">
               <CustomerViewTab
                 projectId={project.id}
                 projectName={project.name}
@@ -1347,7 +1347,7 @@ const ProjectDetail = () => {
 
         <TabsContent value="chat" className="m-0 pb-8">
           <ErrorBoundary>
-          <div className="w-full px-3 md:px-6 lg:px-8 py-4 md:py-8">
+          <div className="container py-4 md:py-8">
             <ProjectChatSection
               projectId={project.id}
               userType={effectiveUserType}
@@ -1373,7 +1373,7 @@ const ProjectDetail = () => {
               <NoAccessPlaceholder />
             )
           ) : (
-            <div className="w-full px-3 md:px-6 lg:px-8 py-4 md:py-8">
+            <div className="container py-4 md:py-8">
               <TeamManagement projectId={project.id} isOwner={permissions.isOwner} canManageTeam={permissions.isOwner || permissions.teams === "invite"} />
             </div>
           )}

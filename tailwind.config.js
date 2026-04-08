@@ -13,6 +13,9 @@ export default {
         sm: '1.5rem',
         lg: '2rem',
       },
+      screens: {
+        '2xl': '1440px',
+      },
     },
     extend: {
       borderRadius: {

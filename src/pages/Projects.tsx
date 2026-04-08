@@ -821,7 +821,7 @@ const Projects = () => {
       {/* Guest mode banner - sticky below header */}
       {isGuest && <GuestBanner compact />}
 
-      <main className="max-w-full mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
+      <main className="container py-4 sm:py-8">
 
         {/* Pipeline Section - Leads & Quotes (hidden in guest mode and for homeowners) */}
         {!isGuest && (
