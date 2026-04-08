@@ -36,6 +36,9 @@ import {
   LayoutGrid,
   Palette,
   Settings,
+  Clock,
+  Camera,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/compressImage";
@@ -112,7 +115,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
   const [creatingRoom, setCreatingRoom] = useState(false);
-  const [inspoView, setInspoView] = usePersistedPreference<"gallery" | "moodboard">("inspo-view-mode", "gallery");
+  const [inspoView, setInspoView] = usePersistedPreference<"gallery" | "moodboard" | "beforeafter">("inspo-view-mode", "gallery");
   const [collapsed, setCollapsed] = usePersistedPreference("inspo-collapsed", false);
   const [moodboardBg, setMoodboardBg] = usePersistedPreference("moodboard-bg", "#f5f0eb");
   const [moodboardGap, setMoodboardGap] = usePersistedPreference("moodboard-gap", true);
@@ -224,6 +227,27 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
     return allPhotos.filter((p) => p.roomId === selectedRoom);
   }, [allPhotos, selectedRoom]);
 
+  // Before/During/After photos grouped by room
+  const beforeAfterByRoom = useMemo(() => {
+    const targetPhotos = selectedRoom === "all" ? allPhotos : selectedRoom === "untagged" ? allPhotos.filter((p) => !p.roomId) : allPhotos.filter((p) => p.roomId === selectedRoom);
+    const roomGroups = new Map<string, { name: string; before: InspoPhoto[]; during: InspoPhoto[]; after: InspoPhoto[] }>();
+
+    for (const photo of targetPhotos) {
+      const key = photo.roomId || "__none__";
+      if (!roomGroups.has(key)) {
+        roomGroups.set(key, { name: photo.roomName || t("tasks.noRoom"), before: [], during: [], after: [] });
+      }
+      const group = roomGroups.get(key)!;
+      if (photo.source === "before") group.before.push(photo);
+      else if (photo.source === "during" || photo.source === "worker_progress") group.during.push(photo);
+      else if (photo.source === "after" || photo.source === "worker_completed") group.after.push(photo);
+    }
+
+    return Array.from(roomGroups.entries())
+      .map(([id, data]) => ({ id, ...data }))
+      .filter((g) => g.before.length > 0 || g.during.length > 0 || g.after.length > 0);
+  }, [allPhotos, selectedRoom, t]);
+
   const totalCount = allPhotos.length + materialCards.filter((m) => m.photoUrl).length;
 
   // Upload handler
@@ -278,6 +302,45 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
       setUploading(false);
     }
   }, [projectId, uploading, queryClient, t]);
+
+  // Before/After upload handler — tags photo with source and room
+  const [baUploading, setBaUploading] = useState(false);
+  const handleBeforeAfterUpload = useCallback(async (file: File, category: "before" | "during" | "after", roomId: string | null) => {
+    setBaUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+      if (!profile) throw new Error("No profile");
+
+      const uploadFile = await compressImage(file);
+      const isCompressed = uploadFile !== file;
+      const ext = isCompressed ? "jpg" : (file.name.split(".").pop() || "jpg");
+      const path = `projects/${projectId}/before-after/${category}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("project-files")
+        .upload(path, uploadFile, { contentType: isCompressed ? "image/jpeg" : file.type });
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrl } = supabase.storage.from("project-files").getPublicUrl(path);
+
+      await supabase.from("photos").insert({
+        linked_to_type: roomId ? "room" : "project",
+        linked_to_id: roomId || projectId,
+        url: publicUrl.publicUrl,
+        uploaded_by_user_id: profile.id,
+        source: category,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+      toast.success(t("inspiration.photoAdded", "Bild tillagd"));
+    } catch {
+      toast.error(t("common.error"));
+    } finally {
+      setBaUploading(false);
+    }
+  }, [projectId, queryClient, t]);
 
   // URL import handler — smart detection for Pinterest pins, boards, or plain image URLs
   const handleUrlImport = useCallback(async () => {
@@ -560,6 +623,14 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                 className={cn("p-1 rounded transition-colors", inspoView === "moodboard" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
               >
                 <Palette className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setInspoView("beforeafter")}
+                title={t("inspiration.beforeAfter", "Före & Efter")}
+                className={cn("p-1 rounded transition-colors", inspoView === "beforeafter" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+              >
+                <Clock className="h-3.5 w-3.5" />
               </button>
             </div>
             </>
@@ -1296,6 +1367,67 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           </div>
         )}
 
+        {/* ===== BEFORE / AFTER VIEW ===== */}
+        {inspoView === "beforeafter" && (
+          <div className="space-y-4">
+            {beforeAfterByRoom.length === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground space-y-2">
+                <Clock className="h-8 w-8 mx-auto opacity-50" />
+                <p>{t("inspiration.noBeforeAfter", "Inga före/efter-bilder ännu")}</p>
+                <p className="text-xs">{t("inspiration.noBeforeAfterHint", "Ladda upp bilder nedan och tagga dem som Före, Pågående eller Efter")}</p>
+              </div>
+            ) : (
+              beforeAfterByRoom.map((group) => (
+                <div key={group.id} className="rounded-lg border overflow-hidden">
+                  <div className="px-3 py-2 bg-muted/30 border-b">
+                    <span className="text-sm font-medium">{group.name}</span>
+                  </div>
+                  <div className="grid grid-cols-3 divide-x">
+                    {(["before", "during", "after"] as const).map((phase) => {
+                      const photos = group[phase];
+                      const labels = {
+                        before: t("inspiration.before", "Före"),
+                        during: t("inspiration.during", "Pågående"),
+                        after: t("inspiration.after", "Efter"),
+                      };
+                      return (
+                        <div key={phase} className="p-2 space-y-2">
+                          <p className="text-[10px] font-medium text-muted-foreground uppercase text-center">{labels[phase]}</p>
+                          {photos.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-1">
+                              {photos.map((photo) => (
+                                <img
+                                  key={photo.id}
+                                  src={photo.url}
+                                  alt={photo.caption || ""}
+                                  className="w-full aspect-square object-cover rounded cursor-pointer hover:opacity-90 transition-opacity"
+                                  loading="lazy"
+                                  onClick={() => openGallery(allPhotos.findIndex((p) => p.id === photo.id))}
+                                />
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center aspect-square rounded border-2 border-dashed text-muted-foreground/30">
+                              <Camera className="h-5 w-5" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
+            )}
+
+            {/* Upload section — pick phase + room */}
+            <BeforeAfterUploader
+              rooms={rooms}
+              uploading={baUploading}
+              onUpload={handleBeforeAfterUpload}
+            />
+          </div>
+        )}
+
         </>)}
         {/* File input — sr-only (not display:none) so label htmlFor works */}
         <input
@@ -1500,5 +1632,91 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
         </DialogContent>
       </Dialog>
     </Card>
+  );
+}
+
+/** Upload widget for Before/After photos — pick phase + room + file */
+function BeforeAfterUploader({
+  rooms,
+  uploading,
+  onUpload,
+}: {
+  rooms: Room[];
+  uploading: boolean;
+  onUpload: (file: File, category: "before" | "during" | "after", roomId: string | null) => void;
+}) {
+  const { t } = useTranslation();
+  const [selectedPhase, setSelectedPhase] = useState<"before" | "during" | "after">("before");
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+
+  const phases = [
+    { key: "before" as const, label: t("inspiration.before", "Före"), color: "text-amber-600 bg-amber-50 border-amber-200" },
+    { key: "during" as const, label: t("inspiration.during", "Pågående"), color: "text-blue-600 bg-blue-50 border-blue-200" },
+    { key: "after" as const, label: t("inspiration.after", "Efter"), color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
+  ];
+
+  return (
+    <div className="rounded-lg border p-3 space-y-3">
+      <p className="text-xs font-medium text-muted-foreground uppercase">{t("inspiration.addBeforeAfter", "Lägg till bild")}</p>
+
+      {/* Phase selector */}
+      <div className="flex gap-2">
+        {phases.map((p) => (
+          <button
+            key={p.key}
+            type="button"
+            onClick={() => setSelectedPhase(p.key)}
+            className={cn(
+              "flex-1 py-1.5 rounded-md border text-xs font-medium transition-colors",
+              selectedPhase === p.key ? p.color : "text-muted-foreground hover:bg-muted"
+            )}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Room selector */}
+      {rooms.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap">
+          {rooms.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => setSelectedRoomId(selectedRoomId === r.id ? null : r.id)}
+              className={cn(
+                "px-2 py-0.5 rounded-full text-xs transition-colors",
+                selectedRoomId === r.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
+              )}
+            >
+              {r.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Upload button */}
+      <label className={cn(
+        "flex items-center justify-center gap-2 h-11 rounded-lg border-2 border-dashed text-sm transition-colors cursor-pointer",
+        uploading ? "text-muted-foreground" : "text-muted-foreground hover:border-primary hover:text-primary"
+      )}>
+        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+        {uploading ? t("common.uploading", "Laddar upp...") : t("inspiration.uploadPhoto", "Välj bild")}
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          disabled={uploading}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              onUpload(file, selectedPhase, selectedRoomId);
+              e.target.value = "";
+            }
+          }}
+        />
+      </label>
+    </div>
   );
 }

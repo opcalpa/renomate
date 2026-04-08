@@ -5089,6 +5089,15 @@
     "untagged": "Ej taggade",
     "linkedMaterials": "Material för detta rum",
     "emptyTitle": "Lägg till din första inspiration",
-    "emptyDesc": "Släpp bilder, klistra en Pinterest-länk eller ta ett foto. Du kan tagga rum efteråt."
+    "emptyDesc": "Släpp bilder, klistra en Pinterest-länk eller ta ett foto. Du kan tagga rum efteråt.",
+    "beforeAfter": "Före & Efter",
+    "before": "Före",
+    "during": "Pågående",
+    "after": "Efter",
+    "noBeforeAfter": "Inga före/efter-bilder ännu",
+    "noBeforeAfterHint": "Ladda upp bilder nedan och tagga dem som Före, Pågående eller Efter",
+    "addBeforeAfter": "Lägg till bild",
+    "uploadPhoto": "Välj bild",
+    "photoAdded": "Bild tillagd"
   }
 }

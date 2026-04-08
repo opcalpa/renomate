@@ -5092,6 +5092,15 @@
     "untagged": "Untagged",
     "linkedMaterials": "Materials for this room",
     "emptyTitle": "Add your first inspiration",
-    "emptyDesc": "Drop photos, paste a Pinterest link, or snap a picture. You can tag rooms later."
+    "emptyDesc": "Drop photos, paste a Pinterest link, or snap a picture. You can tag rooms later.",
+    "beforeAfter": "Before & After",
+    "before": "Before",
+    "during": "In progress",
+    "after": "After",
+    "noBeforeAfter": "No before/after photos yet",
+    "noBeforeAfterHint": "Upload photos below and tag them as Before, In progress, or After",
+    "addBeforeAfter": "Add photo",
+    "uploadPhoto": "Choose photo",
+    "photoAdded": "Photo added"
   }
 }
