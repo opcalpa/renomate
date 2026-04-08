@@ -30,7 +30,6 @@ import { PlanningRoomList } from "./overview/PlanningRoomList";
 import { HomeownerPlanningView } from "./overview/HomeownerPlanningView";
 import { GuestPlanningSection } from "./overview/GuestPlanningSection";
 import { ProjectHeader } from "./overview/ProjectHeader";
-import { RotSummaryCard } from "./overview/RotSummaryCard";
 import { HouseholdRotDialog } from "./overview/HouseholdRotDialog";
 import { useTaxDeductionVisible } from "@/hooks/useTaxDeduction";
 import { ReminderSection } from "./overview/ReminderSection";
@@ -558,9 +557,6 @@ const OverviewTab = ({
       {/* Planning reference removed from active phase — data already migrated
          to Tasks, Purchases, and Rooms tabs via quote acceptance. Original
          planning is accessible via the accepted quote in Documents section. */}
-
-      {/* ROT — bottom of overview, only Swedish projects */}
-      {showTaxDeduction && <RotSummaryCard projectId={project.id} />}
 
       <ProjectSettingsDialog
         open={settingsOpen}

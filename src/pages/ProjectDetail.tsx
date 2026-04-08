@@ -1286,6 +1286,7 @@ const ProjectDetail = () => {
                 currency={project?.currency}
                 isReadOnly={permissions.budget === "view"}
                 userType={effectiveUserType}
+                country={project?.country}
               />
             </div>
           )}

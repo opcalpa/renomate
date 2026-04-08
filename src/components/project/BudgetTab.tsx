@@ -18,6 +18,8 @@ import { BuilderSummaryCards } from "./budget/BuilderSummaryCards";
 import { HomeownerBudgetView } from "./budget/HomeownerBudgetView";
 import { HomeownerAnalysisSection } from "./budget/HomeownerAnalysisSection";
 import { InvoiceMethodDialog } from "@/components/invoices/InvoiceMethodDialog";
+import { RotSummaryCard } from "./overview/RotSummaryCard";
+import { useTaxDeductionVisible } from "@/hooks/useTaxDeduction";
 import { TaskEditDialog } from "./TaskEditDialog";
 import { MaterialEditDialog } from "./MaterialEditDialog";
 import {
@@ -135,6 +137,7 @@ interface BudgetTabProps {
   currency?: string | null;
   isReadOnly?: boolean;
   userType?: string | null;
+  country?: string | null;
 }
 
 // --- Auto-persist table prefs ---
@@ -202,9 +205,10 @@ function computeMaterialBudget(
 
 // --- Component ---
 
-const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps) => {
+const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: BudgetTabProps) => {
   const isBuilder = userType !== "homeowner";
   const { t } = useTranslation();
+  const { showTaxDeduction } = useTaxDeductionVisible(country);
   const [rows, setRows] = useState<BudgetRow[]>([]);
   const [extraTotal, setExtraTotal] = useState(0);
   const [projectBudget, setProjectBudget] = useState(0);
@@ -2176,8 +2180,15 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType }: BudgetTabProps
       {/* Budget Charts Section (builder only) */}
       {isBuilder && <BudgetChartsSection rows={rows} currency={currency} />}
 
-      {/* ROT deduction section (homeowner only) */}
+      {/* Yearly analysis section (homeowner only) */}
       {!isBuilder && <div className="mt-6"><HomeownerAnalysisSection projectId={projectId} currency={currency} /></div>}
+
+      {/* ROT deduction section — Swedish projects only */}
+      {showTaxDeduction && (
+        <div className="mt-6">
+          <RotSummaryCard projectId={projectId} />
+        </div>
+      )}
 
       {/* Task Edit Dialog */}
       <TaskEditDialog
