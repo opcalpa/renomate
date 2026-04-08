@@ -776,46 +776,62 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
 
         {/* Collapsible content */}
         {!collapsed && (<>
-        {/* Room filter chips — only show when there are photos */}
+        {/* Filters row — compact dropdowns */}
         {hasPhotos && rooms.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap mb-3">
-            <button
-              type="button"
-              onClick={() => setSelectedRoom("all")}
-              className={cn(
-                "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors",
-                selectedRoom === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
-              )}
-            >
-              {t("common.all")} ({allPhotos.length})
-            </button>
-            {rooms.map((room) => {
-              const count = allPhotos.filter((p) => p.roomId === room.id).length;
-              return (
-                <button
-                  key={room.id}
-                  type="button"
-                  onClick={() => setSelectedRoom(room.id)}
-                  className={cn(
-                    "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors",
-                    selectedRoom === room.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
-                  )}
-                >
-                  {room.name} {count > 0 && `(${count})`}
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            {/* Room filter dropdown */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs hover:bg-accent transition-colors">
+                  <Home className="h-3 w-3 text-muted-foreground" />
+                  {selectedRoom === "all"
+                    ? `${t("common.all")} (${allPhotos.length})`
+                    : selectedRoom === "untagged"
+                      ? t("inspiration.untagged")
+                      : rooms.find((r) => r.id === selectedRoom)?.name || t("common.all")}
+                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
                 </button>
-              );
-            })}
-            {allPhotos.some((p) => !p.roomId) && (
-              <button
-                type="button"
-                onClick={() => setSelectedRoom("untagged")}
-                className={cn(
-                  "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors",
-                  selectedRoom === "untagged" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
+              </PopoverTrigger>
+              <PopoverContent className="w-44 p-1" align="start">
+                <button
+                  type="button"
+                  className={cn("flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded", selectedRoom === "all" ? "bg-accent font-medium" : "hover:bg-accent")}
+                  onClick={() => setSelectedRoom("all")}
+                >
+                  {t("common.all")} ({allPhotos.length})
+                </button>
+                {rooms.map((room) => {
+                  const count = allPhotos.filter((p) => p.roomId === room.id).length;
+                  return (
+                    <button
+                      key={room.id}
+                      type="button"
+                      className={cn("flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded", selectedRoom === room.id ? "bg-accent font-medium" : "hover:bg-accent")}
+                      onClick={() => setSelectedRoom(room.id)}
+                    >
+                      {room.name} {count > 0 && <span className="text-muted-foreground">({count})</span>}
+                    </button>
+                  );
+                })}
+                {allPhotos.some((p) => !p.roomId) && (
+                  <button
+                    type="button"
+                    className={cn("flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded", selectedRoom === "untagged" ? "bg-accent font-medium" : "hover:bg-accent")}
+                    onClick={() => setSelectedRoom("untagged")}
+                  >
+                    {t("inspiration.untagged")} ({allPhotos.filter((p) => !p.roomId).length})
+                  </button>
                 )}
-              >
-                {t("inspiration.untagged")} ({allPhotos.filter((p) => !p.roomId).length})
-              </button>
+              </PopoverContent>
+            </Popover>
+
+            {/* Before/After: phase filter + upload */}
+            {inspoView === "beforeafter" && (
+              <BeforeAfterUploader
+                uploading={baUploading}
+                selectedRoomId={selectedRoom !== "all" && selectedRoom !== "untagged" ? selectedRoom : null}
+                onUpload={handleBeforeAfterUpload}
+              />
             )}
           </div>
         )}
@@ -1424,13 +1440,6 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                 </div>
               ))
             )}
-
-            {/* Upload — inline, always visible */}
-            <BeforeAfterUploader
-              uploading={baUploading}
-              selectedRoomId={selectedRoom !== "all" && selectedRoom !== "untagged" ? selectedRoom : null}
-              onUpload={handleBeforeAfterUpload}
-            />
           </div>
         )}
 
