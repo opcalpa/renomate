@@ -1427,8 +1427,8 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
 
             {/* Upload — inline, always visible */}
             <BeforeAfterUploader
-              rooms={rooms}
               uploading={baUploading}
+              selectedRoomId={selectedRoom !== "all" && selectedRoom !== "untagged" ? selectedRoom : null}
               onUpload={handleBeforeAfterUpload}
             />
           </div>
@@ -1643,17 +1643,16 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
 
 /** Upload widget for Before/After photos — pick phase + room + file */
 function BeforeAfterUploader({
-  rooms,
   uploading,
+  selectedRoomId,
   onUpload,
 }: {
-  rooms: Room[];
   uploading: boolean;
+  selectedRoomId: string | null;
   onUpload: (file: File, category: "before" | "during" | "after", roomId: string | null) => void;
 }) {
   const { t } = useTranslation();
   const [selectedPhase, setSelectedPhase] = useState<"before" | "during" | "after">("before");
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
 
   const phases = [
     { key: "before" as const, label: t("inspiration.before", "Före"), color: "text-amber-600 bg-amber-50 border-amber-200" },
@@ -1679,21 +1678,6 @@ function BeforeAfterUploader({
           </button>
         ))}
       </div>
-
-      {/* Room chips */}
-      {rooms.length > 0 && rooms.map((r) => (
-        <button
-          key={r.id}
-          type="button"
-          onClick={() => setSelectedRoomId(selectedRoomId === r.id ? null : r.id)}
-          className={cn(
-            "px-2 py-0.5 rounded-full text-xs transition-colors",
-            selectedRoomId === r.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
-          )}
-        >
-          {r.name}
-        </button>
-      ))}
 
       {/* Upload button */}
       <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer ml-auto">
