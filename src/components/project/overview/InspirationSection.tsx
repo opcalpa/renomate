@@ -593,19 +593,41 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
       <CardContent className="p-4 sm:p-5">
         {/* Header */}
         <div className={cn("flex items-center justify-between", !collapsed && "mb-3")}>
-          <button
-            type="button"
-            onClick={() => setCollapsed(!collapsed)}
-            className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2 hover:text-foreground transition-colors"
-          >
-            <Sparkles className="h-4 w-4" />
-            {t("inspiration.title")}
-            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", collapsed && "-rotate-90")} />
-          </button>
+          {/* Section tabs — Inspiration vs Före & Efter */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => { if (inspoView === "beforeafter") setInspoView("gallery"); else setCollapsed(!collapsed); }}
+              className={cn(
+                "text-sm font-semibold uppercase tracking-wide flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
+                inspoView !== "beforeafter"
+                  ? "text-foreground bg-muted/50"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {t("inspiration.title")}
+              {inspoView !== "beforeafter" && (
+                <ChevronDown className={cn("h-3 w-3 transition-transform", collapsed && "-rotate-90")} />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setInspoView("beforeafter"); setCollapsed(false); }}
+              className={cn(
+                "text-sm font-semibold uppercase tracking-wide flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
+                inspoView === "beforeafter"
+                  ? "text-foreground bg-muted/50"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Clock className="h-3.5 w-3.5" />
+              {t("inspiration.beforeAfter", "Före & Efter")}
+            </button>
+          </div>
           <div className="flex items-center gap-2">
-          {hasPhotos && (
-            <>
-            {/* View toggle — icon only */}
+          {/* Gallery/Moodboard sub-toggle — only for Inspiration tab */}
+          {hasPhotos && inspoView !== "beforeafter" && (
             <div className="flex rounded-md border bg-muted/30 p-0.5">
               <button
                 type="button"
@@ -623,16 +645,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               >
                 <Palette className="h-3.5 w-3.5" />
               </button>
-              <button
-                type="button"
-                onClick={() => setInspoView("beforeafter")}
-                title={t("inspiration.beforeAfter", "Före & Efter")}
-                className={cn("p-1 rounded transition-colors", inspoView === "beforeafter" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-              >
-                <Clock className="h-3.5 w-3.5" />
-              </button>
             </div>
-            </>
           )}
           {/* Moodboard settings — only when moodboard active */}
           {hasPhotos && inspoView === "moodboard" && (
