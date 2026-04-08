@@ -1382,13 +1382,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
         {/* ===== BEFORE / AFTER VIEW ===== */}
         {inspoView === "beforeafter" && (
           <div className="space-y-4">
-            {beforeAfterByRoom.length === 0 ? (
-              <div className="text-center py-8 text-sm text-muted-foreground space-y-2">
-                <Clock className="h-8 w-8 mx-auto opacity-50" />
-                <p>{t("inspiration.noBeforeAfter", "Inga före/efter-bilder ännu")}</p>
-                <p className="text-xs">{t("inspiration.noBeforeAfterHint", "Ladda upp bilder nedan och tagga dem som Före, Pågående eller Efter")}</p>
-              </div>
-            ) : (
+            {beforeAfterByRoom.length > 0 && (
               beforeAfterByRoom.map((group) => (
                 <div key={group.id} className="rounded-lg border overflow-hidden">
                   <div className="px-3 py-2 bg-muted/30 border-b">
@@ -1431,7 +1425,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               ))
             )}
 
-            {/* Upload section — pick phase + room */}
+            {/* Upload — inline, always visible */}
             <BeforeAfterUploader
               rooms={rooms}
               uploading={baUploading}
@@ -1668,19 +1662,17 @@ function BeforeAfterUploader({
   ];
 
   return (
-    <div className="rounded-lg border p-3 space-y-3">
-      <p className="text-xs font-medium text-muted-foreground uppercase">{t("inspiration.addBeforeAfter", "Lägg till bild")}</p>
-
-      {/* Phase selector */}
-      <div className="flex gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      {/* Phase selector — compact pills */}
+      <div className="flex rounded-md border bg-muted/30 p-0.5">
         {phases.map((p) => (
           <button
             key={p.key}
             type="button"
             onClick={() => setSelectedPhase(p.key)}
             className={cn(
-              "flex-1 py-1.5 rounded-md border text-xs font-medium transition-colors",
-              selectedPhase === p.key ? p.color : "text-muted-foreground hover:bg-muted"
+              "px-2.5 py-1 rounded text-xs font-medium transition-colors",
+              selectedPhase === p.key ? p.color : "text-muted-foreground hover:text-foreground"
             )}
           >
             {p.label}
@@ -1688,31 +1680,24 @@ function BeforeAfterUploader({
         ))}
       </div>
 
-      {/* Room selector */}
-      {rooms.length > 0 && (
-        <div className="flex gap-1.5 flex-wrap">
-          {rooms.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => setSelectedRoomId(selectedRoomId === r.id ? null : r.id)}
-              className={cn(
-                "px-2 py-0.5 rounded-full text-xs transition-colors",
-                selectedRoomId === r.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
-              )}
-            >
-              {r.name}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Room chips */}
+      {rooms.length > 0 && rooms.map((r) => (
+        <button
+          key={r.id}
+          type="button"
+          onClick={() => setSelectedRoomId(selectedRoomId === r.id ? null : r.id)}
+          className={cn(
+            "px-2 py-0.5 rounded-full text-xs transition-colors",
+            selectedRoomId === r.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
+          )}
+        >
+          {r.name}
+        </button>
+      ))}
 
       {/* Upload button */}
-      <label className={cn(
-        "flex items-center justify-center gap-2 h-11 rounded-lg border-2 border-dashed text-sm transition-colors cursor-pointer",
-        uploading ? "text-muted-foreground" : "text-muted-foreground hover:border-primary hover:text-primary"
-      )}>
-        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+      <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer ml-auto">
+        {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
         {uploading ? t("common.uploading", "Laddar upp...") : t("inspiration.uploadPhoto", "Välj bild")}
         <input
           type="file"
