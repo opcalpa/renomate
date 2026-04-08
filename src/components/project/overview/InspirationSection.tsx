@@ -1688,10 +1688,10 @@ function BeforeAfterUploader({
         ))}
       </div>
 
-      {/* Upload button */}
-      <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer ml-auto">
+      {/* Camera button — mobile only */}
+      <label className="sm:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer ml-auto">
         {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
-        {uploading ? t("common.uploading", "Laddar upp...") : t("inspiration.uploadPhoto", "Välj bild")}
+        {t("inspiration.takePhoto", "Ta foto")}
         <input
           type="file"
           accept="image/*"
@@ -1700,10 +1700,22 @@ function BeforeAfterUploader({
           disabled={uploading}
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) {
-              onUpload(file, selectedPhase, selectedRoomId);
-              e.target.value = "";
-            }
+            if (file) { onUpload(file, selectedPhase, selectedRoomId); e.target.value = ""; }
+          }}
+        />
+      </label>
+      {/* File picker — all devices */}
+      <label className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer", "sm:ml-auto")}>
+        {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+        {uploading ? t("common.uploading", "Laddar upp...") : t("inspiration.uploadPhoto", "Välj bild")}
+        <input
+          type="file"
+          accept="image/*"
+          className="hidden"
+          disabled={uploading}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) { onUpload(file, selectedPhase, selectedRoomId); e.target.value = ""; }
           }}
         />
       </label>
