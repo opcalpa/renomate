@@ -280,13 +280,15 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
 
         const { data: publicUrl } = supabase.storage.from("project-files").getPublicUrl(path);
 
+        const isBA = inspoView === "beforeafter";
+        const roomId = selectedRoom !== "all" && selectedRoom !== "untagged" ? selectedRoom : null;
         await supabase.from("photos").insert({
-          linked_to_type: "project",
-          linked_to_id: projectId,
+          linked_to_type: isBA && roomId ? "room" : "project",
+          linked_to_id: isBA && roomId ? roomId : projectId,
           url: publicUrl.publicUrl,
           caption: file.name.replace(/\.[^/.]+$/, ""),
           uploaded_by_user_id: profile.id,
-          source: "upload",
+          source: isBA ? baPhase : "upload",
         });
         uploaded++;
       }
@@ -304,6 +306,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
 
   // Before/After upload handler — tags photo with source and room
   const [baUploading, setBaUploading] = useState(false);
+  const [baPhase, setBaPhase] = useState<"before" | "during" | "after">("before");
   const handleBeforeAfterUpload = useCallback(async (file: File, category: "before" | "during" | "after", roomId: string | null) => {
     setBaUploading(true);
     try {
@@ -626,6 +629,47 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
             </button>
           </div>
           <div className="flex items-center gap-2">
+          {/* Room filter — shared across all views */}
+          {hasPhotos && rooms.length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" className="flex items-center gap-1 px-2 py-1 rounded-md border text-xs hover:bg-accent transition-colors">
+                  <Home className="h-3 w-3 text-muted-foreground" />
+                  {selectedRoom === "all"
+                    ? `${t("common.all")} (${allPhotos.length})`
+                    : selectedRoom === "untagged"
+                      ? t("inspiration.untagged")
+                      : rooms.find((r) => r.id === selectedRoom)?.name || t("common.all")}
+                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-44 p-1" align="end">
+                <button type="button" className={cn("flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded", selectedRoom === "all" ? "bg-accent font-medium" : "hover:bg-accent")} onClick={() => setSelectedRoom("all")}>
+                  {t("common.all")} ({allPhotos.length})
+                </button>
+                {rooms.map((room) => {
+                  const count = allPhotos.filter((p) => p.roomId === room.id).length;
+                  return (
+                    <button key={room.id} type="button" className={cn("flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded", selectedRoom === room.id ? "bg-accent font-medium" : "hover:bg-accent")} onClick={() => setSelectedRoom(room.id)}>
+                      {room.name} {count > 0 && <span className="text-muted-foreground">({count})</span>}
+                    </button>
+                  );
+                })}
+                {allPhotos.some((p) => !p.roomId) && (
+                  <button type="button" className={cn("flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded", selectedRoom === "untagged" ? "bg-accent font-medium" : "hover:bg-accent")} onClick={() => setSelectedRoom("untagged")}>
+                    {t("inspiration.untagged")} ({allPhotos.filter((p) => !p.roomId).length})
+                  </button>
+                )}
+              </PopoverContent>
+            </Popover>
+          )}
+          {/* Before/After: phase pills */}
+          {inspoView === "beforeafter" && (
+            <BeforeAfterUploader
+              selectedPhase={baPhase}
+              onPhaseChange={setBaPhase}
+            />
+          )}
           {/* Gallery/Moodboard sub-toggle — only for Inspiration tab */}
           {hasPhotos && inspoView !== "beforeafter" && (
             <div className="flex rounded-md border bg-muted/30 p-0.5">
@@ -776,65 +820,6 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
 
         {/* Collapsible content */}
         {!collapsed && (<>
-        {/* Filters row — compact dropdowns */}
-        {hasPhotos && rooms.length > 0 && (
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
-            {/* Room filter dropdown */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button type="button" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs hover:bg-accent transition-colors">
-                  <Home className="h-3 w-3 text-muted-foreground" />
-                  {selectedRoom === "all"
-                    ? `${t("common.all")} (${allPhotos.length})`
-                    : selectedRoom === "untagged"
-                      ? t("inspiration.untagged")
-                      : rooms.find((r) => r.id === selectedRoom)?.name || t("common.all")}
-                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-44 p-1" align="start">
-                <button
-                  type="button"
-                  className={cn("flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded", selectedRoom === "all" ? "bg-accent font-medium" : "hover:bg-accent")}
-                  onClick={() => setSelectedRoom("all")}
-                >
-                  {t("common.all")} ({allPhotos.length})
-                </button>
-                {rooms.map((room) => {
-                  const count = allPhotos.filter((p) => p.roomId === room.id).length;
-                  return (
-                    <button
-                      key={room.id}
-                      type="button"
-                      className={cn("flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded", selectedRoom === room.id ? "bg-accent font-medium" : "hover:bg-accent")}
-                      onClick={() => setSelectedRoom(room.id)}
-                    >
-                      {room.name} {count > 0 && <span className="text-muted-foreground">({count})</span>}
-                    </button>
-                  );
-                })}
-                {allPhotos.some((p) => !p.roomId) && (
-                  <button
-                    type="button"
-                    className={cn("flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded", selectedRoom === "untagged" ? "bg-accent font-medium" : "hover:bg-accent")}
-                    onClick={() => setSelectedRoom("untagged")}
-                  >
-                    {t("inspiration.untagged")} ({allPhotos.filter((p) => !p.roomId).length})
-                  </button>
-                )}
-              </PopoverContent>
-            </Popover>
-
-            {/* Before/After: phase filter + upload */}
-            {inspoView === "beforeafter" && (
-              <BeforeAfterUploader
-                uploading={baUploading}
-                selectedRoomId={selectedRoom !== "all" && selectedRoom !== "untagged" ? selectedRoom : null}
-                onUpload={handleBeforeAfterUpload}
-              />
-            )}
-          </div>
-        )}
 
         {/* ===== GALLERY VIEW ===== */}
         {inspoView === "gallery" && (
@@ -1652,16 +1637,13 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
 
 /** Upload widget for Before/After photos — pick phase + room + file */
 function BeforeAfterUploader({
-  uploading,
-  selectedRoomId,
-  onUpload,
+  selectedPhase,
+  onPhaseChange,
 }: {
-  uploading: boolean;
-  selectedRoomId: string | null;
-  onUpload: (file: File, category: "before" | "during" | "after", roomId: string | null) => void;
+  selectedPhase: "before" | "during" | "after";
+  onPhaseChange: (phase: "before" | "during" | "after") => void;
 }) {
   const { t } = useTranslation();
-  const [selectedPhase, setSelectedPhase] = useState<"before" | "during" | "after">("before");
 
   const phases = [
     { key: "before" as const, label: t("inspiration.before", "Före"), color: "text-amber-600 bg-amber-50 border-amber-200" },
@@ -1670,55 +1652,20 @@ function BeforeAfterUploader({
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {/* Phase selector — compact pills */}
-      <div className="flex rounded-md border bg-muted/30 p-0.5">
-        {phases.map((p) => (
-          <button
-            key={p.key}
-            type="button"
-            onClick={() => setSelectedPhase(p.key)}
-            className={cn(
-              "px-2.5 py-1 rounded text-xs font-medium transition-colors",
-              selectedPhase === p.key ? p.color : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Camera button — mobile only */}
-      <label className="sm:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer ml-auto">
-        {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
-        {t("inspiration.takePhoto", "Ta foto")}
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          disabled={uploading}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) { onUpload(file, selectedPhase, selectedRoomId); e.target.value = ""; }
-          }}
-        />
-      </label>
-      {/* File picker — all devices */}
-      <label className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer", "sm:ml-auto")}>
-        {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-        {uploading ? t("common.uploading", "Laddar upp...") : t("inspiration.uploadPhoto", "Välj bild")}
-        <input
-          type="file"
-          accept="image/*"
-          className="hidden"
-          disabled={uploading}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) { onUpload(file, selectedPhase, selectedRoomId); e.target.value = ""; }
-          }}
-        />
-      </label>
+    <div className="flex rounded-md border bg-muted/30 p-0.5">
+      {phases.map((p) => (
+        <button
+          key={p.key}
+          type="button"
+          onClick={() => onPhaseChange(p.key)}
+          className={cn(
+            "px-2 py-0.5 rounded text-[11px] font-medium transition-colors",
+            selectedPhase === p.key ? p.color : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {p.label}
+        </button>
+      ))}
     </div>
   );
 }
