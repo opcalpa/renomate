@@ -93,7 +93,7 @@ serve(async (req) => {
     if (roomIds.length > 0) {
       const { data: rooms } = await sb
         .from("rooms")
-        .select("id, name, wall_spec, floor_spec, ceiling_spec, joinery_spec, dimensions, ceiling_height_mm")
+        .select("id, name, wall_color, ceiling_color, trim_color, wall_spec, floor_spec, ceiling_spec, joinery_spec, dimensions, ceiling_height_mm")
         .in("id", roomIds);
       for (const room of rooms || []) {
         roomsMap[room.id] = room;
@@ -116,7 +116,44 @@ serve(async (req) => {
       name: roomsMap[s.room_id as string] ? (roomsMap[s.room_id as string] as Record<string, unknown>).name : null,
     }));
 
-    // 5c. Fetch translations for worker's language
+    // 5c. Fetch room photos (reference/instruction images + categorized worker photos)
+    let roomPhotosMap: Record<string, unknown[]> = {};
+    if (roomIds.length > 0) {
+      const { data: roomPhotos } = await sb
+        .from("photos")
+        .select("id, url, caption, source, linked_to_id")
+        .eq("linked_to_type", "room")
+        .in("linked_to_id", roomIds);
+      for (const p of roomPhotos || []) {
+        if (!roomPhotosMap[p.linked_to_id]) roomPhotosMap[p.linked_to_id] = [];
+        roomPhotosMap[p.linked_to_id].push({
+          id: p.id, url: p.url, caption: p.caption, source: p.source || "upload",
+        });
+      }
+    }
+
+    // 5d. Fetch materials for assigned tasks and their rooms
+    let materialsByRoom: Record<string, unknown[]> = {};
+    {
+      const { data: materials } = await sb
+        .from("materials")
+        .select("id, name, quantity, unit, vendor_name, room_id, task_id")
+        .eq("project_id", tokenRecord.project_id)
+        .or(
+          roomIds.length > 0
+            ? `task_id.in.(${taskIds.join(",")}),room_id.in.(${roomIds.join(",")})`
+            : `task_id.in.(${taskIds.join(",")})`
+        );
+      for (const m of materials || []) {
+        const key = m.room_id || "__task__";
+        if (!materialsByRoom[key]) materialsByRoom[key] = [];
+        materialsByRoom[key].push({
+          id: m.id, name: m.name, quantity: m.quantity, unit: m.unit, vendorName: m.vendor_name,
+        });
+      }
+    }
+
+    // 5e. Fetch translations for worker's language
     const workerLang = tokenRecord.worker_language;
     let translationsMap: Record<string, { title: string; description: string | null; checklists: unknown }> = {};
     if (workerLang && workerLang !== "en" && workerLang !== "sv") {
@@ -133,7 +170,7 @@ serve(async (req) => {
     // 6. Fetch photos for tasks
     const { data: photos } = await sb
       .from("photos")
-      .select("id, url, caption, linked_to_id, created_at")
+      .select("id, url, caption, source, linked_to_id, created_at")
       .eq("linked_to_type", "task")
       .in("linked_to_id", taskIds)
       .order("created_at", { ascending: false });
@@ -142,7 +179,7 @@ serve(async (req) => {
     for (const photo of photos || []) {
       const tid = photo.linked_to_id;
       if (!photosByTask[tid]) photosByTask[tid] = [];
-      photosByTask[tid].push({ id: photo.id, url: photo.url, caption: photo.caption });
+      photosByTask[tid].push({ id: photo.id, url: photo.url, caption: photo.caption, source: photo.source || "upload" });
     }
 
     // 7. Assemble response (use translations when available)
@@ -161,12 +198,17 @@ serve(async (req) => {
         room: room
           ? {
               name: room.name,
+              wallColor: room.wall_color || null,
+              ceilingColor: room.ceiling_color || null,
+              trimColor: room.trim_color || null,
               wallSpec: room.wall_spec || null,
               floorSpec: room.floor_spec || null,
               ceilingSpec: room.ceiling_spec || null,
               joinerySpec: room.joinery_spec || null,
               dimensions: room.dimensions || null,
               ceilingHeightMm: room.ceiling_height_mm || null,
+              photos: roomPhotosMap[room.id] || [],
+              materials: materialsByRoom[room.id] || [],
             }
           : null,
       };

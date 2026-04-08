@@ -176,16 +176,21 @@ export function groupWorkerTasksByRoom(
     status: string;
     progress: number;
     checklists: Array<{ id: string; title: string; items: Array<{ id: string; title: string; completed: boolean }> }>;
-    photos: Array<{ id: string; url: string; caption: string | null }>;
+    photos: Array<{ id: string; url: string; caption: string | null; source?: string }>;
     roomId: string | null;
     room: {
       name: string;
+      wallColor?: string | null;
+      ceilingColor?: string | null;
+      trimColor?: string | null;
       wallSpec: unknown;
       floorSpec: unknown;
       ceilingSpec: unknown;
       joinerySpec: unknown;
       dimensions: { area_sqm?: number; ceiling_height_mm?: number } | null;
       ceilingHeightMm: number | null;
+      photos?: Array<{ id: string; url: string; caption: string | null; source?: string }>;
+      materials?: Array<{ id: string; name: string; quantity: number; unit: string; vendorName: string | null }>;
     } | null;
   }>
 ): RoomInstruction[] {
@@ -213,22 +218,28 @@ export function groupWorkerTasksByRoom(
     const completedItems = rtasks.reduce((sum, t) => sum + t.checklists.reduce((s, cl) => s + cl.items.filter((i) => i.completed).length, 0), 0);
     const completedTasks = rtasks.filter((t) => t.status === "done" || t.status === "completed").length;
 
+    // Categorize room photos from edge function
+    const roomPhotos = room?.photos || [];
+    const refPhotos = roomPhotos.filter((p) => p.source !== "worker_progress" && p.source !== "worker_completed");
+    const progPhotos = roomPhotos.filter((p) => p.source === "worker_progress");
+    const compPhotos = roomPhotos.filter((p) => p.source === "worker_completed");
+
     rooms.push({
       id: key,
       name: room?.name || "Utan rum",
-      wallColor: null,
-      ceilingColor: null,
-      trimColor: null,
+      wallColor: room?.wallColor || null,
+      ceilingColor: room?.ceilingColor || null,
+      trimColor: room?.trimColor || null,
       wallSpec: room?.wallSpec as RoomInstruction["wallSpec"],
       floorSpec: room?.floorSpec as RoomInstruction["floorSpec"],
       ceilingSpec: room?.ceilingSpec as RoomInstruction["ceilingSpec"],
       joinerySpec: room?.joinerySpec as RoomInstruction["joinerySpec"],
       dimensions: room?.dimensions || null,
-      referencePhotos: [],
-      progressPhotos: [],
-      completedPhotos: [],
+      referencePhotos: refPhotos,
+      progressPhotos: progPhotos,
+      completedPhotos: compPhotos,
       tasks: rtasks,
-      materials: [],
+      materials: room?.materials || [],
       progress: {
         completed: totalItems > 0 ? completedItems : completedTasks,
         total: totalItems > 0 ? totalItems : rtasks.length,
