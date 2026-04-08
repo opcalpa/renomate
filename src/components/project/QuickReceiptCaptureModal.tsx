@@ -685,7 +685,7 @@ export function QuickReceiptCaptureModal({
           )}
 
           {/* Step 2a: Scan flow — existing document capture */}
-          {flowStep === "scan" && !previewUrl ? (
+          {flowStep === "scan" && !previewUrl && (
             <div className="space-y-3">
               <input
                 ref={cameraInputRef}
@@ -731,7 +731,8 @@ export function QuickReceiptCaptureModal({
                 {t("common.back", "Tillbaka")}
               </Button>
             </div>
-          ) : (
+          )}
+          {flowStep === "scan" && previewUrl && (
             <>
               {/* Document preview */}
               <div className="relative">

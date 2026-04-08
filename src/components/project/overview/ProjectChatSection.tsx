@@ -596,46 +596,6 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
 
   return (
     <div id="project-chat" className="space-y-3">
-      {/* Team member avatars for DM */}
-      {teamMembers.length > 0 && (
-        <div className="flex items-center gap-2 px-1">
-          <span className="text-[10px] text-muted-foreground shrink-0 font-medium">
-            {t("dm.teamLabel", "Team")}
-          </span>
-          <div className="flex items-center gap-1.5 overflow-x-auto">
-            {teamMembers.map((member) => {
-              const isSelected = dmRecipient?.id === member.id;
-              const unread = unreadCounts[member.id] || 0;
-              return (
-                <button
-                  key={member.id}
-                  onClick={() => handleToggleDm(member)}
-                  className={cn(
-                    "relative shrink-0 rounded-full transition-all",
-                    isSelected
-                      ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-background"
-                      : "hover:ring-2 hover:ring-muted-foreground/30 hover:ring-offset-1 hover:ring-offset-background"
-                  )}
-                  title={member.name}
-                >
-                  <Avatar className="h-7 w-7">
-                    {member.avatar_url && <AvatarImage src={member.avatar_url} alt={member.name} />}
-                    <AvatarFallback className="text-[9px] bg-muted">
-                      {member.name.split(" ").map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  {unread > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 h-3.5 min-w-3.5 rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center px-0.5">
-                      {unread}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* DM mode */}
       {showDmFeed && dmRecipient ? (
         <div className="rounded-lg border border-blue-200 dark:border-blue-800/40 bg-blue-50/50 dark:bg-blue-950/20">
@@ -757,6 +717,41 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
                 {t(`feed.filter${opt.charAt(0).toUpperCase() + opt.slice(1)}`)}
               </Button>
             ))}
+            {/* Team avatars — inline in filter bar */}
+            {!searchOpen && teamMembers.length > 0 && (
+              <>
+                <div className="w-px h-4 bg-border mx-0.5" />
+                {teamMembers.map((member) => {
+                  const isSelected = dmRecipient?.id === member.id;
+                  const unread = unreadCounts[member.id] || 0;
+                  return (
+                    <button
+                      key={member.id}
+                      onClick={() => handleToggleDm(member)}
+                      className={cn(
+                        "relative shrink-0 rounded-full transition-all",
+                        isSelected
+                          ? "ring-2 ring-blue-500 ring-offset-1 ring-offset-background"
+                          : "hover:ring-2 hover:ring-muted-foreground/30 hover:ring-offset-1 hover:ring-offset-background"
+                      )}
+                      title={member.name}
+                    >
+                      <Avatar className="h-6 w-6">
+                        {member.avatar_url && <AvatarImage src={member.avatar_url} alt={member.name} />}
+                        <AvatarFallback className="text-[8px] bg-muted">
+                          {member.name.split(" ").map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {unread > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 h-3 min-w-3 rounded-full bg-red-500 text-white text-[7px] font-bold flex items-center justify-center px-0.5">
+                          {unread}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </>
+            )}
             {searchOpen ? (
               <div className="flex items-center gap-1 flex-1">
                 <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -802,9 +797,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : displayedItems.length === 0 ? (
-              <p className="text-center py-4 text-sm text-muted-foreground">
-                {filterMode === "comments" ? t("feed.noComments") : filterMode === "photos" ? t("overview.recentPhotos.noPhotos", "No photos yet") : t("feed.noActivity", "No activity yet")}
-              </p>
+              <div className="py-3" />
             ) : (
               <div className="space-y-2">
                 {hasMore && (

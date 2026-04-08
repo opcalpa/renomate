@@ -599,13 +599,13 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               type="button"
               onClick={() => { if (inspoView === "beforeafter") setInspoView("gallery"); else setCollapsed(!collapsed); }}
               className={cn(
-                "text-sm font-semibold uppercase tracking-wide flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
+                "text-xs font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors",
                 inspoView !== "beforeafter"
-                  ? "text-foreground bg-muted/50"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
               )}
             >
-              <Sparkles className="h-3.5 w-3.5" />
+              <Sparkles className="h-3 w-3" />
               {t("inspiration.title")}
               {inspoView !== "beforeafter" && (
                 <ChevronDown className={cn("h-3 w-3 transition-transform", collapsed && "-rotate-90")} />
@@ -615,13 +615,13 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               type="button"
               onClick={() => { setInspoView("beforeafter"); setCollapsed(false); }}
               className={cn(
-                "text-sm font-semibold uppercase tracking-wide flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
+                "text-xs font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors",
                 inspoView === "beforeafter"
-                  ? "text-foreground bg-muted/50"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
               )}
             >
-              <Clock className="h-3.5 w-3.5" />
+              <Clock className="h-3 w-3" />
               {t("inspiration.beforeAfter", "Före & Efter")}
             </button>
           </div>
