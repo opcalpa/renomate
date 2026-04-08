@@ -599,7 +599,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
       {/* Team member avatars for DM */}
       {teamMembers.length > 0 && (
         <div className="flex items-center gap-2 px-1">
-          <span className="text-[10px] text-muted-foreground shrink-0 uppercase tracking-wide font-medium">
+          <span className="text-[10px] text-muted-foreground shrink-0 font-medium">
             {t("dm.teamLabel", "Team")}
           </span>
           <div className="flex items-center gap-1.5 overflow-x-auto">
@@ -802,12 +802,9 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : displayedItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-                {filterMode === "photos" ? <ImageIcon className="h-6 w-6 mb-2" /> : <Activity className="h-6 w-6 mb-2" />}
-                <p className="text-sm">
-                  {filterMode === "comments" ? t("feed.noComments") : filterMode === "photos" ? t("overview.recentPhotos.noPhotos", "No photos yet") : t("feed.noActivity", "No activity yet")}
-                </p>
-              </div>
+              <p className="text-center py-4 text-sm text-muted-foreground">
+                {filterMode === "comments" ? t("feed.noComments") : filterMode === "photos" ? t("overview.recentPhotos.noPhotos", "No photos yet") : t("feed.noActivity", "No activity yet")}
+              </p>
             ) : (
               <div className="space-y-2">
                 {hasMore && (

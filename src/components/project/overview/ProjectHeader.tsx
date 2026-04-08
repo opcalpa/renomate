@@ -176,7 +176,7 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
   }, [project.cover_image_position, project.cover_image_zoom]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* Hero / Cover image */}
       <div className="relative group">
         {coverUrl ? (

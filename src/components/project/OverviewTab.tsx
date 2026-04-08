@@ -335,7 +335,7 @@ const OverviewTab = ({
 
   // ----- All phases: unified dashboard view -----
   return (
-    <div className="space-y-5 sm:space-y-8">
+    <div className="space-y-6">
       <ProjectHeader project={project} onOpenSettings={(isProjectOwner || overviewAccess === 'edit') ? () => setSettingsOpen(true) : undefined} />
 
       {/* RFQ banner — builder working on a homeowner's quote request */}
@@ -390,12 +390,10 @@ const OverviewTab = ({
         />
       )}
 
-      {/* Dashboard toolbar + pulse cards — hidden during pure planning phase */}
+      {/* Dashboard action buttons — hidden during pure planning phase */}
       {!isPlanning && (
         <>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("overview.projectOverview")}</h2>
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
               {!isHomeowner && !projectStatus?.startsWith("active") && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -504,7 +502,6 @@ const OverviewTab = ({
                 <Settings2 className="h-5 w-5" />
               </Button>
               )}
-            </div>
           </div>
         </>
       )}

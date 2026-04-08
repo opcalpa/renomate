@@ -71,7 +71,7 @@ export function PulseCards({
   const { t } = useTranslation();
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {/* Tasks Card */}
       <Card
         className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-w-0 shadow-sm"
