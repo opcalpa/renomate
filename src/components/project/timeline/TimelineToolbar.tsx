@@ -10,6 +10,7 @@ import {
   Calendar as CalendarIcon,
   RotateCcw,
   AlertCircle,
+  Layers,
   Plus,
   Trash2,
   Diamond,
@@ -230,9 +231,6 @@ function ProjectDatePopover({
                 selected={projectStartDate ? parseISO(projectStartDate) : undefined}
                 onSelect={(date) => saveDate("start_date", date ? format(date, "yyyy-MM-dd") : null)}
                 locale={sv}
-                captionLayout="dropdown-buttons"
-                fromYear={2020}
-                toYear={new Date().getFullYear() + 5}
                 className="rounded-md border"
               />
             ) : (
@@ -261,9 +259,6 @@ function ProjectDatePopover({
                 selected={projectFinishDate ? parseISO(projectFinishDate) : undefined}
                 onSelect={(date) => saveDate("finish_goal_date", date ? format(date, "yyyy-MM-dd") : null)}
                 locale={sv}
-                captionLayout="dropdown-buttons"
-                fromYear={2020}
-                toYear={new Date().getFullYear() + 5}
                 className="rounded-md border"
               />
             ) : (
@@ -438,32 +433,34 @@ function VisibilityToggles({ t }: { t: (key: string, fallback?: string) => strin
   const showMilestones = useTimelineStore((s) => s.showMilestones);
   const { setShowTasks, setShowPhases, setShowMilestones } = useTimelineStore.getState();
 
+  const allOn = showTasks && showPhases && showMilestones;
+
   return (
-    <div className="flex items-center gap-0.5 border rounded-md p-0.5">
-      <Button
-        variant={showTasks ? "default" : "ghost"}
-        size="sm"
-        className="h-7 px-2 text-[10px]"
-        onClick={() => setShowTasks(!showTasks)}
-      >
-        {t("timeline.tasks", "Tasks")}
-      </Button>
-      <Button
-        variant={showPhases ? "default" : "ghost"}
-        size="sm"
-        className="h-7 px-2 text-[10px]"
-        onClick={() => setShowPhases(!showPhases)}
-      >
-        {t("timeline.phases", "Phases")}
-      </Button>
-      <Button
-        variant={showMilestones ? "default" : "ghost"}
-        size="sm"
-        className="h-7 px-2 text-[10px]"
-        onClick={() => setShowMilestones(!showMilestones)}
-      >
-        {t("timeline.milestones", "Milestones")}
-      </Button>
-    </div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="icon" className="h-8 w-8 relative">
+          <Layers className="h-4 w-4" />
+          {!allOn && (
+            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary" />
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-40 p-2" align="start">
+        <div className="space-y-1">
+          <label className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer text-xs">
+            <input type="checkbox" checked={showTasks} onChange={() => setShowTasks(!showTasks)} className="rounded" />
+            {t("timeline.tasks", "Tasks")}
+          </label>
+          <label className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer text-xs">
+            <input type="checkbox" checked={showPhases} onChange={() => setShowPhases(!showPhases)} className="rounded" />
+            {t("timeline.phases", "Phases")}
+          </label>
+          <label className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer text-xs">
+            <input type="checkbox" checked={showMilestones} onChange={() => setShowMilestones(!showMilestones)} className="rounded" />
+            {t("timeline.milestones", "Milestones")}
+          </label>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
