@@ -150,17 +150,21 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
   const handleDragEnd = useCallback(
     (evt: KonvaEventObject<DragEvent>) => {
       setCursor("grab");
-      if (!didDrag.current) {
-        // Click - not a drag
-        onClick(taskId);
-      } else {
+      if (didDrag.current) {
         onDragEnd(taskId, evt);
       }
       dragStartPos.current = null;
       didDrag.current = false;
     },
-    [onDragEnd, onClick, taskId, setCursor]
+    [onDragEnd, taskId, setCursor]
   );
+
+  // Click/tap handler — fires on mouseup/touchend without drag movement
+  const handleClick = useCallback(() => {
+    if (!didDrag.current) {
+      onClick(taskId);
+    }
+  }, [onClick, taskId]);
 
   const handleResizeLeft = useCallback(
     (evt: KonvaEventObject<MouseEvent>) => {
@@ -204,6 +208,8 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
+      onClick={handleClick}
+      onTap={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
