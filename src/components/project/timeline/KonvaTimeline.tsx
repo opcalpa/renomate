@@ -119,17 +119,12 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
         })();
     if (!earliest || !latest) return;
     const span = Math.max(differenceInDays(latest, earliest) + 1, 7);
-    // Clamp to same bounds as store to avoid mismatch
-    const desiredPpd = containerWidth / span;
-    const clampedPpd = Math.max(MIN_PIXELS_PER_DAY, Math.min(MAX_PIXELS_PER_DAY, desiredPpd));
-    // Set zoom without anchor so it doesn't adjust panX
-    const s = useTimelineStore.getState();
-    s.setZoom(clampedPpd);
-    // Center the project period in the viewport
-    const midDate = addDays(earliest, Math.floor(span / 2));
-    const daysFromOrigin = differenceInDays(midDate, originDate);
-    const panX = -(daysFromOrigin * clampedPpd - containerWidth / 2);
-    setTimeout(() => useTimelineStore.getState().setPan(panX, 0), 10);
+    // Calculate exact ppd to fit project in viewport — bypass store min/max
+    const fitPpd = Math.max(1, containerWidth / span);
+    // Set zoom + pan atomically via direct state update
+    const daysFromOrigin = differenceInDays(earliest, originDate);
+    const panX = -(daysFromOrigin * fitPpd);
+    useTimelineStore.setState({ pixelsPerDay: fitPpd, panX });
   }, [tasks, projectStartDate, projectFinishDate, originDate, containerWidth]);
 
   const handleZoomIn = useCallback(() => {
