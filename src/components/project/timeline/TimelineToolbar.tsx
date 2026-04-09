@@ -230,6 +230,9 @@ function ProjectDatePopover({
                 selected={projectStartDate ? parseISO(projectStartDate) : undefined}
                 onSelect={(date) => saveDate("start_date", date ? format(date, "yyyy-MM-dd") : null)}
                 locale={sv}
+                captionLayout="dropdown-buttons"
+                fromYear={2020}
+                toYear={new Date().getFullYear() + 5}
                 className="rounded-md border"
               />
             ) : (
@@ -258,6 +261,9 @@ function ProjectDatePopover({
                 selected={projectFinishDate ? parseISO(projectFinishDate) : undefined}
                 onSelect={(date) => saveDate("finish_goal_date", date ? format(date, "yyyy-MM-dd") : null)}
                 locale={sv}
+                captionLayout="dropdown-buttons"
+                fromYear={2020}
+                toYear={new Date().getFullYear() + 5}
                 className="rounded-md border"
               />
             ) : (
