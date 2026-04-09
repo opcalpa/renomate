@@ -10,7 +10,7 @@ import { TimelineDateRuler } from "./TimelineDateRuler";
 import { TimelineCanvas } from "./TimelineCanvas";
 import { TimelineHoverCard } from "./TimelineHoverCard";
 import { TimelineToolbar } from "./TimelineToolbar";
-import { DEFAULT_PIXELS_PER_DAY } from "./utils";
+import { DEFAULT_PIXELS_PER_DAY, MIN_PIXELS_PER_DAY, MAX_PIXELS_PER_DAY } from "./utils";
 import type { GroupByOption } from "./types";
 
 interface KonvaTimelineProps {
@@ -135,13 +135,16 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
         })();
     if (!earliest || !latest) return;
     const span = Math.max(differenceInDays(latest, earliest) + 1, 7);
-    const newPixelsPerDay = Math.max(20, containerWidth / span);
+    // Clamp to same bounds as store to avoid mismatch
+    const desiredPpd = containerWidth / span;
+    const clampedPpd = Math.max(MIN_PIXELS_PER_DAY, Math.min(MAX_PIXELS_PER_DAY, desiredPpd));
+    // Set zoom without anchor so it doesn't adjust panX
     const s = useTimelineStore.getState();
-    s.setZoom(newPixelsPerDay, containerWidth / 2);
-    const midDate = addDays(earliest, Math.floor(span / 2));
-    const daysFromOrigin = differenceInDays(midDate, originDate);
-    const centerX = -(daysFromOrigin * newPixelsPerDay - containerWidth / 2);
-    setTimeout(() => useTimelineStore.getState().setPan(centerX, 0), 10);
+    s.setZoom(clampedPpd);
+    // Position earliest at left edge of viewport
+    const daysFromOrigin = differenceInDays(earliest, originDate);
+    const panX = -(daysFromOrigin * clampedPpd);
+    setTimeout(() => useTimelineStore.getState().setPan(panX, 0), 10);
   }, [tasks, projectStartDate, projectFinishDate, originDate, containerWidth]);
 
   const handleZoomIn = useCallback(() => {
