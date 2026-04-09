@@ -1,6 +1,5 @@
 import React, { useMemo, useCallback, useEffect, useRef, useState } from "react";
-import { parseISO, subDays, addDays, differenceInDays, format } from "date-fns";
-import { sv } from "date-fns/locale";
+import { parseISO, subDays, addDays, differenceInDays } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { useTimelineData } from "./hooks/useTimelineData";
@@ -11,13 +10,13 @@ import { TimelineCanvas } from "./TimelineCanvas";
 import { TimelineHoverCard } from "./TimelineHoverCard";
 import { TimelineToolbar } from "./TimelineToolbar";
 import { DEFAULT_PIXELS_PER_DAY, MIN_PIXELS_PER_DAY, MAX_PIXELS_PER_DAY } from "./utils";
-import type { GroupByOption } from "./types";
 
 interface KonvaTimelineProps {
   projectId: string;
   projectName?: string;
   projectStartDate?: string | null;
   projectFinishDate?: string | null;
+  filteredTaskIds?: string[] | null;
   onTaskClick?: (taskId: string) => void;
   onNavigateToRoom?: (roomId: string) => void;
   currency?: string | null;
@@ -28,6 +27,7 @@ interface KonvaTimelineProps {
 export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
   projectId,
   projectName,
+  filteredTaskIds,
   onTaskClick,
 }) => {
   const { t } = useTranslation();
@@ -35,7 +35,7 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
   const [containerWidth, setContainerWidth] = useState(800);
 
   const { tasks, allTasks, dependencies, milestones, teamMembers, rooms, projectStartDate, projectFinishDate, setProjectDates, loading, refetch } =
-    useTimelineData(projectId);
+    useTimelineData(projectId, filteredTaskIds);
 
   const {
     panX,
@@ -60,11 +60,6 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
   const unscheduledTasks = useMemo(
     () => allTasks.filter((tt) => !tt.start_date || !tt.finish_date),
     [allTasks]
-  );
-
-  const daysVisible = useMemo(
-    () => Math.round(containerWidth / pixelsPerDay),
-    [containerWidth, pixelsPerDay]
   );
 
   useEffect(() => {
@@ -98,17 +93,6 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
     const taskSpan = differenceInDays(latest, originDate) + 14;
     return Math.max(taskSpan, 180); // Always at least 180 days (6 months)
   }, [tasks, originDate]);
-
-  const dateRangeLabel = useMemo(() => {
-    if (tasks.length === 0) return "";
-    const starts = tasks.filter((tt) => tt.start_date).map((tt) => parseISO(tt.start_date!));
-    const ends = tasks.filter((tt) => tt.finish_date).map((tt) => parseISO(tt.finish_date!));
-    if (starts.length === 0 || ends.length === 0) return "";
-    const min = new Date(Math.min(...starts.map((d) => d.getTime())));
-    const max = new Date(Math.max(...ends.map((d) => d.getTime())));
-    const total = differenceInDays(max, min) + 1;
-    return `${format(min, "MMM d", { locale: sv })} - ${format(max, "MMM d, yyyy", { locale: sv })} (${total} ${t("timeline.days", "days")})`;
-  }, [tasks, t]);
 
   // Auto-center on first load — show task span, not today
   const hasAutocentered = useRef(false);
@@ -209,20 +193,12 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
     <div ref={containerRef} className="w-full relative overflow-hidden">
       <TimelineToolbar
         projectId={projectId}
-        projectName={projectName}
-        dateRangeLabel={dateRangeLabel}
-        daysVisible={daysVisible}
         unscheduledTasks={unscheduledTasks}
-        teamMembers={teamMembers}
-        groupBy={groupBy}
-        selectedAssignee={selectedAssignee}
         projectStartDate={projectStartDate}
         projectFinishDate={projectFinishDate}
         onProjectDatesChange={setProjectDates}
         milestones={milestones}
         onMilestonesChange={refetch}
-        onGroupByChange={setGroupBy}
-        onAssigneeChange={setSelectedAssignee}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onResetZoom={handleResetZoom}

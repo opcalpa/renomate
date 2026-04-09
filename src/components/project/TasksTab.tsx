@@ -1119,8 +1119,8 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
             </TabsList>
           </Tabs>
 
-          {/* Unified Filter Popover — hidden for timeline (has own toolbar) */}
-          {viewMode !== 'timeline' && <Popover>
+          {/* Unified Filter Popover */}
+          <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="icon" className="h-9 w-9 relative">
                 <Filter className="h-4 w-4" />
@@ -1273,7 +1273,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
                 )}
               </div>
             </PopoverContent>
-          </Popover>}
+          </Popover>
 
           {/* Kanban column visibility toggle */}
           {viewMode === 'kanban' && (
@@ -1732,7 +1732,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
       {viewMode === 'timeline' && (
         <Card className="overflow-hidden">
           <CardContent className="p-0 overflow-hidden">
-            <KonvaTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} onTaskClick={(taskId) => {
+            <KonvaTimeline projectId={projectId} projectName={projectName} filteredTaskIds={filteredTasks.map(t => t.id)} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} onTaskClick={(taskId) => {
                 const task = tasks.find(t => t.id === taskId);
                 if (task) { setEditingTask(task); setEditVariant("sheet"); setEditDialogOpen(true); }
               }} />

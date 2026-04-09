@@ -9,9 +9,6 @@ import {
   ZoomOut,
   Calendar as CalendarIcon,
   RotateCcw,
-  SlidersHorizontal,
-  X,
-  Layers,
   AlertCircle,
   Plus,
   Trash2,
@@ -25,34 +22,19 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTimelineStore } from "./store";
-import type { TimelineTask, TimelineMilestone, TeamMember, GroupByOption } from "./types";
+import type { TimelineTask, TimelineMilestone } from "./types";
 
 interface TimelineToolbarProps {
   projectId: string;
-  projectName?: string;
-  dateRangeLabel: string;
-  daysVisible: number;
   unscheduledTasks: TimelineTask[];
-  teamMembers: TeamMember[];
-  groupBy: GroupByOption;
-  selectedAssignee: string;
   projectStartDate: string | null;
   projectFinishDate: string | null;
   onProjectDatesChange: (start: string | null, finish: string | null) => void;
   milestones: TimelineMilestone[];
   onMilestonesChange: () => void;
-  onGroupByChange: (value: GroupByOption) => void;
-  onAssigneeChange: (value: string) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetZoom: () => void;
@@ -65,20 +47,12 @@ interface TimelineToolbarProps {
 
 export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
   projectId,
-  projectName,
-  dateRangeLabel,
-  daysVisible,
   unscheduledTasks,
-  teamMembers,
-  groupBy,
-  selectedAssignee,
   projectStartDate,
   projectFinishDate,
   onProjectDatesChange,
   milestones,
   onMilestonesChange,
-  onGroupByChange,
-  onAssigneeChange,
   onZoomIn,
   onZoomOut,
   onResetZoom,
@@ -89,27 +63,11 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
   onTaskClick,
 }) => {
   const { t } = useTranslation();
-  const hasActiveFilters = groupBy !== "none" || selectedAssignee !== "all";
 
   return (
-    <div className="px-3 py-2 border-b bg-background space-y-2">
-      {/* Row 1: project name + date range */}
-      <div className="flex items-center gap-2 min-w-0">
-        {projectName && (
-          <span className="text-sm font-medium truncate">
-            {projectName}
-          </span>
-        )}
-        {dateRangeLabel && (
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {dateRangeLabel}
-          </span>
-        )}
-      </div>
-
-      {/* Row 2: controls */}
+    <div className="px-3 py-2 border-b bg-background">
       <div className="flex items-center gap-1 flex-wrap">
-        {/* Calendar popover — project dates + unscheduled tasks */}
+        {/* Calendar popover — project dates + milestones */}
         <ProjectDatePopover
           projectId={projectId}
           projectStartDate={projectStartDate}
@@ -123,114 +81,14 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
           t={t}
         />
 
-        {/* Filter popover */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant={hasActiveFilters ? "secondary" : "outline"}
-              size="icon"
-              className="h-8 w-8 relative"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              {hasActiveFilters && (
-                <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary" />
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-64 p-3" align="end">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium">
-                {t("timeline.filters", "Filters")}
-              </p>
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs text-muted-foreground"
-                  onClick={() => {
-                    onGroupByChange("none");
-                    onAssigneeChange("all");
-                  }}
-                >
-                  <X className="h-3 w-3 mr-1" />
-                  {t("common.clear", "Clear")}
-                </Button>
-              )}
-            </div>
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">
-                  {t("timeline.groupBy", "Group by")}
-                </label>
-                <Select
-                  value={groupBy}
-                  onValueChange={(v) => onGroupByChange(v as GroupByOption)}
-                >
-                  <SelectTrigger className="h-9">
-                    <Layers className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">
-                      {t("timeline.noGrouping", "No grouping")}
-                    </SelectItem>
-                    <SelectItem value="status">
-                      {t("timeline.groupByStatus", "Status")}
-                    </SelectItem>
-                    <SelectItem value="room">
-                      {t("timeline.groupByRoom", "Room")}
-                    </SelectItem>
-                    <SelectItem value="assignee">
-                      {t("timeline.groupByAssignee", "Assignee")}
-                    </SelectItem>
-                    <SelectItem value="priority">
-                      {t("timeline.groupByPriority", "Priority")}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">
-                  {t("budget.allAssignees", "Assignee")}
-                </label>
-                <Select value={selectedAssignee} onValueChange={onAssigneeChange}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">
-                      {t("budget.allAssignees", "All")}
-                    </SelectItem>
-                    <SelectItem value="unassigned">
-                      {t("common.unassigned", "Unassigned")}
-                    </SelectItem>
-                    {teamMembers.map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        <div className="w-px h-5 bg-border mx-1 hidden sm:block" />
-
         {/* Visibility toggles */}
         <VisibilityToggles t={t} />
 
-        <div className="w-px h-5 bg-border mx-1 hidden sm:block" />
-
         {/* Zoom controls */}
-        <div className="flex items-center gap-0.5 border rounded-md p-0.5">
+        <div className="flex items-center gap-0.5 border rounded-md p-0.5 ml-2">
           <Button variant="ghost" size="icon" onClick={onZoomOut} className="h-7 w-7">
             <ZoomOut className="h-3.5 w-3.5" />
           </Button>
-          <span className="text-xs text-muted-foreground min-w-[50px] text-center hidden sm:inline">
-            {daysVisible} {t("timeline.days", "days")}
-          </span>
           <Button variant="ghost" size="icon" onClick={onZoomIn} className="h-7 w-7">
             <ZoomIn className="h-3.5 w-3.5" />
           </Button>
@@ -245,18 +103,18 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
           </Button>
         </div>
 
-        <div className="w-px h-5 bg-border mx-1 hidden sm:block" />
-
         {/* Navigation */}
-        <Button variant="ghost" size="icon" onClick={onPanLeft} className="h-8 w-8">
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-        <Button variant="outline" size="sm" onClick={onToday} className="h-8 px-2 text-xs">
-          {t("timeline.today", "Today")}
-        </Button>
-        <Button variant="ghost" size="icon" onClick={onPanRight} className="h-8 w-8">
-          <ChevronRight className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-0.5 ml-2">
+          <Button variant="ghost" size="icon" onClick={onPanLeft} className="h-7 w-7">
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={onToday} className="h-7 px-2 text-xs">
+            {t("timeline.today", "Today")}
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onPanRight} className="h-7 w-7">
+            <ChevronRight className="w-3.5 h-3.5" />
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type {
   TimelineTask,
@@ -22,7 +22,7 @@ interface UseTimelineDataResult {
   refetch: () => void;
 }
 
-export function useTimelineData(projectId: string): UseTimelineDataResult {
+export function useTimelineData(projectId: string, filteredTaskIds?: string[] | null): UseTimelineDataResult {
   const [tasks, setTasks] = useState<TimelineTask[]>([]);
   const [allTasks, setAllTasks] = useState<TimelineTask[]>([]);
   const [dependencies, setDependencies] = useState<TimelineDependency[]>([]);
@@ -178,9 +178,22 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
     setProjectFinishDate(finish);
   }, []);
 
+  // Apply external filter if provided (from TasksTab shared filters)
+  const filteredTasks = useMemo(() => {
+    if (!filteredTaskIds) return tasks;
+    const idSet = new Set(filteredTaskIds);
+    return tasks.filter((t) => idSet.has(t.id));
+  }, [tasks, filteredTaskIds]);
+
+  const filteredAllTasks = useMemo(() => {
+    if (!filteredTaskIds) return allTasks;
+    const idSet = new Set(filteredTaskIds);
+    return allTasks.filter((t) => idSet.has(t.id));
+  }, [allTasks, filteredTaskIds]);
+
   return {
-    tasks,
-    allTasks,
+    tasks: filteredTasks,
+    allTasks: filteredAllTasks,
     dependencies,
     teamMembers,
     rooms,
