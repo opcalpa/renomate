@@ -219,10 +219,11 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
 
   // Milestones for calendar view
   const [calendarMilestones, setCalendarMilestones] = useState<Array<{ id: string; title: string; date: string; color: string | null }>>([]);
-  useEffect(() => {
+  const fetchMilestones = () => {
     supabase.from("milestones").select("id, title, date, color").eq("project_id", projectId).order("date")
       .then(({ data }) => { if (data) setCalendarMilestones(data); });
-  }, [projectId]);
+  };
+  useEffect(() => { fetchMilestones(); }, [projectId, viewMode]);
 
   // Purchase Orders for edit dialog
   const [editTaskMaterials, setEditTaskMaterials] = useState<{ id: string; name: string; quantity: number; unit: string; price_per_unit: number | null; price_total: number | null; status: string }[]>([]);
