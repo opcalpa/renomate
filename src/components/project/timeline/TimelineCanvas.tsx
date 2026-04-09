@@ -72,6 +72,22 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
 
   const { panX, panY, pixelsPerDay, dragState } = useTimelineStore();
 
+  // Resize state — tracked locally for real-time visual feedback
+  const resizeRef = useRef<{
+    taskId: string;
+    side: "left" | "right";
+    startPointerX: number;
+    origStartDate: string;
+    origFinishDate: string;
+    origX: number;
+    origWidth: number;
+  } | null>(null);
+  const [resizePreview, setResizePreview] = useState<{
+    taskId: string;
+    x: number;
+    width: number;
+  } | null>(null);
+
   // Dynamic height: count rows whose tasks are visible in the current viewport
   const MIN_VISIBLE_ROWS = 4;
   const stageHeight = useMemo(() => {
@@ -320,14 +336,101 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
 
   const handleResizeStart = useCallback(
     (
-      _taskId: string,
-      _side: "left" | "right",
-      _evt: KonvaEventObject<MouseEvent>
+      taskId: string,
+      side: "left" | "right",
+      evt: KonvaEventObject<MouseEvent>
     ) => {
-      // Resize implementation - would need pointer tracking
-      // For now, log intent
+      evt.cancelBubble = true;
+      const stage = evt.target.getStage();
+      const pointer = stage?.getPointerPosition();
+      if (!pointer) return;
+
+      const task = tasks.find((tt) => tt.id === taskId);
+      if (!task?.start_date || !task?.finish_date) return;
+
+      const pos = taskPositions.get(taskId);
+      if (!pos) return;
+
+      resizeRef.current = {
+        taskId,
+        side,
+        startPointerX: pointer.x,
+        origStartDate: task.start_date,
+        origFinishDate: task.finish_date,
+        origX: pos.x,
+        origWidth: pos.width,
+      };
+    },
+    [tasks, taskPositions]
+  );
+
+  const handleStageMouseMove = useCallback(
+    (evt: KonvaEventObject<MouseEvent>) => {
+      const resize = resizeRef.current;
+      if (!resize) return;
+
+      const stage = evt.target.getStage();
+      const pointer = stage?.getPointerPosition();
+      if (!pointer) return;
+
+      const dx = pointer.x - resize.startPointerX;
+
+      if (resize.side === "right") {
+        const newWidth = Math.max(MIN_BAR_WIDTH, resize.origWidth + dx);
+        setResizePreview({ taskId: resize.taskId, x: resize.origX, width: newWidth });
+      } else {
+        const newX = resize.origX + dx;
+        const newWidth = Math.max(MIN_BAR_WIDTH, resize.origWidth - dx);
+        setResizePreview({ taskId: resize.taskId, x: newX, width: newWidth });
+      }
     },
     []
+  );
+
+  const handleStageMouseUp = useCallback(
+    async () => {
+      const resize = resizeRef.current;
+      if (!resize) return;
+      resizeRef.current = null;
+
+      const store = useTimelineStore.getState();
+      const preview = resizePreview;
+      setResizePreview(null);
+      if (!preview) return;
+
+      // Calculate new dates from preview position
+      const newStartDate = xToDate(preview.x, originDate, store.pixelsPerDay, store.panX);
+      const daysSpan = Math.max(1, Math.round(preview.width / store.pixelsPerDay));
+      const newFinishDate = addDays(newStartDate, daysSpan - 1);
+
+      const newStartStr = format(newStartDate, "yyyy-MM-dd");
+      const newFinishStr = format(newFinishDate, "yyyy-MM-dd");
+
+      // Skip if no change
+      if (newStartStr === resize.origStartDate && newFinishStr === resize.origFinishDate) return;
+
+      try {
+        const { error } = await supabase
+          .from("tasks")
+          .update({ start_date: newStartStr, finish_date: newFinishStr })
+          .eq("id", resize.taskId);
+        if (error) throw error;
+
+        const task = tasks.find((tt) => tt.id === resize.taskId);
+        toast({
+          title: resize.side === "left"
+            ? t("timeline.taskUpdated", "Task updated")
+            : t("timeline.taskDurationUpdated", "Task duration updated"),
+          description: `${task?.title ?? ""} → ${format(newStartDate, "MMM d")} – ${format(newFinishDate, "MMM d, yyyy")}`,
+        });
+
+        onRefetch();
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        toast({ title: "Error", description: message, variant: "destructive" });
+      }
+    },
+    [resizePreview, tasks, originDate, onRefetch, toast, t]
   );
 
   return (
@@ -340,6 +443,8 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
         width={stageWidth}
         height={stageHeight}
         onWheel={handleWheel}
+        onMouseMove={handleStageMouseMove}
+        onMouseUp={handleStageMouseUp}
       >
         {/* Grid layer */}
         <Layer listening={false}>
@@ -513,6 +618,9 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
             const assignee = teamMembers?.find((m) => m.id === task.assigned_to_stakeholder_id);
             const room = rooms?.find((r) => r.id === task.room_id);
 
+            // Use resize preview position if this task is being resized
+            const rp = resizePreview?.taskId === task.id ? resizePreview : null;
+
             return (
               <TimelineTaskBar
                 key={task.id}
@@ -520,9 +628,9 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
                 title={task.title}
                 status={task.status}
                 progress={task.progress}
-                x={pos.x}
+                x={rp ? rp.x : pos.x}
                 y={pos.y}
-                width={pos.width}
+                width={rp ? rp.width : pos.width}
                 isSelected={
                   useTimelineStore.getState().selectedTaskId === task.id
                 }
