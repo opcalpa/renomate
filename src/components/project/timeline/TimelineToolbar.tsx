@@ -257,9 +257,6 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
         <Button variant="ghost" size="icon" onClick={onPanRight} className="h-8 w-8">
           <ChevronRight className="w-4 h-4" />
         </Button>
-        <Button variant="outline" size="sm" onClick={onShowProject} className="h-8 px-2 text-xs">
-          {t("timeline.showProject", "Project")}
-        </Button>
       </div>
     </div>
   );
