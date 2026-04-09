@@ -26,6 +26,13 @@ export interface Room {
   name: string;
 }
 
+export interface TimelineMilestone {
+  id: string;
+  title: string;
+  date: string;
+  color: string | null;
+}
+
 export type GroupByOption = "none" | "status" | "room" | "assignee" | "priority";
 
 export interface TimelineViewState {

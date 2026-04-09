@@ -1,15 +1,18 @@
-import { 
-  Hammer, 
-  PaintBucket, 
-  HardHat, 
-  ChefHat, 
-  Bath, 
-  Wrench, 
-  Grid3x3, 
-  Frame, 
-  DoorOpen, 
-  Zap, 
+import {
+  Hammer,
+  PaintBucket,
+  HardHat,
+  ChefHat,
+  Bath,
+  Wrench,
+  Grid3x3,
+  Frame,
+  DoorOpen,
+  Zap,
   Ruler,
+  ClipboardCheck,
+  Trash2,
+  Pencil,
   LucideIcon
 } from "lucide-react";
 
@@ -31,6 +34,10 @@ export const DEFAULT_COST_CENTERS: CostCenter[] = [
   { id: "doors", label: "Doors", icon: DoorOpen },
   { id: "electricity", label: "Electricity", icon: Zap },
   { id: "carpentry", label: "Carpentry", icon: Hammer },
+  { id: "demolition", label: "Demolition", icon: Hammer },
+  { id: "inspection", label: "Inspection", icon: ClipboardCheck },
+  { id: "cleanup", label: "Cleanup & Waste", icon: Trash2 },
+  { id: "design", label: "Design & Planning", icon: Pencil },
 ];
 
 export const getCostCenterIcon = (costCenter: string | null): LucideIcon | null => {

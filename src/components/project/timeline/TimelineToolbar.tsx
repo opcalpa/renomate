@@ -13,8 +13,12 @@ import {
   X,
   Layers,
   AlertCircle,
+  Plus,
+  Trash2,
+  Diamond,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -31,7 +35,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTimelineStore } from "./store";
-import type { TimelineTask, TeamMember, GroupByOption } from "./types";
+import type { TimelineTask, TimelineMilestone, TeamMember, GroupByOption } from "./types";
 
 interface TimelineToolbarProps {
   projectId: string;
@@ -45,6 +49,8 @@ interface TimelineToolbarProps {
   projectStartDate: string | null;
   projectFinishDate: string | null;
   onProjectDatesChange: (start: string | null, finish: string | null) => void;
+  milestones: TimelineMilestone[];
+  onMilestonesChange: () => void;
   onGroupByChange: (value: GroupByOption) => void;
   onAssigneeChange: (value: string) => void;
   onZoomIn: () => void;
@@ -69,6 +75,8 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
   projectStartDate,
   projectFinishDate,
   onProjectDatesChange,
+  milestones,
+  onMilestonesChange,
   onGroupByChange,
   onAssigneeChange,
   onZoomIn,
@@ -107,7 +115,9 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
           projectStartDate={projectStartDate}
           projectFinishDate={projectFinishDate}
           unscheduledTasks={unscheduledTasks}
+          milestones={milestones}
           onDatesChange={onProjectDatesChange}
+          onMilestonesChange={onMilestonesChange}
           onShowProject={onShowProject}
           onTaskClick={onTaskClick}
           t={t}
@@ -261,7 +271,9 @@ function ProjectDatePopover({
   projectStartDate,
   projectFinishDate,
   unscheduledTasks,
+  milestones,
   onDatesChange,
+  onMilestonesChange,
   onShowProject,
   onTaskClick,
   t,
@@ -270,13 +282,19 @@ function ProjectDatePopover({
   projectStartDate: string | null;
   projectFinishDate: string | null;
   unscheduledTasks: TimelineTask[];
+  milestones: TimelineMilestone[];
   onDatesChange: (start: string | null, finish: string | null) => void;
+  onMilestonesChange: () => void;
   onShowProject: () => void;
   onTaskClick?: (taskId: string) => void;
   t: (key: string, fallback?: string) => string;
 }) {
   const [saving, setSaving] = useState(false);
   const [editingField, setEditingField] = useState<"start" | "finish" | null>(null);
+  const [addingMilestone, setAddingMilestone] = useState(false);
+  const [newMsTitle, setNewMsTitle] = useState("");
+  const [newMsDate, setNewMsDate] = useState<Date | undefined>(undefined);
+  const [showMsCalendar, setShowMsCalendar] = useState(false);
 
   const saveDate = useCallback(async (field: "start_date" | "finish_goal_date", value: string | null) => {
     setSaving(true);
@@ -299,6 +317,30 @@ function ProjectDatePopover({
   const handleShowProject = useCallback(() => {
     onShowProject();
   }, [onShowProject]);
+
+  const saveMilestone = useCallback(async () => {
+    if (!newMsTitle.trim() || !newMsDate) return;
+    setSaving(true);
+    const { error } = await supabase.from("milestones").insert({
+      project_id: projectId,
+      title: newMsTitle.trim(),
+      date: format(newMsDate, "yyyy-MM-dd"),
+    });
+    setSaving(false);
+    if (error) { toast.error(t("common.error", "Error")); return; }
+    setNewMsTitle("");
+    setNewMsDate(undefined);
+    setAddingMilestone(false);
+    setShowMsCalendar(false);
+    onMilestonesChange();
+    toast.success(t("common.saved", "Saved"));
+  }, [projectId, newMsTitle, newMsDate, onMilestonesChange, t]);
+
+  const deleteMilestone = useCallback(async (id: string) => {
+    const { error } = await supabase.from("milestones").delete().eq("id", id);
+    if (error) { toast.error(t("common.error", "Error")); return; }
+    onMilestonesChange();
+  }, [onMilestonesChange, t]);
 
   const hasDates = !!projectStartDate || !!projectFinishDate;
   const badgeCount = unscheduledTasks.length + (hasDates ? 0 : 1);
@@ -394,6 +436,106 @@ function ProjectDatePopover({
             <div className="flex items-start gap-1.5 text-[11px] text-amber-600 bg-amber-50 rounded-md px-2 py-1.5">
               <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
               {t("timeline.noDatesWarning", "Set start and goal dates to see project markers on the timeline")}
+            </div>
+          )}
+        </div>
+
+        {/* Milestones section */}
+        <div className="p-3 border-b space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground">
+              {t("timeline.milestones", "Milestones")}
+            </p>
+            {!addingMilestone && (
+              <button
+                type="button"
+                onClick={() => setAddingMilestone(true)}
+                className="flex items-center gap-1 text-[11px] text-primary hover:underline"
+              >
+                <Plus className="h-3 w-3" />
+                {t("common.add", "Add")}
+              </button>
+            )}
+          </div>
+
+          {/* Existing milestones */}
+          {milestones.length > 0 && (
+            <ul className="space-y-1 max-h-32 overflow-y-auto">
+              {milestones.map((ms) => (
+                <li key={ms.id} className="flex items-center gap-2 text-xs group">
+                  <Diamond className="h-3 w-3 shrink-0" style={{ color: ms.color || "#6366f1" }} />
+                  <span className="truncate flex-1">{ms.title}</span>
+                  <span className="text-muted-foreground whitespace-nowrap">
+                    {format(parseISO(ms.date), "d MMM", { locale: sv })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => deleteMilestone(ms.id)}
+                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {milestones.length === 0 && !addingMilestone && (
+            <p className="text-[11px] text-muted-foreground italic">
+              {t("timeline.noMilestones", "No milestones yet")}
+            </p>
+          )}
+
+          {/* Add milestone form */}
+          {addingMilestone && (
+            <div className="space-y-2 pt-1">
+              <Input
+                placeholder={t("timeline.milestoneTitle", "Title...")}
+                value={newMsTitle}
+                onChange={(e) => setNewMsTitle(e.target.value)}
+                className="h-7 text-xs"
+                autoFocus
+                onKeyDown={(e) => { if (e.key === "Escape") { setAddingMilestone(false); setShowMsCalendar(false); } }}
+              />
+              {showMsCalendar ? (
+                <Calendar
+                  mode="single"
+                  selected={newMsDate}
+                  onSelect={(date) => { setNewMsDate(date); setShowMsCalendar(false); }}
+                  locale={sv}
+                  className="rounded-md border"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowMsCalendar(true)}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded-md border hover:bg-accent transition-colors text-left"
+                >
+                  <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                  {newMsDate
+                    ? format(newMsDate, "d MMM yyyy", { locale: sv })
+                    : <span className="text-muted-foreground italic">{t("timeline.pickDate", "Pick date...")}</span>}
+                </button>
+              )}
+              <div className="flex gap-1.5">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="h-7 text-xs flex-1"
+                  disabled={!newMsTitle.trim() || !newMsDate || saving}
+                  onClick={saveMilestone}
+                >
+                  {t("common.save", "Save")}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => { setAddingMilestone(false); setShowMsCalendar(false); setNewMsTitle(""); setNewMsDate(undefined); }}
+                >
+                  {t("common.cancel", "Cancel")}
+                </Button>
+              </div>
             </div>
           )}
         </div>

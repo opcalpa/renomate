@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useEffect, useState, useMemo } from "react";
-import { Stage, Layer, Rect, Text as KonvaText, Group } from "react-konva";
+import { Stage, Layer, Rect, Line, Text as KonvaText, Group, RegularPolygon } from "react-konva";
 import { KonvaEventObject } from "konva/lib/Node";
 import {
   parseISO,
@@ -17,6 +17,7 @@ import { useTimelineStore } from "./store";
 import type {
   TimelineTask,
   TimelineDependency,
+  TimelineMilestone,
   GroupRow,
   TaskPosition,
 } from "./types";
@@ -40,6 +41,7 @@ interface TimelineCanvasProps {
   projectFinishDate?: string | null;
   teamMembers?: Array<{ id: string; name: string }>;
   rooms?: Array<{ id: string; name: string }>;
+  milestones?: TimelineMilestone[];
   onTaskClick: (taskId: string) => void;
   onRefetch: () => void;
 }
@@ -59,6 +61,7 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
   projectFinishDate,
   teamMembers,
   rooms,
+  milestones = [],
   onTaskClick,
   onRefetch,
 }) => {
@@ -359,9 +362,13 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
               // Group tasks by cost_center to compute phase spans
               const phaseMap = new Map<string, { minDate: string; maxDate: string; color: string }>();
               const PHASE_COLORS: Record<string, string> = {
-                demolition: "#f59e0b20", electrical: "#3b82f620", plumbing: "#06b6d420",
-                tiling: "#8b5cf620", carpentry: "#f97316e0", painting: "#ec489920",
-                flooring: "#84cc1620", kitchen: "#ef444420", bathroom: "#6366f120",
+                demolition: "#f59e0b20", electrical: "#3b82f620", electricity: "#3b82f620",
+                plumbing: "#06b6d420", tiling: "#8b5cf620", tiles: "#8b5cf620",
+                carpentry: "#f9731620", painting: "#ec489920", paint: "#ec489920",
+                flooring: "#84cc1620", floor: "#84cc1620", kitchen: "#ef444420",
+                bathroom: "#6366f120", bathrooms: "#6366f120", construction: "#78716c20",
+                windows: "#0ea5e920", doors: "#a855f720",
+                inspection: "#14b8a620", cleanup: "#71717a20", design: "#f472b620",
                 other: "#94a3b820",
               };
               for (const task of tasks) {
@@ -397,6 +404,70 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
                       fontStyle="bold"
                       fill={phase.color.replace("20", "90")}
                       listening={false}
+                    />
+                  </Group>
+                );
+              });
+            })()}
+          </Layer>
+        )}
+
+        {/* Milestone diamonds layer */}
+        {useTimelineStore.getState().showMilestones && milestones.length > 0 && (
+          <Layer listening={false}>
+            {(() => {
+              // Stagger y-positions to avoid text collisions
+              const sorted = [...milestones].sort((a, b) => a.date.localeCompare(b.date));
+              let lastX = -Infinity;
+              let ySlot = 0;
+              const DIAMOND_SIZE = 7;
+              const Y_POSITIONS = [10, 24];
+
+              return sorted.map((ms) => {
+                const x = dateToX(parseISO(ms.date), originDate, pixelsPerDay, panX) + pixelsPerDay / 2;
+                if (x < -100 || x > stageWidth + 100) return null;
+
+                // Stagger if too close to previous
+                if (x - lastX < 80) {
+                  ySlot = (ySlot + 1) % Y_POSITIONS.length;
+                } else {
+                  ySlot = 0;
+                }
+                lastX = x;
+                const y = Y_POSITIONS[ySlot];
+                const color = ms.color || "#6366f1";
+
+                return (
+                  <Group key={`ms-${ms.id}`}>
+                    {/* Vertical dashed line */}
+                    <Line
+                      points={[x, y + DIAMOND_SIZE + 2, x, stageHeight]}
+                      stroke={color}
+                      strokeWidth={1}
+                      dash={[4, 4]}
+                      opacity={0.25}
+                      perfectDrawEnabled={false}
+                    />
+                    {/* Diamond */}
+                    <RegularPolygon
+                      x={x}
+                      y={y}
+                      sides={4}
+                      radius={DIAMOND_SIZE}
+                      fill={color}
+                      rotation={0}
+                      perfectDrawEnabled={false}
+                    />
+                    {/* Title */}
+                    <KonvaText
+                      x={x + DIAMOND_SIZE + 4}
+                      y={y - 5}
+                      text={ms.title}
+                      fontSize={10}
+                      fontStyle="600"
+                      fill={color}
+                      listening={false}
+                      opacity={0.85}
                     />
                   </Group>
                 );

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type {
   TimelineTask,
   TimelineDependency,
+  TimelineMilestone,
   TeamMember,
   Room,
 } from "../types";
@@ -11,6 +12,7 @@ interface UseTimelineDataResult {
   tasks: TimelineTask[];
   allTasks: TimelineTask[];
   dependencies: TimelineDependency[];
+  milestones: TimelineMilestone[];
   teamMembers: TeamMember[];
   rooms: Room[];
   projectStartDate: string | null;
@@ -26,6 +28,7 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
   const [dependencies, setDependencies] = useState<TimelineDependency[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [milestones, setMilestones] = useState<TimelineMilestone[]>([]);
   const [projectStartDate, setProjectStartDate] = useState<string | null>(null);
   const [projectFinishDate, setProjectFinishDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -126,6 +129,19 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
     setTeamMembers(members);
   }, [projectId]);
 
+  const fetchMilestones = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("milestones")
+      .select("id, title, date, color")
+      .eq("project_id", projectId)
+      .order("date");
+    if (error) {
+      console.error("Failed to fetch milestones:", error);
+      return;
+    }
+    setMilestones(data || []);
+  }, [projectId]);
+
   const fetchRooms = useCallback(async () => {
     const { data, error } = await supabase
       .from("rooms")
@@ -147,10 +163,11 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
       fetchDependencies(),
       fetchTeamMembers(),
       fetchRooms(),
+      fetchMilestones(),
       fetchProjectDates(),
     ]);
     setLoading(false);
-  }, [fetchTasks, fetchDependencies, fetchTeamMembers, fetchRooms, fetchProjectDates]);
+  }, [fetchTasks, fetchDependencies, fetchTeamMembers, fetchRooms, fetchMilestones, fetchProjectDates]);
 
   useEffect(() => {
     fetchAll();
@@ -167,6 +184,7 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
     dependencies,
     teamMembers,
     rooms,
+    milestones,
     projectStartDate,
     projectFinishDate,
     setProjectDates,

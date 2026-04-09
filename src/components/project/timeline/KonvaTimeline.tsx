@@ -34,7 +34,7 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(800);
 
-  const { tasks, allTasks, dependencies, teamMembers, rooms, projectStartDate, projectFinishDate, setProjectDates, loading, refetch } =
+  const { tasks, allTasks, dependencies, milestones, teamMembers, rooms, projectStartDate, projectFinishDate, setProjectDates, loading, refetch } =
     useTimelineData(projectId);
 
   const {
@@ -215,6 +215,8 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
         projectStartDate={projectStartDate}
         projectFinishDate={projectFinishDate}
         onProjectDatesChange={setProjectDates}
+        milestones={milestones}
+        onMilestonesChange={refetch}
         onGroupByChange={setGroupBy}
         onAssigneeChange={setSelectedAssignee}
         onZoomIn={handleZoomIn}
@@ -247,6 +249,7 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
         projectFinishDate={projectFinishDate}
         teamMembers={teamMembers}
         rooms={rooms}
+        milestones={milestones}
         onTaskClick={handleTaskClick}
         onRefetch={refetch}
       />
