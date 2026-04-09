@@ -151,6 +151,10 @@ function ProjectDatePopover({
   const [newMsTitle, setNewMsTitle] = useState("");
   const [newMsDate, setNewMsDate] = useState<Date | undefined>(undefined);
   const [showMsCalendar, setShowMsCalendar] = useState(false);
+  const [editingMsId, setEditingMsId] = useState<string | null>(null);
+  const [editMsTitle, setEditMsTitle] = useState("");
+  const [editMsDate, setEditMsDate] = useState<Date | undefined>(undefined);
+  const [showEditMsCalendar, setShowEditMsCalendar] = useState(false);
 
   const saveDate = useCallback(async (field: "start_date" | "finish_goal_date", value: string | null) => {
     setSaving(true);
@@ -198,6 +202,28 @@ function ProjectDatePopover({
     onMilestonesChange();
   }, [onMilestonesChange, t]);
 
+  const startEditMilestone = useCallback((ms: TimelineMilestone) => {
+    setEditingMsId(ms.id);
+    setEditMsTitle(ms.title);
+    setEditMsDate(parseISO(ms.date));
+    setShowEditMsCalendar(false);
+  }, []);
+
+  const saveEditMilestone = useCallback(async () => {
+    if (!editingMsId || !editMsTitle.trim() || !editMsDate) return;
+    setSaving(true);
+    const { error } = await supabase.from("milestones").update({
+      title: editMsTitle.trim(),
+      date: format(editMsDate, "yyyy-MM-dd"),
+    }).eq("id", editingMsId);
+    setSaving(false);
+    if (error) { toast.error(t("common.error", "Error")); return; }
+    setEditingMsId(null);
+    setShowEditMsCalendar(false);
+    onMilestonesChange();
+    toast.success(t("common.saved", "Saved"));
+  }, [editingMsId, editMsTitle, editMsDate, onMilestonesChange, t]);
+
   const hasDates = !!projectStartDate || !!projectFinishDate;
   const badgeCount = unscheduledTasks.length + (hasDates ? 0 : 1);
 
@@ -213,7 +239,15 @@ function ProjectDatePopover({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-0" align="start">
+      <PopoverContent className="w-72 p-0" align="start" onClick={(e) => {
+        // Close open calendars when clicking outside them
+        const target = e.target as HTMLElement;
+        if (!target.closest('.rdp')) {
+          if (editingField) setEditingField(null);
+          if (showMsCalendar) setShowMsCalendar(false);
+          if (showEditMsCalendar) setShowEditMsCalendar(false);
+        }
+      }}>
         {/* Project dates section */}
         <div className="p-3 border-b space-y-2">
           <p className="text-xs font-medium text-muted-foreground">
@@ -316,9 +350,45 @@ function ProjectDatePopover({
 
           {/* Existing milestones */}
           {milestones.length > 0 && (
-            <ul className="space-y-1 max-h-32 overflow-y-auto">
-              {milestones.map((ms) => (
-                <li key={ms.id} className="flex items-center gap-2 text-xs group">
+            <ul className="space-y-1 max-h-48 overflow-y-auto">
+              {milestones.map((ms) => editingMsId === ms.id ? (
+                <li key={ms.id} className="space-y-1.5 py-1 border rounded-md px-2 bg-muted/30">
+                  <Input
+                    value={editMsTitle}
+                    onChange={(e) => setEditMsTitle(e.target.value)}
+                    className="h-7 text-xs"
+                    autoFocus
+                    onKeyDown={(e) => { if (e.key === "Enter") saveEditMilestone(); if (e.key === "Escape") { setEditingMsId(null); setShowEditMsCalendar(false); } }}
+                  />
+                  {showEditMsCalendar ? (
+                    <Calendar
+                      mode="single"
+                      selected={editMsDate}
+                      onSelect={(date) => { setEditMsDate(date); setShowEditMsCalendar(false); }}
+                      locale={sv}
+                      className="rounded-md border"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowEditMsCalendar(true)}
+                      className="flex items-center gap-2 w-full px-2 py-1 text-xs rounded-md border hover:bg-accent transition-colors text-left"
+                    >
+                      <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                      {editMsDate ? format(editMsDate, "d MMM yyyy", { locale: sv }) : "—"}
+                    </button>
+                  )}
+                  <div className="flex gap-1.5">
+                    <Button variant="default" size="sm" className="h-6 text-[11px] flex-1" disabled={!editMsTitle.trim() || !editMsDate || saving} onClick={saveEditMilestone}>
+                      {t("common.save", "Spara")}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-6 text-[11px]" onClick={() => { setEditingMsId(null); setShowEditMsCalendar(false); }}>
+                      {t("common.cancel", "Avbryt")}
+                    </Button>
+                  </div>
+                </li>
+              ) : (
+                <li key={ms.id} className="flex items-center gap-2 text-xs group cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5" onClick={() => startEditMilestone(ms)}>
                   <Diamond className="h-3 w-3 shrink-0" style={{ color: ms.color || "#6366f1" }} />
                   <span className="truncate flex-1">{ms.title}</span>
                   <span className="text-muted-foreground whitespace-nowrap">
@@ -326,7 +396,7 @@ function ProjectDatePopover({
                   </span>
                   <button
                     type="button"
-                    onClick={() => deleteMilestone(ms.id)}
+                    onClick={(e) => { e.stopPropagation(); deleteMilestone(ms.id); }}
                     className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
                   >
                     <Trash2 className="h-3 w-3" />
