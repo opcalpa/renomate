@@ -157,6 +157,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editVariant, setEditVariant] = useState<"dialog" | "sheet">("dialog");
   const { toast } = useToast();
   const { lockStatus } = useProjectLock(projectId);
 
@@ -1119,7 +1120,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
               <CardContent className="p-0 overflow-hidden">
                 <KonvaTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} onTaskClick={(taskId) => {
                     const task = tasks.find(t => t.id === taskId);
-                    if (task) { setEditingTask(task); setEditDialogOpen(true); }
+                    if (task) { setEditingTask(task); setEditVariant("sheet"); setEditDialogOpen(true); }
                   }} />
               </CardContent>
             </Card>
@@ -1742,15 +1743,17 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
           open={editDialogOpen}
           onOpenChange={(open) => {
             setEditDialogOpen(open);
-            if (!open) setEditingTask(null);
+            if (!open) { setEditingTask(null); setEditVariant("dialog"); }
           }}
           onSaved={() => {
             fetchTasks();
             setEditDialogOpen(false);
             setEditingTask(null);
+            setEditVariant("dialog");
           }}
           currency={currency}
           projectStatus={projectStatus}
+          variant={editVariant}
         />
         {/* Legacy inline edit dialog removed — all task editing uses TaskEditDialog */}
       </div>

@@ -29,6 +29,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -588,6 +595,47 @@ function SmartEstimateCard({ task, rooms, estimationSettings, onApply, onSaveDef
 
 // ---------------------------------------------------------------------------
 
+/** Wrapper that renders either a Dialog (modal) or Sheet (right drawer) with the same header */
+function TaskEditWrapper({ variant, open, onOpenChange, title, onTitleChange, t, children }: {
+  variant: "dialog" | "sheet";
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title?: string;
+  onTitleChange?: (title: string) => void;
+  t: (key: string, fallback?: string) => string;
+  children: React.ReactNode;
+}) {
+  const header = title && onTitleChange ? (
+    <TaskTitleField value={title} onChange={onTitleChange} />
+  ) : null;
+
+  if (variant === "sheet") {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="right" className="w-full sm:max-w-xl lg:max-w-2xl p-0 flex flex-col overflow-hidden">
+          <SheetHeader className="flex-shrink-0 px-6 pt-5 pb-3 border-b bg-gradient-to-b from-background to-muted/20">
+            {header || <SheetTitle className="truncate">{t("tasks.editTask")}</SheetTitle>}
+            <SheetDescription className="sr-only">{t("tasks.editTaskDescription", "Edit task details")}</SheetDescription>
+          </SheetHeader>
+          {children}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl lg:max-w-5xl max-h-[90vh] h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="flex-shrink-0 px-6 pt-5 pb-3 border-b bg-gradient-to-b from-background to-muted/20">
+          {header || <DialogTitle className="truncate">{t("tasks.editTask")}</DialogTitle>}
+          <DialogDescription className="sr-only">{t("tasks.editTaskDescription", "Edit task details")}</DialogDescription>
+        </DialogHeader>
+        {children}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 interface TaskEditDialogProps {
   taskId: string | null;
   projectId: string;
@@ -596,6 +644,7 @@ interface TaskEditDialogProps {
   onSaved?: () => void;
   currency?: string | null;
   projectStatus?: string | null;
+  variant?: "dialog" | "sheet";
 }
 
 export const TaskEditDialog = ({
@@ -606,6 +655,7 @@ export const TaskEditDialog = ({
   onSaved,
   currency,
   projectStatus,
+  variant = "dialog",
 }: TaskEditDialogProps) => {
   const isPlanning = projectStatus === "planning";
   const { t } = useTranslation();
@@ -1060,19 +1110,7 @@ export const TaskEditDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl lg:max-w-5xl max-h-[90vh] h-[90vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="flex-shrink-0 px-6 pt-5 pb-3 border-b bg-gradient-to-b from-background to-muted/20">
-          {task ? (
-            <TaskTitleField
-              value={task.title}
-              onChange={(title) => setTask({ ...task, title })}
-            />
-          ) : (
-            <DialogTitle className="truncate">{t("tasks.editTask")}</DialogTitle>
-          )}
-          <DialogDescription className="sr-only">{t("tasks.editTaskDescription")}</DialogDescription>
-        </DialogHeader>
+    <TaskEditWrapper variant={variant} open={open} onOpenChange={onOpenChange} title={task?.title} onTitleChange={task ? (title: string) => setTask({ ...task, title }) : undefined} t={t}>
 
         {loading ? (
           <div className="flex items-center justify-center h-40">
@@ -2229,7 +2267,6 @@ export const TaskEditDialog = ({
         ) : (
           <p className="text-muted-foreground py-8 text-center">{t("budget.noData")}</p>
         )}
-      </DialogContent>
-    </Dialog>
+    </TaskEditWrapper>
   );
 };
