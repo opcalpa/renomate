@@ -359,9 +359,6 @@ function ProjectDatePopover({
                   selected={newMsDate}
                   onSelect={(date) => { setNewMsDate(date); setShowMsCalendar(false); }}
                   locale={sv}
-                  captionLayout="dropdown-buttons"
-                  fromYear={2020}
-                  toYear={new Date().getFullYear() + 5}
                   className="rounded-md border"
                 />
               ) : (
