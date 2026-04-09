@@ -38,8 +38,16 @@ interface CalendarTask {
   finish_date: string | null;
 }
 
+interface CalendarMilestone {
+  id: string;
+  title: string;
+  date: string;
+  color: string | null;
+}
+
 interface TasksCalendarViewProps {
   tasks: CalendarTask[];
+  milestones?: CalendarMilestone[];
   onTaskClick: (taskId: string) => void;
 }
 
@@ -67,7 +75,7 @@ function assignLanes(
   return result;
 }
 
-export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, onTaskClick }) => {
+export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, milestones = [], onTaskClick }) => {
   const { t } = useTranslation();
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [calMode, setCalMode] = useState<"month" | "week">("month");
@@ -214,6 +222,26 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, onT
                   >
                     {format(day, "d")}
                   </span>
+                </div>
+              );
+            })}
+
+            {/* Milestone markers */}
+            {milestones.map((ms) => {
+              const msDate = parseISO(ms.date);
+              if (msDate < weekStart || msDate > weekEnd) return null;
+              const col = differenceInDays(msDate, weekStart);
+              const left = `${((col + 0.5) / 7) * 100}%`;
+              const top = 30 + maxLane * (TASK_BAR_HEIGHT + TASK_BAR_GAP);
+              return (
+                <div
+                  key={`ms-${ms.id}-${weekIdx}`}
+                  className="absolute flex items-center gap-1 -translate-x-1/2"
+                  style={{ left, top }}
+                  title={`${ms.title} — ${format(msDate, "d MMM", { locale: sv })}`}
+                >
+                  <span className="text-[10px] rotate-45 inline-block w-2.5 h-2.5 rounded-[1px]" style={{ backgroundColor: ms.color || "#6366f1" }} />
+                  <span className="text-[10px] font-medium whitespace-nowrap" style={{ color: ms.color || "#6366f1" }}>{ms.title}</span>
                 </div>
               );
             })}

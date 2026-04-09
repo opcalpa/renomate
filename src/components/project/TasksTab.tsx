@@ -217,6 +217,13 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
   // Drag and drop
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
 
+  // Milestones for calendar view
+  const [calendarMilestones, setCalendarMilestones] = useState<Array<{ id: string; title: string; date: string; color: string | null }>>([]);
+  useEffect(() => {
+    supabase.from("milestones").select("id, title, date, color").eq("project_id", projectId).order("date")
+      .then(({ data }) => { if (data) setCalendarMilestones(data); });
+  }, [projectId]);
+
   // Purchase Orders for edit dialog
   const [editTaskMaterials, setEditTaskMaterials] = useState<{ id: string; name: string; quantity: number; unit: string; price_per_unit: number | null; price_total: number | null; status: string }[]>([]);
   const [poDialogOpen, setPoDialogOpen] = useState(false);
@@ -1744,7 +1751,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
       {viewMode === 'calendar' && (
         <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <TasksCalendarView tasks={tasks} onTaskClick={(taskId) => {
+            <TasksCalendarView tasks={tasks} milestones={calendarMilestones} onTaskClick={(taskId) => {
               const task = tasks.find(t => t.id === taskId);
               if (task) { setEditingTask(task); setEditDialogOpen(true); }
             }} />
