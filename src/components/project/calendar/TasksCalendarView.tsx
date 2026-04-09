@@ -5,6 +5,8 @@ import {
   startOfWeek,
   endOfWeek,
   addDays,
+  addWeeks,
+  subWeeks,
   addMonths,
   subMonths,
   isSameMonth,
@@ -15,9 +17,16 @@ import {
   differenceInDays,
 } from "date-fns";
 import { sv } from "date-fns/locale";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { getStatusSolidColor } from "@/lib/statusColors";
 
@@ -60,17 +69,28 @@ function assignLanes(
 
 export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, onTaskClick }) => {
   const { t } = useTranslation();
-  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [calMode, setCalMode] = useState<"month" | "week">("month");
 
-  const prev = useCallback(() => setCurrentMonth((m) => subMonths(m, 1)), []);
-  const next = useCallback(() => setCurrentMonth((m) => addMonths(m, 1)), []);
-  const today = useCallback(() => setCurrentMonth(new Date()), []);
+  const prev = useCallback(() => {
+    setCurrentDate((d) => calMode === "month" ? subMonths(d, 1) : subWeeks(d, 1));
+  }, [calMode]);
+  const next = useCallback(() => {
+    setCurrentDate((d) => calMode === "month" ? addMonths(d, 1) : addWeeks(d, 1));
+  }, [calMode]);
+  const today = useCallback(() => setCurrentDate(new Date()), []);
 
-  // Generate weeks for the current month view
+  // Generate weeks to display
   const weeks = useMemo(() => {
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
-    const calStart = startOfWeek(monthStart, { weekStartsOn: 1 }); // Monday
+    if (calMode === "week") {
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const week: Date[] = [];
+      for (let i = 0; i < 7; i++) week.push(addDays(weekStart, i));
+      return [week];
+    }
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
     const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
     const result: Date[][] = [];
@@ -84,7 +104,17 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, onT
       result.push(week);
     }
     return result;
-  }, [currentMonth]);
+  }, [currentDate, calMode]);
+
+  // Header label
+  const headerLabel = useMemo(() => {
+    if (calMode === "week") {
+      const ws = weeks[0][0];
+      const we = weeks[0][6];
+      return `${format(ws, "d MMM", { locale: sv })} – ${format(we, "d MMM yyyy", { locale: sv })}`;
+    }
+    return format(currentDate, "MMMM yyyy", { locale: sv });
+  }, [currentDate, calMode, weeks]);
 
   // Filter tasks with dates and compute which weeks they appear in
   const scheduledTasks = useMemo(
@@ -98,7 +128,7 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, onT
 
   return (
     <div className="flex flex-col">
-      {/* Month navigation */}
+      {/* Navigation */}
       <div className="flex items-center gap-2 px-4 py-3 border-b">
         <Button variant="outline" size="sm" onClick={today} className="h-7 text-xs">
           {t("timeline.today", "Idag")}
@@ -106,19 +136,28 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, onT
         <Button variant="ghost" size="icon" onClick={prev} className="h-7 w-7">
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <span className="text-sm font-medium min-w-[120px] text-center capitalize">
-          {format(currentMonth, "MMMM yyyy", { locale: sv })}
+        <span className="text-sm font-medium min-w-[140px] text-center capitalize">
+          {headerLabel}
         </span>
         <Button variant="ghost" size="icon" onClick={next} className="h-7 w-7">
           <ChevronRight className="h-4 w-4" />
         </Button>
+        <Select value={calMode} onValueChange={(v) => setCalMode(v as "month" | "week")}>
+          <SelectTrigger className="h-7 w-[100px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="month">{t("timeline.calendarMonth", "Månad")}</SelectItem>
+            <SelectItem value="week">{t("timeline.calendarWeek", "Vecka")}</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Day headers */}
       <div className="grid grid-cols-7 border-b">
-        {DAY_NAMES.map((name) => (
+        {DAY_NAMES.map((name, i) => (
           <div key={name} className="text-center text-xs font-medium text-muted-foreground py-2 border-r last:border-r-0">
-            {name}
+            {name}{calMode === "week" && weeks[0] ? ` ${format(weeks[0][i], "d")}` : ""}
           </div>
         ))}
       </div>
@@ -154,10 +193,10 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, onT
         const taskAreaHeight = maxLane * (TASK_BAR_HEIGHT + TASK_BAR_GAP);
 
         return (
-          <div key={weekIdx} className="grid grid-cols-7 border-b relative" style={{ minHeight: Math.max(80, 32 + taskAreaHeight) }}>
+          <div key={weekIdx} className="grid grid-cols-7 border-b relative" style={{ minHeight: Math.max(calMode === "week" ? 200 : 80, 32 + taskAreaHeight) }}>
             {/* Day cells */}
             {week.map((day, dayIdx) => {
-              const inMonth = isSameMonth(day, currentMonth);
+              const inMonth = calMode === "week" || isSameMonth(day, currentDate);
               const isCurrentDay = isToday(day);
               return (
                 <div

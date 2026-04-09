@@ -1798,6 +1798,8 @@
     "allScheduled": "All tasks are scheduled",
     "showProject": "Project",
     "calendar": "Calendar",
+    "calendarMonth": "Month",
+    "calendarWeek": "Week",
     "milestones": "Milestones",
     "noMilestones": "No milestones yet",
     "milestoneTitle": "Title...",

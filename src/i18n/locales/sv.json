@@ -1280,6 +1280,8 @@
     "allScheduled": "Alla arbeten är schemalagda",
     "showProject": "Projekt",
     "calendar": "Kalender",
+    "calendarMonth": "Månad",
+    "calendarWeek": "Vecka",
     "milestones": "Milstolpar",
     "noMilestones": "Inga milstolpar ännu",
     "milestoneTitle": "Titel...",
