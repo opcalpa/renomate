@@ -17,7 +17,7 @@ import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map as MapIcon, Loader2, AlertTriangle, Link2, ImageIcon, MessageSquare, Columns3, AlignJustify, Layers } from "lucide-react";
 import { TaskListSkeleton } from "@/components/ui/skeleton-screens";
@@ -39,6 +39,7 @@ import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
 import { getStatusSolidColor } from "@/lib/statusColors";
 import { TasksTableView, useTasksTableView, EXTRA_COLUMN_KEYS } from "./tasks";
 import { SwipeableRoomInstructions, useRoomInstructionsData } from "@/components/room-instructions";
+import { TasksCalendarView } from "./calendar";
 
 interface ChecklistItem {
   id: string;
@@ -168,17 +169,16 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
   const [filterCostCenters, setFilterCostCenters] = useState<Set<string>>(new Set());
   
   // View mode — persisted per project + synced to server
-  const [viewMode, handleSetViewMode] = usePersistedPreference<'kanban' | 'table' | 'rooms'>(`tasks-view-mode-${projectId}`, tasksScope === 'assigned' ? 'rooms' : 'kanban');
+  type ViewMode = 'timeline' | 'table' | 'kanban' | 'calendar';
+  const VALID_MODES = new Set<ViewMode>(['timeline', 'table', 'kanban', 'calendar']);
+  const [rawViewMode, handleSetViewMode] = usePersistedPreference<string>(`tasks-view-mode-${projectId}`, 'kanban');
+  const viewMode = (VALID_MODES.has(rawViewMode as ViewMode) ? rawViewMode : 'kanban') as ViewMode;
 
   // Table view state (lifted so toolbar can render in parent)
   const tableViewState = useTasksTableView(projectId);
 
-  // Room instructions data (for rooms view mode)
-  const { rooms: roomInstructions, floorPlanShapes } = useRoomInstructionsData(projectId, viewMode === "rooms" ? currentProfileId : null);
-
-  // Timeline visibility
-  const [timelineOpen, setTimelineOpen] = useState(true);
-  const [tasksOpen, setTasksOpen] = useState(true);
+  // Room instructions data (for rooms view mode — legacy, kept for potential reuse)
+  const { rooms: roomInstructions, floorPlanShapes } = useRoomInstructionsData(projectId, null);
   
   // Column order for Kanban view (filter out legacy 'done' status which is merged into 'completed')
   const [columnOrder, setColumnOrder] = useState<string[]>(() => {
@@ -1106,52 +1106,21 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
     <div className="space-y-6">
       <ProjectLockBanner lockStatus={lockStatus} />
 
-      {/* Collapsible Timeline Section */}
-      {showTimeline && (
-        <div>
-          <button
-            className="text-lg font-medium hover:text-primary transition-colors mb-2"
-            onClick={() => setTimelineOpen(!timelineOpen)}
-          >
-            {t('projectDetail.timeline')}
-          </button>
-          {timelineOpen && (
-            <Card className="overflow-hidden">
-              <CardContent className="p-0 overflow-hidden">
-                <KonvaTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} onTaskClick={(taskId) => {
-                    const task = tasks.find(t => t.id === taskId);
-                    if (task) { setEditingTask(task); setEditVariant("sheet"); setEditDialogOpen(true); }
-                  }} />
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-
       <div className="flex flex-col gap-4">
-        {/* Tasks section header */}
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {t('tasks.tasks')}
-        </h3>
-
-        {/* Filters, View Toggle, and Add Task button on same row */}
+        {/* View tabs */}
         <div>
         <div className="flex items-center gap-3 flex-wrap">
-          {/* View Toggle */}
-          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && handleSetViewMode(value as 'kanban' | 'table' | 'rooms')}>
-            <ToggleGroupItem value="kanban" aria-label="Kanban view">
-              <LayoutGrid className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="table" aria-label="Table view">
-              <TableIcon className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="rooms" aria-label="Room instructions view">
-              <Layers className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
+          <Tabs value={viewMode} onValueChange={(v) => handleSetViewMode(v)}>
+            <TabsList className="h-9">
+              <TabsTrigger value="timeline" className="text-xs px-3">{t('projectDetail.timeline', 'Tidslinje')}</TabsTrigger>
+              <TabsTrigger value="table" className="text-xs px-3">{t('tasks.tableView', 'Tabell')}</TabsTrigger>
+              <TabsTrigger value="kanban" className="text-xs px-3">Kanban</TabsTrigger>
+              <TabsTrigger value="calendar" className="text-xs px-3">{t('timeline.calendar', 'Kalender')}</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-          {/* Unified Filter Popover */}
-          <Popover>
+          {/* Unified Filter Popover — hidden for timeline (has own toolbar) */}
+          {viewMode !== 'timeline' && <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="icon" className="h-9 w-9 relative">
                 <Filter className="h-4 w-4" />
@@ -1304,7 +1273,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
                 )}
               </div>
             </PopoverContent>
-          </Popover>
+          </Popover>}
 
           {/* Kanban column visibility toggle */}
           {viewMode === 'kanban' && (
@@ -1759,7 +1728,32 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
       </div>
       </div>
 
-      {loading ? (
+      {/* Timeline view — self-contained with own data loading */}
+      {viewMode === 'timeline' && (
+        <Card className="overflow-hidden">
+          <CardContent className="p-0 overflow-hidden">
+            <KonvaTimeline projectId={projectId} projectName={projectName} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} onTaskClick={(taskId) => {
+                const task = tasks.find(t => t.id === taskId);
+                if (task) { setEditingTask(task); setEditVariant("sheet"); setEditDialogOpen(true); }
+              }} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Calendar view */}
+      {viewMode === 'calendar' && (
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            <TasksCalendarView tasks={tasks} onTaskClick={(taskId) => {
+              const task = tasks.find(t => t.id === taskId);
+              if (task) { setEditingTask(task); setEditDialogOpen(true); }
+            }} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Table/Kanban views */}
+      {viewMode !== 'timeline' && viewMode !== 'calendar' && (loading ? (
         <TaskListSkeleton rows={5} />
       ) : tasks.length === 0 ? (
         <Card className="text-center py-12 border-dashed">
@@ -1889,25 +1883,6 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
             })}
           </div>
         </div>
-      ) : viewMode === 'rooms' ? (
-        /* Room Instructions View */
-        <SwipeableRoomInstructions
-          rooms={roomInstructions}
-          floorPlanShapes={floorPlanShapes}
-          canToggleChecklist={canEditTasks}
-          onChecklistToggle={async (taskId, checklistId, itemId, completed) => {
-            const task = tasks.find((t) => t.id === taskId);
-            if (!task) return;
-            const checklists = Array.isArray(task.checklists) ? [...task.checklists as Array<{ id: string; title: string; items: Array<{ id: string; title: string; completed: boolean }> }>] : [];
-            const cl = checklists.find((c) => c.id === checklistId);
-            if (!cl) return;
-            const item = cl.items.find((i) => i.id === itemId);
-            if (!item) return;
-            item.completed = completed;
-            await supabase.from("tasks").update({ checklists }).eq("id", taskId);
-            fetchTasks();
-          }}
-        />
       ) : (
         /* Table View */
         <TasksTableView
@@ -1927,7 +1902,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
           tableViewState={tableViewState}
           hideToolbar
         />
-      )}
+      ))}
       </div>
       {/* Create Purchase Order Dialog */}
       <Dialog open={poDialogOpen} onOpenChange={setPoDialogOpen}>
