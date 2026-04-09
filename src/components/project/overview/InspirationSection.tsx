@@ -595,7 +595,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
     <Card ref={inspoRef}>
       <CardContent className="p-4 sm:p-5">
         {/* Header */}
-        <div className={cn("flex items-center justify-between", !collapsed && "mb-3")}>
+        <div className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-3")}>
           {/* Section tabs — Inspiration vs Före & Efter */}
           <div className="flex items-center gap-1">
             <button
@@ -628,7 +628,6 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               {t("inspiration.beforeAfter", "Före & Efter")}
             </button>
           </div>
-          <div className="flex items-center gap-2">
           {/* Room filter — shared across all views */}
           {hasPhotos && rooms.length > 0 && (
             <Popover>
@@ -777,7 +776,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="p-1 rounded-md border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  className="ml-auto p-1 rounded-md border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                   title={t("inspiration.add")}
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -815,7 +814,6 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               </PopoverContent>
             </Popover>
           )}
-          </div>
         </div>
 
         {/* Collapsible content */}

@@ -1,17 +1,21 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { format, parseISO } from "date-fns";
+import { sv } from "date-fns/locale";
 import {
   ChevronLeft,
   ChevronRight,
   ZoomIn,
   ZoomOut,
-  Calendar,
+  Calendar as CalendarIcon,
   RotateCcw,
   SlidersHorizontal,
   X,
   Layers,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
@@ -24,10 +28,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useTimelineStore } from "./store";
 import type { TimelineTask, TeamMember, GroupByOption } from "./types";
 
 interface TimelineToolbarProps {
+  projectId: string;
   projectName?: string;
   dateRangeLabel: string;
   daysVisible: number;
@@ -35,6 +42,9 @@ interface TimelineToolbarProps {
   teamMembers: TeamMember[];
   groupBy: GroupByOption;
   selectedAssignee: string;
+  projectStartDate: string | null;
+  projectFinishDate: string | null;
+  onProjectDatesChange: (start: string | null, finish: string | null) => void;
   onGroupByChange: (value: GroupByOption) => void;
   onAssigneeChange: (value: string) => void;
   onZoomIn: () => void;
@@ -48,6 +58,7 @@ interface TimelineToolbarProps {
 }
 
 export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
+  projectId,
   projectName,
   dateRangeLabel,
   daysVisible,
@@ -55,6 +66,9 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
   teamMembers,
   groupBy,
   selectedAssignee,
+  projectStartDate,
+  projectFinishDate,
+  onProjectDatesChange,
   onGroupByChange,
   onAssigneeChange,
   onZoomIn,
@@ -87,43 +101,17 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
 
       {/* Row 2: controls */}
       <div className="flex items-center gap-1 flex-wrap">
-        {/* Calendar popover with unscheduled badge */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="icon" className="h-8 w-8 relative">
-              <Calendar className="h-4 w-4" />
-              {unscheduledTasks.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-0.5 rounded-full bg-orange-500 text-white text-[10px] font-medium flex items-center justify-center">
-                  {unscheduledTasks.length}
-                </span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-72 p-0" align="end">
-            {unscheduledTasks.length > 0 ? (
-              <div className="p-3">
-                <p className="text-xs font-medium text-muted-foreground mb-2">
-                  {t("timeline.unscheduledTasksTitle", "Unscheduled tasks")}
-                </p>
-                <ul className="space-y-1 max-h-48 overflow-y-auto">
-                  {unscheduledTasks.map((ut) => (
-                    <li
-                      key={ut.id}
-                      className="text-sm truncate text-primary hover:underline cursor-pointer"
-                      onClick={() => onTaskClick?.(ut.id)}
-                    >
-                      {ut.title}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <div className="p-3 text-sm text-muted-foreground">
-                {t("projectDetail.noScheduledTasksDescription", "All tasks are scheduled")}
-              </div>
-            )}
-          </PopoverContent>
-        </Popover>
+        {/* Calendar popover — project dates + unscheduled tasks */}
+        <ProjectDatePopover
+          projectId={projectId}
+          projectStartDate={projectStartDate}
+          projectFinishDate={projectFinishDate}
+          unscheduledTasks={unscheduledTasks}
+          onDatesChange={onProjectDatesChange}
+          onShowProject={onShowProject}
+          onTaskClick={onTaskClick}
+          t={t}
+        />
 
         {/* Filter popover */}
         <Popover>
@@ -266,6 +254,177 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
     </div>
   );
 };
+
+/** Project dates editor + unscheduled tasks list */
+function ProjectDatePopover({
+  projectId,
+  projectStartDate,
+  projectFinishDate,
+  unscheduledTasks,
+  onDatesChange,
+  onShowProject,
+  onTaskClick,
+  t,
+}: {
+  projectId: string;
+  projectStartDate: string | null;
+  projectFinishDate: string | null;
+  unscheduledTasks: TimelineTask[];
+  onDatesChange: (start: string | null, finish: string | null) => void;
+  onShowProject: () => void;
+  onTaskClick?: (taskId: string) => void;
+  t: (key: string, fallback?: string) => string;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [editingField, setEditingField] = useState<"start" | "finish" | null>(null);
+
+  const saveDate = useCallback(async (field: "start_date" | "finish_goal_date", value: string | null) => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("projects")
+      .update({ [field]: value })
+      .eq("id", projectId);
+    setSaving(false);
+    if (error) {
+      toast.error(t("common.error", "Error"));
+      return;
+    }
+    const newStart = field === "start_date" ? value : projectStartDate;
+    const newFinish = field === "finish_goal_date" ? value : projectFinishDate;
+    onDatesChange(newStart, newFinish);
+    setEditingField(null);
+    toast.success(t("common.saved", "Saved"));
+  }, [projectId, projectStartDate, projectFinishDate, onDatesChange, t]);
+
+  const handleShowProject = useCallback(() => {
+    onShowProject();
+  }, [onShowProject]);
+
+  const hasDates = !!projectStartDate || !!projectFinishDate;
+  const badgeCount = unscheduledTasks.length + (hasDates ? 0 : 1);
+
+  return (
+    <Popover onOpenChange={(open) => { if (!open) setEditingField(null); }}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="icon" className="h-8 w-8 relative">
+          <CalendarIcon className="h-4 w-4" />
+          {badgeCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-0.5 rounded-full bg-orange-500 text-white text-[10px] font-medium flex items-center justify-center">
+              {badgeCount}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-0" align="start">
+        {/* Project dates section */}
+        <div className="p-3 border-b space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">
+            {t("timeline.projectDates", "Project dates")}
+          </p>
+
+          {/* Start date */}
+          <div className="space-y-1">
+            <label className="text-[11px] text-muted-foreground">
+              {t("timeline.startDate", "Start")}
+            </label>
+            {editingField === "start" ? (
+              <Calendar
+                mode="single"
+                selected={projectStartDate ? parseISO(projectStartDate) : undefined}
+                onSelect={(date) => saveDate("start_date", date ? format(date, "yyyy-MM-dd") : null)}
+                locale={sv}
+                className="rounded-md border"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditingField("start")}
+                disabled={saving}
+                className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded-md border hover:bg-accent transition-colors text-left"
+              >
+                <CalendarIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+                {projectStartDate
+                  ? format(parseISO(projectStartDate), "d MMM yyyy", { locale: sv })
+                  : <span className="text-muted-foreground italic">{t("timeline.setStartDate", "Set start date...")}</span>}
+              </button>
+            )}
+          </div>
+
+          {/* Finish date */}
+          <div className="space-y-1">
+            <label className="text-[11px] text-muted-foreground">
+              {t("timeline.finishDate", "Goal")}
+            </label>
+            {editingField === "finish" ? (
+              <Calendar
+                mode="single"
+                selected={projectFinishDate ? parseISO(projectFinishDate) : undefined}
+                onSelect={(date) => saveDate("finish_goal_date", date ? format(date, "yyyy-MM-dd") : null)}
+                locale={sv}
+                className="rounded-md border"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditingField("finish")}
+                disabled={saving}
+                className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded-md border hover:bg-accent transition-colors text-left"
+              >
+                <CalendarIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+                {projectFinishDate
+                  ? format(parseISO(projectFinishDate), "d MMM yyyy", { locale: sv })
+                  : <span className="text-muted-foreground italic">{t("timeline.setFinishDate", "Set goal date...")}</span>}
+              </button>
+            )}
+          </div>
+
+          {/* Show project span button */}
+          {hasDates && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-7 text-xs"
+              onClick={handleShowProject}
+            >
+              {t("timeline.showProjectSpan", "Show project period")}
+            </Button>
+          )}
+
+          {!hasDates && (
+            <div className="flex items-start gap-1.5 text-[11px] text-amber-600 bg-amber-50 rounded-md px-2 py-1.5">
+              <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
+              {t("timeline.noDatesWarning", "Set start and goal dates to see project markers on the timeline")}
+            </div>
+          )}
+        </div>
+
+        {/* Unscheduled tasks section */}
+        <div className="p-3">
+          <p className="text-xs font-medium text-muted-foreground mb-2">
+            {t("timeline.unscheduledTasksTitle", "Unscheduled tasks")}
+          </p>
+          {unscheduledTasks.length > 0 ? (
+            <ul className="space-y-1 max-h-48 overflow-y-auto">
+              {unscheduledTasks.map((ut) => (
+                <li
+                  key={ut.id}
+                  className="text-sm truncate text-primary hover:underline cursor-pointer"
+                  onClick={() => onTaskClick?.(ut.id)}
+                >
+                  {ut.title}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {t("timeline.allScheduled", "All tasks are scheduled")}
+            </p>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function VisibilityToggles({ t }: { t: (key: string, fallback?: string) => string }) {
   const showTasks = useTimelineStore((s) => s.showTasks);

@@ -15,6 +15,7 @@ interface UseTimelineDataResult {
   rooms: Room[];
   projectStartDate: string | null;
   projectFinishDate: string | null;
+  setProjectDates: (start: string | null, finish: string | null) => void;
   loading: boolean;
   refetch: () => void;
 }
@@ -155,6 +156,11 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
     fetchAll();
   }, [fetchAll]);
 
+  const setProjectDates = useCallback((start: string | null, finish: string | null) => {
+    setProjectStartDate(start);
+    setProjectFinishDate(finish);
+  }, []);
+
   return {
     tasks,
     allTasks,
@@ -163,6 +169,7 @@ export function useTimelineData(projectId: string): UseTimelineDataResult {
     rooms,
     projectStartDate,
     projectFinishDate,
+    setProjectDates,
     loading,
     refetch: fetchAll,
   };

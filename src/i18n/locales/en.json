@@ -1787,7 +1787,15 @@
     "projectDates": "Project dates",
     "projectDatesTitle": "Project dates",
     "setDate": "Set date",
-    "showFullProject": "Show full project period"
+    "showFullProject": "Show full project period",
+    "startDate": "Start",
+    "finishDate": "Goal",
+    "setStartDate": "Set start date...",
+    "setFinishDate": "Set goal date...",
+    "showProjectSpan": "Show project period",
+    "noDatesWarning": "Set start and goal dates to see project markers on the timeline",
+    "allScheduled": "All tasks are scheduled",
+    "showProject": "Project"
   },
   "statuses": {
     "ideas": "Ideas",

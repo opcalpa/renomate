@@ -1269,7 +1269,15 @@
     "projectDates": "Projektdatum",
     "projectDatesTitle": "Projektdatum",
     "setDate": "Ange datum",
-    "showFullProject": "Visa hela projektperioden"
+    "showFullProject": "Visa hela projektperioden",
+    "startDate": "Start",
+    "finishDate": "Mål",
+    "setStartDate": "Ange startdatum...",
+    "setFinishDate": "Ange måldatum...",
+    "showProjectSpan": "Visa projektperiod",
+    "noDatesWarning": "Ange start- och måldatum för att se projektmarkörer på tidslinjen",
+    "allScheduled": "Alla arbeten är schemalagda",
+    "showProject": "Projekt"
   },
   "statuses": {
     "ideas": "Idéer",
