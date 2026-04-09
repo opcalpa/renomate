@@ -16,7 +16,7 @@ export const MIN_BAR_WIDTH = 24;
 export const DEFAULT_PIXELS_PER_DAY = 120;
 
 /** Zoom constraints */
-export const MIN_PIXELS_PER_DAY = 16;
+export const MIN_PIXELS_PER_DAY = 4;
 export const MAX_PIXELS_PER_DAY = 300;
 
 /** Hex colors mapped to task statuses for Konva rendering */
