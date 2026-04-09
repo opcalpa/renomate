@@ -141,9 +141,10 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
     // Set zoom without anchor so it doesn't adjust panX
     const s = useTimelineStore.getState();
     s.setZoom(clampedPpd);
-    // Position earliest at left edge of viewport
-    const daysFromOrigin = differenceInDays(earliest, originDate);
-    const panX = -(daysFromOrigin * clampedPpd);
+    // Center the project period in the viewport
+    const midDate = addDays(earliest, Math.floor(span / 2));
+    const daysFromOrigin = differenceInDays(midDate, originDate);
+    const panX = -(daysFromOrigin * clampedPpd - containerWidth / 2);
     setTimeout(() => useTimelineStore.getState().setPan(panX, 0), 10);
   }, [tasks, projectStartDate, projectFinishDate, originDate, containerWidth]);
 
