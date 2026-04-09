@@ -1554,180 +1554,149 @@ export const TaskEditDialog = ({
                 );
               })()}
 
+              {/* ── Property Grid — all core fields flat, no collapsibles ── */}
               {!isPlanning && (
-              <div className="grid grid-cols-2 gap-4 rounded-lg border bg-background p-4 shadow-sm">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-task-start-date" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tasks.startDate")}</Label>
-                  <DatePicker
-                    date={task.start_date ? parseLocalDate(task.start_date) : undefined}
-                    onDateChange={(date) =>
-                      setTask({ ...task, start_date: date ? formatLocalDate(date) : null })
-                    }
-                    placeholder="Välj startdatum"
-                  />
+              <div className="rounded-lg border bg-background p-4 shadow-sm space-y-4">
+                {/* Row 1: Status, Priority, Assignee */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.status")}</Label>
+                    {(() => {
+                      const unresolvedDeps = dependencies.filter(d => d.status !== "done" && d.status !== "completed");
+                      const blockedStatuses = ["in_progress", "completed", "done"];
+                      const isBlocked = unresolvedDeps.length > 0;
+                      const handleStatusChange = (value: string) => {
+                        if (isBlocked && blockedStatuses.includes(value)) {
+                          toast({ title: t("tasks.depBlockedTitle", "Dependencies not completed"), description: `${unresolvedDeps.map(d => d.title).join(", ")} — ${t("tasks.depOverrideHint", "status changed anyway")}` });
+                        }
+                        setTask({ ...task, status: value });
+                      };
+                      return (
+                        <Select value={task.status} onValueChange={handleStatusChange}>
+                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="planned">{t("statuses.planned", "Planned")}</SelectItem>
+                            <SelectItem value="to_do">{t("statuses.toDo")}</SelectItem>
+                            <SelectItem value="in_progress">{t("statuses.inProgress")}{isBlocked && " ⚠️"}</SelectItem>
+                            <SelectItem value="waiting">{t("statuses.waiting")}</SelectItem>
+                            <SelectItem value="completed">{t("statuses.completed")}{isBlocked && " ⚠️"}</SelectItem>
+                            <SelectItem value="cancelled">{t("statuses.cancelled")}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.priority")}</Label>
+                    <Select value={task.priority} onValueChange={(value) => setTask({ ...task, priority: value })}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">{t("tasks.priorityLow")}</SelectItem>
+                        <SelectItem value="medium">{t("tasks.priorityMedium")}</SelectItem>
+                        <SelectItem value="high">{t("tasks.priorityHigh")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.assignTo")}</Label>
+                    <Select value={task.assigned_to_stakeholder_id || "unassigned"} onValueChange={(value) => setTask({ ...task, assigned_to_stakeholder_id: value === "unassigned" ? null : value })}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder={t("common.unassigned")} /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">{t("common.unassigned")}</SelectItem>
+                        {teamMembers.map((member) => (
+                          <SelectItem key={member.id} value={member.id}>{member.name} {member.role ? `(${member.role})` : ""}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-task-finish-date" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tasks.finishDate")}</Label>
-                  <DatePicker
-                    date={task.finish_date ? parseLocalDate(task.finish_date) : undefined}
-                    onDateChange={(date) =>
-                      setTask({ ...task, finish_date: date ? formatLocalDate(date) : null })
-                    }
-                    placeholder="Välj slutdatum"
-                  />
+
+                {/* Row 2: Room + Category */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.room")}</Label>
+                    <MultiRoomSelect
+                      rooms={rooms}
+                      selectedIds={task.room_ids?.length ? task.room_ids : (task.room_id ? [task.room_id] : [])}
+                      onChange={(ids) => setTask({ ...task, room_ids: ids, room_id: ids[0] || null })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.costCenter")}</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full h-9 justify-start text-sm font-normal">
+                          {(task.cost_centers || []).length > 0
+                            ? (task.cost_centers || []).map((cc: string) => {
+                                const def = DEFAULT_COST_CENTERS.find(d => d.id === cc);
+                                return def ? def.label : cc;
+                              }).join(", ")
+                            : <span className="text-muted-foreground">{t("common.none", "Ingen")}</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2 max-h-48 overflow-y-auto" align="start">
+                        {DEFAULT_COST_CENTERS.map((cc) => {
+                          const Icon = cc.icon;
+                          const isSelected = (task.cost_centers || []).includes(cc.id);
+                          return (
+                            <label key={cc.id} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer text-xs">
+                              <Checkbox checked={isSelected} onCheckedChange={(checked) => {
+                                const current = task.cost_centers || [];
+                                const next = checked ? [...current, cc.id] : current.filter((c: string) => c !== cc.id);
+                                setTask({ ...task, cost_centers: next, cost_center: next[0] || null });
+                              }} />
+                              <Icon className="h-3.5 w-3.5" />
+                              {cc.label}
+                            </label>
+                          );
+                        })}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                {/* Row 3: Dates + Progress */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.startDate")}</Label>
+                    <DatePicker
+                      date={task.start_date ? parseLocalDate(task.start_date) : undefined}
+                      onDateChange={(date) => setTask({ ...task, start_date: date ? formatLocalDate(date) : null })}
+                      placeholder={t("tasks.startDate")}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.finishDate")}</Label>
+                    <DatePicker
+                      date={task.finish_date ? parseLocalDate(task.finish_date) : undefined}
+                      onDateChange={(date) => setTask({ ...task, finish_date: date ? formatLocalDate(date) : null })}
+                      placeholder={t("tasks.finishDate")}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.progress")} {task.progress}%</Label>
+                    <Slider
+                      min={0} max={100} step={5}
+                      value={[task.progress]}
+                      onValueChange={([value]) => setTask({ ...task, progress: value })}
+                      className="w-full pt-2"
+                    />
+                  </div>
                 </div>
               </div>
               )}
 
-              {/* ── Collapsible sections ── */}
+              {/* ── Collapsible deep-dive sections ── */}
               {!isPlanning && (
               <div className="space-y-1.5 pt-3">
 
-                {/* Status & Priority & Assignee */}
-                <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
-                    <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
-                    {t("tasks.status")} / {t("tasks.priority")} / {t("tasks.assignTo")}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="ml-3 pl-4 pb-3 space-y-3 border-l-2 border-muted">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-task-status">{t("tasks.status")}</Label>
-                          {(() => {
-                            const unresolvedDeps = dependencies.filter(d => d.status !== "done" && d.status !== "completed");
-                            const blockedStatuses = ["in_progress", "completed", "done"];
-                            const isBlocked = unresolvedDeps.length > 0;
-
-                            const handleStatusChange = (value: string) => {
-                              if (isBlocked && blockedStatuses.includes(value)) {
-                                // Show warning toast but allow override
-                                toast({
-                                  title: t("tasks.depBlockedTitle", "Dependencies not completed"),
-                                  description: `${unresolvedDeps.map(d => d.title).join(", ")} — ${t("tasks.depOverrideHint", "status changed anyway")}`,
-                                });
-                              }
-                              setTask({ ...task, status: value });
-                            };
-
-                            return (
-                              <Select value={task.status} onValueChange={handleStatusChange}>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="planned">{t("statuses.planned", "Planned")}</SelectItem>
-                                  <SelectItem value="to_do">{t("statuses.toDo")}</SelectItem>
-                                  <SelectItem value="in_progress">
-                                    {t("statuses.inProgress")}
-                                    {isBlocked && " ⚠️"}
-                                  </SelectItem>
-                                  <SelectItem value="waiting">{t("statuses.waiting")}</SelectItem>
-                                  <SelectItem value="completed">
-                                    {t("statuses.completed")}
-                                    {isBlocked && " ⚠️"}
-                                  </SelectItem>
-                                  <SelectItem value="cancelled">{t("statuses.cancelled")}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            );
-                          })()}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-task-priority">{t("tasks.priority")}</Label>
-                          <Select
-                            value={task.priority}
-                            onValueChange={(value) => setTask({ ...task, priority: value })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="low">{t("tasks.priorityLow")}</SelectItem>
-                              <SelectItem value="medium">{t("tasks.priorityMedium")}</SelectItem>
-                              <SelectItem value="high">{t("tasks.priorityHigh")}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-task-assignee">{t("tasks.assignTo")}</Label>
-                        <Select
-                          value={task.assigned_to_stakeholder_id || "unassigned"}
-                          onValueChange={(value) =>
-                            setTask({
-                              ...task,
-                              assigned_to_stakeholder_id: value === "unassigned" ? null : value,
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder={t("common.unassigned")} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="unassigned">{t("common.unassigned")}</SelectItem>
-                            {teamMembers.map((member) => (
-                              <SelectItem key={member.id} value={member.id}>
-                                {member.name} {member.role ? `(${member.role})` : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-
-                {/* Progress */}
-                <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
-                    <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
-                    {t("tasks.progress")}: {task.progress}%
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="ml-3 pl-4 pb-3 border-l-2 border-muted">
-                      <Slider
-                        id="edit-task-progress"
-                        min={0}
-                        max={100}
-                        step={5}
-                        value={[task.progress]}
-                        onValueChange={([value]) => setTask({ ...task, progress: value })}
-                        className="w-full"
-                      />
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-
-                {/* Room */}
-                <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
-                    <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
-                    {t("tasks.room")}{(() => {
-                      const ids = task.room_ids?.length ? task.room_ids : (task.room_id ? [task.room_id] : []);
-                      const names = ids.map((id: string) => rooms.find(r => r.id === id)?.name).filter(Boolean);
-                      return names.length > 0 ? `: ${names.join(", ")}` : "";
-                    })()}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="ml-3 pl-4 pb-3 border-l-2 border-muted">
-                      <MultiRoomSelect
-                        rooms={rooms}
-                        selectedIds={task.room_ids?.length ? task.room_ids : (task.room_id ? [task.room_id] : [])}
-                        onChange={(ids) => setTask({ ...task, room_ids: ids, room_id: ids[0] || null })}
-                      />
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-
-                {/* Payment / cost tracking */}
-                <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
-                    <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
+                {/* Payment / cost tracking — always visible */}
+                <div className="rounded-lg border bg-background p-4 shadow-sm space-y-3">
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
                     {isBuilder ? t("tasks.costTracking", "Cost Tracking") : t("tasks.paymentStatus")}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="ml-3 pl-4 pb-3 space-y-3 border-l-2 border-muted">
+                  </p>
                       {/* Cost Breakdown — builder only */}
                       {isBuilder && task.budget ? (() => {
                         const laborTotal = (task.estimated_hours || 0) * (task.hourly_rate || 0);
@@ -1897,109 +1866,7 @@ export const TaskEditDialog = ({
                           </Select>
                         </div>
                       )}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-
-                {/* Cost Centers */}
-                <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 px-3 text-sm font-medium rounded-lg hover:bg-background hover:shadow-sm border border-transparent hover:border-border transition-all group">
-                    <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
-                    {t("tasks.costCentersMultiple")}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="ml-3 pl-4 pb-3 space-y-2 border-l-2 border-muted">
-                      <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
-                        {DEFAULT_COST_CENTERS.map((cc) => {
-                          const Icon = cc.icon;
-                          const isSelected = (task.cost_centers || []).includes(cc.id);
-                          return (
-                            <div key={cc.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`cc-${cc.id}`}
-                                checked={isSelected}
-                                onCheckedChange={(checked) => {
-                                  const currentCenters = task.cost_centers || [];
-                                  const newCenters = checked
-                                    ? [...currentCenters, cc.id]
-                                    : currentCenters.filter((c) => c !== cc.id);
-                                  setTask({ ...task, cost_centers: newCenters, cost_center: newCenters[0] || null });
-                                }}
-                              />
-                              <label htmlFor={`cc-${cc.id}`} className="flex items-center gap-2 text-sm font-medium leading-none cursor-pointer">
-                                <Icon className="h-4 w-4" />
-                                {cc.label}
-                              </label>
-                            </div>
-                          );
-                        })}
-                        {customCostCenters.map((cc) => {
-                          const isSelected = (task.cost_centers || []).includes(cc);
-                          return (
-                            <div key={cc} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`cc-custom-${cc}`}
-                                checked={isSelected}
-                                onCheckedChange={(checked) => {
-                                  const currentCenters = task.cost_centers || [];
-                                  const newCenters = checked
-                                    ? [...currentCenters, cc]
-                                    : currentCenters.filter((c) => c !== cc);
-                                  setTask({ ...task, cost_centers: newCenters, cost_center: newCenters[0] || null });
-                                }}
-                              />
-                              <label htmlFor={`cc-custom-${cc}`} className="flex items-center gap-2 text-sm font-medium leading-none cursor-pointer">
-                                <Tag className="h-4 w-4" />
-                                {cc}
-                              </label>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setShowCustomCostCenter(true)} className="w-full">
-                        <Plus className="h-3 w-3 mr-2" />
-                        {t("tasks.addCustomCostCenter")}
-                      </Button>
-                      {showCustomCostCenter && (
-                        <div className="flex gap-2 mt-2">
-                          <Input
-                            placeholder={t("tasks.enterCustomCostCenter")}
-                            value={customCostCenterValue}
-                            onChange={(e) => setCustomCostCenterValue(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                if (customCostCenterValue.trim()) {
-                                  const newCustomCenter = customCostCenterValue.trim();
-                                  setCustomCostCenters([...customCostCenters, newCustomCenter]);
-                                  const currentCenters = task.cost_centers || [];
-                                  setTask({ ...task, cost_centers: [...currentCenters, newCustomCenter], cost_center: task.cost_center || newCustomCenter });
-                                  setShowCustomCostCenter(false);
-                                  setCustomCostCenterValue("");
-                                }
-                              }
-                            }}
-                          />
-                          <Button type="button" onClick={() => {
-                            if (customCostCenterValue.trim()) {
-                              const newCustomCenter = customCostCenterValue.trim();
-                              setCustomCostCenters([...customCostCenters, newCustomCenter]);
-                              const currentCenters = task.cost_centers || [];
-                              setTask({ ...task, cost_centers: [...currentCenters, newCustomCenter], cost_center: task.cost_center || newCustomCenter });
-                              setShowCustomCostCenter(false);
-                              setCustomCostCenterValue("");
-                            }
-                          }}>
-                            Add
-                          </Button>
-                          <Button type="button" variant="ghost" onClick={() => { setShowCustomCostCenter(false); setCustomCostCenterValue(""); }}>
-                            Cancel
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
+                </div>
 
                 {/* Dependencies */}
                 <Collapsible>
