@@ -1122,7 +1122,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
             <TabsList className="h-9">
               <TabsTrigger value="timeline" className="text-xs px-3">{t('projectDetail.timeline', 'Tidslinje')}</TabsTrigger>
               <TabsTrigger value="table" className="text-xs px-3">{t('tasks.tableView', 'Tabell')}</TabsTrigger>
-              <TabsTrigger value="kanban" className="text-xs px-3">Kanban</TabsTrigger>
+              <TabsTrigger value="kanban" className="text-xs px-3">{t('tasks.kanbanView', 'Kanban')}</TabsTrigger>
               <TabsTrigger value="calendar" className="text-xs px-3">{t('timeline.calendar', 'Kalender')}</TabsTrigger>
             </TabsList>
           </Tabs>

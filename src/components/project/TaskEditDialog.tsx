@@ -149,6 +149,7 @@ interface Task {
 // ---------------------------------------------------------------------------
 
 function TaskTitleField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
@@ -165,7 +166,7 @@ function TaskTitleField({ value, onChange }: { value: string; onChange: (v: stri
       <DialogTitle
         className="text-lg font-semibold truncate cursor-pointer hover:text-primary transition-colors py-1"
         onClick={() => setEditing(true)}
-        title="Klicka för att redigera"
+        title={t("common.clickToEdit", "Click to edit")}
       >
         {value}
       </DialogTitle>

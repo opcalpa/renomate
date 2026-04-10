@@ -380,10 +380,10 @@ function ProjectDatePopover({
                   )}
                   <div className="flex gap-1.5">
                     <Button variant="default" size="sm" className="h-6 text-[11px] flex-1" disabled={!editMsTitle.trim() || !editMsDate || saving} onClick={saveEditMilestone}>
-                      {t("common.save", "Spara")}
+                      {t("common.save", "Save")}
                     </Button>
                     <Button variant="ghost" size="sm" className="h-6 text-[11px]" onClick={() => { setEditingMsId(null); setShowEditMsCalendar(false); }}>
-                      {t("common.cancel", "Avbryt")}
+                      {t("common.cancel", "Cancel")}
                     </Button>
                   </div>
                 </li>

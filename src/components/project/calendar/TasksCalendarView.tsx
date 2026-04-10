@@ -130,7 +130,10 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, mil
     [tasks]
   );
 
-  const DAY_NAMES = ["Mån", "Tis", "Ons", "Tors", "Fre", "Lör", "Sön"];
+  const DAY_NAMES = [
+    t("timeline.calendarMon", "Mon"), t("timeline.calendarTue", "Tue"), t("timeline.calendarWed", "Wed"),
+    t("timeline.calendarThu", "Thu"), t("timeline.calendarFri", "Fri"), t("timeline.calendarSat", "Sat"), t("timeline.calendarSun", "Sun"),
+  ];
   const TASK_BAR_HEIGHT = 22;
   const TASK_BAR_GAP = 2;
 
@@ -139,7 +142,7 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, mil
       {/* Navigation */}
       <div className="flex items-center gap-2 px-4 py-3 border-b">
         <Button variant="outline" size="sm" onClick={today} className="h-7 text-xs">
-          {t("timeline.today", "Idag")}
+          {t("timeline.today", "Today")}
         </Button>
         <Button variant="ghost" size="icon" onClick={prev} className="h-7 w-7">
           <ChevronLeft className="h-4 w-4" />
