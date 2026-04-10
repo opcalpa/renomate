@@ -42,7 +42,8 @@ interface TimelineCanvasProps {
   teamMembers?: Array<{ id: string; name: string }>;
   rooms?: Array<{ id: string; name: string }>;
   milestones?: TimelineMilestone[];
-  onTaskClick: (taskId: string) => void;
+  selectedTaskIds?: Set<string>;
+  onTaskClick: (taskId: string, nativeEvent?: MouseEvent) => void;
   onRefetch: () => void;
 }
 
@@ -72,6 +73,7 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
   teamMembers,
   rooms,
   milestones = [],
+  selectedTaskIds,
   onTaskClick,
   onRefetch,
 }) => {
@@ -647,6 +649,7 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
                 status={task.status}
                 progress={task.progress}
                 colorOverride={colorOverride}
+                isMultiSelected={selectedTaskIds?.has(task.id)}
                 x={rp ? rp.x : pos.x}
                 y={pos.y}
                 width={rp ? rp.width : pos.width}

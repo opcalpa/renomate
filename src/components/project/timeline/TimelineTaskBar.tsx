@@ -23,6 +23,7 @@ interface TimelineTaskBarProps {
   assigneeInitial?: string;
   roomName?: string;
   colorOverride?: string;
+  isMultiSelected?: boolean;
   onDragStart: (taskId: string, evt: KonvaEventObject<DragEvent>) => void;
   onDragMove: (taskId: string, evt: KonvaEventObject<DragEvent>) => void;
   onDragEnd: (taskId: string, evt: KonvaEventObject<DragEvent>) => void;
@@ -31,7 +32,7 @@ interface TimelineTaskBarProps {
     side: "left" | "right",
     evt: KonvaEventObject<MouseEvent>
   ) => void;
-  onClick: (taskId: string) => void;
+  onClick: (taskId: string, nativeEvent?: MouseEvent) => void;
 }
 
 const BAR_HEIGHT = ROW_HEIGHT - BAR_PADDING_Y * 2;
@@ -58,6 +59,7 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
   assigneeInitial,
   roomName,
   colorOverride,
+  isMultiSelected,
 }) => {
   const barY = y + BAR_PADDING_Y;
   const color = colorOverride || getTaskColor(status);
@@ -163,10 +165,9 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
   );
 
   // Click/tap handler — fires on mouseup/touchend without drag movement
-  const handleClick = useCallback(() => {
-    // Skip if a drag just happened (didDrag stays true for 50ms after dragEnd)
+  const handleClick = useCallback((evt: KonvaEventObject<MouseEvent>) => {
     if (didDrag.current) return;
-    onClick(taskId);
+    onClick(taskId, evt.evt);
   }, [onClick, taskId]);
 
   const handleResizeLeft = useCallback(
@@ -218,14 +219,14 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
       onMouseLeave={handleMouseLeave}
     >
       {/* Selection highlight */}
-      {isSelected && (
+      {(isSelected || isMultiSelected) && (
         <Rect
           x={-2}
           y={-2}
           width={width + 4}
           height={BAR_HEIGHT + 4}
           cornerRadius={CORNER_RADIUS + 2}
-          stroke="#3b82f6"
+          stroke={isMultiSelected ? "#8b5cf6" : "#3b82f6"}
           strokeWidth={2}
           listening={false}
           perfectDrawEnabled={false}

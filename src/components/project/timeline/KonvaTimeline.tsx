@@ -17,7 +17,8 @@ interface KonvaTimelineProps {
   projectStartDate?: string | null;
   projectFinishDate?: string | null;
   filteredTaskIds?: string[] | null;
-  onTaskClick?: (taskId: string) => void;
+  selectedTaskIds?: Set<string>;
+  onTaskClick?: (taskId: string, nativeEvent?: MouseEvent) => void;
   onNavigateToRoom?: (roomId: string) => void;
   currency?: string | null;
   isDemo?: boolean;
@@ -28,6 +29,7 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
   projectId,
   projectName,
   filteredTaskIds,
+  selectedTaskIds,
   onTaskClick,
 }) => {
   const { t } = useTranslation();
@@ -163,9 +165,9 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
   }, []);
 
   const handleTaskClick = useCallback(
-    (taskId: string) => {
+    (taskId: string, nativeEvent?: MouseEvent) => {
       useTimelineStore.getState().setSelectedTaskId(taskId);
-      onTaskClick?.(taskId);
+      onTaskClick?.(taskId, nativeEvent);
     },
     [onTaskClick]
   );
@@ -227,6 +229,7 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
         teamMembers={teamMembers}
         rooms={rooms}
         milestones={milestones}
+        selectedTaskIds={selectedTaskIds}
         onTaskClick={handleTaskClick}
         onRefetch={refetch}
       />

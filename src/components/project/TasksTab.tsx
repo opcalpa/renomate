@@ -38,6 +38,8 @@ import { useProjectLock } from "@/hooks/useProjectLock";
 import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
 import { getStatusSolidColor } from "@/lib/statusColors";
 import { TasksTableView, useTasksTableView, EXTRA_COLUMN_KEYS } from "./tasks";
+import { useBulkTaskActions } from "./tasks/useBulkTaskActions";
+import { BulkActionBar } from "./tasks/BulkActionBar";
 import { SwipeableRoomInstructions, useRoomInstructionsData } from "@/components/room-instructions";
 import { TasksCalendarView } from "./calendar";
 
@@ -176,6 +178,9 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
 
   // Table view state (lifted so toolbar can render in parent)
   const tableViewState = useTasksTableView(projectId);
+
+  // Bulk selection — shared across all views
+  const bulk = useBulkTaskActions({ tasks: filteredTasks, projectId, onTaskUpdated: fetchTasks });
 
   // Room instructions data (for rooms view mode — legacy, kept for potential reuse)
   const { rooms: roomInstructions, floorPlanShapes } = useRoomInstructionsData(projectId, null);
@@ -799,6 +804,17 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
     return true;
   });
 
+  // Modifier-aware click: Cmd/Ctrl+click → bulk select, normal click → open task
+  const handleTaskClickWithModifier = (task: Task, nativeEvent?: MouseEvent | React.MouseEvent) => {
+    if (nativeEvent && (nativeEvent.metaKey || nativeEvent.ctrlKey || nativeEvent.shiftKey)) {
+      bulk.toggleOne(task.id);
+      return;
+    }
+    setEditingTask(task);
+    setEditVariant(viewMode === "timeline" ? "sheet" : "dialog");
+    setEditDialogOpen(true);
+  };
+
   // Group tasks by status (supporting both old and new status values)
   // Note: 'done' is a legacy status that should be merged into 'completed'
   const statusOrder = ['planned', 'to_do', 'in_progress', 'waiting', 'completed', 'cancelled'] as const;
@@ -1018,11 +1034,11 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
     if (isCompact) {
       return (
         <div
-          className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-background border cursor-move hover:shadow-sm transition-all group"
+          className={cn("flex items-center gap-2 px-2 py-1.5 rounded-md bg-background border cursor-move hover:shadow-sm transition-all group", bulk.selectedIds.has(task.id) && "ring-2 ring-primary")}
           draggable
           onDragStart={() => handleDragStart(task)}
           onDragEnd={() => setDraggedTask(null)}
-          onClick={() => { setEditingTask(task); setEditDialogOpen(true); }}
+          onClick={(e) => handleTaskClickWithModifier(task, e)}
         >
           <div className="w-1 h-4 rounded-full shrink-0" style={{ backgroundColor: statusColor }} />
           <span className={`text-xs font-medium truncate flex-1 ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
@@ -1038,14 +1054,11 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
     return (
       <Card
         key={task.id}
-        className="cursor-move hover:shadow-md transition-all bg-background p-3 group"
+        className={cn("cursor-move hover:shadow-md transition-all bg-background p-3 group", bulk.selectedIds.has(task.id) && "ring-2 ring-primary")}
         draggable
         onDragStart={() => handleDragStart(task)}
         onDragEnd={() => setDraggedTask(null)}
-        onClick={() => {
-          setEditingTask(task);
-          setEditDialogOpen(true);
-        }}
+        onClick={(e) => handleTaskClickWithModifier(task, e)}
       >
         <div className="space-y-2">
           {/* Task Title */}
@@ -1736,13 +1749,28 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
       </div>
       </div>
 
+      {/* Bulk action bar — shared across all views */}
+      {bulk.showBulkBar && !lockStatus.isLocked && (
+        <BulkActionBar
+          selectedCount={bulk.selectedCount}
+          statusLabels={statusLabels}
+          rooms={rooms}
+          stakeholders={stakeholders}
+          teamMembers={teamMembers}
+          onBulkUpdate={bulk.bulkUpdateField}
+          onBulkDelete={bulk.bulkDelete}
+          onClearSelection={bulk.clearSelection}
+          isLoading={bulk.isBulkLoading}
+        />
+      )}
+
       {/* Timeline view — self-contained with own data loading */}
       {viewMode === 'timeline' && (
         <Card className="overflow-hidden">
           <CardContent className="p-0 overflow-hidden">
-            <KonvaTimeline projectId={projectId} projectName={projectName} filteredTaskIds={filteredTasks.map(t => t.id)} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} onTaskClick={(taskId) => {
+            <KonvaTimeline projectId={projectId} projectName={projectName} filteredTaskIds={filteredTasks.map(t => t.id)} selectedTaskIds={bulk.selectedIds} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} onTaskClick={(taskId, nativeEvent) => {
                 const task = tasks.find(t => t.id === taskId);
-                if (task) { setEditingTask(task); setEditVariant("sheet"); setEditDialogOpen(true); }
+                if (task) handleTaskClickWithModifier(task, nativeEvent);
               }} />
           </CardContent>
         </Card>
@@ -1752,9 +1780,9 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
       {viewMode === 'calendar' && (
         <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <TasksCalendarView tasks={tasks} milestones={calendarMilestones} onTaskClick={(taskId) => {
+            <TasksCalendarView tasks={tasks} milestones={calendarMilestones} selectedTaskIds={bulk.selectedIds} onTaskClick={(taskId, nativeEvent) => {
               const task = tasks.find(t => t.id === taskId);
-              if (task) { setEditingTask(task); setEditDialogOpen(true); }
+              if (task) handleTaskClickWithModifier(task, nativeEvent);
             }} />
           </CardContent>
         </Card>
@@ -1908,6 +1936,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
           getPriorityColor={getPriorityColor}
           getAssignedMemberName={getAssignedMemberName}
           tableViewState={tableViewState}
+          bulk={bulk}
           hideToolbar
         />
       ))}

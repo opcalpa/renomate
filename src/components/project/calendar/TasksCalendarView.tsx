@@ -48,7 +48,8 @@ interface CalendarMilestone {
 interface TasksCalendarViewProps {
   tasks: CalendarTask[];
   milestones?: CalendarMilestone[];
-  onTaskClick: (taskId: string) => void;
+  selectedTaskIds?: Set<string>;
+  onTaskClick: (taskId: string, nativeEvent?: React.MouseEvent) => void;
 }
 
 /** Assigns each task to a swim-lane row within a week to avoid overlaps */
@@ -75,7 +76,7 @@ function assignLanes(
   return result;
 }
 
-export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, milestones = [], onTaskClick }) => {
+export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, milestones = [], selectedTaskIds, onTaskClick }) => {
   const { t } = useTranslation();
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [calMode, setCalMode] = useState<"month" | "week">("month");
@@ -260,10 +261,11 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, mil
                 <button
                   key={`${task.id}-${weekIdx}`}
                   type="button"
-                  onClick={() => onTaskClick(task.id)}
+                  onClick={(e) => onTaskClick(task.id, e)}
                   className={cn(
                     "absolute rounded text-[10px] font-medium text-white px-1.5 truncate cursor-pointer hover:opacity-90 transition-opacity",
-                    colorClass
+                    colorClass,
+                    selectedTaskIds?.has(task.id) && "ring-2 ring-primary ring-offset-1"
                   )}
                   style={{ left, width, top, height: TASK_BAR_HEIGHT }}
                   title={task.title}

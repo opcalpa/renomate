@@ -128,6 +128,7 @@ export interface TasksTableViewProps {
   getAssignedMemberName: (task: Task) => string | null;
   tableViewState?: TasksTableViewState;
   hideToolbar?: boolean;
+  bulk?: ReturnType<typeof import("./useBulkTaskActions").useBulkTaskActions>;
 }
 
 const DB_FIELD_MAP: Record<TaskColumnKey, string> = {
@@ -195,6 +196,7 @@ export function TasksTableView({
   getAssignedMemberName,
   tableViewState: externalState,
   hideToolbar,
+  bulk: externalBulk,
 }: TasksTableViewProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -222,7 +224,8 @@ export function TasksTableView({
     toggleGroupCollapse,
   } = externalState || internalState;
 
-  const bulk = useBulkTaskActions({ tasks, projectId, onTaskUpdated });
+  const internalBulk = useBulkTaskActions({ tasks, projectId, onTaskUpdated });
+  const bulk = externalBulk || internalBulk;
 
   // Dependencies map: taskId → array of { id, depends_on_task_id, title }
   const [depsMap, setDepsMap] = useState<Map<string, { depId: string; taskId: string; title: string }[]>>(new Map());
