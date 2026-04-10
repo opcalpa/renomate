@@ -429,11 +429,35 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
         if (error) throw error;
 
         const task = tasks.find((tt) => tt.id === resize.taskId);
+
+        // Cascade downstream tasks if finish date moved forward
+        let cascadedCount = 0;
+        const origFinish = parseISO(resize.origFinishDate);
+        if (newFinishDate > origFinish) {
+          const downstreamIds = getDownstreamTasks(resize.taskId, dependencies);
+          for (const dt of allTasks.filter((tt) => downstreamIds.includes(tt.id))) {
+            if (dt.start_date && dt.finish_date) {
+              const depStart = parseISO(dt.start_date);
+              if (depStart <= newFinishDate) {
+                const pushDays = differenceInDays(newFinishDate, depStart) + 1;
+                const { error: ce } = await supabase
+                  .from("tasks")
+                  .update({
+                    start_date: format(addDays(depStart, pushDays), "yyyy-MM-dd"),
+                    finish_date: format(addDays(parseISO(dt.finish_date), pushDays), "yyyy-MM-dd"),
+                  })
+                  .eq("id", dt.id);
+                if (!ce) cascadedCount++;
+              }
+            }
+          }
+        }
+
         toast({
-          title: resize.side === "left"
-            ? t("timeline.taskUpdated", "Task updated")
-            : t("timeline.taskDurationUpdated", "Task duration updated"),
-          description: `${task?.title ?? ""} → ${format(newStartDate, "MMM d")} – ${format(newFinishDate, "MMM d, yyyy")}`,
+          title: t("timeline.taskDurationUpdated", "Task duration updated"),
+          description: cascadedCount > 0
+            ? `${task?.title ?? ""} → ${format(newStartDate, "MMM d")} – ${format(newFinishDate, "MMM d")}. ${t("timeline.dependenciesCascaded", { count: cascadedCount })}`
+            : `${task?.title ?? ""} → ${format(newStartDate, "MMM d")} – ${format(newFinishDate, "MMM d, yyyy")}`,
         });
 
         onRefetch();

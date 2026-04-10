@@ -572,6 +572,8 @@
     "emptyStateTip": "Tip: Link tasks to rooms for better organization",
     "tableView": "Table",
     "kanbanView": "Kanban",
+    "dependsOn": "Depends on",
+    "blocks": "Blocks",
     "taskCreated": "Task created!",
     "taskCreatedDescription": "The task has been added to your project.",
     "adding": "Adding...",

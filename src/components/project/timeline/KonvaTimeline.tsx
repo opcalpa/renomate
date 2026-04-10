@@ -234,7 +234,7 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
         onRefetch={refetch}
       />
 
-      <TimelineHoverCard tasks={allTasks} teamMembers={teamMembers} />
+      <TimelineHoverCard tasks={allTasks} teamMembers={teamMembers} dependencies={dependencies} />
     </div>
   );
 };

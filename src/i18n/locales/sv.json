@@ -572,6 +572,8 @@
     "emptyStateTip": "Tips: Koppla arbeten till rum för bättre överblick",
     "tableView": "Tabell",
     "kanbanView": "Kanban",
+    "dependsOn": "Beror på",
+    "blocks": "Blockerar",
     "taskCreated": "Arbete skapat!",
     "taskCreatedDescription": "Arbetet har lagts till i ditt projekt.",
     "adding": "Lägger till...",

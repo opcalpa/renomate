@@ -3,11 +3,12 @@ import { useTranslation } from "react-i18next";
 import { format, parseISO } from "date-fns";
 import { sv } from "date-fns/locale";
 import { useTimelineStore } from "./store";
-import type { TimelineTask, TeamMember } from "./types";
+import type { TimelineTask, TimelineDependency, TeamMember } from "./types";
 
 interface TimelineHoverCardProps {
   tasks: TimelineTask[];
   teamMembers: TeamMember[];
+  dependencies?: TimelineDependency[];
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -35,6 +36,7 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
 export const TimelineHoverCard: React.FC<TimelineHoverCardProps> = ({
   tasks,
   teamMembers,
+  dependencies = [],
 }) => {
   const { t } = useTranslation();
   const hoveredTaskId = useTimelineStore((s) => s.hoveredTaskId);
@@ -112,6 +114,37 @@ export const TimelineHoverCard: React.FC<TimelineHoverCardProps> = ({
             {assignee.name}
           </p>
         )}
+
+        {/* Dependencies */}
+        {(() => {
+          const blockedBy = dependencies
+            .filter((d) => d.task_id === task.id)
+            .map((d) => tasks.find((t) => t.id === d.depends_on_task_id))
+            .filter(Boolean);
+          const blocks = dependencies
+            .filter((d) => d.depends_on_task_id === task.id)
+            .map((d) => tasks.find((t) => t.id === d.task_id))
+            .filter(Boolean);
+
+          if (blockedBy.length === 0 && blocks.length === 0) return null;
+
+          return (
+            <div className="mt-2 pt-1.5 border-t space-y-1">
+              {blockedBy.length > 0 && (
+                <p className="text-[10px] text-muted-foreground">
+                  <span className="font-medium">⛓ {t("tasks.dependsOn", "Depends on")}:</span>{" "}
+                  {blockedBy.map((t) => t!.title).join(", ")}
+                </p>
+              )}
+              {blocks.length > 0 && (
+                <p className="text-[10px] text-muted-foreground">
+                  <span className="font-medium">→ {t("tasks.blocks", "Blocks")}:</span>{" "}
+                  {blocks.map((t) => t!.title).join(", ")}
+                </p>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
