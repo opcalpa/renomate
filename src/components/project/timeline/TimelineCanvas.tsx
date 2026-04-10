@@ -49,6 +49,16 @@ interface TimelineCanvasProps {
 const GROUP_HEADER_BG = "#f1f5f9";
 const GROUP_HEADER_TEXT = "#475569";
 
+const CATEGORY_COLORS: Record<string, string> = {
+  floor: "#84cc16", paint: "#ec4899", construction: "#78716c", kitchen: "#ef4444",
+  bathrooms: "#6366f1", plumbing: "#06b6d4", tiles: "#8b5cf6", windows: "#0ea5e9",
+  doors: "#a855f7", electricity: "#3b82f6", carpentry: "#f97316", demolition: "#f59e0b",
+  inspection: "#14b8a6", cleanup: "#71717a", design: "#f472b6",
+};
+const PRIORITY_COLORS: Record<string, string> = {
+  low: "#94a3b8", medium: "#f59e0b", high: "#ef4444",
+};
+
 const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
   tasks,
   allTasks,
@@ -621,6 +631,14 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
             // Use resize preview position if this task is being resized
             const rp = resizePreview?.taskId === task.id ? resizePreview : null;
 
+            // Color by mode
+            const colorByMode = useTimelineStore.getState().colorBy;
+            const colorOverride = colorByMode === "category"
+              ? (CATEGORY_COLORS[(task as unknown as { cost_center?: string }).cost_center || ""] || "#94a3b8")
+              : colorByMode === "priority"
+                ? (PRIORITY_COLORS[task.priority] || "#94a3b8")
+                : undefined;
+
             return (
               <TimelineTaskBar
                 key={task.id}
@@ -628,6 +646,7 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
                 title={task.title}
                 status={task.status}
                 progress={task.progress}
+                colorOverride={colorOverride}
                 x={rp ? rp.x : pos.x}
                 y={pos.y}
                 width={rp ? rp.width : pos.width}

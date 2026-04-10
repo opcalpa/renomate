@@ -22,6 +22,7 @@ interface TimelineTaskBarProps {
   isDragging: boolean;
   assigneeInitial?: string;
   roomName?: string;
+  colorOverride?: string;
   onDragStart: (taskId: string, evt: KonvaEventObject<DragEvent>) => void;
   onDragMove: (taskId: string, evt: KonvaEventObject<DragEvent>) => void;
   onDragEnd: (taskId: string, evt: KonvaEventObject<DragEvent>) => void;
@@ -56,9 +57,10 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
   onClick,
   assigneeInitial,
   roomName,
+  colorOverride,
 }) => {
   const barY = y + BAR_PADDING_Y;
-  const color = getTaskColor(status);
+  const color = colorOverride || getTaskColor(status);
   const progressWidth = Math.max(0, (width * (progress || 0)) / 100);
   const progressColor = darkenHex(color, 0.15);
   const hoverColor = lightenHex(color, 0.08);
@@ -288,38 +290,46 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
         </>
       )}
 
-      {/* Title text */}
-      <KonvaText
-        x={24}
-        y={roomName && width > 80 ? BAR_HEIGHT / 2 - 11 : BAR_HEIGHT / 2 - 6}
-        width={Math.max(0, width - (assigneeInitial && width > 60 ? 56 : 32))}
-        height={14}
-        text={title}
-        fontSize={12}
-        fontStyle="bold"
-        fill="#ffffff"
-        ellipsis
-        wrap="none"
-        listening={false}
-        perfectDrawEnabled={false}
-      />
+      {/* Title text — sticky: clamp x so title stays visible when bar scrolls off left edge */}
+      {(() => {
+        const stickyOffset = Math.max(0, -x);
+        const titleX = Math.min(stickyOffset + 24, width - 40);
+        const titleW = Math.max(0, width - titleX - (assigneeInitial && width > 60 ? 32 : 8));
+        return (
+          <>
+            <KonvaText
+              x={titleX}
+              y={roomName && width > 80 ? BAR_HEIGHT / 2 - 11 : BAR_HEIGHT / 2 - 6}
+              width={titleW}
+              height={14}
+              text={title}
+              fontSize={12}
+              fontStyle="bold"
+              fill="#ffffff"
+              ellipsis
+              wrap="none"
+              listening={false}
+              perfectDrawEnabled={false}
+            />
+            {roomName && width > 80 && (
+              <KonvaText
+                x={titleX}
+                y={BAR_HEIGHT / 2 + 2}
+                width={titleW}
+                height={12}
+                text={roomName}
+                fontSize={9}
+                fill="rgba(255,255,255,0.7)"
+                ellipsis
+                wrap="none"
+                listening={false}
+                perfectDrawEnabled={false}
+              />
+            )}
+          </>
+        );
+      })()}
 
-      {/* Room name subtitle (if enough space) */}
-      {roomName && width > 80 && (
-        <KonvaText
-          x={24}
-          y={BAR_HEIGHT / 2 + 2}
-          width={Math.max(0, width - (assigneeInitial && width > 60 ? 56 : 32))}
-          height={11}
-          text={roomName}
-          fontSize={9}
-          fill="rgba(255,255,255,0.7)"
-          ellipsis
-          wrap="none"
-          listening={false}
-          perfectDrawEnabled={false}
-        />
-      )}
 
       {/* Progress % text (if enough room and no room name) */}
       {progress > 0 && width > 100 && !roomName && (

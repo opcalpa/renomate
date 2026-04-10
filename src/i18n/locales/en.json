@@ -1798,6 +1798,7 @@
     "showProjectSpan": "Show project period",
     "noDatesWarning": "Set start and goal dates to see project markers on the timeline",
     "allScheduled": "All tasks are scheduled",
+    "colorBy": "Color by",
     "showProject": "Project",
     "calendar": "Calendar",
     "calendarMonth": "Month",

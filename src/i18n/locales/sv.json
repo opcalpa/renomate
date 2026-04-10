@@ -1280,6 +1280,7 @@
     "showProjectSpan": "Visa projektperiod",
     "noDatesWarning": "Ange start- och måldatum för att se projektmarkörer på tidslinjen",
     "allScheduled": "Alla arbeten är schemalagda",
+    "colorBy": "Färg efter",
     "showProject": "Projekt",
     "calendar": "Kalender",
     "calendarMonth": "Månad",

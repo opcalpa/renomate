@@ -498,7 +498,8 @@ function VisibilityToggles({ t }: { t: (key: string, fallback?: string) => strin
   const showTasks = useTimelineStore((s) => s.showTasks);
   const showPhases = useTimelineStore((s) => s.showPhases);
   const showMilestones = useTimelineStore((s) => s.showMilestones);
-  const { setShowTasks, setShowPhases, setShowMilestones } = useTimelineStore.getState();
+  const colorBy = useTimelineStore((s) => s.colorBy);
+  const { setShowTasks, setShowPhases, setShowMilestones, setColorBy } = useTimelineStore.getState();
 
   const allOn = showTasks && showPhases && showMilestones;
 
@@ -512,7 +513,7 @@ function VisibilityToggles({ t }: { t: (key: string, fallback?: string) => strin
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-40 p-2" align="start">
+      <PopoverContent className="w-48 p-2" align="start">
         <div className="space-y-1">
           <label className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer text-xs">
             <input type="checkbox" checked={showTasks} onChange={() => setShowTasks(!showTasks)} className="rounded" />
@@ -526,6 +527,15 @@ function VisibilityToggles({ t }: { t: (key: string, fallback?: string) => strin
             <input type="checkbox" checked={showMilestones} onChange={() => setShowMilestones(!showMilestones)} className="rounded" />
             {t("timeline.milestones", "Milestones")}
           </label>
+        </div>
+        <div className="border-t mt-2 pt-2">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide px-1 mb-1">{t("timeline.colorBy", "Color by")}</p>
+          {(["status", "category", "priority"] as const).map((mode) => (
+            <label key={mode} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer text-xs">
+              <input type="radio" name="colorBy" checked={colorBy === mode} onChange={() => setColorBy(mode)} className="accent-primary" />
+              {mode === "status" ? t("tasks.status", "Status") : mode === "category" ? t("tasks.costCenter", "Category") : t("tasks.priority", "Priority")}
+            </label>
+          ))}
         </div>
       </PopoverContent>
     </Popover>

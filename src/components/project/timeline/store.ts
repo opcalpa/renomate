@@ -36,6 +36,7 @@ interface TimelineStoreState {
   showTasks: boolean;
   showPhases: boolean;
   showMilestones: boolean;
+  colorBy: "status" | "category" | "priority";
 
   // Actions
   setPan: (panX: number, panY: number) => void;
@@ -52,6 +53,7 @@ interface TimelineStoreState {
   setShowTasks: (v: boolean) => void;
   setShowPhases: (v: boolean) => void;
   setShowMilestones: (v: boolean) => void;
+  setColorBy: (v: "status" | "category" | "priority") => void;
 }
 
 export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
@@ -71,6 +73,7 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
   showTasks: true,
   showPhases: true,
   showMilestones: true,
+  colorBy: "status",
 
   setPan: (panX, panY) => set({ panX, panY }),
 
@@ -111,6 +114,7 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
   setShowTasks: (v) => set({ showTasks: v }),
   setShowPhases: (v) => set({ showPhases: v }),
   setShowMilestones: (v) => set({ showMilestones: v }),
+  setColorBy: (v) => set({ colorBy: v }),
 
   toggleGroup: (groupId) => {
     const { collapsedGroups } = get();
