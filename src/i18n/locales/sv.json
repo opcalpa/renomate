@@ -2144,6 +2144,8 @@
     "unpaidInvoices": "Kvarstår att betala (obetalda fakturor)",
     "outstandingBalance": "Kvarstår att betala",
     "outstandingShort": "Kvarstår",
+    "budgetUsed": "Förbrukat av budget",
+    "totalRotDeduction": "ROT-avdrag totalt",
     "outstanding": "Kvarstående",
     "remaining": "kvar",
     "setBudget": "Ange budget",

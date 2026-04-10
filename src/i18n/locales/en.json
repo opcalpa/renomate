@@ -2662,6 +2662,8 @@
     "unpaidInvoices": "Outstanding balance (unpaid invoices)",
     "outstandingBalance": "Outstanding",
     "outstandingShort": "Outstanding",
+    "budgetUsed": "Budget used",
+    "totalRotDeduction": "Total ROT deduction",
     "outstanding": "Outstanding",
     "remaining": "remaining",
     "setBudget": "Set budget",

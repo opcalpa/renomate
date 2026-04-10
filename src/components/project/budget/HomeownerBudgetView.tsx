@@ -128,7 +128,7 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
             .eq("project_id", projectId),
           supabase
             .from("invoices")
-            .select("id, title, invoice_number, status, total_amount, paid_amount, due_date, is_ata, sent_at, created_at")
+            .select("id, title, invoice_number, status, total_amount, total_rot_deduction, paid_amount, due_date, is_ata, sent_at, created_at")
             .eq("project_id", projectId)
             .neq("status", "cancelled")
             .order("created_at", { ascending: false }),
@@ -416,6 +416,9 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
+                        {inv.total_rot_deduction > 0 && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 text-green-700 border-green-300">ROT</Badge>
+                        )}
                         {inv.is_ata && (
                           <Badge variant="outline" className="text-[10px] px-1 py-0">ÄTA</Badge>
                         )}
@@ -443,6 +446,15 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
                     <span className="font-medium text-amber-600">{formatCurrency(computed.outstandingBalance, currency)}</span>
                   </div>
                 )}
+                {(() => {
+                  const totalRot = sentInvoices.reduce((sum, inv) => sum + (inv.total_rot_deduction || 0), 0);
+                  return totalRot > 0 ? (
+                    <div className="flex items-center justify-between text-sm text-green-700">
+                      <span>{t("homeownerBudget.totalRotDeduction", "ROT-avdrag totalt")}</span>
+                      <span className="font-medium">&minus;{formatCurrency(totalRot, currency)}</span>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             </PopoverContent>
           )}
@@ -482,6 +494,24 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
           </p>
         </div>
       </div>
+
+      {/* Budget progress bar */}
+      {projectBudget > 0 && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{t("homeownerBudget.budgetUsed", "Förbrukat av budget")}</span>
+            <span>{Math.round((computed.invoicedTotal / projectBudget) * 100)}%</span>
+          </div>
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${
+                computed.invoicedTotal > projectBudget ? "bg-red-500" : computed.invoicedTotal > projectBudget * 0.8 ? "bg-amber-500" : "bg-green-500"
+              }`}
+              style={{ width: `${Math.min(100, (computed.invoicedTotal / projectBudget) * 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* No budget prompt */}
       {projectBudget <= 0 && computed.acceptedQuoteTotal <= 0 && sentInvoices.length === 0 && (
