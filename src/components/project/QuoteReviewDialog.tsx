@@ -40,6 +40,7 @@ import {
   Building2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { formatCurrency } from "@/lib/currency";
 import {
   type TaskCategory,
   TASK_CATEGORY_LABELS,
@@ -87,10 +88,7 @@ function ConfidenceIndicator({ confidence }: { confidence: number }) {
   return <span title={`${Math.round(confidence * 100)}%`}>🔴</span>;
 }
 
-function formatCurrency(amount: number | null): string {
-  if (amount == null) return "—";
-  return new Intl.NumberFormat("sv-SE", { style: "decimal", maximumFractionDigits: 0 }).format(amount) + " kr";
-}
+// formatCurrency imported from @/lib/currency
 
 // ---------------------------------------------------------------------------
 // Component
@@ -414,11 +412,11 @@ export function QuoteReviewDialog({
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     {quoteMetadata.totalAmount != null && (
                       <span className="font-medium text-foreground">
-                        {t("quoteReview.total", "Totalt")}: {formatCurrency(quoteMetadata.totalAmount)}
+                        {t("quoteReview.total", "Totalt")}: {formatCurrency(quoteMetadata.totalAmount, "SEK")}
                       </span>
                     )}
                     {quoteMetadata.vatAmount != null && (
-                      <span>{t("quoteReview.vat", "Moms")}: {formatCurrency(quoteMetadata.vatAmount)}</span>
+                      <span>{t("quoteReview.vat", "Moms")}: {formatCurrency(quoteMetadata.vatAmount, "SEK")}</span>
                     )}
                     {quoteMetadata.quoteDate && (
                       <span className="flex items-center gap-1">
@@ -590,14 +588,14 @@ export function QuoteReviewDialog({
                                 <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
                                   {task.estimatedCost != null && (
                                     <span className="font-medium text-foreground">
-                                      {formatCurrency(task.estimatedCost)}
+                                      {formatCurrency(task.estimatedCost, "SEK")}
                                     </span>
                                   )}
                                   {task.laborCost != null && (
-                                    <span>{t("quoteReview.labor", "Arbete")}: {formatCurrency(task.laborCost)}</span>
+                                    <span>{t("quoteReview.labor", "Arbete")}: {formatCurrency(task.laborCost, "SEK")}</span>
                                   )}
                                   {task.materialCost != null && (
-                                    <span>{t("quoteReview.material", "Material")}: {formatCurrency(task.materialCost)}</span>
+                                    <span>{t("quoteReview.material", "Material")}: {formatCurrency(task.materialCost, "SEK")}</span>
                                   )}
                                 </div>
                               )}
@@ -646,7 +644,7 @@ export function QuoteReviewDialog({
               {selectedRoomCount > 0 && `, ${selectedRoomCount} ${t("quoteReview.roomsSelected", "rum")}`}
               {totalSelectedCost > 0 && (
                 <span className="ml-2 font-medium text-foreground">
-                  = {formatCurrency(totalSelectedCost)}
+                  = {formatCurrency(totalSelectedCost, "SEK")}
                 </span>
               )}
             </div>

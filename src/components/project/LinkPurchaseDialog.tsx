@@ -33,6 +33,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { formatCurrency } from "@/lib/currency";
 import {
   analyzeDocument,
   generateDocumentFilename,
@@ -62,10 +63,7 @@ type Step = "extracting" | "choose" | "link" | "saving";
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatCurrency(amount: number | null): string {
-  if (amount == null) return "—";
-  return new Intl.NumberFormat("sv-SE", { style: "decimal", maximumFractionDigits: 0 }).format(amount) + " kr";
-}
+// Use global formatCurrency from @/lib/currency
 
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -226,7 +224,7 @@ export function LinkPurchaseDialog({
           description: t("linkPurchase.createdDesc", {
             defaultValue: "{{vendor}} — {{amount}}",
             vendor: extraction.vendor_name || "Okänd",
-            amount: formatCurrency(extraction.total_amount),
+            amount: formatCurrency(extraction.total_amount, "SEK"),
           }),
         });
       }
@@ -294,10 +292,10 @@ export function LinkPurchaseDialog({
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 <span className="font-medium text-foreground text-sm">
-                  {formatCurrency(extraction.total_amount)}
+                  {formatCurrency(extraction.total_amount, "SEK")}
                 </span>
                 {extraction.vat_amount != null && (
-                  <span>{t("quoteReview.vat", "Moms")}: {formatCurrency(extraction.vat_amount)}</span>
+                  <span>{t("quoteReview.vat", "Moms")}: {formatCurrency(extraction.vat_amount, "SEK")}</span>
                 )}
                 {extraction.purchase_date && (
                   <span className="flex items-center gap-1">

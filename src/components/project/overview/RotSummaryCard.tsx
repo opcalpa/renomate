@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { formatCurrency as fc } from "@/lib/currency";
 import { Shield, AlertTriangle, Users, Plus, X, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,10 +35,6 @@ interface YearlyRotData {
 interface RotSummaryCardProps {
   projectId: string;
   embedded?: boolean;
-}
-
-function formatCurrency(amount: number): string {
-  return Math.round(amount).toLocaleString("sv-SE");
 }
 
 function maskPnr(pnr: string): string {
@@ -400,9 +397,9 @@ export function RotSummaryCard({ projectId, embedded = false }: RotSummaryCardPr
               <span className="font-medium">{yd.year}</span>
               <span className="tabular-nums">
                 <span className={isOver ? "text-destructive font-medium" : "text-green-700 font-medium"}>
-                  {formatCurrency(used)}
+                  {fc(used, "SEK")}
                 </span>
-                <span className="text-muted-foreground"> / {formatCurrency(yd.limit)} kr</span>
+                <span className="text-muted-foreground"> / {fc(yd.limit, "SEK")}</span>
               </span>
             </div>
             <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
@@ -415,7 +412,7 @@ export function RotSummaryCard({ projectId, embedded = false }: RotSummaryCardPr
               <div className="flex items-center gap-1 text-xs text-destructive">
                 <AlertTriangle className="h-3 w-3" />
                 {t("rot.overLimit", "Överstiger ROT-tak med {{amount}} kr", {
-                  amount: formatCurrency(used - yd.limit),
+                  amount: fc(used - yd.limit, "SEK"),
                 })}
               </div>
             )}
@@ -432,7 +429,7 @@ export function RotSummaryCard({ projectId, embedded = false }: RotSummaryCardPr
                     <div key={p.id} className="flex items-center justify-between text-[11px] text-muted-foreground">
                       <span>{p.name}</span>
                       <span className="tabular-nums">
-                        {formatCurrency(personUsed)} / {formatCurrency(personLimit)} kr
+                        {fc(personUsed, "SEK")} / {fc(personLimit, "SEK")}
                       </span>
                     </div>
                   );
@@ -447,13 +444,13 @@ export function RotSummaryCard({ projectId, embedded = false }: RotSummaryCardPr
       {totalPlanned > 0 && totalActual === 0 && (
         <div className="flex justify-between text-xs pt-1 border-t">
           <span className="text-muted-foreground">{t("rot.plannedTotal", "Planerat ROT-avdrag")}</span>
-          <span className="font-medium text-green-700 tabular-nums">{formatCurrency(totalPlanned)} kr</span>
+          <span className="font-medium text-green-700 tabular-nums">{fc(totalPlanned, "SEK")}</span>
         </div>
       )}
       {totalActual > 0 && (
         <div className="flex justify-between text-xs pt-1 border-t">
           <span className="text-muted-foreground">{t("rot.actualTotal", "Faktiskt ROT-avdrag")}</span>
-          <span className="font-medium text-green-700 tabular-nums">{formatCurrency(totalActual)} kr</span>
+          <span className="font-medium text-green-700 tabular-nums">{fc(totalActual, "SEK")}</span>
         </div>
       )}
 
