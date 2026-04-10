@@ -1195,27 +1195,101 @@ export const TaskEditDialog = ({
                 </div>
               )}
 
-              {/* ÄTA checkbox — only shown after planning phase */}
-              {!isPlanning && "is_ata" in task && (
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="edit-task-is-ata"
-                  checked={task.is_ata}
-                  onCheckedChange={(checked) => setTask({ ...task, is_ata: !!checked })}
-                />
-                <Label htmlFor="edit-task-is-ata" className="text-sm font-normal cursor-pointer">
-                  {t("tasks.isAta")}
-                </Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-[240px]">
-                      <p className="text-xs">{t("tasks.ataTooltip")}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+              {/* ── Property Grid — Status, Room, Dates ── */}
+              {!isPlanning && (
+              <div className="rounded-lg border bg-background p-4 shadow-sm space-y-4">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.status")}</Label>
+                    {(() => {
+                      const unresolvedDeps = dependencies.filter(d => d.status !== "done" && d.status !== "completed");
+                      const blockedStatuses = ["in_progress", "completed", "done"];
+                      const isBlocked = unresolvedDeps.length > 0;
+                      const handleStatusChange = (value: string) => {
+                        if (isBlocked && blockedStatuses.includes(value)) {
+                          toast({ title: t("tasks.depBlockedTitle", "Dependencies not completed"), description: `${unresolvedDeps.map(d => d.title).join(", ")} — ${t("tasks.depOverrideHint", "status changed anyway")}` });
+                        }
+                        setTask({ ...task, status: value });
+                      };
+                      return (
+                        <Select value={task.status} onValueChange={handleStatusChange}>
+                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="planned">{t("statuses.planned", "Planned")}</SelectItem>
+                            <SelectItem value="to_do">{t("statuses.toDo")}</SelectItem>
+                            <SelectItem value="in_progress">{t("statuses.inProgress")}{isBlocked && " ⚠️"}</SelectItem>
+                            <SelectItem value="waiting">{t("statuses.waiting")}</SelectItem>
+                            <SelectItem value="completed">{t("statuses.completed")}{isBlocked && " ⚠️"}</SelectItem>
+                            <SelectItem value="cancelled">{t("statuses.cancelled")}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.priority")}</Label>
+                    <Select value={task.priority} onValueChange={(value) => setTask({ ...task, priority: value })}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">{t("tasks.priorityLow")}</SelectItem>
+                        <SelectItem value="medium">{t("tasks.priorityMedium")}</SelectItem>
+                        <SelectItem value="high">{t("tasks.priorityHigh")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.assignTo")}</Label>
+                    <Select value={task.assigned_to_stakeholder_id || "unassigned"} onValueChange={(value) => setTask({ ...task, assigned_to_stakeholder_id: value === "unassigned" ? null : value })}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder={t("common.unassigned")} /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">{t("common.unassigned")}</SelectItem>
+                        {teamMembers.map((member) => (
+                          <SelectItem key={member.id} value={member.id}>{member.name} {member.role ? `(${member.role})` : ""}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.room")}</Label>
+                    <MultiRoomSelect rooms={rooms} selectedIds={task.room_ids?.length ? task.room_ids : (task.room_id ? [task.room_id] : [])} onChange={(ids) => setTask({ ...task, room_ids: ids, room_id: ids[0] || null })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.costCenter")}</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full h-9 justify-start text-sm font-normal">
+                          {(task.cost_centers || []).length > 0
+                            ? (task.cost_centers || []).map((cc: string) => { const def = DEFAULT_COST_CENTERS.find(d => d.id === cc); return def ? def.label : cc; }).join(", ")
+                            : <span className="text-muted-foreground">{t("common.none", "Ingen")}</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2 max-h-48 overflow-y-auto" align="start">
+                        {DEFAULT_COST_CENTERS.map((cc) => { const Icon = cc.icon; const isSelected = (task.cost_centers || []).includes(cc.id); return (
+                          <label key={cc.id} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer text-xs">
+                            <Checkbox checked={isSelected} onCheckedChange={(checked) => { const current = task.cost_centers || []; const next = checked ? [...current, cc.id] : current.filter((c: string) => c !== cc.id); setTask({ ...task, cost_centers: next, cost_center: next[0] || null }); }} />
+                            <Icon className="h-3.5 w-3.5" /> {cc.label}
+                          </label>
+                        ); })}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.startDate")}</Label>
+                    <DatePicker date={task.start_date ? parseLocalDate(task.start_date) : undefined} onDateChange={(date) => setTask({ ...task, start_date: date ? formatLocalDate(date) : null })} placeholder={t("tasks.startDate")} className="h-9" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.finishDate")}</Label>
+                    <DatePicker date={task.finish_date ? parseLocalDate(task.finish_date) : undefined} onDateChange={(date) => setTask({ ...task, finish_date: date ? formatLocalDate(date) : null })} placeholder={t("tasks.finishDate")} className="h-9" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.progress")} {task.progress}%</Label>
+                    <Slider min={0} max={100} step={5} value={[task.progress]} onValueChange={([value]) => setTask({ ...task, progress: value })} className="w-full pt-2" />
+                  </div>
+                </div>
               </div>
               )}
 
@@ -1555,139 +1629,7 @@ export const TaskEditDialog = ({
                 );
               })()}
 
-              {/* ── Property Grid — all core fields flat, no collapsibles ── */}
-              {!isPlanning && (
-              <div className="rounded-lg border bg-background p-4 shadow-sm space-y-4">
-                {/* Row 1: Status, Priority, Assignee */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.status")}</Label>
-                    {(() => {
-                      const unresolvedDeps = dependencies.filter(d => d.status !== "done" && d.status !== "completed");
-                      const blockedStatuses = ["in_progress", "completed", "done"];
-                      const isBlocked = unresolvedDeps.length > 0;
-                      const handleStatusChange = (value: string) => {
-                        if (isBlocked && blockedStatuses.includes(value)) {
-                          toast({ title: t("tasks.depBlockedTitle", "Dependencies not completed"), description: `${unresolvedDeps.map(d => d.title).join(", ")} — ${t("tasks.depOverrideHint", "status changed anyway")}` });
-                        }
-                        setTask({ ...task, status: value });
-                      };
-                      return (
-                        <Select value={task.status} onValueChange={handleStatusChange}>
-                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="planned">{t("statuses.planned", "Planned")}</SelectItem>
-                            <SelectItem value="to_do">{t("statuses.toDo")}</SelectItem>
-                            <SelectItem value="in_progress">{t("statuses.inProgress")}{isBlocked && " ⚠️"}</SelectItem>
-                            <SelectItem value="waiting">{t("statuses.waiting")}</SelectItem>
-                            <SelectItem value="completed">{t("statuses.completed")}{isBlocked && " ⚠️"}</SelectItem>
-                            <SelectItem value="cancelled">{t("statuses.cancelled")}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      );
-                    })()}
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.priority")}</Label>
-                    <Select value={task.priority} onValueChange={(value) => setTask({ ...task, priority: value })}>
-                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="low">{t("tasks.priorityLow")}</SelectItem>
-                        <SelectItem value="medium">{t("tasks.priorityMedium")}</SelectItem>
-                        <SelectItem value="high">{t("tasks.priorityHigh")}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.assignTo")}</Label>
-                    <Select value={task.assigned_to_stakeholder_id || "unassigned"} onValueChange={(value) => setTask({ ...task, assigned_to_stakeholder_id: value === "unassigned" ? null : value })}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder={t("common.unassigned")} /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">{t("common.unassigned")}</SelectItem>
-                        {teamMembers.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>{member.name} {member.role ? `(${member.role})` : ""}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Row 2: Room + Category */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.room")}</Label>
-                    <MultiRoomSelect
-                      rooms={rooms}
-                      selectedIds={task.room_ids?.length ? task.room_ids : (task.room_id ? [task.room_id] : [])}
-                      onChange={(ids) => setTask({ ...task, room_ids: ids, room_id: ids[0] || null })}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.costCenter")}</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full h-9 justify-start text-sm font-normal">
-                          {(task.cost_centers || []).length > 0
-                            ? (task.cost_centers || []).map((cc: string) => {
-                                const def = DEFAULT_COST_CENTERS.find(d => d.id === cc);
-                                return def ? def.label : cc;
-                              }).join(", ")
-                            : <span className="text-muted-foreground">{t("common.none", "Ingen")}</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-56 p-2 max-h-48 overflow-y-auto" align="start">
-                        {DEFAULT_COST_CENTERS.map((cc) => {
-                          const Icon = cc.icon;
-                          const isSelected = (task.cost_centers || []).includes(cc.id);
-                          return (
-                            <label key={cc.id} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer text-xs">
-                              <Checkbox checked={isSelected} onCheckedChange={(checked) => {
-                                const current = task.cost_centers || [];
-                                const next = checked ? [...current, cc.id] : current.filter((c: string) => c !== cc.id);
-                                setTask({ ...task, cost_centers: next, cost_center: next[0] || null });
-                              }} />
-                              <Icon className="h-3.5 w-3.5" />
-                              {cc.label}
-                            </label>
-                          );
-                        })}
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-
-                {/* Row 3: Dates + Progress */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.startDate")}</Label>
-                    <DatePicker
-                      date={task.start_date ? parseLocalDate(task.start_date) : undefined}
-                      onDateChange={(date) => setTask({ ...task, start_date: date ? formatLocalDate(date) : null })}
-                      placeholder={t("tasks.startDate")}
-                      className="h-9"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.finishDate")}</Label>
-                    <DatePicker
-                      date={task.finish_date ? parseLocalDate(task.finish_date) : undefined}
-                      onDateChange={(date) => setTask({ ...task, finish_date: date ? formatLocalDate(date) : null })}
-                      placeholder={t("tasks.finishDate")}
-                      className="h-9"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.progress")} {task.progress}%</Label>
-                    <Slider
-                      min={0} max={100} step={5}
-                      value={[task.progress]}
-                      onValueChange={([value]) => setTask({ ...task, progress: value })}
-                      className="w-full pt-2"
-                    />
-                  </div>
-                </div>
-              </div>
-              )}
+              {/* Property Grid moved before budget sections */}
 
               {/* ── Collapsible deep-dive sections ── */}
               {!isPlanning && (
@@ -1867,6 +1809,29 @@ export const TaskEditDialog = ({
                           </Select>
                         </div>
                       )}
+                  {/* ÄTA checkbox — at bottom of finance section */}
+                  {!isPlanning && "is_ata" in task && (
+                    <div className="flex items-center space-x-2 pt-2 border-t">
+                      <Checkbox
+                        id="edit-task-is-ata"
+                        checked={task.is_ata}
+                        onCheckedChange={(checked) => setTask({ ...task, is_ata: !!checked })}
+                      />
+                      <Label htmlFor="edit-task-is-ata" className="text-sm font-normal cursor-pointer">
+                        {t("tasks.isAta")}
+                      </Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="max-w-[240px]">
+                            <p className="text-xs">{t("tasks.ataTooltip")}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  )}
                 </div>
 
                 {/* Dependencies */}
