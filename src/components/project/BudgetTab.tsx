@@ -2180,11 +2180,16 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       {/* Budget Charts Section (builder only) */}
       {isBuilder && <BudgetChartsSection rows={rows} currency={currency} />}
 
-      {/* Yearly analysis section (homeowner only) */}
-      {!isBuilder && <div className="mt-6"><HomeownerAnalysisSection projectId={projectId} currency={currency} /></div>}
+      {/* Yearly analysis + ROT section (homeowner only) */}
+      {!isBuilder && (
+        <div className="mt-6 space-y-6">
+          <HomeownerAnalysisSection projectId={projectId} currency={currency} />
+          {showTaxDeduction && <RotSummaryCard projectId={projectId} />}
+        </div>
+      )}
 
-      {/* ROT deduction section — Swedish projects only */}
-      {showTaxDeduction && (
+      {/* ROT section (builder only) */}
+      {isBuilder && showTaxDeduction && (
         <div className="mt-6">
           <RotSummaryCard projectId={projectId} />
         </div>
