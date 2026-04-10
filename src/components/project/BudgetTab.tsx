@@ -2180,16 +2180,15 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       {/* Budget Charts Section (builder only) */}
       {isBuilder && <BudgetChartsSection rows={rows} currency={currency} />}
 
-      {/* Yearly analysis + ROT section (homeowner only) */}
+      {/* Yearly analysis section (homeowner only) */}
       {!isBuilder && (
-        <div className="mt-6 space-y-6">
+        <div className="mt-6">
           <HomeownerAnalysisSection projectId={projectId} currency={currency} />
-          {showTaxDeduction && <RotSummaryCard projectId={projectId} />}
         </div>
       )}
 
-      {/* ROT section (builder only) */}
-      {isBuilder && showTaxDeduction && (
+      {/* ROT section — unified for both user types */}
+      {showTaxDeduction && (
         <div className="mt-6">
           <RotSummaryCard projectId={projectId} />
         </div>

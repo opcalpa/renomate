@@ -33,6 +33,7 @@ interface YearlyRotData {
 
 interface RotSummaryCardProps {
   projectId: string;
+  embedded?: boolean;
 }
 
 function formatCurrency(amount: number): string {
@@ -44,7 +45,7 @@ function maskPnr(pnr: string): string {
   return "****-" + pnr.slice(-4);
 }
 
-export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
+export function RotSummaryCard({ projectId, embedded = false }: RotSummaryCardProps) {
   const { t } = useTranslation();
   const [persons, setPersons] = useState<RotPerson[]>([]);
   const [yearlyLimits, setYearlyLimits] = useState<Map<number, number>>(new Map());
@@ -272,9 +273,9 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
   if (totalPlanned === 0 && totalActual === 0 && persons.length === 0) return null;
 
   return (
-    <div className="rounded-lg border bg-card p-4 space-y-3">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className={embedded ? "space-y-3" : "rounded-lg border bg-card p-4 space-y-3"}>
+      {/* Header — hidden when embedded in parent section */}
+      {!embedded && <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Shield className="h-4 w-4 text-green-600" />
           {t("rot.summary", "ROT-avdrag")}
@@ -299,7 +300,23 @@ export function RotSummaryCard({ projectId }: RotSummaryCardProps) {
             {t("rot.addPerson", "Lägg till")}
           </Button>
         </div>
-      </div>
+      </div>}
+
+      {/* Person management — always shown, even embedded */}
+      {embedded && (
+        <div className="flex items-center justify-end gap-2">
+          {persons.length > 0 && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <Users className="h-3 w-3" />
+              {persons.length} {persons.length === 1 ? t("rot.person", "person") : t("rot.persons", "personer")}
+            </Badge>
+          )}
+          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setShowAddForm(!showAddForm)}>
+            <UserPlus className="h-3 w-3" />
+            {t("rot.addPerson", "Lägg till")}
+          </Button>
+        </div>
+      )}
 
       {/* Add person form */}
       {showAddForm && (
