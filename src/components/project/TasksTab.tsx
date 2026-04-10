@@ -179,8 +179,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
   // Table view state (lifted so toolbar can render in parent)
   const tableViewState = useTasksTableView(projectId);
 
-  // Bulk selection — shared across all views
-  const bulk = useBulkTaskActions({ tasks: filteredTasks, projectId, onTaskUpdated: fetchTasks });
+  // Bulk selection — moved below fetchTasks definition
 
   // Room instructions data (for rooms view mode — legacy, kept for potential reuse)
   const { rooms: roomInstructions, floorPlanShapes } = useRoomInstructionsData(projectId, null);
@@ -803,6 +802,9 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
     }
     return true;
   });
+
+  // Bulk selection — shared across all views
+  const bulk = useBulkTaskActions({ tasks, projectId, onTaskUpdated: fetchTasks });
 
   // Modifier-aware click: Cmd/Ctrl+click → bulk select, normal click → open task
   const handleTaskClickWithModifier = (task: Task, nativeEvent?: MouseEvent | React.MouseEvent) => {
