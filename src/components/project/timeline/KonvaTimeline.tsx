@@ -119,9 +119,11 @@ export const KonvaTimeline: React.FC<KonvaTimelineProps> = ({
         })();
     if (!earliest || !latest) return;
     const span = Math.max(differenceInDays(latest, earliest) + 1, 7);
-    // Calculate exact ppd to fit project in viewport — bypass store min/max
-    const fitPpd = Math.max(1, containerWidth / span);
-    // Set zoom + pan atomically via direct state update
+    // Read actual width from DOM to avoid stale containerWidth
+    const actualWidth = containerRef.current?.clientWidth || containerWidth;
+    // Calculate exact ppd to fit project in viewport
+    const fitPpd = Math.max(1, actualWidth / span);
+    // Set zoom + pan atomically
     const daysFromOrigin = differenceInDays(earliest, originDate);
     const panX = -(daysFromOrigin * fitPpd);
     useTimelineStore.setState({ pixelsPerDay: fitPpd, panX });
