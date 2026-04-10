@@ -37,7 +37,7 @@ const BAR_HEIGHT = ROW_HEIGHT - BAR_PADDING_Y * 2;
 const CORNER_RADIUS = 6;
 const RESIZE_HANDLE_WIDTH = 8;
 const GRIP_DOT_RADIUS = 1.5;
-const CLICK_THRESHOLD = 5;
+const CLICK_THRESHOLD = 8;
 
 const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
   taskId,
@@ -154,16 +154,17 @@ const TimelineTaskBarComponent: React.FC<TimelineTaskBarProps> = ({
         onDragEnd(taskId, evt);
       }
       dragStartPos.current = null;
-      didDrag.current = false;
+      // Delay resetting didDrag so onClick/onTap can check it
+      setTimeout(() => { didDrag.current = false; }, 50);
     },
     [onDragEnd, taskId, setCursor]
   );
 
   // Click/tap handler — fires on mouseup/touchend without drag movement
   const handleClick = useCallback(() => {
-    if (!didDrag.current) {
-      onClick(taskId);
-    }
+    // Skip if a drag just happened (didDrag stays true for 50ms after dragEnd)
+    if (didDrag.current) return;
+    onClick(taskId);
   }, [onClick, taskId]);
 
   const handleResizeLeft = useCallback(
