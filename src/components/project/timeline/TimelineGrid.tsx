@@ -1,6 +1,8 @@
 import React from "react";
 import { Group, Rect, Line, Text as KonvaText } from "react-konva";
-import { addDays, parseISO } from "date-fns";
+import { addDays, parseISO, format } from "date-fns";
+import { sv } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 import { dateToX, isWeekend, isSameDay } from "./utils";
 
 interface TimelineGridProps {
@@ -137,7 +139,7 @@ const TimelineGridComponent: React.FC<TimelineGridProps> = ({
           key="proj-start-label"
           x={x + 3}
           y={4}
-          text="Start"
+          text={`Start ${format(parseISO(projectStartDate), "d MMM", { locale: sv })}`}
           fontSize={10}
           fontStyle="bold"
           fill={PROJECT_START_COLOR}
@@ -168,7 +170,7 @@ const TimelineGridComponent: React.FC<TimelineGridProps> = ({
           key="proj-finish-label"
           x={x + 3}
           y={4}
-          text="M\u00e5l"
+          text={`Mål ${format(parseISO(projectFinishDate), "d MMM", { locale: sv })}`}
           fontSize={10}
           fontStyle="bold"
           fill={PROJECT_FINISH_COLOR}
