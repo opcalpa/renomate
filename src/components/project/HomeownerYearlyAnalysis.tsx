@@ -143,7 +143,8 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
     const add = (y: number, v: number) => map.set(y, (map.get(y) || 0) + v);
     materials.forEach((m) => { if (m.rot_amount && m.paid_date) add(new Date(m.paid_date).getFullYear(), m.rot_amount); });
     invoices.forEach((inv) => { if (inv.total_rot_deduction && inv.paid_at) add(new Date(inv.paid_at).getFullYear(), inv.total_rot_deduction); });
-    fileLinks.forEach((fl) => { if (fl.rot_amount && fl.invoice_date) add(new Date(fl.invoice_date).getFullYear(), fl.rot_amount); });
+    // Only orphan file links (not already counted via invoice/material)
+    fileLinks.forEach((fl) => { if (fl.rot_amount && fl.invoice_date && !fl.task_id && !fl.material_id) add(new Date(fl.invoice_date).getFullYear(), fl.rot_amount); });
     return map;
   }, [materials, invoices, fileLinks]);
 
@@ -189,8 +190,10 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
       if (!d) return;
       add(mat.project_id, new Date(d).getFullYear(), mat.price_total || 0);
     });
+    // Only count orphan file links (not linked to a task/material already counted above)
     fileLinks.forEach((fl) => {
       if (!fl.invoice_date || (!fl.invoice_amount && !fl.rot_amount)) return;
+      if (fl.task_id || fl.material_id) return;
       add(fl.project_id, new Date(fl.invoice_date).getFullYear(), (fl.invoice_amount || 0) - (fl.rot_amount || 0));
     });
 
@@ -216,11 +219,19 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
     return { verified: invWithDocs + matWithDocs, total: invoices.length + materials.length };
   }, [invoices, materials, entityHasFile]);
 
-  // --- Totals ---
+  // --- Totals (avoid double-counting file_links that overlap invoices/materials) ---
   const totalAmount = useMemo(() => {
-    return invoices.reduce((s, i) => s + (i.total_amount || 0), 0)
-      + materials.reduce((s, m) => s + (m.price_total || 0), 0)
-      + fileLinks.filter((f) => f.invoice_amount).reduce((s, f) => s + (f.invoice_amount || 0), 0);
+    const invTotal = invoices.reduce((s, i) => s + (i.total_amount || 0), 0);
+    const matTotal = materials.reduce((s, m) => s + (m.price_total || 0), 0);
+    // Only count file_links that aren't already represented by an invoice or material
+    const linkedEntityIds = new Set([
+      ...invoices.map((i) => i.id),
+      ...materials.map((m) => m.id),
+    ]);
+    const flTotal = fileLinks
+      .filter((f) => f.invoice_amount && !f.task_id && !f.material_id)
+      .reduce((s, f) => s + (f.invoice_amount || 0), 0);
+    return invTotal + matTotal + flTotal;
   }, [invoices, materials, fileLinks]);
 
   if (loading || (invoices.length === 0 && materials.length === 0)) return null;
