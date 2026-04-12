@@ -4898,7 +4898,8 @@
     "qualifyingTotal": "{{count}} av {{total}} år kvalificerar",
     "atSale": "Vid försäljning",
     "projectDetails": "Detaljer per projekt",
-    "qualifyingYearsShort": "år"
+    "qualifyingYearsShort": "år",
+    "fuExplanationShort": "Avdrag vid kapitalvinstbeskattning"
   },
   "declaration": {
     "colVendor": "Leverantör",

@@ -1,7 +1,6 @@
 /**
- * Skatteöversikt — compact cross-project tax overview.
- * Two cards: ROT status (per year) + Förbättringsutgifter (at sale).
- * No duplicated tables — links into each project's Budget tab for details.
+ * Skatteöversikt — cross-project tax overview.
+ * ROT progress per year + expandable property cards for förbättringsutgifter.
  */
 
 import { useState, useEffect, useMemo } from "react";
@@ -15,10 +14,13 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
-  ExternalLink,
+  ArrowUpRight,
+  Receipt,
+  FileCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getEvidenceColor } from "@/lib/evidenceStatus";
+import { cn } from "@/lib/utils";
 
 // --- Interfaces ---
 
@@ -32,6 +34,16 @@ interface ProjectMeta {
   name: string;
   address: string | null;
   property_designation: string | null;
+}
+
+interface FuProperty {
+  key: string;
+  address: string;
+  qualifyingNet: number;
+  totalYears: number;
+  qualifyingYears: number;
+  yearDetails: { year: number; net: number; qualifies: boolean }[];
+  projectIds: string[];
 }
 
 // --- Component ---
@@ -50,9 +62,18 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
   const [rotAllocations, setRotAllocations] = useState<{ material_id: string; rot_person_id: string; amount: number }[]>([]);
 
   const [expanded, setExpanded] = useState(false);
+  const [expandedProperties, setExpandedProperties] = useState<Set<string>>(new Set());
 
   const projectIds = useMemo(() => projects.map((p) => p.id), [projects]);
   const fc = (v: number) => formatCurrency(v, currency);
+
+  const toggleProperty = (key: string) => {
+    setExpandedProperties((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
 
   // --- Data fetching ---
   useEffect(() => {
@@ -81,14 +102,13 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
           setRotYearlyLimits(map);
         }
 
-        // ROT allocations
         const matIds = (matRes.data || []).map((m) => m.id);
         if (matIds.length > 0) {
           const { data: allocs } = await supabase.from("material_rot_allocations").select("material_id, rot_person_id, amount").in("material_id", matIds);
           setRotAllocations(allocs || []);
         }
       } catch {
-        // silent — no data shown
+        // silent
       } finally {
         setLoading(false);
       }
@@ -96,12 +116,11 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
     fetchAll();
   }, [projectIds]);
 
-  // --- File evidence map ---
+  // --- File evidence ---
   const entityHasFile = useMemo(() => {
     const set = new Set<string>();
     fileLinks.forEach((f) => {
       if (f.file_type === "invoice" || f.file_type === "receipt") {
-        if (f.task_id) set.add(`task-${f.task_id}`);
         if (f.material_id) set.add(`material-${f.material_id}`);
         set.add(`project-${f.project_id}`);
       }
@@ -109,64 +128,26 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
     return set;
   }, [fileLinks]);
 
-  // --- Years with data ---
+  // --- Years ---
   const years = useMemo(() => {
     const s = new Set<number>();
     invoices.forEach((i) => { if (i.paid_at) s.add(new Date(i.paid_at).getFullYear()); });
-    materials.forEach((m) => {
-      const d = m.paid_date || m.created_at;
-      if (d) s.add(new Date(d).getFullYear());
-    });
+    materials.forEach((m) => { const d = m.paid_date || m.created_at; if (d) s.add(new Date(d).getFullYear()); });
     fileLinks.forEach((f) => { if (f.invoice_date) s.add(new Date(f.invoice_date).getFullYear()); });
     return [...s].sort((a, b) => b - a);
   }, [invoices, materials, fileLinks]);
 
   // --- ROT per year ---
   const rotByYear = useMemo(() => {
-    const map = new Map<number, { actual: number; persons: Map<string, number> }>();
-
-    const ensure = (y: number) => {
-      if (!map.has(y)) map.set(y, { actual: 0, persons: new Map() });
-      return map.get(y)!;
-    };
-
-    // From materials
-    materials.forEach((m) => {
-      if (!m.rot_amount || !m.paid_date) return;
-      const y = new Date(m.paid_date).getFullYear();
-      ensure(y).actual += m.rot_amount;
-    });
-
-    // From invoices
-    invoices.forEach((inv) => {
-      if (!inv.total_rot_deduction || !inv.paid_at) return;
-      const y = new Date(inv.paid_at).getFullYear();
-      ensure(y).actual += inv.total_rot_deduction;
-    });
-
-    // From file links
-    fileLinks.forEach((fl) => {
-      if (!fl.rot_amount || !fl.invoice_date) return;
-      const y = new Date(fl.invoice_date).getFullYear();
-      ensure(y).actual += fl.rot_amount;
-    });
-
-    // Per-person allocations
-    const matYearMap = new Map<string, number>();
-    materials.forEach((m) => {
-      if (m.paid_date) matYearMap.set(m.id, new Date(m.paid_date).getFullYear());
-    });
-    rotAllocations.forEach((a) => {
-      const y = matYearMap.get(a.material_id);
-      if (!y) return;
-      const entry = ensure(y);
-      entry.persons.set(a.rot_person_id, (entry.persons.get(a.rot_person_id) || 0) + a.amount);
-    });
-
+    const map = new Map<number, number>();
+    const add = (y: number, v: number) => map.set(y, (map.get(y) || 0) + v);
+    materials.forEach((m) => { if (m.rot_amount && m.paid_date) add(new Date(m.paid_date).getFullYear(), m.rot_amount); });
+    invoices.forEach((inv) => { if (inv.total_rot_deduction && inv.paid_at) add(new Date(inv.paid_at).getFullYear(), inv.total_rot_deduction); });
+    fileLinks.forEach((fl) => { if (fl.rot_amount && fl.invoice_date) add(new Date(fl.invoice_date).getFullYear(), fl.rot_amount); });
     return map;
-  }, [materials, invoices, fileLinks, rotAllocations]);
+  }, [materials, invoices, fileLinks]);
 
-  // --- Unique ROT persons (deduplicated by personnummer) ---
+  // --- ROT persons ---
   const uniquePersons = useMemo(() => {
     const seen = new Map<string, { name: string; customLimit: number | null }>();
     rotPersons.forEach((p) => {
@@ -178,9 +159,9 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
 
   const personCount = Math.max(uniquePersons.size, 1);
 
-  // --- Förbättringsutgifter per property ---
-  const fuByProperty = useMemo(() => {
-    const map = new Map<string, { address: string; projects: Set<string>; netByYear: Map<number, number>; totalNet: number }>();
+  // --- Förbättringsutgifter per property (with year details) ---
+  const fuByProperty = useMemo((): FuProperty[] => {
+    const map = new Map<string, { address: string; projects: Set<string>; netByYear: Map<number, number> }>();
 
     const getKey = (pid: string) => {
       const meta = projectMeta.find((p) => p.id === pid);
@@ -193,158 +174,176 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
 
     const add = (pid: string, year: number, net: number) => {
       const key = getKey(pid);
-      if (!map.has(key)) map.set(key, { address: getAddress(pid), projects: new Set(), netByYear: new Map(), totalNet: 0 });
+      if (!map.has(key)) map.set(key, { address: getAddress(pid), projects: new Set(), netByYear: new Map() });
       const entry = map.get(key)!;
       entry.projects.add(pid);
       entry.netByYear.set(year, (entry.netByYear.get(year) || 0) + net);
     };
 
     invoices.forEach((inv) => {
-      const d = inv.paid_at;
-      if (!d) return;
-      const net = (inv.total_amount || 0) - (inv.total_rot_deduction || 0);
-      add(inv.project_id, new Date(d).getFullYear(), net);
+      if (!inv.paid_at) return;
+      add(inv.project_id, new Date(inv.paid_at).getFullYear(), (inv.total_amount || 0) - (inv.total_rot_deduction || 0));
     });
-
     materials.forEach((mat) => {
       const d = mat.paid_date || mat.created_at;
       if (!d) return;
       add(mat.project_id, new Date(d).getFullYear(), mat.price_total || 0);
     });
-
     fileLinks.forEach((fl) => {
       if (!fl.invoice_date || (!fl.invoice_amount && !fl.rot_amount)) return;
-      const net = (fl.invoice_amount || 0) - (fl.rot_amount || 0);
-      add(fl.project_id, new Date(fl.invoice_date).getFullYear(), net);
+      add(fl.project_id, new Date(fl.invoice_date).getFullYear(), (fl.invoice_amount || 0) - (fl.rot_amount || 0));
     });
 
-    // Compute totals (only qualifying years >= 5000)
-    const result: { key: string; address: string; qualifyingNet: number; totalYears: number; qualifyingYears: number }[] = [];
+    const result: FuProperty[] = [];
     map.forEach((entry, key) => {
-      let qualifyingNet = 0;
-      let qualifyingYears = 0;
-      entry.netByYear.forEach((net) => {
-        if (net >= 5000) { qualifyingNet += net; qualifyingYears++; }
-      });
-      entry.totalNet = qualifyingNet;
-      result.push({ key, address: entry.address, qualifyingNet, totalYears: entry.netByYear.size, qualifyingYears });
+      const yearDetails = [...entry.netByYear.entries()]
+        .map(([year, net]) => ({ year, net, qualifies: net >= 5000 }))
+        .sort((a, b) => b.year - a.year);
+      const qualifyingYears = yearDetails.filter((y) => y.qualifies).length;
+      const qualifyingNet = yearDetails.filter((y) => y.qualifies).reduce((s, y) => s + y.net, 0);
+      result.push({ key, address: entry.address, qualifyingNet, totalYears: yearDetails.length, qualifyingYears, yearDetails, projectIds: [...entry.projects] });
     });
-
     return result.filter((r) => r.totalYears > 0).sort((a, b) => b.qualifyingNet - a.qualifyingNet);
   }, [invoices, materials, fileLinks, projectMeta]);
 
   const fuTotal = fuByProperty.reduce((s, p) => s + p.qualifyingNet, 0);
+  const totalRot = useMemo(() => [...rotByYear.values()].reduce((s, v) => s + v, 0), [rotByYear]);
 
-  // --- Evidence summary ---
+  // --- Evidence ---
   const evidenceSummary = useMemo(() => {
     const invWithDocs = invoices.filter((inv) => entityHasFile.has(`project-${inv.project_id}`)).length;
     const matWithDocs = materials.filter((mat) => entityHasFile.has(`material-${mat.id}`)).length;
-    const total = invoices.length + materials.length;
-    const verified = invWithDocs + matWithDocs;
-    return { verified, total };
+    return { verified: invWithDocs + matWithDocs, total: invoices.length + materials.length };
   }, [invoices, materials, entityHasFile]);
 
-  // --- Grand totals ---
+  // --- Totals ---
   const totalAmount = useMemo(() => {
-    const inv = invoices.reduce((s, i) => s + (i.total_amount || 0), 0);
-    const mat = materials.reduce((s, m) => s + (m.price_total || 0), 0);
-    const fl = fileLinks.filter((f) => f.invoice_amount).reduce((s, f) => s + (f.invoice_amount || 0), 0);
-    return inv + mat + fl;
+    return invoices.reduce((s, i) => s + (i.total_amount || 0), 0)
+      + materials.reduce((s, m) => s + (m.price_total || 0), 0)
+      + fileLinks.filter((f) => f.invoice_amount).reduce((s, f) => s + (f.invoice_amount || 0), 0);
   }, [invoices, materials, fileLinks]);
 
-  const totalRot = useMemo(() => {
-    return [...rotByYear.values()].reduce((s, v) => s + v.actual, 0);
-  }, [rotByYear]);
+  if (loading || (invoices.length === 0 && materials.length === 0)) return null;
 
-  if (loading) return null;
-  if (invoices.length === 0 && materials.length === 0) return null;
+  const rotYears = years.filter((y) => rotByYear.has(y) && (rotByYear.get(y) || 0) > 0);
+  const hasRot = rotYears.length > 0;
 
   return (
-    <div className="border rounded-lg bg-card">
-      {/* Header */}
+    <div className="space-y-4">
+      {/* ══════ Header ══════ */}
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="w-full p-4 sm:p-5 flex items-center justify-between hover:bg-muted/50 transition-colors"
+        className="w-full border rounded-xl bg-card p-4 sm:p-5 flex items-center justify-between hover:bg-muted/30 transition-colors"
       >
-        <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-indigo-600" />
-          <span className="text-sm font-semibold">
-            {t("analysis.globalTitle", "Skatteöversikt")}
-          </span>
-          <Badge variant="outline" className="text-xs">
-            {projects.length} {t("analysis.projectCount", "projekt")}
-          </Badge>
-        </div>
-        {expanded ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <div className="flex items-center gap-3">
-            {totalRot > 0 && (
-              <span className="text-sm text-green-600 hidden sm:inline">
-                ROT &minus;{fc(totalRot)}
-              </span>
-            )}
-            <span className="text-sm text-muted-foreground">{fc(totalAmount)}</span>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-indigo-100 dark:bg-indigo-950/40 flex items-center justify-center">
+            <Shield className="h-4.5 w-4.5 text-indigo-600" />
           </div>
-        )}
+          <div className="text-left">
+            <span className="text-sm font-semibold block">{t("analysis.globalTitle", "Skatteöversikt")}</span>
+            <span className="text-xs text-muted-foreground">
+              {projects.length} {t("analysis.projectCount", "projekt")}
+              {evidenceSummary.total > 0 && (
+                <> · <span className={`inline-block h-1.5 w-1.5 rounded-full align-middle mr-0.5 ${getEvidenceColor(evidenceSummary.verified === evidenceSummary.total ? "verified" : "registered")}`} /> {evidenceSummary.verified}/{evidenceSummary.total} {t("evidence.summaryLabel", "verifierade")}</>
+              )}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {!expanded && (
+            <>
+              {totalRot > 0 && (
+                <Badge className="bg-green-100 text-green-700 border-green-200 hidden sm:flex">
+                  ROT &minus;{fc(totalRot)}
+                </Badge>
+              )}
+              <span className="text-sm font-medium tabular-nums">{fc(totalAmount)}</span>
+            </>
+          )}
+          {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+        </div>
       </button>
 
       {expanded && (
-        <div className="px-4 sm:px-5 pb-5 space-y-3">
-
-          {/* Evidence summary */}
-          {evidenceSummary.total > 0 && (
-            <div className="flex items-center gap-2 text-xs">
-              <span className={`inline-block h-2.5 w-2.5 rounded-full ${getEvidenceColor(evidenceSummary.verified === evidenceSummary.total ? "verified" : "registered")}`} />
-              <span className="text-muted-foreground">
-                {evidenceSummary.verified}/{evidenceSummary.total} {t("evidence.summaryLabel", "verifierade")}
-              </span>
-            </div>
-          )}
-
-          {/* === ROT Card === */}
-          {totalRot > 0 && (
-            <div className="rounded-lg border bg-green-50/50 dark:bg-green-950/20 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium">{t("rot.summary", "ROT-avdrag")}</span>
-                <span className="text-xs text-muted-foreground ml-auto">
-                  {personCount} {personCount === 1 ? t("rot.person", "person") : t("rot.persons", "personer")}
-                </span>
+        <div className="space-y-3">
+          {/* ══════ Stat cards row ══════ */}
+          <div className={cn("grid gap-3", hasRot ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2")}>
+            {/* Total cost */}
+            <div className="border rounded-xl p-4 bg-card">
+              <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                <Receipt className="h-3.5 w-3.5" />
+                <span className="text-[11px] font-medium uppercase tracking-wide">{t("common.total")}</span>
               </div>
+              <span className="text-lg sm:text-xl font-bold tabular-nums">{fc(totalAmount)}</span>
+            </div>
 
-              {/* Per-year ROT breakdown */}
-              <div className="space-y-2">
-                {years.filter((y) => rotByYear.has(y)).map((year) => {
-                  const data = rotByYear.get(year)!;
+            {/* ROT total */}
+            {hasRot && (
+              <div className="border rounded-xl p-4 bg-card">
+                <div className="flex items-center gap-1.5 text-green-600 mb-1">
+                  <Shield className="h-3.5 w-3.5" />
+                  <span className="text-[11px] font-medium uppercase tracking-wide">ROT</span>
+                </div>
+                <span className="text-lg sm:text-xl font-bold tabular-nums text-green-700">&minus;{fc(totalRot)}</span>
+              </div>
+            )}
+
+            {/* Förbättringsutgifter total */}
+            {fuTotal > 0 && (
+              <div className="border rounded-xl p-4 bg-card">
+                <div className="flex items-center gap-1.5 text-indigo-600 mb-1">
+                  <Building2 className="h-3.5 w-3.5" />
+                  <span className="text-[11px] font-medium uppercase tracking-wide">{t("analysis.atSale", "Vid försäljning")}</span>
+                </div>
+                <span className="text-lg sm:text-xl font-bold tabular-nums">{fc(fuTotal)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* ══════ ROT per year ══════ */}
+          {hasRot && (
+            <div className="border rounded-xl bg-card overflow-hidden">
+              <div className="px-4 py-3 border-b bg-green-50/50 dark:bg-green-950/20">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-green-600" />
+                    {t("rot.summary", "ROT-avdrag")}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {personCount} {personCount === 1 ? t("rot.person") : t("rot.persons")}
+                  </span>
+                </div>
+              </div>
+              <div className="divide-y">
+                {rotYears.map((year) => {
+                  const actual = rotByYear.get(year) || 0;
                   const defaultLimit = rotYearlyLimits.get(year) || 50000;
                   const totalLimit = [...uniquePersons.values()].reduce((s, p) => s + (p.customLimit ?? defaultLimit), 0) || defaultLimit;
-                  const pct = Math.min((data.actual / totalLimit) * 100, 100);
-                  const isOver = data.actual > totalLimit;
+                  const pct = Math.min((actual / totalLimit) * 100, 100);
+                  const isOver = actual > totalLimit;
 
                   return (
-                    <div key={year} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium">{year}</span>
-                        <span className="tabular-nums">
-                          <span className={isOver ? "text-destructive font-medium" : "text-green-700 font-medium"}>
-                            {fc(data.actual)}
+                    <div key={year} className="px-4 py-3 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{year}</span>
+                        <div className="text-right">
+                          <span className={cn("text-sm font-semibold tabular-nums", isOver ? "text-destructive" : "text-green-700")}>
+                            {fc(actual)}
                           </span>
-                          <span className="text-muted-foreground"> / {fc(totalLimit)}</span>
-                        </span>
+                          <span className="text-xs text-muted-foreground ml-1">/ {fc(totalLimit)}</span>
+                        </div>
                       </div>
-                      <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${isOver ? "bg-destructive" : pct > 80 ? "bg-amber-500" : "bg-green-500"}`}
+                          className={cn("h-full rounded-full transition-all", isOver ? "bg-destructive" : pct > 80 ? "bg-amber-400" : "bg-green-500")}
                           style={{ width: `${pct}%` }}
                         />
                       </div>
                       {isOver && (
                         <p className="text-[11px] text-destructive flex items-center gap-1">
                           <AlertTriangle className="h-3 w-3" />
-                          {t("rot.overLimit", "Överstiger ROT-tak med {{amount}} kr", { amount: fc(data.actual - totalLimit) })}
+                          {t("rot.overLimit", "Överstiger ROT-tak med {{amount}} kr", { amount: fc(actual - totalLimit) })}
                         </p>
                       )}
                     </div>
@@ -354,55 +353,102 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
             </div>
           )}
 
-          {/* === Förbättringsutgifter Card === */}
+          {/* ══════ Förbättringsutgifter per property ══════ */}
           {fuByProperty.length > 0 && (
-            <div className="rounded-lg border bg-indigo-50/50 dark:bg-indigo-950/20 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-indigo-600" />
-                <span className="text-sm font-medium">{t("analysis.atSale", "Vid försäljning")}</span>
+            <div className="border rounded-xl bg-card overflow-hidden">
+              <div className="px-4 py-3 border-b bg-indigo-50/50 dark:bg-indigo-950/20">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-indigo-600" />
+                    {t("analysis.atSale", "Vid försäljning")}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {t("analysis.fuExplanationShort", "Avdrag vid kapitalvinstbeskattning")}
+                  </span>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {t("analysis.fuExplanation", "Dokumenterade renoveringskostnader som kan dras av från reavinstskatten vid försäljning. Minst 5 000 kr per år krävs.")}
-              </p>
 
-              <div className="space-y-2">
-                {fuByProperty.map((prop) => (
-                  <div key={prop.key} className="flex items-center justify-between text-xs py-1 border-b last:border-0">
-                    <div>
-                      <span className="font-medium">{prop.address}</span>
-                      <span className="text-muted-foreground ml-2">
-                        {prop.qualifyingYears}/{prop.totalYears} {t("analysis.qualifyingYearsShort", "år")}
-                      </span>
+              <div className="divide-y">
+                {fuByProperty.map((prop) => {
+                  const isOpen = expandedProperties.has(prop.key);
+                  return (
+                    <div key={prop.key}>
+                      <button
+                        type="button"
+                        onClick={() => toggleProperty(prop.key)}
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                          <div className="text-left">
+                            <span className="text-sm font-medium">{prop.address}</span>
+                            <span className="text-xs text-muted-foreground ml-2">
+                              {prop.qualifyingYears}/{prop.totalYears} {t("analysis.qualifyingYearsShort", "år")}
+                            </span>
+                          </div>
+                        </div>
+                        <span className={cn("text-sm font-semibold tabular-nums", prop.qualifyingNet > 0 ? "text-foreground" : "text-muted-foreground")}>
+                          {fc(prop.qualifyingNet)}
+                        </span>
+                      </button>
+
+                      {/* Expanded: year breakdown + project links */}
+                      {isOpen && (
+                        <div className="px-4 pb-3 pl-10 space-y-1">
+                          {prop.yearDetails.map((yd) => (
+                            <div key={yd.year} className="flex items-center justify-between text-xs py-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium w-10">{yd.year}</span>
+                                {!yd.qualifies && (
+                                  <Badge variant="outline" className="text-[10px] h-4 text-amber-600 border-amber-200 bg-amber-50">
+                                    &lt; 5 000 kr
+                                  </Badge>
+                                )}
+                              </div>
+                              <span className={cn("tabular-nums", yd.qualifies ? "font-medium" : "text-muted-foreground line-through")}>
+                                {fc(yd.net)}
+                              </span>
+                            </div>
+                          ))}
+                          {/* Project links */}
+                          <div className="pt-1.5 border-t mt-1.5 space-y-0.5">
+                            {prop.projectIds.map((pid) => {
+                              const pm = projectMeta.find((p) => p.id === pid);
+                              return (
+                                <button
+                                  key={pid}
+                                  type="button"
+                                  onClick={() => navigate(`/projects/${pid}?tab=budget`)}
+                                  className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+                                >
+                                  <ArrowUpRight className="h-3 w-3" />
+                                  {pm?.name || pid}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <span className="tabular-nums font-medium">{fc(prop.qualifyingNet)}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
-              <div className="flex items-center justify-between text-sm pt-1 border-t">
-                <span className="font-medium">{t("common.total")}</span>
-                <span className="tabular-nums font-bold">{fc(fuTotal)}</span>
+              {/* Footer total */}
+              <div className="px-4 py-3 border-t bg-muted/30 flex items-center justify-between">
+                <span className="text-sm font-medium">{t("common.total")}</span>
+                <span className="text-sm font-bold tabular-nums">{fc(fuTotal)}</span>
               </div>
             </div>
           )}
 
-          {/* === Per-project links === */}
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground font-medium">{t("analysis.projectDetails", "Detaljer per projekt")}</p>
-            {projectMeta.map((pm) => (
-              <button
-                key={pm.id}
-                type="button"
-                onClick={() => navigate(`/projects/${pm.id}?tab=budget`)}
-                className="flex items-center gap-2 w-full text-left text-xs px-2 py-1.5 rounded-md hover:bg-muted transition-colors group"
-              >
-                <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary" />
-                <span className="group-hover:text-primary">{pm.name}</span>
-                {pm.address && <span className="text-muted-foreground">— {pm.address}</span>}
-              </button>
-            ))}
-          </div>
-
+          {/* Min 5000 kr note */}
+          {fuByProperty.length > 0 && (
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 px-1">
+              <FileCheck className="h-3 w-3 shrink-0" />
+              {t("analysis.fuExplanation", "Dokumenterade renoveringskostnader som kan dras av från reavinstskatten vid försäljning. Minst 5 000 kr per år krävs.")}
+            </p>
+          )}
         </div>
       )}
     </div>

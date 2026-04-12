@@ -4901,7 +4901,8 @@
     "qualifyingTotal": "{{count}} of {{total}} years qualify",
     "atSale": "At sale",
     "projectDetails": "Details per project",
-    "qualifyingYearsShort": "years"
+    "qualifyingYearsShort": "years",
+    "fuExplanationShort": "Deductible from capital gains tax"
   },
   "declaration": {
     "colVendor": "Vendor",
