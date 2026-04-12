@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
@@ -74,6 +74,7 @@ export interface DeclarationRow {
   hasDocuments: boolean;
   evidenceStatus?: EvidenceStatus;
   rotPerPerson?: { name: string; amount: number }[];
+  paymentYear?: number;
   notes: string | null;
   projectName?: string;
 }
@@ -265,31 +266,60 @@ export function DeclarationTable({ rows, currency, showProject }: DeclarationTab
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="border-b last:border-b-0 hover:bg-muted/30 transition-colors">
-                {/* Type icon */}
-                <td className="px-2 py-1.5">
-                  {row.type === "invoice" ? (
-                    <FileText className="h-3.5 w-3.5 text-blue-500" />
-                  ) : (
-                    <ShoppingCart className="h-3.5 w-3.5 text-teal-500" />
-                  )}
-                </td>
-                {showProject && (
-                  <td className="px-2 py-1.5 text-xs text-muted-foreground truncate max-w-[120px]">
-                    {row.projectName || "—"}
-                  </td>
-                )}
-                {activeColumns.map((col) => (
-                  <td
-                    key={col.key}
-                    className={`px-2 py-1.5 ${col.align === "right" ? "text-right" : "text-left"}`}
-                  >
-                    {renderCell(row, col)}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {(() => {
+              // Check if rows span multiple years — if so, show year group headers
+              const uniqueYears = new Set(rows.map((r) => r.paymentYear).filter(Boolean));
+              const showYearGroups = uniqueYears.size > 1;
+              let lastYear: number | undefined;
+
+              return rows.map((row) => {
+                const elements: ReactNode[] = [];
+                if (showYearGroups && row.paymentYear && row.paymentYear !== lastYear) {
+                  lastYear = row.paymentYear;
+                  const yearRows = rows.filter((r) => r.paymentYear === row.paymentYear);
+                  const yearRot = yearRows.reduce((s, r) => s + r.rotDeduction, 0);
+                  const yearAmount = yearRows.reduce((s, r) => s + r.amount, 0);
+                  elements.push(
+                    <tr key={`year-${row.paymentYear}`} className="bg-muted/30">
+                      <td colSpan={1 + (showProject ? 1 : 0) + activeColumns.length} className="px-3 py-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold">{row.paymentYear}</span>
+                          <div className="flex items-center gap-3 text-xs tabular-nums">
+                            <span>{fc(yearAmount)}</span>
+                            {yearRot > 0 && <span className="text-green-600">&minus;{fc(yearRot)} ROT</span>}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+                elements.push(
+                  <tr key={row.id} className="border-b last:border-b-0 hover:bg-muted/30 transition-colors">
+                    <td className="px-2 py-1.5">
+                      {row.type === "invoice" ? (
+                        <FileText className="h-3.5 w-3.5 text-blue-500" />
+                      ) : (
+                        <ShoppingCart className="h-3.5 w-3.5 text-teal-500" />
+                      )}
+                    </td>
+                    {showProject && (
+                      <td className="px-2 py-1.5 text-xs text-muted-foreground truncate max-w-[120px]">
+                        {row.projectName || "—"}
+                      </td>
+                    )}
+                    {activeColumns.map((col) => (
+                      <td
+                        key={col.key}
+                        className={`px-2 py-1.5 ${col.align === "right" ? "text-right" : "text-left"}`}
+                      >
+                        {renderCell(row, col)}
+                      </td>
+                    ))}
+                  </tr>
+                );
+                return elements;
+              });
+            })()}
           </tbody>
           {/* Totals footer */}
           <tfoot>

@@ -2695,7 +2695,9 @@
     "pnrPlaceholder": "Personnummer (valfritt)",
     "used": "Utnyttjat",
     "remainingThisYear": "Kvar att nyttja {{year}}: {{amount}}",
-    "missingInvoices": "{{count}} ROT-uppgift(er) saknar verifierad faktura"
+    "missingInvoices": "{{count}} ROT-uppgift(er) saknar verifierad faktura",
+    "plannedShort": "plan",
+    "noInvoicesYet": "Inga fakturor betalda ännu — planerat avdrag visas"
   },
   "rotRules": {
     "title": "Så beräknar vi ROT",

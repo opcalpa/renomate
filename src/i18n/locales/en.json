@@ -1677,7 +1677,9 @@
     "pnrPlaceholder": "Personal ID (optional)",
     "used": "Used",
     "remainingThisYear": "Remaining {{year}}: {{amount}}",
-    "missingInvoices": "{{count}} ROT task(s) lack verified invoice"
+    "missingInvoices": "{{count}} ROT task(s) lack verified invoice",
+    "plannedShort": "plan",
+    "noInvoicesYet": "No invoices paid yet — showing planned deduction"
   },
   "rotRules": {
     "title": "How we calculate ROT",
