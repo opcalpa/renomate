@@ -55,6 +55,7 @@ export function RotSummaryCard({ projectId, embedded = false }: RotSummaryCardPr
   const [newName, setNewName] = useState("");
   const [newPnr, setNewPnr] = useState("");
   const [adding, setAdding] = useState(false);
+  const [rotTasksMissingInvoice, setRotTasksMissingInvoice] = useState(0);
   const [fetchVersion, setFetchVersion] = useState(0);
 
   const refetch = useCallback(() => setFetchVersion((v) => v + 1), []);
@@ -73,7 +74,7 @@ export function RotSummaryCard({ projectId, embedded = false }: RotSummaryCardPr
           .select("year, max_amount_per_person"),
         supabase
           .from("tasks")
-          .select("rot_amount")
+          .select("id, rot_amount")
           .eq("project_id", projectId)
           .eq("rot_eligible", true),
         supabase
@@ -114,6 +115,20 @@ export function RotSummaryCard({ projectId, embedded = false }: RotSummaryCardPr
 
       if (tasksRes.data) {
         setPlannedRot(tasksRes.data.reduce((sum, t) => sum + (t.rot_amount || 0), 0));
+
+        // Check which ROT tasks have verified invoices
+        const rotTaskIds = tasksRes.data.filter((t) => (t.rot_amount || 0) > 0).map((t) => t.id);
+        if (rotTaskIds.length > 0) {
+          const { data: rotFiles } = await supabase
+            .from("task_file_links")
+            .select("task_id, file_type")
+            .in("task_id", rotTaskIds)
+            .in("file_type", ["invoice", "receipt"]);
+          const tasksWithInvoice = new Set((rotFiles || []).map((f) => f.task_id));
+          setRotTasksMissingInvoice(rotTaskIds.filter((id) => !tasksWithInvoice.has(id)).length);
+        } else {
+          setRotTasksMissingInvoice(0);
+        }
       }
 
       if (materialsRes.data) {
@@ -451,6 +466,13 @@ export function RotSummaryCard({ projectId, embedded = false }: RotSummaryCardPr
         <div className="flex justify-between text-xs pt-1 border-t">
           <span className="text-muted-foreground">{t("rot.actualTotal", "Faktiskt ROT-avdrag")}</span>
           <span className="font-medium text-green-700 tabular-nums">{fc(totalActual, "SEK")}</span>
+        </div>
+      )}
+
+      {rotTasksMissingInvoice > 0 && (
+        <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 rounded-md px-2 py-1.5 mt-2">
+          <AlertTriangle className="h-3 w-3 shrink-0" />
+          {t("rot.missingInvoices", "{{count}} ROT-uppgift(er) saknar verifierad faktura", { count: rotTasksMissingInvoice })}
         </div>
       )}
 

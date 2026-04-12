@@ -1676,7 +1676,8 @@
     "namePlaceholder": "Name",
     "pnrPlaceholder": "Personal ID (optional)",
     "used": "Used",
-    "remainingThisYear": "Remaining {{year}}: {{amount}}"
+    "remainingThisYear": "Remaining {{year}}: {{amount}}",
+    "missingInvoices": "{{count}} ROT task(s) lack verified invoice"
   },
   "rotRules": {
     "title": "How we calculate ROT",
@@ -5137,5 +5138,15 @@
     "photoAdded": "Photo added",
     "fullscreen": "Fullscreen",
     "moodboard": "Moodboard"
+  },
+  "evidence": {
+    "verified": "Verified",
+    "registered": "Registered",
+    "missing": "Missing documentation",
+    "column": "Evidence",
+    "summaryLabel": "verified",
+    "tooltipVerified": "Has supporting document (invoice/receipt)",
+    "tooltipRegistered": "Amount recorded but no document linked",
+    "tooltipMissing": "Completed but no cost or document found"
   }
 }

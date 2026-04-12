@@ -2694,7 +2694,8 @@
     "namePlaceholder": "Namn",
     "pnrPlaceholder": "Personnummer (valfritt)",
     "used": "Utnyttjat",
-    "remainingThisYear": "Kvar att nyttja {{year}}: {{amount}}"
+    "remainingThisYear": "Kvar att nyttja {{year}}: {{amount}}",
+    "missingInvoices": "{{count}} ROT-uppgift(er) saknar verifierad faktura"
   },
   "rotRules": {
     "title": "Så beräknar vi ROT",
@@ -5134,5 +5135,15 @@
     "photoAdded": "Bild tillagd",
     "fullscreen": "Helskärm",
     "moodboard": "Moodboard"
+  },
+  "evidence": {
+    "verified": "Verifierad",
+    "registered": "Registrerad",
+    "missing": "Saknar underlag",
+    "column": "Underlag",
+    "summaryLabel": "verifierade",
+    "tooltipVerified": "Har stödjande dokument (faktura/kvitto)",
+    "tooltipRegistered": "Belopp registrerat men inget dokument länkat",
+    "tooltipMissing": "Slutfört men ingen kostnad eller dokument"
   }
 }

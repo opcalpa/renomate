@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { DeclarationTable, type DeclarationRow } from "./DeclarationTable";
+import { type EvidenceStatus } from "@/lib/evidenceStatus";
 
 // --- Interfaces ---
 
@@ -196,6 +197,9 @@ export function HomeownerAnalysisSection({ projectId, currency }: AnalysisProps)
         netCost: (inv.total_amount || 0) - (inv.total_rot_deduction || 0),
         paymentMethod: null,
         hasDocuments: entityHasFile.has("has-any"),
+        evidenceStatus: (entityHasFile.has("has-any") && (inv.total_amount || 0) > 0
+          ? "verified"
+          : (inv.total_amount || 0) > 0 ? "registered" : "missing") as EvidenceStatus,
         notes: inv.notes || (inv.is_ata ? "ÄTA" : null),
       });
     });
@@ -219,6 +223,9 @@ export function HomeownerAnalysisSection({ projectId, currency }: AnalysisProps)
         netCost: mat.price_total || 0,
         paymentMethod: null,
         hasDocuments: hasDoc,
+        evidenceStatus: (hasDoc && (mat.price_total || 0) > 0
+          ? "verified"
+          : (mat.price_total || 0) > 0 ? "registered" : "missing") as EvidenceStatus,
         notes: mat.description || null,
       });
     });

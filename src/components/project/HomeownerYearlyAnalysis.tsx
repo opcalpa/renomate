@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { getEvidenceColor } from "@/lib/evidenceStatus";
 import { RotRulesCard } from "./overview/RotRulesCard";
 
 // --- Interfaces ---
@@ -115,6 +116,7 @@ interface CostItem {
   rotDeduction: number;
   netCost: number;
   hasDocuments: boolean;
+  evidenceStatus: "verified" | "registered" | "missing" | "na";
   notes: string | null;
   isAta: boolean;
 }
@@ -455,6 +457,7 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
         rotDeduction: rot,
         netCost: net,
         hasDocuments: hasDoc,
+        evidenceStatus: hasDoc && amount > 0 ? "verified" : amount > 0 ? "registered" : "missing",
         notes: inv.notes || null,
         isAta: inv.is_ata,
       });
@@ -485,6 +488,7 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
         rotDeduction: 0,
         netCost: amount,
         hasDocuments: hasDoc,
+        evidenceStatus: hasDoc && amount > 0 ? "verified" : amount > 0 ? "registered" : "missing",
         notes: mat.description || null,
         isAta: false,
       });
@@ -521,6 +525,7 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
         rotDeduction: rot,
         netCost: net,
         hasDocuments: true,
+        evidenceStatus: "verified",
         notes: null,
         isAta: false,
       };
@@ -597,7 +602,7 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
           vendor: inv.title || inv.invoice_number || t("invoices.untitled", "Faktura"),
           description: items.map((i) => i.description).filter(Boolean).join(", ") || inv.title || "",
           date: invDate, amount, laborAmount, rotDeduction: rot, netCost: amount - rot,
-          hasDocuments: hasDoc, notes: inv.notes || null, isAta: inv.is_ata,
+          hasDocuments: hasDoc, evidenceStatus: hasDoc && amount > 0 ? "verified" : amount > 0 ? "registered" : "missing", notes: inv.notes || null, isAta: inv.is_ata,
         },
       });
     });
@@ -619,7 +624,7 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
           id: mat.id, type: "material",
           vendor: mat.vendor_name || "—", description: mat.name,
           date: matDate, amount, laborAmount: 0, rotDeduction: 0, netCost: amount,
-          hasDocuments: hasDoc, notes: mat.description || null, isAta: false,
+          hasDocuments: hasDoc, evidenceStatus: hasDoc && amount > 0 ? "verified" : amount > 0 ? "registered" : "missing", notes: mat.description || null, isAta: false,
         },
       });
     });
@@ -642,7 +647,7 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
           vendor: fl.file_name || "—",
           description: fl.file_type === "invoice" ? t("files.invoice", "Faktura") : fl.file_type,
           date: fl.invoice_date, amount, laborAmount: rot > 0 ? amount : 0,
-          rotDeduction: rot, netCost: amount - rot, hasDocuments: true, notes: null, isAta: false,
+          rotDeduction: rot, netCost: amount - rot, hasDocuments: true, evidenceStatus: "verified" as const, notes: null, isAta: false,
         },
       });
     });
@@ -669,7 +674,7 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
         const totalMaterial = items.reduce((s, i) => s + (i.type === "material" ? i.amount : Math.max(0, i.amount - i.laborAmount)), 0);
         const totalRot = items.reduce((s, i) => s + i.rotDeduction, 0);
         const totalNet = items.reduce((s, i) => s + i.netCost, 0);
-        const hasAllDocs = items.every((i) => i.hasDocuments);
+        const hasAllDocs = items.every((i) => i.evidenceStatus === "verified" || i.evidenceStatus === "na");
         years.push({ year, totalAmount, totalLabor, totalMaterial, totalRot, totalNet, qualifies: totalNet >= 5000, items, hasAllDocs });
       });
       years.sort((a, b) => b.year - a.year);
@@ -1187,9 +1192,9 @@ function FuPropertyRows({ property, isOpen, expandedYears, onToggleProperty, onT
               </td>
               <td className="px-2 py-1.5 text-center">
                 {yg.hasAllDocs ? (
-                  <CheckCircle2 className="h-3 w-3 text-green-600 mx-auto" />
+                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500 mx-auto" />
                 ) : (
-                  <XCircle className="h-3 w-3 text-red-400 mx-auto" />
+                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400 mx-auto" />
                 )}
               </td>
             </tr>
@@ -1266,9 +1271,9 @@ function ProjectGroupRows({ group, isOpen, onToggle, fc, formatDate, t }: Projec
         </td>
         <td className="px-2 py-2.5 text-center">
           {group.hasAllDocs ? (
-            <CheckCircle2 className="h-3.5 w-3.5 text-green-600 mx-auto" />
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500 mx-auto" />
           ) : (
-            <XCircle className="h-3.5 w-3.5 text-red-400 mx-auto" />
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400 mx-auto" />
           )}
         </td>
       </tr>
@@ -1366,11 +1371,7 @@ function CostItemRow({ item, fc, formatDate }: CostItemRowProps) {
         {fc(item.netCost)}
       </td>
       <td className="px-2 py-1.5 text-center">
-        {item.hasDocuments ? (
-          <CheckCircle2 className="h-3 w-3 text-green-600 mx-auto" />
-        ) : (
-          <XCircle className="h-3 w-3 text-red-400 mx-auto" />
-        )}
+        <span className={`inline-block h-2.5 w-2.5 rounded-full mx-auto ${getEvidenceColor(item.evidenceStatus) || "bg-gray-300"}`} title={item.evidenceStatus} />
       </td>
     </tr>
   );

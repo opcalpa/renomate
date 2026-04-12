@@ -2,7 +2,8 @@ import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
-import { Settings2, CheckCircle2, XCircle, FileText, ShoppingCart } from "lucide-react";
+import { Settings2, FileText, ShoppingCart } from "lucide-react";
+import { type EvidenceStatus, getEvidenceColor } from "@/lib/evidenceStatus";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -69,6 +70,7 @@ export interface DeclarationRow {
   netCost: number;
   paymentMethod: string | null;
   hasDocuments: boolean;
+  evidenceStatus?: EvidenceStatus;
   notes: string | null;
   projectName?: string;
 }
@@ -161,12 +163,12 @@ export function DeclarationTable({ rows, currency, showProject }: DeclarationTab
         return <span className="tabular-nums font-bold">{fc(row.netCost)}</span>;
       case "paymentMethod":
         return row.paymentMethod || <span className="text-muted-foreground">—</span>;
-      case "hasDocuments":
-        return row.hasDocuments ? (
-          <CheckCircle2 className="h-3.5 w-3.5 text-green-600 mx-auto" />
-        ) : (
-          <XCircle className="h-3.5 w-3.5 text-red-400 mx-auto" />
-        );
+      case "hasDocuments": {
+        const es = row.evidenceStatus ?? (row.hasDocuments ? "verified" : "registered");
+        const dotColor = getEvidenceColor(es as EvidenceStatus);
+        if (!dotColor) return null;
+        return <span className={`inline-block h-2.5 w-2.5 rounded-full mx-auto ${dotColor}`} title={t(`evidence.${es}`)} />;
+      }
       case "notes":
         return row.notes ? (
           <span className="truncate text-xs">{row.notes}</span>

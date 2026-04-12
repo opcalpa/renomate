@@ -13,6 +13,7 @@ import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, Sliders
 import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
 import { FilePreviewPopover } from "@/components/shared/FilePreviewPopover";
 import { getStatusBadgeColor } from "@/lib/statusColors";
+import { computeEvidenceStatus, getEvidenceColor } from "@/lib/evidenceStatus";
 import { BudgetChartsSection } from "./BudgetChartsSection";
 import { BuilderSummaryCards } from "./budget/BuilderSummaryCards";
 import { HomeownerBudgetView } from "./budget/HomeownerBudgetView";
@@ -88,9 +89,11 @@ interface BudgetRow {
   vendor?: string;
   // ROT
   rotAmount?: number;
+  // Evidence status
+  evidenceStatus?: "verified" | "registered" | "missing" | "na";
 }
 
-type ColumnKey = "name" | "type" | "status" | "budget" | "paid" | "remaining" | "margin" | "matBudget" | "matConsumed" | "matRemaining" | "room" | "assignee" | "costCenter" | "startDate" | "finishDate" | "attachment" | "estimatedHours" | "hourlyRate" | "subcontractorCost" | "paymentStatus" | "quantity" | "pricePerUnit" | "orderedAmount" | "vendor" | "rotAmount";
+type ColumnKey = "name" | "type" | "status" | "budget" | "paid" | "remaining" | "margin" | "matBudget" | "matConsumed" | "matRemaining" | "room" | "assignee" | "costCenter" | "startDate" | "finishDate" | "attachment" | "evidence" | "estimatedHours" | "hourlyRate" | "subcontractorCost" | "paymentStatus" | "quantity" | "pricePerUnit" | "orderedAmount" | "vendor" | "rotAmount";
 
 interface ColumnDef {
   key: ColumnKey;
@@ -100,7 +103,7 @@ interface ColumnDef {
 }
 
 const EXTRA_COLUMN_KEYS: ColumnKey[] = [
-  "room", "assignee", "costCenter", "startDate", "finishDate", "attachment",
+  "room", "assignee", "costCenter", "startDate", "finishDate", "attachment", "evidence",
   // Task-specific extras
   "estimatedHours", "hourlyRate", "subcontractorCost", "paymentStatus",
   // Material-specific extras
@@ -115,7 +118,7 @@ const HOMEOWNER_HIDDEN_COLUMNS = new Set<ColumnKey>([
   "estimatedHours", "hourlyRate", "subcontractorCost", "paymentStatus",
 ]);
 const HOMEOWNER_EXTRA_KEYS: ColumnKey[] = [
-  "room", "startDate", "finishDate", "attachment",
+  "room", "startDate", "finishDate", "attachment", "evidence",
   "paid", "remaining",
   "quantity", "pricePerUnit", "orderedAmount", "vendor",
 ];
@@ -275,6 +278,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
     { key: "startDate", label: t('common.startDate'), extra: true },
     { key: "finishDate", label: t('common.finishDate'), extra: true },
     { key: "attachment", label: t('common.attachment'), extra: true },
+    { key: "evidence", label: t('evidence.column', 'Underlag'), extra: true },
     // Task-specific extras
     { key: "estimatedHours", label: t('budget.estimatedHours', 'Est. hours'), align: "right", extra: true },
     { key: "hourlyRate", label: t('budget.hourlyRate', 'Hourly rate'), align: "right", extra: true },
@@ -448,12 +452,12 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           .single(),
         supabase
           .from("task_file_links")
-          .select("task_id")
+          .select("task_id, file_type")
           .eq("project_id", projectId)
           .not("task_id", "is", null),
         supabase
           .from("task_file_links")
-          .select("material_id")
+          .select("material_id, file_type")
           .eq("project_id", projectId)
           .not("material_id", "is", null),
       ]);
@@ -471,21 +475,29 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         .reduce((sum, t) => sum + (t.budget || 0), 0);
       setExtraTotal(materialAtaTotal + taskAtaTotal);
 
-      // Build document count maps (handle gracefully if columns don't exist yet)
+      // Build document count maps + qualifying file maps (invoice/receipt)
       const taskDocCounts = new Map<string, number>();
+      const taskHasInvoice = new Map<string, boolean>();
       if (!taskDocsRes.error) {
-        (taskDocsRes.data || []).forEach((d) => {
+        (taskDocsRes.data || []).forEach((d: { task_id: string | null; file_type?: string }) => {
           if (d.task_id) {
             taskDocCounts.set(d.task_id, (taskDocCounts.get(d.task_id) || 0) + 1);
+            if (d.file_type === "invoice" || d.file_type === "receipt") {
+              taskHasInvoice.set(d.task_id, true);
+            }
           }
         });
       }
 
       const materialDocCounts = new Map<string, number>();
+      const materialHasInvoice = new Map<string, boolean>();
       if (!materialDocsRes.error) {
-        (materialDocsRes.data || []).forEach((d) => {
+        (materialDocsRes.data || []).forEach((d: { material_id: string | null; file_type?: string }) => {
           if (d.material_id) {
             materialDocCounts.set(d.material_id, (materialDocCounts.get(d.material_id) || 0) + 1);
+            if (d.file_type === "invoice" || d.file_type === "receipt") {
+              materialHasInvoice.set(d.material_id, true);
+            }
           }
         });
       }
@@ -559,6 +571,15 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           paymentStatus: t.payment_status ?? undefined,
           orderedAmount: t.ordered_amount ?? undefined,
           rotAmount: (t as Record<string, unknown>).rot_amount as number ?? undefined,
+          evidenceStatus: computeEvidenceStatus({
+            rowType: "task",
+            status: t.status,
+            budget: t.budget ?? 0,
+            paid: t.paid_amount ?? 0,
+            cost: estCost,
+            hasQualifyingFile: taskHasInvoice.get(t.id) ?? false,
+            fileCount: attachmentCount,
+          }),
         };
       });
 
@@ -586,6 +607,15 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           pricePerUnit: m.price_per_unit ?? undefined,
           orderedAmount: m.ordered_amount ?? undefined,
           vendor: m.vendor_name ?? undefined,
+          evidenceStatus: computeEvidenceStatus({
+            rowType: "material",
+            status: m.status,
+            budget: 0,
+            paid: m.paid_amount ?? 0,
+            cost: materialTotal,
+            hasQualifyingFile: materialHasInvoice.get(m.id) ?? false,
+            fileCount: attachmentCount,
+          }),
         };
       });
 
@@ -1441,6 +1471,25 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
             </button>
           </FilePreviewPopover>
         );
+      case "evidence": {
+        const es = row.evidenceStatus;
+        if (!es || es === "na") return null;
+        const dotColor = getEvidenceColor(es);
+        const label = t(`evidence.${es}`);
+        const dot = <span className={`inline-block h-2.5 w-2.5 rounded-full ${dotColor}`} title={label} />;
+        if (row.hasAttachment) {
+          return (
+            <FilePreviewPopover
+              projectId={projectId}
+              taskId={row.type === "task" ? row.id : undefined}
+              materialId={row.type === "material" ? row.id : undefined}
+            >
+              <button type="button" className="cursor-pointer">{dot}</button>
+            </FilePreviewPopover>
+          );
+        }
+        return dot;
+      }
       // Task-specific extras
       case "estimatedHours":
         if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
@@ -1774,6 +1823,19 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
             </div>
           </PopoverContent>
         </Popover>
+
+        {/* Evidence summary */}
+        {(() => {
+          const applicable = filtered.filter((r) => r.evidenceStatus && r.evidenceStatus !== "na");
+          if (applicable.length === 0) return null;
+          const verified = applicable.filter((r) => r.evidenceStatus === "verified").length;
+          const missing = applicable.filter((r) => r.evidenceStatus === "missing").length;
+          return (
+            <span className={cn("text-xs tabular-nums px-2 py-1 rounded-md border", missing > 0 ? "border-amber-300 text-amber-700 bg-amber-50" : "border-green-300 text-green-700 bg-green-50")}>
+              {verified}/{applicable.length} {t("evidence.summaryLabel")}
+            </span>
+          );
+        })()}
 
         {/* Compact rows toggle */}
         <Button
