@@ -897,10 +897,10 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     // Show clickable thumbnail for images
     if (file.type.startsWith('image/') && file.thumbnail_url) {
       return (
-        <img 
-          src={file.thumbnail_url} 
+        <img
+          src={file.thumbnail_url}
           alt={file.name}
-          className="h-10 w-10 object-cover rounded cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+          className="h-8 w-8 object-cover rounded shrink-0 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
           onClick={(e) => {
             e.stopPropagation();
             handlePreview(file);
