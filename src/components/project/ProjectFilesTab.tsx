@@ -1456,9 +1456,9 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                             />
                           </TableHead>
                           <TableHead className="sticky left-12 bg-background z-20 max-w-[220px]">{t('common.name')}</TableHead>
-                          <TableHead className="hidden md:table-cell">{t('files.folder', 'Mapp')}</TableHead>
+                          <TableHead className="whitespace-nowrap">{t('files.folder', 'Mapp')}</TableHead>
                           {visibleFileCols.map(col => (
-                            <TableHead key={col} className="hidden md:table-cell">
+                            <TableHead key={col} className="whitespace-nowrap">
                               {fileColLabels[col]}
                             </TableHead>
                           ))}
@@ -1500,23 +1500,23 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                 {file.name}
                               </button>
                             </TableCell>
-                            <TableCell className="hidden md:table-cell text-muted-foreground text-xs truncate max-w-[120px]">
+                            <TableCell className="whitespace-nowrap text-muted-foreground text-xs truncate max-w-[120px]">
                               {file.folder || '/'}
                             </TableCell>
                             {visibleFileCols.map(col => {
                               if (col === 'category') {
-                                return <TableCell key={col} className="hidden md:table-cell"><Badge variant="outline">{categoryOverrides[file.path] || guessCategory(file)}</Badge></TableCell>;
+                                return <TableCell key={col} className="whitespace-nowrap"><Badge variant="outline">{categoryOverrides[file.path] || guessCategory(file)}</Badge></TableCell>;
                               }
                               if (col === 'size') {
-                                return <TableCell key={col} className="hidden md:table-cell text-muted-foreground">{file.size ? formatFileSize(file.size) : '–'}</TableCell>;
+                                return <TableCell key={col} className="whitespace-nowrap text-muted-foreground">{file.size ? formatFileSize(file.size) : '–'}</TableCell>;
                               }
                               if (col === 'uploaded') {
-                                return <TableCell key={col} className="hidden md:table-cell text-muted-foreground">{file.uploaded_at ? formatDate(file.uploaded_at) : '–'}</TableCell>;
+                                return <TableCell key={col} className="whitespace-nowrap text-muted-foreground">{file.uploaded_at ? formatDate(file.uploaded_at) : '–'}</TableCell>;
                               }
                               if (col === 'type') {
-                                return <TableCell key={col} className="hidden md:table-cell"><Badge variant="outline">{file.type.split('/')[1] || '?'}</Badge></TableCell>;
+                                return <TableCell key={col} className="whitespace-nowrap"><Badge variant="outline">{file.type.split('/')[1] || '?'}</Badge></TableCell>;
                               }
-                              return <TableCell key={col} className="hidden md:table-cell text-muted-foreground">–</TableCell>;
+                              return <TableCell key={col} className="whitespace-nowrap text-muted-foreground">–</TableCell>;
                             })}
                             <TableCell className="text-right sticky right-0 bg-white dark:bg-card z-10">
                               <DropdownMenu>
@@ -1608,7 +1608,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                       </div>
                     </TableHead>
                     {visibleFileCols.map(col => (
-                      <TableHead key={col} className={`hidden md:table-cell ${pinnedCol === col ? 'sticky left-12 bg-white dark:bg-card z-20' : ''}`}>
+                      <TableHead key={col} className={`whitespace-nowrap ${pinnedCol === col ? 'sticky left-12 bg-white dark:bg-card z-20' : ''}`}>
                         <div className="flex items-center gap-1 group/hdr">
                           <button type="button" onClick={() => toggleFileSort(col as FileSortKey)} className="flex items-center gap-1 hover:text-foreground transition-colors whitespace-nowrap">
                             {fileColLabels[col]}
@@ -1686,7 +1686,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                             )}
                           </TableCell>
                           {visibleFileCols.map(col => (
-                            <TableCell key={col} className="hidden md:table-cell text-muted-foreground">
+                            <TableCell key={col} className="whitespace-nowrap text-muted-foreground">
                               {col === 'category' ? <Badge variant="secondary">{t('files.folder')}</Badge> : '–'}
                             </TableCell>
                           ))}
@@ -1731,7 +1731,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
                               if (col === 'category') {
                                 return (
-                                  <TableCell key={col} className="hidden md:table-cell">
+                                  <TableCell key={col} className="whitespace-nowrap">
                                     <Popover>
                                       <PopoverTrigger asChild>
                                         <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors">
@@ -1783,7 +1783,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                 const linkedIds = new Set(links.map(l => (l as Record<string, unknown>)[idField] as string).filter(Boolean));
 
                                 return (
-                                  <TableCell key={col} className="hidden md:table-cell">
+                                  <TableCell key={col} className="whitespace-nowrap">
                                     <Popover>
                                       <PopoverTrigger asChild>
                                         <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors min-w-[40px] max-w-[180px] text-left">
@@ -1823,7 +1823,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                 const link = links[0];
                                 const vendor = link?.vendor_name;
                                 return (
-                                  <TableCell key={col} className="hidden md:table-cell text-xs truncate max-w-[120px]">
+                                  <TableCell key={col} className="whitespace-nowrap text-xs truncate max-w-[120px]">
                                     {vendor || <span className="text-muted-foreground/40">–</span>}
                                   </TableCell>
                                 );
@@ -1833,7 +1833,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                 const link = links[0];
                                 const summary = link?.ai_summary;
                                 return (
-                                  <TableCell key={col} className="hidden md:table-cell text-xs text-muted-foreground truncate max-w-[180px]" title={summary || ''}>
+                                  <TableCell key={col} className="whitespace-nowrap text-xs text-muted-foreground truncate max-w-[180px]" title={summary || ''}>
                                     {summary || <span className="text-muted-foreground/40">–</span>}
                                   </TableCell>
                                 );
@@ -1849,7 +1849,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                   : (currentVal != null ? `${Number(currentVal).toLocaleString('sv-SE')} kr` : null);
 
                                 return (
-                                  <TableCell key={col} className="hidden md:table-cell">
+                                  <TableCell key={col} className="whitespace-nowrap">
                                     <Popover>
                                       <PopoverTrigger asChild>
                                         <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors min-w-[40px]">
@@ -1886,7 +1886,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                               }
 
                               return (
-                                <TableCell key={col} className="hidden md:table-cell text-muted-foreground">
+                                <TableCell key={col} className="whitespace-nowrap text-muted-foreground">
                                   {col === 'type' && <Badge variant="outline">{sf.type?.split('/')[1] || '?'}</Badge>}
                                   {col === 'size' && sf.size ? formatFileSize(sf.size) : ''}
                                   {col === 'uploaded' && sf.uploaded_at ? formatDate(sf.uploaded_at) : ''}
@@ -1994,7 +1994,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
                         if (col === 'category') {
                           return (
-                            <TableCell key={col} className="hidden md:table-cell">
+                            <TableCell key={col} className="whitespace-nowrap">
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors">
@@ -2046,7 +2046,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           const linkedIds = new Set(links.map(l => (l as Record<string, unknown>)[idField] as string).filter(Boolean));
 
                           return (
-                            <TableCell key={col} className="hidden md:table-cell">
+                            <TableCell key={col} className="whitespace-nowrap">
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors min-w-[40px] max-w-[180px] text-left">
@@ -2087,7 +2087,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           const link = links[0];
                           const vendor = link?.vendor_name;
                           return (
-                            <TableCell key={col} className="hidden md:table-cell text-xs truncate max-w-[120px]">
+                            <TableCell key={col} className="whitespace-nowrap text-xs truncate max-w-[120px]">
                               {vendor || <span className="text-muted-foreground/40">–</span>}
                             </TableCell>
                           );
@@ -2098,7 +2098,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           const link = links[0];
                           const summary = link?.ai_summary;
                           return (
-                            <TableCell key={col} className="hidden md:table-cell text-xs text-muted-foreground truncate max-w-[180px]" title={summary || ''}>
+                            <TableCell key={col} className="whitespace-nowrap text-xs text-muted-foreground truncate max-w-[180px]" title={summary || ''}>
                               {summary || <span className="text-muted-foreground/40">–</span>}
                             </TableCell>
                           );
@@ -2115,7 +2115,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                             : (currentVal != null ? `${Number(currentVal).toLocaleString('sv-SE')} kr` : null);
 
                           return (
-                            <TableCell key={col} className="hidden md:table-cell">
+                            <TableCell key={col} className="whitespace-nowrap">
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <button type="button" className="text-xs hover:bg-muted px-1.5 py-0.5 rounded transition-colors min-w-[40px]">
@@ -2152,7 +2152,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                         }
 
                         return (
-                          <TableCell key={col} className="hidden md:table-cell text-muted-foreground">
+                          <TableCell key={col} className="whitespace-nowrap text-muted-foreground">
                             {col === 'type' && <Badge variant="outline">{file.type.split('/')[1] || '?'}</Badge>}
                             {col === 'size' && formatFileSize(file.size)}
                             {col === 'uploaded' && formatDate(file.uploaded_at)}
