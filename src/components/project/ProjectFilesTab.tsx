@@ -1455,7 +1455,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                               className="h-4 w-4"
                             />
                           </TableHead>
-                          <TableHead className="sticky left-12 bg-background z-20 max-w-[220px]">{t('common.name')}</TableHead>
+                          <TableHead className="md:sticky left-12 bg-background z-20 max-w-[220px]">{t('common.name')}</TableHead>
                           <TableHead className="whitespace-nowrap">{t('files.folder', 'Mapp')}</TableHead>
                           {visibleFileCols.map(col => (
                             <TableHead key={col} className="whitespace-nowrap">
@@ -1490,7 +1490,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                 {smartTolkLoading === file.path ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : getFileIcon(file)}
                               </span>
                             </TableCell>
-                            <TableCell className="font-medium sticky left-12 bg-background z-10 max-w-[220px]">
+                            <TableCell className="font-medium md:sticky left-12 bg-background z-10 max-w-[220px]">
                               <button
                                 type="button"
                                 className="text-left hover:text-primary hover:underline transition-colors truncate block w-full"
@@ -1590,7 +1590,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                       />
                     </TableHead>
                     <TableHead
-                      className={`max-w-[220px] bg-white dark:bg-card z-20 ${pinnedCol === 'name' ? 'sticky left-12' : ''}`}
+                      className={`max-w-[220px] bg-white dark:bg-card z-20 ${pinnedCol === 'name' ? 'md:sticky left-12' : ''}`}
                     >
                       <div className="flex items-center gap-1 group/hdr">
                         <button type="button" onClick={() => toggleFileSort('name')} className="flex items-center gap-1 hover:text-foreground transition-colors">
@@ -1600,7 +1600,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                         <button
                           type="button"
                           onClick={() => setPinnedCol(pinnedCol === 'name' ? null : 'name')}
-                          className={`h-4 w-4 flex items-center justify-center rounded transition-opacity ${pinnedCol === 'name' ? 'opacity-50' : 'opacity-0 group-hover/hdr:opacity-30'}`}
+                          className={`hidden md:flex h-4 w-4 items-center justify-center rounded transition-opacity ${pinnedCol === 'name' ? 'opacity-50' : 'opacity-0 group-hover/hdr:opacity-30'}`}
                           title={pinnedCol === 'name' ? 'Lossa kolumn' : 'Fäst kolumn'}
                         >
                           <Pin className="h-2.5 w-2.5" />
@@ -1608,7 +1608,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                       </div>
                     </TableHead>
                     {visibleFileCols.map(col => (
-                      <TableHead key={col} className={`whitespace-nowrap ${pinnedCol === col ? 'sticky left-12 bg-white dark:bg-card z-20' : ''}`}>
+                      <TableHead key={col} className={`whitespace-nowrap ${pinnedCol === col ? 'md:sticky left-12 bg-white dark:bg-card z-20' : ''}`}>
                         <div className="flex items-center gap-1 group/hdr">
                           <button type="button" onClick={() => toggleFileSort(col as FileSortKey)} className="flex items-center gap-1 hover:text-foreground transition-colors whitespace-nowrap">
                             {fileColLabels[col]}
@@ -1617,7 +1617,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           <button
                             type="button"
                             onClick={() => setPinnedCol(pinnedCol === col ? null : col as FileSortKey)}
-                            className={`h-4 w-4 flex items-center justify-center rounded transition-opacity ${pinnedCol === col ? 'opacity-50' : 'opacity-0 group-hover/hdr:opacity-30'}`}
+                            className={`hidden md:flex h-4 w-4 items-center justify-center rounded transition-opacity ${pinnedCol === col ? 'opacity-50' : 'opacity-0 group-hover/hdr:opacity-30'}`}
                             title={pinnedCol === col ? 'Lossa kolumn' : 'Fäst kolumn'}
                           >
                             <Pin className="h-2.5 w-2.5" />
@@ -1677,7 +1677,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                             </span>
                           </TableCell>
                           <TableCell
-                            className={`font-medium bg-white dark:bg-card ${pinnedCol === 'name' ? 'sticky left-12 z-10' : ''}`}
+                            className={`font-medium bg-white dark:bg-card ${pinnedCol === 'name' ? 'md:sticky left-12 z-10' : ''}`}
                             onClick={() => setCurrentFolder('/' + folder.path)}
                           >
                             {folder.name}
@@ -1713,7 +1713,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                                 {smartTolkLoading === sf.path ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : getFileIcon(sf)}
                               </span>
                             </TableCell>
-                            <TableCell className={`font-medium ${sfBg} max-w-[220px] ${pinnedCol === 'name' ? 'sticky left-12 z-10' : ''}`}>
+                            <TableCell className={`font-medium ${sfBg} max-w-[220px] ${pinnedCol === 'name' ? 'md:sticky left-12 z-10' : ''}`}>
                               <button
                                 type="button"
                                 className="text-left hover:text-primary hover:underline transition-colors truncate block w-full"
@@ -1976,7 +1976,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           {smartTolkLoading === file.path ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : getFileIcon(file)}
                         </span>
                       </TableCell>
-                      <TableCell className={`font-medium bg-white dark:bg-card max-w-[220px] ${pinnedCol === 'name' ? 'sticky left-12 z-10' : ''}`}>
+                      <TableCell className={`font-medium bg-white dark:bg-card max-w-[220px] ${pinnedCol === 'name' ? 'md:sticky left-12 z-10' : ''}`}>
                         <button
                           type="button"
                           className="text-left hover:text-primary hover:underline transition-colors truncate block w-full"
