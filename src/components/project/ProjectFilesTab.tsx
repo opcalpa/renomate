@@ -163,14 +163,26 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
               if (!data) return;
               const subFiles = data
                 .filter(f => !f.name.startsWith('.') && f.name.includes('.'))
-                .map(f => ({
-                  id: f.id || f.name,
-                  name: f.name,
-                  path: `${basePath}/${f.name}`,
-                  size: (f.metadata as Record<string, unknown>)?.size as number || 0,
-                  type: (f.metadata as Record<string, unknown>)?.mimetype as string || '',
-                  uploaded_at: f.created_at || '',
-                })) as ProjectFile[];
+                .map(f => {
+                  const filePath = `${basePath}/${f.name}`;
+                  const mime = (f.metadata as Record<string, unknown>)?.mimetype as string || '';
+                  let thumbnailUrl: string | undefined;
+                  if (mime.startsWith('image/')) {
+                    const { data: { publicUrl } } = supabase.storage
+                      .from('project-files')
+                      .getPublicUrl(filePath, { transform: { width: 100, height: 100, resize: 'cover' } });
+                    thumbnailUrl = publicUrl;
+                  }
+                  return {
+                    id: f.id || f.name,
+                    name: f.name,
+                    path: filePath,
+                    size: (f.metadata as Record<string, unknown>)?.size as number || 0,
+                    type: mime,
+                    uploaded_at: f.created_at || '',
+                    thumbnail_url: thumbnailUrl,
+                  };
+                }) as ProjectFile[];
               setFolderContents(prev => new Map(prev).set(folderPath, subFiles));
             });
         }
@@ -230,7 +242,14 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
           const fullPath = `${path}/${item.name}`;
 
           if (item.metadata?.mimetype) {
-            // It's a file
+            // It's a file — generate thumbnail for images
+            let thumbnailUrl: string | undefined;
+            if (item.metadata.mimetype.startsWith('image/')) {
+              const { data: { publicUrl } } = supabase.storage
+                .from('project-files')
+                .getPublicUrl(fullPath, { transform: { width: 100, height: 100, resize: 'cover' } });
+              thumbnailUrl = publicUrl;
+            }
             result.push({
               id: item.id || item.name,
               name: item.name,
@@ -240,6 +259,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
               uploaded_at: item.created_at || new Date().toISOString(),
               uploaded_by: '',
               folder: path.replace(basePath, '').replace(/^\//, '') || '/',
+              thumbnail_url: thumbnailUrl,
             });
           } else if (!item.name.includes('.')) {
             // Likely a folder — recurse
