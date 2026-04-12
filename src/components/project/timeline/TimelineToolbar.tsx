@@ -85,8 +85,8 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
         {/* Visibility toggles */}
         <VisibilityToggles t={t} />
 
-        {/* Zoom controls */}
-        <div className="flex items-center gap-0.5 border rounded-md p-0.5 ml-2">
+        {/* Zoom controls — hidden on mobile (pinch-to-zoom) */}
+        <div className="hidden sm:flex items-center gap-0.5 border rounded-md p-0.5 ml-2">
           <Button variant="ghost" size="icon" onClick={onZoomOut} className="h-7 w-7">
             <ZoomOut className="h-3.5 w-3.5" />
           </Button>
@@ -105,7 +105,7 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center gap-0.5 ml-2">
+        <div className="flex items-center gap-0.5 ml-auto sm:ml-2">
           <Button variant="ghost" size="icon" onClick={onPanLeft} className="h-7 w-7">
             <ChevronLeft className="w-3.5 h-3.5" />
           </Button>

@@ -1134,11 +1134,11 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
         <div>
         <div className="flex items-center gap-3 flex-wrap">
           <Tabs value={viewMode} onValueChange={(v) => handleSetViewMode(v)}>
-            <TabsList className="h-9">
-              <TabsTrigger value="timeline" className="text-xs px-3">{t('projectDetail.timeline', 'Tidslinje')}</TabsTrigger>
-              <TabsTrigger value="table" className="text-xs px-3">{t('tasks.tableView', 'Tabell')}</TabsTrigger>
-              <TabsTrigger value="kanban" className="text-xs px-3">{t('tasks.kanbanView', 'Kanban')}</TabsTrigger>
-              <TabsTrigger value="calendar" className="text-xs px-3">{t('timeline.calendar', 'Kalender')}</TabsTrigger>
+            <TabsList className="h-9 max-w-[calc(100vw-7rem)] overflow-x-auto overflow-y-hidden">
+              <TabsTrigger value="timeline" className="text-xs px-2 sm:px-3">{t('projectDetail.timeline', 'Tidslinje')}</TabsTrigger>
+              <TabsTrigger value="table" className="text-xs px-2 sm:px-3">{t('tasks.tableView', 'Tabell')}</TabsTrigger>
+              <TabsTrigger value="kanban" className="text-xs px-2 sm:px-3">{t('tasks.kanbanView', 'Kanban')}</TabsTrigger>
+              <TabsTrigger value="calendar" className="text-xs px-2 sm:px-3">{t('timeline.calendar', 'Kalender')}</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -1418,9 +1418,8 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="h-9">
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="h-4 w-4 sm:mr-1" />
                 <span className="hidden sm:inline">{t('tasks.addTask')}</span>
-                <span className="sm:hidden">{t('tasks.taskShort', 'Arbete')}</span>
               </Button>
             </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">

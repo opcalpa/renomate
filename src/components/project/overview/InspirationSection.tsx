@@ -38,6 +38,7 @@ import {
   Settings,
   Clock,
   Loader2,
+  Maximize2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/compressImage";
@@ -120,6 +121,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   const [moodboardGap, setMoodboardGap] = usePersistedPreference("moodboard-gap", true);
   const [moodboardGapSize, setMoodboardGapSize] = usePersistedPreference("moodboard-gap-size", 8);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
+  const [fullscreenMoodboard, setFullscreenMoodboard] = useState(false);
   const [dragPhotoId, setDragPhotoId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const moodboardGridRef = useRef<HTMLDivElement>(null);
@@ -771,6 +773,16 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               </PopoverContent>
             </Popover>
           )}
+          {hasPhotos && inspoView === "moodboard" && (
+            <button
+              type="button"
+              onClick={() => setFullscreenMoodboard(true)}
+              className="p-1 rounded-md border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              title={t("inspiration.fullscreen", "Helskärm")}
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+          )}
           {hasPhotos && (
             <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
               <PopoverTrigger asChild>
@@ -1377,6 +1389,46 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
             </div>
           </div>
         )}
+
+        {/* Fullscreen moodboard dialog */}
+        <Dialog open={fullscreenMoodboard} onOpenChange={setFullscreenMoodboard}>
+          <DialogContent className="max-w-[100vw] w-[100vw] h-[100vh] max-h-[100vh] p-0 border-0 rounded-none [&>button]:z-50 [&>button]:bg-background/80 [&>button]:rounded-full [&>button]:h-8 [&>button]:w-8">
+            <DialogTitle className="sr-only">{t("inspiration.moodboard", "Moodboard")}</DialogTitle>
+            <div
+              className="w-full h-full overflow-auto flex items-center justify-center"
+              style={{ backgroundColor: moodboardBg }}
+            >
+              <div
+                className="grid grid-cols-6 auto-rows-[100px] sm:auto-rows-[140px] md:auto-rows-[180px] w-full max-w-[1400px]"
+                style={{ gap: moodboardGap ? `${moodboardGapSize}px` : "0px", padding: moodboardGap ? `${moodboardGapSize + 4}px` : "0" }}
+              >
+                {filteredPhotos
+                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .map((photo) => (
+                    <div
+                      key={photo.id}
+                      className="relative overflow-hidden"
+                      style={{
+                        gridColumn: `span ${photo.gridColSpan}`,
+                        gridRow: `span ${photo.gridRowSpan}`,
+                        borderRadius: photo.cropShape === "circle" ? "50%" : moodboardGap ? "6px" : "0",
+                      }}
+                    >
+                      <img
+                        src={photo.url}
+                        alt=""
+                        className="absolute inset-0 w-full h-full"
+                        style={{
+                          objectFit: photo.fitMode || "cover",
+                          objectPosition: photo.cropPosition || "center",
+                        }}
+                      />
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* ===== BEFORE / AFTER VIEW ===== */}
         {inspoView === "beforeafter" && (

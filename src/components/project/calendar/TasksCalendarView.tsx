@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
 import {
   startOfMonth,
   endOfMonth,
@@ -131,6 +131,32 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, mil
     [tasks]
   );
 
+  // Earliest task date for "Project" button
+  const projectStart = useMemo(() => {
+    const dates = scheduledTasks.map((t) => parseISO(t.start_date!)).sort((a, b) => a.getTime() - b.getTime());
+    return dates[0] ?? null;
+  }, [scheduledTasks]);
+
+  const goToProject = useCallback(() => {
+    if (projectStart) setCurrentDate(projectStart);
+  }, [projectStart]);
+
+  // Swipe to change month/week
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, []);
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+    // Only trigger on horizontal swipe (|dx| > 60px and more horizontal than vertical)
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx > 0) prev(); else next();
+    }
+  }, [prev, next]);
+
   const DAY_NAMES = [
     t("timeline.calendarMon", "Mon"), t("timeline.calendarTue", "Tue"), t("timeline.calendarWed", "Wed"),
     t("timeline.calendarThu", "Thu"), t("timeline.calendarFri", "Fri"), t("timeline.calendarSat", "Sat"), t("timeline.calendarSun", "Sun"),
@@ -139,12 +165,17 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, mil
   const TASK_BAR_GAP = 2;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {/* Navigation */}
       <div className="flex items-center gap-2 px-4 py-3 border-b">
         <Button variant="outline" size="sm" onClick={today} className="h-7 text-xs">
           {t("timeline.today", "Today")}
         </Button>
+        {projectStart && (
+          <Button variant="outline" size="sm" onClick={goToProject} className="h-7 text-xs">
+            {t("timeline.projectStart", "Projekt")}
+          </Button>
+        )}
         <Button variant="ghost" size="icon" onClick={prev} className="h-7 w-7">
           <ChevronLeft className="h-4 w-4" />
         </Button>

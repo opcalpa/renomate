@@ -5134,6 +5134,8 @@
     "noBeforeAfterHint": "Upload photos below and tag them as Before, In progress, or After",
     "addBeforeAfter": "Add photo",
     "uploadPhoto": "Choose photo",
-    "photoAdded": "Photo added"
+    "photoAdded": "Photo added",
+    "fullscreen": "Fullscreen",
+    "moodboard": "Moodboard"
   }
 }

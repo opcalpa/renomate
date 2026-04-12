@@ -5131,6 +5131,8 @@
     "noBeforeAfterHint": "Ladda upp bilder nedan och tagga dem som Före, Pågående eller Efter",
     "addBeforeAfter": "Lägg till bild",
     "uploadPhoto": "Välj bild",
-    "photoAdded": "Bild tillagd"
+    "photoAdded": "Bild tillagd",
+    "fullscreen": "Helskärm",
+    "moodboard": "Moodboard"
   }
 }
