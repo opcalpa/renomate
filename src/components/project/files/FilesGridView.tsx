@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Folder as FolderIcon,
@@ -52,6 +52,13 @@ interface FilesGridViewProps {
   onLinkFile: (file: GridFile) => void;
   formatFileSize: (bytes: number) => string;
   canEdit: boolean;
+  // Drag-and-drop for internal file moves
+  onDragStart?: (e: React.DragEvent, path: string, name: string, isFolder: boolean) => void;
+  onDragEnd?: () => void;
+  onFolderDragOver?: (e: React.DragEvent, folderPath: string) => void;
+  onFolderDragLeave?: (e: React.DragEvent) => void;
+  onFolderDrop?: (e: React.DragEvent, folderPath: string) => void;
+  dropTarget?: string | null;
 }
 
 function getGridThumbnail(file: GridFile): string | null {
@@ -96,19 +103,30 @@ export function FilesGridView({
   onLinkFile,
   formatFileSize,
   canEdit,
+  onDragStart,
+  onDragEnd,
+  onFolderDragOver,
+  onFolderDragLeave,
+  onFolderDrop,
+  dropTarget,
 }: FilesGridViewProps) {
   const { t } = useTranslation();
   const anySelected = selectedFiles.size > 0;
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-      {/* Folders */}
+      {/* Folders — drop targets for file moves */}
       {folders.map((folder) => (
         <button
           key={folder.id}
           type="button"
           onClick={() => onNavigateToFolder(folder.path)}
-          className="group relative flex flex-col items-center justify-center gap-2 rounded-lg border bg-card p-4 h-[140px] hover:border-primary/50 hover:bg-muted/50 transition-colors cursor-pointer text-center"
+          className={`group relative flex flex-col items-center justify-center gap-2 rounded-lg border bg-card p-4 h-[140px] hover:border-primary/50 hover:bg-muted/50 transition-colors cursor-pointer text-center ${
+            dropTarget === folder.path ? "bg-primary/10 ring-2 ring-primary/40 border-primary" : ""
+          }`}
+          onDragOver={onFolderDragOver ? (e) => onFolderDragOver(e, folder.path) : undefined}
+          onDragLeave={onFolderDragLeave}
+          onDrop={onFolderDrop ? (e) => onFolderDrop(e, folder.path) : undefined}
         >
           <FolderIcon className="h-10 w-10 text-amber-500" />
           <span className="text-sm font-medium truncate w-full px-1">
@@ -117,7 +135,7 @@ export function FilesGridView({
         </button>
       ))}
 
-      {/* Files */}
+      {/* Files — draggable */}
       {files.map((file) => {
         const thumb = getGridThumbnail(file);
         const isSelected = selectedFiles.has(file.path);
@@ -129,6 +147,9 @@ export function FilesGridView({
               isSelected ? "ring-2 ring-primary border-primary" : ""
             }`}
             onClick={() => onPreview(file)}
+            draggable={!!onDragStart}
+            onDragStart={onDragStart ? (e) => onDragStart(e, file.path, file.name, false) : undefined}
+            onDragEnd={onDragEnd}
           >
             {/* Thumbnail area */}
             <div className="relative h-[120px] bg-muted/30 flex items-center justify-center overflow-hidden">

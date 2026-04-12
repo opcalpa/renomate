@@ -149,6 +149,105 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   const [showBatchUpload, setShowBatchUpload] = useState(false);
   const dragCountRef = useRef(0);
 
+  // Internal drag-and-drop — move files/folders between directories
+  const [dragItem, setDragItem] = useState<{ path: string; name: string; isFolder: boolean } | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null); // folder path being hovered
+
+  const moveFile = useCallback(async (fromPath: string, toFolderPath: string, fileName: string) => {
+    const basePath = `projects/${projectId}`;
+    const newPath = toFolderPath
+      ? `${basePath}/${toFolderPath}/${fileName}`
+      : `${basePath}/${fileName}`;
+
+    if (fromPath === newPath) return;
+
+    const { error } = await supabase.storage
+      .from('project-files')
+      .move(fromPath, newPath);
+
+    if (error) {
+      console.error('Move failed:', error);
+      toast({
+        title: t('files.moveError', 'Kunde inte flytta filen'),
+        description: error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: t('files.fileMoved', 'Fil flyttad'),
+      description: fileName,
+    });
+
+    // Also update file_path in task_file_links
+    await supabase
+      .from('task_file_links')
+      .update({ file_path: newPath })
+      .eq('file_path', fromPath)
+      .eq('project_id', projectId);
+
+    // Refresh
+    await fetchFiles();
+    await fetchFolders();
+    // Clear expanded folder cache so it refetches
+    setFolderContents(new Map());
+    setExpandedFolders(new Set());
+  }, [projectId, t]);
+
+  const handleInternalDragStart = useCallback((e: React.DragEvent, path: string, name: string, isFolder: boolean) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/x-internal-path', path);
+    e.dataTransfer.setData('text/x-internal-name', name);
+    e.dataTransfer.setData('text/x-is-folder', isFolder ? '1' : '0');
+    setDragItem({ path, name, isFolder });
+  }, []);
+
+  const handleInternalDragEnd = useCallback(() => {
+    setDragItem(null);
+    setDropTarget(null);
+  }, []);
+
+  const handleFolderDragOver = useCallback((e: React.DragEvent, folderPath: string) => {
+    // Only accept internal drags
+    if (e.dataTransfer.types.includes('text/x-internal-path')) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      setDropTarget(folderPath);
+    }
+  }, []);
+
+  const handleFolderDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropTarget(null);
+  }, []);
+
+  const handleFolderDrop = useCallback(async (e: React.DragEvent, targetFolderPath: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropTarget(null);
+    setDragItem(null);
+
+    const fromPath = e.dataTransfer.getData('text/x-internal-path');
+    const fileName = e.dataTransfer.getData('text/x-internal-name');
+    const isFolder = e.dataTransfer.getData('text/x-is-folder') === '1';
+
+    if (!fromPath || !fileName) return;
+
+    if (isFolder) {
+      // Moving folders is complex (need to move all contents) — skip for now
+      toast({
+        title: t('files.moveFolderNotSupported', 'Mappflyttning stöds inte ännu'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    await moveFile(fromPath, targetFolderPath, fileName);
+  }, [moveFile, t]);
+
   // Expandable folders — inline sub-file display
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [folderContents, setFolderContents] = useState<Map<string, ProjectFile[]>>(new Map());
@@ -959,12 +1058,15 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     setCurrentFolder(newPath);
   };
 
-  // Drag-and-drop handlers for the entire files area
+  // Drag-and-drop handlers for external file upload (not internal moves)
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     dragCountRef.current++;
-    if (e.dataTransfer.types.includes('Files')) setIsDragOver(true);
+    // Only show upload overlay for external files, not internal moves
+    if (e.dataTransfer.types.includes('Files') && !e.dataTransfer.types.includes('text/x-internal-path')) {
+      setIsDragOver(true);
+    }
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
@@ -1065,6 +1167,9 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     e.stopPropagation();
     setIsDragOver(false);
     dragCountRef.current = 0;
+
+    // Ignore internal drag-and-drop (handled by folder drop targets)
+    if (e.dataTransfer.types.includes('text/x-internal-path')) return;
 
     if (!canEdit) return;
     const droppedFiles = await readDroppedItems(e.dataTransfer);
@@ -1257,31 +1362,40 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
               </div>
             </div>
 
-            {/* Breadcrumbs */}
+            {/* Breadcrumbs — also serve as drop targets for moving files up */}
             {currentFolder && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground mt-2">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setCurrentFolder('')}
-                  className="h-7 px-2"
+                  className={`h-7 px-2 transition-colors ${dropTarget === '__root__' ? 'bg-primary/10 ring-2 ring-primary/40' : ''}`}
+                  onDragOver={(e) => handleFolderDragOver(e, '__root__')}
+                  onDragLeave={handleFolderDragLeave}
+                  onDrop={(e) => handleFolderDrop(e, '')}
                 >
                   <FolderOpen className="h-3.5 w-3.5 mr-1" />
                   {t('files.home')}
                 </Button>
-                {getBreadcrumbs().map((folder, index) => (
-                  <div key={index} className="flex items-center gap-1">
-                    <ChevronRight className="h-3.5 w-3.5" />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigateToFolder(index)}
-                      className="h-7 px-2"
-                    >
-                      {folder}
-                    </Button>
-                  </div>
-                ))}
+                {getBreadcrumbs().map((folder, index) => {
+                  const bcPath = getBreadcrumbs().slice(0, index + 1).join('/');
+                  return (
+                    <div key={index} className="flex items-center gap-1">
+                      <ChevronRight className="h-3.5 w-3.5" />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigateToFolder(index)}
+                        className={`h-7 px-2 transition-colors ${dropTarget === bcPath ? 'bg-primary/10 ring-2 ring-primary/40' : ''}`}
+                        onDragOver={(e) => handleFolderDragOver(e, bcPath)}
+                        onDragLeave={handleFolderDragLeave}
+                        onDrop={(e) => handleFolderDrop(e, bcPath)}
+                      >
+                        {folder}
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardHeader>
@@ -1328,6 +1442,12 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                   onLinkFile={(file) => setLinkFile(file as ProjectFile)}
                   formatFileSize={formatFileSize}
                   canEdit={canEdit}
+                  onDragStart={handleInternalDragStart}
+                  onDragEnd={handleInternalDragEnd}
+                  onFolderDragOver={handleFolderDragOver}
+                  onFolderDragLeave={handleFolderDragLeave}
+                  onFolderDrop={handleFolderDrop}
+                  dropTarget={dropTarget}
                 />
             ) : viewMode === 'flat' ? (
                 /* Flat view — all files across all folders */
@@ -1368,7 +1488,13 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                         {allProjectFiles
                           .filter(f => !fileSearch || f.name.toLowerCase().includes(fileSearch.toLowerCase()) || (f.folder || '').toLowerCase().includes(fileSearch.toLowerCase()))
                           .map((file) => (
-                          <TableRow key={file.path} className={`group ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''} ${selectedFiles.has(file.path) ? 'bg-primary/5' : ''}`}>
+                          <TableRow
+                            key={file.path}
+                            className={`group ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''} ${selectedFiles.has(file.path) ? 'bg-primary/5' : ''}`}
+                            draggable
+                            onDragStart={(e) => handleInternalDragStart(e, file.path, file.name, false)}
+                            onDragEnd={handleInternalDragEnd}
+                          >
                             <TableCell className="w-12 sticky left-0 bg-background z-10">
                               <span className="inline-flex items-center gap-1.5">
                                 <Checkbox
@@ -1549,7 +1675,10 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                     return (
                       <Fragment key={folder.id}>
                         <TableRow
-                          className={`cursor-pointer hover:bg-muted/50 ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}
+                          className={`cursor-pointer hover:bg-muted/50 ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''} ${dropTarget === folder.path ? 'bg-primary/10 ring-1 ring-primary/40' : ''}`}
+                          onDragOver={(e) => handleFolderDragOver(e, folder.path)}
+                          onDragLeave={handleFolderDragLeave}
+                          onDrop={(e) => handleFolderDrop(e, folder.path)}
                         >
                           <TableCell
                             className="w-12 sticky left-0 z-10 bg-white dark:bg-card"
@@ -1578,11 +1707,17 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                           ))}
                           <TableCell className="sticky right-0 bg-white dark:bg-card z-10"></TableCell>
                         </TableRow>
-                        {/* Expanded sub-files — rendered identically to top-level files */}
+                        {/* Expanded sub-files — draggable to move between folders */}
                         {isExpanded && subFiles.map((sf) => {
                           const sfBg = selectedFiles.has(sf.path) ? 'bg-primary/5' : 'bg-muted/20';
                           return (
-                          <TableRow key={sf.id} className={`group ${sfBg} ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}>
+                          <TableRow
+                            key={sf.id}
+                            className={`group ${sfBg} ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''}`}
+                            draggable
+                            onDragStart={(e) => handleInternalDragStart(e, sf.path, sf.name, false)}
+                            onDragEnd={handleInternalDragEnd}
+                          >
                             <TableCell className={`w-12 sticky left-0 z-10 ${sfBg}`}>
                               <span className="inline-flex items-center gap-1.5 pl-4">
                                 <Checkbox
@@ -1837,9 +1972,15 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                     );
                   })}
 
-                  {/* Files */}
+                  {/* Files — draggable to move into folders */}
                   {sortedFiles.map((file) => (
-                    <TableRow key={file.id} className={`group ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''} ${selectedFiles.has(file.path) ? 'bg-primary/5' : ''}`}>
+                    <TableRow
+                      key={file.id}
+                      className={`group ${compactRows ? '[&>td]:py-1 [&>td]:text-xs' : ''} ${selectedFiles.has(file.path) ? 'bg-primary/5' : ''}`}
+                      draggable
+                      onDragStart={(e) => handleInternalDragStart(e, file.path, file.name, false)}
+                      onDragEnd={handleInternalDragEnd}
+                    >
                       <TableCell className="w-12 sticky left-0 z-10 bg-white dark:bg-card">
                         <span className="inline-flex items-center gap-1.5">
                           <Checkbox
