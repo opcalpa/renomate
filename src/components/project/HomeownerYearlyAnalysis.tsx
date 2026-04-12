@@ -62,10 +62,19 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
   const [rotAllocations, setRotAllocations] = useState<{ material_id: string; rot_person_id: string; amount: number }[]>([]);
 
   const [expanded, setExpanded] = useState(false);
+  const [expandedRotYears, setExpandedRotYears] = useState<Set<number>>(new Set());
   const [expandedProperties, setExpandedProperties] = useState<Set<string>>(new Set());
 
   const projectIds = useMemo(() => projects.map((p) => p.id), [projects]);
   const fc = (v: number) => formatCurrency(v, currency);
+
+  const toggleRotYear = (year: number) => {
+    setExpandedRotYears((prev) => {
+      const next = new Set(prev);
+      next.has(year) ? next.delete(year) : next.add(year);
+      return next;
+    });
+  };
 
   const toggleProperty = (key: string) => {
     setExpandedProperties((prev) => {
@@ -137,14 +146,18 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
     return [...s].sort((a, b) => b - a);
   }, [invoices, materials, fileLinks]);
 
-  // --- ROT per year ---
+  // --- ROT per year with per-project breakdown ---
   const rotByYear = useMemo(() => {
-    const map = new Map<number, number>();
-    const add = (y: number, v: number) => map.set(y, (map.get(y) || 0) + v);
-    materials.forEach((m) => { if (m.rot_amount && m.paid_date) add(new Date(m.paid_date).getFullYear(), m.rot_amount); });
-    invoices.forEach((inv) => { if (inv.total_rot_deduction && inv.paid_at) add(new Date(inv.paid_at).getFullYear(), inv.total_rot_deduction); });
-    // Only orphan file links (not already counted via invoice/material)
-    fileLinks.forEach((fl) => { if (fl.rot_amount && fl.invoice_date && !fl.task_id && !fl.material_id) add(new Date(fl.invoice_date).getFullYear(), fl.rot_amount); });
+    const map = new Map<number, { total: number; byProject: Map<string, number> }>();
+    const add = (y: number, pid: string, v: number) => {
+      if (!map.has(y)) map.set(y, { total: 0, byProject: new Map() });
+      const entry = map.get(y)!;
+      entry.total += v;
+      entry.byProject.set(pid, (entry.byProject.get(pid) || 0) + v);
+    };
+    materials.forEach((m) => { if (m.rot_amount && m.paid_date) add(new Date(m.paid_date).getFullYear(), m.project_id, m.rot_amount); });
+    invoices.forEach((inv) => { if (inv.total_rot_deduction && inv.paid_at) add(new Date(inv.paid_at).getFullYear(), inv.project_id, inv.total_rot_deduction); });
+    fileLinks.forEach((fl) => { if (fl.rot_amount && fl.invoice_date && !fl.task_id && !fl.material_id) add(new Date(fl.invoice_date).getFullYear(), fl.project_id, fl.rot_amount); });
     return map;
   }, [materials, invoices, fileLinks]);
 
@@ -210,7 +223,7 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
   }, [invoices, materials, fileLinks, projectMeta]);
 
   const fuTotal = fuByProperty.reduce((s, p) => s + p.qualifyingNet, 0);
-  const totalRot = useMemo(() => [...rotByYear.values()].reduce((s, v) => s + v, 0), [rotByYear]);
+  const totalRot = useMemo(() => [...rotByYear.values()].reduce((s, v) => s + v.total, 0), [rotByYear]);
 
   // --- Evidence ---
   const evidenceSummary = useMemo(() => {
@@ -317,34 +330,68 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
               </div>
               <div className="divide-y">
                 {rotYears.map((year) => {
-                  const actual = rotByYear.get(year) || 0;
+                  const data = rotByYear.get(year)!;
+                  const actual = data.total;
                   const defaultLimit = rotYearlyLimits.get(year) || 50000;
                   const totalLimit = [...uniquePersons.values()].reduce((s, p) => s + (p.customLimit ?? defaultLimit), 0) || defaultLimit;
                   const pct = Math.min((actual / totalLimit) * 100, 100);
                   const isOver = actual > totalLimit;
+                  const isYearOpen = expandedRotYears.has(year);
+                  const projectBreakdown = [...data.byProject.entries()].sort((a, b) => b[1] - a[1]);
 
                   return (
-                    <div key={year} className="px-4 py-3 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{year}</span>
-                        <div className="text-right">
-                          <span className={cn("text-sm font-semibold tabular-nums", isOver ? "text-destructive" : "text-green-700")}>
-                            {fc(actual)}
-                          </span>
-                          <span className="text-xs text-muted-foreground ml-1">/ {fc(totalLimit)}</span>
+                    <div key={year}>
+                      <button
+                        type="button"
+                        onClick={() => toggleRotYear(year)}
+                        className="w-full px-4 py-3 space-y-1.5 hover:bg-muted/30 transition-colors text-left"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            {isYearOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                            <span className="text-sm font-medium">{year}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className={cn("text-sm font-semibold tabular-nums", isOver ? "text-destructive" : "text-green-700")}>
+                              {fc(actual)}
+                            </span>
+                            <span className="text-xs text-muted-foreground ml-1">/ {fc(totalLimit)}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className={cn("h-full rounded-full transition-all", isOver ? "bg-destructive" : pct > 80 ? "bg-amber-400" : "bg-green-500")}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                      {isOver && (
-                        <p className="text-[11px] text-destructive flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          {t("rot.overLimit", "Överstiger ROT-tak med {{amount}} kr", { amount: fc(actual - totalLimit) })}
-                        </p>
+                        <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={cn("h-full rounded-full transition-all", isOver ? "bg-destructive" : pct > 80 ? "bg-amber-400" : "bg-green-500")}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        {isOver && (
+                          <p className="text-[11px] text-destructive flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            {t("rot.overLimit", "Överstiger ROT-tak med {{amount}} kr", { amount: fc(actual - totalLimit) })}
+                          </p>
+                        )}
+                      </button>
+
+                      {/* Expanded: per-project ROT breakdown */}
+                      {isYearOpen && projectBreakdown.length > 0 && (
+                        <div className="px-4 pb-3 pl-10 space-y-1">
+                          {projectBreakdown.map(([pid, amount]) => {
+                            const pm = projectMeta.find((p) => p.id === pid);
+                            return (
+                              <div key={pid} className="flex items-center justify-between text-xs py-1">
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/projects/${pid}?tab=budget`)}
+                                  className="flex items-center gap-1.5 text-primary hover:underline"
+                                >
+                                  <ArrowUpRight className="h-3 w-3" />
+                                  {pm?.name || pid}
+                                </button>
+                                <span className="tabular-nums font-medium text-green-700">{fc(amount)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
                   );
