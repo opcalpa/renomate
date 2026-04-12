@@ -2249,8 +2249,8 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         </div>
       )}
 
-      {/* ROT section — unified for both user types */}
-      {showTaxDeduction && (
+      {/* ROT section — builders only (homeowners see per-person in DeclarationTable) */}
+      {showTaxDeduction && isBuilder && (
         <div className="mt-6">
           <RotSummaryCard projectId={projectId} />
         </div>

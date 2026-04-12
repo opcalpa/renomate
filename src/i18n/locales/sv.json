@@ -4912,6 +4912,8 @@
     "colAmount": "Belopp",
     "colLabor": "Varav arbete",
     "colRot": "ROT-avdrag",
+    "colRotPerPerson": "Per person",
+    "notAllocated": "Ej fördelat",
     "colNetCost": "Nettokostnad",
     "colPaymentMethod": "Betalmetod",
     "colDocuments": "Underlag",

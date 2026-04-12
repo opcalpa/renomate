@@ -4915,6 +4915,8 @@
     "colAmount": "Amount",
     "colLabor": "Labor cost",
     "colRot": "ROT deduction",
+    "colRotPerPerson": "Per person",
+    "notAllocated": "Not allocated",
     "colNetCost": "Net cost",
     "colPaymentMethod": "Payment method",
     "colDocuments": "Docs",

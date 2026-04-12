@@ -24,6 +24,7 @@ type ColumnKey =
   | "amount"
   | "laborAmount"
   | "rotDeduction"
+  | "rotPerPerson"
   | "netCost"
   | "paymentMethod"
   | "hasDocuments"
@@ -47,6 +48,7 @@ const COLUMNS: ColumnDef[] = [
   { key: "amount", labelKey: "declaration.colAmount", defaultVisible: true, minWidth: "100px", align: "right" },
   { key: "laborAmount", labelKey: "declaration.colLabor", defaultVisible: false, minWidth: "100px", align: "right" },
   { key: "rotDeduction", labelKey: "declaration.colRot", defaultVisible: true, minWidth: "90px", align: "right" },
+  { key: "rotPerPerson", labelKey: "declaration.colRotPerPerson", defaultVisible: false, minWidth: "140px" },
   { key: "netCost", labelKey: "declaration.colNetCost", defaultVisible: true, minWidth: "100px", align: "right" },
   { key: "paymentMethod", labelKey: "declaration.colPaymentMethod", defaultVisible: false, minWidth: "90px" },
   { key: "hasDocuments", labelKey: "declaration.colDocuments", defaultVisible: true, minWidth: "60px" },
@@ -71,6 +73,7 @@ export interface DeclarationRow {
   paymentMethod: string | null;
   hasDocuments: boolean;
   evidenceStatus?: EvidenceStatus;
+  rotPerPerson?: { name: string; amount: number }[];
   notes: string | null;
   projectName?: string;
 }
@@ -158,6 +161,22 @@ export function DeclarationTable({ rows, currency, showProject }: DeclarationTab
           <span className="tabular-nums text-green-600">&minus;{fc(row.rotDeduction)}</span>
         ) : (
           <span className="text-muted-foreground">—</span>
+        );
+      case "rotPerPerson":
+        if (!row.rotPerPerson || row.rotPerPerson.length === 0) {
+          return row.rotDeduction > 0
+            ? <span className="text-xs text-muted-foreground italic">{t("declaration.notAllocated", "Ej fördelat")}</span>
+            : <span className="text-muted-foreground">—</span>;
+        }
+        return (
+          <div className="space-y-0.5">
+            {row.rotPerPerson.map((p, i) => (
+              <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                <span className="truncate text-muted-foreground">{p.name}</span>
+                <span className="tabular-nums text-green-600 shrink-0">{fc(p.amount)}</span>
+              </div>
+            ))}
+          </div>
         );
       case "netCost":
         return <span className="tabular-nums font-bold">{fc(row.netCost)}</span>;

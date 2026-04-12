@@ -69,6 +69,18 @@ interface FileLinkRow {
   material_id: string | null;
 }
 
+interface RotPersonRow {
+  id: string;
+  name: string;
+  personnummer: string | null;
+}
+
+interface RotAllocationRow {
+  material_id: string;
+  rot_person_id: string;
+  amount: number;
+}
+
 interface ProjectInfo {
   name: string;
   address: string | null;
@@ -88,13 +100,15 @@ export function HomeownerAnalysisSection({ projectId, currency }: AnalysisProps)
   const [rooms, setRooms] = useState<RoomRow[]>([]);
   const [tasks, setTasks] = useState<TaskRow[]>([]);
   const [fileLinks, setFileLinks] = useState<FileLinkRow[]>([]);
+  const [rotPersons, setRotPersons] = useState<RotPersonRow[]>([]);
+  const [rotAllocations, setRotAllocations] = useState<RotAllocationRow[]>([]);
 
   const [expanded, setExpanded] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [projRes, invRes, matRes, roomsRes, tasksRes, filesRes] = await Promise.all([
+        const [projRes, invRes, matRes, roomsRes, tasksRes, filesRes, personsRes] = await Promise.all([
           supabase.from("projects").select("name, address, property_designation").eq("id", projectId).single(),
           supabase
             .from("invoices")
@@ -111,6 +125,7 @@ export function HomeownerAnalysisSection({ projectId, currency }: AnalysisProps)
           supabase.from("rooms").select("id, name").eq("project_id", projectId),
           supabase.from("tasks").select("id, cost_center").eq("project_id", projectId),
           supabase.from("task_file_links").select("file_type, task_id, material_id").eq("project_id", projectId),
+          supabase.from("project_rot_persons").select("id, name, personnummer").eq("project_id", projectId),
         ]);
 
         setProject(projRes.data as ProjectInfo | null);
@@ -120,6 +135,17 @@ export function HomeownerAnalysisSection({ projectId, currency }: AnalysisProps)
         setRooms((roomsRes.data || []) as RoomRow[]);
         setTasks((tasksRes.data || []) as TaskRow[]);
         setFileLinks((filesRes.data || []) as FileLinkRow[]);
+        setRotPersons((personsRes.data || []) as RotPersonRow[]);
+
+        // Fetch ROT allocations for materials
+        const matIds = (matRes.data || []).map((m: { id: string }) => m.id);
+        if (matIds.length > 0) {
+          const { data: allocs } = await supabase
+            .from("material_rot_allocations")
+            .select("material_id, rot_person_id, amount")
+            .in("material_id", matIds);
+          setRotAllocations((allocs || []) as RotAllocationRow[]);
+        }
 
         const invoiceIds = invoicesData.map((i) => i.id);
         if (invoiceIds.length > 0) {
@@ -152,6 +178,45 @@ export function HomeownerAnalysisSection({ projectId, currency }: AnalysisProps)
     tasks.forEach((t) => { if (t.cost_center) map.set(t.id, t.cost_center); });
     return map;
   }, [tasks]);
+
+  // ROT person name map + per-invoice allocation lookup
+  const rotPersonNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    rotPersons.forEach((p) => map.set(p.id, p.name));
+    return map;
+  }, [rotPersons]);
+
+  // Build per-invoice ROT person breakdown (invoices don't have direct allocations,
+  // so we distribute evenly across persons when ROT exists)
+  const invoiceRotPerPerson = useMemo(() => {
+    if (rotPersons.length === 0) return new Map<string, { name: string; amount: number }[]>();
+    const map = new Map<string, { name: string; amount: number }[]>();
+    invoices.forEach((inv) => {
+      if (inv.total_rot_deduction > 0) {
+        const perPerson = inv.total_rot_deduction / rotPersons.length;
+        map.set(inv.id, rotPersons.map((p) => ({ name: p.name, amount: perPerson })));
+      }
+    });
+    return map;
+  }, [invoices, rotPersons]);
+
+  // Build per-material ROT person breakdown from allocations
+  const materialRotPerPerson = useMemo(() => {
+    const map = new Map<string, { name: string; amount: number }[]>();
+    const byMaterial = new Map<string, Map<string, number>>();
+    rotAllocations.forEach((a) => {
+      if (!byMaterial.has(a.material_id)) byMaterial.set(a.material_id, new Map());
+      byMaterial.get(a.material_id)!.set(a.rot_person_id, (byMaterial.get(a.rot_person_id) || 0) + a.amount);
+    });
+    byMaterial.forEach((personMap, matId) => {
+      const breakdown: { name: string; amount: number }[] = [];
+      personMap.forEach((amount, personId) => {
+        breakdown.push({ name: rotPersonNameMap.get(personId) || personId, amount });
+      });
+      map.set(matId, breakdown);
+    });
+    return map;
+  }, [rotAllocations, rotPersonNameMap]);
 
   const entityHasFile = useMemo(() => {
     const set = new Set<string>();
@@ -200,6 +265,7 @@ export function HomeownerAnalysisSection({ projectId, currency }: AnalysisProps)
         evidenceStatus: (entityHasFile.has("has-any") && (inv.total_amount || 0) > 0
           ? "verified"
           : (inv.total_amount || 0) > 0 ? "registered" : "missing") as EvidenceStatus,
+        rotPerPerson: invoiceRotPerPerson.get(inv.id),
         notes: inv.notes || (inv.is_ata ? "ÄTA" : null),
       });
     });
@@ -226,6 +292,7 @@ export function HomeownerAnalysisSection({ projectId, currency }: AnalysisProps)
         evidenceStatus: (hasDoc && (mat.price_total || 0) > 0
           ? "verified"
           : (mat.price_total || 0) > 0 ? "registered" : "missing") as EvidenceStatus,
+        rotPerPerson: materialRotPerPerson.get(mat.id),
         notes: mat.description || null,
       });
     });
