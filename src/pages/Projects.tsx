@@ -172,6 +172,12 @@ const Projects = () => {
     );
   }, [projects, isAdmin, showAdminProjects, profileId, sharedProjectIds]);
 
+  // Exclude demo projects from financial/tax aggregations
+  const nonDemoProjects = useMemo(
+    () => visibleProjects.filter((p) => !isDemoProject(p.project_type)),
+    [visibleProjects]
+  );
+
   const [createIntakeOpen, setCreateIntakeOpen] = useState(false);
   const [projectFinancials, setProjectFinancials] = useState<Record<string, { budget: number; profit: number }>>({});
   const [ownerNames, setOwnerNames] = useState<Record<string, string>>({});
@@ -1537,20 +1543,20 @@ const Projects = () => {
         </section>
 
         {/* Financial Analysis - contractors only, at the bottom */}
-        {isContractor && !isGuest && visibleProjects.length > 0 && (
+        {isContractor && !isGuest && nonDemoProjects.length > 0 && (
           <section className="mt-10 sm:mt-14">
             <FinancialAnalysisSection
-              projects={visibleProjects}
+              projects={nonDemoProjects}
               financials={projectFinancials}
               currency={(profile?.currency as string) ?? null}
             />
           </section>
         )}
 
-        {!isGuest && visibleProjects.length > 0 && (
+        {!isGuest && nonDemoProjects.length > 0 && (
           <section id="deklaration" className="mt-10 sm:mt-14 scroll-mt-20">
             <HomeownerYearlyAnalysis
-              projects={visibleProjects}
+              projects={nonDemoProjects}
               currency={(profile?.currency as string) ?? null}
             />
           </section>
