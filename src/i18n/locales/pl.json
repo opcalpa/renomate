@@ -161,7 +161,7 @@
   },
   "auth": {
     "signInTitle": "Witaj ponownie",
-    "signInDescription": "Zaloguj się do swojego konta Renomate",
+    "signInDescription": "Zaloguj się do swojego konta Renofine",
     "signUpTitle": "Utwórz konto",
     "signUpDescription": "Zacznij zarządzać swoim projektem remontowym",
     "emailPlaceholder": "twoj.email@example.com",
@@ -1696,7 +1696,7 @@
     "commentsLabel": "Komentarze"
   },
   "onboarding": {
-    "welcome": "Witaj w Renomate!",
+    "welcome": "Witaj w Renofine!",
     "welcomeDescription": "Zarządzaj projektami remontowymi od planowania do realizacji.",
     "createProject": "Utwórz swój pierwszy projekt",
     "createProjectDesc": "Zarządzam remontem",
@@ -2127,10 +2127,10 @@
     "couldNotDelete": "Nie udało się usunąć pokoju"
   },
   "helpBot": {
-    "title": "Renomate",
+    "title": "Renofine",
     "placeholder": "Zapytaj o remonty lub jak korzystać z aplikacji...",
     "disclaimer": "UWAGA: W kwestii przepisów budowlanych udzielam ogólnych wskazówek — zawsze skontaktuj się z właściwym urzędem w celu uzyskania wiążących decyzji.",
-    "greeting": "Cześć! Jestem Renomate — Twój ekspert od remontów i przewodnik po platformie. Zapytaj mnie o przepisy budowlane, porady remontowe lub jak najlepiej wykorzystać aplikację!",
+    "greeting": "Cześć! Jestem Renofine — Twój ekspert od remontów i przewodnik po platformie. Zapytaj mnie o przepisy budowlane, porady remontowe lub jak najlepiej wykorzystać aplikację!",
     "errorMessage": "Coś poszło nie tak. Spróbuj ponownie.",
     "send": "Wyślij",
     "quick": {
@@ -2152,7 +2152,7 @@
   },
   "feedback": {
     "title": "Pomoc i opinie",
-    "subtitle": "Pomóż nam ulepszać Renomate. Zgłoś błąd lub zaproponuj nową funkcję — anonimowo, jeśli wolisz.",
+    "subtitle": "Pomóż nam ulepszać Renofine. Zgłoś błąd lub zaproponuj nową funkcję — anonimowo, jeśli wolisz.",
     "messageLabel": "Wiadomość",
     "messagePlaceholder": "Opisz znaleziony błąd lub funkcję, którą chciałbyś zobaczyć...",
     "emailLabel": "E-mail",
@@ -2428,7 +2428,7 @@
   "welcome": {
     "chooseLanguage": "Wybierz swój język",
     "moreLanguages": "+6 więcej języków",
-    "title": "Witaj w Renomate!",
+    "title": "Witaj w Renofine!",
     "subtitle": "Co najlepiej Cię opisuje?",
     "homeowner": "Właściciel domu",
     "homeownerDesc": "Remontuję swój dom",
@@ -2447,7 +2447,7 @@
   "demoProject": {
     "badge": "Przykładowy projekt",
     "title": "Remont mieszkania — Przykład",
-    "description": "Przejrzyj ten przykładowy projekt, aby poznać działanie Renomate",
+    "description": "Przejrzyj ten przykładowy projekt, aby poznać działanie Renofine",
     "rooms": {
       "livingRoom": "Salon z podłogą drewnianą i sztukterią sufitową. Niedawno otynkowany i pomalowany.",
       "bedroom": "Sypialnia z miejscem na łóżko podwójne. Do tapetowania tapetą ze wzorem.",
@@ -2546,7 +2546,7 @@
   "intake": {
     "title": "Opowiedz nam o swoim projekcie",
     "subtitle": "Wypełnij poniższy formularz, abyśmy mogli zrozumieć Twoje potrzeby remontowe",
-    "poweredBy": "Obsługiwane przez Renomate",
+    "poweredBy": "Obsługiwane przez Renofine",
 
     "step1Title": "Twoje dane",
     "step2Title": "Nieruchomość",

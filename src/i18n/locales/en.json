@@ -204,7 +204,7 @@
   "landing": {
     "heroTitle": "Win More Jobs,",
     "heroSubtitle": "Deliver Smarter",
-    "heroDescription": "Renomate helps contractors, project managers and homeowners quote faster, stay on top of every project and collaborate seamlessly — from first client contact to final invoice.",
+    "heroDescription": "Renofine helps contractors, project managers and homeowners quote faster, stay on top of every project and collaborate seamlessly — from first client contact to final invoice.",
     "getStarted": "Get Started",
     "startProject": "Start your project",
     "learnMore": "Learn More",
@@ -235,7 +235,7 @@
     "timelineDesc": "Track progress and manage deadlines",
     "overviewTitle": "Project Overview",
     "overviewDesc": "See everything at a glance",
-    "roleTitle": "How will you use Renomate?",
+    "roleTitle": "How will you use Renofine?",
     "roleDescription": "We'll customize the experience for you.",
     "roleHomeowner": "Homeowner",
     "roleHomeownerDesc": "I'm planning a renovation for my home",
@@ -268,7 +268,7 @@
   },
   "auth": {
     "signInTitle": "Welcome Back",
-    "signInDescription": "Sign in to your Renomate account",
+    "signInDescription": "Sign in to your Renofine account",
     "signUpTitle": "Create Account",
     "signUpDescription": "Start managing your renovation project",
     "emailPlaceholder": "your.email@example.com",
@@ -380,7 +380,7 @@
     "adminOff": "Admin"
   },
   "onboarding": {
-    "welcome": "Welcome to Renomate!",
+    "welcome": "Welcome to Renofine!",
     "welcomeDescription": "Manage your renovation projects from planning to completion.",
     "createProject": "Create your first project",
     "createProjectDesc": "I'm managing a renovation",
@@ -1695,7 +1695,7 @@
     "maxRot": "Max ROT per person",
     "combinedCap": "Combined ROT+RUT cap",
     "source": "Source: Skatteverket",
-    "disclaimer": "Renomate is not responsible for regulatory changes. Always verify current rules at skatteverket.se."
+    "disclaimer": "Renofine is not responsible for regulatory changes. Always verify current rules at skatteverket.se."
   },
   "household": {
     "title": "More people in the household?",
@@ -3053,10 +3053,10 @@
     "couldNotDelete": "Could not delete room"
   },
   "helpBot": {
-    "title": "Renomate Junior",
+    "title": "Renofine Junior",
     "placeholder": "Ask about renovations or how to use the app...",
     "disclaimer": "NOTE: For building regulations I provide general guidance — always contact your municipality's building committee for final decisions.",
-    "greeting": "Hi! I'm Renomate Junior — your renovation expert and platform guide. Ask me about building regulations, renovation tips, or how to get the most out of the app!\n\nNOTE: For building regulations I provide general guidance — always contact your municipality's building committee for final decisions.",
+    "greeting": "Hi! I'm Renofine Junior — your renovation expert and platform guide. Ask me about building regulations, renovation tips, or how to get the most out of the app!\n\nNOTE: For building regulations I provide general guidance — always contact your municipality's building committee for final decisions.",
     "timeGreeting": {
       "morning": "Good morning",
       "afternoon": "Hey",
@@ -3078,9 +3078,9 @@
     "suggestionPrompt": "Love that you want to help us improve! 💡\n\nTell me freely — is there a feature you're missing? Something that could work better? A workflow that feels clunky?\n\nAll ideas are welcome, big or small. We read every single one.",
     "otherPrompt": "Of course! ✉️ Write whatever's on your mind — feedback, questions, or just a thought. I'll make sure the team sees it.",
     "bugSentConfirm": "Got it! 🙏 Your bug report has been sent straight to the development team. We take these seriously and will look into it.\n\nIs there anything else you noticed?",
-    "suggestionSentConfirm": "Thanks for the great input! 💡 Your suggestion has been forwarded to the team. We love hearing how we can make Renomate better.\n\nGot more ideas?",
+    "suggestionSentConfirm": "Thanks for the great input! 💡 Your suggestion has been forwarded to the team. We love hearing how we can make Renofine better.\n\nGot more ideas?",
     "otherSentConfirm": "Message received! ✉️ The team will read it. Thanks for taking the time to write.\n\nAnything else on your mind?",
-    "feedbackError": "Hmm, something went wrong sending your report. You can also email us directly at hello@letsrenomate.com — we read every message!",
+    "feedbackError": "Hmm, something went wrong sending your report. You can also email us directly at hello@letsrenofine.com — we read every message!",
     "feedbackCancelled": "No worries, report cancelled. I'm still here if you need help with anything else!",
     "feedbackTypePicker": "What would you like to share? Pick one below:",
     "addMore": "Add more details",
@@ -3118,7 +3118,7 @@
   },
   "feedback": {
     "title": "Contact & Feedback",
-    "subtitle": "Help us improve Renomate. Report a bug or request a feature — anonymously if you prefer.",
+    "subtitle": "Help us improve Renofine. Report a bug or request a feature — anonymously if you prefer.",
     "messageLabel": "Message",
     "messagePlaceholder": "Describe the bug you found or the feature you'd like to see...",
     "emailLabel": "Email",
@@ -3544,7 +3544,7 @@
   "welcome": {
     "chooseLanguage": "Choose your language",
     "moreLanguages": "+6 more languages",
-    "title": "Welcome to Renomate!",
+    "title": "Welcome to Renofine!",
     "subtitle": "What describes you best?",
     "homeowner": "Homeowner",
     "homeownerDesc": "I'm renovating my own home",
@@ -3625,7 +3625,7 @@
   "demoProject": {
     "badge": "Example Project",
     "title": "Apartment Renovation - Example",
-    "description": "Explore this example project to learn how Renomate works",
+    "description": "Explore this example project to learn how Renofine works",
     "rooms": {
       "livingRoom": "Living room with hardwood floors and crown molding. Recently plastered and painted.",
       "bedroom": "Bedroom with space for double bed. To be wallpapered with patterned wallpaper.",
@@ -3783,7 +3783,7 @@
   "intake": {
     "title": "Tell us about your project",
     "subtitle": "Fill in the form below to help us understand your renovation needs",
-    "poweredBy": "Powered by Renomate",
+    "poweredBy": "Powered by Renofine",
 
     "step1Title": "Your details",
     "step2Title": "The property",
@@ -4701,7 +4701,7 @@
     "sentDescription": "The builder will receive an email with a link to view your renovation plan and create a quote.",
     "inviteAnother": "Invite another builder",
     "noTasks": "No tasks added yet",
-    "generatedBy": "Generated by Renomate"
+    "generatedBy": "Generated by Renofine"
   },
   "rfqBanner": {
     "title": "Quote request from homeowner",

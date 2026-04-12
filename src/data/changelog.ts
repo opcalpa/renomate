@@ -275,7 +275,7 @@ export const changelog: ChangelogEntry[] = [
   // ── 2026-03-16 ──
   {
     date: "2026-03-16",
-    title: "Renomate Junior — AI-assistent",
+    title: "Renofine Junior — AI-assistent",
     description: "Chatbot med personlig avatar som ger projektreminders, svarar på frågor och hjälper dig navigera i appen.",
     tags: ["AI", "Produktivitet"],
   },

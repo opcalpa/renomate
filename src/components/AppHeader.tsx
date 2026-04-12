@@ -260,7 +260,7 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
         >
           <img
             src="/logo.png"
-            alt="Renomate"
+            alt="Renofine"
             className="h-9 w-auto"
           />
         </div>

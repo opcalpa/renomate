@@ -65,7 +65,7 @@
   },
   "auth": {
     "signInTitle": "Tere tulemast tagasi",
-    "signInDescription": "Logi oma Renomate kontole sisse",
+    "signInDescription": "Logi oma Renofine kontole sisse",
     "signUpTitle": "Loo konto",
     "signUpDescription": "Alusta oma renoveerimisprojekti haldamist",
     "emailPlaceholder": "sinu.email@naide.ee",
@@ -307,7 +307,7 @@
     "profileNotFound": "Profiili ei leitud"
   },
   "onboarding": {
-    "welcome": "Tere tulemast Renomate'i!",
+    "welcome": "Tere tulemast Renofine'i!",
     "welcomeDescription": "Hallake oma renoveerimisprojekte planeerimisest lõpetamiseni.",
     "createProject": "Looge oma esimene projekt",
     "createProjectDesc": "Ma juhin renoveerimist",
@@ -1139,7 +1139,7 @@
   },
   "welcome": {
     "chooseLanguage": "Valige oma keel",
-    "title": "Tere tulemast Renomate'i!",
+    "title": "Tere tulemast Renofine'i!",
     "subtitle": "Mis kirjeldab teid kõige paremini?",
     "homeowner": "Koduomanik",
     "homeownerDesc": "Renoveeerin oma kodu",

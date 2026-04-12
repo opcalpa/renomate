@@ -21,7 +21,7 @@ export function GuestRoleModal({ open, onSelect, onOpenChange }: GuestRoleModalP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>{t("landing.roleTitle", "How will you use Renomate?")}</DialogTitle>
+          <DialogTitle>{t("landing.roleTitle", "How will you use Renofine?")}</DialogTitle>
           <DialogDescription>
             {t("landing.roleDescription", "We'll customize the experience for you.")}
           </DialogDescription>

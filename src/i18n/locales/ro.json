@@ -65,7 +65,7 @@
   },
   "auth": {
     "signInTitle": "Bine ai revenit",
-    "signInDescription": "Autentifică-te în contul tău Renomate",
+    "signInDescription": "Autentifică-te în contul tău Renofine",
     "signUpTitle": "Creează cont",
     "signUpDescription": "Începe să îți gestionezi proiectul de renovare",
     "emailPlaceholder": "email.tau@exemplu.com",
@@ -307,7 +307,7 @@
     "profileNotFound": "Profil negăsit"
   },
   "onboarding": {
-    "welcome": "Bine ai venit la Renomate!",
+    "welcome": "Bine ai venit la Renofine!",
     "welcomeDescription": "Gestionează proiectele tale de renovare de la planificare la finalizare.",
     "createProject": "Creează primul tău proiect",
     "createProjectDesc": "Gestionez o renovare",
@@ -1139,7 +1139,7 @@
   },
   "welcome": {
     "chooseLanguage": "Alegeți limba",
-    "title": "Bine ați venit la Renomate!",
+    "title": "Bine ați venit la Renofine!",
     "subtitle": "Ce vă descrie cel mai bine?",
     "homeowner": "Proprietar",
     "homeownerDesc": "Îmi renovez propria casă",

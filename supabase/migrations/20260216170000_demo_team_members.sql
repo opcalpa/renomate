@@ -55,7 +55,7 @@ BEGIN
     overview_access, teams_access, budget_access, files_access
   ) VALUES (
     v_public_demo_id, NULL, 'editor',
-    'Erik Lindström', 'erik.lindstrom@demo.renomate.se',
+    'Erik Lindström', 'erik.lindstrom@demo.renofine.se',
     'contractor', 'painter', '070-123 45 67', 'Lindströms Måleri AB',
     'view', 'edit', 'assigned',
     'view', 'edit', 'assigned',
@@ -72,7 +72,7 @@ BEGIN
     overview_access, teams_access, budget_access, files_access
   ) VALUES (
     v_public_demo_id, NULL, 'editor',
-    'Anna Bergqvist', 'anna.bergqvist@demo.renomate.se',
+    'Anna Bergqvist', 'anna.bergqvist@demo.renofine.se',
     'contractor', 'flooring', '073-234 56 78', 'Bergqvist Golv & Parkett',
     'view', 'edit', 'assigned',
     'view', 'edit', 'assigned',
@@ -89,7 +89,7 @@ BEGIN
     overview_access, teams_access, budget_access, files_access
   ) VALUES (
     v_public_demo_id, NULL, 'editor',
-    'Johan Karlsson', 'johan.karlsson@demo.renomate.se',
+    'Johan Karlsson', 'johan.karlsson@demo.renofine.se',
     'contractor', 'carpenter', '076-345 67 89', 'JK Snickeri & Kök',
     'view', 'edit', 'assigned',
     'view', 'edit', 'assigned',
@@ -106,7 +106,7 @@ BEGIN
     overview_access, teams_access, budget_access, files_access
   ) VALUES (
     v_public_demo_id, NULL, 'editor',
-    'Maria Nilsson', 'maria.nilsson@demo.renomate.se',
+    'Maria Nilsson', 'maria.nilsson@demo.renofine.se',
     'contractor', 'tiler', '072-456 78 90', 'Nilssons Kakel & Klinker',
     'view', 'edit', 'assigned',
     'view', 'edit', 'assigned',
@@ -123,7 +123,7 @@ BEGIN
     overview_access, teams_access, budget_access, files_access
   ) VALUES (
     v_public_demo_id, NULL, 'editor',
-    'Peter Andersson', 'peter.andersson@demo.renomate.se',
+    'Peter Andersson', 'peter.andersson@demo.renofine.se',
     'contractor', 'electrician', '070-567 89 01', 'Anderssons El & Installation',
     'view', 'edit', 'assigned',
     'view', 'edit', 'assigned',

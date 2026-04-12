@@ -7,8 +7,8 @@ import mammoth from 'npm:mammoth@1.6.0';
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://app.letsrenomate.com',
-  'https://letsrenomate.com',
+  'https://app.letsrenofine.com',
+  'https://letsrenofine.com',
 ];
 
 function getCorsHeaders(req: Request) {

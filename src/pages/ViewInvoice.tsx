@@ -346,7 +346,7 @@ export default function ViewInvoice() {
     // Company name + date
     doc.setFontSize(12);
     doc.text(
-      creator?.company_name || creator?.name || "Renomate",
+      creator?.company_name || creator?.name || "Renofine",
       15,
       y
     );
@@ -711,7 +711,7 @@ export default function ViewInvoice() {
                   )}
                   <div>
                     <h2 className="text-lg font-semibold tracking-tight">
-                      {creator?.company_name || creator?.name || "Renomate"}
+                      {creator?.company_name || creator?.name || "Renofine"}
                     </h2>
                     {creator?.org_number && (
                       <p className="text-xs text-muted-foreground mt-0.5">

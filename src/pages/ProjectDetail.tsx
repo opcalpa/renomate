@@ -278,7 +278,7 @@ const ProjectDetail = () => {
 
   // Welcome banner for invited users
   const isInvitedWelcome = searchParams.get("welcome") === "invited";
-  const welcomeDismissKey = `renomate_invited_welcome_dismissed_${projectId}`;
+  const welcomeDismissKey = `renofine_invited_welcome_dismissed_${projectId}`;
   const [showInvitedWelcome, setShowInvitedWelcome] = useState(() => {
     if (!isInvitedWelcome) return false;
     return !localStorage.getItem(welcomeDismissKey);

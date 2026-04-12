@@ -16,11 +16,11 @@ import { GUEST_MAX_PROJECTS, GUEST_STORAGE_LIMIT } from '@/types/guest.types';
 
 // Storage keys
 const KEYS = {
-  mode: 'renomate_guest_mode',
-  projects: 'renomate_guest_projects',
-  rooms: (projectId: string) => `renomate_guest_rooms_${projectId}`,
-  tasks: (projectId: string) => `renomate_guest_tasks_${projectId}`,
-  floorPlans: (projectId: string) => `renomate_guest_floorplans_${projectId}`,
+  mode: 'renofine_guest_mode',
+  projects: 'renofine_guest_projects',
+  rooms: (projectId: string) => `renofine_guest_rooms_${projectId}`,
+  tasks: (projectId: string) => `renofine_guest_tasks_${projectId}`,
+  floorPlans: (projectId: string) => `renofine_guest_floorplans_${projectId}`,
 };
 
 // Helper to safely parse JSON from localStorage
@@ -285,7 +285,7 @@ export function getStorageUsage(): GuestStorageUsage {
   // Calculate total storage used by guest data
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && key.startsWith('renomate_guest_')) {
+    if (key && key.startsWith('renofine_guest_')) {
       const value = localStorage.getItem(key);
       if (value) {
         used += key.length + value.length;
@@ -313,7 +313,7 @@ export function clearAllGuestData(): void {
 
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && key.startsWith('renomate_guest_')) {
+    if (key && key.startsWith('renofine_guest_')) {
       keysToRemove.push(key);
     }
   }

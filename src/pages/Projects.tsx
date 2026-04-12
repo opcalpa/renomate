@@ -208,7 +208,7 @@ const Projects = () => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("confirmed") === "true") {
       toast({
-        title: "✅ Email verified — welcome to Renomate!",
+        title: "✅ Email verified — welcome to Renofine!",
         description: "Your account is ready. Let's get started!",
       });
       // Clean URL

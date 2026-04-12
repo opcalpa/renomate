@@ -91,7 +91,7 @@ const DEFAULT_COATS = 2;
 const DEFAULT_WASTE = 1.1;
 
 // localStorage key for guest estimation overrides
-const STORAGE_KEY = "renomate_guest_estimation_overrides";
+const STORAGE_KEY = "renofine_guest_estimation_overrides";
 
 interface EstimationOverrides {
   productivity?: Partial<Record<WorkType, number>>;

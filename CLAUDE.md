@@ -1,6 +1,6 @@
-# Renomate - Project Instructions
+# Renofine - Project Instructions
 
-This file defines the core principles and rules for the Renomate codebase.
+This file defines the core principles and rules for the Renofine codebase.
 These rules ensure clean, lightweight, responsive code built for manageable scale.
 
 ## Tech Stack
@@ -237,7 +237,7 @@ This prevents the situation where code references columns/tables that don't exis
 
 ## Persona System
 
-Renomate använder AI-personas för strategisk rådgivning. Personas finns i `.claude/personas/`.
+Renofine använder AI-personas för strategisk rådgivning. Personas finns i `.claude/personas/`.
 
 ### Aktiva personas
 

@@ -56,7 +56,7 @@ function VariantA({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
       {/* Nav */}
       <header className="border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-          <img src="/logo.png" alt="Renomate" className="h-10" />
+          <img src="/logo.png" alt="Renofine" className="h-10" />
           <div className="flex items-center gap-4">
             <button onClick={nav.toAuth} className="text-sm hover:underline">
               {t("common.signIn")}
@@ -97,7 +97,7 @@ function VariantA({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
           className="rounded-2xl overflow-hidden border border-gray-200 shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
           onClick={() => nav.demoTab("contractor", "tasks")}
         >
-          <img src="/screenshots/Timeline.png" alt="Renomate" className="w-full" loading="eager" />
+          <img src="/screenshots/Timeline.png" alt="Renofine" className="w-full" loading="eager" />
         </div>
       </section>
 
@@ -163,7 +163,7 @@ function VariantB({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
       {/* Nav */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-          <img src="/logo.png" alt="Renomate" className="h-9" />
+          <img src="/logo.png" alt="Renofine" className="h-9" />
           <div className="flex items-center gap-6">
             <button onClick={nav.toAuth} className="text-sm font-medium hover:text-primary transition-colors">
               {t("common.signIn")}
@@ -205,7 +205,7 @@ function VariantB({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
               className="rounded-xl overflow-hidden border border-gray-700 shadow-2xl cursor-pointer"
               onClick={() => nav.demoTab("contractor", "tasks")}
             >
-              <img src="/screenshots/Timeline.png" alt="Renomate" className="w-full" loading="eager" />
+              <img src="/screenshots/Timeline.png" alt="Renofine" className="w-full" loading="eager" />
             </div>
             <div className="absolute -inset-8 bg-primary/20 rounded-3xl blur-3xl -z-10" />
           </div>
@@ -284,7 +284,7 @@ function VariantB({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
         <div className="max-w-3xl mx-auto px-6 text-center">
           <Star className="h-8 w-8 text-yellow-400 mx-auto mb-6" />
           <blockquote className="text-2xl md:text-3xl font-medium leading-snug mb-6">
-            "Renomate har förändrat hur vi hanterar våra renoveringsprojekt. Allt på ett ställe."
+            "Renofine har förändrat hur vi hanterar våra renoveringsprojekt. Allt på ett ställe."
           </blockquote>
           <p className="text-gray-500">— Renoveringsföretagare, Stockholm</p>
         </div>
@@ -318,7 +318,7 @@ function VariantC({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
       {/* Nav */}
       <header className="sticky top-0 z-40 bg-[#fafaf8]/95 backdrop-blur">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <img src="/logo.png" alt="Renomate" className="h-10" />
+          <img src="/logo.png" alt="Renofine" className="h-10" />
           <div className="flex items-center gap-4">
             <button onClick={nav.toAuth} className="text-sm font-medium hover:text-primary">
               {t("common.signIn")}
@@ -376,7 +376,7 @@ function VariantC({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
               style={{ transform: "perspective(1200px) rotateY(-4deg)" }}
               onClick={() => nav.demoTab("contractor", "tasks")}
             >
-              <img src="/screenshots/Timeline.png" alt="Renomate" className="w-full" loading="eager" />
+              <img src="/screenshots/Timeline.png" alt="Renofine" className="w-full" loading="eager" />
             </div>
             <div className="absolute -inset-6 bg-gradient-to-br from-primary/15 to-emerald-500/10 rounded-3xl blur-3xl -z-10" />
           </div>
@@ -443,7 +443,7 @@ function VariantC({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
             ))}
           </div>
           <blockquote className="text-xl md:text-2xl leading-relaxed mb-6">
-            "Renomate har förändrat hur vi hanterar våra renoveringsprojekt. Allt på ett ställe — planritning, budget, team och tidslinje."
+            "Renofine har förändrat hur vi hanterar våra renoveringsprojekt. Allt på ett ställe — planritning, budget, team och tidslinje."
           </blockquote>
           <p className="text-sm text-gray-400">— Renoveringsföretagare, Stockholm</p>
         </div>

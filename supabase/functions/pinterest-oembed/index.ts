@@ -4,8 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://app.letsrenomate.com',
-  'https://letsrenomate.com',
+  'https://app.letsrenofine.com',
+  'https://letsrenofine.com',
 ];
 
 function getCorsHeaders(req: Request) {
@@ -56,7 +56,7 @@ serve(async (req) => {
 
     const response = await fetch(oEmbedUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; Renomate/1.0)",
+        "User-Agent": "Mozilla/5.0 (compatible; Renofine/1.0)",
       },
     });
 
@@ -92,7 +92,7 @@ serve(async (req) => {
     if (imageUrl && projectId) {
       try {
         const imgResponse = await fetch(imageUrl, {
-          headers: { "User-Agent": "Mozilla/5.0 (compatible; Renomate/1.0)" },
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; Renofine/1.0)" },
         });
         if (imgResponse.ok) {
           const contentType = imgResponse.headers.get("content-type") || "image/jpeg";

@@ -2,7 +2,7 @@
  * useProjectReminders — Computes "grundfunktions" reminders for a project.
  *
  * These are core app actions most users should complete to get full value.
- * Used by both the Overview reminder section and Renomate Junior's greeting.
+ * Used by both the Overview reminder section and Renofine Junior's greeting.
  */
 
 import { useMemo, useState, useEffect } from "react";
@@ -149,13 +149,13 @@ function computeReminders(
   return reminders;
 }
 
-const DISMISSED_KEY_PREFIX = "renomate_dismissed_reminders_";
+const DISMISSED_KEY_PREFIX = "renofine_dismissed_reminders_";
 
 function loadDismissed(projectId: string): Set<string> {
   try {
     // Try project-specific key first, fall back to old global key
     const raw = localStorage.getItem(DISMISSED_KEY_PREFIX + projectId)
-      || localStorage.getItem("renomate_dismissed_reminders");
+      || localStorage.getItem("renofine_dismissed_reminders");
     if (raw) return new Set(JSON.parse(raw));
   } catch { /* ignore */ }
   return new Set();

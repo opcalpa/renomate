@@ -65,7 +65,7 @@
   },
   "auth": {
     "signInTitle": "Willkommen zurück",
-    "signInDescription": "Melden Sie sich bei Ihrem Renomate-Konto an",
+    "signInDescription": "Melden Sie sich bei Ihrem Renofine-Konto an",
     "signUpTitle": "Konto erstellen",
     "signUpDescription": "Beginnen Sie mit der Verwaltung Ihres Renovierungsprojekts",
     "emailPlaceholder": "ihre.email@beispiel.de",
@@ -210,7 +210,7 @@
     "profileNotFound": "Profil nicht gefunden"
   },
   "onboarding": {
-    "welcome": "Willkommen bei Renomate!",
+    "welcome": "Willkommen bei Renofine!",
     "welcomeDescription": "Verwalten Sie Ihre Renovierungsprojekte von der Planung bis zur Fertigstellung.",
     "createProject": "Erstellen Sie Ihr erstes Projekt",
     "createProjectDesc": "Ich manage eine Renovierung",
@@ -571,7 +571,7 @@
   },
   "welcome": {
     "chooseLanguage": "Wähle deine Sprache",
-    "title": "Willkommen bei Renomate!",
+    "title": "Willkommen bei Renofine!",
     "subtitle": "Was beschreibt dich am besten?",
     "homeowner": "Hausbesitzer",
     "homeownerDesc": "Ich renoviere mein eigenes Zuhause",

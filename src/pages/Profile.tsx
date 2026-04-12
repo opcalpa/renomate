@@ -114,7 +114,7 @@ const Profile = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [defaultCurrency, setDefaultCurrency] = useState(() => localStorage.getItem("admin_currency") || "SEK");
   const [measurementSystem, setMeasurementSystem] = useState<'metric' | 'imperial'>(() => {
-    const stored = localStorage.getItem("renomate_measurement_system");
+    const stored = localStorage.getItem("renofine_measurement_system");
     return stored === 'imperial' ? 'imperial' : 'metric';
   });
 
@@ -281,7 +281,7 @@ const Profile = () => {
           const parts = [companyAddress, companyPostalCode, companyCity, "Sweden"].filter(Boolean).join(", ");
           const res = await fetch(
             `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(parts)}&format=json&limit=1`,
-            { headers: { "User-Agent": "Renomate/1.0" } }
+            { headers: { "User-Agent": "Renofine/1.0" } }
           );
           const geo = await res.json();
           if (geo.length > 0) {
@@ -353,7 +353,7 @@ const Profile = () => {
 
       // Save currency + measurement preferences to localStorage
       localStorage.setItem("admin_currency", defaultCurrency);
-      localStorage.setItem("renomate_measurement_system", measurementSystem);
+      localStorage.setItem("renofine_measurement_system", measurementSystem);
 
       // Mark onboarding profile step complete
       // For contractors: requires professional fields (is_professional, company_name, contractor_category)

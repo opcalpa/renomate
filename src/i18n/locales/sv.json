@@ -204,7 +204,7 @@
   "landing": {
     "heroTitle": "Vinn fler jobb,",
     "heroSubtitle": "leverera smartare",
-    "heroDescription": "Renomate hjälper byggfirmor, projektledare och hemägare att offerera snabbare, hålla koll på varje projekt och samarbeta smidigt — från första kundkontakt till slutfaktura.",
+    "heroDescription": "Renofine hjälper byggfirmor, projektledare och hemägare att offerera snabbare, hålla koll på varje projekt och samarbeta smidigt — från första kundkontakt till slutfaktura.",
     "getStarted": "Kom igång",
     "startProject": "Starta ditt projekt",
     "learnMore": "Läs mer",
@@ -235,7 +235,7 @@
     "timelineDesc": "Följ framstegen och hantera deadlines",
     "overviewTitle": "Projektöversikt",
     "overviewDesc": "Se allt på ett ställe",
-    "roleTitle": "Hur ska du använda Renomate?",
+    "roleTitle": "Hur ska du använda Renofine?",
     "roleDescription": "Vi anpassar upplevelsen för dig.",
     "roleHomeowner": "Hemägare",
     "roleHomeownerDesc": "Jag planerar en renovering av mitt hem",
@@ -268,7 +268,7 @@
   },
   "auth": {
     "signInTitle": "Välkommen tillbaka",
-    "signInDescription": "Logga in på ditt Renomate-konto",
+    "signInDescription": "Logga in på ditt Renofine-konto",
     "signUpTitle": "Skapa konto",
     "signUpDescription": "Börja hantera ditt renoveringsprojekt",
     "emailPlaceholder": "din.epost@exempel.se",
@@ -380,7 +380,7 @@
     "adminOff": "Admin"
   },
   "onboarding": {
-    "welcome": "Välkommen till Renomate!",
+    "welcome": "Välkommen till Renofine!",
     "welcomeDescription": "Hantera dina renoveringsprojekt från planering till färdigställande.",
     "createProject": "Skapa ditt första projekt",
     "createProjectDesc": "Jag leder en renovering",
@@ -2719,7 +2719,7 @@
     "maxRot": "Max ROT per person",
     "combinedCap": "Gemensamt tak ROT+RUT",
     "source": "Källa: Skatteverket",
-    "disclaimer": "Renomate ansvarar inte för eventuella regeländringar. Kontrollera alltid aktuella regler på skatteverket.se."
+    "disclaimer": "Renofine ansvarar inte för eventuella regeländringar. Kontrollera alltid aktuella regler på skatteverket.se."
   },
   "household": {
     "title": "Fler i hushållet?",
@@ -3050,10 +3050,10 @@
     "couldNotDelete": "Kunde inte ta bort rum"
   },
   "helpBot": {
-    "title": "Renomate Junior",
+    "title": "Renofine Junior",
     "placeholder": "Fråga om renovering eller hur appen fungerar...",
     "disclaimer": "OBS: För byggregler ger jag allmän vägledning — kontakta alltid din kommuns byggnadsnämnd för slutgiltigt besked.",
-    "greeting": "Hej! Jag är Renomate Junior — din renoveringsexpert och plattformsguide. Fråga mig om byggregler, renoveringstips eller hur du får ut mest av appen!\n\nOBS: För byggregler ger jag allmän vägledning — kontakta alltid din kommuns byggnadsnämnd för slutgiltigt besked.",
+    "greeting": "Hej! Jag är Renofine Junior — din renoveringsexpert och plattformsguide. Fråga mig om byggregler, renoveringstips eller hur du får ut mest av appen!\n\nOBS: För byggregler ger jag allmän vägledning — kontakta alltid din kommuns byggnadsnämnd för slutgiltigt besked.",
     "timeGreeting": {
       "morning": "God morgon",
       "afternoon": "Hej",
@@ -3075,9 +3075,9 @@
     "suggestionPrompt": "Kul att du vill hjälpa oss bli bättre! 💡\n\nBerätta fritt — saknar du en funktion? Vill du att något fungerar annorlunda? Något som känns krångligt?\n\nAlla idéer är välkomna, stora som små. Vi läser varenda en.",
     "otherPrompt": "Absolut! ✉️ Skriv vad du har på hjärtat — feedback, frågor eller bara en tanke. Jag ser till att teamet ser det.",
     "bugSentConfirm": "Tack! 🙏 Din buggrapport har skickats rakt till utvecklingsteamet. Vi tar dessa på allvar och tittar på det.\n\nSåg du något mer?",
-    "suggestionSentConfirm": "Tack för bra input! 💡 Ditt förslag har skickats vidare till teamet. Vi älskar att höra hur vi kan göra Renomate bättre.\n\nHar du fler idéer?",
+    "suggestionSentConfirm": "Tack för bra input! 💡 Ditt förslag har skickats vidare till teamet. Vi älskar att höra hur vi kan göra Renofine bättre.\n\nHar du fler idéer?",
     "otherSentConfirm": "Meddelande mottaget! ✉️ Teamet kommer läsa det. Tack för att du tog dig tid att skriva.\n\nNågot annat du funderar på?",
-    "feedbackError": "Hmm, något gick fel när rapporten skulle skickas. Du kan också maila oss direkt på hello@letsrenomate.com — vi läser alla meddelanden!",
+    "feedbackError": "Hmm, något gick fel när rapporten skulle skickas. Du kan också maila oss direkt på hello@letsrenofine.com — vi läser alla meddelanden!",
     "feedbackCancelled": "Inga problem, rapporten avbröts. Jag finns kvar om du behöver hjälp med något annat!",
     "feedbackTypePicker": "Vad vill du dela med dig av? Välj nedan:",
     "addMore": "Lägg till detaljer",
@@ -3115,7 +3115,7 @@
   },
   "feedback": {
     "title": "Kontakt & feedback",
-    "subtitle": "Hjälp oss förbättra Renomate. Rapportera en bugg eller önska en funktion — anonymt om du vill.",
+    "subtitle": "Hjälp oss förbättra Renofine. Rapportera en bugg eller önska en funktion — anonymt om du vill.",
     "messageLabel": "Meddelande",
     "messagePlaceholder": "Beskriv buggen du hittade eller funktionen du önskar se...",
     "emailLabel": "E-post",
@@ -3541,7 +3541,7 @@
   "welcome": {
     "chooseLanguage": "Välj ditt språk",
     "moreLanguages": "+6 fler språk",
-    "title": "Välkommen till Renomate!",
+    "title": "Välkommen till Renofine!",
     "subtitle": "Vad beskriver dig bäst?",
     "homeowner": "Hemägare",
     "homeownerDesc": "Jag renoverar mitt eget hem",
@@ -3622,7 +3622,7 @@
   "demoProject": {
     "badge": "Exempelprojekt",
     "title": "Lägenhetsrenovering 3:a - Exempel",
-    "description": "Utforska detta exempelprojekt för att lära dig hur Renomate fungerar",
+    "description": "Utforska detta exempelprojekt för att lära dig hur Renofine fungerar",
     "rooms": {
       "livingRoom": "Vardagsrum med parkettgolv och stuckatur. Nyligen spacklat och målat.",
       "bedroom": "Sovrum med plats för dubbelsäng. Ska tapetseras med mönstrad tapet.",
@@ -3780,7 +3780,7 @@
   "intake": {
     "title": "Berätta om ditt projekt",
     "subtitle": "Fyll i formuläret nedan för att hjälpa oss förstå dina renoveringsbehov",
-    "poweredBy": "Drivs av Renomate",
+    "poweredBy": "Drivs av Renofine",
 
     "step1Title": "Dina uppgifter",
     "step2Title": "Objektet",
@@ -4698,7 +4698,7 @@
     "sentDescription": "Byggaren får ett mejl med en länk för att se din renoveringsplan och skapa en offert.",
     "inviteAnother": "Bjud in en till byggare",
     "noTasks": "Inga uppgifter tillagda ännu",
-    "generatedBy": "Genererad av Renomate"
+    "generatedBy": "Genererad av Renofine"
   },
   "rfqBanner": {
     "title": "Offertförfrågan från hemägare",

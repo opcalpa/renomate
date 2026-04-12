@@ -225,7 +225,7 @@ export default function WorkerView() {
 
       {/* Footer */}
       <footer className="text-center py-6 text-xs text-muted-foreground/50">
-        Powered by Renomate
+        Powered by Renofine
       </footer>
     </div>
   );

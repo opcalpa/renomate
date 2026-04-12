@@ -492,7 +492,7 @@ export default function ViewQuote() {
     }
 
     doc.setFontSize(16);
-    doc.text(creator?.company_name || creator?.name || "Renomate", 15, y);
+    doc.text(creator?.company_name || creator?.name || "Renofine", 15, y);
     y += 8;
     doc.setFontSize(10);
     doc.text(new Date(quote.created_at).toLocaleDateString("sv-SE"), 15, y);
@@ -766,7 +766,7 @@ export default function ViewQuote() {
                 )}
                 <div>
                   <h2 className="text-lg font-semibold">
-                    {creator?.company_name || creator?.name || "Renomate"}
+                    {creator?.company_name || creator?.name || "Renofine"}
                   </h2>
                   {creator?.org_number && (
                     <p className="text-xs text-muted-foreground">Org.nr: {creator.org_number}</p>

@@ -514,9 +514,9 @@ export function HelpBot() {
         <button
           onClick={() => setOpen(true)}
           className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 h-14 w-14 rounded-full shadow-lg bg-white border-2 border-primary/20 hover:border-primary/40 transition-colors flex items-center justify-center"
-          aria-label={t("helpBot.title", "Renomate Junior")}
+          aria-label={t("helpBot.title", "Renofine Junior")}
         >
-          <img src="/chatbot-avatar.jpg" alt="Renomate Junior" className="h-10 w-10 rounded-full object-cover" />
+          <img src="/chatbot-avatar.jpg" alt="Renofine Junior" className="h-10 w-10 rounded-full object-cover" />
           {reminderCount > 0 && (
             <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-orange-500 text-white text-[11px] font-bold flex items-center justify-center shadow-sm">
               {reminderCount}
@@ -533,9 +533,9 @@ export function HelpBot() {
           {/* Header */}
           <div className="flex items-center justify-between border-b px-4 py-3">
             <div className="flex items-center gap-2">
-              <img src="/chatbot-avatar.jpg" alt="Renomate Junior" className="h-7 w-7 rounded-full object-cover" />
+              <img src="/chatbot-avatar.jpg" alt="Renofine Junior" className="h-7 w-7 rounded-full object-cover" />
               <h3 className="font-semibold text-sm">
-                {t("helpBot.title", "Renomate Junior")}
+                {t("helpBot.title", "Renofine Junior")}
               </h3>
             </div>
             <div className="flex items-center gap-1">

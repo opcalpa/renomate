@@ -65,7 +65,7 @@
   },
   "auth": {
     "signInTitle": "Sveiki sugrįžę",
-    "signInDescription": "Prisijunkite prie savo Renomate paskyros",
+    "signInDescription": "Prisijunkite prie savo Renofine paskyros",
     "signUpTitle": "Sukurti paskyrą",
     "signUpDescription": "Pradėkite valdyti savo remonto projektą",
     "emailPlaceholder": "jusu.pastas@pavyzdys.lt",
@@ -307,7 +307,7 @@
     "profileNotFound": "Profilis nerastas"
   },
   "onboarding": {
-    "welcome": "Sveiki atvykę į Renomate!",
+    "welcome": "Sveiki atvykę į Renofine!",
     "welcomeDescription": "Valdykite savo renovacijos projektus nuo planavimo iki užbaigimo.",
     "createProject": "Sukurkite pirmąjį projektą",
     "createProjectDesc": "Aš valdau renovaciją",
@@ -1139,7 +1139,7 @@
   },
   "welcome": {
     "chooseLanguage": "Pasirinkite savo kalbą",
-    "title": "Sveiki atvykę į Renomate!",
+    "title": "Sveiki atvykę į Renofine!",
     "subtitle": "Kas jus geriausiai apibūdina?",
     "homeowner": "Namų savininkas",
     "homeownerDesc": "Remontuoju savo namus",

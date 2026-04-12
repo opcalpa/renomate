@@ -20,8 +20,8 @@ interface InvitationData {
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://app.letsrenomate.com',
-  'https://letsrenomate.com',
+  'https://app.letsrenofine.com',
+  'https://letsrenofine.com',
 ];
 
 function getCorsHeaders(req: Request) {
@@ -48,7 +48,7 @@ function buildRfqEmail(
   const personalMessage = perms.message as string | null;
   const inviterName = inviter.name || inviter.email;
 
-  const subject = `Offertförfrågan: ${project.name} — Renomate`;
+  const subject = `Offertförfrågan: ${project.name} — Renofine`;
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -80,7 +80,7 @@ function buildRfqEmail(
 </div>
 <div class="footer">
   <p>Inbjudan gäller i 7 dagar.</p>
-  <p>Renomate — Renovering, enklare.</p>
+  <p>Renofine — Renovering, enklare.</p>
 </div>
 </body></html>`;
 
@@ -95,7 +95,7 @@ function buildCoOwnerEmail(
   const inviter = invitation.inviter as { name: string; email: string };
   const inviterName = inviter.name || inviter.email;
 
-  const subject = `Du har bjudits in som delägare — ${project.name} — Renomate`;
+  const subject = `Du har bjudits in som delägare — ${project.name} — Renofine`;
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -132,7 +132,7 @@ function buildStandardEmail(
   const inviter = invitation.inviter as { name: string; email: string };
   const inviterName = inviter.name || inviter.email;
 
-  const subject = `You're invited to ${project.name} — Renomate`;
+  const subject = `You're invited to ${project.name} — Renofine`;
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -178,7 +178,7 @@ function buildPlanningContributorEmail(
   const inviter = invitation.inviter as { name: string; email: string };
   const inviterName = inviter.name || inviter.email;
 
-  const subject = `Beskriv din renovering — ${project.name} — Renomate`;
+  const subject = `Beskriv din renovering — ${project.name} — Renofine`;
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -208,7 +208,7 @@ function buildPlanningContributorEmail(
 </div>
 <div class="footer">
   <p>Inbjudan gäller i 7 dagar.</p>
-  <p>Renomate — Renovering, enklare.</p>
+  <p>Renofine — Renovering, enklare.</p>
 </div>
 </body></html>`;
 
@@ -247,7 +247,7 @@ serve(async (req) => {
     }
 
     const origin =
-      req.headers.get("origin") || "https://app.letsrenomate.com";
+      req.headers.get("origin") || "https://app.letsrenofine.com";
     const invitationUrl = `${origin}/invitation?token=${invitation.token || invitation.invitation_token}`;
 
     // Detect invitation type
@@ -272,7 +272,7 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Renomate <hello@letsrenomate.com>",
+        from: "Renofine <hello@letsrenofine.com>",
         to: [recipientEmail],
         subject,
         html,

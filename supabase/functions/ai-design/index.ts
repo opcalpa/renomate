@@ -3,8 +3,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://app.letsrenomate.com',
-  'https://letsrenomate.com',
+  'https://app.letsrenofine.com',
+  'https://letsrenofine.com',
 ];
 
 function getCorsHeaders(req: Request) {
@@ -36,7 +36,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'gpt-4o',
         messages: [
-          { role: 'system', content: 'Du är en inredningsassistent för appen LetsRenomate. Svara kortfattat och kreativt.' },
+          { role: 'system', content: 'Du är en inredningsassistent för appen LetsRenofine. Svara kortfattat och kreativt.' },
           { role: 'user', content: prompt }
         ],
       }),

@@ -1,6 +1,6 @@
 /**
  * RotRulesCard / RotRulesPopover
- * Read-only transparency view showing how Renomate calculates ROT.
+ * Read-only transparency view showing how Renofine calculates ROT.
  * RotRulesPopover: small info-icon that opens a popover with rules.
  * RotRulesCard: standalone collapsible (for use in Deklarationsunderlag).
  */
@@ -156,7 +156,7 @@ function RotRulesContent({ rules }: { rules: RotRule[] }) {
       ))}
 
       <p className="text-[10px] text-muted-foreground pt-1.5 border-t">
-        {t("rotRules.disclaimer", "Renomate ansvarar inte för eventuella regeländringar. Kontrollera alltid aktuella regler på skatteverket.se.")}
+        {t("rotRules.disclaimer", "Renofine ansvarar inte för eventuella regeländringar. Kontrollera alltid aktuella regler på skatteverket.se.")}
       </p>
     </div>
   );

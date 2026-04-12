@@ -35,9 +35,9 @@ BEGIN
         '00000000-0000-0000-0000-000000000000',
         'authenticated',
         'authenticated',
-        'system@renomate.demo',
+        'system@renofine.demo',
         '{"provider":"email","providers":["email"]}'::jsonb,
-        '{"name":"Renomate Demo"}'::jsonb,
+        '{"name":"Renofine Demo"}'::jsonb,
         false,
         now(),
         now(),
@@ -53,8 +53,8 @@ BEGIN
       VALUES (
         gen_random_uuid(),
         v_system_user_id,
-        'Renomate Demo',
-        'system@renomate.demo',
+        'Renofine Demo',
+        'system@renofine.demo',
         'homeowner'
       )
       ON CONFLICT (user_id) DO NOTHING;
@@ -93,7 +93,7 @@ BEGIN
   VALUES (
     v_public_demo_id,
     'Renovering Vasastan 3:a',
-    'Ytskiktsrenovering av 3-rumslägenhet i Vasastan, Stockholm. Ca 52 kvm. Detta är ett demonstrationsprojekt som visar Renomates funktioner.',
+    'Ytskiktsrenovering av 3-rumslägenhet i Vasastan, Stockholm. Ca 52 kvm. Detta är ett demonstrationsprojekt som visar Renofines funktioner.',
     v_system_admin_profile_id,
     'in_progress',
     'public_demo',

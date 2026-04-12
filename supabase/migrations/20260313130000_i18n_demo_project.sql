@@ -33,7 +33,7 @@ BEGIN
   VALUES (
     v_project_id,
     CASE WHEN v_is_en THEN 'Demo: 3-room Apartment Renovation' ELSE 'Demo: Renovering 3:a Vasastan' END,
-    CASE WHEN v_is_en THEN 'A demo project showcasing Renomate features. Surface renovation of a 3-room apartment in Stockholm.' ELSE 'Ett demoprojekt som visar Renomates funktioner. Ytskiktsrenovering av 3-rumslägenhet i Vasastan, Stockholm.' END,
+    CASE WHEN v_is_en THEN 'A demo project showcasing Renofine features. Surface renovation of a 3-room apartment in Stockholm.' ELSE 'Ett demoprojekt som visar Renofines funktioner. Ytskiktsrenovering av 3-rumslägenhet i Vasastan, Stockholm.' END,
     p_owner_id,
     'in_progress',
     'demo_project'

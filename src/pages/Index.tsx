@@ -29,7 +29,7 @@ const Index = () => {
   useEffect(() => {
     // Skip auto-redirect if user is in guest mode — they should
     // be able to return to the landing page by clicking the logo
-    const guestState = localStorage.getItem("renomate_guest_mode");
+    const guestState = localStorage.getItem("renofine_guest_mode");
     if (guestState) return;
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -57,7 +57,7 @@ const Index = () => {
       <header className="container mx-auto px-4 pt-4 md:pt-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <img src="/logo.png" alt="Renomate" className="h-14 w-auto" />
+            <img src="/logo.png" alt="Renofine" className="h-14 w-auto" />
           </div>
           <Button variant="outline" onClick={() => navigate("/auth")}>
             {t('common.signIn')}
@@ -72,7 +72,7 @@ const Index = () => {
             {/* Text content */}
             <div className="text-center lg:text-left order-1">
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 tracking-tight">
-                <span className="text-primary">Renomate</span> — {t('landing.heroTitle')} <span style={{ color: '#306839' }}>{t('landing.heroSubtitle')}</span>
+                <span className="text-primary">Renofine</span> — {t('landing.heroTitle')} <span style={{ color: '#306839' }}>{t('landing.heroSubtitle')}</span>
               </h1>
               <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl mx-auto lg:mx-0">
                 {t('landing.heroDescription')}
@@ -97,7 +97,7 @@ const Index = () => {
               >
                 <img
                   src="/screenshots/Timeline.png"
-                  alt="Renomate project timeline"
+                  alt="Renofine project timeline"
                   className="w-full h-auto object-contain"
                   loading="eager"
                 />

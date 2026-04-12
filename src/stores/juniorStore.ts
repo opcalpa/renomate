@@ -1,5 +1,5 @@
 /**
- * Lightweight store for Renomate Junior chatbot state.
+ * Lightweight store for Renofine Junior chatbot state.
  * Used to pass project reminder data from OverviewTab to the global HelpBot component.
  */
 import { create } from "zustand";

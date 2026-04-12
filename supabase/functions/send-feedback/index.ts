@@ -8,8 +8,8 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://app.letsrenomate.com',
-  'https://letsrenomate.com',
+  'https://app.letsrenofine.com',
+  'https://letsrenofine.com',
 ];
 
 function getCorsHeaders(req: Request) {
@@ -80,7 +80,7 @@ serve(async (req) => {
         <div style="white-space: pre-wrap; background: #f9f9f9; padding: 16px; border-radius: 8px;">
 ${message.trim()}
         </div>
-        <p style="color: #999; font-size: 12px; margin-top: 16px;">Sent from Renomate chatbot at ${new Date().toISOString()}</p>
+        <p style="color: #999; font-size: 12px; margin-top: 16px;">Sent from Renofine chatbot at ${new Date().toISOString()}</p>
       </div>
     `;
 
@@ -91,9 +91,9 @@ ${message.trim()}
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Renomate Feedback <hello@letsrenomate.com>",
-        to: ["hello@letsrenomate.com"],
-        subject: `${feedbackType} — Renomate`,
+        from: "Renofine Feedback <hello@letsrenofine.com>",
+        to: ["hello@letsrenofine.com"],
+        subject: `${feedbackType} — Renofine`,
         html: emailHtml,
         ...(replyTo ? { reply_to: replyTo } : {}),
       }),

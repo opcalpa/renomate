@@ -15,8 +15,8 @@ export interface NotificationItem {
   entityName?: string;
 }
 
-const LAST_READ_KEY = "renomate_notifications_lastReadAt";
-const READ_IDS_KEY = "renomate_notifications_readIds";
+const LAST_READ_KEY = "renofine_notifications_lastReadAt";
+const READ_IDS_KEY = "renofine_notifications_readIds";
 const POLL_INTERVAL = 30_000;
 
 function getLastReadAt(): string {

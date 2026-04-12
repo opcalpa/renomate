@@ -12,7 +12,7 @@ import {
   type ContextualTip,
 } from "@/lib/contextualTips";
 
-const DISMISSED_KEY = "renomate_dismissed_tips";
+const DISMISSED_KEY = "renofine_dismissed_tips";
 
 function loadDismissed(): Set<string> {
   try {

@@ -19,9 +19,9 @@ import type { Room, FieldKey } from "./rooms-table/types";
 type SortOption = 'name_asc' | 'name_desc' | 'area_desc' | 'area_asc' | 'created_desc' | 'created_asc';
 type ViewMode = 'cards' | 'table';
 
-const SORT_STORAGE_KEY = 'renomate_rooms_sort';
-const VIEW_MODE_STORAGE_KEY = 'renomate_rooms_view_mode';
-const VISIBLE_FIELDS_STORAGE_KEY = 'renomate_rooms_visible_fields';
+const SORT_STORAGE_KEY = 'renofine_rooms_sort';
+const VIEW_MODE_STORAGE_KEY = 'renofine_rooms_view_mode';
+const VISIBLE_FIELDS_STORAGE_KEY = 'renofine_rooms_visible_fields';
 
 interface RoomsListProps {
   projectId: string;

@@ -249,7 +249,7 @@ const Auth = () => {
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center mb-8">
           <a href="/">
-            <img src="/logo.png" alt="Renomate" className="h-14 w-auto cursor-pointer" />
+            <img src="/logo.png" alt="Renofine" className="h-14 w-auto cursor-pointer" />
           </a>
         </div>
 

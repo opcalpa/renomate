@@ -96,7 +96,7 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
   };
 
   const handleMeasurementContinue = async () => {
-    localStorage.setItem("renomate_measurement_system", selectedMeasurement);
+    localStorage.setItem("renofine_measurement_system", selectedMeasurement);
     if (profileId) {
       try {
         await supabase

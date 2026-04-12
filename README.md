@@ -1,4 +1,4 @@
-# 🏠 Renomate
+# 🏠 Renofine
 
 En modern, komplett plattform för hantering av renoveringsprojekt. Perfekt för hemägare som vill ha full kontroll över sina byggprojekt med ett professionellt verktyg.
 
@@ -74,7 +74,7 @@ En modern, komplett plattform för hantering av renoveringsprojekt. Perfekt för
 
 1. **Klona projektet och installera beroenden:**
 ```bash
-cd /Users/calpa/Desktop/Renomate
+cd /Users/calpa/Desktop/Renofine
 npm install
 ```
 
@@ -186,7 +186,7 @@ npm run lint
 ## 📁 Projektstruktur
 
 ```
-Renomate/
+Renofine/
 ├── src/
 │   ├── components/
 │   │   ├── ui/              # Shadcn UI-komponenter

@@ -22,7 +22,7 @@ function detectDefaultSystem(): MeasurementSystem {
   return isImperial ? "imperial" : "metric";
 }
 
-const STORAGE_KEY = "renomate_measurement_system";
+const STORAGE_KEY = "renofine_measurement_system";
 
 /**
  * Hook providing the user's measurement system preference + formatting helpers.

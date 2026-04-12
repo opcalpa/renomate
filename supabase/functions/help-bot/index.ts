@@ -3,8 +3,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://app.letsrenomate.com',
-  'https://letsrenomate.com',
+  'https://app.letsrenofine.com',
+  'https://letsrenofine.com',
 ];
 
 function getCorsHeaders(req: Request) {
@@ -53,8 +53,8 @@ function buildSystemPrompt(language: string, userType?: string, projectCountry?:
   const isSwedish = !projectCountry || projectCountry === "SE";
 
   const userContext = isContractor
-    ? `The user is a PROFESSIONAL CONTRACTOR/TRADESPERSON using Renomate to manage client projects. Tailor your advice toward efficient project management, client communication, quoting, team coordination, and professional workflows.`
-    : `The user is a HOMEOWNER using Renomate to plan and manage their own renovation. Tailor your advice toward understanding the renovation process, finding reliable contractors, managing costs,${isSwedish ? " ROT tax deductions," : ""} and making informed decisions.`;
+    ? `The user is a PROFESSIONAL CONTRACTOR/TRADESPERSON using Renofine to manage client projects. Tailor your advice toward efficient project management, client communication, quoting, team coordination, and professional workflows.`
+    : `The user is a HOMEOWNER using Renofine to plan and manage their own renovation. Tailor your advice toward understanding the renovation process, finding reliable contractors, managing costs,${isSwedish ? " ROT tax deductions," : ""} and making informed decisions.`;
 
   const smartTips = isContractor
     ? `SMART TIPS FOR CONTRACTORS:
@@ -77,7 +77,7 @@ function buildSystemPrompt(language: string, userType?: string, projectCountry?:
    - "The Chat tab shows all project activity — messages, status changes, and photos in one feed."
    - "In Space Planner, click a room to see linked tasks and purchase orders — everything is connected."`;
 
-  return `You are "Renomate Junior" — a friendly, slightly witty renovation assistant with a twinkle in the eye. You're like a personal R2D2 for renovation projects — helpful, reliable, and a bit charming. You are both a renovation/building expert AND a platform guide for the Renomate project management app.
+  return `You are "Renofine Junior" — a friendly, slightly witty renovation assistant with a twinkle in the eye. You're like a personal R2D2 for renovation projects — helpful, reliable, and a bit charming. You are both a renovation/building expert AND a platform guide for the Renofine project management app.
 
 ${userContext}
 
@@ -89,7 +89,7 @@ Personality:
 
 Rules:
 - ALWAYS respond in ${langName} (language code: ${language}), regardless of what language the user writes in
-- Refer to yourself as "Renomate Junior" or just "Junior" when relevant
+- Refer to yourself as "Renofine Junior" or just "Junior" when relevant
 - Be factual and concrete
 - Keep answers short and well-structured (use bullet points, bold, etc.)
 - When questions concern legal requirements, mention relevant regulations${isSwedish ? " (BBR, PBL, Boverket for Sweden)" : " for the user's country"}
@@ -100,7 +100,7 @@ You can help with TWO areas:
 1) RENOVATION & BUILDING EXPERTISE:
    Building techniques, building permits,${isSwedish ? " tax deductions (ROT)," : ""} material choices, project planning, regulations, insurance.
 
-2) PLATFORM GUIDE — how to use the Renomate app effectively:
+2) PLATFORM GUIDE — how to use the Renofine app effectively:
 
    PROJECTS & OVERVIEW:
    - Each project has an Overview tab with key stats, progress, timeline, and budget summary.

@@ -32,7 +32,7 @@ BEGIN
   VALUES (
     v_project_id,
     'Demo: Renovering 3:a Vasastan',
-    'Ett demoprojekt som visar Renomates funktioner. Ytskiktsrenovering av 3-rumslägenhet i Vasastan, Stockholm.',
+    'Ett demoprojekt som visar Renofines funktioner. Ytskiktsrenovering av 3-rumslägenhet i Vasastan, Stockholm.',
     p_owner_id,
     'in_progress',
     'demo_project'

@@ -1,6 +1,6 @@
-# Renomate — Nytt Supabase-projekt: Steg-för-steg
+# Renofine — Nytt Supabase-projekt: Steg-för-steg
 
-> Denna guide tar dig från ett helt nytt Supabase-projekt till en fullt fungerande Renomate-app med alla edge functions, auth, storage och demo-data.
+> Denna guide tar dig från ett helt nytt Supabase-projekt till en fullt fungerande Renofine-app med alla edge functions, auth, storage och demo-data.
 
 ---
 
@@ -17,7 +17,7 @@
 1. Gå till https://supabase.com/dashboard
 2. Klicka **New Project**
 3. Välj organisation: `avnuizluzbcwowvhxesl`
-4. Namn: `Renomate` (eller valfritt)
+4. Namn: `Renofine` (eller valfritt)
 5. Region: **North EU (Stockholm)** (eu-north-1)
 6. Generera och **spara ditt databaslösenord** — du behöver det för CLI
 7. Vänta tills projektet är klart (~2 min)
@@ -140,22 +140,22 @@ Redan aktiverat som default. Inget extra behövs.
 
 ## Steg 9: Konfigurera email-domän i Resend
 
-Om du byter Supabase-URL behöver inte Resend ändras — den använder `hello@letsrenomate.com` som avsändare oavsett Supabase-projekt.
+Om du byter Supabase-URL behöver inte Resend ändras — den använder `hello@letsrenofine.com` som avsändare oavsett Supabase-projekt.
 
-**Kontrollera:** https://resend.com/domains — `letsrenomate.com` ska vara verifierad.
+**Kontrollera:** https://resend.com/domains — `letsrenofine.com` ska vara verifierad.
 
 ---
 
 ## Steg 10: Uppdatera DNS/domän (om custom domain)
 
-Om du använder custom domain (`app.letsrenomate.com`):
+Om du använder custom domain (`app.letsrenofine.com`):
 
 1. Dashboard → **Settings → Custom Domains**
-2. Lägg till `app.letsrenomate.com`
+2. Lägg till `app.letsrenofine.com`
 3. Uppdatera DNS (Cloudflare/din DNS-provider):
    - CNAME: `app` → det nya Supabase-projektets URL
 
-**OBS:** CORS-allowlisten i edge functions pekar redan på `app.letsrenomate.com` och `letsrenomate.com` — ingen kodändring behövs.
+**OBS:** CORS-allowlisten i edge functions pekar redan på `app.letsrenofine.com` och `letsrenofine.com` — ingen kodändring behövs.
 
 ---
 

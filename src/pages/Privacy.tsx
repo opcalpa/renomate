@@ -11,7 +11,7 @@ const Privacy = () => {
       <header className="container mx-auto px-4 pt-8 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <img src="/logo.png" alt="Renomate" className="h-12 w-auto" />
+            <img src="/logo.png" alt="Renofine" className="h-12 w-auto" />
           </div>
           <Button variant="ghost" onClick={() => navigate("/")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -83,7 +83,7 @@ const Privacy = () => {
             <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">9. Contact Us</h2>
             <p>
               If you have any questions about this Privacy Policy, please contact us at
-              privacy@renomate.app.
+              privacy@renofine.app.
             </p>
           </div>
         </div>

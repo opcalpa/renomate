@@ -56,7 +56,7 @@
     }
   },
   "onboarding": {
-    "welcome": "Willkommen bei Renomate!",
+    "welcome": "Willkommen bei Renofine!",
     "welcomeDescription": "Verwalten Sie Ihre Renovierungsprojekte von der Planung bis zur Fertigstellung.",
     "createProject": "Erstellen Sie Ihr erstes Projekt",
     "createProjectDesc": "Ich manage eine Renovierung",
@@ -1269,16 +1269,16 @@
     "couldNotDelete": "Raum konnte nicht gelöscht werden"
   },
   "helpBot": {
-    "title": "Renomate",
+    "title": "Renofine",
     "placeholder": "Fragen zu Renovierungen oder zur App-Nutzung stellen...",
     "disclaimer": "HINWEIS: Bei baurechtlichen Fragen gebe ich allgemeine Hinweise — wenden Sie sich für verbindliche Entscheidungen immer an Ihr zuständiges Bauamt.",
-    "greeting": "Hallo! Ich bin Renomate — Ihr Renovierungsexperte und Plattform-Guide. Fragen Sie mich zu Bauvorschriften, Renovierungstipps oder wie Sie die App optimal nutzen!",
+    "greeting": "Hallo! Ich bin Renofine — Ihr Renovierungsexperte und Plattform-Guide. Fragen Sie mich zu Bauvorschriften, Renovierungstipps oder wie Sie die App optimal nutzen!",
     "errorMessage": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
     "send": "Senden"
   },
   "feedback": {
     "title": "Kontakt & Feedback",
-    "subtitle": "Helfen Sie uns, Renomate zu verbessern. Melden Sie einen Fehler oder schlagen Sie eine Funktion vor — auf Wunsch auch anonym.",
+    "subtitle": "Helfen Sie uns, Renofine zu verbessern. Melden Sie einen Fehler oder schlagen Sie eine Funktion vor — auf Wunsch auch anonym.",
     "messageLabel": "Nachricht",
     "messagePlaceholder": "Beschreiben Sie den gefundenen Fehler oder die gewünschte Funktion...",
     "emailLabel": "E-Mail",
@@ -1527,7 +1527,7 @@
     "quoteDeleted": "Angebot gelöscht"
   },
   "welcome": {
-    "title": "Willkommen bei Renomate!",
+    "title": "Willkommen bei Renofine!",
     "subtitle": "Was beschreibt Sie am besten?",
     "homeowner": "Eigenheimbesitzer",
     "homeownerDesc": "Ich renoviere mein eigenes Zuhause",
@@ -1538,7 +1538,7 @@
   "demoProject": {
     "badge": "Beispielprojekt",
     "title": "Wohnungsrenovierung - Beispiel",
-    "description": "Erkunden Sie dieses Beispielprojekt, um zu erfahren, wie Renomate funktioniert",
+    "description": "Erkunden Sie dieses Beispielprojekt, um zu erfahren, wie Renofine funktioniert",
     "rooms": {
       "livingRoom": "Wohnzimmer mit Parkettboden und Stuckleisten. Kürzlich verputzt und gestrichen.",
       "bedroom": "Schlafzimmer mit Platz für Doppelbett. Soll mit Mustertapete tapeziert werden.",

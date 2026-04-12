@@ -21,8 +21,8 @@ interface RequestData {
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://app.letsrenomate.com',
-  'https://letsrenomate.com',
+  'https://app.letsrenofine.com',
+  'https://letsrenofine.com',
 ];
 
 function getCorsHeaders(req: Request) {
@@ -91,12 +91,12 @@ serve(async (req) => {
     }
 
     const origin =
-      req.headers.get("origin") || "https://app.letsrenomate.com";
+      req.headers.get("origin") || "https://app.letsrenofine.com";
     const invitationUrl = `${origin}/invitation?token=${invitation.token}`;
     const companyName =
       invitation.inviter?.company_name ||
       invitation.inviter?.name ||
-      "Renomate";
+      "Renofine";
     const projectName = invitation.project?.name || "Projekt";
 
     const emailHtml = `
@@ -155,7 +155,7 @@ serve(async (req) => {
           </div>
 
           <div class="footer">
-            <p>Du f\u00e5r detta mejl f\u00f6r att ${companyName} har skickat dig en offert via Renomate.</p>
+            <p>Du f\u00e5r detta mejl f\u00f6r att ${companyName} har skickat dig en offert via Renofine.</p>
           </div>
         </body>
       </html>
@@ -168,7 +168,7 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Renomate <hello@letsrenomate.com>",
+        from: "Renofine <hello@letsrenofine.com>",
         to: [invitation.email],
         subject: `Offert fr\u00e5n ${companyName} \u2014 ${projectName}`,
         html: emailHtml,

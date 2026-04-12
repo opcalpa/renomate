@@ -240,7 +240,7 @@ export const SpacePlannerTopBar = ({ projectId, projectName, onBack, backLabel, 
           <DropdownMenuSeparator />
 
           {/* App Navigation */}
-          <DropdownMenuLabel>Renomate</DropdownMenuLabel>
+          <DropdownMenuLabel>Renofine</DropdownMenuLabel>
           <DropdownMenuItem onClick={() => navigate("/start")} className="cursor-pointer">
             <Home className="mr-2 h-4 w-4" />
             <span>{t('nav.start')}</span>

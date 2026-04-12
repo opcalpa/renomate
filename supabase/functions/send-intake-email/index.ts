@@ -22,8 +22,8 @@ interface IntakeEmailData {
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://app.letsrenomate.com',
-  'https://letsrenomate.com',
+  'https://app.letsrenofine.com',
+  'https://letsrenofine.com',
 ];
 
 function getCorsHeaders(req: Request) {
@@ -77,13 +77,13 @@ serve(async (req) => {
     }
 
     // Get the origin for building URLs
-    const origin = req.headers.get("origin") || "https://app.letsrenomate.com";
+    const origin = req.headers.get("origin") || "https://app.letsrenofine.com";
 
     // Build intake form URL
     const intakeFormUrl = `${origin}/intake/${intake.token}`;
 
     // Company/builder name
-    const builderName = intake.creator.company_name || intake.creator.name || "Renomate";
+    const builderName = intake.creator.company_name || intake.creator.name || "Renofine";
     const projectName = intake.project?.name;
 
     // Prepare email content
@@ -170,7 +170,7 @@ serve(async (req) => {
             <p>Länken är giltig i 7 dagar.</p>
             <p>Om du inte förväntat dig detta meddelande kan du ignorera det.</p>
             <p style="margin-top: 20px;">
-              <small>Skickat via <a href="https://letsrenomate.com" style="color: #10b981;">Renomate</a></small>
+              <small>Skickat via <a href="https://letsrenofine.com" style="color: #10b981;">Renofine</a></small>
             </p>
           </div>
         </body>
@@ -185,7 +185,7 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Renomate <hello@letsrenomate.com>",
+        from: "Renofine <hello@letsrenofine.com>",
         to: [customerEmail],
         subject: `${builderName} vill hjälpa dig med din renovering`,
         html: emailHtml,

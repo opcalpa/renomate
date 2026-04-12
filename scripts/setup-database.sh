@@ -7,7 +7,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo ""
-echo -e "${GREEN}🗄️  Renomate Database Setup${NC}"
+echo -e "${GREEN}🗄️  Renofine Database Setup${NC}"
 echo -e "${BLUE}================================================${NC}"
 echo ""
 
