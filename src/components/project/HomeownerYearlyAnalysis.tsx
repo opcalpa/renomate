@@ -279,12 +279,12 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
       {expanded && (
         <div className="space-y-3">
           {/* ══════ Stat cards row ══════ */}
-          <div className={cn("grid gap-3", hasRot ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2")}>
+          <div className={cn("grid gap-3", hasRot ? "grid-cols-2" : "grid-cols-1")}>
             {/* Total cost */}
             <div className="border rounded-xl p-4 bg-card">
               <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
                 <Receipt className="h-3.5 w-3.5" />
-                <span className="text-[11px] font-medium uppercase tracking-wide">{t("common.total")}</span>
+                <span className="text-[11px] font-medium uppercase tracking-wide">{t("analysis.totalSpent", "Totalt spenderat")}</span>
               </div>
               <span className="text-lg sm:text-xl font-bold tabular-nums">{fc(totalAmount)}</span>
             </div>
@@ -294,20 +294,9 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
               <div className="border rounded-xl p-4 bg-card">
                 <div className="flex items-center gap-1.5 text-green-600 mb-1">
                   <Shield className="h-3.5 w-3.5" />
-                  <span className="text-[11px] font-medium uppercase tracking-wide">ROT</span>
+                  <span className="text-[11px] font-medium uppercase tracking-wide">{t("rot.summary", "ROT-avdrag")}</span>
                 </div>
                 <span className="text-lg sm:text-xl font-bold tabular-nums text-green-700">&minus;{fc(totalRot)}</span>
-              </div>
-            )}
-
-            {/* Förbättringsutgifter total */}
-            {fuTotal > 0 && (
-              <div className="border rounded-xl p-4 bg-card">
-                <div className="flex items-center gap-1.5 text-indigo-600 mb-1">
-                  <Building2 className="h-3.5 w-3.5" />
-                  <span className="text-[11px] font-medium uppercase tracking-wide">{t("analysis.atSale", "Vid försäljning")}</span>
-                </div>
-                <span className="text-lg sm:text-xl font-bold tabular-nums">{fc(fuTotal)}</span>
               </div>
             )}
           </div>

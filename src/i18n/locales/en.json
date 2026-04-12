@@ -4902,7 +4902,8 @@
     "atSale": "At sale",
     "projectDetails": "Details per project",
     "qualifyingYearsShort": "years",
-    "fuExplanationShort": "Deductible from capital gains tax"
+    "fuExplanationShort": "Deductible from capital gains tax",
+    "totalSpent": "Total spent"
   },
   "declaration": {
     "colVendor": "Vendor",
