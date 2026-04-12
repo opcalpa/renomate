@@ -1227,36 +1227,23 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
         {/* Unified Files Card — header merged in */}
         <Card>
           <CardHeader className="pb-3">
-            {/* Title row with actions */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2.5">
+            {/* Row 1: Title + view switcher */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <FolderOpen className="h-5 w-5 text-primary shrink-0" />
-                <div>
-                  <CardTitle className="text-lg font-semibold">{t('files.title')}</CardTitle>
-                  <CardDescription className="text-xs">{projectName}</CardDescription>
+                <div className="min-w-0">
+                  <CardTitle className="text-base sm:text-lg font-semibold truncate">{t('files.title')}</CardTitle>
+                  <CardDescription className="text-xs truncate">{projectName}</CardDescription>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* Search */}
-                {(files.length > 0 || folders.length > 0) && (
-                  <div className="relative w-40 sm:w-52">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      value={fileSearch}
-                      onChange={(e) => setFileSearch(e.target.value)}
-                      placeholder={t('files.search', 'Sök filer...')}
-                      className="h-8 pl-8 text-sm"
-                    />
-                  </div>
-                )}
-
-                {/* View switcher */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* View switcher — always visible */}
                 <div className="flex rounded-md border">
                   <Button
                     variant={viewMode === 'folder' ? 'secondary' : 'ghost'}
                     size="sm"
-                    className="h-8 px-2.5 rounded-r-none border-0"
+                    className="h-7 w-7 p-0 rounded-r-none border-0"
                     onClick={() => changeViewMode('folder')}
                     title={t('files.viewFolder', 'Mappar')}
                   >
@@ -1265,7 +1252,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                   <Button
                     variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
                     size="sm"
-                    className="h-8 px-2.5 rounded-none border-0"
+                    className="h-7 w-7 p-0 rounded-none border-0"
                     onClick={() => changeViewMode('grid')}
                     title={t('files.viewGrid', 'Rutnät')}
                   >
@@ -1274,7 +1261,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                   <Button
                     variant={viewMode === 'flat' ? 'secondary' : 'ghost'}
                     size="sm"
-                    className="h-8 px-2.5 rounded-l-none border-0"
+                    className="h-7 w-7 p-0 rounded-l-none border-0"
                     onClick={() => changeViewMode('flat')}
                     title={t('files.viewFlat', 'Alla filer')}
                   >
@@ -1282,83 +1269,83 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                   </Button>
                 </div>
 
-                {/* Compact rows toggle — only for table views */}
-                {viewMode !== 'grid' && (
-                  <Button
-                    variant={compactRows ? 'secondary' : 'outline'}
-                    size="sm"
-                    className="h-8"
-                    onClick={toggleCompact}
-                    title={t('tasksTable.compactRows', 'Kompakt vy')}
-                  >
-                    <AlignJustify className="h-3.5 w-3.5" />
-                  </Button>
+                {/* Upload button */}
+                {canEdit && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" className="h-7 px-2" disabled={uploading}>
+                        {uploading ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Upload className="h-3.5 w-3.5" />
+                        )}
+                        <span className="hidden sm:inline ml-1.5">
+                          {uploading ? t('files.uploading') : t('files.upload', 'Ladda upp')}
+                        </span>
+                        <ChevronDown className="h-3 w-3 ml-0.5 opacity-60" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        {t('files.regularUpload', 'Vanlig uppladdning')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowSmartUpload(true)}>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        {t('smartUpload.title', 'Smart uppladdning')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => cameraInputRef.current?.click()}>
+                        <Camera className="h-4 w-4 mr-2" />
+                        {t('files.takePhoto', 'Ta foto')}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
 
+                {/* More actions — compact, new folder, help (hidden on mobile as individual buttons) */}
                 {canEdit && (
-                  <>
-                    {/* New folder */}
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowNewFolderDialog(true)}
-                      size="sm"
-                      className="h-8"
-                      title={t('files.newFolder')}
-                    >
-                      <FolderPlus className="h-3.5 w-3.5" />
-                    </Button>
-
-                    {/* Upload dropdown */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="sm" className="h-8" disabled={uploading}>
-                          {uploading ? (
-                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                          ) : (
-                            <Upload className="h-3.5 w-3.5 mr-1.5" />
-                          )}
-                          <span className="hidden sm:inline">
-                            {uploading ? t('files.uploading') : t('files.upload', 'Ladda upp')}
-                          </span>
-                          <ChevronDown className="h-3 w-3 ml-1 opacity-60" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                          <Upload className="h-4 w-4 mr-2" />
-                          {t('files.regularUpload', 'Vanlig uppladdning')}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                        <MoreVertical className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {viewMode !== 'grid' && (
+                        <DropdownMenuItem onClick={toggleCompact}>
+                          <AlignJustify className="h-4 w-4 mr-2" />
+                          {t('tasksTable.compactRows', 'Kompakt vy')}
+                          {compactRows && <Check className="h-3.5 w-3.5 ml-auto" />}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setShowSmartUpload(true)}>
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          {t('smartUpload.title', 'Smart uppladdning')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => cameraInputRef.current?.click()}>
-                          <Camera className="h-4 w-4 mr-2" />
-                          {t('files.takePhoto', 'Ta foto')}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Supported formats help */}
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-52 p-3 text-xs" align="end">
-                        <p className="font-medium text-sm mb-2">{t('files.supportedFormats')}</p>
-                        <div className="space-y-1 text-muted-foreground">
-                          <p>{t('files.images')}: JPEG, PNG, GIF, WebP</p>
-                          <p>{t('files.documents')}: PDF</p>
-                          <p>{t('files.maxSize')}: {t('files.maxSizeValue')}</p>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </>
+                      )}
+                      <DropdownMenuItem onClick={() => setShowNewFolderDialog(true)}>
+                        <FolderPlus className="h-4 w-4 mr-2" />
+                        {t('files.newFolder')}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <div className="px-2 py-1.5">
+                        <p className="text-xs font-medium mb-1">{t('files.supportedFormats')}</p>
+                        <p className="text-[11px] text-muted-foreground">JPEG, PNG, GIF, WebP, PDF</p>
+                        <p className="text-[11px] text-muted-foreground">{t('files.maxSize')}: {t('files.maxSizeValue')}</p>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
             </div>
+
+            {/* Row 2: Search (only when files exist) */}
+            {(files.length > 0 || folders.length > 0) && (
+              <div className="relative mt-2">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  value={fileSearch}
+                  onChange={(e) => setFileSearch(e.target.value)}
+                  placeholder={t('files.search', 'Sök filer...')}
+                  className="h-8 pl-8 text-sm"
+                />
+              </div>
+            )}
 
             {/* Breadcrumbs — also serve as drop targets for moving files up */}
             {currentFolder && (
