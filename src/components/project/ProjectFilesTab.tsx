@@ -1179,34 +1179,6 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
           )}
         </div>
 
-        {/* Breadcrumbs */}
-        {currentFolder && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setCurrentFolder('')}
-              className="h-8"
-            >
-              <FolderOpen className="h-4 w-4 mr-1" />
-              {t('files.home')}
-            </Button>
-            {getBreadcrumbs().map((folder, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <ChevronRight className="h-4 w-4" />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigateToFolder(index)}
-                  className="h-8"
-                >
-                  {folder}
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Files Card */}
         <Card>
           <CardHeader>
@@ -1227,6 +1199,33 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                 </div>
               )}
             </div>
+            {/* Breadcrumbs — inside card, close to table */}
+            {currentFolder && (
+              <div className="flex items-center gap-1 text-sm text-muted-foreground mt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentFolder('')}
+                  className="h-7 px-2"
+                >
+                  <FolderOpen className="h-3.5 w-3.5 mr-1" />
+                  {t('files.home')}
+                </Button>
+                {getBreadcrumbs().map((folder, index) => (
+                  <div key={index} className="flex items-center gap-1">
+                    <ChevronRight className="h-3.5 w-3.5" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigateToFolder(index)}
+                      className="h-7 px-2"
+                    >
+                      {folder}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {loading ? (
