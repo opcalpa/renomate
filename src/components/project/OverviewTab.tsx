@@ -131,7 +131,7 @@ const OverviewTab = ({
 
   // Check if household ROT dialog should show (once for homeowners)
   useEffect(() => {
-    if (!isHomeowner || isGuest) return;
+    if (!isHomeowner || !isProjectOwner || isGuest) return;
     const checkHousehold = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -145,7 +145,7 @@ const OverviewTab = ({
       }
     };
     checkHousehold();
-  }, [isHomeowner, isGuest]);
+  }, [isHomeowner, isProjectOwner, isGuest]);
 
   // Fetch personnummer for ROT card
   useEffect(() => {
