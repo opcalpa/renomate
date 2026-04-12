@@ -4895,7 +4895,8 @@
     "improvementCosts": "Förbättringsutgifter",
     "fuExplanation": "Dokumenterade renoveringskostnader som kan dras av från reavinstskatten vid försäljning. Minst 5 000 kr per år krävs. Spara alla kvitton och fakturor.",
     "belowThreshold": "Under 5 000 kr",
-    "qualifyingTotal": "{{count}} av {{total}} år kvalificerar"
+    "qualifyingTotal": "{{count}} av {{total}} år kvalificerar",
+    "atSale": "Vid försäljning"
   },
   "declaration": {
     "colVendor": "Leverantör",

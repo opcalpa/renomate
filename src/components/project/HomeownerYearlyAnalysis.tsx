@@ -179,9 +179,8 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
   const [rotAllocations, setRotAllocations] = useState<{ material_id: string; rot_person_id: string; amount: number }[]>([]);
 
   const [sectionExpanded, setSectionExpanded] = useState(false);
-  const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear() - 1);
+  const [selectedView, setSelectedView] = useState<number | "sale">(() => new Date().getFullYear() - 1);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<"yearly" | "forbattringsutgifter">("yearly");
   const [expandedProperties, setExpandedProperties] = useState<Set<string>>(new Set());
   const [expandedFuYears, setExpandedFuYears] = useState<Set<string>>(new Set());
 
@@ -314,7 +313,10 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
     return arr;
   }, [invoices, materials, fileLinks]);
 
-  const activeYear = years.includes(selectedYear) ? selectedYear : years[0] || new Date().getFullYear() - 1;
+  const isSaleView = selectedView === "sale";
+  const activeYear = isSaleView
+    ? (years[0] || new Date().getFullYear() - 1)
+    : (years.includes(selectedView as number) ? (selectedView as number) : years[0] || new Date().getFullYear() - 1);
 
   // --- ROT summary for selected year (across all projects) ---
   const rotSummary = useMemo(() => {
@@ -790,59 +792,38 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
 
       {sectionExpanded && (
         <div className="px-4 sm:px-5 pb-5 space-y-4">
-          {/* View toggle */}
-          <div className="flex rounded-lg border bg-muted/30 p-0.5 w-fit">
+          {/* Year selector + "Vid försäljning" */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {years.map((y) => (
+              <button
+                key={y}
+                type="button"
+                onClick={() => setSelectedView(y)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  !isSaleView && y === activeYear
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {y}
+              </button>
+            ))}
             <button
               type="button"
-              onClick={() => setViewMode("yearly")}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === "yearly"
-                  ? "bg-background shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+              onClick={() => setSelectedView("sale")}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                isSaleView
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/50 text-muted-foreground hover:bg-muted"
               }`}
             >
-              <Calendar className="h-3.5 w-3.5 inline mr-1.5" />
-              {t("analysis.taxYear", "Beskattningsår")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("forbattringsutgifter")}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === "forbattringsutgifter"
-                  ? "bg-background shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Building2 className="h-3.5 w-3.5 inline mr-1.5" />
-              {t("analysis.improvementCosts", "Förbättringsutgifter")}
+              <Building2 className="h-3.5 w-3.5" />
+              {t("analysis.atSale", "Vid försäljning")}
             </button>
           </div>
 
-          {/* ===== YEARLY VIEW (existing) ===== */}
-          {viewMode === "yearly" && (<>
-          {/* Year selector — prominent */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Calendar className="h-3.5 w-3.5" />
-              <span>{t("analysis.taxYear", "Beskattningsår")}:</span>
-            </div>
-            <div className="flex gap-1 flex-wrap">
-              {years.map((y) => (
-                <button
-                  key={y}
-                  type="button"
-                  onClick={() => setSelectedYear(y)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    y === activeYear
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  {y}
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* ===== YEARLY VIEW ===== */}
+          {!isSaleView && (<>
 
           {/* ROT summary for selected year */}
           {(rotSummary.actualRot > 0 || rotSummary.plannedRot > 0) && (
@@ -1005,8 +986,8 @@ export function HomeownerYearlyAnalysis({ projects, currency }: Props) {
           )}
           </>)}
 
-          {/* ===== FÖRBÄTTRINGSUTGIFTER VIEW ===== */}
-          {viewMode === "forbattringsutgifter" && (<>
+          {/* ===== VID FÖRSÄLJNING VIEW ===== */}
+          {isSaleView && (<>
             {/* Explanation */}
             <div className="rounded-lg border bg-indigo-50/50 dark:bg-indigo-950/20 p-3 space-y-1">
               <p className="text-sm font-medium flex items-center gap-1.5">
