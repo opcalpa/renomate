@@ -4885,7 +4885,7 @@
     "deductionLabel": "avdrag",
     "yearTotal": "Totalt {{year}}",
     "afterDeductions": "Efter avdrag",
-    "globalTitle": "Deklarationsunderlag",
+    "globalTitle": "Skatteöversikt",
     "projectCount": "projekt",
     "netCost": "Nettokostnad",
     "taxYear": "Beskattningsår",
@@ -4896,7 +4896,9 @@
     "fuExplanation": "Dokumenterade renoveringskostnader som kan dras av från reavinstskatten vid försäljning. Minst 5 000 kr per år krävs. Spara alla kvitton och fakturor.",
     "belowThreshold": "Under 5 000 kr",
     "qualifyingTotal": "{{count}} av {{total}} år kvalificerar",
-    "atSale": "Vid försäljning"
+    "atSale": "Vid försäljning",
+    "projectDetails": "Detaljer per projekt",
+    "qualifyingYearsShort": "år"
   },
   "declaration": {
     "colVendor": "Leverantör",

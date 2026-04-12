@@ -4888,7 +4888,7 @@
     "deductionLabel": "deduction",
     "yearTotal": "Total {{year}}",
     "afterDeductions": "After deductions",
-    "globalTitle": "Tax summary",
+    "globalTitle": "Tax overview",
     "projectCount": "projects",
     "netCost": "Net cost",
     "taxYear": "Tax year",
@@ -4899,7 +4899,9 @@
     "fuExplanation": "Documented renovation costs that can be deducted from capital gains tax when selling your property. Minimum 5,000 kr per year required. Keep all receipts and invoices.",
     "belowThreshold": "Below 5,000 kr",
     "qualifyingTotal": "{{count}} of {{total}} years qualify",
-    "atSale": "At sale"
+    "atSale": "At sale",
+    "projectDetails": "Details per project",
+    "qualifyingYearsShort": "years"
   },
   "declaration": {
     "colVendor": "Vendor",
