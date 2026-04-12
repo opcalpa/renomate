@@ -149,104 +149,9 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   const [showBatchUpload, setShowBatchUpload] = useState(false);
   const dragCountRef = useRef(0);
 
-  // Internal drag-and-drop — move files/folders between directories
+  // Internal drag-and-drop state (handlers defined after toast/t)
   const [dragItem, setDragItem] = useState<{ path: string; name: string; isFolder: boolean } | null>(null);
-  const [dropTarget, setDropTarget] = useState<string | null>(null); // folder path being hovered
-
-  const moveFile = useCallback(async (fromPath: string, toFolderPath: string, fileName: string) => {
-    const basePath = `projects/${projectId}`;
-    const newPath = toFolderPath
-      ? `${basePath}/${toFolderPath}/${fileName}`
-      : `${basePath}/${fileName}`;
-
-    if (fromPath === newPath) return;
-
-    const { error } = await supabase.storage
-      .from('project-files')
-      .move(fromPath, newPath);
-
-    if (error) {
-      console.error('Move failed:', error);
-      toast({
-        title: t('files.moveError', 'Kunde inte flytta filen'),
-        description: error.message,
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    toast({
-      title: t('files.fileMoved', 'Fil flyttad'),
-      description: fileName,
-    });
-
-    // Also update file_path in task_file_links
-    await supabase
-      .from('task_file_links')
-      .update({ file_path: newPath })
-      .eq('file_path', fromPath)
-      .eq('project_id', projectId);
-
-    // Refresh
-    await fetchFiles();
-    await fetchFolders();
-    // Clear expanded folder cache so it refetches
-    setFolderContents(new Map());
-    setExpandedFolders(new Set());
-  }, [projectId, t]);
-
-  const handleInternalDragStart = useCallback((e: React.DragEvent, path: string, name: string, isFolder: boolean) => {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/x-internal-path', path);
-    e.dataTransfer.setData('text/x-internal-name', name);
-    e.dataTransfer.setData('text/x-is-folder', isFolder ? '1' : '0');
-    setDragItem({ path, name, isFolder });
-  }, []);
-
-  const handleInternalDragEnd = useCallback(() => {
-    setDragItem(null);
-    setDropTarget(null);
-  }, []);
-
-  const handleFolderDragOver = useCallback((e: React.DragEvent, folderPath: string) => {
-    // Only accept internal drags
-    if (e.dataTransfer.types.includes('text/x-internal-path')) {
-      e.preventDefault();
-      e.stopPropagation();
-      e.dataTransfer.dropEffect = 'move';
-      setDropTarget(folderPath);
-    }
-  }, []);
-
-  const handleFolderDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDropTarget(null);
-  }, []);
-
-  const handleFolderDrop = useCallback(async (e: React.DragEvent, targetFolderPath: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDropTarget(null);
-    setDragItem(null);
-
-    const fromPath = e.dataTransfer.getData('text/x-internal-path');
-    const fileName = e.dataTransfer.getData('text/x-internal-name');
-    const isFolder = e.dataTransfer.getData('text/x-is-folder') === '1';
-
-    if (!fromPath || !fileName) return;
-
-    if (isFolder) {
-      // Moving folders is complex (need to move all contents) — skip for now
-      toast({
-        title: t('files.moveFolderNotSupported', 'Mappflyttning stöds inte ännu'),
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    await moveFile(fromPath, targetFolderPath, fileName);
-  }, [moveFile, t]);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
 
   // Expandable folders — inline sub-file display
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -297,6 +202,99 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
   const { toast } = useToast();
   const { t } = useTranslation();
+
+  // Internal drag-and-drop — move files between directories
+  const moveFile = useCallback(async (fromPath: string, toFolderPath: string, fileName: string) => {
+    const basePath = `projects/${projectId}`;
+    const newPath = toFolderPath
+      ? `${basePath}/${toFolderPath}/${fileName}`
+      : `${basePath}/${fileName}`;
+
+    if (fromPath === newPath) return;
+
+    const { error } = await supabase.storage
+      .from('project-files')
+      .move(fromPath, newPath);
+
+    if (error) {
+      console.error('Move failed:', error);
+      toast({
+        title: t('files.moveError', 'Kunde inte flytta filen'),
+        description: error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: t('files.fileMoved', 'Fil flyttad'),
+      description: fileName,
+    });
+
+    // Also update file_path in task_file_links
+    await supabase
+      .from('task_file_links')
+      .update({ file_path: newPath })
+      .eq('file_path', fromPath)
+      .eq('project_id', projectId);
+
+    // Refresh
+    await fetchFiles();
+    await fetchFolders();
+    setFolderContents(new Map());
+    setExpandedFolders(new Set());
+  }, [projectId, t]);
+
+  const handleInternalDragStart = useCallback((e: React.DragEvent, path: string, name: string, isFolder: boolean) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/x-internal-path', path);
+    e.dataTransfer.setData('text/x-internal-name', name);
+    e.dataTransfer.setData('text/x-is-folder', isFolder ? '1' : '0');
+    setDragItem({ path, name, isFolder });
+  }, []);
+
+  const handleInternalDragEnd = useCallback(() => {
+    setDragItem(null);
+    setDropTarget(null);
+  }, []);
+
+  const handleFolderDragOver = useCallback((e: React.DragEvent, folderPath: string) => {
+    if (e.dataTransfer.types.includes('text/x-internal-path')) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      setDropTarget(folderPath);
+    }
+  }, []);
+
+  const handleFolderDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropTarget(null);
+  }, []);
+
+  const handleFolderDrop = useCallback(async (e: React.DragEvent, targetFolderPath: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropTarget(null);
+    setDragItem(null);
+
+    const fromPath = e.dataTransfer.getData('text/x-internal-path');
+    const fileName = e.dataTransfer.getData('text/x-internal-name');
+    const isFolder = e.dataTransfer.getData('text/x-is-folder') === '1';
+
+    if (!fromPath || !fileName) return;
+
+    if (isFolder) {
+      toast({
+        title: t('files.moveFolderNotSupported', 'Mappflyttning stöds inte ännu'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    await moveFile(fromPath, targetFolderPath, fileName);
+  }, [moveFile, t]);
 
   // Search filter
   const [fileSearch, setFileSearch] = useState('');
