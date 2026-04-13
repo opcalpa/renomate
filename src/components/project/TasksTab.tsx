@@ -973,7 +973,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
   };
 
   const handleDrop = async (newStatus: string) => {
-    if (!draggedTask) return;
+    if (!draggedTask || !canEditTasks) return;
     
     try {
       const { error } = await supabase
@@ -1751,7 +1751,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
       </div>
 
       {/* Bulk action bar — shared across all views */}
-      {bulk.showBulkBar && !lockStatus.isLocked && (
+      {bulk.showBulkBar && !lockStatus.isLocked && canEditTasks && (
         <BulkActionBar
           selectedCount={bulk.selectedCount}
           statusLabels={statusLabels}

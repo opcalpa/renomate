@@ -19,9 +19,10 @@ interface RoomsManagementSectionProps {
   projectId: string;
   rooms: Room[];
   onRoomsUpdate: () => void;
+  canEdit?: boolean;
 }
 
-export const RoomsManagementSection = ({ projectId, rooms, onRoomsUpdate }: RoomsManagementSectionProps) => {
+export const RoomsManagementSection = ({ projectId, rooms, onRoomsUpdate, canEdit = true }: RoomsManagementSectionProps) => {
   const { t } = useTranslation();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -113,7 +114,7 @@ export const RoomsManagementSection = ({ projectId, rooms, onRoomsUpdate }: Room
             <CardTitle>{t("roomManagement.title", "Rooms & Spaces")}</CardTitle>
             <CardDescription>{t("roomManagement.description", "Manage rooms for your project")}</CardDescription>
           </div>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          {canEdit && <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -148,7 +149,7 @@ export const RoomsManagementSection = ({ projectId, rooms, onRoomsUpdate }: Room
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
+          </Dialog>}
         </div>
       </CardHeader>
       <CardContent>
@@ -169,6 +170,7 @@ export const RoomsManagementSection = ({ projectId, rooms, onRoomsUpdate }: Room
                     <p className="text-sm text-muted-foreground">{room.description}</p>
                   )}
                 </div>
+                {canEdit && (
                 <div className="flex gap-2">
                   <Button
                     variant="ghost"
@@ -188,6 +190,7 @@ export const RoomsManagementSection = ({ projectId, rooms, onRoomsUpdate }: Room
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
+                )}
               </div>
             ))}
           </div>
