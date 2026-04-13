@@ -120,10 +120,24 @@ const ProjectDetail = () => {
     isGuest ? localStorage.getItem("guest_user_type") : null
   );
 
-  // Derive effective user type: demo role for demo projects, profile for authenticated, localStorage for guests
+  // Derive effective user type:
+  // 1. Demo projects → demo role selector
+  // 2. Guest → localStorage choice
+  // 3. Invited users → project_shares.role_type maps to userType (project-driven)
+  // 4. Project owner → profile setting (default)
   const effectiveUserType = isPublicDemoProject
     ? demoPrefs.preferences.role
-    : profile?.onboarding_user_type || (isGuest ? guestRole : undefined);
+    : isGuest
+      ? guestRole
+      : (() => {
+          // Project-driven role: if user has a share with role_type, use that
+          const rt = permissions.roleType;
+          if (rt === "client" || rt === "planning_contributor") return "homeowner";
+          if (rt === "contractor" || rt === "project_manager") return "contractor";
+          if (rt === "collaborator") return profile?.onboarding_user_type || "contractor";
+          // Project owner or co_owner — use their profile preference
+          return profile?.onboarding_user_type || undefined;
+        })();
 
   const handleGuestRoleChange = useCallback((role: string) => {
     localStorage.setItem("guest_user_type", role);
