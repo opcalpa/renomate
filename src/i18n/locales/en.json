@@ -4444,7 +4444,10 @@
     "ccCleanup": "Cleanup & Waste",
     "ccDesign": "Design & Planning",
     "pipeline": "Pipeline",
-    "avgProjectSize": "Avg. budget per project"
+    "avgProjectSize": "Avg. budget per project",
+    "uninvoiced": "Uninvoiced",
+    "invoiced": "invoiced",
+    "ofBudget": "of budget"
   },
   "invoiceMethod": {
     "title": "Create Invoice",

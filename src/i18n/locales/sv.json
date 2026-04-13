@@ -4441,7 +4441,10 @@
     "ccCleanup": "Städ & Avfall",
     "ccDesign": "Design & Planering",
     "pipeline": "Pipeline",
-    "avgProjectSize": "Snittbudget per projekt"
+    "avgProjectSize": "Snittbudget per projekt",
+    "uninvoiced": "Ofakturerat",
+    "invoiced": "fakturerat",
+    "ofBudget": "av budget"
   },
   "invoiceMethod": {
     "title": "Skapa faktura",

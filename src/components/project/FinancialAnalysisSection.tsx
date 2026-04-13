@@ -91,6 +91,7 @@ export function FinancialAnalysisSection({
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
   const [projectTasks, setProjectTasks] = useState<ProjectTask[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
+  const [invoicedByProject, setInvoicedByProject] = useState<Record<string, number>>({});
 
   const isSingleProject = selectedProjectId !== "all";
 
@@ -148,6 +149,27 @@ export function FinancialAnalysisSection({
       setProjectTasks([]);
     }
   }, [selectedProjectId, isSingleProject, fetchProjectTasks]);
+
+  // Fetch invoice totals per project (sent/paid/partially_paid)
+  useEffect(() => {
+    if (!isExpanded || projects.length === 0) return;
+    const fetchInvoices = async () => {
+      const pids = projects.map((p) => p.id);
+      const { data } = await supabase
+        .from("invoices")
+        .select("project_id, total_amount, status")
+        .in("project_id", pids)
+        .in("status", ["sent", "paid", "partially_paid"]);
+      if (data) {
+        const map: Record<string, number> = {};
+        for (const inv of data) {
+          map[inv.project_id] = (map[inv.project_id] || 0) + (inv.total_amount || 0);
+        }
+        setInvoicedByProject(map);
+      }
+    };
+    fetchInvoices();
+  }, [isExpanded, projects]);
 
   const presetLabel = (p: PeriodPreset): string => {
     if (p === "all") return t("financialAnalysis.periodAll");
@@ -256,13 +278,17 @@ export function FinancialAnalysisSection({
   const totals = useMemo(() => {
     let budget = 0;
     let profit = 0;
+    let invoiced = 0;
     for (const p of filtered) {
       budget += financials[p.id]?.budget ?? 0;
       profit += financials[p.id]?.profit ?? 0;
+      invoiced += invoicedByProject[p.id] ?? 0;
     }
     const margin = budget > 0 ? Math.round((profit / budget) * 100) : 0;
-    return { budget, profit, margin, count: filtered.length };
-  }, [filtered, financials]);
+    const uninvoiced = Math.max(0, budget - invoiced);
+    const invoicedPct = budget > 0 ? Math.round((invoiced / budget) * 100) : 0;
+    return { budget, profit, margin, count: filtered.length, invoiced, uninvoiced, invoicedPct };
+  }, [filtered, financials, invoicedByProject]);
 
   // ---- Single-project chart data ----
 
@@ -522,8 +548,8 @@ export function FinancialAnalysisSection({
           ) : (
             <>
               {/* Summary cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {/* Hero: Budget */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                {/* Hero: Budget with invoiced progress */}
                 <div className="rounded-lg border bg-card p-4 col-span-2">
                   <p className="text-sm text-muted-foreground">
                     {t("financialAnalysis.totalBudget")} <span className="text-[10px]">({t("budget.exVat", "ex moms")})</span>
@@ -537,12 +563,31 @@ export function FinancialAnalysisSection({
                       : `${totals.count} ${t("financialAnalysis.projects")}`}
                   </p>
                   {totals.budget > 0 && (
-                    <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${Math.min(100, totals.margin)}%` }}
-                      />
-                    </div>
+                    <>
+                      <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-blue-500 transition-all"
+                          style={{ width: `${Math.min(100, totals.invoicedPct)}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
+                        {totals.invoicedPct}% {t("financialAnalysis.invoiced", "fakturerat")}
+                      </p>
+                    </>
+                  )}
+                </div>
+                {/* Uninvoiced */}
+                <div className={`rounded-lg border p-4 ${totals.uninvoiced > 0 ? "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800" : "bg-card"}`}>
+                  <p className="text-sm text-muted-foreground">
+                    {t("financialAnalysis.uninvoiced", "Ofakturerat")}
+                  </p>
+                  <p className={`text-xl font-semibold tabular-nums ${totals.uninvoiced > 0 ? "text-amber-700 dark:text-amber-400" : ""}`}>
+                    {formatCurrency(totals.uninvoiced, currency)}
+                  </p>
+                  {totals.budget > 0 && (
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      {100 - totals.invoicedPct}% {t("financialAnalysis.ofBudget", "av budget")}
+                    </p>
                   )}
                 </div>
                 {/* Profit */}
