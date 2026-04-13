@@ -915,7 +915,7 @@ const ProjectDetail = () => {
               <ArrowLeft className="h-4 w-4" />
               <span className="hidden lg:inline">{t('projectDetail.backToStart')}</span>
             </Button>
-            <div className="flex items-center gap-5 lg:gap-7 flex-nowrap overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-5 lg:gap-7 flex-nowrap overflow-visible">
               {/* Client-only: Kundvy tab */}
               {!isTabBlocked("customer") && (
                 <div
