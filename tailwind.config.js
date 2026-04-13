@@ -17,6 +17,9 @@ export default {
         '2xl': '1440px',
       },
     },
+    fontFamily: {
+      sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+    },
     extend: {
       borderRadius: {
         lg: "var(--radius)",

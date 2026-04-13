@@ -76,7 +76,7 @@ function VariantA({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
         <p className="text-sm uppercase tracking-widest text-primary mb-6 font-medium">
           {t("landing.heroSubtitle", "Renovate smarter")}
         </p>
-        <h1 className="text-5xl md:text-7xl font-serif font-normal leading-[1.1] mb-8">
+        <h1 className="text-5xl md:text-7xl font-semibold font-normal leading-[1.1] mb-8">
           {t("landing.heroTitle", "Plan, manage and deliver renovation projects")}
         </h1>
         <p className="text-lg md:text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed">
@@ -107,7 +107,7 @@ function VariantA({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
       {/* Features — minimal cards */}
       <section className="bg-gray-50 py-24">
         <div className="max-w-6xl mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-serif text-center mb-16">
+          <h2 className="text-3xl md:text-4xl font-semibold text-center mb-16">
             {t("landing.featuresTitle", "Everything you need")}
           </h2>
           <div className="grid md:grid-cols-3 gap-12">
@@ -142,7 +142,7 @@ function VariantA({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
 
       {/* CTA */}
       <section className="max-w-4xl mx-auto px-6 py-24 text-center">
-        <h2 className="text-3xl md:text-4xl font-serif mb-6">{t("landing.ctaTitle")}</h2>
+        <h2 className="text-3xl md:text-4xl font-semibold mb-6">{t("landing.ctaTitle")}</h2>
         <p className="text-lg text-gray-500 mb-10 max-w-xl mx-auto">{t("landing.ctaDescription")}</p>
         <Button size="lg" onClick={nav.toAuth} className="rounded-full px-10 text-base">
           {t("landing.createAccount")}
