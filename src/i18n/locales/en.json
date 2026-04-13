@@ -2604,6 +2604,8 @@
     "swipeToSeeMore": "Swipe to see more",
     "exMomsNote": "All amounts ex. VAT",
     "incMomsNote": "All amounts inc. VAT",
+    "exVat": "ex. VAT",
+    "incVat": "inc. VAT",
     "filterAttachment": "Attachment",
     "hasAttachment": "With attachment",
     "missingAttachment": "Missing attachment",

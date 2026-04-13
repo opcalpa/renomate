@@ -2083,6 +2083,8 @@
     "swipeToSeeMore": "Svep för mer",
     "exMomsNote": "Alla belopp ex moms",
     "incMomsNote": "Alla belopp inc moms",
+    "exVat": "ex moms",
+    "incVat": "ink. moms",
     "filterAttachment": "Underlag",
     "hasAttachment": "Med underlag",
     "missingAttachment": "Saknar underlag",

@@ -41,6 +41,8 @@ import {
   type TaskCategory,
 } from "@/services/aiDocumentService.types";
 
+const VAT_RATE = 0.25;
+
 // Reverse map: cost_center value → Swedish label
 const COST_CENTER_LABELS: Record<string, string> = Object.entries(TASK_CATEGORY_TO_COST_CENTER).reduce(
   (acc, [cat, cc]) => {
@@ -607,14 +609,16 @@ export function HomeownerPlanningView({
               )}
               {totalBudget > 0 && (
                 <div className="rounded-lg border bg-white p-3 text-center">
-                  <div className="text-2xl font-bold tabular-nums">{formatCurrency(totalBudget, currency)}</div>
-                  <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalBudget", "Budget")}</div>
+                  <div className="text-2xl font-bold tabular-nums">{formatCurrency(Math.round(totalBudget * (1 + VAT_RATE)), currency)}</div>
+                  <div className="text-[10px] text-muted-foreground/60 tabular-nums">{formatCurrency(totalBudget, currency)} {t("budget.exVat", "ex moms")}</div>
+                  <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalBudget", "Budget")} <span className="text-[10px]">({t("budget.incVat", "ink. moms")})</span></div>
                 </div>
               )}
               {totalMaterialEstimate > 0 && (
                 <div className="rounded-lg border bg-white p-3 text-center">
-                  <div className="text-2xl font-bold tabular-nums text-amber-700">{formatCurrency(totalMaterialEstimate, currency)}</div>
-                  <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalMaterial", "Material")}</div>
+                  <div className="text-2xl font-bold tabular-nums text-amber-700">{formatCurrency(Math.round(totalMaterialEstimate * (1 + VAT_RATE)), currency)}</div>
+                  <div className="text-[10px] text-muted-foreground/60 tabular-nums">{formatCurrency(totalMaterialEstimate, currency)} {t("budget.exVat", "ex moms")}</div>
+                  <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalMaterial", "Material")} <span className="text-[10px]">({t("budget.incVat", "ink. moms")})</span></div>
                 </div>
               )}
               {showTaxDeduction && totalRot > 0 && (
@@ -702,8 +706,8 @@ export function HomeownerPlanningView({
                     {show.room && <TableHead className="w-[160px]">{t("tasks.room", "Room")}</TableHead>}
                     {show.area && <TableHead className="w-[80px] text-right hidden sm:table-cell">{t("homeownerPlanning.area", "Area")}</TableHead>}
                     {show.quote && <TableHead className="w-[100px] text-center">{t("homeownerPlanning.quote", "Quote")}</TableHead>}
-                    {show.budget && <TableHead className="w-[120px] text-right">{t("planningTasks.budget", "Budget")}</TableHead>}
-                    {show.materialEstimate && <TableHead className="w-[130px] text-right">{t("planningTasks.materialEstimate", "Materialbudget")}</TableHead>}
+                    {show.budget && <TableHead className="w-[120px] text-right">{t("planningTasks.budget", "Budget")} <span className="text-[10px] font-normal text-muted-foreground">({t("budget.incVat", "ink. moms")})</span></TableHead>}
+                    {show.materialEstimate && <TableHead className="w-[130px] text-right">{t("planningTasks.materialEstimate", "Materialbudget")} <span className="text-[10px] font-normal text-muted-foreground">({t("budget.incVat", "ink. moms")})</span></TableHead>}
                     {show.rotAmount && <TableHead className="w-[110px] text-right">{t("files.rotAmount", "ROT-avdrag")}</TableHead>}
                     <TableHead className="w-[40px]" />
                   </TableRow>
@@ -727,7 +731,7 @@ export function HomeownerPlanningView({
                               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{item.count}</Badge>
                               {item.budget > 0 && (
                                 <span className="ml-auto text-xs tabular-nums text-muted-foreground font-normal">
-                                  {formatCurrency(item.budget, currency)}
+                                  {formatCurrency(Math.round(item.budget * (1 + VAT_RATE)), currency)}
                                 </span>
                               )}
                             </button>
@@ -942,14 +946,14 @@ export function HomeownerPlanningView({
                         {show.budget && (
                           <TableCell className="text-right py-2.5">
                             {task.budget ? (
-                              <span className="text-sm tabular-nums">{Math.round(task.budget).toLocaleString("sv-SE")} kr</span>
+                              <span className="text-sm tabular-nums">{Math.round(task.budget * (1 + VAT_RATE)).toLocaleString("sv-SE")} kr</span>
                             ) : <span className="text-xs text-muted-foreground">–</span>}
                           </TableCell>
                         )}
                         {show.materialEstimate && (
                           <TableCell className="text-right py-2.5">
                             {task.material_estimate ? (
-                              <span className="text-sm tabular-nums text-amber-700">{Math.round(task.material_estimate).toLocaleString("sv-SE")} kr</span>
+                              <span className="text-sm tabular-nums text-amber-700">{Math.round(task.material_estimate * (1 + VAT_RATE)).toLocaleString("sv-SE")} kr</span>
                             ) : <span className="text-xs text-muted-foreground">–</span>}
                           </TableCell>
                         )}

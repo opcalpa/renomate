@@ -21,7 +21,7 @@ export function QuoteSummary({ items }: QuoteSummaryProps) {
   return (
     <div className="sticky bottom-0 rounded-lg border bg-card p-4 space-y-1 shadow-lg">
       <div className="flex justify-between text-sm">
-        <span>{t("quotes.subtotal")}</span>
+        <span>{t("quotes.subtotal")} ({t("budget.exVat", "ex moms")})</span>
         <span>{fmt(subtotal)} kr</span>
       </div>
       <div className="flex justify-between text-sm">
@@ -35,7 +35,7 @@ export function QuoteSummary({ items }: QuoteSummaryProps) {
         </div>
       )}
       <div className="flex justify-between font-semibold text-base pt-2 border-t">
-        <span>{t("quotes.totalToPay")}</span>
+        <span>{t("quotes.totalToPay")} ({t("budget.incVat", "ink. moms")})</span>
         <span>{fmt(totalToPay)} kr</span>
       </div>
     </div>

@@ -183,13 +183,13 @@ export function InvoicePreview({
                   <tr className="border-b-2 border-foreground/20">
                     <th className="text-left py-2.5 pr-4 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground">{t("quotes.description")}</th>
                     <th className="text-right py-2.5 px-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">{t("quotes.quantity")}</th>
-                    <th className="text-right py-2.5 px-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">{t("quotes.unitPrice")}</th>
+                    <th className="text-right py-2.5 px-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">{t("quotes.unitPrice")} <span className="normal-case tracking-normal font-normal">({t("budget.exVat", "ex moms")})</span></th>
                     {hasAnyDiscount && (
                       <th className="text-right py-2.5 px-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                         {t("quotes.discount", "Discount")}
                       </th>
                     )}
-                    <th className="text-right py-2.5 pl-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">{t("quotes.totalAmount")}</th>
+                    <th className="text-right py-2.5 pl-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">{t("quotes.totalAmount")} <span className="normal-case tracking-normal font-normal">({t("budget.exVat", "ex moms")})</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -229,7 +229,7 @@ export function InvoicePreview({
               {/* Summary -- right-aligned */}
               <div className="ml-auto w-72 space-y-1.5 text-[13px] mb-10">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("quotes.subtotal")}</span>
+                  <span className="text-muted-foreground">{t("quotes.subtotal")} ({t("budget.exVat", "ex moms")})</span>
                   <span className="tabular-nums">{fmt(subtotal)} kr</span>
                 </div>
                 <div className="flex justify-between">
@@ -243,7 +243,7 @@ export function InvoicePreview({
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-base border-t-2 border-foreground/20 pt-2.5 mt-2">
-                  <span>{t("quotes.totalToPay")}</span>
+                  <span>{t("quotes.totalToPay")} ({t("budget.incVat", "ink. moms")})</span>
                   <span className="tabular-nums">{fmt(totalToPay)} kr</span>
                 </div>
               </div>
