@@ -2415,6 +2415,7 @@
     },
     "documents": "Documents",
     "noDocuments": "No quotes or invoices yet",
+    "noDocumentsHint": "Create a quote to get started with your client",
     "projectChat": {
       "title": "Chat",
       "description": "Write a message to your project team"

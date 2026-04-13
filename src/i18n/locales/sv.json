@@ -1894,6 +1894,7 @@
     },
     "documents": "Dokument",
     "noDocuments": "Inga offerter eller fakturor ännu",
+    "noDocumentsHint": "Skapa en offert för att komma igång med din kund",
     "projectChat": {
       "title": "Chatt",
       "description": "Skriv ett meddelande till ditt projektteam"

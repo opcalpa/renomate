@@ -361,9 +361,31 @@ export function ProjectDocumentsCard({
           )}
 
           {!showSummary && rows.length === 0 && (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              {t("overview.noDocuments", "No quotes or invoices yet")}
-            </p>
+            <div className="flex flex-col items-center py-6 gap-2">
+              <FileText className="h-8 w-8 text-muted-foreground/40" />
+              <p className="text-sm font-medium text-muted-foreground">
+                {t("overview.noDocuments", "No quotes or invoices yet")}
+              </p>
+              <p className="text-xs text-muted-foreground/60">
+                {t("overview.noDocumentsHint", "Create a quote to get started with your client")}
+              </p>
+              {(onCreateQuote || onCreateInvoice) && (
+                <div className="flex gap-2 mt-1">
+                  {onCreateQuote && (
+                    <Button variant="outline" size="sm" onClick={onCreateQuote} className="h-7 text-xs gap-1">
+                      <Plus className="h-3 w-3" />
+                      {t("quotes.title")}
+                    </Button>
+                  )}
+                  {onCreateInvoice && (
+                    <Button variant="outline" size="sm" onClick={onCreateInvoice} className="h-7 text-xs gap-1">
+                      <Plus className="h-3 w-3" />
+                      {t("invoices.title")}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
