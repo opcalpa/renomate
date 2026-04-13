@@ -60,8 +60,8 @@ export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSecti
   };
 
   return (
-    <div className="mb-8">
-      <h2 className="text-xl font-semibold mb-4">{t("pipeline.myQuotes", "Mina offerter")}</h2>
+    <div className="mb-6">
+      <h2 className="text-2xl font-bold tracking-tight mb-4">{t("pipeline.myQuotes", "Mina offerter")}</h2>
       <Card>
         <CardContent className="pt-4 pb-4 px-4">
           <div className="flex items-stretch divide-x">
