@@ -534,11 +534,13 @@ const OverviewTab = ({
         onNavigateToFiles={onNavigateToFiles}
       />
 
-      {/* Inspiration — room photos, Pinterest, material images */}
+      {/* Inspiration — room photos, Pinterest, material images (non-planning only, planning has its own above) */}
+      {!isPlanning && (
       <InspirationSection
         projectId={project.id}
         currency={project.currency || "SEK"}
       />
+      )}
 
       {/* Quotes & Invoices unified card - contractors, active phases */}
       {!isHomeowner && !isPlanning && (
