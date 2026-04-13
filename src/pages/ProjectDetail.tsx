@@ -133,10 +133,10 @@ const ProjectDetail = () => {
           // Project-driven role: if user has a share with role_type, use that
           const rt = permissions.roleType;
           if (rt === "client" || rt === "planning_contributor") return "homeowner";
-          if (rt === "contractor" || rt === "project_manager") return "contractor";
-          if (rt === "collaborator") return profile?.onboarding_user_type || "contractor";
-          // Project owner or co_owner — use their profile preference
-          return profile?.onboarding_user_type || undefined;
+          if (rt === "contractor" || rt === "project_manager" || rt === "rfq_builder") return "contractor";
+          if (rt === "collaborator" || rt === "other") return profile?.onboarding_user_type || "contractor";
+          // Project owner, co_owner, or no share (null) — use profile preference
+          return profile?.onboarding_user_type || "contractor";
         })();
 
   const handleGuestRoleChange = useCallback((role: string) => {
