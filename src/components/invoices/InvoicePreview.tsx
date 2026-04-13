@@ -67,7 +67,7 @@ export function InvoicePreview({
   const rotEligibleTotal = items
     .filter((i) => i.isRotEligible)
     .reduce((sum, i) => sum + i.quantity * i.unitPrice * (1 - (i.discountPercent ?? 0) / 100), 0);
-  const rotDeduction = rotEligibleTotal * 0.3;
+  const rotDeduction = rotEligibleTotal * 1.25 * 0.3; // 30% of inc moms (Skatteverket)
   const totalToPay = subtotal + vat - rotDeduction;
 
   const fmt = (n: number) =>

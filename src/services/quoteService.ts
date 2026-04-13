@@ -5,6 +5,7 @@ import { inviteCustomerAsClient } from "./intakeService";
 import { analytics, AnalyticsEvents } from "@/lib/analytics";
 
 const ROT_RATE = 0.3;
+const VAT_RATE = 0.25;
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   draft: ["sent"],
@@ -14,8 +15,9 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   expired: [],
 };
 
+/** ROT = 30% of labor cost INC moms (Skatteverket requirement). totalPrice is ex moms. */
 export function calculateRotDeduction(totalPrice: number, isEligible: boolean): number {
-  return isEligible ? Math.round(totalPrice * ROT_RATE * 100) / 100 : 0;
+  return isEligible ? Math.round(totalPrice * (1 + VAT_RATE) * ROT_RATE * 100) / 100 : 0;
 }
 
 export function recalculateQuoteTotals(items: { total_price: number; is_rot_eligible: boolean; rot_deduction: number }[]) {
