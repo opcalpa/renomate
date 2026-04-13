@@ -561,7 +561,7 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-xs font-medium w-[140px] sticky left-0 z-20 bg-card after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border">{t("planningRooms.roomName", "Room")}</TableHead>
+                  <TableHead className="text-xs font-medium w-[140px] sticky left-0 z-20 bg-card">{t("planningRooms.roomName", "Room")}</TableHead>
                   {show.width && <TableHead className="text-xs font-medium w-[80px]">{t("rooms.width")}</TableHead>}
                   {show.depth && <TableHead className="text-xs font-medium w-[80px]">{t("rooms.depth")}</TableHead>}
                   {show.ceilingHeight && <TableHead className="text-xs font-medium w-[80px] hidden sm:table-cell">{t("rooms.ceilingHeight")}</TableHead>}
@@ -604,7 +604,7 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
 
                   return (
                     <TableRow key={room.id} className="group">
-                      <TableCell className="py-1.5 sticky left-0 z-10 bg-card after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border">
+                      <TableCell className="py-1.5 sticky left-0 z-10 bg-card">
                         {renderEditableCell(room, "name", room.name, "font-medium")}
                       </TableCell>
                       {show.width && (
