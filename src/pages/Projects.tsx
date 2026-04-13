@@ -1385,7 +1385,7 @@ const Projects = () => {
         ) : viewMode === "timeline" ? (
           /* ---- Timeline view ---- */
           <PortfolioTimeline
-            projectIds={visibleProjects.map((p) => p.id)}
+            projectIds={visibleProjects.filter((p) => !isDemoProject(p.project_type)).map((p) => p.id)}
             onProjectClick={(id) => navigate(`/projects/${id}`)}
           />
         ) : viewMode === "list" ? (
