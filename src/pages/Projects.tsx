@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ChevronRight, ChevronLeft, Users, User, BookOpen, Trash2, Upload, FileText, X, Loader2, Sparkles, ChevronDown, ChevronUp, MessageSquare, Mail, LayoutGrid, List, Settings2, ShieldCheck } from "lucide-react";
+import { Plus, ChevronRight, ChevronLeft, Users, User, BookOpen, Trash2, Upload, FileText, X, Loader2, Sparkles, ChevronDown, ChevronUp, MessageSquare, Mail, LayoutGrid, List, Settings2, ShieldCheck, GanttChart } from "lucide-react";
+import { PortfolioTimeline } from "@/components/project/PortfolioTimeline";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -115,8 +116,8 @@ const Projects = () => {
   } | null>(null);
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<"grid" | "list">(() =>
-    (localStorage.getItem("projects_view_mode") as "grid" | "list") || "list"
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "timeline">(() =>
+    (localStorage.getItem("projects_view_mode") as "grid" | "list" | "timeline") || "list"
   );
   const ALL_LIST_COLS = ["status", "description", "budget", "date", "owner", "address"] as const;
   const DEFAULT_HIDDEN_COLS: ListColKey[] = ["address"];
@@ -858,10 +859,18 @@ const Projects = () => {
                   <button
                     type="button"
                     onClick={() => { setViewMode("list"); localStorage.setItem("projects_view_mode", "list"); }}
-                    className={`p-1.5 rounded-r-md transition-colors ${viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`p-1.5 transition-colors ${viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     title={t("projects.listView", "List view")}
                   >
                     <List className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setViewMode("timeline"); localStorage.setItem("projects_view_mode", "timeline"); }}
+                    className={`p-1.5 rounded-r-md transition-colors ${viewMode === "timeline" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    title={t("projects.timelineView", "Timeline")}
+                  >
+                    <GanttChart className="h-4 w-4" />
                   </button>
                 </div>
               )}
@@ -1373,6 +1382,12 @@ const Projects = () => {
               </Button>
             </div>
           </div>
+        ) : viewMode === "timeline" ? (
+          /* ---- Timeline view ---- */
+          <PortfolioTimeline
+            projectIds={visibleProjects.map((p) => p.id)}
+            onProjectClick={(id) => navigate(`/projects/${id}`)}
+          />
         ) : viewMode === "list" ? (
           /* ---- List view ---- */
           (() => {

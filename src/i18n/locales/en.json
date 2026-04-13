@@ -339,6 +339,8 @@
     "showLess": "show less",
     "gridView": "Card view",
     "listView": "List view",
+    "timelineView": "Timeline",
+    "noTimelineData": "No projects with dates to display",
     "colName": "Name",
     "colDescription": "Description",
     "colStatus": "Status",

@@ -339,6 +339,8 @@
     "showLess": "visa mindre",
     "gridView": "Kortvy",
     "listView": "Listvy",
+    "timelineView": "Tidslinje",
+    "noTimelineData": "Inga projekt med datum att visa",
     "colName": "Namn",
     "colDescription": "Beskrivning",
     "colStatus": "Status",
