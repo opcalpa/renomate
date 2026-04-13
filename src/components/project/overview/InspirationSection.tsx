@@ -783,7 +783,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               <Maximize2 className="h-3.5 w-3.5" />
             </button>
           )}
-          {hasPhotos && (
+          {(hasPhotos || inspoView === "beforeafter") && (
             <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
               <PopoverTrigger asChild>
                 <button
@@ -1434,6 +1434,17 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
         {/* ===== BEFORE / AFTER VIEW ===== */}
         {inspoView === "beforeafter" && (
           <div className="space-y-4">
+            {beforeAfterByRoom.length === 0 && (
+              <div className="flex flex-col items-center py-8 text-center">
+                <Camera className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                <p className="text-sm text-muted-foreground mb-1">{t("inspiration.noBeforeAfter", "Inga före & efter-bilder ännu")}</p>
+                <p className="text-xs text-muted-foreground/60 mb-3">{t("inspiration.noBeforeAfterHint", "Välj fas (Före/Pågående/Efter) ovan och klicka + för att ladda upp")}</p>
+                <Button size="sm" variant="outline" onClick={() => { fileInputRef.current?.click(); }}>
+                  <Upload className="h-3.5 w-3.5 mr-1.5" />
+                  {t("inspiration.upload")}
+                </Button>
+              </div>
+            )}
             {beforeAfterByRoom.length > 0 && (
               beforeAfterByRoom.map((group) => (
                 <div key={group.id} className="rounded-lg border overflow-hidden">
@@ -1493,7 +1504,14 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
             if (files?.length) {
               const fileArray = Array.from(files);
               e.target.value = "";
-              handleUpload(fileArray);
+              if (inspoView === "beforeafter") {
+                // Tag each file with the selected phase + room
+                for (const f of fileArray) {
+                  handleBeforeAfterUpload(f, baPhase, selectedRoom === "all" || selectedRoom === "untagged" ? null : selectedRoom);
+                }
+              } else {
+                handleUpload(fileArray);
+              }
             }
           }}
         />
