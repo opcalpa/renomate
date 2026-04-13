@@ -396,7 +396,6 @@ export function TasksTableView({
       case "title":
         return (
           <div className="flex items-center gap-2">
-            {getStatusIcon(task.status)}
             <span
               className={
                 task.status === "completed"
