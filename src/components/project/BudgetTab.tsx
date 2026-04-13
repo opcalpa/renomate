@@ -1984,6 +1984,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           ← {t('budget.swipeToSeeMore', 'Svep för mer')} →
         </span>
       </div>
+      <p className="text-[11px] text-muted-foreground/60 mb-1 text-right">
+        {isBuilder ? t('budget.exMomsNote', 'All amounts ex. VAT') : t('budget.incMomsNote', 'All amounts inc. VAT')}
+      </p>
       <div className="border rounded-lg overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0 bg-card">
         <Table>
           <TableHeader>

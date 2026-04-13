@@ -951,7 +951,7 @@ const Profile = () => {
                       placeholder={t('profile.defaultHourlyRatePlaceholder', 'e.g. 550')}
                     />
                     <p className="text-xs text-muted-foreground">
-                      {t('profile.defaultHourlyRateHint')}
+                      {t('profile.defaultHourlyRateHint')} <span className="text-muted-foreground/70">{t('estimation.exMomsShort', '(ex moms)')}</span>
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -1022,7 +1022,7 @@ const Profile = () => {
                 <div>
                   <h4 className="text-sm font-medium mb-1">{t('estimation.materialPrices', 'Material prices')}</h4>
                   <p className="text-xs text-muted-foreground mb-3">
-                    {t('estimation.materialPricesDesc', 'Default unit prices for material estimation.')}
+                    {t('estimation.materialPricesDesc', 'Default unit prices for material estimation.')} <span className="text-muted-foreground/70">{t('estimation.exMomsHint', 'Enter prices ex. VAT (25% is added on quotes/invoices).')}</span>
                   </p>
                   <div className="grid grid-cols-3 gap-3 max-w-lg">
                     {[

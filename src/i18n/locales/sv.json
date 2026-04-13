@@ -2081,6 +2081,8 @@
     "simpleEmpty": "Inga budgetposter ännu. Din projektledare lägger till kostnader allt eftersom arbetet fortskrider.",
     "detailedView": "Detaljerad vy",
     "swipeToSeeMore": "Svep för mer",
+    "exMomsNote": "Alla belopp ex moms",
+    "incMomsNote": "Alla belopp inc moms",
     "filterAttachment": "Underlag",
     "hasAttachment": "Med underlag",
     "missingAttachment": "Saknar underlag",
@@ -4207,7 +4209,10 @@
     "materialPrices": "Materialpriser",
     "materialPricesDesc": "Standardpriser per enhet för materialestimering.",
     "productivityRates": "Produktivitetstal",
-    "productivityRatesDesc": "Kvadratmeter per timme för varje arbetstyp. Används av auto-estimera."
+    "productivityRatesDesc": "Kvadratmeter per timme för varje arbetstyp. Används av auto-estimera.",
+    "exMomsHint": "Ange priser ex moms (25% läggs till på offerter/fakturor).",
+    "exMomsShort": "ex moms",
+    "incMomsShort": "inc moms"
   },
   "taskCost": {
     "pricing": "Prissättning",

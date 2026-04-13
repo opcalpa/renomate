@@ -207,7 +207,7 @@ export function DeclarationTable({ rows, currency, showProject }: DeclarationTab
       {/* Column picker */}
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          {rows.length} {t("declaration.rowCount", "rader")}
+          {rows.length} {t("declaration.rowCount", "rader")} <span className="text-muted-foreground/60">· {t("budget.incMomsNote", "All amounts inc. VAT")}</span>
         </p>
         <Popover>
           <PopoverTrigger asChild>

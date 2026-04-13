@@ -559,7 +559,7 @@ function SmartEstimateCard({ task, rooms, estimationSettings, onApply, onSaveDef
             )}
 
             {/* --- TOTAL --- */}
-            <span className="text-muted-foreground font-medium border-t pt-1 mt-1">{t("materialRecipes.estimatedTotal", "Estimated total")}:</span>
+            <span className="text-muted-foreground font-medium border-t pt-1 mt-1">{t("materialRecipes.estimatedTotal", "Estimated total")} <span className="font-normal text-[10px]">({t("estimation.exMomsShort", "ex moms")})</span>:</span>
             <span className="text-right font-semibold border-t pt-1 mt-1">{estimatedTotal.toLocaleString("sv-SE")} SEK</span>
           </div>
           {/* Save-as-default prompt for profile-linked values */}
@@ -1355,13 +1355,17 @@ export const TaskEditDialog = ({
                       </div>
                       <div className="flex items-center justify-between pt-1 border-t border-muted">
                         <span className="text-xs text-muted-foreground">{t("taskCost.estimatedMaterialCost", "Beräknad materialkostnad")}</span>
-                        <span className="text-sm font-semibold tabular-nums">{materialCost.toLocaleString("sv-SE")} kr</span>
+                        <div className="text-right">
+                          <span className="text-sm font-semibold tabular-nums">{Math.round(materialCost * 1.25).toLocaleString("sv-SE")} kr</span>
+                          <span className="text-[10px] text-muted-foreground ml-1">{t("estimation.incMomsShort", "inc moms")}</span>
+                          <p className="text-[10px] text-muted-foreground tabular-nums">{materialCost.toLocaleString("sv-SE")} kr {t("estimation.exMomsShort", "ex moms")}</p>
+                        </div>
                       </div>
                       {task.budget == null && (
                         <button
                           type="button"
                           className="text-xs text-primary hover:underline"
-                          onClick={() => setTask({ ...task, budget: materialCost })}
+                          onClick={() => setTask({ ...task, budget: Math.round(materialCost * 1.25) })}
                         >
                           {t("taskCost.useAsbudget", "Använd som budget")}
                         </button>
@@ -1711,7 +1715,7 @@ export const TaskEditDialog = ({
                         return (
                           <div className="rounded-lg border p-3 bg-muted/30 space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">{t("taskCost.customerPrice")}</span>
+                              <span className="text-sm font-medium">{t("taskCost.customerPrice")} <span className="font-normal text-[10px] text-muted-foreground">({t("estimation.exMomsShort", "ex moms")})</span></span>
                               <span className="text-sm font-semibold">{formatCurrency(task.budget, currency)}</span>
                             </div>
                             <Separator />

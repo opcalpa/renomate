@@ -2602,6 +2602,8 @@
     "simpleEmpty": "No budget items yet. Your project manager will add costs as work progresses.",
     "detailedView": "Detailed View",
     "swipeToSeeMore": "Swipe to see more",
+    "exMomsNote": "All amounts ex. VAT",
+    "incMomsNote": "All amounts inc. VAT",
     "filterAttachment": "Attachment",
     "hasAttachment": "With attachment",
     "missingAttachment": "Missing attachment",
@@ -4210,7 +4212,10 @@
     "materialPrices": "Material prices",
     "materialPricesDesc": "Default unit prices for material estimation.",
     "productivityRates": "Productivity rates",
-    "productivityRatesDesc": "Square meters per hour for each work type. Used by auto-estimate."
+    "productivityRatesDesc": "Square meters per hour for each work type. Used by auto-estimate.",
+    "exMomsHint": "Enter prices ex. VAT (25% is added on quotes/invoices).",
+    "exMomsShort": "ex VAT",
+    "incMomsShort": "inc VAT"
   },
   "taskCost": {
     "pricing": "Pricing",
