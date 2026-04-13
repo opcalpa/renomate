@@ -1043,26 +1043,27 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           )}
         </div>
 
-        {/* URL input overlay */}
-        {showUrlInput && (
-          <div className="flex gap-2 mt-3">
-            <input
-              type="url"
-              autoFocus
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleUrlImport(); }}
-              placeholder={t("inspiration.urlPlaceholder")}
-              className="flex-1 px-3 py-1.5 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-            <Button size="sm" onClick={handleUrlImport} disabled={!urlInput.trim() || uploading}>
-              {t("common.add")}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => { setShowUrlInput(false); setUrlInput(""); }}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+        {/* URL input popover — anchored to bottom of section, closes on outside click */}
+        <Popover open={showUrlInput} onOpenChange={(open) => { if (!open) { setShowUrlInput(false); setUrlInput(""); } }}>
+          <PopoverTrigger asChild>
+            <span className="sr-only" />
+          </PopoverTrigger>
+          <PopoverContent className="w-[min(500px,90vw)] p-3" side="top" align="start">
+            <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); handleUrlImport(); }}>
+              <input
+                type="url"
+                autoFocus
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                placeholder={t("inspiration.urlPlaceholder")}
+                className="flex-1 px-3 py-1.5 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <Button size="sm" type="submit" disabled={!urlInput.trim() || uploading}>
+                {t("common.add")}
+              </Button>
+            </form>
+          </PopoverContent>
+        </Popover>
 
         {/* Material cards — only show when viewing a specific room */}
         {selectedRoom !== "all" && selectedRoom !== "untagged" && (() => {
