@@ -4234,7 +4234,9 @@
     "quantity": "Antal",
     "unitPrice": "Enhetspris",
     "budget": "Budget",
-    "homeownerBudgetHint": "Din uppskattade budget eller offertbelopp för detta arbetsmoment"
+    "homeownerBudgetHint": "Din uppskattade budget eller offertbelopp för detta arbetsmoment",
+    "estimatedMaterialCost": "Beräknad materialkostnad",
+    "useAsbudget": "Använd som budget"
   },
   "projectStatus": {
     "planning": "Planering",

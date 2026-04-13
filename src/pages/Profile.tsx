@@ -981,13 +981,12 @@ const Profile = () => {
             </CollapsibleCard>
           )}
 
-          {/* Calculation Settings — contractor only */}
-          {userType === "contractor" && (
-            <CollapsibleCard
-              title={t('estimation.title')}
-              description={t('estimation.description')}
-              icon={<Calculator className="h-5 w-5 text-primary shrink-0" />}
-            >
+          {/* Calculation Settings — all users (productivity rates hidden for homeowners) */}
+          <CollapsibleCard
+            title={t('estimation.title')}
+            description={t('estimation.description')}
+            icon={<Calculator className="h-5 w-5 text-primary shrink-0" />}
+          >
                 <div>
                   <h4 className="text-sm font-medium mb-2">{t('estimation.paintFormula')}</h4>
                   <p className="text-xs text-muted-foreground mb-3">
@@ -1046,6 +1045,8 @@ const Profile = () => {
                     ))}
                   </div>
                 </div>
+                {/* Productivity rates — proffs only */}
+                {userType === "contractor" && (<>
                 <Separator className="my-4" />
                 <div>
                   <h4 className="text-sm font-medium mb-1">{t('estimation.productivityRates', 'Productivity rates')}</h4>
@@ -1079,8 +1080,8 @@ const Profile = () => {
                     ))}
                   </div>
                 </div>
+                </>)}
             </CollapsibleCard>
-          )}
 
           {/* Professional Profile — hidden for homeowners */}
           {userType !== "homeowner" && (

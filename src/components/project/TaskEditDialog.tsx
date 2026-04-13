@@ -18,7 +18,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { formatCurrency } from "@/lib/currency";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Plus, Tag, ChevronDown, ChevronRight, Trash2, X, Info, Sparkles } from "lucide-react";
+import { Loader2, Plus, Tag, ChevronDown, ChevronRight, Trash2, X, Info, Sparkles, Calculator } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -1295,7 +1295,7 @@ export const TaskEditDialog = ({
 
               {/* Cost estimation — planning mode gets the pricing form */}
               {isPlanning && isHomeowner ? (
-              <div className="space-y-2 rounded-lg border bg-background p-4 shadow-sm">
+              <div className="space-y-3 rounded-lg border bg-background p-4 shadow-sm">
                 <Label htmlFor="edit-task-budget" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("taskCost.budget", "Budget")}</Label>
                 <Input
                   id="edit-task-budget"
@@ -1312,6 +1312,63 @@ export const TaskEditDialog = ({
                 <p className="text-xs text-muted-foreground">
                   {t("taskCost.homeownerBudgetHint", "Your estimated budget or quote amount for this task")}
                 </p>
+
+                {/* Smart material estimate — homeowner version */}
+                {(() => {
+                  const roomIds = (task.room_ids && task.room_ids.length > 0)
+                    ? task.room_ids
+                    : task.room_id ? [task.room_id] : [];
+                  const linkedRooms = roomIds
+                    .map((id) => rooms.find((r) => r.id === id))
+                    .filter((r): r is typeof rooms[number] => !!r && !!r.dimensions);
+                  const detected = detectWorkType(task);
+                  const est = linkedRooms.length > 0 && detected
+                    ? estimateTaskMultiRoom(task, linkedRooms as RecipeRoom[], estimationSettings ?? undefined)
+                    : null;
+                  if (!est || !est.material) return null;
+
+                  const mat = est.material;
+                  const materialCost = Math.round(mat.quantity * mat.unitPrice);
+                  const areaLabel = est.areaType === "wall"
+                    ? t("planningTasks.wallArea", "väggyta")
+                    : t("planningTasks.floorArea", "golvyta");
+
+                  return (
+                    <div className="mt-2 rounded-md bg-muted/40 p-3 space-y-2">
+                      <p className="text-xs font-medium flex items-center gap-1.5">
+                        <Calculator className="h-3.5 w-3.5 text-primary" />
+                        {t("taskCost.materialEstimate", "Materialuppskattning")}
+                      </p>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">{areaLabel}</span>
+                          <p className="font-medium tabular-nums">{Math.round(est.totalAreaSqm * 10) / 10} m²</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">{t("taskCost.quantity", "Åtgång")}</span>
+                          <p className="font-medium tabular-nums">{Math.round(mat.quantity * 10) / 10} {mat.unit}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">{t("taskCost.unitPrice", "Pris/enhet")}</span>
+                          <p className="font-medium tabular-nums">{Math.round(mat.unitPrice)} kr/{mat.unit}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-muted">
+                        <span className="text-xs text-muted-foreground">{t("taskCost.estimatedMaterialCost", "Beräknad materialkostnad")}</span>
+                        <span className="text-sm font-semibold tabular-nums">{materialCost.toLocaleString("sv-SE")} kr</span>
+                      </div>
+                      {task.budget == null && (
+                        <button
+                          type="button"
+                          className="text-xs text-primary hover:underline"
+                          onClick={() => setTask({ ...task, budget: materialCost })}
+                        >
+                          {t("taskCost.useAsbudget", "Använd som budget")}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               ) : isPlanning ? (
               (() => {

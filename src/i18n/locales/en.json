@@ -4237,7 +4237,9 @@
     "quantity": "Qty",
     "unitPrice": "Price/unit",
     "budget": "Budget",
-    "homeownerBudgetHint": "Your estimated budget or quote amount for this task"
+    "homeownerBudgetHint": "Your estimated budget or quote amount for this task",
+    "estimatedMaterialCost": "Estimated material cost",
+    "useAsbudget": "Use as budget"
   },
   "projectStatus": {
     "planning": "Planning",
