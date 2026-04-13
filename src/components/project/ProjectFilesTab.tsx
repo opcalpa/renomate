@@ -91,6 +91,7 @@ import { isDocumentFile } from "@/services/aiDocumentService";
 import { BatchSmartUploadDialog, readDroppedItems, type DroppedFile } from "./BatchSmartUploadDialog";
 import { BatchSmartTolkDialog } from "./batch-tolk";
 import { FilesGridView } from "./files/FilesGridView";
+import { FileActionMenu } from "./files/FileActionMenu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ProjectFile {
@@ -1519,28 +1520,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                               return <TableCell key={col} className="whitespace-nowrap text-muted-foreground">–</TableCell>;
                             })}
                             <TableCell className="text-right sticky right-0 bg-white dark:bg-card z-10">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handlePreview(file)}>
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    {t('files.preview', 'Förhandsgranska')}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleDownload(file)}>
-                                    <Download className="h-4 w-4 mr-2" />
-                                    {t('common.download', 'Ladda ner')}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onSelect={() => runSmartTolk(file)}>
-                                    <Sparkles className="h-4 w-4 mr-2" />
-                                    {t('files.smartTolk', 'Smart tolk')}
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <FileActionMenu file={file} onPreview={handlePreview} onDownload={handleDownload} onSmartTolk={runSmartTolk} />
                             </TableCell>
                           </TableRow>
                         ))}
@@ -1894,61 +1874,17 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                               );
                             })}
                             <TableCell className="text-right sticky right-0 bg-white dark:bg-card z-10">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handlePreview(sf)}>
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    {t('files.preview', 'Förhandsgranska')}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleDownload(sf)}>
-                                    <Download className="h-4 w-4 mr-2" />
-                                    {t('common.download', 'Ladda ner')}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onSelect={() => runSmartTolk(sf)}>
-                                    <Sparkles className="h-4 w-4 mr-2" />
-                                    {t('files.smartTolk', 'Smart tolk')}
-                                  </DropdownMenuItem>
-                                  {sf.type?.startsWith('image/') && onUseAsBackground && (
-                                    <DropdownMenuItem onClick={() => {
-                                      const { data: { publicUrl } } = supabase.storage
-                                        .from('project-files')
-                                        .getPublicUrl(sf.path);
-                                      onUseAsBackground(publicUrl, sf.name);
-                                    }}>
-                                      <Layers className="h-4 w-4 mr-2" />
-                                      {t('files.useAsBackground', 'Använd som planritning')}
-                                    </DropdownMenuItem>
-                                  )}
-                                  {canEdit && (
-                                    <DropdownMenuItem onClick={() => setLinkFile(sf)}>
-                                      <Link className="h-4 w-4 mr-2" />
-                                      {t('files.linkToTask', 'Koppla till arbete')}
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuItem onClick={() => setSelectedFileForComments(sf)}>
-                                    <MessageSquare className="h-4 w-4 mr-2" />
-                                    {t('common.comments', 'Kommentarer')}
-                                  </DropdownMenuItem>
-                                  {canEdit && (
-                                    <>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        onClick={() => setFileToDelete(sf)}
-                                        className="text-destructive focus:text-destructive"
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        {t('common.delete', 'Ta bort')}
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <FileActionMenu
+                                file={sf}
+                                canEdit={canEdit}
+                                onPreview={handlePreview}
+                                onDownload={handleDownload}
+                                onSmartTolk={runSmartTolk}
+                                onUseAsBackground={onUseAsBackground}
+                                onLink={setLinkFile}
+                                onComments={setSelectedFileForComments}
+                                onDelete={setFileToDelete}
+                              />
                             </TableCell>
                           </TableRow>
                           );
@@ -2160,61 +2096,17 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                         );
                       })}
                       <TableCell className="text-right sticky right-0 bg-white dark:bg-card z-10">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handlePreview(file)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              {t('files.preview', 'Förhandsgranska')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownload(file)}>
-                              <Download className="h-4 w-4 mr-2" />
-                              {t('common.download', 'Ladda ner')}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => runSmartTolk(file)}>
-                              <Sparkles className="h-4 w-4 mr-2" />
-                              {t('files.smartTolk', 'Smart tolk')}
-                            </DropdownMenuItem>
-                            {file.type.startsWith('image/') && onUseAsBackground && (
-                              <DropdownMenuItem onClick={() => {
-                                const { data: { publicUrl } } = supabase.storage
-                                  .from('project-files')
-                                  .getPublicUrl(file.path);
-                                onUseAsBackground(publicUrl, file.name);
-                              }}>
-                                <Layers className="h-4 w-4 mr-2" />
-                                {t('files.useAsBackground', 'Använd som planritning')}
-                              </DropdownMenuItem>
-                            )}
-                            {canEdit && (
-                              <DropdownMenuItem onClick={() => setLinkFile(file)}>
-                                <Link className="h-4 w-4 mr-2" />
-                                {t('files.linkToTask', 'Koppla till arbete')}
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={() => setSelectedFileForComments(file)}>
-                              <MessageSquare className="h-4 w-4 mr-2" />
-                              {t('common.comments', 'Kommentarer')}
-                            </DropdownMenuItem>
-                            {canEdit && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => setFileToDelete(file)}
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  {t('common.delete', 'Radera')}
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <FileActionMenu
+                          file={file}
+                          canEdit={canEdit}
+                          onPreview={handlePreview}
+                          onDownload={handleDownload}
+                          onSmartTolk={runSmartTolk}
+                          onUseAsBackground={onUseAsBackground}
+                          onLink={setLinkFile}
+                          onComments={setSelectedFileForComments}
+                          onDelete={setFileToDelete}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

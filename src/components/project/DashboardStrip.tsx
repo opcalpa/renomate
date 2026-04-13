@@ -131,7 +131,22 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
   const totalComments = useMemo(() => data?.recentComments.reduce((s, p) => s + p.count, 0) ?? 0, [data]);
   const totalPurchases = useMemo(() => data?.pendingPurchases.reduce((s, p) => s + p.count, 0) ?? 0, [data]);
 
-  if (projectIds.length < 2 || isLoading || !data) return null;
+  if (projectIds.length < 2) return null;
+
+  if (isLoading || !data) return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="rounded-xl border bg-card p-4 animate-pulse">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="h-4 w-4 rounded bg-muted" />
+            <div className="h-3 w-20 rounded bg-muted" />
+          </div>
+          <div className="h-7 w-12 rounded bg-muted mb-1" />
+          <div className="h-3 w-28 rounded bg-muted" />
+        </div>
+      ))}
+    </div>
+  );
 
   const hasContent = totalOverdue > 0 || totalComments > 0 || totalPurchases > 0 || data.totalBudget > 0;
   if (!hasContent) return null;
