@@ -675,7 +675,7 @@
     "bulkDeleteSuccess": "Deleted {{count}} tasks",
     "bulkUpdateFailed": "Failed to update tasks",
     "bulkDeleteFailed": "Failed to delete tasks",
-    "bulkClearSelection": "Clear"
+    "bulkClearSelection": "Deselect"
   },
   "purchasesTable": {
     "columns": "Columns",

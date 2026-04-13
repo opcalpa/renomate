@@ -675,7 +675,7 @@
     "bulkDeleteSuccess": "Tog bort {{count}} arbeten",
     "bulkUpdateFailed": "Kunde inte uppdatera arbeten",
     "bulkDeleteFailed": "Kunde inte ta bort arbeten",
-    "bulkClearSelection": "Rensa"
+    "bulkClearSelection": "Avmarkera"
   },
   "purchasesTable": {
     "columns": "Kolumner",
