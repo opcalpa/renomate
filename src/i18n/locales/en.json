@@ -4447,7 +4447,11 @@
     "avgProjectSize": "Avg. budget per project",
     "uninvoiced": "Uninvoiced",
     "invoiced": "invoiced",
-    "ofBudget": "of budget"
+    "ofBudget": "of budget",
+    "budgetBreakdown": "Budget per project",
+    "uninvoicedPerProject": "Uninvoiced per project",
+    "profitPerProject": "Profit per project",
+    "marginPerProject": "Margin per project"
   },
   "invoiceMethod": {
     "title": "Create Invoice",

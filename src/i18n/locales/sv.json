@@ -4444,7 +4444,11 @@
     "avgProjectSize": "Snittbudget per projekt",
     "uninvoiced": "Ofakturerat",
     "invoiced": "fakturerat",
-    "ofBudget": "av budget"
+    "ofBudget": "av budget",
+    "budgetBreakdown": "Budget per projekt",
+    "uninvoicedPerProject": "Ofakturerat per projekt",
+    "profitPerProject": "Resultat per projekt",
+    "marginPerProject": "Marginal per projekt"
   },
   "invoiceMethod": {
     "title": "Skapa faktura",

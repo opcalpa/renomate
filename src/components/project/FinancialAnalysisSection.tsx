@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ChevronUp, BarChart3 } from "lucide-react";
+import { ChevronDown, ChevronUp, BarChart3, ExternalLink } from "lucide-react";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import {
   BarChart,
   Bar,
@@ -83,6 +85,7 @@ export function FinancialAnalysisSection({
   currency,
 }: FinancialAnalysisSectionProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [period, setPeriod] = useState<PeriodPreset>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [isExpanded, setIsExpanded] = useState(false);
@@ -550,7 +553,9 @@ export function FinancialAnalysisSection({
               {/* Summary cards */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {/* Hero: Budget with invoiced progress */}
-                <div className="rounded-lg border bg-card p-4 col-span-2">
+                <HoverCard openDelay={200}>
+                  <HoverCardTrigger asChild>
+                <div className="rounded-lg border bg-card p-4 col-span-2 cursor-default">
                   <p className="text-sm text-muted-foreground">
                     {t("financialAnalysis.totalBudget")} <span className="text-[10px]">({t("budget.exVat", "ex moms")})</span>
                   </p>
@@ -576,8 +581,29 @@ export function FinancialAnalysisSection({
                     </>
                   )}
                 </div>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-72" side="bottom" align="start">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">{t("financialAnalysis.budgetBreakdown", "Budget per projekt")}</p>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {filtered.sort((a, b) => (financials[b.id]?.budget ?? 0) - (financials[a.id]?.budget ?? 0)).map((p) => (
+                        <button
+                          key={p.id}
+                          className="flex items-center justify-between w-full text-left text-sm hover:bg-muted/50 rounded px-1.5 py-1 -mx-1.5 transition-colors group"
+                          onClick={() => navigate(`/projects/${p.id}`)}
+                        >
+                          <span className="truncate flex-1 mr-2">{p.name}</span>
+                          <span className="tabular-nums text-muted-foreground shrink-0">{formatCurrency(financials[p.id]?.budget ?? 0, currency, { compact: true })}</span>
+                          <ExternalLink className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground ml-1 shrink-0 transition-colors" />
+                        </button>
+                      ))}
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+
                 {/* Uninvoiced */}
-                <div className={`rounded-lg border p-4 ${totals.uninvoiced > 0 ? "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800" : "bg-card"}`}>
+                <HoverCard openDelay={200}>
+                  <HoverCardTrigger asChild>
+                <div className={`rounded-lg border p-4 cursor-default ${totals.uninvoiced > 0 ? "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800" : "bg-card"}`}>
                   <p className="text-sm text-muted-foreground">
                     {t("financialAnalysis.uninvoiced", "Ofakturerat")}
                   </p>
@@ -590,8 +616,35 @@ export function FinancialAnalysisSection({
                     </p>
                   )}
                 </div>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-72" side="bottom">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">{t("financialAnalysis.uninvoicedPerProject", "Ofakturerat per projekt")}</p>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {filtered.map((p) => {
+                        const b = financials[p.id]?.budget ?? 0;
+                        const inv = invoicedByProject[p.id] ?? 0;
+                        const uninv = Math.max(0, b - inv);
+                        if (uninv <= 0) return null;
+                        return (
+                          <button
+                            key={p.id}
+                            className="flex items-center justify-between w-full text-left text-sm hover:bg-muted/50 rounded px-1.5 py-1 -mx-1.5 transition-colors group"
+                            onClick={() => navigate(`/projects/${p.id}`)}
+                          >
+                            <span className="truncate flex-1 mr-2">{p.name}</span>
+                            <span className="tabular-nums text-amber-600 shrink-0">{formatCurrency(uninv, currency, { compact: true })}</span>
+                            <ExternalLink className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground ml-1 shrink-0 transition-colors" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+
                 {/* Profit */}
-                <div className="rounded-lg border bg-card p-4">
+                <HoverCard openDelay={200}>
+                  <HoverCardTrigger asChild>
+                <div className="rounded-lg border bg-card p-4 cursor-default">
                   <p className="text-sm text-muted-foreground">
                     {t("financialAnalysis.totalProfit")}
                   </p>
@@ -599,8 +652,35 @@ export function FinancialAnalysisSection({
                     {formatCurrency(totals.profit, currency)}
                   </p>
                 </div>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-72" side="bottom">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">{t("financialAnalysis.profitPerProject", "Resultat per projekt")}</p>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {filtered.sort((a, b) => (financials[b.id]?.profit ?? 0) - (financials[a.id]?.profit ?? 0)).map((p) => {
+                        const profit = financials[p.id]?.profit ?? 0;
+                        const budget = financials[p.id]?.budget ?? 0;
+                        const margin = budget > 0 ? Math.round((profit / budget) * 100) : 0;
+                        return (
+                          <button
+                            key={p.id}
+                            className="flex items-center justify-between w-full text-left text-sm hover:bg-muted/50 rounded px-1.5 py-1 -mx-1.5 transition-colors group"
+                            onClick={() => navigate(`/projects/${p.id}`)}
+                          >
+                            <span className="truncate flex-1 mr-2">{p.name}</span>
+                            <span className="tabular-nums text-emerald-600 shrink-0">{formatCurrency(profit, currency, { compact: true })}</span>
+                            <span className="text-[10px] text-muted-foreground ml-1 shrink-0">{margin}%</span>
+                            <ExternalLink className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground ml-1 shrink-0 transition-colors" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+
                 {/* Margin — donut indicator */}
-                <div className="rounded-lg border bg-card p-4 flex flex-col items-center justify-center">
+                <HoverCard openDelay={200}>
+                  <HoverCardTrigger asChild>
+                <div className="rounded-lg border bg-card p-4 flex flex-col items-center justify-center cursor-default">
                   <div className="relative h-14 w-14">
                     <svg viewBox="0 0 36 36" className="h-14 w-14 -rotate-90">
                       <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" className="text-muted/40" strokeWidth="3" />
@@ -613,6 +693,34 @@ export function FinancialAnalysisSection({
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">{t("financialAnalysis.margin")}</p>
                 </div>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-72" side="bottom" align="end">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">{t("financialAnalysis.marginPerProject", "Marginal per projekt")}</p>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {filtered.map((p) => {
+                        const budget = financials[p.id]?.budget ?? 0;
+                        const profit = financials[p.id]?.profit ?? 0;
+                        const margin = budget > 0 ? Math.round((profit / budget) * 100) : 0;
+                        return (
+                          <button
+                            key={p.id}
+                            className="flex items-center justify-between w-full text-left text-sm hover:bg-muted/50 rounded px-1.5 py-1 -mx-1.5 transition-colors group"
+                            onClick={() => navigate(`/projects/${p.id}`)}
+                          >
+                            <span className="truncate flex-1 mr-2">{p.name}</span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+                                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, margin)}%` }} />
+                              </div>
+                              <span className="tabular-nums text-xs w-8 text-right">{margin}%</span>
+                            </div>
+                            <ExternalLink className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground ml-1 shrink-0 transition-colors" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
               </div>
 
               {/* Charts — side by side */}
