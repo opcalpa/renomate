@@ -199,6 +199,7 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
                 transformOrigin: `center ${coverPosition}%`,
               }}
               draggable={false}
+              onError={() => { setCoverUrl(null); setIsAutoCover(false); }}
             />
             {/* Repositioning overlay */}
             {repositioning && (

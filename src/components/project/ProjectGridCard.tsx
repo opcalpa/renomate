@@ -122,6 +122,7 @@ export function ProjectGridCard({
             src={project.cover_image_url}
             alt={project.name}
             className="w-full h-full object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         </div>
       ) : (
