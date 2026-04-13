@@ -248,8 +248,9 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center mb-8">
-          <a href="/">
-            <img src="/logo.png" alt="Renofine" className="h-14 w-auto cursor-pointer" />
+          <a href="/" className="flex items-center gap-2">
+            <img src="/logo.png" alt="Renofine" className="h-10 w-auto cursor-pointer" />
+            <span className="text-xl font-bold tracking-tight">Renofine</span>
           </a>
         </div>
 

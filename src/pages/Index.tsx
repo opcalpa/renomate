@@ -56,8 +56,9 @@ const Index = () => {
       {/* Hero Section */}
       <header className="container mx-auto px-4 pt-4 md:pt-8">
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <img src="/logo.png" alt="Renofine" className="h-14 w-auto" />
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="Renofine" className="h-10 w-auto" />
+            <span className="text-xl font-bold tracking-tight">Renofine</span>
           </div>
           <Button variant="outline" onClick={() => navigate("/auth")}>
             {t('common.signIn')}

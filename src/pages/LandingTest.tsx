@@ -56,7 +56,10 @@ function VariantA({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
       {/* Nav */}
       <header className="border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-          <img src="/logo.png" alt="Renofine" className="h-10" />
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="Renofine" className="h-8" />
+            <span className="text-lg font-bold tracking-tight text-gray-900">Renofine</span>
+          </div>
           <div className="flex items-center gap-4">
             <button onClick={nav.toAuth} className="text-sm hover:underline">
               {t("common.signIn")}
@@ -163,7 +166,10 @@ function VariantB({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
       {/* Nav */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-          <img src="/logo.png" alt="Renofine" className="h-9" />
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="Renofine" className="h-7" />
+            <span className="text-lg font-bold tracking-tight text-gray-900">Renofine</span>
+          </div>
           <div className="flex items-center gap-6">
             <button onClick={nav.toAuth} className="text-sm font-medium hover:text-primary transition-colors">
               {t("common.signIn")}
@@ -318,7 +324,10 @@ function VariantC({ nav }: { nav: ReturnType<typeof useSharedNav> }) {
       {/* Nav */}
       <header className="sticky top-0 z-40 bg-[#fafaf8]/95 backdrop-blur">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <img src="/logo.png" alt="Renofine" className="h-10" />
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="Renofine" className="h-8" />
+            <span className="text-lg font-bold tracking-tight text-gray-900">Renofine</span>
+          </div>
           <div className="flex items-center gap-4">
             <button onClick={nav.toAuth} className="text-sm font-medium hover:text-primary">
               {t("common.signIn")}
