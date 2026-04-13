@@ -49,10 +49,6 @@ export function DatePicker({
           selected={date}
           onSelect={onDateChange}
           initialFocus
-          locale={sv}
-          captionLayout="dropdown"
-          fromYear={2015}
-          toYear={new Date().getFullYear() + 5}
         />
       </PopoverContent>
     </Popover>

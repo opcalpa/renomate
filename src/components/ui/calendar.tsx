@@ -1,16 +1,30 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
+import { sv } from "date-fns/locale";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
-function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+function Calendar({
+  className,
+  classNames,
+  showOutsideDays = true,
+  captionLayout = "dropdown",
+  fromYear = 2020,
+  toYear = new Date().getFullYear() + 5,
+  locale = sv,
+  ...props
+}: CalendarProps) {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      captionLayout={captionLayout}
+      fromYear={fromYear}
+      toYear={toYear}
+      locale={locale}
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
@@ -18,9 +32,9 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium hidden",
         caption_dropdowns: "flex items-center gap-1.5",
-        dropdown: "appearance-none bg-background border rounded px-2 py-0.5 text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary",
-        dropdown_month: "appearance-none bg-background border rounded px-2 py-0.5 text-sm font-medium cursor-pointer",
-        dropdown_year: "appearance-none bg-background border rounded px-2 py-0.5 text-sm font-medium cursor-pointer",
+        dropdown: "appearance-none bg-background border-0 text-sm font-medium cursor-pointer focus:outline-none focus:ring-0",
+        dropdown_month: "appearance-none bg-background border-0 text-sm font-medium cursor-pointer",
+        dropdown_year: "appearance-none bg-background border-0 text-sm font-medium cursor-pointer",
         vhidden: "sr-only",
         nav: "space-x-1 flex items-center",
         nav_button: cn(

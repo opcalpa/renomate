@@ -264,7 +264,6 @@ function ProjectDatePopover({
                 mode="single"
                 selected={projectStartDate ? parseISO(projectStartDate) : undefined}
                 onSelect={(date) => saveDate("start_date", date ? format(date, "yyyy-MM-dd") : null)}
-                locale={sv}
                 className="rounded-md border"
               />
             ) : (
@@ -292,7 +291,6 @@ function ProjectDatePopover({
                 mode="single"
                 selected={projectFinishDate ? parseISO(projectFinishDate) : undefined}
                 onSelect={(date) => saveDate("finish_goal_date", date ? format(date, "yyyy-MM-dd") : null)}
-                locale={sv}
                 className="rounded-md border"
               />
             ) : (
@@ -365,7 +363,6 @@ function ProjectDatePopover({
                       mode="single"
                       selected={editMsDate}
                       onSelect={(date) => { setEditMsDate(date); setShowEditMsCalendar(false); }}
-                      locale={sv}
                       className="rounded-md border"
                     />
                   ) : (
@@ -428,7 +425,6 @@ function ProjectDatePopover({
                   mode="single"
                   selected={newMsDate}
                   onSelect={(date) => { setNewMsDate(date); setShowMsCalendar(false); }}
-                  locale={sv}
                   className="rounded-md border"
                 />
               ) : (
