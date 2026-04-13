@@ -434,73 +434,57 @@ export function FinancialAnalysisSection({
       </button>
 
       {isExpanded && (
-        <div className="px-4 pb-4 border-t space-y-4 pt-4">
-          {/* Filters */}
-          <div className="flex flex-col gap-2">
-            {/* Project selector */}
-            <div className="flex flex-wrap items-center gap-2">
-              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-                <SelectTrigger className="w-[220px] h-8 text-sm">
-                  <SelectValue placeholder={t("financialAnalysis.allProjects", "All projects")} />
+        <div className="px-4 pb-4 border-t space-y-4 pt-3">
+          {/* Filters — compact single row */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+              <SelectTrigger className="w-[200px] h-8 text-sm">
+                <SelectValue placeholder={t("financialAnalysis.allProjects", "All projects")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("financialAnalysis.allProjects", "All projects")}</SelectItem>
+                {sortedProjects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {!isSingleProject && (
+              <Select value={String(period)} onValueChange={(v) => setPeriod(v === "all" || v === "custom" ? v as PeriodPreset : Number(v) as PeriodPreset)}>
+                <SelectTrigger className="w-[140px] h-8 text-sm">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t("financialAnalysis.allProjects", "All projects")}</SelectItem>
-                  {sortedProjects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
+                  {PRESETS.map((p) => (
+                    <SelectItem key={String(p)} value={String(p)}>{presetLabel(p)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Period toggle */}
-            {!isSingleProject && (
-              <div className="flex flex-wrap gap-1">
-                {PRESETS.map((p) => (
-                  <button
-                    key={String(p)}
-                    onClick={() => setPeriod(p)}
-                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                      period === p
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    }`}
-                  >
-                    {presetLabel(p)}
-                  </button>
-                ))}
-              </div>
             )}
 
-            {/* Status filter */}
             {!isSingleProject && (
-              <div className="flex flex-wrap gap-1">
-                {(["all", "active", "quoting", "completed"] as StatusFilter[]).map((sf) => (
-                  <button
-                    key={sf}
-                    onClick={() => setStatusFilter(sf)}
-                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                      statusFilter === sf
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    }`}
-                  >
-                    {t(`financialAnalysis.status_${sf}`)}
-                  </button>
-                ))}
-              </div>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+                <SelectTrigger className="w-[140px] h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(["all", "active", "quoting", "completed"] as StatusFilter[]).map((sf) => (
+                    <SelectItem key={sf} value={sf}>{t(`financialAnalysis.status_${sf}`)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
 
             {/* Custom date inputs */}
             {!isSingleProject && period === "custom" && (
-              <div className="flex items-center gap-2 flex-wrap">
+              <>
                 <Input
                   type="date"
                   value={customFrom}
                   onChange={(e) => setCustomFrom(e.target.value)}
                   className="w-auto h-8 text-sm"
-                  placeholder={t("financialAnalysis.from")}
                 />
                 <span className="text-muted-foreground text-sm">—</span>
                 <Input
@@ -508,17 +492,15 @@ export function FinancialAnalysisSection({
                   value={customTo}
                   onChange={(e) => setCustomTo(e.target.value)}
                   className="w-auto h-8 text-sm"
-                  placeholder={t("financialAnalysis.to")}
                 />
-              </div>
+              </>
             )}
 
-            {/* Active range label */}
-            <p className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground ml-auto">
               {isSingleProject
                 ? `${projectTasks.length} ${t("financialAnalysis.tasks", "arbeten")}`
-                : `${t("financialAnalysis.showing")}: ${dateRangeLabel} (${filtered.length}/${projects.filter((p) => financials[p.id]?.budget > 0).length} ${t("financialAnalysis.projects")})`}
-            </p>
+                : `${filtered.length}/${projects.filter((p) => financials[p.id]?.budget > 0).length} ${t("financialAnalysis.projects")} · ${dateRangeLabel}`}
+            </span>
           </div>
 
           {!hasData || (isSingleProject && loadingTasks) ? (
@@ -528,38 +510,51 @@ export function FinancialAnalysisSection({
           ) : (
             <>
               {/* Summary cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <div className="rounded-lg border bg-card p-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* Hero: Budget */}
+                <div className="rounded-lg border bg-card p-4 col-span-2">
                   <p className="text-sm text-muted-foreground">
-                    {t("financialAnalysis.totalBudget")}
+                    {t("financialAnalysis.totalBudget")} <span className="text-[10px]">({t("budget.exVat", "ex moms")})</span>
                   </p>
-                  <p className="text-xl font-semibold">
+                  <p className="text-2xl font-bold tabular-nums">
                     {formatCurrency(totals.budget, currency)}
                   </p>
-                  {!isSingleProject && (
-                    <p className="text-xs text-muted-foreground">
-                      {totals.count} {t("financialAnalysis.projects")}
-                    </p>
-                  )}
-                  {isSingleProject && (
-                    <p className="text-xs text-muted-foreground">
-                      {projectTasks.length} {t("financialAnalysis.tasks", "arbeten")}
-                    </p>
+                  <p className="text-xs text-muted-foreground">
+                    {isSingleProject
+                      ? `${projectTasks.length} ${t("financialAnalysis.tasks", "arbeten")}`
+                      : `${totals.count} ${t("financialAnalysis.projects")}`}
+                  </p>
+                  {totals.budget > 0 && (
+                    <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${Math.min(100, totals.margin)}%` }}
+                      />
+                    </div>
                   )}
                 </div>
+                {/* Profit */}
                 <div className="rounded-lg border bg-card p-4">
                   <p className="text-sm text-muted-foreground">
                     {t("financialAnalysis.totalProfit")}
                   </p>
-                  <p className="text-xl font-semibold text-emerald-600">
+                  <p className="text-xl font-semibold text-emerald-600 tabular-nums">
                     {formatCurrency(totals.profit, currency)}
                   </p>
                 </div>
-                <div className="rounded-lg border bg-card p-4 col-span-2 sm:col-span-1">
-                  <p className="text-sm text-muted-foreground">
-                    {t("financialAnalysis.margin")}
-                  </p>
-                  <p className="text-xl font-semibold">{totals.margin}%</p>
+                {/* Margin — donut indicator */}
+                <div className="rounded-lg border bg-card p-4 flex flex-col items-center justify-center">
+                  <div className="relative h-14 w-14">
+                    <svg viewBox="0 0 36 36" className="h-14 w-14 -rotate-90">
+                      <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" className="text-muted/40" strokeWidth="3" />
+                      <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" className="text-emerald-500" strokeWidth="3"
+                        strokeDasharray={`${Math.min(100, totals.margin) * 0.942} 94.2`}
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <span className="absolute inset-0 flex items-center justify-center text-sm font-bold">{totals.margin}%</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{t("financialAnalysis.margin")}</p>
                 </div>
               </div>
 
@@ -581,6 +576,7 @@ export function FinancialAnalysisSection({
                           nameKey="name"
                           cx="50%"
                           cy="50%"
+                          innerRadius={55}
                           outerRadius={90}
                           label={({ name, percent }) =>
                             `${name} ${(percent * 100).toFixed(0)}%`

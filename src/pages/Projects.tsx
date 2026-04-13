@@ -1561,7 +1561,7 @@ const Projects = () => {
 
         {/* Financial Analysis - contractors only, at the bottom */}
         {isContractor && !isGuest && nonDemoProjects.length > 0 && (
-          <section className="mt-10 sm:mt-14">
+          <section className="mt-6 sm:mt-8">
             <FinancialAnalysisSection
               projects={nonDemoProjects}
               financials={projectFinancials}

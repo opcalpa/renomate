@@ -156,7 +156,7 @@ export function PortfolioTimeline({ projectIds, onProjectClick }: PortfolioTimel
         <div style={{ minWidth: LABEL_WIDTH + timelineWidth }}>
           {/* Month ruler */}
           <div className="flex border-b bg-muted/30 sticky top-0 z-10" style={{ height: 32 }}>
-            <div className="shrink-0 border-r bg-muted/30" style={{ width: LABEL_WIDTH }} />
+            <div className="shrink-0 border-r bg-muted/30 sticky left-0 z-20" style={{ width: LABEL_WIDTH }} />
             <div className="relative" style={{ width: timelineWidth }}>
               {months.map((month) => {
                 const x = differenceInDays(month, minDate) * pixelsPerDay;
@@ -207,7 +207,7 @@ export function PortfolioTimeline({ projectIds, onProjectClick }: PortfolioTimel
                 >
                   {/* Label */}
                   <div
-                    className="shrink-0 flex items-center gap-1.5 px-3 border-r overflow-hidden"
+                    className="shrink-0 flex items-center gap-1.5 px-3 border-r overflow-hidden bg-card sticky left-0 z-20"
                     style={{ width: LABEL_WIDTH }}
                   >
                     <button
@@ -260,7 +260,7 @@ export function PortfolioTimeline({ projectIds, onProjectClick }: PortfolioTimel
                   >
                     {/* Task label */}
                     <div
-                      className="shrink-0 flex items-center pl-9 pr-3 border-r overflow-hidden"
+                      className="shrink-0 flex items-center pl-9 pr-3 border-r overflow-hidden bg-card sticky left-0 z-20"
                       style={{ width: LABEL_WIDTH }}
                     >
                       <span className="text-[11px] text-muted-foreground truncate">
