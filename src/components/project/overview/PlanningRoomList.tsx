@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -238,6 +238,15 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const [addingLoading, setAddingLoading] = useState(false);
+  const autoOpenedRef = useRef(false);
+
+  // Auto-open add row when room list is empty
+  useEffect(() => {
+    if (!loading && rooms.length === 0 && !locked && !autoOpenedRef.current) {
+      autoOpenedRef.current = true;
+      setIsAdding(true);
+    }
+  }, [loading, rooms.length, locked]);
   const [editingCell, setEditingCell] = useState<{ roomId: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState("");
   const [visibleExtras, setVisibleExtras] = useState<Set<ExtraColumnKey>>(DEFAULT_EXTRAS);
@@ -545,18 +554,6 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
           <div className="space-y-2">
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-full" />
-          </div>
-        ) : rooms.length === 0 && !isAdding ? (
-          <div className="flex items-center justify-between py-2">
-            <p className="text-sm text-muted-foreground">
-              {t("planningRooms.emptyHint", "Add rooms to plan dimensions and estimate materials")}
-            </p>
-            {!locked && (
-              <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={() => setIsAdding(true)}>
-                <Plus className="h-3.5 w-3.5" />
-                {t("planningRooms.addFirst", "Add first room")}
-              </Button>
-            )}
           </div>
         ) : (
           <>

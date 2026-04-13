@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { TASK_CATEGORY_LABELS, TaskCategory } from "@/services/aiDocumentService.types";
@@ -234,10 +234,19 @@ export function PlanningTaskList({
   const [lockOverridden, setLockOverridden] = useState(false);
   const effectiveLock = locked && !lockOverridden;
 
-  // Inline add state
+  // Inline add state — auto-open when list is empty
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const autoOpenedRef = useRef(false);
   const [addingLoading, setAddingLoading] = useState(false);
+
+  // Auto-open add row when task list is empty
+  useEffect(() => {
+    if (!loading && tasks.length === 0 && !effectiveLock && !autoOpenedRef.current) {
+      autoOpenedRef.current = true;
+      setIsAdding(true);
+    }
+  }, [loading, tasks.length, effectiveLock]);
 
   // Edit dialog state
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
@@ -1397,22 +1406,6 @@ export function PlanningTaskList({
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-10 bg-muted/50 rounded animate-pulse" />
             ))}
-          </div>
-        ) : tasks.length === 0 && !isAdding ? (
-          <div className="flex flex-col items-center justify-center py-10 text-center">
-            <ClipboardList className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <p className="text-sm font-medium mb-1">
-              {t("planningTasks.empty", "No tasks yet")}
-            </p>
-            <p className="text-xs text-muted-foreground mb-4 max-w-xs">
-              {t("planningTasks.emptyHint", "Add the work items that will make up your quote")}
-            </p>
-            {!effectiveLock && (
-              <Button size="sm" onClick={() => setIsAdding(true)}>
-                <Plus className="h-4 w-4 mr-1" />
-                {t("planningTasks.addFirst", "Add first task")}
-              </Button>
-            )}
           </div>
         ) : (
           <>
