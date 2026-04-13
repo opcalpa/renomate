@@ -839,12 +839,6 @@ const Projects = () => {
           </section>
         )}
 
-        {/* Dashboard strip — aggregated stats across projects */}
-        <DashboardStrip
-          projectIds={visibleProjects.map((p) => p.id)}
-          currency={visibleProjects[0]?.currency || "SEK"}
-        />
-
         <section id="projekt" className="scroll-mt-20">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
@@ -1340,6 +1334,14 @@ const Projects = () => {
           </Dialog>
           </div>
         </div>
+
+        {/* Dashboard strip — reminders, right below header */}
+        {visibleProjects.length > 0 && (
+          <DashboardStrip
+            projectIds={visibleProjects.map((p) => p.id)}
+            currency={visibleProjects[0]?.currency || "SEK"}
+          />
+        )}
 
         {visibleProjects.length === 0 && !showAdminProjects ? (
           <div className="max-w-lg mx-auto text-center py-12 space-y-8">
