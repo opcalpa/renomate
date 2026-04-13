@@ -21,8 +21,8 @@ interface RequestData {
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://app.letsrenofine.com',
-  'https://letsrenofine.com',
+  'https://app.renofine.com',
+  'https://renofine.com',
 ];
 
 function getCorsHeaders(req: Request) {
@@ -91,7 +91,7 @@ serve(async (req) => {
     }
 
     const origin =
-      req.headers.get("origin") || "https://app.letsrenofine.com";
+      req.headers.get("origin") || "https://app.renofine.com";
     const invitationUrl = `${origin}/invitation?token=${invitation.token}`;
     const companyName =
       invitation.inviter?.company_name ||
@@ -168,7 +168,7 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Renofine <hello@letsrenofine.com>",
+        from: "Renofine <hello@renofine.com>",
         to: [invitation.email],
         subject: `Offert fr\u00e5n ${companyName} \u2014 ${projectName}`,
         html: emailHtml,

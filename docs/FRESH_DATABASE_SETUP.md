@@ -140,22 +140,22 @@ Redan aktiverat som default. Inget extra behövs.
 
 ## Steg 9: Konfigurera email-domän i Resend
 
-Om du byter Supabase-URL behöver inte Resend ändras — den använder `hello@letsrenofine.com` som avsändare oavsett Supabase-projekt.
+Om du byter Supabase-URL behöver inte Resend ändras — den använder `hello@renofine.com` som avsändare oavsett Supabase-projekt.
 
-**Kontrollera:** https://resend.com/domains — `letsrenofine.com` ska vara verifierad.
+**Kontrollera:** https://resend.com/domains — `renofine.com` ska vara verifierad.
 
 ---
 
 ## Steg 10: Uppdatera DNS/domän (om custom domain)
 
-Om du använder custom domain (`app.letsrenofine.com`):
+Om du använder custom domain (`app.renofine.com`):
 
 1. Dashboard → **Settings → Custom Domains**
-2. Lägg till `app.letsrenofine.com`
+2. Lägg till `app.renofine.com`
 3. Uppdatera DNS (Cloudflare/din DNS-provider):
    - CNAME: `app` → det nya Supabase-projektets URL
 
-**OBS:** CORS-allowlisten i edge functions pekar redan på `app.letsrenofine.com` och `letsrenofine.com` — ingen kodändring behövs.
+**OBS:** CORS-allowlisten i edge functions pekar redan på `app.renofine.com` och `renofine.com` — ingen kodändring behövs.
 
 ---
 

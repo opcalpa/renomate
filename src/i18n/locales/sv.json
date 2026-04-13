@@ -3077,7 +3077,7 @@
     "bugSentConfirm": "Tack! 🙏 Din buggrapport har skickats rakt till utvecklingsteamet. Vi tar dessa på allvar och tittar på det.\n\nSåg du något mer?",
     "suggestionSentConfirm": "Tack för bra input! 💡 Ditt förslag har skickats vidare till teamet. Vi älskar att höra hur vi kan göra Renofine bättre.\n\nHar du fler idéer?",
     "otherSentConfirm": "Meddelande mottaget! ✉️ Teamet kommer läsa det. Tack för att du tog dig tid att skriva.\n\nNågot annat du funderar på?",
-    "feedbackError": "Hmm, något gick fel när rapporten skulle skickas. Du kan också maila oss direkt på hello@letsrenofine.com — vi läser alla meddelanden!",
+    "feedbackError": "Hmm, något gick fel när rapporten skulle skickas. Du kan också maila oss direkt på hello@renofine.com — vi läser alla meddelanden!",
     "feedbackCancelled": "Inga problem, rapporten avbröts. Jag finns kvar om du behöver hjälp med något annat!",
     "feedbackTypePicker": "Vad vill du dela med dig av? Välj nedan:",
     "addMore": "Lägg till detaljer",

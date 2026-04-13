@@ -3080,7 +3080,7 @@
     "bugSentConfirm": "Got it! 🙏 Your bug report has been sent straight to the development team. We take these seriously and will look into it.\n\nIs there anything else you noticed?",
     "suggestionSentConfirm": "Thanks for the great input! 💡 Your suggestion has been forwarded to the team. We love hearing how we can make Renofine better.\n\nGot more ideas?",
     "otherSentConfirm": "Message received! ✉️ The team will read it. Thanks for taking the time to write.\n\nAnything else on your mind?",
-    "feedbackError": "Hmm, something went wrong sending your report. You can also email us directly at hello@letsrenofine.com — we read every message!",
+    "feedbackError": "Hmm, something went wrong sending your report. You can also email us directly at hello@renofine.com — we read every message!",
     "feedbackCancelled": "No worries, report cancelled. I'm still here if you need help with anything else!",
     "feedbackTypePicker": "What would you like to share? Pick one below:",
     "addMore": "Add more details",

@@ -4,8 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://app.letsrenofine.com',
-  'https://letsrenofine.com',
+  'https://app.renofine.com',
+  'https://renofine.com',
 ];
 
 function getCorsHeaders(req: Request) {

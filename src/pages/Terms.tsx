@@ -75,7 +75,7 @@ const Terms = () => {
             <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">8. Contact</h2>
             <p>
               If you have any questions about these Terms, please contact us at
-              support@renofine.app.
+              support@renofine.com.
             </p>
           </div>
         </div>

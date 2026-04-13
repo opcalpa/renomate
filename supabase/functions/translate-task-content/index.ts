@@ -7,8 +7,8 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://app.letsrenofine.com",
-  "https://letsrenofine.com",
+  "https://app.renofine.com",
+  "https://renofine.com",
 ];
 
 function getCorsHeaders(req: Request) {

@@ -12,8 +12,8 @@ const ELKS_API_PASSWORD = Deno.env.get("ELKS_API_PASSWORD");
 const ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://app.letsrenofine.com",
-  "https://letsrenofine.com",
+  "https://app.renofine.com",
+  "https://renofine.com",
 ];
 
 function getCorsHeaders(req: Request) {
@@ -84,7 +84,7 @@ serve(async (req) => {
 
     const ownerName = ownerProfile?.name || "Your project manager";
     const lang = tokenRecord.worker_language || "en";
-    const url = `https://app.letsrenofine.com/w/${tokenRecord.token}`;
+    const url = `https://app.renofine.com/w/${tokenRecord.token}`;
     const template = SMS_TEMPLATES[lang] || SMS_TEMPLATES.en;
     const message = template(ownerName, url);
 
