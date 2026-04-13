@@ -219,7 +219,9 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   });
 
   const rooms = data?.rooms || [];
-  const allPhotos = data?.photos || [];
+  // Exclude before/during/after photos from inspiration gallery
+  const BA_SOURCES = new Set(["before", "during", "after"]);
+  const allPhotos = useMemo(() => (data?.photos || []).filter((p) => !BA_SOURCES.has(p.source)), [data?.photos]);
   const materialCards = data?.materialCards || [];
 
   const filteredPhotos = useMemo(() => {
@@ -598,38 +600,16 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
       <CardContent className="p-4 sm:p-5">
         {/* Header */}
         <div className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-3")}>
-          {/* Section tabs — Inspiration vs Före & Efter */}
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => { if (inspoView === "beforeafter") setInspoView("gallery"); else setCollapsed(!collapsed); }}
-              className={cn(
-                "text-xs font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors",
-                inspoView !== "beforeafter"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Sparkles className="h-3 w-3" />
-              {t("inspiration.title")}
-              {inspoView !== "beforeafter" && (
-                <ChevronDown className={cn("h-3 w-3 transition-transform", collapsed && "-rotate-90")} />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setInspoView("beforeafter"); setCollapsed(false); }}
-              className={cn(
-                "text-xs font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors",
-                inspoView === "beforeafter"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Clock className="h-3 w-3" />
-              {t("inspiration.beforeAfter", "Före & Efter")}
-            </button>
-          </div>
+          {/* Section title */}
+          <button
+            type="button"
+            onClick={() => { if (inspoView === "beforeafter") setInspoView("gallery"); else setCollapsed(!collapsed); }}
+            className="text-xs font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors bg-primary text-primary-foreground"
+          >
+            <Sparkles className="h-3 w-3" />
+            {t("inspiration.title")}
+            <ChevronDown className={cn("h-3 w-3 transition-transform", collapsed && "-rotate-90")} />
+          </button>
           {/* Room filter — shared across all views */}
           {hasPhotos && rooms.length > 0 && (
             <Popover>
@@ -664,15 +644,15 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               </PopoverContent>
             </Popover>
           )}
-          {/* Before/After: phase pills */}
-          {inspoView === "beforeafter" && (
+          {/* Before/After: phase pills — hidden, feature parked */}
+          {false && inspoView === "beforeafter" && (
             <BeforeAfterUploader
               selectedPhase={baPhase}
               onPhaseChange={setBaPhase}
             />
           )}
           {/* Gallery/Moodboard sub-toggle — only for Inspiration tab */}
-          {hasPhotos && inspoView !== "beforeafter" && (
+          {hasPhotos && (
             <div className="flex rounded-md border bg-muted/30 p-0.5">
               <button
                 type="button"
@@ -783,7 +763,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               <Maximize2 className="h-3.5 w-3.5" />
             </button>
           )}
-          {(hasPhotos || inspoView === "beforeafter") && (
+          {hasPhotos && (
             <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
               <PopoverTrigger asChild>
                 <button
@@ -1504,14 +1484,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
             if (files?.length) {
               const fileArray = Array.from(files);
               e.target.value = "";
-              if (inspoView === "beforeafter") {
-                // Tag each file with the selected phase + room
-                for (const f of fileArray) {
-                  handleBeforeAfterUpload(f, baPhase, selectedRoom === "all" || selectedRoom === "untagged" ? null : selectedRoom);
-                }
-              } else {
-                handleUpload(fileArray);
-              }
+              handleUpload(fileArray);
             }
           }}
         />
