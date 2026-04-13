@@ -4442,7 +4442,9 @@
     "ccOther": "Other",
     "ccInspection": "Inspection",
     "ccCleanup": "Cleanup & Waste",
-    "ccDesign": "Design & Planning"
+    "ccDesign": "Design & Planning",
+    "pipeline": "Pipeline",
+    "avgProjectSize": "Avg. budget per project"
   },
   "invoiceMethod": {
     "title": "Create Invoice",

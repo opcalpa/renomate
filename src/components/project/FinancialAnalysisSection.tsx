@@ -313,14 +313,26 @@ export function FinancialAnalysisSection({
       .slice(0, 8);
   }, [isSingleProject, projectTasks, t]);
 
-  // Pie data: portfolio = budget vs profit, project = cost center breakdown
+  // Pie data: only used for single-project cost center breakdown
   const pieData = useMemo(() => {
     if (isSingleProject) return costCenterData;
-    return [
-      { name: t("financialAnalysis.totalBudget"), value: Math.round(totals.budget) },
-      { name: t("financialAnalysis.totalProfit"), value: Math.round(totals.profit) },
-    ];
-  }, [isSingleProject, costCenterData, totals, t]);
+    return [];
+  }, [isSingleProject, costCenterData]);
+
+  // Pipeline status counts (portfolio only)
+  const pipelineCounts = useMemo(() => {
+    if (isSingleProject) return null;
+    const counts = { active: 0, quoting: 0, completed: 0, other: 0 };
+    for (const p of projects) {
+      const s = p.status || "";
+      if (STATUS_FILTER_GROUPS.active.includes(s)) counts.active++;
+      else if (STATUS_FILTER_GROUPS.quoting.includes(s)) counts.quoting++;
+      else if (STATUS_FILTER_GROUPS.completed.includes(s)) counts.completed++;
+      else counts.other++;
+    }
+    return counts;
+  }, [projects, isSingleProject]);
+
 
   // ---- Tooltips ----
 
@@ -560,12 +572,11 @@ export function FinancialAnalysisSection({
 
               {/* Charts — side by side */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Left: Pie chart */}
+                {/* Left: Donut (single project) or Pipeline (portfolio) */}
+                {isSingleProject ? (
                 <div className="rounded-lg border bg-card p-4">
                   <p className="text-sm font-medium text-muted-foreground mb-3">
-                    {isSingleProject
-                      ? t("financialAnalysis.costPerType", "Cost per work type")
-                      : t("financialAnalysis.budgetVsProfit")}
+                    {t("financialAnalysis.costPerType", "Kostnad per arbetstyp")}
                   </p>
                   {pieData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={250}>
@@ -597,6 +608,72 @@ export function FinancialAnalysisSection({
                     </div>
                   )}
                 </div>
+                ) : (
+                <div className="rounded-lg border bg-card p-4">
+                  <p className="text-sm font-medium text-muted-foreground mb-3">
+                    {t("financialAnalysis.pipeline", "Pipeline")}
+                  </p>
+                  {pipelineCounts && (() => {
+                    const total = pipelineCounts.active + pipelineCounts.quoting + pipelineCounts.completed + pipelineCounts.other;
+                    if (total === 0) return <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">{t("financialAnalysis.noData")}</div>;
+                    const segments = [
+                      { key: "active", count: pipelineCounts.active, color: "bg-blue-500", label: t("financialAnalysis.status_active") },
+                      { key: "quoting", count: pipelineCounts.quoting, color: "bg-amber-500", label: t("financialAnalysis.status_quoting") },
+                      { key: "completed", count: pipelineCounts.completed, color: "bg-emerald-500", label: t("financialAnalysis.status_completed") },
+                    ].filter(s => s.count > 0);
+
+                    // Budget per status group
+                    const statusBudgets: Record<string, number> = { active: 0, quoting: 0, completed: 0 };
+                    for (const p of projects) {
+                      const s = p.status || "";
+                      const b = financials[p.id]?.budget ?? 0;
+                      if (STATUS_FILTER_GROUPS.active.includes(s)) statusBudgets.active += b;
+                      else if (STATUS_FILTER_GROUPS.quoting.includes(s)) statusBudgets.quoting += b;
+                      else if (STATUS_FILTER_GROUPS.completed.includes(s)) statusBudgets.completed += b;
+                    }
+
+                    return (
+                      <div className="flex flex-col gap-4">
+                        {/* Stacked bar */}
+                        <div className="flex h-6 rounded-md overflow-hidden">
+                          {segments.map(s => (
+                            <div
+                              key={s.key}
+                              className={`${s.color} transition-all`}
+                              style={{ width: `${(s.count / total) * 100}%` }}
+                              title={`${s.label}: ${s.count}`}
+                            />
+                          ))}
+                        </div>
+                        {/* Legend with budget */}
+                        <div className="space-y-3">
+                          {segments.map(s => (
+                            <div key={s.key} className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-3 h-3 rounded-sm ${s.color}`} />
+                                <span className="text-sm">{s.label}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-sm font-medium tabular-nums">{s.count} {t("financialAnalysis.projects")}</span>
+                                <span className="text-xs text-muted-foreground ml-2 tabular-nums">
+                                  {formatCurrency(statusBudgets[s.key] || 0, currency, { compact: true })}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Avg project size */}
+                        <div className="border-t pt-3 mt-1">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">{t("financialAnalysis.avgProjectSize", "Snittbudget per projekt")}</span>
+                            <span className="font-medium tabular-nums">{formatCurrency(Math.round(totals.budget / Math.max(1, totals.count)), currency)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+                )}
 
                 {/* Right: Monthly trend */}
                 <div className="rounded-lg border bg-card p-4">

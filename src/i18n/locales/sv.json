@@ -4439,7 +4439,9 @@
     "ccOther": "Övrigt",
     "ccInspection": "Besiktning",
     "ccCleanup": "Städ & Avfall",
-    "ccDesign": "Design & Planering"
+    "ccDesign": "Design & Planering",
+    "pipeline": "Pipeline",
+    "avgProjectSize": "Snittbudget per projekt"
   },
   "invoiceMethod": {
     "title": "Skapa faktura",
