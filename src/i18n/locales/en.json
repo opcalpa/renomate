@@ -675,7 +675,10 @@
     "bulkDeleteSuccess": "Deleted {{count}} tasks",
     "bulkUpdateFailed": "Failed to update tasks",
     "bulkDeleteFailed": "Failed to delete tasks",
-    "bulkClearSelection": "Deselect"
+    "bulkClearSelection": "Deselect",
+    "bulkConfirmTitle": "Update {{count}} tasks?",
+    "bulkConfirmDesc": "Set {{field}} to \"{{value}}\" for {{count}} tasks?",
+    "bulkConfirmApply": "Apply"
   },
   "purchasesTable": {
     "columns": "Columns",

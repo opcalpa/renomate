@@ -675,7 +675,10 @@
     "bulkDeleteSuccess": "Tog bort {{count}} arbeten",
     "bulkUpdateFailed": "Kunde inte uppdatera arbeten",
     "bulkDeleteFailed": "Kunde inte ta bort arbeten",
-    "bulkClearSelection": "Avmarkera"
+    "bulkClearSelection": "Avmarkera",
+    "bulkConfirmTitle": "Uppdatera {{count}} arbeten?",
+    "bulkConfirmDesc": "Ändra {{field}} till \"{{value}}\" för {{count}} arbeten?",
+    "bulkConfirmApply": "Tillämpa"
   },
   "purchasesTable": {
     "columns": "Kolumner",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -63,6 +63,17 @@ const PAYMENT_STATUS_OPTIONS = [
   { value: "partially_paid", labelKey: "tasks.partiallyPaid" },
 ];
 
+const FIELD_LABELS: Record<string, string> = {
+  status: "Status",
+  priority: "tasksTable.bulkChangePriority",
+  assigned_to_stakeholder_id: "tasksTable.bulkChangeAssignee",
+  room_id: "tasksTable.bulkChangeRoom",
+  start_date: "tasksTable.bulkStartDate",
+  finish_date: "tasksTable.bulkFinishDate",
+  cost_center: "tasksTable.bulkCostCenter",
+  payment_status: "tasksTable.bulkPaymentStatus",
+};
+
 export function BulkActionBar({
   selectedCount,
   statusLabels,
@@ -76,11 +87,22 @@ export function BulkActionBar({
 }: BulkActionBarProps) {
   const { t } = useTranslation();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{ field: string; value: unknown; displayValue: string } | null>(null);
 
   const allAssignees = [
     ...stakeholders.map((s) => ({ id: s.id, name: s.name })),
     ...teamMembers.map((m) => ({ id: m.id, name: m.name })),
   ];
+
+  const confirmAction = useCallback(() => {
+    if (!pendingAction) return;
+    onBulkUpdate(pendingAction.field, pendingAction.value);
+    setPendingAction(null);
+  }, [pendingAction, onBulkUpdate]);
+
+  const queueUpdate = (field: string, value: unknown, displayValue: string) => {
+    setPendingAction({ field, value, displayValue });
+  };
 
   return (
     <>
@@ -91,7 +113,7 @@ export function BulkActionBar({
           </span>
 
           {/* Status */}
-          <Select onValueChange={(v) => onBulkUpdate("status", v)} disabled={isLoading}>
+          <Select onValueChange={(v) => queueUpdate("status", v, statusLabels[v] || v)} disabled={isLoading}>
             <SelectTrigger className="h-7 w-[120px] text-xs shrink-0">
               <SelectValue placeholder={t("tasksTable.bulkChangeStatus", "Status")} />
             </SelectTrigger>
@@ -106,7 +128,7 @@ export function BulkActionBar({
           </Select>
 
           {/* Priority */}
-          <Select onValueChange={(v) => onBulkUpdate("priority", v)} disabled={isLoading}>
+          <Select onValueChange={(v) => queueUpdate("priority", v, t(PRIORITY_OPTIONS.find(o => o.value === v)?.labelKey || v))} disabled={isLoading}>
             <SelectTrigger className="h-7 w-[110px] text-xs shrink-0">
               <SelectValue placeholder={t("tasksTable.bulkChangePriority", "Priority")} />
             </SelectTrigger>
@@ -122,7 +144,10 @@ export function BulkActionBar({
           {/* Assignee */}
           {allAssignees.length > 0 && (
             <Select
-              onValueChange={(v) => onBulkUpdate("assigned_to_stakeholder_id", v === "__unassigned__" ? null : v)}
+              onValueChange={(v) => {
+                const name = v === "__unassigned__" ? t("tasks.unassigned") : allAssignees.find(a => a.id === v)?.name || v;
+                queueUpdate("assigned_to_stakeholder_id", v === "__unassigned__" ? null : v, name);
+              }}
               disabled={isLoading}
             >
               <SelectTrigger className="h-7 w-[130px] text-xs shrink-0">
@@ -144,7 +169,10 @@ export function BulkActionBar({
           {/* Room */}
           {rooms.length > 0 && (
             <Select
-              onValueChange={(v) => onBulkUpdate("room_id", v === "__none__" ? null : v)}
+              onValueChange={(v) => {
+                const name = v === "__none__" ? t("tasks.noRoom") : rooms.find(r => r.id === v)?.name || v;
+                queueUpdate("room_id", v === "__none__" ? null : v, name);
+              }}
               disabled={isLoading}
             >
               <SelectTrigger className="h-7 w-[110px] text-xs shrink-0">
@@ -167,7 +195,7 @@ export function BulkActionBar({
           <DatePicker
             date={undefined}
             onDateChange={(date) => {
-              if (date) onBulkUpdate("start_date", formatLocalDate(date));
+              if (date) queueUpdate("start_date", formatLocalDate(date), formatLocalDate(date));
             }}
             placeholder={t("tasksTable.bulkStartDate", "Start date")}
             className="h-7 w-[140px] text-xs shrink-0"
@@ -178,7 +206,7 @@ export function BulkActionBar({
           <DatePicker
             date={undefined}
             onDateChange={(date) => {
-              if (date) onBulkUpdate("finish_date", formatLocalDate(date));
+              if (date) queueUpdate("finish_date", formatLocalDate(date), formatLocalDate(date));
             }}
             placeholder={t("tasksTable.bulkFinishDate", "Finish date")}
             className="h-7 w-[140px] text-xs shrink-0"
@@ -186,7 +214,10 @@ export function BulkActionBar({
           />
 
           {/* Cost center */}
-          <Select onValueChange={(v) => onBulkUpdate("cost_center", v === "__none__" ? null : v)} disabled={isLoading}>
+          <Select onValueChange={(v) => {
+            const name = v === "__none__" ? t("common.none") : DEFAULT_COST_CENTERS.find(c => c.id === v)?.label || v;
+            queueUpdate("cost_center", v === "__none__" ? null : v, name);
+          }} disabled={isLoading}>
             <SelectTrigger className="h-7 w-[130px] text-xs shrink-0">
               <SelectValue placeholder={t("tasksTable.bulkCostCenter", "Category")} />
             </SelectTrigger>
@@ -201,7 +232,10 @@ export function BulkActionBar({
           </Select>
 
           {/* Payment status */}
-          <Select onValueChange={(v) => onBulkUpdate("payment_status", v)} disabled={isLoading}>
+          <Select onValueChange={(v) => {
+            const name = t(PAYMENT_STATUS_OPTIONS.find(o => o.value === v)?.labelKey || v);
+            queueUpdate("payment_status", v, name);
+          }} disabled={isLoading}>
             <SelectTrigger className="h-7 w-[120px] text-xs shrink-0">
               <SelectValue placeholder={t("tasksTable.bulkPaymentStatus", "Payment")} />
             </SelectTrigger>
@@ -228,7 +262,7 @@ export function BulkActionBar({
             {t("tasksTable.bulkDelete", "Delete")}
           </Button>
 
-          {/* Clear selection — pushed right */}
+          {/* Clear selection */}
           <Button
             variant="ghost"
             size="sm"
@@ -237,11 +271,37 @@ export function BulkActionBar({
             disabled={isLoading}
           >
             <X className="h-3.5 w-3.5 mr-1" />
-            {t("tasksTable.bulkClearSelection", "Clear")}
+            {t("tasksTable.bulkClearSelection", "Deselect")}
           </Button>
         </div>
       </div>
 
+      {/* Confirm bulk update */}
+      <AlertDialog open={!!pendingAction} onOpenChange={(open) => { if (!open) setPendingAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("tasksTable.bulkConfirmTitle", { count: selectedCount, defaultValue: "Update {{count}} tasks?" })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAction && t("tasksTable.bulkConfirmDesc", {
+                count: selectedCount,
+                field: t(FIELD_LABELS[pendingAction.field] || pendingAction.field),
+                value: pendingAction.displayValue,
+                defaultValue: "Set {{field}} to \"{{value}}\" for {{count}} tasks?",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAction}>
+              {t("tasksTable.bulkConfirmApply", "Apply")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm delete */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
