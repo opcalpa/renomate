@@ -382,8 +382,8 @@ const OverviewTab = ({
         </div>
       )}
 
-      {/* Inspiration — shown during planning for homeowners & planning contributors */}
-      {isPlanning && isHomeowner && (
+      {/* Inspiration — shown during planning for all roles */}
+      {isPlanning && (
         <InspirationSection
           projectId={project.id}
           currency={project.currency || "SEK"}
