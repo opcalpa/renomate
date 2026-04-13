@@ -53,7 +53,6 @@ import {
 import { useTasksTableView, type TasksTableViewState } from "./useTasksTableView";
 import { TaskColumnKey, TaskColumnDef, EXTRA_COLUMN_KEYS } from "./tasksTableTypes";
 import { useBulkTaskActions } from "./useBulkTaskActions";
-import { BulkActionBar } from "./BulkActionBar";
 import { FilePreviewPopover } from "@/components/shared/FilePreviewPopover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
@@ -1048,21 +1047,6 @@ export function TasksTableView({
         </Popover>
 
       </div>}
-
-      {/* Bulk action bar */}
-      {bulk.showBulkBar && !isReadOnly && (
-        <BulkActionBar
-          selectedCount={bulk.selectedCount}
-          statusLabels={statusLabels}
-          rooms={rooms}
-          stakeholders={stakeholders}
-          teamMembers={teamMembers}
-          onBulkUpdate={bulk.bulkUpdateField}
-          onBulkDelete={bulk.bulkDelete}
-          onClearSelection={bulk.clearSelection}
-          isLoading={bulk.isBulkLoading}
-        />
-      )}
 
       {/* Table */}
       <Card>
