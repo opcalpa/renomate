@@ -71,14 +71,14 @@ export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSecti
                 onClick={() => setIntakesDialogOpen(true)}
                 className="flex-1 text-left px-3 first:pl-0 last:pr-0 hover:bg-accent/50 rounded-l transition-colors"
               >
-                <div className="flex items-center gap-1.5 mb-1">
+                <div className="flex items-center gap-1.5 mb-2">
                   <Mail className="h-3.5 w-3.5 text-blue-600" />
                   <span className="text-xs font-medium text-muted-foreground">
                     {t("pipeline.intakeRequests")}
                   </span>
                 </div>
                 <p className="text-lg font-bold">{data.intakeRequests.total}</p>
-                <div className="text-xs text-muted-foreground mt-0.5 space-y-0.5">
+                <div className="text-xs text-muted-foreground mt-1 space-y-1">
                   {data.intakeRequests.pending > 0 && (
                     <p>
                       {data.intakeRequests.pending} {t("pipeline.awaitingResponse")}
@@ -99,7 +99,7 @@ export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSecti
                 onClick={() => setActiveBucketDialog("draft")}
                 className="flex-1 text-left px-3 first:pl-0 last:pr-0 hover:bg-accent/50 transition-colors"
               >
-                <div className="flex items-center gap-1.5 mb-1">
+                <div className="flex items-center gap-1.5 mb-2">
                   <FileEdit className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-xs font-medium text-muted-foreground">
                     {t("pipeline.drafts")}
@@ -107,7 +107,7 @@ export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSecti
                 </div>
                 <p className="text-lg font-bold">{projectQuotes.draft.count}</p>
                 {projectQuotes.draft.totalAmount > 0 && (
-                  <div className="text-xs text-muted-foreground mt-0.5 space-y-0.5">
+                  <div className="text-xs text-muted-foreground mt-1 space-y-1">
                     <p>{t("planningTasks.estimatedBudget", "Estimated budget")}: <span className="font-medium text-foreground">{formatCurrency(projectQuotes.draft.totalAmount)}</span></p>
                     <p>{t("planningTasks.estimatedProfit", "Est. profit")}: <span className="font-medium text-green-600">{formatCurrency(projectQuotes.draft.totalAfterRot)}</span></p>
                   </div>
@@ -121,7 +121,7 @@ export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSecti
                 onClick={() => setActiveBucketDialog("sent")}
                 className="flex-1 text-left px-3 first:pl-0 last:pr-0 hover:bg-accent/50 transition-colors"
               >
-                <div className="flex items-center gap-1.5 mb-1">
+                <div className="flex items-center gap-1.5 mb-2">
                   <Send className="h-3.5 w-3.5 text-blue-600" />
                   <span className="text-xs font-medium text-muted-foreground">
                     {t("pipeline.sentQuotes")}
@@ -129,7 +129,7 @@ export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSecti
                 </div>
                 <p className="text-lg font-bold">{projectQuotes.sent.count}</p>
                 {projectQuotes.sent.totalAmount > 0 && (
-                  <div className="text-xs text-muted-foreground mt-0.5 space-y-0.5">
+                  <div className="text-xs text-muted-foreground mt-1 space-y-1">
                     <p>{t("planningTasks.estimatedBudget", "Estimated budget")}: <span className="font-medium text-foreground">{formatCurrency(projectQuotes.sent.totalAmount)}</span></p>
                     <p>{t("planningTasks.estimatedProfit", "Est. profit")}: <span className="font-medium text-green-600">{formatCurrency(projectQuotes.sent.totalAfterRot)}</span></p>
                   </div>
@@ -143,7 +143,7 @@ export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSecti
                 onClick={() => setActiveBucketDialog("accepted")}
                 className="flex-1 text-left px-3 first:pl-0 last:pr-0 hover:bg-accent/50 rounded-r transition-colors"
               >
-                <div className="flex items-center gap-1.5 mb-1">
+                <div className="flex items-center gap-1.5 mb-2">
                   <CheckCircle className="h-3.5 w-3.5 text-green-600" />
                   <span className="text-xs font-medium text-muted-foreground">
                     {t("pipeline.accepted")}
@@ -151,7 +151,7 @@ export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSecti
                 </div>
                 <p className="text-lg font-bold">{projectQuotes.accepted.count}</p>
                 {projectQuotes.accepted.totalAmount > 0 && (
-                  <div className="text-xs text-muted-foreground mt-0.5 space-y-0.5">
+                  <div className="text-xs text-muted-foreground mt-1 space-y-1">
                     <p>{t("planningTasks.estimatedBudget", "Estimated budget")}: <span className="font-medium text-foreground">{formatCurrency(projectQuotes.accepted.totalAmount)}</span></p>
                     <p>{t("planningTasks.estimatedProfit", "Est. profit")}: <span className="font-medium text-green-600">{formatCurrency(projectQuotes.accepted.totalAfterRot)}</span></p>
                   </div>

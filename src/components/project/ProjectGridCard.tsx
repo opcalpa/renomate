@@ -126,8 +126,8 @@ export function ProjectGridCard({
           />
         </div>
       ) : (
-        <div className="h-20 bg-gradient-to-br from-muted/60 to-muted/30 flex items-center justify-center">
-          <Home className="h-8 w-8 text-muted-foreground/30" />
+        <div className="h-32 bg-gradient-to-br from-muted/60 to-muted/30 flex items-center justify-center">
+          <Home className="h-8 w-8 text-muted-foreground/20" />
         </div>
       )}
 
@@ -139,7 +139,7 @@ export function ProjectGridCard({
               <p className="text-xs text-muted-foreground mt-0.5 truncate">{address}</p>
             )}
           </div>
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 ${statusColor}`}>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium shrink-0 ${statusColor}`}>
             {statusLabel}
           </span>
         </div>
@@ -191,7 +191,7 @@ export function ProjectGridCard({
         )}
 
         {/* Footer: owner + delete */}
-        <div className="flex items-center justify-between pt-1 border-t">
+        <div className="flex items-center justify-between pt-3 border-t">
           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
             <User className="h-3 w-3" />
             {ownerName}

@@ -183,7 +183,7 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
                     <span className="tabular-nums text-red-400">{p.count}</span>
                   </div>
                   {p.items.length > 0 && (
-                    <ul className="mt-0.5 space-y-0.5">
+                    <ul className="mt-1 space-y-1">
                       {p.items.map((item, i) => (
                         <li key={i} className="text-xs text-muted-foreground truncate pl-2">· {item}</li>
                       ))}
@@ -239,7 +239,7 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
                     <span className="tabular-nums">{p.count}</span>
                   </div>
                   {p.items.length > 0 && (
-                    <ul className="mt-0.5 space-y-0.5">
+                    <ul className="mt-1 space-y-1">
                       {p.items.map((item, i) => (
                         <li key={i} className="text-xs text-muted-foreground truncate pl-2">· {item}</li>
                       ))}
@@ -297,7 +297,7 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
                     <span className="tabular-nums text-amber-400">{p.count}</span>
                   </div>
                   {p.items.length > 0 && (
-                    <ul className="mt-0.5 space-y-0.5">
+                    <ul className="mt-1 space-y-1">
                       {p.items.map((item, i) => (
                         <li key={i} className="text-xs text-muted-foreground truncate pl-2">· {item}</li>
                       ))}

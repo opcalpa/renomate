@@ -841,13 +841,13 @@ const Projects = () => {
         )}
 
         <section id="projekt" className="scroll-mt-20">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">{t('projects.title')}</h2>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
               {visibleProjects.length > 0 && (
-                <div className="hidden sm:flex items-center border rounded-md">
+                <div className="flex items-center border rounded-md">
                   <button
                     type="button"
                     onClick={() => { setViewMode("grid"); localStorage.setItem("projects_view_mode", "grid"); }}
@@ -878,7 +878,7 @@ const Projects = () => {
                 <button
                   type="button"
                   onClick={() => setShowAdminProjects((v) => !v)}
-                  className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                  className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${
                     showAdminProjects
                       ? "bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300"
                       : "border-border text-muted-foreground hover:text-foreground"
@@ -886,7 +886,7 @@ const Projects = () => {
                   title={t("projects.adminToggle", "Show all projects (admin)")}
                 >
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  {showAdminProjects ? t("projects.adminOn", "Admin") : t("projects.adminOff", "Admin")}
+                  <span className="hidden sm:inline">{showAdminProjects ? t("projects.adminOn", "Admin") : t("projects.adminOff", "Admin")}</span>
                 </button>
               )}
               {viewMode === "list" && (
