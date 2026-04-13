@@ -2605,7 +2605,7 @@ export function PlanningTaskList({
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p className="text-xs max-w-[220px]">{t("planningTasks.addCostHint")}</p>
+                          <p className="text-xs max-w-[300px]">{t("planningTasks.addCostHint")}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>

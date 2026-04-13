@@ -135,7 +135,7 @@ export function AddMaterialDialog({
                 <TooltipTrigger asChild>
                   <Info className="h-4 w-4 text-muted-foreground" />
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-[260px]">
+                <TooltipContent side="bottom" className="max-w-[300px]">
                   <p className="text-xs">{t("planningTasks.addCostHint", "Add materials (tiles, paint, fixtures) or subcontractor costs (electrician, plumber) to your scope.")}</p>
                 </TooltipContent>
               </Tooltip>
