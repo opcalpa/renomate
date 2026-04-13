@@ -235,7 +235,7 @@ serve(async (req) => {
     const { data: invitation, error: invitationError } = await supabase
       .from("project_invitations")
       .select(
-        `*, project:projects(id, name), inviter:profiles!invited_by_user_id(name, email)`
+        `*, project:projects(id, name), inviter:profiles!invited_by_user_id(name, email, company_name)`
       )
       .eq("id", invitationId)
       .single();
@@ -272,10 +272,11 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Renofine <hello@renofine.com>",
+        from: `${invitation.inviter?.company_name || invitation.inviter?.name || "Renofine"} via Renofine <hello@renofine.com>`,
         to: [recipientEmail],
         subject,
         html,
+        ...(invitation.inviter?.email ? { reply_to: invitation.inviter.email } : {}),
       }),
     });
 

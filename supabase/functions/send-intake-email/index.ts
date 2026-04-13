@@ -185,10 +185,11 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Renofine <hello@renofine.com>",
+        from: `${builderName} via Renofine <hello@renofine.com>`,
         to: [customerEmail],
         subject: `${builderName} vill hjälpa dig med din renovering`,
         html: emailHtml,
+        ...(intake.creator?.email ? { reply_to: intake.creator.email } : {}),
       }),
     });
 

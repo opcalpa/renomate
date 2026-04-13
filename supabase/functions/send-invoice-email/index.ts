@@ -194,10 +194,11 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Renofine <hello@renofine.com>",
+        from: `${companyName} via Renofine <hello@renofine.com>`,
         to: [invitation.email],
         subject: `Faktura fr\u00e5n ${companyName} \u2014 ${projectName}`,
         html: emailHtml,
+        ...(invitation.inviter?.email ? { reply_to: invitation.inviter.email } : {}),
       }),
     });
 
