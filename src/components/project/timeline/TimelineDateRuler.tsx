@@ -50,23 +50,33 @@ const TimelineDateRulerComponent: React.FC<TimelineDateRulerProps> = ({
       const dayOfWeek = getDay(date);
       const weekend = isWeekend(date);
 
-      // Month labels - Row 1
+      // Month labels - Row 1 (clamped to viewport, no overlap)
       const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
       if (!renderedMonths.has(monthKey)) {
         renderedMonths.add(monthKey);
         const label = format(date, "MMMM yyyy", { locale: sv }).toUpperCase();
-        items.push(
-          <KonvaText
-            key={`m-${monthKey}`}
-            x={date.getDate() === 1 ? x + 6 : x + 6}
-            y={4}
-            text={label}
-            fontSize={11}
-            fontStyle="bold"
-            fill={MONTH_TEXT_COLOR}
-            listening={false}
-          />
-        );
+        const monthStartX = x + 6;
+        // Calculate where next month starts to prevent overlap
+        const nextMonthDate = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+        const nextMonthX = dateToX(nextMonthDate, originDate, pixelsPerDay, panX);
+        const labelWidth = label.length * 7; // approximate width
+        // Clamp: don't go left of viewport (sticky), but don't overlap next month
+        const clampedX = Math.max(6, Math.min(monthStartX, nextMonthX - labelWidth - 12));
+        // Only render if there's enough room
+        if (nextMonthX - Math.max(6, monthStartX) > 40) {
+          items.push(
+            <KonvaText
+              key={`m-${monthKey}`}
+              x={clampedX}
+              y={4}
+              text={label}
+              fontSize={11}
+              fontStyle="bold"
+              fill={MONTH_TEXT_COLOR}
+              listening={false}
+            />
+          );
+        }
       }
 
       // Week number blocks - Row 2
