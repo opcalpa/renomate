@@ -4256,18 +4256,15 @@
     "useAsbudget": "Use as budget"
   },
   "costCenters": {
-    "floor": "Floor",
-    "paint": "Paint",
+    "demolition": "Demolition",
     "construction": "Construction",
-    "kitchen": "Kitchen",
-    "bathrooms": "Bathrooms",
+    "electricity": "Electricity",
     "plumbing": "Plumbing",
     "tiles": "Tiles",
-    "windows": "Windows",
-    "doors": "Doors",
-    "electricity": "Electricity",
+    "floor": "Floor",
+    "paint": "Paint",
     "carpentry": "Carpentry",
-    "demolition": "Demolition",
+    "windowsDoors": "Windows & Doors",
     "inspection": "Inspection",
     "cleanup": "Cleanup & Waste",
     "design": "Design & Planning"

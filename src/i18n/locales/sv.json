@@ -4253,18 +4253,15 @@
     "useAsbudget": "Använd som budget"
   },
   "costCenters": {
-    "floor": "Golv",
-    "paint": "Målning",
+    "demolition": "Rivning",
     "construction": "Bygg",
-    "kitchen": "Kök",
-    "bathrooms": "Badrum",
+    "electricity": "El",
     "plumbing": "VVS",
     "tiles": "Kakel & klinker",
-    "windows": "Fönster",
-    "doors": "Dörrar",
-    "electricity": "El",
+    "floor": "Golv",
+    "paint": "Målning",
     "carpentry": "Snickeri",
-    "demolition": "Rivning",
+    "windowsDoors": "Fönster & dörrar",
     "inspection": "Besiktning",
     "cleanup": "Städ & avfall",
     "design": "Design & planering"

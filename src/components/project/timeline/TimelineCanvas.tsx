@@ -52,10 +52,13 @@ const GROUP_HEADER_BG = "#f1f5f9";
 const GROUP_HEADER_TEXT = "#475569";
 
 const CATEGORY_COLORS: Record<string, string> = {
-  floor: "#84cc16", paint: "#ec4899", construction: "#78716c", kitchen: "#ef4444",
-  bathrooms: "#6366f1", plumbing: "#06b6d4", tiles: "#8b5cf6", windows: "#0ea5e9",
-  doors: "#a855f7", electricity: "#3b82f6", carpentry: "#f97316", demolition: "#f59e0b",
+  demolition: "#f59e0b", construction: "#78716c", electricity: "#3b82f6",
+  plumbing: "#06b6d4", tiles: "#8b5cf6", floor: "#84cc16",
+  paint: "#ec4899", carpentry: "#f97316", windows_doors: "#0ea5e9",
   inspection: "#14b8a6", cleanup: "#71717a", design: "#f472b6",
+  // Legacy IDs still resolve
+  kitchen: "#ef4444", bathrooms: "#6366f1", bathroom: "#6366f1",
+  windows: "#0ea5e9", doors: "#a855f7",
 };
 const PRIORITY_COLORS: Record<string, string> = {
   low: "#94a3b8", medium: "#f59e0b", high: "#ef4444",
@@ -504,13 +507,16 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
               // Group tasks by cost_center to compute phase spans
               const phaseMap = new Map<string, { minDate: string; maxDate: string; color: string }>();
               const PHASE_COLORS: Record<string, string> = {
-                demolition: "#f59e0b20", electrical: "#3b82f620", electricity: "#3b82f620",
-                plumbing: "#06b6d420", tiling: "#8b5cf620", tiles: "#8b5cf620",
-                carpentry: "#f9731620", painting: "#ec489920", paint: "#ec489920",
-                flooring: "#84cc1620", floor: "#84cc1620", kitchen: "#ef444420",
-                bathroom: "#6366f120", bathrooms: "#6366f120", construction: "#78716c20",
-                windows: "#0ea5e920", doors: "#a855f720",
+                demolition: "#f59e0b20", construction: "#78716c20",
+                electricity: "#3b82f620", electrical: "#3b82f620",
+                plumbing: "#06b6d420", tiles: "#8b5cf620", tiling: "#8b5cf620",
+                floor: "#84cc1620", flooring: "#84cc1620",
+                paint: "#ec489920", painting: "#ec489920",
+                carpentry: "#f9731620", windows_doors: "#0ea5e920",
                 inspection: "#14b8a620", cleanup: "#71717a20", design: "#f472b620",
+                // Legacy
+                kitchen: "#ef444420", bathrooms: "#6366f120", bathroom: "#6366f120",
+                windows: "#0ea5e920", doors: "#a855f720",
                 other: "#94a3b820",
               };
               for (const task of tasks) {
