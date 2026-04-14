@@ -15,9 +15,10 @@ interface ProjectHeaderProps {
   onOpenSettings?: () => void;
   onCoverChange?: (url: string | null) => void;
   onStatusChange?: (newStatus: string) => void;
+  actions?: React.ReactNode;
 }
 
-export function ProjectHeader({ project, onOpenSettings, onCoverChange, onStatusChange }: ProjectHeaderProps) {
+export function ProjectHeader({ project, onOpenSettings, onCoverChange, onStatusChange, actions }: ProjectHeaderProps) {
   const { t } = useTranslation();
   const status = normalizeStatus(project.status);
   const meta = STATUS_META[status];
@@ -200,7 +201,7 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange, onStatus
   }, [project.cover_image_position, project.cover_image_zoom]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 px-2 sm:px-4">
       {/* Hero / Cover image */}
       <div className="relative group">
         {coverUrl ? (
@@ -319,7 +320,7 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange, onStatus
         />
       </div>
 
-      {/* Title + status + address */}
+      {/* Title + status + actions */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2 flex-wrap">
           <h1 className="text-xl sm:text-2xl font-bold leading-tight tracking-tight">{project.name}</h1>
@@ -377,6 +378,12 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange, onStatus
             >
               {t(meta.labelKey)}
             </span>
+          )}
+          {actions && (
+            <>
+              <div className="flex-1" />
+              {actions}
+            </>
           )}
         </div>
 

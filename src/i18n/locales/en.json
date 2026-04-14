@@ -4677,6 +4677,7 @@
     "analyzingQuote": "Reading quote...",
     "extractedAmount": "Detected amount: {{amount}}",
     "activateProject": "Start project",
+    "requestQuote": "Request quote",
     "projectActivated": "Project activated! Your tasks and rooms are now live.",
     "quoted": "Quoted",
     "totalArea": "Floor area",

@@ -4674,6 +4674,7 @@
     "analyzingQuote": "Läser offert...",
     "extractedAmount": "Detekterat belopp: {{amount}}",
     "activateProject": "Påbörja projekt",
+    "requestQuote": "Be om offert",
     "projectActivated": "Projektet aktiverat! Dina arbetsmoment och rum är nu live.",
     "quoted": "Offererat",
     "totalArea": "Golvyta",

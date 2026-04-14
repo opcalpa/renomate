@@ -39,6 +39,7 @@ import {
   Clock,
   Loader2,
   Maximize2,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/compressImage";
@@ -290,7 +291,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           linked_to_type: isBA && roomId ? "room" : "project",
           linked_to_id: isBA && roomId ? roomId : projectId,
           url: publicUrl.publicUrl,
-          caption: file.name.replace(/\.[^/.]+$/, ""),
+          caption: null,
           uploaded_by_user_id: profile.id,
           source: isBA ? baPhase : "upload",
         });
@@ -848,15 +849,42 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                     )}
                   </div>
 
-                  {/* Caption overlay — always visible if caption exists */}
-                  {photo.caption && (
+                  {/* Caption overlay — editable inline or display */}
+                  {editingCaption === photo.id ? (
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-1.5 pb-1.5 pt-6 z-20" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        autoFocus
+                        type="text"
+                        className="w-full px-1.5 py-1 text-[10px] text-white bg-white/15 backdrop-blur-sm rounded border border-white/20 focus:outline-none focus:ring-1 focus:ring-white/50 placeholder:text-white/40"
+                        value={captionDraft}
+                        onChange={(e) => setCaptionDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); updateCaption(photo.id, captionDraft); }
+                          if (e.key === "Escape") setEditingCaption(null);
+                        }}
+                        onBlur={() => { updateCaption(photo.id, captionDraft); }}
+                        placeholder={t("inspiration.captionPlaceholder", "Beskriv din inspiration...")}
+                      />
+                    </div>
+                  ) : photo.caption ? (
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-5 pointer-events-none">
                       <p className="text-[10px] text-white/90 truncate">{photo.caption}</p>
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Hover action bar */}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                  <div className={cn(
+                    "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 flex items-center gap-1 transition-opacity",
+                    editingCaption === photo.id ? "opacity-0 pointer-events-none" : "opacity-0 group-hover:opacity-100"
+                  )}>
+                    {/* Edit caption */}
+                    <button
+                      type="button"
+                      className="h-6 w-6 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center transition-colors"
+                      onClick={(e) => { e.stopPropagation(); setEditingCaption(photo.id); setCaptionDraft(photo.caption || ""); }}
+                    >
+                      <Pencil className="h-3 w-3 text-white" />
+                    </button>
                     {/* Link to entity */}
                     <Popover>
                       <PopoverTrigger asChild>
@@ -1160,12 +1188,28 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                               loading="lazy"
                               draggable={false}
                             />
-                            {/* Caption overlay */}
-                            {photo.caption && !isCircle && (
+                            {/* Caption overlay — editable inline or display */}
+                            {editingCaption === photo.id && !isCircle ? (
+                              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-1.5 pb-1.5 pt-6 z-20" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  autoFocus
+                                  type="text"
+                                  className="w-full px-1.5 py-1 text-[10px] text-white bg-white/15 backdrop-blur-sm rounded border border-white/20 focus:outline-none focus:ring-1 focus:ring-white/50 placeholder:text-white/40"
+                                  value={captionDraft}
+                                  onChange={(e) => setCaptionDraft(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") { e.preventDefault(); updateCaption(photo.id, captionDraft); }
+                                    if (e.key === "Escape") setEditingCaption(null);
+                                  }}
+                                  onBlur={() => { updateCaption(photo.id, captionDraft); }}
+                                  placeholder={t("inspiration.captionPlaceholder", "Beskriv din inspiration...")}
+                                />
+                              </div>
+                            ) : photo.caption && !isCircle ? (
                               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-5 pointer-events-none">
                                 <p className="text-[10px] text-white/90 truncate">{photo.caption}</p>
                               </div>
-                            )}
+                            ) : null}
                           </div>
                           {/* Room badge */}
                           {photo.roomName && !isCircle && (
@@ -1175,11 +1219,21 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                               </Badge>
                             </div>
                           )}
-                          {/* Hover action bar — link room + delete */}
+                          {/* Hover action bar — link room + edit caption + delete */}
                           <div className={cn(
-                            "absolute bottom-1 left-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10",
-                            isSelected && "opacity-100"
+                            "absolute bottom-1 left-1 flex items-center gap-1 transition-opacity z-10",
+                            editingCaption === photo.id ? "opacity-0 pointer-events-none" : isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                           )}>
+                            {/* Edit caption */}
+                            {!isCircle && (
+                              <button
+                                type="button"
+                                className="h-6 w-6 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center transition-colors"
+                                onClick={(e) => { e.stopPropagation(); setEditingCaption(photo.id); setCaptionDraft(photo.caption || ""); }}
+                              >
+                                <Pencil className="h-3 w-3 text-white" />
+                              </button>
+                            )}
                             <Popover>
                               <PopoverTrigger asChild>
                                 <button
@@ -1487,7 +1541,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
       {/* ===== Fullscreen Gallery Dialog ===== */}
       <Dialog open={galleryIndex !== null} onOpenChange={(open) => { if (!open) closeGallery(); }}>
         <DialogContent
-          className="!max-w-[98vw] w-[98vw] !max-h-[96vh] h-[96vh] !p-0 gap-0 flex flex-col sm:flex-row overflow-hidden !rounded-xl"
+          className="!max-w-[min(1200px,94vw)] w-[94vw] !max-h-[88vh] h-[88vh] !p-0 gap-0 flex flex-col sm:flex-row overflow-hidden !rounded-xl"
           onKeyDown={(e) => {
             if (e.key === "ArrowLeft") galleryPrev();
             if (e.key === "ArrowRight") galleryNext();

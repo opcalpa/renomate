@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 import { useTaxDeductionVisible } from "@/hooks/useTaxDeduction";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -133,6 +134,8 @@ interface HomeownerPlanningViewProps {
   reminders?: ProjectReminder[];
   onDismissReminder?: (id: string) => void;
   onDismissAllReminders?: () => void;
+  /** Callback to expose header actions (activate + reminders) to parent */
+  onHeaderActions?: (actions: React.ReactNode) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -149,6 +152,7 @@ export function HomeownerPlanningView({
   reminders = [],
   onDismissReminder,
   onDismissAllReminders,
+  onHeaderActions,
 }: HomeownerPlanningViewProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -516,6 +520,37 @@ export function HomeownerPlanningView({
     return items;
   }, [tasksWithRoomNames, groupByCategory, collapsedGroups]);
 
+  // Push header actions to parent (for ProjectHeader integration)
+  useEffect(() => {
+    if (!onHeaderActions || contributorMode || totalTasks === 0) {
+      onHeaderActions?.(null);
+      return;
+    }
+    onHeaderActions(
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => isGuest ? setLoginPromptAction("share_rfq") : setShareDialogOpen(true)}
+        >
+          <Send className="h-3.5 w-3.5" />
+          {t("homeownerPlanning.requestQuote", "Be om offert")}
+        </Button>
+        <Button
+          size="sm"
+          variant="default"
+          className="gap-1.5"
+          onClick={() => isGuest ? setLoginPromptAction("activate") : setShowStartModal(true)}
+          disabled={activating}
+        >
+          <Play className="h-3.5 w-3.5" />
+          {t("homeownerPlanning.activateProject", "Start project")}
+        </Button>
+      </div>
+    );
+  }, [onHeaderActions, contributorMode, totalTasks, activating, isGuest, t]);
+
   // ---------- Render ----------
   if (loading) {
     return <div className="space-y-4 animate-pulse"><div className="h-32 bg-muted rounded-lg" /><div className="h-48 bg-muted rounded-lg" /></div>;
@@ -523,121 +558,6 @@ export function HomeownerPlanningView({
 
   return (
     <div className="space-y-6">
-      {/* Summary card */}
-      {totalTasks > 0 && (
-        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-          <CardContent className="pt-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
-              <div className="space-y-1">
-                <h3 className="text-lg font-semibold">{t("homeownerPlanning.rfqSummary", "Your renovation plan")}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {t("homeownerPlanning.rfqDescription", "Add tasks and rooms to build a detailed request for quotes")}
-                </p>
-              </div>
-              {!contributorMode && (
-              <div className="flex flex-wrap items-center gap-2">
-                {totalTasks >= 1 && (
-                  <Button
-                    size="sm"
-                    variant="default"
-                    className="gap-1.5"
-                    onClick={() => isGuest ? setLoginPromptAction("activate") : setShowStartModal(true)}
-                    disabled={activating}
-                  >
-                    <Play className="h-3.5 w-3.5" />
-                    {t("homeownerPlanning.activateProject", "Start project")}
-                  </Button>
-                )}
-                {/* Reminders popover */}
-                {reminders.length > 0 && (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button size="sm" variant="outline" className="gap-1.5 relative">
-                        <Bell className="h-3.5 w-3.5" />
-                        {t("reminders.sectionTitle", "Reminders")}
-                        <span className="h-4 min-w-4 px-1 rounded-full bg-blue-500 text-white text-[10px] font-medium flex items-center justify-center">
-                          {reminders.length}
-                        </span>
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-80 p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-medium">{t("reminders.sectionTitle", "Reminders")}</p>
-                        {onDismissAllReminders && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground" onClick={onDismissAllReminders}>
-                            {t("reminders.dismissAll", "Clear all")}
-                          </Button>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        {reminders.map((r) => (
-                          <div key={r.id} className="flex items-start gap-2 text-sm p-2 rounded-md bg-muted/50">
-                            <Info className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-xs">{t(r.titleKey)}</p>
-                              <p className="text-xs text-muted-foreground">{t(r.bodyKey)}</p>
-                            </div>
-                            {onDismissReminder && (
-                              <button onClick={() => onDismissReminder(r.id)} className="text-muted-foreground hover:text-foreground shrink-0">
-                                <X className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                )}
-              </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-4">
-              <div className="rounded-lg border bg-white p-3 text-center">
-                <div className="text-2xl font-bold tabular-nums">{totalTasks}</div>
-                <div className="text-xs text-muted-foreground">{t("homeownerPlanning.tasks", "Tasks")}</div>
-              </div>
-              <div className="rounded-lg border bg-white p-3 text-center">
-                <div className="text-2xl font-bold tabular-nums">{rooms.length}</div>
-                <div className="text-xs text-muted-foreground">{t("homeownerPlanning.rooms", "Rooms")}</div>
-              </div>
-              {totalAreaSqm > 0 && (
-                <div className="rounded-lg border bg-white p-3 text-center">
-                  <div className="text-2xl font-bold tabular-nums">{Math.round(totalAreaSqm)} {ms.areaLabel}</div>
-                  <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalArea", "Floor area")}</div>
-                </div>
-              )}
-              {totalBudget > 0 && (
-                <div className="rounded-lg border bg-white p-3 text-center">
-                  <div className="text-2xl font-bold tabular-nums">{formatCurrency(Math.round(totalBudget * (1 + VAT_RATE)), currency)}</div>
-                  <div className="text-[10px] text-muted-foreground/60 tabular-nums">{formatCurrency(totalBudget, currency)} {t("budget.exVat", "ex moms")}</div>
-                  <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalBudget", "Budget")} <span className="text-[10px]">({t("budget.incVat", "ink. moms")})</span></div>
-                </div>
-              )}
-              {totalMaterialEstimate > 0 && (
-                <div className="rounded-lg border bg-white p-3 text-center">
-                  <div className="text-2xl font-bold tabular-nums text-amber-700">{formatCurrency(Math.round(totalMaterialEstimate * (1 + VAT_RATE)), currency)}</div>
-                  <div className="text-[10px] text-muted-foreground/60 tabular-nums">{formatCurrency(totalMaterialEstimate, currency)} {t("budget.exVat", "ex moms")}</div>
-                  <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalMaterial", "Material")} <span className="text-[10px]">({t("budget.incVat", "ink. moms")})</span></div>
-                </div>
-              )}
-              {showTaxDeduction && totalRot > 0 && (
-                <div className="rounded-lg border bg-white p-3 text-center">
-                  <div className="text-2xl font-bold tabular-nums text-green-700">{formatCurrency(totalRot, currency)}</div>
-                  <div className="text-xs text-muted-foreground">{t("homeownerPlanning.totalRot", "ROT")}</div>
-                </div>
-              )}
-              {externalQuotes.length > 0 && (
-                <div className="rounded-lg border bg-white p-3 text-center">
-                  <div className="text-2xl font-bold tabular-nums">{formatCurrency(totalQuoted, currency)}</div>
-                  <div className="text-xs text-muted-foreground">{t("homeownerPlanning.quoted", "Quoted")}</div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Task list */}
       <Card>
         <CardHeader className="pb-3">

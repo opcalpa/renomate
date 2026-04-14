@@ -234,151 +234,160 @@ ${rooms.length ? `
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            <Send className="h-5 w-5 text-primary" />
-            {t("shareRfq.title", "Share quote request")}
+      <DialogContent className="!max-w-[min(900px,92vw)] !max-h-[88vh] overflow-y-auto !p-0">
+        {/* Header */}
+        <div className="px-8 pt-8 pb-0">
+          <DialogTitle className="text-xl font-semibold">
+            {t("homeownerPlanning.requestQuote", "Request quote")}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="mt-1 text-sm">
             {t("shareRfq.description", "Share your renovation plan with builders to receive quotes.")}
           </DialogDescription>
-        </DialogHeader>
+        </div>
 
-        {/* ── RFQ Preview ── */}
-        <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
-          {/* Project header */}
-          <div className="flex items-start gap-2">
-            {projectAddress && <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />}
-            <div className="min-w-0">
-              <p className="font-semibold text-sm leading-tight">{projectName || t("common.project", "Project")}</p>
+        <div className="grid gap-8 md:grid-cols-[3fr,2fr] px-8 py-6">
+          {/* ── Left: RFQ Preview ── */}
+          <div className="rounded-xl border bg-muted/20 p-6 space-y-5 min-w-0">
+            {/* Project header */}
+            <div>
+              <p className="font-semibold text-lg leading-tight">{projectName || t("common.project", "Project")}</p>
               {projectAddress && (
-                <p className="text-xs text-muted-foreground">{projectAddress}</p>
+                <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" />
+                  {projectAddress}
+                </p>
               )}
             </div>
-          </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Tasks */}
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {t("shareRfq.scopeOfWork", "Scope of work")} ({tasks.length})
-            </p>
-            {tasks.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">
-                {t("shareRfq.noTasks", "No tasks added yet")}
+            {/* Tasks */}
+            <div className="space-y-3">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                {t("shareRfq.scopeOfWork", "Scope of work")} ({tasks.length})
               </p>
-            ) : (
-              <div className="space-y-2">
-                {tasks.map((task, i) => (
-                  <div key={task.id} className="flex gap-2">
-                    <span className="text-xs text-muted-foreground/60 w-4 shrink-0 text-right pt-px">{i + 1}.</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium leading-tight">{task.title}</p>
-                      {task.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{task.description}</p>
-                      )}
-                      {task.room_names.length > 0 && (
-                        <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-                          {task.room_names.join(", ")}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Rooms */}
-          {rooms.length > 0 && (
-            <>
-              <Separator />
-              <div className="space-y-1.5">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  {t("shareRfq.rooms", "Rooms")} ({rooms.length})
+              {tasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic">
+                  {t("shareRfq.noTasks", "No tasks added yet")}
                 </p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                  {rooms.map((room, i) => (
-                    <div key={i} className="flex items-baseline justify-between text-sm py-0.5">
-                      <span className="truncate">{room.name}</span>
-                      <span className="text-xs text-muted-foreground ml-2 tabular-nums shrink-0">
-                        {room.area_sqm ? `${room.area_sqm} m²` : "—"}
-                      </span>
+              ) : (
+                <div className="space-y-3">
+                  {tasks.map((task, i) => (
+                    <div key={task.id} className="flex gap-3">
+                      <span className="text-sm text-muted-foreground/40 w-5 shrink-0 text-right pt-px tabular-nums">{i + 1}.</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium leading-snug">{task.title}</p>
+                        {task.description && (
+                          <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{task.description}</p>
+                        )}
+                        {task.room_names.length > 0 && (
+                          <p className="text-xs text-muted-foreground/60 mt-1">
+                            {task.room_names.join(", ")}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
-                {totalArea > 0 && (
-                  <p className="text-xs text-muted-foreground pt-1 border-t">
-                    {t("common.total", "Total")}: <span className="font-medium tabular-nums">{totalArea} m²</span>
+              )}
+            </div>
+
+            {/* Rooms */}
+            {rooms.length > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-3">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    {t("shareRfq.rooms", "Rooms")} ({rooms.length})
                   </p>
-                )}
+                  <div className="space-y-1.5">
+                    {rooms.map((room, i) => (
+                      <div key={i} className="flex items-baseline justify-between text-sm py-1">
+                        <span className="truncate">{room.name}</span>
+                        <span className="text-sm text-muted-foreground ml-3 tabular-nums shrink-0">
+                          {room.area_sqm ? `${room.area_sqm} m²` : "—"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {totalArea > 0 && (
+                    <div className="flex items-baseline justify-between text-sm pt-2 border-t">
+                      <span className="font-medium">{t("common.total", "Total")}</span>
+                      <span className="font-medium tabular-nums">{totalArea} m²</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* ── Right: Invite / Success ── */}
+          <div className="flex flex-col min-w-0">
+            {sent ? (
+              <div className="flex flex-col items-center justify-center gap-4 flex-1 text-center py-8">
+                <CheckCircle2 className="h-12 w-12 text-green-600" />
+                <div>
+                  <p className="text-base font-semibold">
+                    {t("shareRfq.sentConfirmation", "Invitation sent to {{email}}", { email })}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2 max-w-[300px] mx-auto">
+                    {t("shareRfq.sentDescription", "The builder will receive an email with a link to view your renovation plan and create a quote.")}
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" className="mt-2" onClick={() => { setSent(false); setEmail(""); }}>
+                  {t("shareRfq.inviteAnother", "Invite another builder")}
+                </Button>
               </div>
-            </>
-          )}
+            ) : (
+              <div className="space-y-5 flex flex-col flex-1">
+                <div className="space-y-1.5">
+                  <Label className="text-base font-semibold flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    {t("shareRfq.inviteBuilder", "Invite a builder")}
+                  </Label>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {t("shareRfq.inviteDescription", "The builder gets access to your scope and rooms, and can create a quote for you.")}
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  <Input
+                    type="email"
+                    placeholder={t("shareRfq.emailPlaceholder", "builder@company.com")}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleInvite(); }}
+                    className="h-11"
+                  />
+                  <Input
+                    placeholder={t("shareRfq.messagePlaceholder", "Optional message...")}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="h-11"
+                  />
+                </div>
+                <div className="flex flex-col gap-2.5 mt-auto pt-4">
+                  <Button
+                    onClick={handleInvite}
+                    disabled={!email.trim() || sending}
+                    className="gap-2 w-full h-11"
+                  >
+                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    {t("shareRfq.sendInvitation", "Send invitation")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="gap-2 w-full h-11"
+                    onClick={handleDownloadPdf}
+                    disabled={tasks.length === 0}
+                  >
+                    <Download className="h-4 w-4" />
+                    {t("shareRfq.downloadPdf", "PDF")}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-
-        <Separator />
-
-        {/* ── Invite builder / Success ── */}
-        {sent ? (
-          <div className="flex flex-col items-center gap-2 py-4">
-            <CheckCircle2 className="h-8 w-8 text-green-600" />
-            <p className="text-sm font-medium">
-              {t("shareRfq.sentConfirmation", "Invitation sent to {{email}}", { email })}
-            </p>
-            <p className="text-xs text-muted-foreground text-center">
-              {t("shareRfq.sentDescription", "The builder will receive an email with a link to view your renovation plan and create a quote.")}
-            </p>
-            <Button variant="outline" size="sm" className="mt-2" onClick={() => { setSent(false); setEmail(""); }}>
-              {t("shareRfq.inviteAnother", "Invite another builder")}
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label className="text-sm font-medium flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5" />
-                {t("shareRfq.inviteBuilder", "Invite a builder")}
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                {t("shareRfq.inviteDescription", "The builder gets access to your scope and rooms, and can create a quote for you.")}
-              </p>
-            </div>
-            <Input
-              type="email"
-              placeholder={t("shareRfq.emailPlaceholder", "builder@company.com")}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleInvite(); }}
-            />
-            <Input
-              placeholder={t("shareRfq.messagePlaceholder", "Optional message...")}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-            />
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={handleInvite}
-                disabled={!email.trim() || sending}
-                className="gap-1.5 flex-1"
-              >
-                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                {t("shareRfq.sendInvitation", "Send invitation")}
-              </Button>
-              <Button
-                variant="outline"
-                className="gap-1.5"
-                onClick={handleDownloadPdf}
-                disabled={tasks.length === 0}
-              >
-                <Download className="h-4 w-4" />
-                {t("shareRfq.downloadPdf", "PDF")}
-              </Button>
-            </div>
-          </div>
-        )}
       </DialogContent>
     </Dialog>
   );

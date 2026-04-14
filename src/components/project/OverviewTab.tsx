@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings2, ShoppingCart, FileText, Mail, ChevronDown, ChevronRight, ExternalLink, UserPlus, Bell, Info, X } from "lucide-react";
+import { Settings2, ShoppingCart, FileText, Mail, ChevronDown, ChevronRight, ExternalLink, UserPlus, Bell, Info, X, Play } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
@@ -139,6 +139,7 @@ const OverviewTab = ({
   const [rotPersonnummer, setRotPersonnummer] = useState<string | null>(null);
   const [hasClient, setHasClient] = useState(false);
   const [householdDialogOpen, setHouseholdDialogOpen] = useState(false);
+  const [planningActions, setPlanningActions] = useState<React.ReactNode>(null);
 
   // Check if household ROT dialog should show (once for homeowners)
   useEffect(() => {
@@ -326,6 +327,7 @@ const OverviewTab = ({
       reminders={reminders}
       onDismissReminder={dismissReminder}
       onDismissAllReminders={dismissAllReminders}
+      onHeaderActions={setPlanningActions}
     />
   ) : (
     <>
@@ -347,7 +349,7 @@ const OverviewTab = ({
   // ----- All phases: unified dashboard view -----
   return (
     <div className="space-y-6">
-      <ProjectHeader project={project} onOpenSettings={(isProjectOwner || overviewAccess === 'edit') ? () => setSettingsOpen(true) : undefined} onStatusChange={isProjectOwner ? handleStatusChange : undefined} />
+      <ProjectHeader project={project} onOpenSettings={(isProjectOwner || overviewAccess === 'edit') ? () => setSettingsOpen(true) : undefined} onStatusChange={isProjectOwner ? handleStatusChange : undefined} actions={isPlanning ? planningActions : undefined} />
 
       {/* RFQ banner — builder working on a homeowner's quote request */}
       {isRfqProject && !isHomeowner && isPlanning && (
