@@ -4254,6 +4254,23 @@
     "estimatedMaterialCost": "Estimated material cost",
     "useAsbudget": "Use as budget"
   },
+  "costCenters": {
+    "floor": "Floor",
+    "paint": "Paint",
+    "construction": "Construction",
+    "kitchen": "Kitchen",
+    "bathrooms": "Bathrooms",
+    "plumbing": "Plumbing",
+    "tiles": "Tiles",
+    "windows": "Windows",
+    "doors": "Doors",
+    "electricity": "Electricity",
+    "carpentry": "Carpentry",
+    "demolition": "Demolition",
+    "inspection": "Inspection",
+    "cleanup": "Cleanup & Waste",
+    "design": "Design & Planning"
+  },
   "projectStatus": {
     "planning": "Planning",
     "planningDesc": "Setting up rooms and tasks",

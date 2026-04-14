@@ -1154,7 +1154,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 p-0" align="start">
+            <PopoverContent className="w-72 p-0 max-h-[70vh] overflow-y-auto" align="start">
               <div className="max-h-[70vh] overflow-y-auto">
                 {/* Status */}
                 <div className="px-3 pt-3 pb-1">
@@ -1255,7 +1255,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
                           onCheckedChange={() => toggleFilterValue(setFilterCostCenters, cc.id)}
                         />
                         <Icon className="h-3 w-3 flex-shrink-0" />
-                        <span className="flex-1">{cc.label}</span>
+                        <span className="flex-1">{t(cc.labelKey, cc.label)}</span>
                         <span className="text-xs text-muted-foreground">{getCostCenterCount(cc.id)}</span>
                       </label>
                     );
@@ -1618,7 +1618,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
                           className="flex items-center gap-2 text-sm font-medium leading-none cursor-pointer"
                         >
                           <Icon className="h-4 w-4" />
-                          {cc.label}
+                          {t(cc.labelKey, cc.label)}
                         </label>
                       </div>
                     );

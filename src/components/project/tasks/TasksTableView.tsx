@@ -791,9 +791,8 @@ export function TasksTableView({
           if (!currentCC) {
             return <span className="text-muted-foreground text-xs">-</span>;
           }
-          const label =
-            DEFAULT_COST_CENTERS.find((cc) => cc.id === currentCC)?.label ||
-            currentCC;
+          const ccDef = DEFAULT_COST_CENTERS.find((cc) => cc.id === currentCC);
+          const label = ccDef ? t(ccDef.labelKey, ccDef.label) : currentCC;
           return <span className="text-sm">{label}</span>;
         }
         return (
@@ -817,7 +816,7 @@ export function TasksTableView({
               <SelectItem value="none">-</SelectItem>
               {DEFAULT_COST_CENTERS.map((cc) => (
                 <SelectItem key={cc.id} value={cc.id}>
-                  {cc.label}
+                  {t(cc.labelKey, cc.label)}
                 </SelectItem>
               ))}
             </SelectContent>

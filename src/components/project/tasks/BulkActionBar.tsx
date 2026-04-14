@@ -215,7 +215,8 @@ export function BulkActionBar({
 
           {/* Cost center */}
           <Select onValueChange={(v) => {
-            const name = v === "__none__" ? t("common.none") : DEFAULT_COST_CENTERS.find(c => c.id === v)?.label || v;
+            const cc = DEFAULT_COST_CENTERS.find(c => c.id === v);
+            const name = v === "__none__" ? t("common.none") : cc ? t(cc.labelKey, cc.label) : v;
             queueUpdate("cost_center", v === "__none__" ? null : v, name);
           }} disabled={isLoading}>
             <SelectTrigger className="h-7 w-[130px] text-xs shrink-0">
@@ -225,7 +226,7 @@ export function BulkActionBar({
               <SelectItem value="__none__">{t("common.none", "None")}</SelectItem>
               {DEFAULT_COST_CENTERS.map((cc) => (
                 <SelectItem key={cc.id} value={cc.id}>
-                  {cc.label}
+                  {t(cc.labelKey, cc.label)}
                 </SelectItem>
               ))}
             </SelectContent>

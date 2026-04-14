@@ -4251,6 +4251,23 @@
     "estimatedMaterialCost": "Beräknad materialkostnad",
     "useAsbudget": "Använd som budget"
   },
+  "costCenters": {
+    "floor": "Golv",
+    "paint": "Målning",
+    "construction": "Bygg",
+    "kitchen": "Kök",
+    "bathrooms": "Badrum",
+    "plumbing": "VVS",
+    "tiles": "Kakel & klinker",
+    "windows": "Fönster",
+    "doors": "Dörrar",
+    "electricity": "El",
+    "carpentry": "Snickeri",
+    "demolition": "Rivning",
+    "inspection": "Besiktning",
+    "cleanup": "Städ & avfall",
+    "design": "Design & planering"
+  },
   "projectStatus": {
     "planning": "Planering",
     "planningDesc": "Lägger upp rum och arbeten",

@@ -1261,7 +1261,7 @@ export const TaskEditDialog = ({
                       <PopoverTrigger asChild>
                         <Button variant="outline" className="w-full h-9 justify-start text-sm font-normal">
                           {(task.cost_centers || []).length > 0
-                            ? (task.cost_centers || []).map((cc: string) => { const def = DEFAULT_COST_CENTERS.find(d => d.id === cc); return def ? def.label : cc; }).join(", ")
+                            ? (task.cost_centers || []).map((cc: string) => { const def = DEFAULT_COST_CENTERS.find(d => d.id === cc); return def ? t(def.labelKey, def.label) : cc; }).join(", ")
                             : <span className="text-muted-foreground">{t("common.none", "Ingen")}</span>}
                         </Button>
                       </PopoverTrigger>
@@ -1269,7 +1269,7 @@ export const TaskEditDialog = ({
                         {DEFAULT_COST_CENTERS.map((cc) => { const Icon = cc.icon; const isSelected = (task.cost_centers || []).includes(cc.id); return (
                           <label key={cc.id} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer text-xs">
                             <Checkbox checked={isSelected} onCheckedChange={(checked) => { const current = task.cost_centers || []; const next = checked ? [...current, cc.id] : current.filter((c: string) => c !== cc.id); setTask({ ...task, cost_centers: next, cost_center: next[0] || null }); }} />
-                            <Icon className="h-3.5 w-3.5" /> {cc.label}
+                            <Icon className="h-3.5 w-3.5" /> {t(cc.labelKey, cc.label)}
                           </label>
                         ); })}
                       </PopoverContent>
