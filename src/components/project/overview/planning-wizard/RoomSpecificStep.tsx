@@ -14,7 +14,7 @@ export function RoomSpecificStep({ formData, updateFormData }: PlanningStepProps
   );
 
   const getWork = (roomId: string): RoomSpecificWork =>
-    formData.roomSpecificWork[roomId] ?? { description: "", workTypes: [] };
+    formData.roomSpecificWork[roomId] ?? { description: "", workTypes: [], excludedGlobals: [] };
 
   const updateWork = (roomId: string, updates: Partial<RoomSpecificWork>) => {
     const current = getWork(roomId);
@@ -127,12 +127,39 @@ export function RoomSpecificStep({ formData, updateFormData }: PlanningStepProps
                     </div>
                   )}
 
-                  {/* Show what global work types apply */}
+                  {/* Global work types — clickable to exclude per room */}
                   {formData.globalWorkTypes.length > 0 && (
-                    <p className="text-[11px] text-muted-foreground">
-                      {t("planningWizard.alsoIncludes", "Also includes:")}{" "}
-                      {formData.globalWorkTypes.map((wt) => t(`intake.workType.${wt}`, wt)).join(", ")}
-                    </p>
+                    <div>
+                      <p className="text-[11px] text-muted-foreground mb-1">
+                        {t("planningWizard.alsoIncludes", "Also includes:")}
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {formData.globalWorkTypes.map((wt) => {
+                          const excluded = work.excludedGlobals?.includes(wt);
+                          return (
+                            <button
+                              key={wt}
+                              type="button"
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-all border",
+                                excluded
+                                  ? "border-muted text-muted-foreground/40 line-through hover:text-muted-foreground"
+                                  : "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
+                              )}
+                              onClick={() => {
+                                const currentExcluded = work.excludedGlobals ?? [];
+                                const next = excluded
+                                  ? currentExcluded.filter((w) => w !== wt)
+                                  : [...currentExcluded, wt];
+                                updateWork(room.id, { excludedGlobals: next });
+                              }}
+                            >
+                              {excluded ? "+" : "✓"} {t(`intake.workType.${wt}`, wt)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
                 </div>
               )}

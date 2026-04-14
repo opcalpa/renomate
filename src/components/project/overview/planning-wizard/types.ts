@@ -14,6 +14,7 @@ export interface PlanningWizardRoom {
 export interface RoomSpecificWork {
   description: string;
   workTypes: WorkType[];
+  excludedGlobals: WorkType[]; // global work types excluded for this specific room
 }
 
 export interface AIParsedResult {

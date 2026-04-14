@@ -47,10 +47,13 @@ export async function populateProjectFromPlanningWizard(
     tasksByRoom.set(room.id, new Set<WorkType>());
   }
 
-  // Global work types → applied to every room
+  // Global work types → applied to every room (unless excluded per room)
   for (const workType of data.globalWorkTypes) {
     for (const room of data.rooms) {
-      tasksByRoom.get(room.id)!.add(workType);
+      const excluded = data.roomSpecificWork[room.id]?.excludedGlobals ?? [];
+      if (!excluded.includes(workType)) {
+        tasksByRoom.get(room.id)!.add(workType);
+      }
     }
   }
 
