@@ -41,38 +41,56 @@ export async function populateProjectFromPlanningWizard(
     roomNameToId.set(room.id, created.id);
   }
 
-  // 2. Collect all work types per room to deduplicate
-  const tasksByRoom = new Map<string, Set<WorkType>>();
-  for (const room of data.rooms) {
-    tasksByRoom.set(room.id, new Set<WorkType>());
-  }
-
-  // Global work types → applied to every room (unless excluded per room)
+  // 2. Global work types → ONE task per type, linked to ALL applicable rooms via room_ids
+  //    with checklist items per room for tracking
   for (const workType of data.globalWorkTypes) {
-    for (const room of data.rooms) {
+    const applicableRooms = data.rooms.filter((room) => {
       const excluded = data.roomSpecificWork[room.id]?.excludedGlobals ?? [];
-      if (!excluded.includes(workType)) {
-        tasksByRoom.get(room.id)!.add(workType);
-      }
-    }
+      return !excluded.includes(workType);
+    });
+    if (applicableRooms.length === 0) continue;
+
+    const roomIds = applicableRooms
+      .map((r) => roomNameToId.get(r.id))
+      .filter(Boolean) as string[];
+
+    // Create checklist with one item per room
+    const checklist = {
+      id: crypto.randomUUID(),
+      title: getWorkTypeLabel(workType),
+      items: applicableRooms.map((r) => ({
+        id: crypto.randomUUID(),
+        title: r.name,
+        completed: false,
+      })),
+    };
+
+    const { error } = await supabase.from("tasks").insert({
+      project_id: projectId,
+      room_id: roomIds[0], // primary room
+      room_ids: roomIds,
+      title: getWorkTypeLabel(workType),
+      description: applicableRooms.map((r) => r.name).join(", "),
+      status: "planned",
+      priority: "medium",
+      cost_center: workTypeToCostCenter(workType),
+      created_by_user_id: profileId,
+      checklists: [checklist],
+    });
+    if (!error) taskCount++;
   }
 
-  // Room-specific work types (skip if already global)
-  for (const room of data.rooms) {
-    const specific = data.roomSpecificWork[room.id];
-    if (!specific) continue;
-    for (const workType of specific.workTypes) {
-      tasksByRoom.get(room.id)!.add(workType);
-    }
-  }
-
-  // 3. Create tasks from deduplicated sets
+  // 3. Room-specific work types → one task per room-workType combo
   for (const room of data.rooms) {
     const dbRoomId = roomNameToId.get(room.id);
     if (!dbRoomId) continue;
 
-    const workTypes = tasksByRoom.get(room.id)!;
-    for (const workType of workTypes) {
+    const specific = data.roomSpecificWork[room.id];
+    if (!specific) continue;
+
+    // Room-specific work types (excluding globals)
+    for (const workType of specific.workTypes) {
+      if (data.globalWorkTypes.includes(workType)) continue; // already handled globally
       const { error } = await supabase.from("tasks").insert({
         project_id: projectId,
         room_id: dbRoomId,
@@ -85,11 +103,9 @@ export async function populateProjectFromPlanningWizard(
       if (!error) taskCount++;
     }
 
-    // Free-text description without specific work type → create a general task
-    const specific = data.roomSpecificWork[room.id];
-    if (specific?.description?.trim()) {
+    // Free-text description → general task for this room
+    if (specific.description?.trim()) {
       const desc = specific.description.trim();
-      // Only create if there are no typed tasks for this room, or description adds context
       const { error } = await supabase.from("tasks").insert({
         project_id: projectId,
         room_id: dbRoomId,
