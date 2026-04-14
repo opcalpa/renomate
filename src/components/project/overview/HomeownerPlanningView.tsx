@@ -643,14 +643,14 @@ export function HomeownerPlanningView({
               <Table>
                 <TableHeader>
                   <TableRow onContextMenu={(e) => { e.preventDefault(); setHeaderMenu({ x: e.clientX, y: e.clientY }); }}>
-                    <TableHead className="w-[200px]">{t("planningTasks.task", "Task")}</TableHead>
-                    {show.description && <TableHead>{t("tasks.description", "Description")}</TableHead>}
-                    {show.room && <TableHead className="w-[160px]">{t("tasks.room", "Room")}</TableHead>}
-                    {show.area && <TableHead className="w-[80px] text-right hidden sm:table-cell">{t("homeownerPlanning.area", "Area")}</TableHead>}
-                    {show.quote && <TableHead className="w-[100px] text-center">{t("homeownerPlanning.quote", "Quote")}</TableHead>}
-                    {show.budget && <TableHead className="w-[120px] text-right">{t("planningTasks.budget", "Budget")} <span className="text-[10px] font-normal text-muted-foreground">({t("budget.incVat", "ink. moms")})</span></TableHead>}
-                    {show.materialEstimate && <TableHead className="w-[130px] text-right">{t("planningTasks.materialEstimate", "Materialbudget")} <span className="text-[10px] font-normal text-muted-foreground">({t("budget.incVat", "ink. moms")})</span></TableHead>}
-                    {show.rotAmount && <TableHead className="w-[110px] text-right">{t("files.rotAmount", "ROT-avdrag")}</TableHead>}
+                    <TableHead className="min-w-[140px]">{t("planningTasks.task", "Task")}</TableHead>
+                    {show.description && <TableHead className="min-w-[120px]">{t("tasks.description", "Description")}</TableHead>}
+                    {show.room && <TableHead className="min-w-[100px]">{t("tasks.room", "Room")}</TableHead>}
+                    {show.area && <TableHead className="min-w-[60px] text-right hidden sm:table-cell">{t("homeownerPlanning.area", "Area")}</TableHead>}
+                    {show.quote && <TableHead className="min-w-[80px] text-center">{t("homeownerPlanning.quote", "Quote")}</TableHead>}
+                    {show.budget && <TableHead className="min-w-[90px] text-right">{t("planningTasks.budget", "Budget")} <span className="text-[10px] font-normal text-muted-foreground">({t("budget.incVat", "ink. moms")})</span></TableHead>}
+                    {show.materialEstimate && <TableHead className="min-w-[100px] text-right">{t("planningTasks.materialEstimate", "Materialbudget")} <span className="text-[10px] font-normal text-muted-foreground">({t("budget.incVat", "ink. moms")})</span></TableHead>}
+                    {show.rotAmount && <TableHead className="min-w-[80px] text-right">{t("files.rotAmount", "ROT-avdrag")}</TableHead>}
                     <TableHead className="w-[40px]" />
                   </TableRow>
                 </TableHeader>
@@ -718,7 +718,7 @@ export function HomeownerPlanningView({
                                     {t(WORK_TYPE_LABEL_KEYS[workType], workType)}
                                   </Badge>
                                 )}
-                                <span className="truncate">{task.title}</span>
+                                <span className="break-words">{task.title}</span>
                               </button>
                               {matCount > 0 && (
                                 <TooltipProvider delayDuration={200}>
@@ -770,7 +770,7 @@ export function HomeownerPlanningView({
                           ) : (
                             <button
                               type="button"
-                              className="text-left w-full hover:bg-muted px-1.5 py-0.5 rounded cursor-text text-sm text-muted-foreground truncate block max-w-full"
+                              className="text-left w-full hover:bg-muted px-1.5 py-0.5 rounded cursor-text text-sm text-muted-foreground break-words block max-w-full"
                               onClick={() => {
                                 setEditingCell({ taskId: task.id, field: "description" });
                                 setEditValue(task.description ?? "");
