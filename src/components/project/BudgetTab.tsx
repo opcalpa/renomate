@@ -2252,12 +2252,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         </div>
       )}
 
-      {/* ROT section — builders only (homeowners see per-person in DeclarationTable) */}
-      {showTaxDeduction && isBuilder && (
-        <div className="mt-6">
-          <RotSummaryCard projectId={projectId} />
-        </div>
-      )}
+      {/* ROT section — hidden for builders (ROT is the customer's deduction, not the builder's) */}
 
       {/* Task Edit Dialog */}
       <TaskEditDialog
