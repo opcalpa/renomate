@@ -308,6 +308,28 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
     }
   }, [projectId, uploading, queryClient, t]);
 
+  // Add text card to moodboard
+  const addTextCard = useCallback(async (text: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+      if (!profile) return;
+
+      await supabase.from("photos").insert({
+        linked_to_type: "project",
+        linked_to_id: projectId,
+        url: "",
+        caption: text,
+        uploaded_by_user_id: profile.id,
+        source: "moodboard_text",
+      });
+      queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
+    } catch {
+      toast.error(t("common.error"));
+    }
+  }, [projectId, queryClient, t]);
+
   // Before/After upload handler — tags photo with source and room
   const [baUploading, setBaUploading] = useState(false);
   const [baPhase, setBaPhase] = useState<"before" | "during" | "after">("before");
@@ -803,6 +825,14 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                   <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
                   {t("inspiration.fromUrl")}
                 </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                  onClick={() => { setAddMenuOpen(false); addTextCard(t("inspiration.defaultText", "Skriv din text här...")); }}
+                >
+                  <Type className="h-3.5 w-3.5 text-muted-foreground" />
+                  {t("inspiration.addText", "Lägg till text")}
+                </button>
               </PopoverContent>
             </Popover>
           )}
@@ -832,12 +862,18 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                   className="relative aspect-square rounded-lg overflow-hidden group cursor-pointer"
                   onClick={() => openGallery(idx)}
                 >
-                  <img
-                    src={photo.url}
-                    alt={photo.caption || ""}
-                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                    loading="lazy"
-                  />
+                  {photo.source === "moodboard_text" ? (
+                    <div className="w-full h-full bg-muted flex items-center justify-center p-3">
+                      <p className="text-xs text-center font-medium italic text-muted-foreground line-clamp-4">{photo.caption}</p>
+                    </div>
+                  ) : (
+                    <img
+                      src={photo.url}
+                      alt={photo.caption || ""}
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  )}
                   {/* Badges — top right */}
                   <div className="absolute top-1 right-1 flex gap-1">
                     {photo.source === "pinterest" && (
@@ -969,6 +1005,14 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                   >
                     <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
                     {t("inspiration.fromUrl")}
+                  </button>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                    onClick={() => addTextCard(t("inspiration.defaultText", "Skriv din text här..."))}
+                  >
+                    <Type className="h-3.5 w-3.5 text-muted-foreground" />
+                    {t("inspiration.addText", "Lägg till text")}
                   </button>
                 </PopoverContent>
               </Popover>
@@ -1141,7 +1185,56 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                             window.addEventListener("mouseup", onUp);
                           }}
                         >
-                          {/* Image wrapper — clips at circle boundary */}
+                          {photo.source === "moodboard_text" ? (
+                            /* Text card */
+                            <div
+                              className="absolute inset-0 flex items-center justify-center p-4"
+                              style={{ borderRadius: moodboardGap ? "6px" : "0" }}
+                              onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                setEditingCaption(photo.id);
+                                setCaptionDraft(photo.caption || "");
+                              }}
+                            >
+                              {editingCaption === photo.id ? (
+                                <textarea
+                                  autoFocus
+                                  className="w-full h-full bg-transparent resize-none focus:outline-none text-center"
+                                  style={{
+                                    color: isDark ? "#fff" : "#1a1a1a",
+                                    fontSize: (photo.caption || "").length > 40 ? "14px" : (photo.caption || "").length > 20 ? "18px" : "24px",
+                                    fontWeight: 500,
+                                    fontStyle: "italic",
+                                    lineHeight: 1.4,
+                                    letterSpacing: "0.02em",
+                                  }}
+                                  value={captionDraft}
+                                  onChange={(e) => setCaptionDraft(e.target.value)}
+                                  onBlur={() => { updateCaption(photo.id, captionDraft); }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); updateCaption(photo.id, captionDraft); }
+                                    if (e.key === "Escape") setEditingCaption(null);
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              ) : (
+                                <p
+                                  className="text-center select-none"
+                                  style={{
+                                    color: isDark ? "#e5e5e5" : "#1a1a1a",
+                                    fontSize: (photo.caption || "").length > 40 ? "14px" : (photo.caption || "").length > 20 ? "18px" : "24px",
+                                    fontWeight: 500,
+                                    fontStyle: "italic",
+                                    lineHeight: 1.4,
+                                    letterSpacing: "0.02em",
+                                  }}
+                                >
+                                  {photo.caption || t("inspiration.defaultText", "Dubbelklicka för att redigera")}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                          /* Image wrapper — clips at circle boundary */
                           <div
                             className={cn("overflow-hidden", isCircle ? "rounded-full absolute inset-0 m-auto" : "absolute inset-0")}
                             style={isCircle
@@ -1167,6 +1260,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                               </div>
                             )}
                           </div>
+                          )}
                           {/* Room badge */}
                           {photo.roomName && !isCircle && (
                             <div className={cn("absolute top-1 left-1 transition-opacity", isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
@@ -1378,21 +1472,41 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                           gridRow: `span ${photo.gridRowSpan}`,
                           borderRadius: photo.cropShape === "circle" ? "50%" : moodboardGap ? "8px" : "0",
                         }}
-                        onClick={() => { setFullscreenMoodboard(false); openGallery(idx); }}
+                        onClick={() => { if (photo.source !== "moodboard_text") { setFullscreenMoodboard(false); openGallery(idx); } }}
                       >
-                        <img
-                          src={photo.url}
-                          alt={photo.caption || ""}
-                          className="absolute inset-0 w-full h-full"
-                          style={{
-                            objectFit: photo.fitMode || "cover",
-                            objectPosition: photo.cropPosition || "center",
-                          }}
-                        />
-                        {photo.caption && (
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-3 pb-2 pt-6 pointer-events-none">
-                            <p className="text-white text-xs font-medium truncate">{photo.caption}</p>
+                        {photo.source === "moodboard_text" ? (
+                          <div className="absolute inset-0 flex items-center justify-center p-6">
+                            <p
+                              className="text-center"
+                              style={{
+                                color: hexLuminance(moodboardBg || "#111") < 128 ? "#e5e5e5" : "#1a1a1a",
+                                fontSize: (photo.caption || "").length > 40 ? "18px" : (photo.caption || "").length > 20 ? "28px" : "36px",
+                                fontWeight: 500,
+                                fontStyle: "italic",
+                                lineHeight: 1.3,
+                                letterSpacing: "0.02em",
+                              }}
+                            >
+                              {photo.caption}
+                            </p>
                           </div>
+                        ) : (
+                          <>
+                            <img
+                              src={photo.url}
+                              alt={photo.caption || ""}
+                              className="absolute inset-0 w-full h-full"
+                              style={{
+                                objectFit: photo.fitMode || "cover",
+                                objectPosition: photo.cropPosition || "center",
+                              }}
+                            />
+                            {photo.caption && (
+                              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-3 pb-2 pt-6 pointer-events-none">
+                                <p className="text-white text-xs font-medium truncate">{photo.caption}</p>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     ))}
@@ -1493,14 +1607,26 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           <DialogTitle className="sr-only">{t("inspiration.gallery", "Inspiration gallery")}</DialogTitle>
           {galleryPhoto && (
             <>
-              {/* Image area — cinematic dark backdrop */}
+              {/* Image/text area — cinematic dark backdrop */}
               <div className="relative flex-1 bg-neutral-950 flex items-center justify-center min-h-0 min-w-0">
-                <img
-                  src={galleryPhoto.url}
-                  alt={galleryPhoto.caption || ""}
-                  className="w-full h-full object-contain select-none"
-                  draggable={false}
-                />
+                {galleryPhoto.source === "moodboard_text" ? (
+                  <p className="text-white/90 text-center px-12 max-w-2xl" style={{
+                    fontSize: (galleryPhoto.caption || "").length > 80 ? "24px" : (galleryPhoto.caption || "").length > 30 ? "36px" : "48px",
+                    fontWeight: 500,
+                    fontStyle: "italic",
+                    lineHeight: 1.3,
+                    letterSpacing: "0.02em",
+                  }}>
+                    {galleryPhoto.caption}
+                  </p>
+                ) : (
+                  <img
+                    src={galleryPhoto.url}
+                    alt={galleryPhoto.caption || ""}
+                    className="w-full h-full object-contain select-none"
+                    draggable={false}
+                  />
+                )}
                 {/* Nav arrows */}
                 {galleryIndex !== null && galleryIndex > 0 && (
                   <button
