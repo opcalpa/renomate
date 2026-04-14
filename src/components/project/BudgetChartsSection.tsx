@@ -56,8 +56,8 @@ const COLORS = [
 export function BudgetChartsSection({ rows, currency }: BudgetChartsSectionProps) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [pieDataOption, setPieDataOption] = useState<ChartDataOption>("type");
-  const [barDataOption, setBarDataOption] = useState<ChartDataOption>("room");
+  const [pieDataOption, setPieDataOption] = useState<ChartDataOption>("costCenter");
+  const [barDataOption, setBarDataOption] = useState<ChartDataOption>("costCenter");
 
   const dataOptions: { value: ChartDataOption; label: string }[] = [
     { value: "type", label: t("budgetCharts.byType") },
@@ -199,8 +199,9 @@ export function BudgetChartsSection({ rows, currency }: BudgetChartsSectionProps
       {/* Charts */}
       {isExpanded && (
         <div className="px-4 pb-4 border-t">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
-            {/* Pie Chart */}
+          <div className={`grid grid-cols-1 ${pieData.length > 1 ? "lg:grid-cols-2" : ""} gap-6 pt-4`}>
+            {/* Pie Chart — only show if >1 segment (1 segment = no insight) */}
+            {pieData.length > 1 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -221,32 +222,28 @@ export function BudgetChartsSection({ rows, currency }: BudgetChartsSectionProps
                 </Select>
               </div>
 
-              {pieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      dataKey="budget"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {pieData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<PieTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">
-                  {t("budgetCharts.noData")}
-                </div>
-              )}
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="budget"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={85}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}
+                  >
+                    {pieData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<PieTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
+            )}
 
             {/* Bar Chart */}
             <div className="space-y-3">
@@ -285,7 +282,14 @@ export function BudgetChartsSection({ rows, currency }: BudgetChartsSectionProps
                       formatter={(value) => (value === "budget" ? t("common.budget") : t("budget.paid"))}
                     />
                     <Bar dataKey="budget" fill={COLORS[0]} name="budget" radius={[0, 4, 4, 0]} />
-                    <Bar dataKey="paid" fill={COLORS[1]} name="paid" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="paid" name="paid" radius={[0, 4, 4, 0]}>
+                      {barData.slice(0, 8).map((entry, index) => (
+                        <Cell
+                          key={`bar-${index}`}
+                          fill={entry.paid > entry.budget ? "#ef4444" : entry.paid > entry.budget * 0.9 ? "#f59e0b" : COLORS[1]}
+                        />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
