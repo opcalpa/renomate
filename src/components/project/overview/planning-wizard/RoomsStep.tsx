@@ -10,6 +10,8 @@ import type { PlanningStepProps, PlanningWizardRoom } from "./types";
 export function RoomsStep({ formData, updateFormData }: PlanningStepProps) {
   const { t } = useTranslation();
   const [customName, setCustomName] = useState("");
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
   const suggestions = getRoomSuggestions();
 
   const isSelected = (nameKey: string) => formData.rooms.some((r) => r.nameKey === nameKey);
@@ -112,10 +114,35 @@ export function RoomsStep({ formData, updateFormData }: PlanningStepProps) {
             {formData.rooms.map((room) => (
               <div key={room.id} className="flex items-center gap-2 rounded-lg border p-3 bg-background">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium flex items-center gap-1.5">
-                    {room.name}
-                    {room.aiSuggested && <Sparkles className="h-3 w-3 text-primary" />}
-                  </p>
+                  {editingRoomId === room.id ? (
+                    <input
+                      autoFocus
+                      type="text"
+                      className="text-sm font-medium px-1 py-0.5 -ml-1 rounded border focus:outline-none focus:ring-2 focus:ring-primary/50 w-full"
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          updateRoom(room.id, { name: editingName.trim() || room.name });
+                          setEditingRoomId(null);
+                        }
+                        if (e.key === "Escape") setEditingRoomId(null);
+                      }}
+                      onBlur={() => {
+                        updateRoom(room.id, { name: editingName.trim() || room.name });
+                        setEditingRoomId(null);
+                      }}
+                    />
+                  ) : (
+                    <p
+                      className="text-sm font-medium flex items-center gap-1.5 cursor-text"
+                      onDoubleClick={() => { setEditingRoomId(room.id); setEditingName(room.name); }}
+                      title={t("planningWizard.doubleClickRename", "Double-click to rename")}
+                    >
+                      {room.name}
+                      {room.aiSuggested && <Sparkles className="h-3 w-3 text-primary" />}
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-2 mt-1.5">
                     <Input
                       type="number"

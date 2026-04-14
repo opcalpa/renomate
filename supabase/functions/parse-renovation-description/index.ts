@@ -83,6 +83,7 @@ Work type meanings: rivning=demolition, el=electrical, vvs=plumbing, kakel=tilin
 Rules:
 - Map rooms to the closest valid nameKey. If "sovrum" mentioned, use "bedroom". If "toalett" or "gästtoalett", use "wcShower". If "matsal", use "livingRoom".
 - If a room doesn't match any predefined key, still include it with the closest match or use a descriptive name.
+- IMPORTANT: If the user mentions MULTIPLE rooms of the same type (e.g. "2 barnrum", "3 sovrum", "båda badrummen"), create SEPARATE entries for each with numbered names (e.g. "Barnrum 1", "Barnrum 2"). Use the same nameKey for each but different display names.
 - Work types mentioned without a specific room context (e.g. "måla om överallt") go in globalWorkTypes.
 - Work types mentioned for a specific room go in that room's suggestedWorkTypes.
 - "malning" (painting) and "el" (electrical) are commonly global — only put them in globalWorkTypes if the text implies they apply everywhere.
