@@ -2141,7 +2141,7 @@
     "byType": "Per typ",
     "byRoom": "Per rum",
     "byStatus": "Per status",
-    "byCostCenter": "Per kostnadsställe",
+    "byCostCenter": "Per kategori",
     "noCostCenter": "Ingen kategori",
     "noData": "Ingen data att visa"
   },

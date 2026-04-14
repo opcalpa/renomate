@@ -153,8 +153,10 @@ export function BudgetChartsSection({ rows, currency }: BudgetChartsSectionProps
   };
 
   // Custom tooltip for bar chart
-  const BarTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; dataKey: string }>; label?: string }) => {
+  const BarTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; dataKey: string; payload?: { budget: number; paid: number } }>; label?: string }) => {
     if (active && payload && payload.length) {
+      const d = payload[0]?.payload;
+      const paidPct = d && d.budget > 0 ? Math.round((d.paid / d.budget) * 100) : 0;
       return (
         <div className="bg-popover border rounded-lg shadow-lg px-3 py-2 text-sm">
           <p className="font-medium">{label}</p>
@@ -166,6 +168,9 @@ export function BudgetChartsSection({ rows, currency }: BudgetChartsSectionProps
               />
               {p.dataKey === "budget" ? t("common.budget") : t("budget.paid")}:{" "}
               {formatCurrency(p.value, currency)}
+              {p.dataKey === "paid" && d && d.budget > 0 && (
+                <span className="text-muted-foreground">({paidPct}%)</span>
+              )}
             </p>
           ))}
         </div>
@@ -232,7 +237,7 @@ export function BudgetChartsSection({ rows, currency }: BudgetChartsSectionProps
                     cy="50%"
                     innerRadius={55}
                     outerRadius={85}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent, budget }) => `${name} ${(percent * 100).toFixed(0)}% (${formatCurrency(budget, currency, { compact: true })})`}
                     labelLine={false}
                   >
                     {pieData.map((_, index) => (
@@ -273,16 +278,16 @@ export function BudgetChartsSection({ rows, currency }: BudgetChartsSectionProps
                     <YAxis
                       type="category"
                       dataKey="name"
-                      width={100}
+                      width={130}
                       tick={{ fontSize: 12 }}
-                      tickFormatter={(v) => (v.length > 15 ? v.substring(0, 15) + "..." : v)}
+                      tickFormatter={(v) => (v.length > 20 ? v.substring(0, 20) + "…" : v)}
                     />
                     <Tooltip content={<BarTooltip />} />
                     <Legend
                       formatter={(value) => (value === "budget" ? t("common.budget") : t("budget.paid"))}
                     />
                     <Bar dataKey="budget" fill={COLORS[0]} name="budget" radius={[0, 4, 4, 0]} />
-                    <Bar dataKey="paid" name="paid" radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="paid" name="paid" fill={COLORS[1]} radius={[0, 4, 4, 0]}>
                       {barData.slice(0, 8).map((entry, index) => (
                         <Cell
                           key={`bar-${index}`}
