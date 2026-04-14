@@ -1460,7 +1460,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
       {/* ===== Fullscreen Gallery Dialog ===== */}
       <Dialog open={galleryIndex !== null} onOpenChange={(open) => { if (!open) closeGallery(); }}>
         <DialogContent
-          className="!max-w-[95vw] w-[95vw] !max-h-[92vh] h-[92vh] !p-0 gap-0 flex flex-col sm:flex-row overflow-hidden !rounded-xl"
+          className="!max-w-[98vw] w-[98vw] !max-h-[96vh] h-[96vh] !p-0 gap-0 flex flex-col sm:flex-row overflow-hidden !rounded-xl"
           onKeyDown={(e) => {
             if (e.key === "ArrowLeft") galleryPrev();
             if (e.key === "ArrowRight") galleryNext();
@@ -1469,35 +1469,48 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
           <DialogTitle className="sr-only">{t("inspiration.gallery", "Inspiration gallery")}</DialogTitle>
           {galleryPhoto && (
             <>
-              {/* Image area */}
-              <div className="relative flex-1 bg-black flex items-center justify-center min-h-0">
+              {/* Image area — cinematic dark backdrop */}
+              <div className="relative flex-1 bg-neutral-950 flex items-center justify-center min-h-0 min-w-0">
                 <img
                   src={galleryPhoto.url}
                   alt={galleryPhoto.caption || ""}
-                  className="max-w-full max-h-full object-contain"
+                  className="w-full h-full object-contain select-none"
+                  draggable={false}
                 />
                 {/* Nav arrows */}
                 {galleryIndex !== null && galleryIndex > 0 && (
                   <button
                     type="button"
-                    className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center transition-colors"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 flex items-center justify-center transition-all"
                     onClick={(e) => { e.stopPropagation(); galleryPrev(); }}
                   >
-                    <ChevronLeft className="h-5 w-5 text-white" />
+                    <ChevronLeft className="h-6 w-6 text-white" />
                   </button>
                 )}
                 {galleryIndex !== null && galleryIndex < filteredPhotos.length - 1 && (
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 flex items-center justify-center transition-all"
                     onClick={(e) => { e.stopPropagation(); galleryNext(); }}
                   >
-                    <ChevronRight className="h-5 w-5 text-white" />
+                    <ChevronRight className="h-6 w-6 text-white" />
                   </button>
                 )}
-                {/* Counter */}
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full tabular-nums">
-                  {(galleryIndex ?? 0) + 1} / {filteredPhotos.length}
+                {/* Bottom bar — counter + caption */}
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-6 pb-4 pt-10 pointer-events-none">
+                  <div className="flex items-end justify-between">
+                    <div>
+                      {galleryPhoto.caption && (
+                        <p className="text-white text-sm font-medium mb-1">{galleryPhoto.caption}</p>
+                      )}
+                      {galleryPhoto.roomName && (
+                        <p className="text-white/60 text-xs">{galleryPhoto.roomName}</p>
+                      )}
+                    </div>
+                    <span className="text-white/50 text-xs tabular-nums">
+                      {(galleryIndex ?? 0) + 1} / {filteredPhotos.length}
+                    </span>
+                  </div>
                 </div>
               </div>
 
