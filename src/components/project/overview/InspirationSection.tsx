@@ -1340,7 +1340,10 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
 
         {/* Fullscreen moodboard dialog */}
         <Dialog open={fullscreenMoodboard} onOpenChange={setFullscreenMoodboard}>
-          <DialogContent className="max-w-[100vw] w-[100vw] h-[100vh] max-h-[100vh] p-0 border-0 rounded-none [&>button]:z-50 [&>button]:text-white [&>button]:bg-black/40 [&>button]:backdrop-blur-sm [&>button]:rounded-full [&>button]:h-10 [&>button]:w-10 [&>button]:top-4 [&>button]:right-4">
+          <DialogContent
+            className="p-0 border-0 rounded-none [&>button]:z-50 [&>button]:text-white [&>button]:bg-black/40 [&>button]:backdrop-blur-sm [&>button]:rounded-full [&>button]:h-10 [&>button]:w-10 [&>button]:top-4 [&>button]:right-4"
+            style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", maxWidth: "100vw", maxHeight: "100vh", transform: "none" }}
+          >
             <DialogTitle className="sr-only">{t("inspiration.moodboard", "Moodboard")}</DialogTitle>
             <div
               className="w-full h-full overflow-auto"
