@@ -175,9 +175,12 @@ export function HomeownerPlanningView({
   const [addingLoading, setAddingLoading] = useState(false);
 
   // Inline editing
-  const [editingCell, setEditingCell] = useState<{ taskId: string; field: "title" | "description" | "room_id" } | null>(null);
+  const [editingCell, setEditingCell] = useState<{ taskId: string; field: "title" | "description" | "room_id" | "budget" | "material_estimate" | "rot_amount" } | null>(null);
   const [editValue, setEditValue] = useState("");
   const [newRoomName, setNewRoomName] = useState("");
+
+  // Column header context menu
+  const [headerMenu, setHeaderMenu] = useState<{ x: number; y: number } | null>(null);
 
   // Column visibility
   const [visibleExtras, setVisibleExtras] = useState<Set<ExtraColumnKey>>(
@@ -367,9 +370,13 @@ export function HomeownerPlanningView({
 
   const commitCellEdit = async () => {
     if (!editingCell || editingCell.field === "room_id") return;
+    const numericFields = ["budget", "material_estimate", "rot_amount"];
+    const value = numericFields.includes(editingCell.field)
+      ? (editValue ? parseFloat(editValue) : null)
+      : (editValue || null);
     await supabase
       .from("tasks")
-      .update({ [editingCell.field]: editValue || null })
+      .update({ [editingCell.field]: value })
       .eq("id", editingCell.taskId);
     setEditingCell(null);
     fetchTasks();
@@ -635,7 +642,7 @@ export function HomeownerPlanningView({
             <div className="rounded-md border overflow-x-auto mb-3">
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow onContextMenu={(e) => { e.preventDefault(); setHeaderMenu({ x: e.clientX, y: e.clientY }); }}>
                     <TableHead className="w-[200px]">{t("planningTasks.task", "Task")}</TableHead>
                     {show.description && <TableHead>{t("tasks.description", "Description")}</TableHead>}
                     {show.room && <TableHead className="w-[160px]">{t("tasks.room", "Room")}</TableHead>}
@@ -880,23 +887,35 @@ export function HomeownerPlanningView({
                         )}
                         {show.budget && (
                           <TableCell className="text-right py-2.5">
-                            {task.budget ? (
-                              <span className="text-sm tabular-nums">{Math.round(task.budget * (1 + VAT_RATE)).toLocaleString("sv-SE")} kr</span>
-                            ) : <span className="text-xs text-muted-foreground">–</span>}
+                            {editingCell?.taskId === task.id && editingCell.field === "budget" ? (
+                              <input autoFocus type="number" className="w-full h-7 px-1 text-sm text-right rounded border focus:outline-none focus:ring-1 focus:ring-primary tabular-nums" value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commitCellEdit(); if (e.key === "Escape") setEditingCell(null); }} onBlur={commitCellEdit} step="100" />
+                            ) : (
+                              <button type="button" className="w-full text-right hover:bg-muted/50 rounded px-1 py-0.5 transition-colors" onClick={() => { setEditingCell({ taskId: task.id, field: "budget" }); setEditValue(task.budget?.toString() ?? ""); }}>
+                                {task.budget ? <span className="text-sm tabular-nums">{Math.round(task.budget * (1 + VAT_RATE)).toLocaleString("sv-SE")} kr</span> : <span className="text-xs text-muted-foreground">–</span>}
+                              </button>
+                            )}
                           </TableCell>
                         )}
                         {show.materialEstimate && (
                           <TableCell className="text-right py-2.5">
-                            {task.material_estimate ? (
-                              <span className="text-sm tabular-nums text-amber-700">{Math.round(task.material_estimate * (1 + VAT_RATE)).toLocaleString("sv-SE")} kr</span>
-                            ) : <span className="text-xs text-muted-foreground">–</span>}
+                            {editingCell?.taskId === task.id && editingCell.field === "material_estimate" ? (
+                              <input autoFocus type="number" className="w-full h-7 px-1 text-sm text-right rounded border focus:outline-none focus:ring-1 focus:ring-primary tabular-nums" value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commitCellEdit(); if (e.key === "Escape") setEditingCell(null); }} onBlur={commitCellEdit} step="100" />
+                            ) : (
+                              <button type="button" className="w-full text-right hover:bg-muted/50 rounded px-1 py-0.5 transition-colors" onClick={() => { setEditingCell({ taskId: task.id, field: "material_estimate" }); setEditValue(task.material_estimate?.toString() ?? ""); }}>
+                                {task.material_estimate ? <span className="text-sm tabular-nums text-amber-700">{Math.round(task.material_estimate * (1 + VAT_RATE)).toLocaleString("sv-SE")} kr</span> : <span className="text-xs text-muted-foreground">–</span>}
+                              </button>
+                            )}
                           </TableCell>
                         )}
                         {show.rotAmount && (
                           <TableCell className="text-right py-2.5">
-                            {task.rot_amount ? (
-                              <span className="text-sm tabular-nums text-green-700">{Math.round(task.rot_amount).toLocaleString("sv-SE")} kr</span>
-                            ) : <span className="text-xs text-muted-foreground">–</span>}
+                            {editingCell?.taskId === task.id && editingCell.field === "rot_amount" ? (
+                              <input autoFocus type="number" className="w-full h-7 px-1 text-sm text-right rounded border focus:outline-none focus:ring-1 focus:ring-primary tabular-nums" value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commitCellEdit(); if (e.key === "Escape") setEditingCell(null); }} onBlur={commitCellEdit} step="100" />
+                            ) : (
+                              <button type="button" className="w-full text-right hover:bg-muted/50 rounded px-1 py-0.5 transition-colors" onClick={() => { setEditingCell({ taskId: task.id, field: "rot_amount" }); setEditValue(task.rot_amount?.toString() ?? ""); }}>
+                                {task.rot_amount ? <span className="text-sm tabular-nums text-green-700">{Math.round(task.rot_amount).toLocaleString("sv-SE")} kr</span> : <span className="text-xs text-muted-foreground">–</span>}
+                              </button>
+                            )}
                           </TableCell>
                         )}
 
@@ -916,6 +935,35 @@ export function HomeownerPlanningView({
                 </TableBody>
               </Table>
             </div>
+          )}
+
+          {/* Column context menu */}
+          {headerMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setHeaderMenu(null)} />
+              <div
+                className="fixed z-50 bg-popover border rounded-lg shadow-lg p-1 min-w-[180px]"
+                style={{ left: headerMenu.x, top: headerMenu.y }}
+              >
+                <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{t("planningTasks.columns", "Columns")}</p>
+                {EXTRA_COLUMNS.map((col) => (
+                  <button
+                    key={col.key}
+                    type="button"
+                    className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent text-left transition-colors"
+                    onClick={() => { toggleColumn(col.key); }}
+                  >
+                    <span className={cn(
+                      "h-3.5 w-3.5 rounded border flex items-center justify-center text-[10px]",
+                      visibleExtras.has(col.key) ? "border-primary bg-primary text-white" : "border-muted-foreground/30"
+                    )}>
+                      {visibleExtras.has(col.key) && "✓"}
+                    </span>
+                    {t(col.labelKey)}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
 
           {/* Add task */}
