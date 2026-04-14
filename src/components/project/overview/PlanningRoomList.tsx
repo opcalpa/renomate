@@ -426,6 +426,10 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
       const numVal = rawValue.trim() === "" ? null : Number(rawValue.replace(",", "."));
       const dims = { ...(room.dimensions || {}), area_sqm: numVal };
       updatePayload = { dimensions: dims };
+    } else if (field === "wallArea") {
+      const numVal = rawValue.trim() === "" ? null : Number(rawValue.replace(",", "."));
+      const dims = { ...(room.dimensions || {}), wall_area_sqm: numVal };
+      updatePayload = { dimensions: dims };
     }
 
     if (Object.keys(updatePayload).length === 0) return;
@@ -435,7 +439,7 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
         if (r.id !== roomId) return r;
         if (field === "name") return { ...r, name: rawValue.trim() };
         if (field === "ceilingHeight") return { ...r, ceiling_height_mm: updatePayload.ceiling_height_mm as number | null };
-        if (field === "width" || field === "depth" || field === "area") {
+        if (field === "width" || field === "depth" || field === "area" || field === "wallArea") {
           return { ...r, dimensions: updatePayload.dimensions as Room["dimensions"] };
         }
         return r;
@@ -627,9 +631,14 @@ export function PlanningRoomList({ projectId, locked = false, onRoomChange }: Pl
                       </TableCell>
                       {show.wallArea && (
                         <TableCell className="py-1.5 hidden sm:table-cell">
-                          <span className="text-sm tabular-nums text-muted-foreground">
-                            {wallArea !== null ? `${wallArea.toFixed(1)} ${ms.areaLabel}` : "–"}
-                          </span>
+                          {renderEditableCell(
+                            room,
+                            "wallArea",
+                            room.dimensions?.wall_area_sqm != null
+                              ? (room.dimensions.wall_area_sqm as number).toFixed(1)
+                              : wallArea !== null ? wallArea.toFixed(1) : "",
+                            "tabular-nums text-muted-foreground"
+                          )}
                         </TableCell>
                       )}
                       {show.paintEstimate && (
