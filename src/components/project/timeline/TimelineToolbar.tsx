@@ -495,7 +495,8 @@ function VisibilityToggles({ t }: { t: (key: string, fallback?: string) => strin
   const showPhases = useTimelineStore((s) => s.showPhases);
   const showMilestones = useTimelineStore((s) => s.showMilestones);
   const colorBy = useTimelineStore((s) => s.colorBy);
-  const { setShowTasks, setShowPhases, setShowMilestones, setColorBy } = useTimelineStore.getState();
+  const groupBy = useTimelineStore((s) => s.groupBy);
+  const { setShowTasks, setShowPhases, setShowMilestones, setColorBy, setGroupBy } = useTimelineStore.getState();
 
   const allOn = showTasks && showPhases && showMilestones;
 
@@ -525,11 +526,29 @@ function VisibilityToggles({ t }: { t: (key: string, fallback?: string) => strin
           </label>
         </div>
         <div className="border-t mt-2 pt-2">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide px-1 mb-1">{t("timeline.colorBy", "Color by")}</p>
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide px-1 mb-1">{t("timeline.groupBy", "Gruppera")}</p>
+          {(["none", "status", "room", "assignee", "priority"] as const).map((mode) => {
+            const labels: Record<string, string> = {
+              none: t("common.none", "Ingen"),
+              status: t("tasks.status", "Status"),
+              room: t("tasks.room", "Rum"),
+              assignee: t("tasks.assignee", "Tilldelad"),
+              priority: t("tasks.priority", "Prioritet"),
+            };
+            return (
+              <label key={mode} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer text-xs">
+                <input type="radio" name="groupBy" checked={groupBy === mode} onChange={() => setGroupBy(mode)} className="accent-primary" />
+                {labels[mode]}
+              </label>
+            );
+          })}
+        </div>
+        <div className="border-t mt-2 pt-2">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide px-1 mb-1">{t("timeline.colorBy", "Färg")}</p>
           {(["status", "category", "priority"] as const).map((mode) => (
             <label key={mode} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer text-xs">
               <input type="radio" name="colorBy" checked={colorBy === mode} onChange={() => setColorBy(mode)} className="accent-primary" />
-              {mode === "status" ? t("tasks.status", "Status") : mode === "category" ? t("tasks.costCenter", "Category") : t("tasks.priority", "Priority")}
+              {mode === "status" ? t("tasks.status", "Status") : mode === "category" ? t("tasks.costCenter", "Kategori") : t("tasks.priority", "Prioritet")}
             </label>
           ))}
         </div>
