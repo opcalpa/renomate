@@ -1,0 +1,186 @@
+import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import { ChevronLeft, ChevronRight, Loader2, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { populateProjectFromPlanningWizard } from "@/services/planningWizardService";
+import { DescribeStep } from "./DescribeStep";
+import { RoomsStep } from "./RoomsStep";
+import { GlobalWorkTypesStep } from "./GlobalWorkTypesStep";
+import { RoomSpecificStep } from "./RoomSpecificStep";
+import { INITIAL_FORM_DATA, TOTAL_STEPS } from "./types";
+import type { PlanningWizardData, PlanningWizardRoom, AIParsedResult } from "./types";
+
+interface PlanningWizardProps {
+  projectId: string;
+  onComplete: () => void;
+  onSkip: () => void;
+}
+
+export function PlanningWizard({ projectId, onComplete, onSkip }: PlanningWizardProps) {
+  const { t } = useTranslation();
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState<PlanningWizardData>(INITIAL_FORM_DATA);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  const updateFormData = useCallback((updates: Partial<PlanningWizardData>) => {
+    setFormData((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const canProceed = (): boolean => {
+    switch (step) {
+      case 1: return formData.description.length > 10;
+      case 2: return formData.rooms.length > 0;
+      case 3: return true; // global work types are optional
+      case 4: return true; // room-specific work is optional
+      default: return false;
+    }
+  };
+
+  const handleAnalyze = useCallback(async () => {
+    setAnalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("parse-renovation-description", {
+        body: { description: formData.description, language: "sv" },
+      });
+      if (error) throw error;
+
+      const parsed = data as AIParsedResult;
+      // Pre-populate rooms from AI
+      const aiRooms: PlanningWizardRoom[] = parsed.rooms.map((r) => ({
+        id: crypto.randomUUID(),
+        name: r.name,
+        nameKey: r.nameKey,
+        aiSuggested: true,
+      }));
+
+      // Pre-populate room-specific work from AI
+      const roomSpecificWork: PlanningWizardData["roomSpecificWork"] = {};
+      for (const aiRoom of parsed.rooms) {
+        const matchingRoom = aiRooms.find((r) => r.nameKey === aiRoom.nameKey);
+        if (matchingRoom && aiRoom.suggestedWorkTypes.length > 0) {
+          roomSpecificWork[matchingRoom.id] = {
+            description: "",
+            workTypes: aiRoom.suggestedWorkTypes,
+          };
+        }
+      }
+
+      updateFormData({
+        aiParsed: parsed,
+        rooms: aiRooms,
+        globalWorkTypes: parsed.globalWorkTypes,
+        roomSpecificWork,
+      });
+    } catch {
+      toast.error(t("planningWizard.analyzeFailed", "Could not analyze. You can continue manually."));
+    }
+    setAnalyzing(false);
+  }, [formData.description, updateFormData, t]);
+
+  const handleSubmit = useCallback(async () => {
+    setCreating(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+      if (!profile) throw new Error("No profile");
+
+      const { roomCount, taskCount } = await populateProjectFromPlanningWizard(
+        projectId,
+        formData,
+        profile.id
+      );
+
+      toast.success(
+        t("planningWizard.created", "Created {{rooms}} rooms and {{tasks}} tasks!", {
+          rooms: roomCount,
+          tasks: taskCount,
+        })
+      );
+      onComplete();
+    } catch {
+      toast.error(t("common.errorSaving", "Could not save"));
+    }
+    setCreating(false);
+  }, [projectId, formData, onComplete, t]);
+
+  const progress = (step / TOTAL_STEPS) * 100;
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      {/* Card wrapper */}
+      <div className="rounded-xl border bg-card shadow-sm">
+        {/* Header with progress */}
+        <div className="px-6 pt-6 pb-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <h2 className="text-base font-semibold">
+                {t("planningWizard.title", "Plan your renovation")}
+              </h2>
+            </div>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {step} / {TOTAL_STEPS}
+            </span>
+          </div>
+          <Progress value={progress} className="h-1" />
+        </div>
+
+        {/* Step content */}
+        <div className="px-6 pb-6">
+          {step === 1 && (
+            <DescribeStep
+              formData={formData}
+              updateFormData={updateFormData}
+              onAnalyze={handleAnalyze}
+              analyzing={analyzing}
+            />
+          )}
+          {step === 2 && <RoomsStep formData={formData} updateFormData={updateFormData} />}
+          {step === 3 && <GlobalWorkTypesStep formData={formData} updateFormData={updateFormData} />}
+          {step === 4 && <RoomSpecificStep formData={formData} updateFormData={updateFormData} />}
+        </div>
+
+        {/* Navigation */}
+        <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30 rounded-b-xl">
+          <div>
+            {step === 1 ? (
+              <Button variant="ghost" size="sm" onClick={onSkip} className="text-muted-foreground">
+                {t("planningWizard.skipWizard", "Skip — add manually")}
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={() => setStep((s) => s - 1)} className="gap-1">
+                <ChevronLeft className="h-4 w-4" />
+                {t("common.back", "Back")}
+              </Button>
+            )}
+          </div>
+          <div>
+            {step < TOTAL_STEPS ? (
+              <Button size="sm" onClick={() => setStep((s) => s + 1)} disabled={!canProceed()} className="gap-1">
+                {t("common.next", "Next")}
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button size="sm" onClick={handleSubmit} disabled={creating || !canProceed()} className="gap-1.5">
+                {creating && <Loader2 className="h-4 w-4 animate-spin" />}
+                {creating
+                  ? t("planningWizard.creating", "Creating plan...")
+                  : t("planningWizard.createPlan", "Create plan")}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

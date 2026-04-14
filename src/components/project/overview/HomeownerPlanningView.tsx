@@ -32,6 +32,7 @@ import { PlanningRoomList } from "./PlanningRoomList";
 import { ShareRfqDialog } from "./ShareRfqDialog";
 import { GuestLoginPrompt } from "@/components/guest/GuestLoginPrompt";
 import { StartProjectModal } from "./StartProjectModal";
+import { PlanningWizard } from "./planning-wizard/PlanningWizard";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { ImportQuotePopover, type ExternalQuote } from "./ImportQuotePopover";
 import { ExternalQuoteCell, type QuoteAssignment } from "./ExternalQuoteCell";
@@ -165,6 +166,7 @@ export function HomeownerPlanningView({
   const [activating, setActivating] = useState(false);
   const [loginPromptAction, setLoginPromptAction] = useState<"activate" | "share_rfq" | null>(null);
   const [showStartModal, setShowStartModal] = useState(false);
+  const [wizardDismissed, setWizardDismissed] = useState(false);
 
   // Inline add
   const [isAdding, setIsAdding] = useState(false);
@@ -554,6 +556,19 @@ export function HomeownerPlanningView({
   // ---------- Render ----------
   if (loading) {
     return <div className="space-y-4 animate-pulse"><div className="h-32 bg-muted rounded-lg" /><div className="h-48 bg-muted rounded-lg" /></div>;
+  }
+
+  // Show wizard when project has no tasks (empty state)
+  const showWizard = tasks.length === 0 && !wizardDismissed && !contributorMode && !isGuest;
+
+  if (showWizard) {
+    return (
+      <PlanningWizard
+        projectId={projectId}
+        onComplete={() => { fetchTasks(); fetchRooms(); setWizardDismissed(true); }}
+        onSkip={() => setWizardDismissed(true)}
+      />
+    );
   }
 
   return (
