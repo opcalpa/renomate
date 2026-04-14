@@ -949,7 +949,7 @@ const ProjectDetail = () => {
                 <MessageSquare className="h-4 w-4" />
               </div>
               {/* Primary tabs */}
-              {/* 1. Översikt */}
+              {/* 1. Översikt / Planering */}
               <HoverTabMenu
                 trigger={
                   <div className={cn(
@@ -957,7 +957,7 @@ const ProjectDetail = () => {
                     activeTab === "overview" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
                     isTabBlocked("overview") && "opacity-40 pointer-events-none cursor-default"
                   )}>
-                    {t("projectDetail.overview")}
+                    {projectStatus === "planning" ? t("projectDetail.planning", "Planering") : t("projectDetail.overview")}
                   </div>
                 }
                 items={menuConfigs.overview}

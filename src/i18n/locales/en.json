@@ -4272,6 +4272,13 @@
     "cancelled": "Cancelled",
     "cancelledDesc": "Project cancelled",
     "changeStatus": "Change status",
+    "statusUpdated": "Status updated",
+    "confirmActivateTitle": "Start the project?",
+    "confirmActivateDesc": "When you change to Active:",
+    "confirmActivatePoint1": "Planning view is replaced by project management view",
+    "confirmActivatePoint2": "Tasks, rooms, and budget are kept",
+    "confirmActivatePoint3": "You cannot go back to planning status",
+    "confirmActivateAction": "Yes, start the project",
     "currentPhase": "Current phase",
     "cta": {
       "planningMessage": "Add tasks to define the scope of work.",

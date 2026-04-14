@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { toast } from "sonner";
 import { useProjectReminders } from "@/hooks/useProjectReminders";
 import { useJuniorStore } from "@/stores/juniorStore";
 import { Button } from "@/components/ui/button";
@@ -120,6 +121,16 @@ const OverviewTab = ({
   const projectStatus = normalizeStatus(project.status);
   const isPlanning = projectStatus === "planning" || isQuotePhase(projectStatus);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const handleStatusChange = useCallback(async (newStatus: string) => {
+    const { error } = await supabase.from("projects").update({ status: newStatus }).eq("id", project.id);
+    if (error) {
+      toast.error(t("common.error"));
+      return;
+    }
+    toast.success(t("projectStatus.statusUpdated", "Status uppdaterad"));
+    onProjectUpdate?.();
+  }, [project.id, onProjectUpdate, t]);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
   const [customerFormOpen, setCustomerFormOpen] = useState(false);
@@ -336,7 +347,7 @@ const OverviewTab = ({
   // ----- All phases: unified dashboard view -----
   return (
     <div className="space-y-6">
-      <ProjectHeader project={project} onOpenSettings={(isProjectOwner || overviewAccess === 'edit') ? () => setSettingsOpen(true) : undefined} />
+      <ProjectHeader project={project} onOpenSettings={(isProjectOwner || overviewAccess === 'edit') ? () => setSettingsOpen(true) : undefined} onStatusChange={isProjectOwner ? handleStatusChange : undefined} />
 
       {/* RFQ banner — builder working on a homeowner's quote request */}
       {isRfqProject && !isHomeowner && isPlanning && (

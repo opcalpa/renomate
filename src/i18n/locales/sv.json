@@ -4269,6 +4269,13 @@
     "cancelled": "Avbrutet",
     "cancelledDesc": "Projektet är avbrutet",
     "changeStatus": "Ändra status",
+    "statusUpdated": "Status uppdaterad",
+    "confirmActivateTitle": "Starta projektet?",
+    "confirmActivateDesc": "När du ändrar till Pågående:",
+    "confirmActivatePoint1": "Planeringsvyn ersätts av projektledningsvyn",
+    "confirmActivatePoint2": "Arbeten, rum och budget behålls",
+    "confirmActivatePoint3": "Du kan inte gå tillbaka till planeringsstatus",
+    "confirmActivateAction": "Ja, starta projektet",
     "currentPhase": "Aktuell fas",
     "cta": {
       "planningMessage": "Lägg till arbeten för att definiera arbetets omfattning.",

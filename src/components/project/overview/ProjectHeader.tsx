@@ -1,9 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { MapPin, Pencil, Camera, X, Loader2, GripVertical, Check, ZoomIn, ZoomOut } from "lucide-react";
+import { MapPin, Pencil, Camera, X, Loader2, GripVertical, Check, ZoomIn, ZoomOut, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { normalizeStatus, STATUS_META } from "@/lib/projectStatus";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { normalizeStatus, STATUS_META, PROJECT_STATUSES, type ProjectStatus } from "@/lib/projectStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { OverviewProject } from "./types";
@@ -12,9 +14,10 @@ interface ProjectHeaderProps {
   project: OverviewProject;
   onOpenSettings?: () => void;
   onCoverChange?: (url: string | null) => void;
+  onStatusChange?: (newStatus: string) => void;
 }
 
-export function ProjectHeader({ project, onOpenSettings, onCoverChange }: ProjectHeaderProps) {
+export function ProjectHeader({ project, onOpenSettings, onCoverChange, onStatusChange }: ProjectHeaderProps) {
   const { t } = useTranslation();
   const status = normalizeStatus(project.status);
   const meta = STATUS_META[status];
@@ -29,6 +32,27 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [isAutoCover, setIsAutoCover] = useState(false);
+  const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
+  const [confirmStatus, setConfirmStatus] = useState<ProjectStatus | null>(null);
+
+  // Statuses available from current status
+  const availableStatuses = PROJECT_STATUSES.filter((s) => s !== status && s !== "quote_rejected" && s !== "cancelled");
+
+  const handleStatusSelect = (newStatus: ProjectStatus) => {
+    setStatusPopoverOpen(false);
+    // Warn when jumping from planning to active
+    if (status === "planning" && newStatus === "active") {
+      setConfirmStatus(newStatus);
+      return;
+    }
+    onStatusChange?.(newStatus);
+  };
+
+  const handleConfirmStatusChange = async () => {
+    if (!confirmStatus) return;
+    onStatusChange?.(confirmStatus);
+    setConfirmStatus(null);
+  };
 
   // Sync with prop changes
   useEffect(() => {
@@ -319,11 +343,41 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
           >
             {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
           </Button>
-          <span
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${meta.color}`}
-          >
-            {t(meta.labelKey)}
-          </span>
+          {onStatusChange ? (
+            <Popover open={statusPopoverOpen} onOpenChange={setStatusPopoverOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${meta.color}`}
+                >
+                  {t(meta.labelKey)}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-1" align="start">
+                <p className="px-2 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{t("projectStatus.changeStatus", "Ändra status")}</p>
+                {availableStatuses.map((s) => {
+                  const sMeta = STATUS_META[s];
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent text-left transition-colors"
+                      onClick={() => handleStatusSelect(s)}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${sMeta.color.split(" ")[0]}`} />
+                      {t(sMeta.labelKey)}
+                    </button>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${meta.color}`}
+            >
+              {t(meta.labelKey)}
+            </span>
+          )}
         </div>
 
         {(project.address || project.description) && (
@@ -342,6 +396,32 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange }: Projec
           </div>
         )}
       </div>
+
+      {/* Confirmation dialog: Planning → Active */}
+      <AlertDialog open={!!confirmStatus} onOpenChange={(open) => { if (!open) setConfirmStatus(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              {t("projectStatus.confirmActivateTitle", "Starta projektet?")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>{t("projectStatus.confirmActivateDesc", "När du ändrar till Pågående:")}</p>
+              <ul className="list-disc list-inside text-sm space-y-1">
+                <li>{t("projectStatus.confirmActivatePoint1", "Planeringsvyn ersätts av projektledningsvyn")}</li>
+                <li>{t("projectStatus.confirmActivatePoint2", "Arbeten, rum och budget behålls")}</li>
+                <li>{t("projectStatus.confirmActivatePoint3", "Du kan inte gå tillbaka till planeringsstatus")}</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmStatusChange}>
+              {t("projectStatus.confirmActivateAction", "Ja, starta projektet")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
