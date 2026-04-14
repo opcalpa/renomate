@@ -176,6 +176,25 @@ export function RoomsStep({ formData, updateFormData }: PlanningStepProps) {
               </div>
             ))}
           </div>
+
+          {/* Area comparison with total */}
+          {(() => {
+            const roomTotal = formData.rooms.reduce((s, r) => s + (r.area_sqm ?? 0), 0);
+            const propTotal = formData.totalAreaSqm;
+            if (!propTotal || roomTotal === 0) return null;
+            const diff = Math.abs(roomTotal - propTotal);
+            const pct = Math.round((diff / propTotal) * 100);
+            if (pct < 15) return (
+              <p className="text-xs text-muted-foreground">
+                {t("planningWizard.areaMatch", "Room total: {{roomTotal}} m² of {{propTotal}} m² total", { roomTotal: Math.round(roomTotal), propTotal: Math.round(propTotal) })}
+              </p>
+            );
+            return (
+              <p className="text-xs text-amber-600">
+                {t("planningWizard.areaDiff", "Room total ({{roomTotal}} m²) differs from property total ({{propTotal}} m²) by {{pct}}%", { roomTotal: Math.round(roomTotal), propTotal: Math.round(propTotal), pct })}
+              </p>
+            );
+          })()}
         </div>
       )}
     </div>

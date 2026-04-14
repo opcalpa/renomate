@@ -25,6 +25,7 @@ export interface AIParsedResult {
 export interface PlanningWizardData {
   // Step 1
   description: string;
+  totalAreaSqm: number | undefined;
   aiParsed: AIParsedResult | null;
 
   // Step 2
@@ -46,6 +47,7 @@ export const TOTAL_STEPS = 4;
 
 export const INITIAL_FORM_DATA: PlanningWizardData = {
   description: "",
+  totalAreaSqm: undefined,
   aiParsed: null,
   rooms: [],
   globalWorkTypes: [],

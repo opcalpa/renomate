@@ -85,6 +85,26 @@ export function DescribeStep({ formData, updateFormData, onAnalyze, analyzing }:
         )}
       </div>
 
+      {/* Total area */}
+      <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-4 py-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">{t("planningWizard.totalArea", "How big is the property?")}</p>
+          <p className="text-xs text-muted-foreground">{t("planningWizard.totalAreaHint", "Total living area — usually stated in your purchase contract")}</p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <input
+            type="number"
+            className="w-20 h-8 px-2 text-sm text-right rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 tabular-nums"
+            placeholder="—"
+            value={formData.totalAreaSqm ?? ""}
+            onChange={(e) => updateFormData({ totalAreaSqm: e.target.value ? parseFloat(e.target.value) : undefined })}
+            step="1"
+            min="0"
+          />
+          <span className="text-sm text-muted-foreground">m²</span>
+        </div>
+      </div>
+
       {formData.description.length > 10 && (
         <Button
           variant="outline"
