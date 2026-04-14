@@ -7,6 +7,7 @@ export interface PlanningWizardRoom {
   width_m?: number;
   depth_m?: number;
   area_sqm?: number;
+  ceiling_height_m?: number;
   aiSuggested?: boolean;
 }
 

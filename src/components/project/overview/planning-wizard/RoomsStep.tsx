@@ -116,30 +116,54 @@ export function RoomsStep({ formData, updateFormData }: PlanningStepProps) {
                     {room.name}
                     {room.aiSuggested && <Sparkles className="h-3 w-3 text-primary" />}
                   </p>
-                  <div className="flex gap-2 mt-1.5">
+                  <div className="flex flex-wrap gap-2 mt-1.5">
                     <Input
                       type="number"
                       placeholder={t("planningWizard.width", "Width (m)")}
                       value={room.width_m ?? ""}
-                      onChange={(e) => updateRoom(room.id, { width_m: e.target.value ? parseFloat(e.target.value) : undefined })}
-                      className="h-7 text-xs w-24"
+                      onChange={(e) => {
+                        const v = e.target.value ? parseFloat(e.target.value) : undefined;
+                        const area = v && room.depth_m ? Math.round(v * room.depth_m * 10) / 10 : room.area_sqm;
+                        updateRoom(room.id, { width_m: v, area_sqm: area });
+                      }}
+                      className="h-7 text-xs w-20"
                       step="0.1"
                       min="0"
                     />
+                    <span className="text-xs text-muted-foreground self-center">×</span>
                     <Input
                       type="number"
                       placeholder={t("planningWizard.depth", "Depth (m)")}
                       value={room.depth_m ?? ""}
-                      onChange={(e) => updateRoom(room.id, { depth_m: e.target.value ? parseFloat(e.target.value) : undefined })}
+                      onChange={(e) => {
+                        const v = e.target.value ? parseFloat(e.target.value) : undefined;
+                        const area = room.width_m && v ? Math.round(room.width_m * v * 10) / 10 : room.area_sqm;
+                        updateRoom(room.id, { depth_m: v, area_sqm: area });
+                      }}
+                      className="h-7 text-xs w-20"
+                      step="0.1"
+                      min="0"
+                    />
+                    <span className="text-xs text-muted-foreground self-center">=</span>
+                    <Input
+                      type="number"
+                      placeholder={t("planningWizard.area", "m²")}
+                      value={room.area_sqm ?? ""}
+                      onChange={(e) => updateRoom(room.id, { area_sqm: e.target.value ? parseFloat(e.target.value) : undefined })}
+                      className="h-7 text-xs w-16"
+                      step="0.5"
+                      min="0"
+                    />
+                    <span className="text-xs text-muted-foreground self-center">m²</span>
+                    <Input
+                      type="number"
+                      placeholder={t("planningWizard.ceilingHeight", "Takhöjd (m)")}
+                      value={room.ceiling_height_m ?? ""}
+                      onChange={(e) => updateRoom(room.id, { ceiling_height_m: e.target.value ? parseFloat(e.target.value) : undefined })}
                       className="h-7 text-xs w-24"
                       step="0.1"
                       min="0"
                     />
-                    {room.width_m && room.depth_m && (
-                      <span className="text-xs text-muted-foreground self-center tabular-nums">
-                        = {(room.width_m * room.depth_m).toFixed(1)} m²
-                      </span>
-                    )}
                   </div>
                 </div>
                 <button

@@ -5225,6 +5225,8 @@
     "step2Desc": "Välj rummen som ingår i renoveringen. Lägg till mått för bättre uppskattningar.",
     "customRoom": "Annat rum...",
     "selectedRooms": "Valda rum",
+    "area": "m²",
+    "ceilingHeight": "Takhöjd (m)",
     "width": "Bredd (m)",
     "depth": "Djup (m)",
     "step3Title": "Vad görs i alla rum?",

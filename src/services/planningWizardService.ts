@@ -28,6 +28,7 @@ export async function populateProjectFromPlanningWizard(
       .insert({
         project_id: projectId,
         name: room.name,
+        ceiling_height_mm: room.ceiling_height_m ? Math.round(room.ceiling_height_m * 1000) : null,
         dimensions: Object.keys(dimensions).length > 0 ? dimensions : null,
       })
       .select("id")

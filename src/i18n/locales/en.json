@@ -5228,6 +5228,8 @@
     "step2Desc": "Select the rooms that are part of the renovation. Add dimensions for better estimates.",
     "customRoom": "Other room...",
     "selectedRooms": "Selected rooms",
+    "area": "m²",
+    "ceilingHeight": "Ceiling (m)",
     "width": "Width (m)",
     "depth": "Depth (m)",
     "step3Title": "What's done in all rooms?",
