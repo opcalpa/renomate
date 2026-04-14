@@ -84,9 +84,8 @@ export const TimelineHoverCard: React.FC<TimelineHoverCardProps> = ({
     <div
       className="absolute z-50 pointer-events-none"
       style={{
-        left: hoverPosition.x + 12,
-        top: hoverPosition.y - 10,
-        transform: "translateY(-100%)",
+        left: hoverPosition.x + 16,
+        top: hoverPosition.y + 64 + 8,
       }}
     >
       <div className="bg-popover text-popover-foreground border rounded-lg shadow-lg p-3 min-w-[200px] max-w-[280px]">
