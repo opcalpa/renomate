@@ -1360,11 +1360,11 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               ) : (
                 /* Multi image — masonry grid */
                 <div
-                  className="grid grid-cols-4 sm:grid-cols-6 w-full h-full"
+                  className="grid grid-cols-4 sm:grid-cols-6 w-full"
                   style={{
                     gap: moodboardGap ? `${moodboardGapSize}px` : "0px",
                     padding: moodboardGap ? `${moodboardGapSize + 4}px` : "0",
-                    gridAutoRows: `minmax(${Math.max(120, Math.floor((typeof window !== "undefined" ? window.innerHeight : 800) / 4))}px, auto)`,
+                    gridAutoRows: `minmax(${Math.max(150, Math.floor((typeof window !== "undefined" ? window.innerHeight : 800) / 3))}px, auto)`,
                   }}
                 >
                   {filteredPhotos
