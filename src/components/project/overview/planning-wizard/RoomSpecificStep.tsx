@@ -1,14 +1,28 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, Sparkles, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getWorkTypes } from "@/services/intakeService";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import type { WorkType } from "@/services/intakeService";
 import type { PlanningStepProps, RoomSpecificWork } from "./types";
 
 export function RoomSpecificStep({ formData, updateFormData }: PlanningStepProps) {
   const { t } = useTranslation();
-  const workTypes = getWorkTypes();
+  // Room-relevant work types only (excludes malning, el, golv etc that belong in globals)
+  const ROOM_WORK_TYPES: Array<{ value: WorkType; labelKey: string }> = [
+    { value: "vvs", labelKey: "intake.workType.vvs" },
+    { value: "kakel", labelKey: "intake.workType.kakel" },
+    { value: "snickeri", labelKey: "intake.workType.snickeri" },
+    { value: "rivning", labelKey: "intake.workType.rivning" },
+    { value: "kok", labelKey: "intake.workType.kok" },
+    { value: "badrum", labelKey: "intake.workType.badrum" },
+    { value: "fonster_dorrar", labelKey: "intake.workType.fonster_dorrar" },
+    { value: "fasad", labelKey: "intake.workType.fasad" },
+    { value: "tak", labelKey: "intake.workType.tak" },
+    { value: "tradgard", labelKey: "intake.workType.tradgard" },
+  ];
+  const [customWorkInputs, setCustomWorkInputs] = useState<Record<string, string>>({});
   const [expandedRoom, setExpandedRoom] = useState<string | null>(
     formData.rooms[0]?.id ?? null
   );
@@ -34,8 +48,8 @@ export function RoomSpecificStep({ formData, updateFormData }: PlanningStepProps
     updateWork(roomId, { workTypes: next });
   };
 
-  // Filter out global work types to avoid confusion
-  const availableWorkTypes = workTypes.filter(
+  // Filter out global work types to avoid duplication
+  const availableWorkTypes = ROOM_WORK_TYPES.filter(
     ({ value }) => !formData.globalWorkTypes.includes(value)
   );
 
@@ -84,48 +98,84 @@ export function RoomSpecificStep({ formData, updateFormData }: PlanningStepProps
               {/* Content */}
               {expanded && (
                 <div className="px-4 pb-4 space-y-3 border-t">
-                  {/* Free text description */}
+                  {/* Free text description — saved to task description */}
                   <div className="pt-3">
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+                      {t("planningWizard.roomDescription", "Description")}
+                    </p>
                     <textarea
-                      className="w-full min-h-[80px] px-3 py-2 text-sm rounded-md border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 leading-relaxed"
-                      placeholder={t("planningWizard.roomWorkDesc", "Describe what should be done in {{room}}...", { room: room.name })}
+                      className="w-full min-h-[70px] px-3 py-2 text-sm rounded-md border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 leading-relaxed"
+                      placeholder={t("planningWizard.roomDescPlaceholder", "e.g. New tiles on floor and walls, replace sink, add heated floor...")}
                       value={work.description}
                       onChange={(e) => updateWork(room.id, { description: e.target.value })}
                     />
                   </div>
 
-                  {/* Room-specific work types (excluding globals) */}
-                  {availableWorkTypes.length > 0 && (
-                    <div>
-                      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                        {t("planningWizard.additionalWork", "Additional work types")}
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {availableWorkTypes.map(({ value, label }) => {
-                          const selected = work.workTypes.includes(value);
-                          const aiSuggested = aiRoom?.suggestedWorkTypes.includes(value);
-                          return (
-                            <button
-                              key={value}
-                              type="button"
-                              className={cn(
-                                "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-all border",
-                                selected
-                                  ? "border-primary bg-primary/10 text-primary"
-                                  : aiSuggested
-                                    ? "border-primary/30 text-primary/70 hover:bg-primary/5"
-                                    : "border-muted text-muted-foreground hover:border-primary/30"
-                              )}
-                              onClick={() => toggleWorkType(room.id, value)}
-                            >
-                              {t(`intake.workType.${value}`, label)}
-                              {aiSuggested && !selected && <Sparkles className="h-2.5 w-2.5" />}
-                            </button>
-                          );
-                        })}
-                      </div>
+                  {/* Room-specific work types */}
+                  <div>
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+                      {t("planningWizard.roomWorkTypes", "Work types for this room")}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {availableWorkTypes.map(({ value, labelKey }) => {
+                        const selected = work.workTypes.includes(value);
+                        const aiSuggested = aiRoom?.suggestedWorkTypes.includes(value);
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-all border",
+                              selected
+                                ? "border-primary bg-primary/10 text-primary"
+                                : aiSuggested
+                                  ? "border-primary/30 text-primary/70 hover:bg-primary/5"
+                                  : "border-muted text-muted-foreground hover:border-primary/30"
+                            )}
+                            onClick={() => toggleWorkType(room.id, value)}
+                          >
+                            {t(labelKey)}
+                            {aiSuggested && !selected && <Sparkles className="h-2.5 w-2.5" />}
+                          </button>
+                        );
+                      })}
                     </div>
-                  )}
+                    {/* Custom work type input */}
+                    <div className="flex gap-1.5 mt-2">
+                      <Input
+                        placeholder={t("planningWizard.customRoomWork", "Other...")}
+                        value={customWorkInputs[room.id] ?? ""}
+                        onChange={(e) => setCustomWorkInputs((p) => ({ ...p, [room.id]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const val = (customWorkInputs[room.id] ?? "").trim();
+                            if (!val) return;
+                            // Add as "annat" work type with description appended
+                            const desc = work.description ? `${work.description}\n${val}` : val;
+                            updateWork(room.id, { description: desc });
+                            setCustomWorkInputs((p) => ({ ...p, [room.id]: "" }));
+                          }
+                        }}
+                        className="h-7 text-xs flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7"
+                        disabled={!(customWorkInputs[room.id] ?? "").trim()}
+                        onClick={() => {
+                          const val = (customWorkInputs[room.id] ?? "").trim();
+                          if (!val) return;
+                          const desc = work.description ? `${work.description}\n${val}` : val;
+                          updateWork(room.id, { description: desc });
+                          setCustomWorkInputs((p) => ({ ...p, [room.id]: "" }));
+                        }}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
 
                   {/* Global work types — clickable to exclude per room */}
                   {formData.globalWorkTypes.length > 0 && (
