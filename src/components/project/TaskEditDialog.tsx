@@ -1265,7 +1265,7 @@ export const TaskEditDialog = ({
                             : <span className="text-muted-foreground">{t("common.none", "Ingen")}</span>}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-56 p-2 max-h-48 overflow-y-auto" align="start">
+                      <PopoverContent className="w-56 p-2 max-h-[60vh] overflow-y-auto" align="start" style={{ overflowY: "auto" }}>
                         {DEFAULT_COST_CENTERS.map((cc) => { const Icon = cc.icon; const isSelected = (task.cost_centers || []).includes(cc.id); return (
                           <label key={cc.id} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer text-xs">
                             <Checkbox checked={isSelected} onCheckedChange={(checked) => { const current = task.cost_centers || []; const next = checked ? [...current, cc.id] : current.filter((c: string) => c !== cc.id); setTask({ ...task, cost_centers: next, cost_center: next[0] || null }); }} />

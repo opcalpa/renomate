@@ -1595,7 +1595,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
               })()}
               <div className="space-y-2">
                 <Label>{t('tasks.costCentersOptional')}</Label>
-                <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                <div className="border rounded-lg p-3 max-h-[60vh] overflow-y-auto space-y-2">
                   {DEFAULT_COST_CENTERS.map((cc) => {
                     const Icon = cc.icon;
                     const isSelected = newTaskCostCenters.includes(cc.id);
