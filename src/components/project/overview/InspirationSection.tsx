@@ -1340,40 +1340,64 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
 
         {/* Fullscreen moodboard dialog */}
         <Dialog open={fullscreenMoodboard} onOpenChange={setFullscreenMoodboard}>
-          <DialogContent className="max-w-[100vw] w-[100vw] h-[100vh] max-h-[100vh] p-0 border-0 rounded-none [&>button]:z-50 [&>button]:bg-background/80 [&>button]:rounded-full [&>button]:h-8 [&>button]:w-8">
+          <DialogContent className="max-w-[100vw] w-[100vw] h-[100vh] max-h-[100vh] p-0 border-0 rounded-none [&>button]:z-50 [&>button]:text-white [&>button]:bg-black/40 [&>button]:backdrop-blur-sm [&>button]:rounded-full [&>button]:h-10 [&>button]:w-10 [&>button]:top-4 [&>button]:right-4">
             <DialogTitle className="sr-only">{t("inspiration.moodboard", "Moodboard")}</DialogTitle>
             <div
-              className="w-full h-full overflow-auto flex items-center justify-center"
-              style={{ backgroundColor: moodboardBg }}
+              className="w-full h-full overflow-auto"
+              style={{ backgroundColor: moodboardBg || "#111" }}
             >
-              <div
-                className="grid grid-cols-6 auto-rows-[100px] sm:auto-rows-[140px] md:auto-rows-[180px] w-full max-w-[1400px]"
-                style={{ gap: moodboardGap ? `${moodboardGapSize}px` : "0px", padding: moodboardGap ? `${moodboardGapSize + 4}px` : "0" }}
-              >
-                {filteredPhotos
-                  .sort((a, b) => a.sortOrder - b.sortOrder)
-                  .map((photo) => (
-                    <div
-                      key={photo.id}
-                      className="relative overflow-hidden"
-                      style={{
-                        gridColumn: `span ${photo.gridColSpan}`,
-                        gridRow: `span ${photo.gridRowSpan}`,
-                        borderRadius: photo.cropShape === "circle" ? "50%" : moodboardGap ? "6px" : "0",
-                      }}
-                    >
-                      <img
-                        src={photo.url}
-                        alt=""
-                        className="absolute inset-0 w-full h-full"
+              {filteredPhotos.length === 1 ? (
+                /* Single image — hero fullscreen */
+                <div className="w-full h-full flex items-center justify-center p-4">
+                  <img
+                    src={filteredPhotos[0].url}
+                    alt={filteredPhotos[0].caption || ""}
+                    className="max-w-full max-h-full object-contain rounded-lg"
+                    onClick={() => { setFullscreenMoodboard(false); openGallery(0); }}
+                    style={{ cursor: "pointer" }}
+                  />
+                </div>
+              ) : (
+                /* Multi image — masonry grid */
+                <div
+                  className="grid grid-cols-4 sm:grid-cols-6 w-full h-full"
+                  style={{
+                    gap: moodboardGap ? `${moodboardGapSize}px` : "0px",
+                    padding: moodboardGap ? `${moodboardGapSize + 4}px` : "0",
+                    gridAutoRows: `minmax(${Math.max(120, Math.floor((typeof window !== "undefined" ? window.innerHeight : 800) / 4))}px, auto)`,
+                  }}
+                >
+                  {filteredPhotos
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .map((photo, idx) => (
+                      <div
+                        key={photo.id}
+                        className="relative overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
                         style={{
-                          objectFit: photo.fitMode || "cover",
-                          objectPosition: photo.cropPosition || "center",
+                          gridColumn: `span ${Math.min(photo.gridColSpan, 6)}`,
+                          gridRow: `span ${photo.gridRowSpan}`,
+                          borderRadius: photo.cropShape === "circle" ? "50%" : moodboardGap ? "8px" : "0",
                         }}
-                      />
-                    </div>
-                  ))}
-              </div>
+                        onClick={() => { setFullscreenMoodboard(false); openGallery(idx); }}
+                      >
+                        <img
+                          src={photo.url}
+                          alt={photo.caption || ""}
+                          className="absolute inset-0 w-full h-full"
+                          style={{
+                            objectFit: photo.fitMode || "cover",
+                            objectPosition: photo.cropPosition || "center",
+                          }}
+                        />
+                        {photo.caption && (
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-3 pb-2 pt-6 pointer-events-none">
+                            <p className="text-white text-xs font-medium truncate">{photo.caption}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           </DialogContent>
         </Dialog>
