@@ -517,7 +517,7 @@ function VisibilityToggles({ t }: { t: (key: string, fallback?: string) => strin
           </label>
           <label className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer text-xs">
             <input type="checkbox" checked={showPhases} onChange={() => setShowPhases(!showPhases)} className="rounded" />
-            {t("timeline.phases", "Phases")}
+            {t("timeline.categories", "Kategorier")}
           </label>
           <label className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer text-xs">
             <input type="checkbox" checked={showMilestones} onChange={() => setShowMilestones(!showMilestones)} className="rounded" />

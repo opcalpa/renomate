@@ -14,6 +14,7 @@ import { TimelineGrid } from "./TimelineGrid";
 import { TimelineTaskBar } from "./TimelineTaskBar";
 import { TimelineDependencyArrows } from "./TimelineDependencyArrows";
 import { useTimelineStore } from "./store";
+import { getCostCenterLabel } from "@/lib/costCenters";
 import type {
   TimelineTask,
   TimelineDependency,
@@ -540,7 +541,7 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
                     <KonvaText
                       x={Math.max(x1 + 4, 4)}
                       y={4}
-                      text={cc.charAt(0).toUpperCase() + cc.slice(1)}
+                      text={getCostCenterLabel(cc) || cc.charAt(0).toUpperCase() + cc.slice(1)}
                       fontSize={10}
                       fontStyle="bold"
                       fill={phase.color.replace("20", "90")}
@@ -553,71 +554,7 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
           </Layer>
         )}
 
-        {/* Milestone diamonds layer */}
-        {useTimelineStore.getState().showMilestones && milestones.length > 0 && (
-          <Layer listening={false}>
-            {(() => {
-              // Stagger y-positions to avoid text collisions
-              const sorted = [...milestones].sort((a, b) => a.date.localeCompare(b.date));
-              let lastX = -Infinity;
-              let ySlot = 0;
-              const DIAMOND_SIZE = 7;
-              const Y_POSITIONS = [10, 24];
-
-              return sorted.map((ms) => {
-                const x = dateToX(parseISO(ms.date), originDate, pixelsPerDay, panX) + pixelsPerDay / 2;
-                if (x < -100 || x > stageWidth + 100) return null;
-
-                // Stagger if too close to previous
-                if (x - lastX < 80) {
-                  ySlot = (ySlot + 1) % Y_POSITIONS.length;
-                } else {
-                  ySlot = 0;
-                }
-                lastX = x;
-                const y = Y_POSITIONS[ySlot];
-                const color = ms.color || "#6366f1";
-
-                return (
-                  <Group key={`ms-${ms.id}`}>
-                    {/* Vertical dashed line */}
-                    <Line
-                      points={[x, y + DIAMOND_SIZE + 2, x, stageHeight]}
-                      stroke={color}
-                      strokeWidth={1}
-                      dash={[4, 4]}
-                      opacity={0.25}
-                      perfectDrawEnabled={false}
-                    />
-                    {/* Diamond */}
-                    <RegularPolygon
-                      x={x}
-                      y={y}
-                      sides={4}
-                      radius={DIAMOND_SIZE}
-                      fill={color}
-                      rotation={0}
-                      perfectDrawEnabled={false}
-                    />
-                    {/* Title */}
-                    <KonvaText
-                      x={x + DIAMOND_SIZE + 4}
-                      y={y - 5}
-                      text={ms.title}
-                      fontSize={10}
-                      fontStyle="600"
-                      fill={color}
-                      listening={false}
-                      opacity={0.85}
-                    />
-                  </Group>
-                );
-              });
-            })()}
-          </Layer>
-        )}
-
-        {/* Content layer */}
+        {/* Content layer (tasks + dependencies) */}
         <Layer>
           {rows.map((row) => {
             if (row.type === "group-header") {
@@ -697,6 +634,65 @@ const TimelineCanvasComponent: React.FC<TimelineCanvasProps> = ({
             taskPositions={taskPositions}
           />
         </Layer>
+
+        {/* Milestone diamonds layer — on top of tasks so they're always visible */}
+        {useTimelineStore.getState().showMilestones && milestones.length > 0 && (
+          <Layer listening={false}>
+            {(() => {
+              const sorted = [...milestones].sort((a, b) => a.date.localeCompare(b.date));
+              let lastX = -Infinity;
+              let ySlot = 0;
+              const DIAMOND_SIZE = 7;
+              const Y_POSITIONS = [10, 24];
+
+              return sorted.map((ms) => {
+                const x = dateToX(parseISO(ms.date), originDate, pixelsPerDay, panX) + pixelsPerDay / 2;
+                if (x < -100 || x > stageWidth + 100) return null;
+
+                if (x - lastX < 80) {
+                  ySlot = (ySlot + 1) % Y_POSITIONS.length;
+                } else {
+                  ySlot = 0;
+                }
+                lastX = x;
+                const y = Y_POSITIONS[ySlot];
+                const color = ms.color || "#6366f1";
+
+                return (
+                  <Group key={`ms-${ms.id}`}>
+                    <Line
+                      points={[x, y + DIAMOND_SIZE + 2, x, stageHeight]}
+                      stroke={color}
+                      strokeWidth={1}
+                      dash={[4, 4]}
+                      opacity={0.25}
+                      perfectDrawEnabled={false}
+                    />
+                    <RegularPolygon
+                      x={x}
+                      y={y}
+                      sides={4}
+                      radius={DIAMOND_SIZE}
+                      fill={color}
+                      rotation={0}
+                      perfectDrawEnabled={false}
+                    />
+                    <KonvaText
+                      x={x + DIAMOND_SIZE + 4}
+                      y={y - 5}
+                      text={ms.title}
+                      fontSize={10}
+                      fontStyle="600"
+                      fill={color}
+                      listening={false}
+                      opacity={0.85}
+                    />
+                  </Group>
+                );
+              });
+            })()}
+          </Layer>
+        )}
       </Stage>
     </div>
   );
