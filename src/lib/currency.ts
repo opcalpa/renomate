@@ -64,9 +64,11 @@ export function formatCurrency(
     // Compact format for large numbers (e.g., 1.2k, 1.5M)
     const absAmount = Math.abs(amount);
     if (absAmount >= 1000000) {
-      formattedNumber = (amount / 1000000).toFixed(1) + 'M';
+      const v = amount / 1000000;
+      formattedNumber = (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + 'M';
     } else if (absAmount >= 1000) {
-      formattedNumber = (amount / 1000).toFixed(1) + 'k';
+      const v = amount / 1000;
+      formattedNumber = (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + 'k';
     } else {
       formattedNumber = amount.toLocaleString(config.locale, {
         minimumFractionDigits: decimals,
