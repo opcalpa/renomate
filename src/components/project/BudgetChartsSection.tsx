@@ -42,6 +42,23 @@ interface BudgetChartsSectionProps {
 
 type ChartDataOption = "type" | "room" | "status" | "costCenter";
 
+const COST_CENTER_I18N: Record<string, string> = {
+  construction: "financialAnalysis.ccConstruction",
+  electrical: "financialAnalysis.ccElectrical",
+  plumbing: "financialAnalysis.ccPlumbing",
+  painting: "financialAnalysis.ccPainting",
+  flooring: "financialAnalysis.ccFlooring",
+  tiling: "financialAnalysis.ccTiling",
+  demolition: "financialAnalysis.ccDemolition",
+  carpentry: "financialAnalysis.ccCarpentry",
+  kitchen: "financialAnalysis.ccKitchen",
+  bathroom: "financialAnalysis.ccBathroom",
+  inspection: "financialAnalysis.ccInspection",
+  cleanup: "financialAnalysis.ccCleanup",
+  design: "financialAnalysis.ccDesign",
+  other: "financialAnalysis.ccOther",
+};
+
 const COLORS = [
   "#3b82f6", // blue
   "#10b981", // emerald
@@ -89,7 +106,9 @@ export function BudgetChartsSection({ rows, currency }: BudgetChartsSectionProps
           break;
         case "costCenter":
           key = row.costCenter || "no-cc";
-          label = row.costCenter || t("budgetCharts.noCostCenter");
+          label = row.costCenter
+            ? t(COST_CENTER_I18N[row.costCenter] || "financialAnalysis.ccOther", row.costCenter)
+            : t("budgetCharts.noCostCenter");
           break;
         default:
           key = "unknown";
@@ -137,15 +156,17 @@ export function BudgetChartsSection({ rows, currency }: BudgetChartsSectionProps
   const totalBudget = rows.reduce((sum, r) => sum + r.budget, 0);
 
   // Custom tooltip for pie chart
-  const PieTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number; payload: { budget: number } }> }) => {
+  const PieTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number; payload: { budget: number; paid: number } }> }) => {
     if (active && payload && payload.length) {
       const data = payload[0];
       const percentage = totalBudget > 0 ? ((data.payload.budget / totalBudget) * 100).toFixed(1) : 0;
       return (
         <div className="bg-popover border rounded-lg shadow-lg px-3 py-2 text-sm">
           <p className="font-medium">{data.name}</p>
-          <p>{formatCurrency(data.payload.budget, currency)}</p>
-          <p className="text-muted-foreground">{percentage}%</p>
+          <p>{t("common.budget")}: {formatCurrency(data.payload.budget, currency)} ({percentage}%)</p>
+          {data.payload.paid > 0 && (
+            <p className="text-muted-foreground">{t("budget.paid")}: {formatCurrency(data.payload.paid, currency)}</p>
+          )}
         </div>
       );
     }
@@ -237,7 +258,7 @@ export function BudgetChartsSection({ rows, currency }: BudgetChartsSectionProps
                     cy="50%"
                     innerRadius={55}
                     outerRadius={85}
-                    label={({ name, percent, budget }) => `${name} ${(percent * 100).toFixed(0)}% (${formatCurrency(budget, currency, { compact: true })})`}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                     labelLine={false}
                   >
                     {pieData.map((_, index) => (
