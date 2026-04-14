@@ -11,8 +11,10 @@ import type { PlanningWizardData } from "@/components/project/overview/planning-
 export async function populateProjectFromPlanningWizard(
   projectId: string,
   data: PlanningWizardData,
-  profileId: string
+  profileId: string,
+  translateWorkType?: (wt: WorkType) => string
 ): Promise<{ roomCount: number; taskCount: number }> {
+  const wtLabel = (wt: WorkType) => translateWorkType?.(wt) ?? getWorkTypeLabel(wt);
   const roomNameToId = new Map<string, string>();
   let taskCount = 0;
 
@@ -57,7 +59,7 @@ export async function populateProjectFromPlanningWizard(
     // Create checklist with one item per room
     const checklist = {
       id: crypto.randomUUID(),
-      title: getWorkTypeLabel(workType),
+      title: wtLabel(workType),
       items: applicableRooms.map((r) => ({
         id: crypto.randomUUID(),
         title: r.name,
@@ -69,7 +71,7 @@ export async function populateProjectFromPlanningWizard(
       project_id: projectId,
       room_id: roomIds[0], // primary room
       room_ids: roomIds,
-      title: getWorkTypeLabel(workType),
+      title: wtLabel(workType),
       description: applicableRooms.map((r) => r.name).join(", "),
       status: "planned",
       priority: "medium",
@@ -94,7 +96,7 @@ export async function populateProjectFromPlanningWizard(
       const { error } = await supabase.from("tasks").insert({
         project_id: projectId,
         room_id: dbRoomId,
-        title: `${getWorkTypeLabel(workType)} - ${room.name}`,
+        title: `${wtLabel(workType)} - ${room.name}`,
         status: "planned",
         priority: "medium",
         cost_center: workTypeToCostCenter(workType),

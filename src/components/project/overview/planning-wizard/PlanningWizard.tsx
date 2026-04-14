@@ -97,7 +97,8 @@ export function PlanningWizard({ projectId, onComplete, onSkip }: PlanningWizard
       const { roomCount, taskCount } = await populateProjectFromPlanningWizard(
         projectId,
         formData,
-        profile.id
+        profile.id,
+        (wt) => t(`intake.workType.${wt}`, wt)
       );
 
       toast.success(
