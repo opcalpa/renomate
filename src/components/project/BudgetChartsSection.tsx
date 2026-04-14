@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ChevronUp, PieChart as PieChartIcon, BarChart3 } from "lucide-react";
+import { ChevronDown, ChevronUp, BarChart3 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -9,10 +9,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  PieChart,
-  Pie,
-  Cell,
   BarChart,
+  Cell,
   Bar,
   XAxis,
   YAxis,
@@ -73,7 +71,6 @@ const COLORS = [
 export function BudgetChartsSection({ rows, currency }: BudgetChartsSectionProps) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [pieDataOption, setPieDataOption] = useState<ChartDataOption>("costCenter");
   const [barDataOption, setBarDataOption] = useState<ChartDataOption>("costCenter");
 
   const dataOptions: { value: ChartDataOption; label: string }[] = [
@@ -151,27 +148,8 @@ export function BudgetChartsSection({ rows, currency }: BudgetChartsSectionProps
     return map[status] || status;
   };
 
-  const pieData = aggregateData(pieDataOption);
   const barData = aggregateData(barDataOption);
   const totalBudget = rows.reduce((sum, r) => sum + r.budget, 0);
-
-  // Custom tooltip for pie chart
-  const PieTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number; payload: { budget: number; paid: number } }> }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0];
-      const percentage = totalBudget > 0 ? ((data.payload.budget / totalBudget) * 100).toFixed(1) : 0;
-      return (
-        <div className="bg-popover border rounded-lg shadow-lg px-3 py-2 text-sm">
-          <p className="font-medium">{data.name}</p>
-          <p>{t("common.budget")}: {formatCurrency(data.payload.budget, currency)} ({percentage}%)</p>
-          {data.payload.paid > 0 && (
-            <p className="text-muted-foreground">{t("budget.paid")}: {formatCurrency(data.payload.paid, currency)}</p>
-          )}
-        </div>
-      );
-    }
-    return null;
-  };
 
   // Custom tooltip for bar chart
   const BarTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; dataKey: string; payload?: { budget: number; paid: number } }>; label?: string }) => {
@@ -225,53 +203,8 @@ export function BudgetChartsSection({ rows, currency }: BudgetChartsSectionProps
       {/* Charts */}
       {isExpanded && (
         <div className="px-4 pb-4 border-t">
-          <div className={`grid grid-cols-1 ${pieData.length > 1 ? "lg:grid-cols-2" : ""} gap-6 pt-4`}>
-            {/* Pie Chart — only show if >1 segment (1 segment = no insight) */}
-            {pieData.length > 1 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <PieChartIcon className="h-4 w-4" />
-                  {t("budgetCharts.distribution")}
-                </span>
-                <Select value={pieDataOption} onValueChange={(v) => setPieDataOption(v as ChartDataOption)}>
-                  <SelectTrigger className="w-[160px] h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dataOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    dataKey="budget"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false}
-                  >
-                    {pieData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<PieTooltip />} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            )}
-
-            {/* Bar Chart */}
+          <div className="pt-4">
+            {/* Bar Chart — single chart, full width */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
