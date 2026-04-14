@@ -974,51 +974,18 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               </Popover>
             </div>
           ) : (
-            /* Empty state — welcoming, not sterile */
-            <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-pink-100 to-purple-100 dark:from-pink-900/30 dark:to-purple-900/30 flex items-center justify-center mb-4">
-                <ImageIcon className="h-8 w-8 text-pink-500/70" />
-              </div>
-              <h4 className="text-sm font-medium mb-1">
-                {t("inspiration.emptyTitle")}
-              </h4>
-              <p className="text-xs text-muted-foreground mb-4 max-w-[300px]">
-                {t("inspiration.emptyDesc")}
-              </p>
-              <div className="flex gap-2 flex-wrap justify-center">
-                <label
-                  htmlFor={uploading ? undefined : `inspo-file-${projectId}`}
-                  className={cn(
-                    "inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md text-sm font-medium cursor-pointer",
-                    "bg-primary text-primary-foreground hover:bg-primary/90",
-                    uploading && "opacity-50 pointer-events-none"
-                  )}
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  {t("inspiration.upload")}
-                </label>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 h-8"
-                  onClick={() => setTimeout(() => setShowUrlInput(true), 100)}
-                >
-                  <Link2 className="h-3.5 w-3.5" />
-                  {t("inspiration.fromUrl")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 h-8 sm:hidden"
-                  onClick={() => {
-                    const input = fileInputRef.current;
-                    if (input) { setTimeout(() => { input.setAttribute("capture", "environment"); input.click(); input.removeAttribute("capture"); }, 100); }
-                  }}
-                >
-                  <Camera className="h-3.5 w-3.5" />
-                  {t("inspiration.camera")}
-                </Button>
-              </div>
+            /* Empty state — single upload tile matching gallery style */
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 p-1">
+              <label
+                htmlFor={uploading ? undefined : `inspo-file-${projectId}`}
+                className={cn(
+                  "aspect-square rounded-lg border-2 border-dashed border-muted flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer",
+                  uploading && "opacity-50 pointer-events-none"
+                )}
+              >
+                <Upload className="h-5 w-5" />
+                <span className="text-[10px]">{t("inspiration.addMore", "Lägg till")}</span>
+              </label>
             </div>
           )}
         </div>
