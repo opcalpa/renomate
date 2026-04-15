@@ -301,7 +301,7 @@ export default function CreateQuote() {
       if (taskIds.length > 0) {
         const { data: tasks } = await supabase
           .from("tasks")
-          .select("id, title, description, budget, room_id, rooms(name), task_cost_type, estimated_hours, hourly_rate, subcontractor_cost, markup_percent, material_estimate")
+          .select("id, title, description, budget, room_id, rooms(name), task_cost_type, estimated_hours, hourly_rate, subcontractor_cost, markup_percent, material_estimate, material_markup_percent")
           .in("id", taskIds)
           .order("created_at");
 
@@ -309,27 +309,37 @@ export default function CreateQuote() {
         // This is the canonical source; material_estimate is a fallback for unmigrated tasks.
         const { data: plannedMaterialRows } = await supabase
           .from("materials")
-          .select("task_id, price_total, quantity, price_per_unit")
+          .select("task_id, price_total, quantity, price_per_unit, markup_percent")
           .in("task_id", taskIds)
           .eq("status", "planned");
 
+        // Sum base material cost per task (without per-row markup — markup applied separately)
         const plannedMaterialTotals = new Map<string, number>();
+        // Sum material cost WITH per-row markup applied
+        const plannedMaterialWithMarkup = new Map<string, number>();
         for (const m of plannedMaterialRows || []) {
           if (!m.task_id) continue;
-          const cost = m.price_total ?? ((m.quantity || 0) * (m.price_per_unit || 0));
-          plannedMaterialTotals.set(m.task_id, (plannedMaterialTotals.get(m.task_id) || 0) + cost);
+          const baseCost = m.price_total ?? ((m.quantity || 0) * (m.price_per_unit || 0));
+          const withMarkup = baseCost * (1 + (m.markup_percent || 0) / 100);
+          plannedMaterialTotals.set(m.task_id, (plannedMaterialTotals.get(m.task_id) || 0) + baseCost);
+          plannedMaterialWithMarkup.set(m.task_id, (plannedMaterialWithMarkup.get(m.task_id) || 0) + withMarkup);
         }
 
         if (tasks && tasks.length > 0) {
           for (const task of tasks) {
             const roomName = (task.rooms as { name: string } | null)?.name || null;
-            // Prefer sum of planned materials rows; fall back to flat estimate for unmigrated tasks.
-            const materialCost = plannedMaterialTotals.get(task.id) ?? (task.material_estimate ?? 0);
+            // Material cost for the quote: use planned materials with markup baked in,
+            // or fall back to flat estimate × global markup
+            const hasPerRowMarkup = plannedMaterialWithMarkup.has(task.id);
+            const materialCostForQuote = hasPerRowMarkup
+              ? Math.round(plannedMaterialWithMarkup.get(task.id)!)
+              : Math.round((plannedMaterialTotals.get(task.id) ?? (task.material_estimate ?? 0)) * (1 + (task.material_markup_percent || 0) / 100));
+            const materialCostBase = plannedMaterialTotals.get(task.id) ?? (task.material_estimate ?? 0);
 
             if (pricingFormat === "detailed") {
               const hasOwnLabor = !!(task.estimated_hours && task.hourly_rate);
               const hasSub = !!(task.subcontractor_cost && task.subcontractor_cost > 0);
-              const hasMaterial = materialCost > 0;
+              const hasMaterial = materialCostBase > 0;
               const hasAnyDetail = hasOwnLabor || hasSub || hasMaterial;
 
               // Own labor row — carries task description as comment
@@ -374,7 +384,7 @@ export default function CreateQuote() {
                   description: `${task.title} — material`,
                   quantity: 1,
                   unit: "st",
-                  unitPrice: materialCost,
+                  unitPrice: materialCostForQuote,
                   isRotEligible: false,
                   roomId: task.room_id || undefined,
                   roomName,
