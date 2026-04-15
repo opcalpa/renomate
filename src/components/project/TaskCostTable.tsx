@@ -67,7 +67,7 @@ export function TaskCostTable({
             <th className="text-left font-medium px-3 py-2 w-[35%]">{t("taskCost.costType", "Cost type")}</th>
             <th className="text-right font-medium px-2 py-2 w-[18%]">{t("taskCost.quantity", "Qty")}</th>
             <th className="text-right font-medium px-2 py-2 w-[18%]">{t("taskCost.unitPrice", "Unit price")}</th>
-            <th className="text-right font-medium px-2 py-2 w-[12%]">{t("taskCost.markupShort", "Markup")}</th>
+            <th className="text-right font-medium px-2 py-2 w-[12%]">{t("taskCost.markupShort", "Påslag")}</th>
             <th className="text-right font-medium px-3 py-2 w-[17%]">{t("taskCost.total", "Total")}</th>
           </tr>
         </thead>

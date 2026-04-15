@@ -4307,6 +4307,7 @@
     "standard": "Standard",
     "quantity": "Antal",
     "unitPrice": "Enhetspris",
+    "markupShort": "Påslag",
     "budget": "Budget",
     "homeownerBudgetHint": "Din uppskattade budget eller offertbelopp för detta arbetsmoment",
     "estimatedMaterialCost": "Beräknad materialkostnad",

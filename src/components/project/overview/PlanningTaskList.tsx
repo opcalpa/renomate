@@ -1799,23 +1799,17 @@ export function PlanningTaskList({
                               )}
                               {show.rotAmount && (
                                 <TableCell className="text-right hidden sm:table-cell py-2.5">
-                                  {task.rot_amount ? (
-                                    <span className="text-sm text-green-700">{formatCurrency(task.rot_amount, currency)}</span>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground">–</span>
-                                  )}
+                                  <span className="text-xs text-muted-foreground">–</span>
                                 </TableCell>
                               )}
                               {show.budget && (
                                 <TableCell className="text-right hidden sm:table-cell py-2.5">
-                                  {task.budget ? <span className="text-sm">{formatCurrency(task.budget, currency)}</span> : <span className="text-xs text-muted-foreground">–</span>}
+                                  <span className="text-xs text-muted-foreground">–</span>
                                 </TableCell>
                               )}
                               {show.materialEstimate && (
                                 <TableCell className="text-right hidden sm:table-cell py-2.5">
-                                  {task.material_estimate ? (
-                                    <span className="text-sm text-amber-700">{formatCurrency(task.material_estimate, currency)}</span>
-                                  ) : <span className="text-xs text-muted-foreground">–</span>}
+                                  <span className="text-xs text-muted-foreground">–</span>
                                 </TableCell>
                               )}
                             </>

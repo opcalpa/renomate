@@ -4310,6 +4310,7 @@
     "standard": "Standard",
     "quantity": "Qty",
     "unitPrice": "Price/unit",
+    "markupShort": "Markup",
     "budget": "Budget",
     "homeownerBudgetHint": "Your estimated budget or quote amount for this task",
     "estimatedMaterialCost": "Estimated material cost",
