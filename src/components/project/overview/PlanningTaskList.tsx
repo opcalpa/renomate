@@ -2092,36 +2092,56 @@ export function PlanningTaskList({
                           )}
                         </TableCell>
                       )}
-                      {show.costType && (
+                      {show.costType && (() => {
+                        const hasMaterial = taskMaterials.length > 0 || !!(task.material_estimate && task.material_estimate > 0);
+                        const hasAny = hasOwnLabor || hasMaterial || hasSubcontractor;
+                        return (
                         <TableCell className="hidden sm:table-cell py-2.5">
-                          {(hasOwnLabor || hasSubcontractor) ? (
-                            <div className="flex flex-wrap gap-1.5">
+                          {hasAny ? (
+                            <div className="flex items-center gap-1">
                               {hasOwnLabor && (
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Hammer className="h-3.5 w-3.5 text-muted-foreground" />
                                     </TooltipTrigger>
-                                    <TooltipContent><p className="text-xs">{t("taskCost.ownLabor", "Own labor")}</p></TooltipContent>
+                                    <TooltipContent><p className="text-xs">{t("taskCost.ownLabor", "Eget arbete")}</p></TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
                               )}
+                              {hasMaterial && (
+                                <>
+                                  {hasOwnLabor && <span className="text-[10px] text-muted-foreground/50">+</span>}
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                                      </TooltipTrigger>
+                                      <TooltipContent><p className="text-xs">{t("taskCost.material", "Material")}</p></TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </>
+                              )}
                               {hasSubcontractor && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Handshake className="h-3.5 w-3.5 text-muted-foreground" />
-                                    </TooltipTrigger>
-                                    <TooltipContent><p className="text-xs">{t("taskCost.subcontractor", "Subcontractor")}</p></TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                                <>
+                                  {(hasOwnLabor || hasMaterial) && <span className="text-[10px] text-muted-foreground/50">+</span>}
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Handshake className="h-3.5 w-3.5 text-muted-foreground" />
+                                      </TooltipTrigger>
+                                      <TooltipContent><p className="text-xs">{t("taskCost.subcontractor", "UE")}</p></TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </>
                               )}
                             </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">–</span>
                           )}
                         </TableCell>
-                      )}
+                        );
+                      })()}
                       {show.markup && (
                         <TableCell className="text-right hidden sm:table-cell py-2.5">
                           {(() => {
