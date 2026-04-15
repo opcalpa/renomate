@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-import { workTypeToCostCenter, getWorkTypeLabel } from "./intakeService";
-import type { WorkType } from "./intakeService";
+import { workTypeToCostCenter, getWorkTypeLabel } from "./workTypeUtils";
+import type { WorkType } from "./workTypeUtils";
 import type { PlanningWizardData } from "@/components/project/overview/planning-wizard/types";
 import {
   detectRecipeKey,

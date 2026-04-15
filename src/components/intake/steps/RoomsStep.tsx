@@ -81,13 +81,10 @@ export function RoomsStep({ formData, updateFormData }: RoomsStepProps) {
   const updateRoomDimension = (roomId: string, field: "widthM" | "depthM", value: string) => {
     const newRooms = formData.rooms.map((r) => {
       if (r.id !== roomId) return r;
-      const dims = { ...(r as IntakeRoom & { widthM?: number; depthM?: number }) };
-      if (value) {
-        (dims as Record<string, unknown>)[field] = parseFloat(value);
-      } else {
-        delete (dims as Record<string, unknown>)[field];
-      }
-      return dims as IntakeRoom;
+      return {
+        ...r,
+        [field]: value ? parseFloat(value) : undefined,
+      };
     });
     updateFormData({ rooms: newRooms });
   };
@@ -165,9 +162,8 @@ export function RoomsStep({ formData, updateFormData }: RoomsStepProps) {
             {t("intake.roomDimensionsHint", "Add dimensions if you know them (optional)")}
           </p>
           {formData.rooms.map((room) => {
-            const roomWithDims = room as IntakeRoom & { widthM?: number; depthM?: number };
-            const area = roomWithDims.widthM && roomWithDims.depthM
-              ? (roomWithDims.widthM * roomWithDims.depthM).toFixed(1)
+            const area = room.widthM && room.depthM
+              ? (room.widthM * room.depthM).toFixed(1)
               : null;
 
             return (
@@ -197,7 +193,7 @@ export function RoomsStep({ formData, updateFormData }: RoomsStepProps) {
                     type="number"
                     className="h-8 text-sm w-20 tabular-nums"
                     placeholder={t("intake.width", "Width")}
-                    value={roomWithDims.widthM ?? ""}
+                    value={room.widthM ?? ""}
                     onChange={(e) => updateRoomDimension(room.id, "widthM", e.target.value)}
                     step="0.1"
                     min="0"
@@ -207,7 +203,7 @@ export function RoomsStep({ formData, updateFormData }: RoomsStepProps) {
                     type="number"
                     className="h-8 text-sm w-20 tabular-nums"
                     placeholder={t("intake.depth", "Depth")}
-                    value={roomWithDims.depthM ?? ""}
+                    value={room.depthM ?? ""}
                     onChange={(e) => updateRoomDimension(room.id, "depthM", e.target.value)}
                     step="0.1"
                     min="0"

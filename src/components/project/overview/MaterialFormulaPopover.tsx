@@ -30,6 +30,8 @@ interface MaterialFormulaPopoverProps {
   projectId: string;
   materials: MaterialItem[];
   rooms: RecipeRoom[];
+  /** Room IDs linked to the task — used for room_id on material inserts */
+  roomIds: string[];
   onChanged: () => void;
   /** When true, all prices are shown inc moms (×1.25) */
   isHomeowner?: boolean;
@@ -42,6 +44,7 @@ export function MaterialFormulaPopover({
   projectId,
   materials,
   rooms,
+  roomIds,
   onChanged,
   isHomeowner = false,
 }: MaterialFormulaPopoverProps) {
@@ -157,6 +160,7 @@ export function MaterialFormulaPopover({
       await supabase.from("materials").insert({
         project_id: projectId,
         task_id: taskId,
+        room_id: roomIds[0] || null,
         name: s.nameFallback,
         quantity: s.quantity,
         unit: s.unit,

@@ -1,31 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
 import { autoGenerateMaterials } from "./planningWizardService";
+// Re-export shared types/utils from workTypeUtils for backward compatibility
+export { WorkType, RoomPriority, PropertyType, workTypeToCostCenter, getWorkTypeLabel, getWorkTypes, getRoomSuggestions } from "./workTypeUtils";
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
+import type { WorkType, RoomPriority, PropertyType } from "./workTypeUtils";
+import { workTypeToCostCenter, getWorkTypeLabel } from "./workTypeUtils";
+
 export type IntakeStatus = "pending" | "submitted" | "converted" | "expired" | "cancelled";
-
-export type PropertyType = "villa" | "lagenhet" | "radhus" | "fritidshus" | "annat";
-
-export type WorkType =
-  | "rivning"
-  | "el"
-  | "vvs"
-  | "kakel"
-  | "snickeri"
-  | "malning"
-  | "golv"
-  | "kok"
-  | "badrum"
-  | "fonster_dorrar"
-  | "fasad"
-  | "tak"
-  | "tradgard"
-  | "annat";
-
-export type RoomPriority = "high" | "medium" | "low";
 
 export interface IntakeRoom {
   id: string;
@@ -34,6 +19,10 @@ export interface IntakeRoom {
   work_types: WorkType[];
   priority: RoomPriority;
   images: string[];
+  /** Room width in meters (optional, from intake form) */
+  widthM?: number;
+  /** Room depth in meters (optional, from intake form) */
+  depthM?: number;
 }
 
 export interface IntakeRequest {
@@ -418,28 +407,7 @@ export async function createProjectFromGuidedSetup(
 // CONVERSION FUNCTIONS
 // =============================================================================
 
-/**
- * Maps work_type to cost_center enum value
- */
-export function workTypeToCostCenter(workType: WorkType): string {
-  const mapping: Record<WorkType, string> = {
-    rivning: "demolition",
-    el: "electrical",
-    vvs: "plumbing",
-    kakel: "tiling",
-    snickeri: "carpentry",
-    malning: "painting",
-    golv: "flooring",
-    kok: "kitchen",
-    badrum: "bathroom",
-    fonster_dorrar: "windows_doors",
-    fasad: "facade",
-    tak: "roofing",
-    tradgard: "landscaping",
-    annat: "other",
-  };
-  return mapping[workType] || "other";
-}
+// workTypeToCostCenter is now in workTypeUtils.ts (re-exported above)
 
 /**
  * Create rooms from intake request data
@@ -749,80 +717,7 @@ function transformIntakeRequest(data: Record<string, unknown>): IntakeRequest {
   };
 }
 
-/**
- * Get i18n key for work type label.
- * Use with t(`intake.workType.${workType}`) in components.
- * This function returns a fallback label for non-i18n contexts.
- */
-export function getWorkTypeLabel(workType: WorkType): string {
-  const fallbacks: Record<WorkType, string> = {
-    rivning: "Demolition",
-    el: "Electrical",
-    vvs: "Plumbing",
-    kakel: "Tiling",
-    snickeri: "Carpentry",
-    malning: "Painting",
-    golv: "Flooring",
-    kok: "Kitchen",
-    badrum: "Bathroom",
-    fonster_dorrar: "Windows/Doors",
-    fasad: "Facade",
-    tak: "Roofing",
-    tradgard: "Garden",
-    annat: "Other",
-  };
-  return fallbacks[workType] || workType;
-}
-
-/**
- * Get all available work types with labels
- */
-export function getWorkTypes(): Array<{ value: WorkType; label: string }> {
-  const types: WorkType[] = [
-    "rivning",
-    "el",
-    "vvs",
-    "kakel",
-    "snickeri",
-    "malning",
-    "golv",
-    "kok",
-    "badrum",
-    "fonster_dorrar",
-    "fasad",
-    "tak",
-    "tradgard",
-    "annat",
-  ];
-  return types.map((t) => ({ value: t, label: getWorkTypeLabel(t) }));
-}
-
-/**
- * Get predefined room suggestions
- */
-/**
- * Room suggestions with i18n keys.
- * `nameKey` maps to `intake.room.<key>` in locale files.
- * Components use t(`intake.room.${r.nameKey}`) for display.
- */
-export function getRoomSuggestions(): Array<{ nameKey: string; icon: string }> {
-  return [
-    { nameKey: "kitchen", icon: "🍳" },
-    { nameKey: "bathroom", icon: "🛁" },
-    { nameKey: "livingRoom", icon: "🛋️" },
-    { nameKey: "bedroom", icon: "🛏️" },
-    { nameKey: "wcShower", icon: "🚿" },
-    { nameKey: "laundry", icon: "👕" },
-    { nameKey: "hallway", icon: "🚪" },
-    { nameKey: "office", icon: "💼" },
-    { nameKey: "kidsRoom", icon: "🧸" },
-    { nameKey: "balcony", icon: "🌿" },
-    { nameKey: "basement", icon: "🏚️" },
-    { nameKey: "attic", icon: "🏠" },
-    { nameKey: "garage", icon: "🚗" },
-    { nameKey: "patio", icon: "☀️" },
-  ];
-}
+// getWorkTypeLabel, getWorkTypes, getRoomSuggestions are now in workTypeUtils.ts (re-exported above)
 
 /**
  * Generate public intake form URL
