@@ -1551,6 +1551,16 @@ export function PlanningTaskList({
                         {t("planningTasks.markup", "Markup")}
                       </TableHead>
                     )}
+                    {show.budget && (
+                      <TableHead className="hidden sm:table-cell text-right w-[120px]">
+                        {t("planningTasks.budget", "Budget")}
+                      </TableHead>
+                    )}
+                    {show.materialEstimate && (
+                      <TableHead className="hidden sm:table-cell text-right w-[130px]">
+                        {t("planningTasks.materialEstimate", "Materialbudget")}
+                      </TableHead>
+                    )}
                     {show.rotAmount && (
                       <TableHead className="hidden sm:table-cell text-right w-[110px]">
                         {!isHomeowner && !effectiveLock ? (
@@ -1572,16 +1582,6 @@ export function PlanningTaskList({
                         ) : (
                           t("files.rotAmount", "ROT-avdrag")
                         )}
-                      </TableHead>
-                    )}
-                    {show.budget && (
-                      <TableHead className="hidden sm:table-cell text-right w-[120px]">
-                        {t("planningTasks.budget", "Budget")}
-                      </TableHead>
-                    )}
-                    {show.materialEstimate && (
-                      <TableHead className="hidden sm:table-cell text-right w-[130px]">
-                        {t("planningTasks.materialEstimate", "Materialbudget")}
                       </TableHead>
                     )}
                     <TableHead className="text-right w-[120px]">
@@ -1876,17 +1876,17 @@ export function PlanningTaskList({
                           const profit = markup > 0 ? Math.round(base * markup / 100) : 0;
                           return (
                             <>
-                              {show.rotAmount && (
-                                <TableCell className="text-right hidden sm:table-cell py-2.5">
-                                  <span className="text-xs text-muted-foreground">–</span>
-                                </TableCell>
-                              )}
                               {show.budget && (
                                 <TableCell className="text-right hidden sm:table-cell py-2.5">
                                   <span className="text-xs text-muted-foreground">–</span>
                                 </TableCell>
                               )}
                               {show.materialEstimate && (
+                                <TableCell className="text-right hidden sm:table-cell py-2.5">
+                                  <span className="text-xs text-muted-foreground">–</span>
+                                </TableCell>
+                              )}
+                              {show.rotAmount && (
                                 <TableCell className="text-right hidden sm:table-cell py-2.5">
                                   <span className="text-xs text-muted-foreground">–</span>
                                 </TableCell>
@@ -2278,6 +2278,18 @@ export function PlanningTaskList({
                           })()}
                         </TableCell>
                       )}
+                      {show.budget && (
+                        <TableCell className="text-right hidden sm:table-cell py-2.5">
+                          {task.budget ? <span className="text-sm">{formatCurrency(task.budget, currency)}</span> : <span className="text-xs text-muted-foreground">–</span>}
+                        </TableCell>
+                      )}
+                      {show.materialEstimate && (
+                        <TableCell className="text-right hidden sm:table-cell py-2.5">
+                          {task.material_estimate ? (
+                            <span className="text-sm text-amber-700">{formatCurrency(task.material_estimate, currency)}</span>
+                          ) : <span className="text-xs text-muted-foreground">–</span>}
+                        </TableCell>
+                      )}
                       {show.rotAmount && (
                         <TableCell className="text-right hidden sm:table-cell py-2.5">
                           {task.rot_amount ? (() => {
@@ -2312,18 +2324,6 @@ export function PlanningTaskList({
                           })() : (
                             <span className="text-xs text-muted-foreground">–</span>
                           )}
-                        </TableCell>
-                      )}
-                      {show.budget && (
-                        <TableCell className="text-right hidden sm:table-cell py-2.5">
-                          {task.budget ? <span className="text-sm">{formatCurrency(task.budget, currency)}</span> : <span className="text-xs text-muted-foreground">–</span>}
-                        </TableCell>
-                      )}
-                      {show.materialEstimate && (
-                        <TableCell className="text-right hidden sm:table-cell py-2.5">
-                          {task.material_estimate ? (
-                            <span className="text-sm text-amber-700">{formatCurrency(task.material_estimate, currency)}</span>
-                          ) : <span className="text-xs text-muted-foreground">–</span>}
                         </TableCell>
                       )}
                       <TableCell className="text-right py-2.5">
@@ -2679,9 +2679,9 @@ export function PlanningTaskList({
                             const pr = mkp > 0 ? Math.round(base * mkp / 100) : 0;
                             return (
                               <>
-                                {show.rotAmount && <TableCell className="hidden sm:table-cell py-2" />}
                                 {show.budget && <TableCell className="hidden sm:table-cell py-2" />}
                                 {show.materialEstimate && <TableCell className="hidden sm:table-cell py-2" />}
+                                {show.rotAmount && <TableCell className="hidden sm:table-cell py-2" />}
                                 <TableCell className="text-right py-2">
                                   {cp > 0 ? (
                                     <span className="text-sm text-muted-foreground">{formatCurrency(cp, currency)}</span>
@@ -2844,16 +2844,6 @@ export function PlanningTaskList({
                     {show.hourlyRate && <td className="hidden sm:table-cell" />}
                     {show.room && <td className="hidden sm:table-cell" />}
                     {show.markup && <td className="hidden sm:table-cell" />}
-                    {show.rotAmount && (
-                      <td className="text-right hidden sm:table-cell px-3 py-2.5">
-                        {(() => {
-                          const totalRot = tasks.reduce((s, t2) => s + (t2.rot_amount || 0), 0);
-                          return totalRot > 0 ? (
-                            <span className="text-sm font-bold tabular-nums text-green-700">{formatCurrency(totalRot, currency)}</span>
-                          ) : null;
-                        })()}
-                      </td>
-                    )}
                     {show.budget && <td className="hidden sm:table-cell" />}
                     {show.materialEstimate && (
                       <td className="text-right hidden sm:table-cell px-3 py-2.5">
@@ -2861,6 +2851,16 @@ export function PlanningTaskList({
                           const totalMat = tasks.reduce((s, t2) => s + (t2.material_estimate || 0), 0);
                           return totalMat > 0 ? (
                             <span className="text-sm font-bold tabular-nums text-amber-700">{formatCurrency(totalMat, currency)}</span>
+                          ) : null;
+                        })()}
+                      </td>
+                    )}
+                    {show.rotAmount && (
+                      <td className="text-right hidden sm:table-cell px-3 py-2.5">
+                        {(() => {
+                          const totalRot = tasks.reduce((s, t2) => s + (t2.rot_amount || 0), 0);
+                          return totalRot > 0 ? (
+                            <span className="text-sm font-bold tabular-nums text-green-700">{formatCurrency(totalRot, currency)}</span>
                           ) : null;
                         })()}
                       </td>
