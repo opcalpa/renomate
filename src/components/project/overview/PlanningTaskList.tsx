@@ -2285,9 +2285,46 @@ export function PlanningTaskList({
                       )}
                       {show.materialEstimate && (
                         <TableCell className="text-right hidden sm:table-cell py-2.5">
-                          {task.material_estimate ? (
-                            <span className="text-sm text-amber-700">{formatCurrency(task.material_estimate, currency)}</span>
-                          ) : <span className="text-xs text-muted-foreground">–</span>}
+                          {task.material_estimate ? (() => {
+                            const matMarkup = task.material_markup_percent || 0;
+                            const matItems = task.material_items || [];
+                            const hasPerRowMarkup = matItems.some(i => i.markup_percent && i.markup_percent > 0);
+                            const matWithMarkup = matItems.length > 0
+                              ? (hasPerRowMarkup
+                                  ? matItems.reduce((s, i) => s + (i.amount || 0) * (1 + (i.markup_percent || 0) / 100), 0)
+                                  : task.material_estimate * (1 + matMarkup / 100))
+                              : task.material_estimate * (1 + matMarkup / 100);
+                            const markupAmt = Math.round(matWithMarkup - task.material_estimate);
+                            if (markupAmt > 0) {
+                              return (
+                                <HoverCard openDelay={200} closeDelay={100}>
+                                  <HoverCardTrigger asChild>
+                                    <button className="text-sm text-amber-700 hover:underline" onClick={(e) => e.stopPropagation()}>
+                                      {formatCurrency(task.material_estimate, currency)}
+                                    </button>
+                                  </HoverCardTrigger>
+                                  <HoverCardContent className="w-52 p-3" align="end" side="top">
+                                    <div className="space-y-1.5 text-xs">
+                                      <p className="font-semibold text-sm mb-2">{t("planningTasks.materialEstimate", "Materialbudget")}</p>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">{t("taskCost.material", "Material")}</span>
+                                        <span className="tabular-nums">{formatCurrency(task.material_estimate, currency)}</span>
+                                      </div>
+                                      <div className="flex justify-between text-amber-700">
+                                        <span>{t("taskCost.markupShort", "Påslag")} {!hasPerRowMarkup && matMarkup > 0 ? `${matMarkup}%` : ""}</span>
+                                        <span className="tabular-nums">+{formatCurrency(markupAmt, currency)}</span>
+                                      </div>
+                                      <div className="flex justify-between pt-1.5 border-t font-semibold">
+                                        <span>{t("taskCost.withMarkup", "Med påslag")}</span>
+                                        <span className="tabular-nums">{formatCurrency(Math.round(matWithMarkup), currency)}</span>
+                                      </div>
+                                    </div>
+                                  </HoverCardContent>
+                                </HoverCard>
+                              );
+                            }
+                            return <span className="text-sm text-amber-700">{formatCurrency(task.material_estimate, currency)}</span>;
+                          })() : <span className="text-xs text-muted-foreground">–</span>}
                         </TableCell>
                       )}
                       {show.rotAmount && (
