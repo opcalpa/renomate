@@ -1977,7 +1977,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
           bulk={bulk}
           hideToolbar
         />
-      ))}
+      )}
       </div>
       {/* Create Purchase Order Dialog */}
       <Dialog open={poDialogOpen} onOpenChange={setPoDialogOpen}>
