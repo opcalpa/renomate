@@ -435,16 +435,20 @@ export default function CreateQuote() {
         }
       }
 
-      // Fetch and convert selected materials
+      // Fetch and convert selected materials (exclude planned materials linked to tasks — already in task materialCost)
       if (materialIds.length > 0) {
         const { data: materials } = await supabase
           .from("materials")
-          .select("id, name, quantity, unit, price_per_unit, price_total, room_id, task_id, description, rooms(name)")
+          .select("id, name, quantity, unit, price_per_unit, price_total, room_id, task_id, description, status, rooms(name)")
           .in("id", materialIds)
           .order("created_at");
 
         if (materials && materials.length > 0) {
+          // Build set of task IDs that are being expanded into detail rows
+          const expandedTaskIds = new Set(taskIds);
           for (const material of materials) {
+            // Skip planned materials linked to selected tasks — already included in task's material row
+            if (material.status === "planned" && material.task_id && expandedTaskIds.has(material.task_id)) continue;
             const roomName = (material.rooms as { name: string } | null)?.name || null;
             const isSubcontractor = material.description === "__subcontractor__";
             const hasBreakdown = (material.quantity ?? 0) > 0 && (material.price_per_unit ?? 0) > 0;

@@ -86,7 +86,7 @@ export function CreateQuoteDialog({
           .order("created_at"),
         supabase
           .from("materials")
-          .select("id, name, room_id, description, rooms(name)")
+          .select("id, name, room_id, description, status, task_id, rooms(name)")
           .eq("project_id", projectId)
           .order("created_at"),
       ]);
@@ -98,13 +98,17 @@ export function CreateQuoteDialog({
         roomName: (t.rooms as { name: string } | null)?.name || null,
       }));
 
-      const allMaterials: MaterialItem[] = (materialsRes.data || []).map((m) => ({
-        id: m.id,
-        name: m.name,
-        room_id: m.room_id,
-        roomName: (m.rooms as { name: string } | null)?.name || null,
-        kind: m.description === "__subcontractor__" ? "subcontractor" as const : "material" as const,
-      }));
+      // Exclude planned materials linked to tasks — they're already included
+      // in the task's materialCost calculation to avoid double-counting
+      const allMaterials: MaterialItem[] = (materialsRes.data || [])
+        .filter((m) => !(m.status === "planned" && m.task_id))
+        .map((m) => ({
+          id: m.id,
+          name: m.name,
+          room_id: m.room_id,
+          roomName: (m.rooms as { name: string } | null)?.name || null,
+          kind: m.description === "__subcontractor__" ? "subcontractor" as const : "material" as const,
+        }));
 
       const materials = allMaterials.filter((m) => m.kind === "material");
       const subcontractors = allMaterials.filter((m) => m.kind === "subcontractor");
