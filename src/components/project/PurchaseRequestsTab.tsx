@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dialog";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { EntityPhotoGallery } from "@/components/shared/EntityPhotoGallery";
+import { QuickReceiptCaptureModal } from "./QuickReceiptCaptureModal";
 import { TaskFilesList } from "./TaskFilesList";
 import {
   Select,
@@ -113,6 +114,7 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [budgetPurchaseDialog, setBudgetPurchaseDialog] = useState<{ open: boolean; planned: Material | null; usedAmount: number }>({ open: false, planned: null, usedAmount: 0 });
   const [budgetExtraColsArr, setBudgetExtraColsArr] = usePersistedPreference<string[]>(`budget-cols-${projectId}`, []);
@@ -868,13 +870,12 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
               </CardDescription>
             </div>
             {(isProjectOwner || userPurchasesAccess === 'edit' || userPurchasesAccess === 'create') && (
+            <>
+            <Button size="sm" onClick={() => setReceiptModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t('purchases.addOrder')}
+            </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t('purchases.addOrder')}
-                </Button>
-              </DialogTrigger>
               <DialogContent className="max-w-3xl lg:max-w-5xl max-h-[90vh] flex flex-col">
                 <DialogHeader className="flex-shrink-0">
                   <div className="flex items-center justify-between">
@@ -1321,6 +1322,13 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                 </form>
               </DialogContent>
             </Dialog>
+            <QuickReceiptCaptureModal
+              projectId={projectId}
+              open={receiptModalOpen}
+              onOpenChange={setReceiptModalOpen}
+              onSuccess={() => fetchMaterials()}
+            />
+            </>
             )}
           </div>
         </CardHeader>
