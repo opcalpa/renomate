@@ -2393,9 +2393,36 @@ export function PlanningTaskList({
                       })()}
                       {show.rotAmount && (
                         <TableCell className="text-right hidden sm:table-cell py-2.5">
-                          {task.rot_amount ? (
-                            <span className="text-sm text-green-700">{formatCurrency(task.rot_amount, currency)}</span>
-                          ) : (
+                          {task.rot_amount ? (() => {
+                            const laborCost = (task.estimated_hours || 0) * (task.hourly_rate || 0);
+                            const laborIncMoms = Math.round(laborCost * 1.25);
+                            return (
+                              <HoverCard openDelay={200} closeDelay={100}>
+                                <HoverCardTrigger asChild>
+                                  <button className="text-sm text-green-700 hover:underline" onClick={(e) => e.stopPropagation()}>
+                                    {formatCurrency(task.rot_amount, currency)}
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-56 p-3" align="end" side="top">
+                                  <div className="space-y-1.5 text-xs">
+                                    <p className="font-semibold text-sm mb-2">{t("tasks.rotEligible", "ROT-avdrag")}</p>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">{t("taskCost.ownLabor", "Eget arbete")}</span>
+                                      <span className="tabular-nums">{formatCurrency(laborCost, currency)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">{t("estimation.incMomsShort", "inc moms")} (25%)</span>
+                                      <span className="tabular-nums">{formatCurrency(laborIncMoms, currency)}</span>
+                                    </div>
+                                    <div className="flex justify-between pt-1.5 border-t font-semibold text-green-700">
+                                      <span>ROT 30%</span>
+                                      <span className="tabular-nums">{formatCurrency(task.rot_amount, currency)}</span>
+                                    </div>
+                                  </div>
+                                </HoverCardContent>
+                              </HoverCard>
+                            );
+                          })() : (
                             <span className="text-xs text-muted-foreground">–</span>
                           )}
                         </TableCell>
