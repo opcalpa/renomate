@@ -233,9 +233,8 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   }, [allPhotos, selectedRoom]);
 
   // Before/During/After photos grouped by room — uses ALL photos (not filtered allPhotos)
-  const allRawPhotos = data?.photos || [];
   const beforeAfterByRoom = useMemo(() => {
-    const baPhotos = allRawPhotos.filter((p) => BA_SOURCES.has(p.source));
+    const baPhotos = (data?.photos || []).filter((p) => BA_SOURCES.has(p.source));
     const targetPhotos = selectedRoom === "all" ? baPhotos : selectedRoom === "untagged" ? baPhotos.filter((p) => !p.roomId) : baPhotos.filter((p) => p.roomId === selectedRoom);
     const roomGroups = new Map<string, { name: string; before: InspoPhoto[]; during: InspoPhoto[]; after: InspoPhoto[] }>();
 
@@ -253,7 +252,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
     return Array.from(roomGroups.entries())
       .map(([id, data]) => ({ id, ...data }))
       .filter((g) => g.before.length > 0 || g.during.length > 0 || g.after.length > 0);
-  }, [allRawPhotos, selectedRoom, t]);
+  }, [data?.photos, selectedRoom, t]);
 
   const totalCount = allPhotos.length + materialCards.filter((m) => m.photoUrl).length;
 
