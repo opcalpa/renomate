@@ -19,7 +19,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map as MapIcon, Loader2, AlertTriangle, Link2, ImageIcon, MessageSquare, Columns3, AlignJustify, Layers } from "lucide-react";
+import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map as MapIcon, Loader2, AlertTriangle, Link2, ImageIcon, MessageSquare, Columns3, AlignJustify, Layers, MoreVertical } from "lucide-react";
 import { TaskListSkeleton } from "@/components/ui/skeleton-screens";
 import { DEFAULT_COST_CENTERS, getCostCenterIcon, getCostCenterLabel } from "@/lib/costCenters";
 import { formatCurrency } from "@/lib/currency";
@@ -1132,13 +1132,47 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
       <div className="flex flex-col gap-4">
         {/* View tabs */}
         <div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <Tabs value={viewMode} onValueChange={(v) => handleSetViewMode(v)}>
-            <TabsList className="h-9 max-w-[calc(100vw-7rem)] overflow-x-auto overflow-y-hidden">
-              <TabsTrigger value="timeline" className="text-xs px-2 sm:px-3">{t('projectDetail.timeline', 'Tidslinje')}</TabsTrigger>
-              <TabsTrigger value="table" className="text-xs px-2 sm:px-3">{t('tasks.tableView', 'Tabell')}</TabsTrigger>
-              <TabsTrigger value="kanban" className="text-xs px-2 sm:px-3">{t('tasks.kanbanView', 'Kanban')}</TabsTrigger>
-              <TabsTrigger value="calendar" className="text-xs px-2 sm:px-3">{t('timeline.calendar', 'Kalender')}</TabsTrigger>
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {/* View mode — dropdown on mobile, tabs on desktop */}
+          {/* Mobile: dropdown */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="sm:hidden h-9 gap-1.5 text-xs">
+                {viewMode === "timeline" && t('projectDetail.timeline', 'Tidslinje')}
+                {viewMode === "table" && t('tasks.tableView', 'Tabell')}
+                {viewMode === "kanban" && t('tasks.kanbanView', 'Kanban')}
+                {viewMode === "calendar" && t('timeline.calendar', 'Kalender')}
+                <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-40 p-1" align="start">
+              {(["timeline", "table", "kanban", "calendar"] as const).map((v) => {
+                const labels = {
+                  timeline: t('projectDetail.timeline', 'Tidslinje'),
+                  table: t('tasks.tableView', 'Tabell'),
+                  kanban: t('tasks.kanbanView', 'Kanban'),
+                  calendar: t('timeline.calendar', 'Kalender'),
+                };
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    className={cn("flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded", v === viewMode ? "bg-accent font-medium" : "hover:bg-accent")}
+                    onClick={() => handleSetViewMode(v)}
+                  >
+                    {labels[v]}
+                  </button>
+                );
+              })}
+            </PopoverContent>
+          </Popover>
+          {/* Desktop: tabs */}
+          <Tabs value={viewMode} onValueChange={(v) => handleSetViewMode(v)} className="hidden sm:block">
+            <TabsList className="h-9">
+              <TabsTrigger value="timeline" className="text-xs px-3">{t('projectDetail.timeline', 'Tidslinje')}</TabsTrigger>
+              <TabsTrigger value="table" className="text-xs px-3">{t('tasks.tableView', 'Tabell')}</TabsTrigger>
+              <TabsTrigger value="kanban" className="text-xs px-3">{t('tasks.kanbanView', 'Kanban')}</TabsTrigger>
+              <TabsTrigger value="calendar" className="text-xs px-3">{t('timeline.calendar', 'Kalender')}</TabsTrigger>
             </TabsList>
           </Tabs>
 
