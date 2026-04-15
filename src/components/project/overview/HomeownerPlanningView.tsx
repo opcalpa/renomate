@@ -17,8 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Send, ClipboardList, Info, Columns3, Play, Bell, X, Sparkles, ChevronDown, ChevronRight, Package } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Plus, Trash2, Send, ClipboardList, Info, Columns3, Play, Bell, X, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   detectWorkType,
@@ -35,6 +34,7 @@ import { StartProjectModal } from "./StartProjectModal";
 import { PlanningWizard } from "./planning-wizard/PlanningWizard";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { ImportQuotePopover, type ExternalQuote } from "./ImportQuotePopover";
+import { MaterialFormulaPopover } from "./MaterialFormulaPopover";
 import { ExternalQuoteCell, type QuoteAssignment } from "./ExternalQuoteCell";
 import { PlanningSmartImportDialog } from "./PlanningSmartImportDialog";
 import {
@@ -194,7 +194,7 @@ export function HomeownerPlanningView({
   const [quoteAssignments, setQuoteAssignments] = useState<QuoteAssignment[]>([]);
 
   // Material info per task
-  interface TaskMaterial { name: string; price_total: number | null; quantity: number | null; unit: string | null; formula: string | null }
+  interface TaskMaterial { id: string; name: string; price_total: number | null; price_per_unit: number | null; quantity: number | null; unit: string | null; formula: string | null }
   const [taskMaterials, setTaskMaterials] = useState<Map<string, TaskMaterial[]>>(new Map());
 
   // Category grouping
@@ -301,7 +301,7 @@ export function HomeownerPlanningView({
   const fetchTaskMaterials = useCallback(async () => {
     const { data } = await supabase
       .from("materials")
-      .select("task_id, name, price_total, quantity, unit, description")
+      .select("id, task_id, name, price_total, price_per_unit, quantity, unit, description")
       .eq("project_id", projectId)
       .not("task_id", "is", null);
     if (data) {
@@ -310,8 +310,10 @@ export function HomeownerPlanningView({
         if (!m.task_id) continue;
         if (!map.has(m.task_id)) map.set(m.task_id, []);
         map.get(m.task_id)!.push({
+          id: m.id,
           name: m.name,
           price_total: m.price_total,
+          price_per_unit: m.price_per_unit,
           quantity: m.quantity,
           unit: m.unit,
           formula: m.description !== "__subcontractor__" ? m.description : null,
@@ -733,45 +735,18 @@ export function HomeownerPlanningView({
                                 <span className="break-words">{task.title}</span>
                               </button>
                               {matCount > 0 && (
-                                <TooltipProvider delayDuration={200}>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="inline-flex items-center gap-0.5 text-amber-600 shrink-0 cursor-default" onClick={(e) => e.stopPropagation()}>
-                                        <Package className="h-3 w-3" />
-                                        <span className="text-[10px]">{matCount}</span>
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom" align="start" className="max-w-xs p-2">
-                                      <p className="text-xs font-medium mb-1">{t("homeownerPlanning.materials", "Material")}</p>
-                                      <ul className="space-y-1">
-                                        {mats.map((m, i) => (
-                                          <li key={i} className="text-xs">
-                                            <div className="flex justify-between gap-3">
-                                              <span className="truncate font-medium">
-                                                {m.name}
-                                                {m.quantity != null && m.unit && (
-                                                  <span className="font-normal text-muted-foreground ml-1">
-                                                    {m.quantity} {m.unit}
-                                                  </span>
-                                                )}
-                                              </span>
-                                              {m.price_total != null && m.price_total > 0 && (
-                                                <span className="tabular-nums text-muted-foreground shrink-0">
-                                                  {Math.round(m.price_total).toLocaleString("sv-SE")} kr
-                                                </span>
-                                              )}
-                                            </div>
-                                            {m.formula && (
-                                              <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">
-                                                {m.formula}
-                                              </p>
-                                            )}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                                <MaterialFormulaPopover
+                                  taskId={task.id}
+                                  taskTitle={task.title}
+                                  taskCostCenter={task.cost_center}
+                                  projectId={projectId}
+                                  materials={mats}
+                                  rooms={(() => {
+                                    const ids = task.room_ids?.length ? task.room_ids : task.room_id ? [task.room_id] : [];
+                                    return ids.map((id) => roomMap.get(id)).filter(Boolean) as RecipeRoom[];
+                                  })()}
+                                  onChanged={fetchTaskMaterials}
+                                />
                               )}
                             </div>
                           )}

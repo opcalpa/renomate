@@ -4724,7 +4724,13 @@
     "totalRot": "ROT",
     "groupByCategory": "Gruppera per kategori",
     "materialCount": "{{count}} material",
-    "materials": "Material"
+    "materials": "Material",
+    "materialEstimates": "Materialberäkningar",
+    "materialEstimatesHint": "Auto-beräknat från rumsmått. Klicka på värden för att justera.",
+    "quantity": "Antal",
+    "recalculate": "Beräkna om",
+    "materialsRecalculated": "Materialberäkningar uppdaterade",
+    "noRecipeForTask": "Inget recept tillgängligt för denna arbetstyp"
   },
   "externalQuotes": {
     "importQuote": "Importera offert",

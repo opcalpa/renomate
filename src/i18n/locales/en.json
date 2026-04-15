@@ -4727,7 +4727,13 @@
     "totalRot": "ROT",
     "groupByCategory": "Group by category",
     "materialCount": "{{count}} material(s)",
-    "materials": "Materials"
+    "materials": "Materials",
+    "materialEstimates": "Material estimates",
+    "materialEstimatesHint": "Auto-calculated from room dimensions. Click values to adjust.",
+    "quantity": "Qty",
+    "recalculate": "Recalculate",
+    "materialsRecalculated": "Material estimates updated",
+    "noRecipeForTask": "No recipe available for this task type"
   },
   "externalQuotes": {
     "importQuote": "Import quote",
