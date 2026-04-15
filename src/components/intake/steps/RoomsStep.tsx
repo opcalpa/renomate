@@ -2,16 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +10,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, X, Check, ImageIcon } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Plus, Trash2, Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { IntakeFormData } from "../IntakeWizard";
 import {
@@ -27,9 +23,7 @@ import {
   getWorkTypes,
   type IntakeRoom,
   type WorkType,
-  type RoomPriority,
 } from "@/services/intakeService";
-import { IntakeFileUploader } from "../IntakeFileUploader";
 
 interface RoomsStepProps {
   formData: IntakeFormData;
@@ -37,18 +31,11 @@ interface RoomsStepProps {
   token: string;
 }
 
-const PRIORITIES: Array<{ value: RoomPriority; labelKey: string }> = [
-  { value: "high", labelKey: "intake.priorityHigh" },
-  { value: "medium", labelKey: "intake.priorityMedium" },
-  { value: "low", labelKey: "intake.priorityLow" },
-];
-
-export function RoomsStep({ formData, updateFormData, token }: RoomsStepProps) {
+export function RoomsStep({ formData, updateFormData }: RoomsStepProps) {
   const { t } = useTranslation();
-  const [editingRoom, setEditingRoom] = useState<IntakeRoom | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
   const [customRoomDialogOpen, setCustomRoomDialogOpen] = useState(false);
   const [customRoomName, setCustomRoomName] = useState("");
+  const [workTypesOpen, setWorkTypesOpen] = useState<Record<string, boolean>>({});
 
   const roomSuggestions = getRoomSuggestions().map((r) => ({
     ...r,
@@ -58,16 +45,12 @@ export function RoomsStep({ formData, updateFormData, token }: RoomsStepProps) {
 
   const selectedRoomNames = new Set(formData.rooms.map((r) => r.name));
 
-  const handleSelectRoom = (name: string) => {
+  const toggleRoom = (name: string) => {
     if (selectedRoomNames.has(name)) {
-      // Room already selected - open for editing
-      const existingRoom = formData.rooms.find((r) => r.name === name);
-      if (existingRoom) {
-        setEditingRoom({ ...existingRoom });
-        setSheetOpen(true);
-      }
+      updateFormData({
+        rooms: formData.rooms.filter((r) => r.name !== name),
+      });
     } else {
-      // Add new room
       const newRoom: IntakeRoom = {
         id: crypto.randomUUID(),
         name,
@@ -76,14 +59,12 @@ export function RoomsStep({ formData, updateFormData, token }: RoomsStepProps) {
         priority: "medium",
         images: [],
       };
-      setEditingRoom(newRoom);
-      setSheetOpen(true);
+      updateFormData({ rooms: [...formData.rooms, newRoom] });
     }
   };
 
   const handleAddCustomRoom = () => {
     if (!customRoomName.trim()) return;
-
     const newRoom: IntakeRoom = {
       id: crypto.randomUUID(),
       name: customRoomName.trim(),
@@ -92,166 +73,202 @@ export function RoomsStep({ formData, updateFormData, token }: RoomsStepProps) {
       priority: "medium",
       images: [],
     };
+    updateFormData({ rooms: [...formData.rooms, newRoom] });
     setCustomRoomName("");
     setCustomRoomDialogOpen(false);
-    setEditingRoom(newRoom);
-    setSheetOpen(true);
   };
 
-  const handleSaveRoom = () => {
-    if (!editingRoom) return;
-
-    const existingIndex = formData.rooms.findIndex((r) => r.id === editingRoom.id);
-    let newRooms: IntakeRoom[];
-
-    if (existingIndex >= 0) {
-      // Update existing
-      newRooms = [...formData.rooms];
-      newRooms[existingIndex] = editingRoom;
-    } else {
-      // Add new
-      newRooms = [...formData.rooms, editingRoom];
-    }
-
+  const updateRoomDimension = (roomId: string, field: "widthM" | "depthM", value: string) => {
+    const newRooms = formData.rooms.map((r) => {
+      if (r.id !== roomId) return r;
+      const dims = { ...(r as IntakeRoom & { widthM?: number; depthM?: number }) };
+      if (value) {
+        (dims as Record<string, unknown>)[field] = parseFloat(value);
+      } else {
+        delete (dims as Record<string, unknown>)[field];
+      }
+      return dims as IntakeRoom;
+    });
     updateFormData({ rooms: newRooms });
-    setSheetOpen(false);
-    setEditingRoom(null);
   };
 
-  const handleRemoveRoom = (roomId: string) => {
+  const toggleWorkType = (roomId: string, workType: WorkType) => {
+    const newRooms = formData.rooms.map((r) => {
+      if (r.id !== roomId) return r;
+      const hasType = r.work_types.includes(workType);
+      return {
+        ...r,
+        work_types: hasType
+          ? r.work_types.filter((wt) => wt !== workType)
+          : [...r.work_types, workType],
+      };
+    });
+    updateFormData({ rooms: newRooms });
+  };
+
+  const removeRoom = (roomId: string) => {
     updateFormData({
       rooms: formData.rooms.filter((r) => r.id !== roomId),
     });
   };
 
-  const handleEditRoom = (room: IntakeRoom) => {
-    setEditingRoom({ ...room });
-    setSheetOpen(true);
-  };
-
-  const toggleWorkType = (workType: WorkType) => {
-    if (!editingRoom) return;
-
-    const hasType = editingRoom.work_types.includes(workType);
-    const newWorkTypes = hasType
-      ? editingRoom.work_types.filter((t) => t !== workType)
-      : [...editingRoom.work_types, workType];
-
-    setEditingRoom({ ...editingRoom, work_types: newWorkTypes });
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="text-center mb-6">
-        <h2 className="text-xl font-semibold">{t("intake.selectRooms")}</h2>
-        <p className="text-muted-foreground text-sm mt-1">
-          {t("intake.selectRoomsDescription")}
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-lg font-semibold">{t("intake.roomsTitle", "Which rooms are included?")}</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          {t("intake.roomsSubtitle", "Select rooms and optionally add dimensions. The builder can adjust later.")}
         </p>
       </div>
 
       {/* Room suggestions grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
         {roomSuggestions.map((room) => {
           const isSelected = selectedRoomNames.has(room.name);
           return (
             <button
-              key={room.name}
+              key={room.nameKey}
               type="button"
-              onClick={() => handleSelectRoom(room.name)}
+              onClick={() => toggleRoom(room.name)}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 p-3 rounded-lg border-2 transition-all",
+                "flex flex-col items-center justify-center gap-1 p-2.5 rounded-lg border-2 transition-all",
                 "hover:border-primary/50 hover:bg-accent/50",
                 isSelected ? "border-primary bg-primary/5" : "border-muted"
               )}
             >
-              <span className="text-2xl">{room.icon}</span>
-              <span className="text-xs font-medium text-center">{room.name}</span>
-              {isSelected && (
-                <Check className="h-3 w-3 text-primary" />
-              )}
+              <span className="text-xl">{room.icon}</span>
+              <span className="text-xs font-medium text-center leading-tight">{room.name}</span>
+              {isSelected && <Check className="h-3 w-3 text-primary" />}
             </button>
           );
         })}
 
-        {/* Add custom room button */}
         <button
           type="button"
           onClick={() => setCustomRoomDialogOpen(true)}
           className={cn(
-            "flex flex-col items-center justify-center gap-1 p-3 rounded-lg border-2 border-dashed transition-all",
+            "flex flex-col items-center justify-center gap-1 p-2.5 rounded-lg border-2 border-dashed transition-all",
             "hover:border-primary/50 hover:bg-accent/50 border-muted"
           )}
         >
-          <Plus className="h-6 w-6 text-muted-foreground" />
+          <Plus className="h-5 w-5 text-muted-foreground" />
           <span className="text-xs font-medium text-muted-foreground">
             {t("intake.addCustomRoom")}
           </span>
         </button>
       </div>
 
-      {/* Selected rooms list */}
+      {/* Selected rooms with dimensions */}
       {formData.rooms.length > 0 && (
-        <div className="space-y-3 mt-6">
-          <Label className="text-sm text-muted-foreground">
-            {t("intake.roomsSelected", { count: formData.rooms.length })}
-          </Label>
-          <div className="space-y-2">
-            {formData.rooms.map((room) => (
-              <div
-                key={room.id}
-                className="flex items-start justify-between p-3 rounded-lg border bg-card"
-              >
-                <div className="flex-1 min-w-0">
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            {t("intake.roomDimensionsHint", "Add dimensions if you know them (optional)")}
+          </p>
+          {formData.rooms.map((room) => {
+            const roomWithDims = room as IntakeRoom & { widthM?: number; depthM?: number };
+            const area = roomWithDims.widthM && roomWithDims.depthM
+              ? (roomWithDims.widthM * roomWithDims.depthM).toFixed(1)
+              : null;
+
+            return (
+              <div key={room.id} className="rounded-lg border bg-card p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{room.name}</span>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{room.name}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {t(`intake.priority${room.priority.charAt(0).toUpperCase() + room.priority.slice(1)}`)}
-                    </Badge>
-                  </div>
-                  {room.description && (
-                    <p className="text-sm text-muted-foreground mt-1 truncate">
-                      {room.description}
-                    </p>
-                  )}
-                  {room.work_types.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {room.work_types.map((wt) => (
-                        <Badge key={wt} variant="secondary" className="text-xs">
-                          {t(`intake.workType.${wt}`)}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                  {room.images.length > 0 && (
-                    <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-                      <ImageIcon className="h-3 w-3" />
-                      <span>
-                        {t("intake.photosAttached", { count: room.images.length })}
+                    {area && (
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {area} m²
                       </span>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => removeRoom(room.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Dimensions: width x depth */}
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    className="h-8 text-sm w-20 tabular-nums"
+                    placeholder={t("intake.width", "Width")}
+                    value={roomWithDims.widthM ?? ""}
+                    onChange={(e) => updateRoomDimension(room.id, "widthM", e.target.value)}
+                    step="0.1"
+                    min="0"
+                  />
+                  <span className="text-xs text-muted-foreground">×</span>
+                  <Input
+                    type="number"
+                    className="h-8 text-sm w-20 tabular-nums"
+                    placeholder={t("intake.depth", "Depth")}
+                    value={roomWithDims.depthM ?? ""}
+                    onChange={(e) => updateRoomDimension(room.id, "depthM", e.target.value)}
+                    step="0.1"
+                    min="0"
+                  />
+                  <span className="text-xs text-muted-foreground">m</span>
+                </div>
+
+                {/* Expandable work types */}
+                <Collapsible
+                  open={workTypesOpen[room.id]}
+                  onOpenChange={(open) => setWorkTypesOpen((prev) => ({ ...prev, [room.id]: open }))}
+                >
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <ChevronDown className={cn("h-3 w-3 transition-transform", workTypesOpen[room.id] && "rotate-180")} />
+                      {t("intake.showWorkTypes", "Work types")}
+                      {room.work_types.length > 0 && (
+                        <span className="text-primary">({room.work_types.length})</span>
+                      )}
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      {workTypes.map((wt) => {
+                        const isSelected = room.work_types.includes(wt.value);
+                        return (
+                          <button
+                            key={wt.value}
+                            type="button"
+                            onClick={() => toggleWorkType(room.id, wt.value)}
+                            className={cn(
+                              "px-2.5 py-1 rounded-full text-xs border transition-all",
+                              isSelected
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background border-input hover:bg-accent"
+                            )}
+                          >
+                            {t(`intake.workType.${wt.value}`)}
+                          </button>
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 ml-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleEditRoom(room)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => handleRemoveRoom(room.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Show selected work types as badges when collapsed */}
+                {!workTypesOpen[room.id] && room.work_types.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {room.work_types.map((wt) => (
+                      <Badge key={wt} variant="secondary" className="text-xs">
+                        {t(`intake.workType.${wt}`)}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       )}
 
@@ -261,130 +278,6 @@ export function RoomsStep({ formData, updateFormData, token }: RoomsStepProps) {
         </p>
       )}
 
-      {/* Room detail sheet */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{editingRoom?.name}</SheetTitle>
-            <SheetDescription>
-              {t("intake.roomDescriptionPlaceholder")}
-            </SheetDescription>
-          </SheetHeader>
-
-          {editingRoom && (
-            <div className="space-y-6 mt-6">
-              {/* Description */}
-              <div className="space-y-2">
-                <Label>{t("intake.roomDescription")} <span className="text-destructive">*</span></Label>
-                <Textarea
-                  value={editingRoom.description}
-                  onChange={(e) =>
-                    setEditingRoom({ ...editingRoom, description: e.target.value })
-                  }
-                  placeholder={t("intake.roomDescriptionPlaceholder")}
-                  rows={4}
-                />
-              </div>
-
-              {/* Work types */}
-              <div className="space-y-3">
-                <Label>{t("intake.workTypes")}</Label>
-                <p className="text-sm text-muted-foreground">
-                  {t("intake.workTypesDescription")}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {workTypes.map((wt) => {
-                    const isSelected = editingRoom.work_types.includes(wt.value);
-                    return (
-                      <button
-                        key={wt.value}
-                        type="button"
-                        onClick={() => toggleWorkType(wt.value)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-full text-sm border transition-all",
-                          isSelected
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background border-input hover:bg-accent"
-                        )}
-                      >
-                        {t(`intake.workType.${wt.value}`)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Priority */}
-              <div className="space-y-3">
-                <Label>{t("intake.priority")}</Label>
-                <div className="flex flex-col gap-2">
-                  {PRIORITIES.map((p) => (
-                    <button
-                      key={p.value}
-                      type="button"
-                      onClick={() =>
-                        setEditingRoom({ ...editingRoom, priority: p.value })
-                      }
-                      className={cn(
-                        "flex items-center gap-3 p-3 rounded-lg border transition-all text-left",
-                        editingRoom.priority === p.value
-                          ? "border-primary bg-primary/5"
-                          : "border-input hover:bg-accent"
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "h-4 w-4 rounded-full border-2",
-                          editingRoom.priority === p.value
-                            ? "border-primary bg-primary"
-                            : "border-muted-foreground"
-                        )}
-                      />
-                      <span className="text-sm">{t(p.labelKey)}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Room photos */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                  <Label>{t("intake.roomPhotos")}</Label>
-                  <span className="text-xs text-muted-foreground">
-                    ({t("intake.optional")})
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {t("intake.roomPhotosDescription")}
-                </p>
-                <IntakeFileUploader
-                  token={token}
-                  folder={`rooms/${editingRoom.id}`}
-                  files={editingRoom.images}
-                  onFilesChange={(images) =>
-                    setEditingRoom({ ...editingRoom, images })
-                  }
-                  accept="image/*"
-                  maxFiles={5}
-                  showCamera={true}
-                  compact={false}
-                />
-              </div>
-
-              {/* Save button */}
-              <Button
-                onClick={handleSaveRoom}
-                className="w-full"
-                disabled={!editingRoom.description.trim()}
-              >
-                {t("intake.saveRoom")}
-              </Button>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-
       {/* Custom room name dialog */}
       <Dialog open={customRoomDialogOpen} onOpenChange={setCustomRoomDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -392,21 +285,17 @@ export function RoomsStep({ formData, updateFormData, token }: RoomsStepProps) {
             <DialogTitle>{t("intake.addCustomRoom")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="customRoomName">{t("intake.customRoomName")}</Label>
-              <Input
-                id="customRoomName"
-                value={customRoomName}
-                onChange={(e) => setCustomRoomName(e.target.value)}
-                placeholder={t("intake.customRoomPlaceholder")}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddCustomRoom();
-                  }
-                }}
-              />
-            </div>
+            <Input
+              value={customRoomName}
+              onChange={(e) => setCustomRoomName(e.target.value)}
+              placeholder={t("intake.customRoomPlaceholder")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddCustomRoom();
+                }
+              }}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCustomRoomDialogOpen(false)}>

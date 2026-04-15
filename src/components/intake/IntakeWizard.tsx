@@ -3,13 +3,14 @@ import { useTranslation } from "react-i18next";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight, Send, Loader2, CheckCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Send, Loader2, CheckCircle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
-import { ContactStep } from "./steps/ContactStep";
-import { PropertyStep } from "./steps/PropertyStep";
+import { DescribeStep } from "./steps/DescribeStep";
 import { RoomsStep } from "./steps/RoomsStep";
-import { SummaryStep } from "./steps/SummaryStep";
+import { PhotosStep } from "./steps/PhotosStep";
+import { ContactSummaryStep } from "./steps/ContactSummaryStep";
 import {
   submitIntakeRequest,
   type IntakeRoom,
@@ -22,40 +23,63 @@ interface IntakeWizardProps {
   onSubmitted: () => void;
 }
 
+interface AIParsedResult {
+  rooms: Array<{
+    nameKey: string;
+    name: string;
+    suggestedWorkTypes: string[];
+  }>;
+  globalWorkTypes: string[];
+  summary: string;
+}
+
 export interface IntakeFormData {
-  // Step 1: Contact
+  // Step 1: Describe
+  description: string;
+  propertyType: PropertyType | "";
+  totalAreaSqm?: number;
+  aiParsed: AIParsedResult | null;
+
+  // Step 2: Rooms (with optional dimensions via widthM/depthM on room objects)
+  rooms: IntakeRoom[];
+
+  // Step 3: Photos (stored in rooms[].images + attachments)
+  attachments: string[];
+
+  // Step 4: Contact + Summary
   customerName: string;
   customerEmail: string;
   customerPhone: string;
-
-  // Step 2: Property
   propertyAddress: string;
   propertyPostalCode: string;
   propertyCity: string;
-  propertyType: PropertyType | "";
-
-  // Step 3: Rooms
-  rooms: IntakeRoom[];
-
-  // Step 4: Summary
   additionalComments: string;
-  attachments: string[];
 }
 
 const INITIAL_FORM_DATA: IntakeFormData = {
+  description: "",
+  propertyType: "",
+  totalAreaSqm: undefined,
+  aiParsed: null,
+  rooms: [],
+  attachments: [],
   customerName: "",
   customerEmail: "",
   customerPhone: "",
   propertyAddress: "",
   propertyPostalCode: "",
   propertyCity: "",
-  propertyType: "",
-  rooms: [],
   additionalComments: "",
-  attachments: [],
 };
 
 const TOTAL_STEPS = 4;
+
+const STEP_TITLES = [
+  "intake.describeStepTitle",
+  "intake.roomsStepTitle",
+  "intake.photosStepTitle",
+  "intake.contactStepTitle",
+] as const;
 
 export function IntakeWizard({ intakeRequest, onSubmitted }: IntakeWizardProps) {
   const { t } = useTranslation();
@@ -67,6 +91,7 @@ export function IntakeWizard({ intakeRequest, onSubmitted }: IntakeWizardProps) 
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
 
   const updateFormData = useCallback((updates: Partial<IntakeFormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
@@ -75,17 +100,47 @@ export function IntakeWizard({ intakeRequest, onSubmitted }: IntakeWizardProps) 
   const canProceed = useCallback((): boolean => {
     switch (currentStep) {
       case 1:
-        return !!(formData.customerName.trim() && formData.customerEmail.trim());
+        return formData.description.trim().length > 10;
       case 2:
-        return !!formData.propertyAddress.trim();
-      case 3:
         return formData.rooms.length > 0;
+      case 3:
+        return true; // Photos are optional
       case 4:
-        return true;
+        return !!(formData.customerName.trim() && formData.customerEmail.trim());
       default:
         return false;
     }
   }, [currentStep, formData]);
+
+  const handleAnalyze = useCallback(async () => {
+    setAnalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("parse-renovation-description", {
+        body: { description: formData.description, language: "sv" },
+      });
+      if (error) throw error;
+
+      const parsed = data as AIParsedResult;
+
+      // Pre-populate rooms from AI
+      const aiRooms: IntakeRoom[] = parsed.rooms.map((r) => ({
+        id: crypto.randomUUID(),
+        name: r.name,
+        description: "",
+        work_types: r.suggestedWorkTypes as IntakeRoom["work_types"],
+        priority: "medium" as const,
+        images: [],
+      }));
+
+      updateFormData({
+        aiParsed: parsed,
+        rooms: aiRooms,
+      });
+    } catch {
+      toast.error(t("intake.analyzeFailed", "Could not analyze. You can continue manually."));
+    }
+    setAnalyzing(false);
+  }, [formData.description, updateFormData, t]);
 
   const handleNext = () => {
     if (currentStep < TOTAL_STEPS && canProceed()) {
@@ -104,15 +159,21 @@ export function IntakeWizard({ intakeRequest, onSubmitted }: IntakeWizardProps) 
 
     setSubmitting(true);
     try {
+      // Build project description from free-text + AI summary
+      const descriptionParts = [formData.description];
+      if (formData.additionalComments.trim()) {
+        descriptionParts.push(formData.additionalComments.trim());
+      }
+
       await submitIntakeRequest(intakeRequest.token, {
         customer_name: formData.customerName.trim(),
         customer_email: formData.customerEmail.trim(),
         customer_phone: formData.customerPhone.trim() || undefined,
-        property_address: formData.propertyAddress.trim(),
+        property_address: formData.propertyAddress.trim() || "",
         property_postal_code: formData.propertyPostalCode.trim() || undefined,
         property_city: formData.propertyCity.trim() || undefined,
         property_type: formData.propertyType || undefined,
-        project_description: formData.additionalComments.trim() || undefined,
+        project_description: descriptionParts.join("\n\n"),
         rooms_data: formData.rooms,
         images: formData.attachments,
       });
@@ -172,15 +233,11 @@ export function IntakeWizard({ intakeRequest, onSubmitted }: IntakeWizardProps) 
       {/* Progress header */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>
+          <span className="flex items-center gap-1.5">
+            <Sparkles className="h-4 w-4 text-primary" />
             {t("intake.stepOf", { current: currentStep, total: TOTAL_STEPS })}
           </span>
-          <span>
-            {currentStep === 1 && t("intake.step1Title")}
-            {currentStep === 2 && t("intake.step2Title")}
-            {currentStep === 3 && t("intake.step3Title")}
-            {currentStep === 4 && t("intake.step4Title")}
-          </span>
+          <span>{t(STEP_TITLES[currentStep - 1])}</span>
         </div>
         <Progress value={progressPercent} className="h-2" />
       </div>
@@ -189,16 +246,21 @@ export function IntakeWizard({ intakeRequest, onSubmitted }: IntakeWizardProps) 
       <Card>
         <CardContent className="pt-6">
           {currentStep === 1 && (
-            <ContactStep formData={formData} updateFormData={updateFormData} />
+            <DescribeStep
+              formData={formData}
+              updateFormData={updateFormData}
+              onAnalyze={handleAnalyze}
+              analyzing={analyzing}
+            />
           )}
           {currentStep === 2 && (
-            <PropertyStep formData={formData} updateFormData={updateFormData} />
-          )}
-          {currentStep === 3 && (
             <RoomsStep formData={formData} updateFormData={updateFormData} token={intakeRequest.token} />
           )}
+          {currentStep === 3 && (
+            <PhotosStep formData={formData} updateFormData={updateFormData} token={intakeRequest.token} />
+          )}
           {currentStep === 4 && (
-            <SummaryStep formData={formData} updateFormData={updateFormData} token={intakeRequest.token} />
+            <ContactSummaryStep formData={formData} updateFormData={updateFormData} />
           )}
         </CardContent>
       </Card>
