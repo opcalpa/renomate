@@ -1,8 +1,8 @@
 export { IntakeWizard } from "./IntakeWizard";
-export { ContactStep } from "./steps/ContactStep";
-export { PropertyStep } from "./steps/PropertyStep";
+export { DescribeStep } from "./steps/DescribeStep";
 export { RoomsStep } from "./steps/RoomsStep";
-export { SummaryStep } from "./steps/SummaryStep";
+export { PhotosStep } from "./steps/PhotosStep";
+export { ContactSummaryStep } from "./steps/ContactSummaryStep";
 export { IntakeRequestCard } from "./IntakeRequestCard";
 export { IntakeRequestDetail } from "./IntakeRequestDetail";
 export { CreateIntakeDialog } from "./CreateIntakeDialog";
