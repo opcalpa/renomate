@@ -1299,6 +1299,8 @@
     "calendar": "Kalender",
     "calendarMonth": "Månad",
     "calendarWeek": "Vecka",
+    "calendarNoDates": "Inga arbeten har start- och slutdatum. Lägg till datum för att se dem i kalendern.",
+    "calendarSomeDates": "{{count}} arbeten utan datum visas inte.",
     "calendarMon": "Mån",
     "calendarTue": "Tis",
     "calendarWed": "Ons",

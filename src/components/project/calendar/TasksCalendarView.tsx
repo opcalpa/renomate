@@ -17,7 +17,7 @@ import {
   differenceInDays,
 } from "date-fns";
 import { sv } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, CalendarDays } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -130,6 +130,7 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, mil
     () => tasks.filter((t) => t.start_date && t.finish_date),
     [tasks]
   );
+  const unscheduledCount = tasks.length - scheduledTasks.length;
 
   // Earliest task date for "Project" button
   const projectStart = useMemo(() => {
@@ -195,6 +196,18 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, mil
           </SelectContent>
         </Select>
       </div>
+
+      {/* Missing dates hint */}
+      {unscheduledCount > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b text-xs text-amber-700">
+          <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            {scheduledTasks.length === 0
+              ? t("timeline.calendarNoDates", "No tasks have start and end dates. Add dates to see them on the calendar.")
+              : t("timeline.calendarSomeDates", "{{count}} task(s) without dates are not shown.", { count: unscheduledCount })}
+          </span>
+        </div>
+      )}
 
       {/* Day headers */}
       <div className="grid grid-cols-7 border-b">

@@ -1828,6 +1828,8 @@
     "calendar": "Calendar",
     "calendarMonth": "Month",
     "calendarWeek": "Week",
+    "calendarNoDates": "No tasks have start and end dates. Add dates to see them on the calendar.",
+    "calendarSomeDates": "{{count}} task(s) without dates are not shown.",
     "calendarMon": "Mon",
     "calendarTue": "Tue",
     "calendarWed": "Wed",
