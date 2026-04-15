@@ -743,24 +743,22 @@ export function HomeownerPlanningView({
                                 )}
                                 <span className="break-words">{task.title}</span>
                               </button>
-                              {matCount > 0 && (
-                                {(() => {
-                                  const ids = task.room_ids?.length ? task.room_ids : task.room_id ? [task.room_id] : [];
-                                  return (
-                                    <MaterialFormulaPopover
-                                      taskId={task.id}
-                                      taskTitle={task.title}
-                                      taskCostCenter={task.cost_center}
-                                      projectId={projectId}
-                                      materials={mats}
-                                      rooms={ids.map((id) => roomMap.get(id)).filter(Boolean) as RecipeRoom[]}
-                                      roomIds={ids}
-                                      onChanged={fetchTaskMaterials}
-                                      isHomeowner
-                                    />
-                                  );
-                                })()}
-                              )}
+                              {matCount > 0 && (() => {
+                                const ids = task.room_ids?.length ? task.room_ids : task.room_id ? [task.room_id] : [];
+                                return (
+                                  <MaterialFormulaPopover
+                                    taskId={task.id}
+                                    taskTitle={task.title}
+                                    taskCostCenter={task.cost_center}
+                                    projectId={projectId}
+                                    materials={mats}
+                                    rooms={ids.map((id) => roomMap.get(id)).filter(Boolean) as RecipeRoom[]}
+                                    roomIds={ids}
+                                    onChanged={fetchTaskMaterials}
+                                    isHomeowner
+                                  />
+                                );
+                              })()}
                             </div>
                           )}
                         </TableCell>
