@@ -756,7 +756,7 @@ export default function CreateQuote() {
         <ResizablePanelGroup direction="horizontal" className="h-full">
           <ResizablePanel defaultSize={isMobile ? 100 : 42} minSize={25} maxSize={70} className="overflow-auto lg:!overflow-auto">
           {/* ── Left column: form fields ── */}
-          <div className="max-w-2xl lg:max-w-none space-y-4 mx-auto lg:mx-0 lg:px-6 lg:py-6">
+          <div className="max-w-2xl lg:max-w-none space-y-5 mx-auto lg:mx-0 lg:px-6 lg:py-6 bg-gradient-to-b from-muted/30 to-muted/10">
             {urlProjectId && (
               <Button
                 variant="ghost"
@@ -770,55 +770,67 @@ export default function CreateQuote() {
             )}
             <h1 className="text-2xl font-bold">{t("quotes.newQuote")}</h1>
 
-            <Select value={projectId} onValueChange={setProjectId}>
-              <SelectTrigger className="min-h-[48px]">
-                <SelectValue placeholder={t("quotes.selectProject")} />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={clientId}
-              onValueChange={(val) => {
-                if (val === "__new__") {
-                  setCreateClientOpen(true);
-                } else {
-                  setClientId(val);
-                }
-              }}
-            >
-              <SelectTrigger className="min-h-[48px]">
-                <SelectValue placeholder={t("quotes.selectRecipient")} />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-                <SelectItem value="__new__">{t("quotes.createNewClient")}</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <div className="space-y-1">
-              <Label className="text-sm text-muted-foreground">{t("quotes.quoteNumberLabel", "Offertnr")}</Label>
-              <Input
-                value={quoteNumber}
-                onChange={(e) => setQuoteNumber(e.target.value)}
-                placeholder="OFF-2026-001"
-                className="min-h-[48px]"
-              />
+            {/* Quote details card */}
+            <div className="rounded-xl border border-border/60 bg-background p-4 shadow-sm space-y-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("quotes.quoteDetails", "Offertuppgifter")}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("quotes.project", "Projekt")}</Label>
+                  <Select value={projectId} onValueChange={setProjectId}>
+                    <SelectTrigger className="h-10 bg-white dark:bg-background border-border/40">
+                      <SelectValue placeholder={t("quotes.selectProject")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("quotes.recipient", "Mottagare")}</Label>
+                  <Select
+                    value={clientId}
+                    onValueChange={(val) => {
+                      if (val === "__new__") {
+                        setCreateClientOpen(true);
+                      } else {
+                        setClientId(val);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-10 bg-white dark:bg-background border-border/40">
+                      <SelectValue placeholder={t("quotes.selectRecipient")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                      <SelectItem value="__new__">{t("quotes.createNewClient")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("quotes.quoteNumberLabel", "Offertnr")}</Label>
+                <Input
+                  value={quoteNumber}
+                  onChange={(e) => setQuoteNumber(e.target.value)}
+                  placeholder="OFF-2026-001"
+                  className="h-10 bg-white dark:bg-background border-border/40"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("quotes.notes", "Villkor / anteckningar")}</Label>
+                <Textarea
+                  placeholder={t("quotes.freeTextPlaceholder")}
+                  value={freeText}
+                  onChange={(e) => setFreeText(e.target.value)}
+                  rows={2}
+                  className="bg-white dark:bg-background border-border/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 rounded-lg"
+                />
+              </div>
             </div>
-
-            <Textarea
-              placeholder={t("quotes.freeTextPlaceholder")}
-              value={freeText}
-              onChange={(e) => setFreeText(e.target.value)}
-              rows={3}
-              className="min-h-[80px]"
-            />
 
             {/* Settings panel — only shown when prepopulating from a project */}
             {shouldPrepopulate && (
@@ -831,7 +843,7 @@ export default function CreateQuote() {
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="mt-2 p-4 border rounded-lg space-y-4 bg-muted/20">
+                  <div className="mt-2 p-4 rounded-xl border border-border/60 bg-background shadow-sm space-y-4">
                     {hasManualEdits && (
                       <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                         <AlertTriangle className="h-3 w-3 flex-shrink-0" />
@@ -934,35 +946,42 @@ export default function CreateQuote() {
               </Collapsible>
             )}
 
-            <div className="space-y-3">
-              {items.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">{t("quotes.noItems")}</p>
-              )}
-              {items.map((item) => (
-                <QuoteItemRow
-                  key={item.id}
-                  item={item}
-                  onChange={handleChange}
-                  onDelete={handleDelete}
-                  onImportRoom={handleImportRoom}
-                />
-              ))}
+            {/* Line items */}
+            <div className="rounded-xl border border-border/60 bg-background shadow-sm overflow-hidden">
+              <div className="px-4 pt-4 pb-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("quotes.lineItems", "Offertrader")}</p>
+              </div>
+              <div className="px-4 pb-3 space-y-3">
+                {items.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">{t("quotes.noItems")}</p>
+                )}
+                {items.map((item) => (
+                  <QuoteItemRow
+                    key={item.id}
+                    item={item}
+                    onChange={handleChange}
+                    onDelete={handleDelete}
+                    onImportRoom={handleImportRoom}
+                  />
+                ))}
+              </div>
+              <div className="px-4 pb-4">
+                <Button
+                  variant="outline"
+                  className="w-full h-10 border-dashed border-border/60 text-muted-foreground hover:text-foreground"
+                  onClick={() => { setItems((prev) => [...prev, newItem()]); setHasManualEdits(true); }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t("quotes.addItem")}
+                </Button>
+              </div>
             </div>
-
-            <Button
-              variant="outline"
-              className="w-full min-h-[48px]"
-              onClick={() => { setItems((prev) => [...prev, newItem()]); setHasManualEdits(true); }}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              {t("quotes.addItem")}
-            </Button>
 
             <QuoteSummary items={items} />
 
             <div className="flex gap-2 pb-8">
               <Button
-                className="flex-1 min-h-[48px]"
+                className="flex-1 h-11 text-base font-medium shadow-sm"
                 onClick={handleSaveDraft}
                 disabled={saving}
               >
