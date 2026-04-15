@@ -21,6 +21,8 @@ interface MaterialItem {
   formula: string | null;
 }
 
+const VAT_RATE = 0.25;
+
 interface MaterialFormulaPopoverProps {
   taskId: string;
   taskTitle: string;
@@ -29,6 +31,8 @@ interface MaterialFormulaPopoverProps {
   materials: MaterialItem[];
   rooms: RecipeRoom[];
   onChanged: () => void;
+  /** When true, all prices are shown inc moms (×1.25) */
+  isHomeowner?: boolean;
 }
 
 export function MaterialFormulaPopover({
@@ -39,6 +43,7 @@ export function MaterialFormulaPopover({
   materials,
   rooms,
   onChanged,
+  isHomeowner = false,
 }: MaterialFormulaPopoverProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -49,15 +54,20 @@ export function MaterialFormulaPopover({
 
   const commitEdit = useCallback(async () => {
     if (!editingId || !editField) return;
-    const val = parseFloat(editBuffer);
-    if (isNaN(val) || val < 0) {
+    const rawVal = parseFloat(editBuffer);
+    if (isNaN(rawVal) || rawVal < 0) {
       setEditingId(null);
       setEditField(null);
       return;
     }
 
+    // Homeowner enters inc moms → convert price back to ex moms for DB
+    const val = editField === "price_per_unit" && isHomeowner
+      ? Math.round(rawVal / (1 + VAT_RATE))
+      : rawVal;
+
     const updates: Record<string, unknown> = { [editField]: val };
-    // Recalculate price_total
+    // Recalculate price_total (always ex moms in DB)
     const mat = materials.find((m) => m.id === editingId);
     if (mat) {
       const qty = editField === "quantity" ? val : (mat.quantity ?? 0);
@@ -171,6 +181,8 @@ export function MaterialFormulaPopover({
 
   if (materials.length === 0) return null;
 
+  const vatMultiplier = isHomeowner ? 1 + VAT_RATE : 1;
+  const vatLabel = isHomeowner ? t("budget.incVat", "ink. moms") : t("budget.exVat", "ex moms");
   const totalCost = materials.reduce((sum, m) => sum + (m.price_total ?? 0), 0);
 
   return (
@@ -191,7 +203,10 @@ export function MaterialFormulaPopover({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-3 py-2 border-b bg-muted/30">
-          <p className="text-xs font-medium">{t("homeownerPlanning.materialEstimates", "Material estimates")}</p>
+          <p className="text-xs font-medium">
+            {t("homeownerPlanning.materialEstimates", "Material estimates")}
+            <span className="text-[10px] font-normal text-muted-foreground ml-1">({vatLabel})</span>
+          </p>
           <p className="text-[10px] text-muted-foreground mt-0.5">
             {t("homeownerPlanning.materialEstimatesHint", "Auto-calculated from room dimensions. Click values to adjust.")}
           </p>
@@ -264,16 +279,16 @@ export function MaterialFormulaPopover({
                   <button
                     type="button"
                     className="font-semibold text-green-700 underline decoration-dotted underline-offset-2 hover:text-green-800 cursor-pointer"
-                    onClick={() => startEdit(mat.id, "price_per_unit", mat.price_per_unit ?? 0)}
+                    onClick={() => startEdit(mat.id, "price_per_unit", Math.round((mat.price_per_unit ?? 0) * vatMultiplier))}
                     title={t("materialRecipes.clickToEdit", "Click to adjust")}
                   >
-                    {(mat.price_per_unit ?? 0).toLocaleString("sv-SE")}
+                    {Math.round((mat.price_per_unit ?? 0) * vatMultiplier).toLocaleString("sv-SE")}
                   </button>
                 )}
                 <span className="text-muted-foreground">kr/{mat.unit ?? "st"}</span>
 
                 <span className="ml-auto tabular-nums font-medium">
-                  = {(mat.price_total ?? 0).toLocaleString("sv-SE")} kr
+                  = {Math.round((mat.price_total ?? 0) * vatMultiplier).toLocaleString("sv-SE")} kr
                 </span>
               </div>
 
@@ -290,7 +305,7 @@ export function MaterialFormulaPopover({
         {/* Footer with total + recalculate */}
         <div className="px-3 py-2 border-t bg-muted/30 flex items-center justify-between">
           <span className="text-xs font-medium tabular-nums">
-            {t("common.total")}: {totalCost.toLocaleString("sv-SE")} kr
+            {t("common.total")}: {Math.round(totalCost * vatMultiplier).toLocaleString("sv-SE")} kr
           </span>
           <Button
             variant="ghost"

@@ -378,10 +378,19 @@ export function HomeownerPlanningView({
 
   const commitCellEdit = async () => {
     if (!editingCell || editingCell.field === "room_id") return;
+    const momsFields = ["budget", "material_estimate"]; // These are shown inc moms → convert back
     const numericFields = ["budget", "material_estimate", "rot_amount"];
-    const value = numericFields.includes(editingCell.field)
-      ? (editValue ? parseFloat(editValue) : null)
-      : (editValue || null);
+    let value: string | number | null;
+    if (numericFields.includes(editingCell.field)) {
+      const parsed = editValue ? parseFloat(editValue) : null;
+      // Budget/material_estimate: homeowner enters inc moms → convert to ex moms for DB
+      // ROT amount: entered as-is (tax deduction, not VAT-affected)
+      value = parsed !== null && momsFields.includes(editingCell.field)
+        ? Math.round(parsed / (1 + VAT_RATE))
+        : parsed;
+    } else {
+      value = editValue || null;
+    }
     await supabase
       .from("tasks")
       .update({ [editingCell.field]: value })
@@ -746,6 +755,7 @@ export function HomeownerPlanningView({
                                     return ids.map((id) => roomMap.get(id)).filter(Boolean) as RecipeRoom[];
                                   })()}
                                   onChanged={fetchTaskMaterials}
+                                  isHomeowner
                                 />
                               )}
                             </div>
@@ -891,7 +901,7 @@ export function HomeownerPlanningView({
                             {editingCell?.taskId === task.id && editingCell.field === "budget" ? (
                               <input autoFocus type="number" className="w-full h-7 px-1 text-sm text-right rounded border focus:outline-none focus:ring-1 focus:ring-primary tabular-nums" value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commitCellEdit(); if (e.key === "Escape") setEditingCell(null); }} onBlur={commitCellEdit} step="100" />
                             ) : (
-                              <button type="button" className="w-full text-right hover:bg-muted/50 rounded px-1 py-0.5 transition-colors" onClick={() => { setEditingCell({ taskId: task.id, field: "budget" }); setEditValue(task.budget?.toString() ?? ""); }}>
+                              <button type="button" className="w-full text-right hover:bg-muted/50 rounded px-1 py-0.5 transition-colors" onClick={() => { setEditingCell({ taskId: task.id, field: "budget" }); setEditValue(task.budget ? Math.round(task.budget * (1 + VAT_RATE)).toString() : ""); }}>
                                 {task.budget ? <span className="text-sm tabular-nums">{Math.round(task.budget * (1 + VAT_RATE)).toLocaleString("sv-SE")} kr</span> : <span className="text-xs text-muted-foreground">–</span>}
                               </button>
                             )}
@@ -906,7 +916,7 @@ export function HomeownerPlanningView({
                             {editingCell?.taskId === task.id && editingCell.field === "material_estimate" ? (
                               <input autoFocus type="number" className="w-full h-7 px-1 text-sm text-right rounded border focus:outline-none focus:ring-1 focus:ring-primary tabular-nums" value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commitCellEdit(); if (e.key === "Escape") setEditingCell(null); }} onBlur={commitCellEdit} step="100" />
                             ) : (
-                              <button type="button" className="w-full text-right hover:bg-muted/50 rounded px-1 py-0.5 transition-colors" onClick={() => { setEditingCell({ taskId: task.id, field: "material_estimate" }); setEditValue(task.material_estimate?.toString() ?? ""); }}>
+                              <button type="button" className="w-full text-right hover:bg-muted/50 rounded px-1 py-0.5 transition-colors" onClick={() => { setEditingCell({ taskId: task.id, field: "material_estimate" }); setEditValue(task.material_estimate ? Math.round(task.material_estimate * (1 + VAT_RATE)).toString() : ""); }}>
                                 {displayValue ? (
                                   <span className={`text-sm tabular-nums ${isAutoCalc ? "text-amber-600/70 italic" : "text-amber-700"}`}>
                                     {Math.round(displayValue * (1 + VAT_RATE)).toLocaleString("sv-SE")} kr
