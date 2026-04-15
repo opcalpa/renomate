@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { autoGenerateMaterials } from "./planningWizardService";
 
 // =============================================================================
 // TYPES
@@ -670,6 +671,9 @@ export async function populateProjectFromIntake(
 
   // Create tasks from intake
   await createTasksFromIntake(projectId, intake.rooms_data, roomMapping, creatorProfileId);
+
+  // Auto-generate material estimates for recipe-eligible tasks
+  await autoGenerateMaterials(projectId, creatorProfileId);
 
   // Create or update client
   if (intake.customer_email && intake.customer_name) {

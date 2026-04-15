@@ -194,7 +194,7 @@ export function HomeownerPlanningView({
   const [quoteAssignments, setQuoteAssignments] = useState<QuoteAssignment[]>([]);
 
   // Material info per task
-  interface TaskMaterial { name: string; price_total: number | null }
+  interface TaskMaterial { name: string; price_total: number | null; quantity: number | null; unit: string | null; formula: string | null }
   const [taskMaterials, setTaskMaterials] = useState<Map<string, TaskMaterial[]>>(new Map());
 
   // Category grouping
@@ -301,7 +301,7 @@ export function HomeownerPlanningView({
   const fetchTaskMaterials = useCallback(async () => {
     const { data } = await supabase
       .from("materials")
-      .select("task_id, name, price_total")
+      .select("task_id, name, price_total, quantity, unit, description")
       .eq("project_id", projectId)
       .not("task_id", "is", null);
     if (data) {
@@ -309,7 +309,13 @@ export function HomeownerPlanningView({
       for (const m of data) {
         if (!m.task_id) continue;
         if (!map.has(m.task_id)) map.set(m.task_id, []);
-        map.get(m.task_id)!.push({ name: m.name, price_total: m.price_total });
+        map.get(m.task_id)!.push({
+          name: m.name,
+          price_total: m.price_total,
+          quantity: m.quantity,
+          unit: m.unit,
+          formula: m.description !== "__subcontractor__" ? m.description : null,
+        });
       }
       setTaskMaterials(map);
     }
@@ -487,7 +493,13 @@ export function HomeownerPlanningView({
     return sum + (area ?? 0);
   }, 0);
   const totalBudget = tasks.reduce((sum, t) => sum + (t.budget || 0), 0);
-  const totalMaterialEstimate = tasks.reduce((sum, t) => sum + (t.material_estimate || 0), 0);
+  // Material total: prefer task.material_estimate, fall back to sum of auto-generated materials
+  const totalMaterialEstimate = tasks.reduce((sum, t) => {
+    if (t.material_estimate) return sum + t.material_estimate;
+    const mats = taskMaterials.get(t.id);
+    if (mats) return sum + mats.reduce((s, m) => s + (m.price_total ?? 0), 0);
+    return sum;
+  }, 0);
   const totalRot = tasks.reduce((sum, t) => sum + (t.rot_amount || 0), 0);
 
   // ---------- Category grouping ----------
@@ -731,14 +743,28 @@ export function HomeownerPlanningView({
                                     </TooltipTrigger>
                                     <TooltipContent side="bottom" align="start" className="max-w-xs p-2">
                                       <p className="text-xs font-medium mb-1">{t("homeownerPlanning.materials", "Material")}</p>
-                                      <ul className="space-y-0.5">
+                                      <ul className="space-y-1">
                                         {mats.map((m, i) => (
-                                          <li key={i} className="text-xs flex justify-between gap-3">
-                                            <span className="truncate">{m.name}</span>
-                                            {m.price_total != null && m.price_total > 0 && (
-                                              <span className="tabular-nums text-muted-foreground shrink-0">
-                                                {Math.round(m.price_total).toLocaleString("sv-SE")} kr
+                                          <li key={i} className="text-xs">
+                                            <div className="flex justify-between gap-3">
+                                              <span className="truncate font-medium">
+                                                {m.name}
+                                                {m.quantity != null && m.unit && (
+                                                  <span className="font-normal text-muted-foreground ml-1">
+                                                    {m.quantity} {m.unit}
+                                                  </span>
+                                                )}
                                               </span>
+                                              {m.price_total != null && m.price_total > 0 && (
+                                                <span className="tabular-nums text-muted-foreground shrink-0">
+                                                  {Math.round(m.price_total).toLocaleString("sv-SE")} kr
+                                                </span>
+                                              )}
+                                            </div>
+                                            {m.formula && (
+                                              <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">
+                                                {m.formula}
+                                              </p>
                                             )}
                                           </li>
                                         ))}
@@ -896,17 +922,28 @@ export function HomeownerPlanningView({
                             )}
                           </TableCell>
                         )}
-                        {show.materialEstimate && (
+                        {show.materialEstimate && (() => {
+                          const autoTotal = mats.reduce((sum, m) => sum + (m.price_total ?? 0), 0);
+                          const displayValue = task.material_estimate ?? (autoTotal > 0 ? autoTotal : null);
+                          const isAutoCalc = !task.material_estimate && autoTotal > 0;
+                          return (
                           <TableCell className="text-right py-2.5">
                             {editingCell?.taskId === task.id && editingCell.field === "material_estimate" ? (
                               <input autoFocus type="number" className="w-full h-7 px-1 text-sm text-right rounded border focus:outline-none focus:ring-1 focus:ring-primary tabular-nums" value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commitCellEdit(); if (e.key === "Escape") setEditingCell(null); }} onBlur={commitCellEdit} step="100" />
                             ) : (
                               <button type="button" className="w-full text-right hover:bg-muted/50 rounded px-1 py-0.5 transition-colors" onClick={() => { setEditingCell({ taskId: task.id, field: "material_estimate" }); setEditValue(task.material_estimate?.toString() ?? ""); }}>
-                                {task.material_estimate ? <span className="text-sm tabular-nums text-amber-700">{Math.round(task.material_estimate * (1 + VAT_RATE)).toLocaleString("sv-SE")} kr</span> : <span className="text-xs text-muted-foreground">–</span>}
+                                {displayValue ? (
+                                  <span className={`text-sm tabular-nums ${isAutoCalc ? "text-amber-600/70 italic" : "text-amber-700"}`}>
+                                    {Math.round(displayValue * (1 + VAT_RATE)).toLocaleString("sv-SE")} kr
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">–</span>
+                                )}
                               </button>
                             )}
                           </TableCell>
-                        )}
+                          );
+                        })()}
                         {show.rotAmount && (
                           <TableCell className="text-right py-2.5">
                             {editingCell?.taskId === task.id && editingCell.field === "rot_amount" ? (

@@ -2,6 +2,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { workTypeToCostCenter, getWorkTypeLabel } from "./intakeService";
 import type { WorkType } from "./intakeService";
 import type { PlanningWizardData } from "@/components/project/overview/planning-wizard/types";
+import {
+  detectRecipeKey,
+  suggestMaterialsMultiRoom,
+  parseEstimationSettings,
+  type RecipeRoom,
+  type RecipeEstimationSettings,
+} from "@/lib/materialRecipes";
 
 /**
  * Populate an existing project with rooms and tasks from the planning wizard.
@@ -122,5 +129,94 @@ export async function populateProjectFromPlanningWizard(
     }
   }
 
+  // 4. Auto-generate material estimates for recipe-eligible tasks
+  await autoGenerateMaterials(projectId, profileId);
+
   return { roomCount: data.rooms.length, taskCount };
+}
+
+/**
+ * Auto-generate planned material entries for tasks with detectable recipes
+ * (painting, flooring, tiling) based on linked room dimensions.
+ */
+export async function autoGenerateMaterials(
+  projectId: string,
+  profileId: string
+): Promise<void> {
+  // Fetch tasks and rooms for this project
+  const [tasksRes, roomsRes, profileRes] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select("id, title, cost_center, room_id, room_ids")
+      .eq("project_id", projectId),
+    supabase
+      .from("rooms")
+      .select("id, dimensions, ceiling_height_mm")
+      .eq("project_id", projectId),
+    supabase
+      .from("profiles")
+      .select("estimation_settings")
+      .eq("id", profileId)
+      .single(),
+  ]);
+
+  const tasks = tasksRes.data || [];
+  const rooms = roomsRes.data || [];
+  const settings = parseEstimationSettings(
+    (profileRes.data?.estimation_settings as Record<string, unknown>) ?? null
+  );
+
+  const roomMap = new Map(
+    rooms.map((r) => [
+      r.id,
+      {
+        dimensions: r.dimensions as RecipeRoom["dimensions"],
+        ceiling_height_mm: r.ceiling_height_mm,
+      } satisfies RecipeRoom,
+    ])
+  );
+
+  for (const task of tasks) {
+    const recipeKey = detectRecipeKey({
+      cost_center: task.cost_center,
+      title: task.title,
+    });
+    if (!recipeKey) continue;
+
+    // Gather linked rooms
+    const roomIds: string[] =
+      task.room_ids && task.room_ids.length > 0
+        ? task.room_ids
+        : task.room_id
+          ? [task.room_id]
+          : [];
+
+    const taskRooms = roomIds
+      .map((id) => roomMap.get(id))
+      .filter(Boolean) as RecipeRoom[];
+
+    if (taskRooms.length === 0) continue;
+
+    const suggestions = suggestMaterialsMultiRoom(
+      { cost_center: task.cost_center, title: task.title },
+      taskRooms,
+      settings
+    );
+
+    for (const s of suggestions) {
+      await supabase.from("materials").insert({
+        project_id: projectId,
+        task_id: task.id,
+        room_id: roomIds[0] || null,
+        name: s.nameFallback,
+        quantity: s.quantity,
+        unit: s.unit,
+        price_per_unit: s.unitPrice,
+        price_total: s.totalCost,
+        status: "planned",
+        created_by_user_id: profileId,
+        description: s.formula,
+      });
+    }
+  }
 }
