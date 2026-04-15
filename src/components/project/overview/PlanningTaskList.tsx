@@ -1418,6 +1418,11 @@ export function PlanningTaskList({
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
+                    {show.costType && (
+                      <TableHead className="hidden sm:table-cell w-[60px]">
+                        {t("planningTasks.costType", "Typ")}
+                      </TableHead>
+                    )}
                     <TableHead className="min-w-[220px]">
                       {t("planningTasks.taskName", "Task")}
                     </TableHead>
@@ -1439,11 +1444,6 @@ export function PlanningTaskList({
                     {show.room && (
                       <TableHead className="hidden sm:table-cell w-[130px]">
                         {t("planningTasks.room", "Room")}
-                      </TableHead>
-                    )}
-                    {show.costType && (
-                      <TableHead className="hidden sm:table-cell w-[120px]">
-                        {t("planningTasks.costType", "Type")}
                       </TableHead>
                     )}
                     {show.markup && (
@@ -1607,13 +1607,17 @@ export function PlanningTaskList({
                         onDragOver={(e) => handleRowDragOver(e, "material", mat.id)}
                         onDrop={(e) => handleRowDrop(e, "material", mat.id)}
                       >
-                        <TableCell className="py-2.5">
-                          <div className="flex items-center gap-1.5">
+                        {show.costType && (
+                          <TableCell className="hidden sm:table-cell py-2.5">
                             <MaterialKindIcon
                               kind={mat.kind}
                               editable={!effectiveLock}
                               onChangeKind={(kind) => handleChangeMaterialKind(mat.id, kind)}
                             />
+                          </TableCell>
+                        )}
+                        <TableCell className="py-2.5">
+                          <div className="flex items-center gap-1.5">
                             <span className="text-sm">{mat.name}</span>
                             <MaterialFileAttachment materialId={mat.id} projectId={projectId} />
                             {!effectiveLock && tasks.length > 0 ? (
@@ -1740,15 +1744,6 @@ export function PlanningTaskList({
                                 {mat.room_id && rooms.find((r) => r.id === mat.room_id)?.name || "–"}
                               </button>
                             )}
-                          </TableCell>
-                        )}
-                        {show.costType && (
-                          <TableCell className="hidden sm:table-cell py-2.5">
-                            <MaterialKindIcon
-                              kind={mat.kind}
-                              editable={!effectiveLock}
-                              onChangeKind={(kind) => handleChangeMaterialKind(mat.id, kind)}
-                            />
                           </TableCell>
                         )}
                         {show.markup && (
@@ -1932,16 +1927,58 @@ export function PlanningTaskList({
                           : ""
                       }`}
                     >
+                      {show.costType && (() => {
+                        const hasMaterial = taskMaterials.length > 0 || !!(task.material_estimate && task.material_estimate > 0);
+                        const hasAny = hasOwnLabor || hasMaterial || hasSubcontractor;
+                        return (
+                        <TableCell className="hidden sm:table-cell py-2.5">
+                          {hasAny ? (
+                            <div className="flex items-center gap-1">
+                              {hasOwnLabor && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Hammer className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </TooltipTrigger>
+                                    <TooltipContent><p className="text-xs">{t("taskCost.ownLabor", "Eget arbete")}</p></TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                              {hasMaterial && (
+                                <>
+                                  {hasOwnLabor && <span className="text-[10px] text-muted-foreground/50">+</span>}
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" />
+                                      </TooltipTrigger>
+                                      <TooltipContent><p className="text-xs">{t("taskCost.material", "Material")}</p></TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </>
+                              )}
+                              {hasSubcontractor && (
+                                <>
+                                  {(hasOwnLabor || hasMaterial) && <span className="text-[10px] text-muted-foreground/50">+</span>}
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Handshake className="h-3.5 w-3.5 text-muted-foreground" />
+                                      </TooltipTrigger>
+                                      <TooltipContent><p className="text-xs">{t("taskCost.subcontractor", "UE")}</p></TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">–</span>
+                          )}
+                        </TableCell>
+                        );
+                      })()}
                       <TableCell className="font-medium py-2.5">
                         <div className="flex items-center gap-1">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Hammer className={`h-3.5 w-3.5 text-muted-foreground shrink-0 ${!effectiveLock ? "cursor-grab active:cursor-grabbing" : ""}`} />
-                              </TooltipTrigger>
-                              <TooltipContent><p className="text-xs">{t("taskCost.ownLabor", "Own labor")}</p></TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
                           <button
                             type="button"
                             className={`text-left hover:underline hover:text-primary transition-colors ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}
@@ -2087,56 +2124,6 @@ export function PlanningTaskList({
                           )}
                         </TableCell>
                       )}
-                      {show.costType && (() => {
-                        const hasMaterial = taskMaterials.length > 0 || !!(task.material_estimate && task.material_estimate > 0);
-                        const hasAny = hasOwnLabor || hasMaterial || hasSubcontractor;
-                        return (
-                        <TableCell className="hidden sm:table-cell py-2.5">
-                          {hasAny ? (
-                            <div className="flex items-center gap-1">
-                              {hasOwnLabor && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Hammer className="h-3.5 w-3.5 text-muted-foreground" />
-                                    </TooltipTrigger>
-                                    <TooltipContent><p className="text-xs">{t("taskCost.ownLabor", "Eget arbete")}</p></TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
-                              {hasMaterial && (
-                                <>
-                                  {hasOwnLabor && <span className="text-[10px] text-muted-foreground/50">+</span>}
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" />
-                                      </TooltipTrigger>
-                                      <TooltipContent><p className="text-xs">{t("taskCost.material", "Material")}</p></TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </>
-                              )}
-                              {hasSubcontractor && (
-                                <>
-                                  {(hasOwnLabor || hasMaterial) && <span className="text-[10px] text-muted-foreground/50">+</span>}
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Handshake className="h-3.5 w-3.5 text-muted-foreground" />
-                                      </TooltipTrigger>
-                                      <TooltipContent><p className="text-xs">{t("taskCost.subcontractor", "UE")}</p></TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">–</span>
-                          )}
-                        </TableCell>
-                        );
-                      })()}
                       {show.markup && (
                         <TableCell className="text-right hidden sm:table-cell py-2.5">
                           {(() => {
@@ -2457,15 +2444,19 @@ export function PlanningTaskList({
                           onDragOver={(e) => handleRowDragOver(e, "material", mat.id)}
                           onDrop={(e) => handleRowDrop(e, "child-material", mat.id)}
                         >
-                          <TableCell className="py-2 pl-8">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-muted-foreground text-xs">└</span>
+                          {show.costType && (
+                            <TableCell className="hidden sm:table-cell py-2">
                               <MaterialKindIcon
                                 kind={mat.kind}
                                 editable={!effectiveLock}
                                 onChangeKind={(kind) => handleChangeMaterialKind(mat.id, kind)}
                                 size="xs"
                               />
+                            </TableCell>
+                          )}
+                          <TableCell className="py-2 pl-8">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-muted-foreground text-xs">└</span>
                               <span className="text-sm">{mat.name}</span>
                               <MaterialFileAttachment materialId={mat.id} projectId={projectId} />
                               {!effectiveLock && (
@@ -2515,15 +2506,6 @@ export function PlanningTaskList({
                             </TableCell>
                           )}
                           {show.room && <TableCell className="hidden sm:table-cell py-2" />}
-                          {show.costType && (
-                            <TableCell className="hidden sm:table-cell py-2">
-                              <MaterialKindIcon
-                                kind={mat.kind}
-                                editable={!effectiveLock}
-                                onChangeKind={(kind) => handleChangeMaterialKind(mat.id, kind)}
-                              />
-                            </TableCell>
-                          )}
                           {show.markup && (
                             <TableCell className="text-right hidden sm:table-cell py-2">
                               {renderMatInline("mat_markup_percent", "markup_percent", mat.markup_percent, "%")}
