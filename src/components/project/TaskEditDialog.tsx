@@ -201,6 +201,7 @@ interface SmartEstimateCardProps {
 }
 
 function SmartEstimateCard({ task, rooms, estimationSettings, onApply, onSaveDefault, currency, t }: SmartEstimateCardProps) {
+  const ms = useMeasurement();
   const roomIds = (task.room_ids && task.room_ids.length > 0)
     ? task.room_ids
     : task.room_id ? [task.room_id] : [];
