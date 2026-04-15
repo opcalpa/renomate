@@ -3424,6 +3424,8 @@
     "groupedByType": "Grouped by type (labor first, then materials)",
     "mixedList": "Mixed list (in order added)",
     "pricingFormat": "Pricing format",
+    "pricingCombined": "Combined per task",
+    "pricingCombinedHint": "Labor, material and subcontractor as separate items — no hours or markups visible",
     "pricingDetailed": "Hour specification",
     "pricingDetailedHint": "Own labor shows hours × rate. Subcontractor shown as adjusted unit price.",
     "pricingFixed": "Fixed price",

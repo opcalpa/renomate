@@ -3421,6 +3421,8 @@
     "groupedByType": "Grupperat efter typ (arbete först, sedan material)",
     "mixedList": "Blandad lista (i ordning tillagda)",
     "pricingFormat": "Prisformat",
+    "pricingCombined": "Samlat per arbete",
+    "pricingCombinedHint": "Arbete, material och UE som separata poster — inga timmar eller påslag synliga",
     "pricingDetailed": "Timspecifikation",
     "pricingDetailedHint": "Eget arbete visar timmar × timpris. Underentreprenör visas med justerat à-pris.",
     "pricingFixed": "Fast pris",

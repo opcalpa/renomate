@@ -60,7 +60,7 @@ export default function CreateQuote() {
 
   // Presentation settings — live-editable from the settings panel in the editor
   const [groupByType, setGroupByType] = useState<"grouped" | "byRoom" | "mixed">("grouped");
-  const [pricingFormat, setPricingFormat] = useState<"detailed" | "fixed">("detailed");
+  const [pricingFormat, setPricingFormat] = useState<"detailed" | "combined" | "fixed">("combined");
   const [applyRot, setApplyRot] = useState(true);
   const [compactMode, setCompactMode] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -422,6 +422,78 @@ export default function CreateQuote() {
                     source: "missing",
                     sourceTaskId: task.id,
                     comment: task.description || "",
+                  });
+                }
+              }
+            } else if (pricingFormat === "combined") {
+              // Combined: one row per cost type, customer-friendly names, all markups baked in
+              const laborTotal = (task.estimated_hours || 0) * (task.hourly_rate || 0);
+              const subMarkup = task.markup_percent || 0;
+              const subTotal = (task.subcontractor_cost || 0) * (1 + subMarkup / 100);
+              const hasLabor = laborTotal > 0;
+              const hasSub = subTotal > 0;
+              const hasMat = materialCostBase > 0;
+              const partCount = (hasLabor ? 1 : 0) + (hasSub ? 1 : 0) + (hasMat ? 1 : 0);
+
+              if (partCount <= 1) {
+                // Single component or budget-only — show as one line
+                const total = hasLabor ? laborTotal : hasSub ? Math.round(subTotal) : hasMat ? materialCostForQuote : (task.budget || 0);
+                taskItems.push({
+                  id: crypto.randomUUID(),
+                  description: task.title,
+                  quantity: 1,
+                  unit: "st",
+                  unitPrice: total,
+                  isRotEligible: applyRot && (hasLabor || hasSub),
+                  roomId: task.room_id || undefined,
+                  roomName,
+                  source: "fixed",
+                  sourceTaskId: task.id,
+                  comment: task.description || "",
+                });
+              } else {
+                // Multiple components — show each as "{Title}: Arbete / Material / Underentreprenör"
+                if (hasLabor) {
+                  taskItems.push({
+                    id: crypto.randomUUID(),
+                    description: `${task.title}: Arbete`,
+                    quantity: 1,
+                    unit: "st",
+                    unitPrice: laborTotal,
+                    isRotEligible: applyRot,
+                    roomId: task.room_id || undefined,
+                    roomName,
+                    source: "hours",
+                    sourceTaskId: task.id,
+                    comment: task.description || "",
+                  });
+                }
+                if (hasMat) {
+                  taskItems.push({
+                    id: crypto.randomUUID(),
+                    description: `${task.title}: Material`,
+                    quantity: 1,
+                    unit: "st",
+                    unitPrice: materialCostForQuote,
+                    isRotEligible: false,
+                    roomId: task.room_id || undefined,
+                    roomName,
+                    source: "material",
+                    sourceTaskId: task.id,
+                  });
+                }
+                if (hasSub) {
+                  taskItems.push({
+                    id: crypto.randomUUID(),
+                    description: `${task.title}: Underentreprenör`,
+                    quantity: 1,
+                    unit: "st",
+                    unitPrice: Math.round(subTotal),
+                    isRotEligible: applyRot,
+                    roomId: task.room_id || undefined,
+                    roomName,
+                    source: "subcontractor",
+                    sourceTaskId: task.id,
                   });
                 }
               }
@@ -800,6 +872,15 @@ export default function CreateQuote() {
                         onValueChange={(v) => setPricingFormat(v as typeof pricingFormat)}
                         className="space-y-1.5"
                       >
+                        <div className="flex items-start gap-2">
+                          <RadioGroupItem value="combined" id="pf-combined" className="mt-0.5" />
+                          <div>
+                            <Label htmlFor="pf-combined" className="text-sm font-normal cursor-pointer">
+                              {t("quotes.pricingCombined", "Samlat per arbete")}
+                            </Label>
+                            <p className="text-xs text-muted-foreground">{t("quotes.pricingCombinedHint", "Arbete, material och UE som separata poster — inga timmar eller påslag synliga")}</p>
+                          </div>
+                        </div>
                         <div className="flex items-start gap-2">
                           <RadioGroupItem value="detailed" id="pf-detailed" className="mt-0.5" />
                           <div>
