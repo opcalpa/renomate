@@ -1120,20 +1120,20 @@ export const TaskEditDialog = ({
           </div>
         ) : task ? (
           <form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0">
-            <div className="space-y-5 overflow-y-auto flex-1 py-5 px-6 bg-muted/20">
+            <div className="space-y-5 overflow-y-auto flex-1 py-5 px-6 bg-gradient-to-b from-muted/30 to-muted/10">
               {/* Contextual tips based on task title */}
               {taskTips.length > 0 && (
                 <TipList tips={taskTips} onDismiss={dismissTip} maxTips={1} compact />
               )}
 
-              <div className="space-y-2 rounded-lg border bg-background p-4 shadow-sm">
+              <div className="space-y-2 rounded-xl border border-border/60 bg-background p-4 shadow-sm">
                 <Label htmlFor="edit-task-description" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tasks.description")}</Label>
                 <Textarea
                   id="edit-task-description"
                   value={task.description || ""}
                   onChange={(e) => setTask({ ...task, description: e.target.value })}
                   rows={2}
-                  className="border-muted-foreground/20 bg-background focus:border-primary/40"
+                  className="border-border/40 bg-white dark:bg-background focus:border-primary/50 focus:ring-1 focus:ring-primary/20 rounded-lg"
                 />
               </div>
 
@@ -1155,7 +1155,7 @@ export const TaskEditDialog = ({
                   </Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start font-normal text-sm h-10">
+                      <Button variant="outline" className="w-full justify-start font-normal text-sm h-10 bg-white dark:bg-background border-border/40 hover:border-primary/30">
                         {(() => {
                           const ids = task.room_ids || (task.room_id ? [task.room_id] : []);
                           if (ids.length === 0) return <span className="text-muted-foreground">{t("tasks.noRoom")}</span>;
@@ -1198,7 +1198,7 @@ export const TaskEditDialog = ({
 
               {/* ── Property Grid — Status, Room, Dates ── */}
               {!isPlanning && (
-              <div className="rounded-lg border bg-background p-4 shadow-sm space-y-4">
+              <div className="rounded-xl border border-border/60 bg-background p-4 shadow-sm space-y-4">
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("tasks.status")}</Label>
@@ -1296,7 +1296,7 @@ export const TaskEditDialog = ({
 
               {/* Cost estimation — planning mode gets the pricing form */}
               {isPlanning && isHomeowner ? (
-              <div className="space-y-3 rounded-lg border bg-background p-4 shadow-sm">
+              <div className="space-y-3 rounded-xl border border-border/60 bg-background p-4 shadow-sm">
                 <Label htmlFor="edit-task-budget" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("taskCost.budget", "Budget")}</Label>
                 <Input
                   id="edit-task-budget"
@@ -1304,7 +1304,7 @@ export const TaskEditDialog = ({
                   step="1"
                   min="0"
                   placeholder="SEK"
-                  className="border-muted-foreground/20 bg-background text-lg font-semibold tabular-nums focus:border-primary/40"
+                  className="border-border/40 bg-white dark:bg-background text-lg font-semibold tabular-nums focus:border-primary/50 focus:ring-1 focus:ring-primary/20 rounded-lg"
                   value={task.budget != null ? Math.round(task.budget).toString() : ""}
                   onChange={(e) =>
                     setTask({ ...task, budget: e.target.value ? parseFloat(e.target.value) : null })
@@ -1510,12 +1510,12 @@ export const TaskEditDialog = ({
                 };
 
                 return (
-                  <div className="space-y-3 rounded-lg border bg-background p-4 shadow-sm">
+                  <div className="space-y-3 rounded-xl border border-border/60 bg-background p-4 shadow-sm">
                     <div className="flex items-baseline justify-between">
                       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         {isBuilder ? t("tasks.contractValue", "Contract Value") : t("tasks.budget")}
                       </Label>
-                      <span className="text-lg font-bold tabular-nums">
+                      <span className="text-lg font-bold tabular-nums text-primary">
                         {Math.round(displayTotal).toLocaleString("sv-SE")} kr
                       </span>
                     </div>
@@ -1595,8 +1595,8 @@ export const TaskEditDialog = ({
                 const ratio = plannedMaterialTotal > 0 ? materialSpent / plannedMaterialTotal : 0;
                 const barColor = ratio >= 1 ? "bg-destructive" : ratio >= 0.8 ? "bg-amber-500" : "bg-emerald-500";
                 return (
-                  <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <div className="rounded-xl border border-blue-200/60 bg-blue-50/30 dark:bg-blue-950/10 dark:border-blue-800/40 p-3 space-y-2">
+                    <p className="text-xs font-medium text-blue-700 dark:text-blue-400 uppercase tracking-wide">
                       {t("costBreakdown.purchaseTracking")}
                     </p>
                     <div className="grid grid-cols-3 gap-3 text-sm">
@@ -1633,7 +1633,7 @@ export const TaskEditDialog = ({
                 const cappedRot = Math.min(suggestedRot, rotMaxPerPerson);
 
                 return (
-                  <div className="p-3 rounded-lg border bg-muted/30 space-y-2">
+                  <div className={cn("p-4 rounded-xl border space-y-2 transition-colors", task.rot_eligible ? "border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-800" : "border-border/60 bg-background")}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Switch
@@ -1698,7 +1698,7 @@ export const TaskEditDialog = ({
               <div className="space-y-1.5 pt-3">
 
                 {/* Payment / cost tracking — always visible */}
-                <div className="rounded-lg border bg-background p-4 shadow-sm space-y-3">
+                <div className="rounded-xl border border-border/60 bg-background p-4 shadow-sm space-y-3">
                   <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
                     {isBuilder ? t("tasks.costTracking", "Cost Tracking") : t("tasks.paymentStatus")}
                   </p>
@@ -2146,8 +2146,8 @@ export const TaskEditDialog = ({
 
             </div>
             {/* Sticky save footer */}
-            <div className="flex-shrink-0 border-t bg-background px-6 py-4 shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
-              <Button type="submit" className="w-full" disabled={saving}>
+            <div className="flex-shrink-0 border-t bg-background px-6 py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+              <Button type="submit" className="w-full h-11 text-base font-medium shadow-sm" disabled={saving}>
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />

@@ -57,13 +57,13 @@ export function TaskCostTable({
 
   const customerPrice = laborTotal + ueTotal + matTotal;
 
-  const inputClass = "h-7 text-xs text-right border-0 bg-transparent focus:bg-background focus:border px-1 w-full tabular-nums";
+  const inputClass = "h-7 text-xs text-right border border-border/30 bg-white dark:bg-background rounded-md focus:border-primary/50 focus:ring-1 focus:ring-primary/20 px-1.5 w-full tabular-nums";
 
   return (
-    <div className="rounded-lg border overflow-hidden">
+    <div className="rounded-xl border border-border/60 bg-background overflow-hidden shadow-sm">
       <table className="w-full text-sm">
         <thead>
-          <tr className="bg-muted/50 text-xs text-muted-foreground">
+          <tr className="bg-muted/40 text-xs text-muted-foreground">
             <th className="text-left font-medium px-3 py-2 w-[35%]">{t("taskCost.costType", "Cost type")}</th>
             <th className="text-right font-medium px-2 py-2 w-[18%]">{t("taskCost.quantity", "Qty")}</th>
             <th className="text-right font-medium px-2 py-2 w-[18%]">{t("taskCost.unitPrice", "Unit price")}</th>
@@ -203,9 +203,9 @@ export function TaskCostTable({
           </tr>
         </tbody>
         <tfoot>
-          <tr className="border-t-2 bg-muted/30">
-            <td colSpan={4} className="px-3 py-2 text-xs font-semibold">{t("taskCost.customerPrice", "Customer price")}</td>
-            <td className="px-3 py-2 text-xs text-right font-bold tabular-nums">
+          <tr className="border-t-2 border-primary/20 bg-primary/5">
+            <td colSpan={4} className="px-3 py-2.5 text-xs font-semibold">{t("taskCost.customerPrice", "Customer price")}</td>
+            <td className="px-3 py-2.5 text-sm text-right font-bold tabular-nums text-primary">
               {customerPrice > 0 ? formatCurrency(customerPrice, currency) : "—"}
             </td>
           </tr>
