@@ -1522,18 +1522,87 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
                         className="w-full h-full object-cover transition-all group-hover:brightness-90"
                         loading="lazy"
                       />
-                      {photo.caption && (
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
-                          <p className="text-[10px] text-white truncate">{photo.caption}</p>
+                      {/* Room badge */}
+                      {photo.roomName && (
+                        <div className="absolute top-1 right-1">
+                          <Badge variant="secondary" className="text-[9px] px-1 py-0">{photo.roomName}</Badge>
                         </div>
                       )}
-                      <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* Caption overlay */}
+                      {editingCaption === photo.id ? (
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-1.5 pb-1.5 pt-6 z-20" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            autoFocus
+                            type="text"
+                            className="w-full px-1.5 py-1 text-[10px] text-white bg-white/15 backdrop-blur-sm rounded border border-white/20 focus:outline-none focus:ring-1 focus:ring-white/50 placeholder:text-white/40"
+                            value={captionDraft}
+                            onChange={(e) => setCaptionDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") { e.preventDefault(); updateCaption(photo.id, captionDraft); }
+                              if (e.key === "Escape") setEditingCaption(null);
+                            }}
+                            onBlur={() => updateCaption(photo.id, captionDraft)}
+                            placeholder={t("inspiration.captionPlaceholder", "Beskriv bilden...")}
+                          />
+                        </div>
+                      ) : photo.caption ? (
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-5 pointer-events-none">
+                          <p className="text-[10px] text-white/90 truncate">{photo.caption}</p>
+                        </div>
+                      ) : null}
+                      {/* Hover action bar — same as inspiration */}
+                      <div className={cn(
+                        "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 flex items-center gap-1 transition-opacity",
+                        editingCaption === photo.id ? "opacity-0 pointer-events-none" : "opacity-0 group-hover:opacity-100"
+                      )}>
                         <button
-                          onClick={(e) => { e.stopPropagation(); deletePhoto(photo.id); }}
-                          className="p-1 bg-black/50 rounded-full text-white hover:bg-red-500 transition-colors"
-                          title={t("common.delete")}
+                          type="button"
+                          className="h-6 w-6 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center transition-colors"
+                          onClick={(e) => { e.stopPropagation(); setEditingCaption(photo.id); setCaptionDraft(photo.caption || ""); }}
                         >
-                          <X className="h-3.5 w-3.5" />
+                          <Pencil className="h-3 w-3 text-white" />
+                        </button>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="h-6 w-6 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center transition-colors"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Link2 className="h-3 w-3 text-white" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-48 p-1" align="start" side="top">
+                            <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">{t("inspiration.linkRoom")}</p>
+                            {rooms.map((r) => (
+                              <button
+                                key={r.id}
+                                type="button"
+                                className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                                onClick={() => assignPhoto(photo.id, "room", r.id)}
+                              >
+                                <Home className="h-3 w-3 text-muted-foreground" />
+                                {r.name}
+                              </button>
+                            ))}
+                            {photo.roomId && (
+                              <button
+                                type="button"
+                                className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left text-muted-foreground mt-1 border-t"
+                                onClick={() => assignPhoto(photo.id, "project", projectId)}
+                              >
+                                <X className="h-3 w-3" />
+                                {t("inspiration.unlink")}
+                              </button>
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                        <button
+                          type="button"
+                          className="h-6 w-6 rounded-full bg-white/20 hover:bg-red-500/80 flex items-center justify-center transition-colors"
+                          onClick={(e) => { e.stopPropagation(); deletePhoto(photo.id); }}
+                        >
+                          <Trash2 className="h-3 w-3 text-white" />
                         </button>
                       </div>
                     </div>
