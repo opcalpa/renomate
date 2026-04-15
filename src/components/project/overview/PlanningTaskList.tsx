@@ -2119,7 +2119,80 @@ export function PlanningTaskList({
                       )}
                       {show.markup && <TableCell className="hidden sm:table-cell py-2.5" />}
                       <TableCell className="text-right py-2.5">
-                        {renderInlineCell("budget", task.budget, "currency")}
+                        {(() => {
+                          const laborTotal = (task.estimated_hours || 0) * (task.hourly_rate || 0);
+                          const matItems = task.material_items || [];
+                          const matBase = matItems.length > 0
+                            ? matItems.reduce((s, i) => s + (i.amount || 0), 0)
+                            : (task.material_estimate || 0);
+                          const matMarkupPct = task.material_markup_percent || 0;
+                          const matWithMarkup = matItems.length > 0
+                            ? matItems.reduce((s, i) => s + (i.amount || 0) * (1 + (i.markup_percent || 0) / 100), 0)
+                            : matBase * (1 + matMarkupPct / 100);
+                          const matMarkupAmt = Math.round(matWithMarkup - matBase);
+                          const ueBase = task.subcontractor_cost || 0;
+                          const ueMarkupPct = task.markup_percent || 0;
+                          const ueWithMarkup = Math.round(ueBase * (1 + ueMarkupPct / 100));
+                          const ueMarkupAmt = ueWithMarkup - ueBase;
+                          const hasBreakdown = laborTotal > 0 || matBase > 0 || ueBase > 0;
+
+                          if (!hasBreakdown) {
+                            return renderInlineCell("budget", task.budget, "currency");
+                          }
+
+                          return (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button className="text-sm font-medium hover:underline hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>
+                                  {task.budget ? formatCurrency(task.budget, currency) : "–"}
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-64 p-3" align="end" onClick={(e) => e.stopPropagation()}>
+                                <div className="space-y-1.5 text-xs">
+                                  <p className="font-semibold text-sm mb-2">{t("taskCost.customerPrice", "Kundpris")}</p>
+                                  {laborTotal > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">{t("taskCost.ownLabor", "Eget arbete")}</span>
+                                      <span className="tabular-nums">{formatCurrency(laborTotal, currency)}</span>
+                                    </div>
+                                  )}
+                                  {matBase > 0 && (
+                                    <>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">{t("taskCost.material", "Material")}</span>
+                                        <span className="tabular-nums">{formatCurrency(matBase, currency)}</span>
+                                      </div>
+                                      {matMarkupAmt > 0 && (
+                                        <div className="flex justify-between text-amber-700">
+                                          <span className="pl-3">{t("taskCost.markupShort", "Påslag")} {matItems.length > 0 && matItems.some(i => i.markup_percent) ? "" : `${matMarkupPct}%`}</span>
+                                          <span className="tabular-nums">+{formatCurrency(matMarkupAmt, currency)}</span>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                  {ueBase > 0 && (
+                                    <>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">{t("taskCost.subcontractor", "UE")}</span>
+                                        <span className="tabular-nums">{formatCurrency(ueBase, currency)}</span>
+                                      </div>
+                                      {ueMarkupAmt > 0 && (
+                                        <div className="flex justify-between text-amber-700">
+                                          <span className="pl-3">{t("taskCost.markupShort", "Påslag")} {ueMarkupPct}%</span>
+                                          <span className="tabular-nums">+{formatCurrency(ueMarkupAmt, currency)}</span>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                  <div className="flex justify-between pt-1.5 border-t font-semibold text-sm">
+                                    <span>{t("common.total", "Totalt")}</span>
+                                    <span className="tabular-nums text-primary">{formatCurrency(task.budget || 0, currency)}</span>
+                                  </div>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          );
+                        })()}
                       </TableCell>
                       {show.profit && (() => {
                         const rowProfit = calcTaskProfit(task);
