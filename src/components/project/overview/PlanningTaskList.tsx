@@ -156,6 +156,7 @@ interface PlanningTaskListProps {
   onNavigateToTasks?: (taskId?: string) => void;
   onCreateQuote?: () => void;
   locked?: boolean;
+  roomsVersion?: number;
 }
 
 function MaterialKindIcon({
@@ -229,6 +230,7 @@ export function PlanningTaskList({
   onNavigateToTasks,
   onCreateQuote,
   locked = false,
+  roomsVersion = 0,
 }: PlanningTaskListProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -618,7 +620,7 @@ export function PlanningTaskList({
   useEffect(() => {
     fetchData();
     fetchProfileCostPercent();
-  }, [fetchData, fetchProfileCostPercent]);
+  }, [fetchData, fetchProfileCostPercent, roomsVersion]);
 
   const handleQuickAdd = async () => {
     const title = newTitle.trim();

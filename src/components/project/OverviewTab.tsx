@@ -117,6 +117,7 @@ const OverviewTab = ({
   const { lockStatus } = useProjectLock(isGuest ? undefined : project.id);
   const { showTaxDeduction } = useTaxDeductionVisible(project.country);
   const isHomeowner = userType === "homeowner";
+  const [roomsVersion, setRoomsVersion] = useState(0);
   const isInvitedClient = isHomeowner && !isProjectOwner;
   const projectStatus = normalizeStatus(project.status);
   const isPlanning = projectStatus === "planning" || isQuotePhase(projectStatus);
@@ -338,10 +339,12 @@ const OverviewTab = ({
         onNavigateToTasks={(taskId) => onNavigateToTasks?.(taskId)}
         onCreateQuote={() => setQuoteDialogOpen(true)}
         locked={lockStatus.isLocked}
+        roomsVersion={roomsVersion}
       />
       <PlanningRoomList
         projectId={project.id}
         locked={lockStatus.isLocked}
+        onRoomChange={() => setRoomsVersion((v) => v + 1)}
       />
     </>
   );
