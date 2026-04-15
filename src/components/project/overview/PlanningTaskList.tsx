@@ -2110,7 +2110,7 @@ export function PlanningTaskList({
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                                        <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" />
                                       </TooltipTrigger>
                                       <TooltipContent><p className="text-xs">{t("taskCost.material", "Material")}</p></TooltipContent>
                                     </Tooltip>
