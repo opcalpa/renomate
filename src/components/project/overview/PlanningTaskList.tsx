@@ -118,6 +118,8 @@ interface ExtraColumnDef {
   defaultOn: boolean;
   /** Only visible for builders (hidden from homeowners) */
   builderOnly?: boolean;
+  /** Only visible for homeowners (hidden from builders) */
+  homeownerOnly?: boolean;
 }
 
 const EXTRA_COLUMNS: ExtraColumnDef[] = [
@@ -129,20 +131,20 @@ const EXTRA_COLUMNS: ExtraColumnDef[] = [
   { key: "markup", labelKey: "planningTasks.markup", defaultOn: false, builderOnly: true },
   { key: "profit", labelKey: "taskCost.result", defaultOn: true, builderOnly: true },
   { key: "rotAmount", labelKey: "files.rotAmount", defaultOn: false },
-  { key: "budget", labelKey: "planningTasks.budget", defaultOn: false },
+  { key: "budget", labelKey: "planningTasks.budget", defaultOn: false, homeownerOnly: true },
   { key: "materialEstimate", labelKey: "planningTasks.materialEstimate", defaultOn: false },
 ];
 
 function getDefaultExtras(isHomeowner: boolean): Set<ExtraColumnKey> {
   return new Set(
     EXTRA_COLUMNS
-      .filter((c) => c.defaultOn && !(isHomeowner && c.builderOnly))
+      .filter((c) => c.defaultOn && !(isHomeowner && c.builderOnly) && !(!isHomeowner && c.homeownerOnly))
       .map((c) => c.key)
   );
 }
 
 function getAvailableColumns(isHomeowner: boolean): ExtraColumnDef[] {
-  return EXTRA_COLUMNS.filter((c) => !(isHomeowner && c.builderOnly));
+  return EXTRA_COLUMNS.filter((c) => !(isHomeowner && c.builderOnly) && !(!isHomeowner && c.homeownerOnly));
 }
 
 interface PlanningTaskListProps {
