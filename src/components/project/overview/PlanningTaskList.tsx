@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useTaxDeductionVisible } from "@/hooks/useTaxDeduction";
 import { supabase } from "@/integrations/supabase/client";
 import { TASK_CATEGORY_LABELS, TaskCategory } from "@/services/aiDocumentService.types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -86,6 +87,7 @@ interface PlanningTask {
   labor_cost_percent: number | null;
   cost_center: string | null;
   rot_amount: number | null;
+  rot_eligible: boolean | null;
 }
 
 interface Room {
@@ -230,6 +232,7 @@ export function PlanningTaskList({
 }: PlanningTaskListProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { showTaxDeduction } = useTaxDeductionVisible();
   const [tasks, setTasks] = useState<PlanningTask[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomMap, setRoomMap] = useState<Map<string, Room>>(new Map());
@@ -803,6 +806,64 @@ export function PlanningTaskList({
       }
     },
     [fetchData, t, toast]
+  );
+
+  // --- ROT helpers ---
+  const ROT_PERCENT = 30;
+
+  const calcRotAmount = (task: PlanningTask): number => {
+    const laborCost = (task.estimated_hours || 0) * (task.hourly_rate || 0);
+    if (laborCost <= 0) return 0;
+    // ROT = 30% of labor inc moms (labor × 1.25 × 0.30)
+    return Math.round(laborCost * 1.25 * ROT_PERCENT / 100);
+  };
+
+  const handleToggleRot = useCallback(
+    async (taskId: string) => {
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return;
+      const isCurrentlyRot = task.rot_eligible;
+      const rotAmount = isCurrentlyRot ? null : calcRotAmount(task);
+      const { error } = await supabase
+        .from("tasks")
+        .update({ rot_eligible: !isCurrentlyRot, rot_amount: rotAmount })
+        .eq("id", taskId);
+      if (error) {
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      } else {
+        fetchData();
+      }
+    },
+    [tasks, fetchData, t, toast]
+  );
+
+  const handleApplyRotToAll = useCallback(
+    async () => {
+      const laborTasks = tasks.filter((t) => {
+        const labor = (t.estimated_hours || 0) * (t.hourly_rate || 0);
+        return labor > 0;
+      });
+      if (laborTasks.length === 0) {
+        toast({ description: t("planningTasks.noLaborTasksForRot", "Inga arbetsrader med timmar att applicera ROT på") });
+        return;
+      }
+      const allHaveRot = laborTasks.every((t) => t.rot_eligible);
+      const updates = laborTasks.map((task) => ({
+        id: task.id,
+        rot_eligible: !allHaveRot,
+        rot_amount: allHaveRot ? null : calcRotAmount(task),
+      }));
+      for (const u of updates) {
+        await supabase.from("tasks").update({ rot_eligible: u.rot_eligible, rot_amount: u.rot_amount }).eq("id", u.id);
+      }
+      fetchData();
+      toast({
+        description: allHaveRot
+          ? t("planningTasks.rotRemovedAll", "ROT-avdrag borttaget från alla arbeten")
+          : t("planningTasks.rotAppliedAll", "ROT-avdrag applicerat på {{count}} arbeten", { count: laborTasks.length }),
+      });
+    },
+    [tasks, fetchData, t, toast]
   );
 
   // --- Material/UE handlers ---
@@ -1476,7 +1537,25 @@ export function PlanningTaskList({
                     )}
                     {show.rotAmount && (
                       <TableHead className="hidden sm:table-cell text-right w-[110px]">
-                        {t("files.rotAmount", "ROT-avdrag")}
+                        {!isHomeowner && !effectiveLock ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  className="hover:text-primary hover:underline transition-colors"
+                                  onClick={handleApplyRotToAll}
+                                >
+                                  {t("files.rotAmount", "ROT-avdrag")}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-xs">{t("planningTasks.rotApplyAllTooltip", "Klicka för att applicera/ta bort ROT på alla arbetsrader")}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          t("files.rotAmount", "ROT-avdrag")
+                        )}
                       </TableHead>
                     )}
                     {show.budget && (
@@ -2362,6 +2441,14 @@ export function PlanningTaskList({
                                 <Paperclip className="h-3.5 w-3.5 mr-2" />
                                 {t("planningTasks.attachFile", "Attach file")}
                               </DropdownMenuItem>
+                              {showTaxDeduction && !isHomeowner && (
+                                <DropdownMenuItem onClick={() => handleToggleRot(task.id)}>
+                                  <span className="h-3.5 w-3.5 mr-2 text-center text-[10px] font-bold text-green-600">R</span>
+                                  {task.rot_eligible
+                                    ? t("planningTasks.removeRot", "Ta bort ROT")
+                                    : t("planningTasks.applyRot", "Lägg till ROT")}
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
