@@ -2117,7 +2117,34 @@ export function PlanningTaskList({
                           )}
                         </TableCell>
                       )}
-                      {show.markup && <TableCell className="hidden sm:table-cell py-2.5" />}
+                      {show.markup && (
+                        <TableCell className="text-right hidden sm:table-cell py-2.5">
+                          {(() => {
+                            const hasMatMarkup = (task.material_markup_percent && task.material_markup_percent > 0)
+                              || (task.material_items || []).some(i => i.markup_percent && i.markup_percent > 0);
+                            const hasUeMarkup = task.markup_percent && task.markup_percent > 0;
+                            if (!hasMatMarkup && !hasUeMarkup) return null;
+                            return (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="text-xs text-amber-600 cursor-default">*</span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left" className="max-w-[200px]">
+                                    <p className="text-xs">
+                                      {hasMatMarkup && hasUeMarkup
+                                        ? t("planningTasks.markupOnMatAndUe", "Påslag på material och UE")
+                                        : hasMatMarkup
+                                          ? t("planningTasks.markupOnMat", "Påslag på material")
+                                          : t("planningTasks.markupOnUe", "Påslag på UE")}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            );
+                          })()}
+                        </TableCell>
+                      )}
                       <TableCell className="text-right py-2.5">
                         {(() => {
                           const laborTotal = (task.estimated_hours || 0) * (task.hourly_rate || 0);
