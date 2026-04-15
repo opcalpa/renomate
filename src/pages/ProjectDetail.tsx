@@ -867,7 +867,7 @@ const ProjectDetail = () => {
   ) : null;
 
   return (
-    <div className={cn("min-h-[100dvh] bg-background md:pb-0", isHeaderVisible ? "pb-[calc(4rem+env(safe-area-inset-bottom))]" : "pb-0")}>
+    <div className={cn("bg-background md:pb-0", isHeaderVisible ? "pb-[calc(4rem+env(safe-area-inset-bottom))]" : "pb-0")}>
       {/* Unified Header - Hidden in Floor Plan edit mode */}
       {isHeaderVisible && (
         <div className="sticky top-0 z-50">
