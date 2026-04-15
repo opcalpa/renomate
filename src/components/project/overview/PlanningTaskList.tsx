@@ -769,6 +769,22 @@ export function PlanningTaskList({
     [tasks, fetchData, t, toast]
   );
 
+  const handleSelectAllRooms = useCallback(
+    async (taskId: string) => {
+      const allIds = rooms.map((r) => r.id);
+      const { error } = await supabase
+        .from("tasks")
+        .update({ room_ids: allIds, room_id: allIds[0] || null })
+        .eq("id", taskId);
+      if (error) {
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      } else {
+        fetchData();
+      }
+    },
+    [rooms, fetchData, t, toast]
+  );
+
   const handleClearRooms = useCallback(
     async (taskId: string) => {
       const { error } = await supabase
@@ -1535,27 +1551,6 @@ export function PlanningTaskList({
                         {t("planningTasks.markup", "Markup")}
                       </TableHead>
                     )}
-                    <TableHead className="text-right w-[120px]">
-                      {isHomeowner
-                        ? t("planningTasks.estimatedBudget", "Budget")
-                        : t("planningTasks.customerPrice", "Customer price")}
-                    </TableHead>
-                    {show.profit && (
-                      <TableHead className="hidden sm:table-cell text-right w-[110px]">
-                        <span className="inline-flex items-center gap-1">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="cursor-help">{t("taskCost.result", "Result")}</span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-[250px]">
-                                <p className="text-xs">{t("planningTasks.profitFormula", "Profit from labor (hours × rate × margin) + markup on materials and subcontractors")}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </span>
-                      </TableHead>
-                    )}
                     {show.rotAmount && (
                       <TableHead className="hidden sm:table-cell text-right w-[110px]">
                         {!isHomeowner && !effectiveLock ? (
@@ -1587,6 +1582,27 @@ export function PlanningTaskList({
                     {show.materialEstimate && (
                       <TableHead className="hidden sm:table-cell text-right w-[130px]">
                         {t("planningTasks.materialEstimate", "Materialbudget")}
+                      </TableHead>
+                    )}
+                    <TableHead className="text-right w-[120px]">
+                      {isHomeowner
+                        ? t("planningTasks.estimatedBudget", "Budget")
+                        : t("planningTasks.customerPrice", "Customer price")}
+                    </TableHead>
+                    {show.profit && (
+                      <TableHead className="hidden sm:table-cell text-right w-[110px]">
+                        <span className="inline-flex items-center gap-1">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help">{t("taskCost.result", "Result")}</span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-[250px]">
+                                <p className="text-xs">{t("planningTasks.profitFormula", "Profit from labor (hours × rate × margin) + markup on materials and subcontractors")}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </span>
                       </TableHead>
                     )}
                     {!effectiveLock && <TableHead className="w-[40px]" />}
@@ -1860,6 +1876,21 @@ export function PlanningTaskList({
                           const profit = markup > 0 ? Math.round(base * markup / 100) : 0;
                           return (
                             <>
+                              {show.rotAmount && (
+                                <TableCell className="text-right hidden sm:table-cell py-2.5">
+                                  <span className="text-xs text-muted-foreground">–</span>
+                                </TableCell>
+                              )}
+                              {show.budget && (
+                                <TableCell className="text-right hidden sm:table-cell py-2.5">
+                                  <span className="text-xs text-muted-foreground">–</span>
+                                </TableCell>
+                              )}
+                              {show.materialEstimate && (
+                                <TableCell className="text-right hidden sm:table-cell py-2.5">
+                                  <span className="text-xs text-muted-foreground">–</span>
+                                </TableCell>
+                              )}
                               <TableCell className="text-right py-2.5">
                                 {customerPrice > 0 ? (
                                   <span className="text-sm font-medium">{formatCurrency(customerPrice, currency)}</span>
@@ -1892,21 +1923,6 @@ export function PlanningTaskList({
                                   ) : (
                                     <span className="text-xs text-muted-foreground">–</span>
                                   )}
-                                </TableCell>
-                              )}
-                              {show.rotAmount && (
-                                <TableCell className="text-right hidden sm:table-cell py-2.5">
-                                  <span className="text-xs text-muted-foreground">–</span>
-                                </TableCell>
-                              )}
-                              {show.budget && (
-                                <TableCell className="text-right hidden sm:table-cell py-2.5">
-                                  <span className="text-xs text-muted-foreground">–</span>
-                                </TableCell>
-                              )}
-                              {show.materialEstimate && (
-                                <TableCell className="text-right hidden sm:table-cell py-2.5">
-                                  <span className="text-xs text-muted-foreground">–</span>
                                 </TableCell>
                               )}
                             </>
@@ -2173,12 +2189,20 @@ export function PlanningTaskList({
                                       </label>
                                     );
                                   })}
+                                  {rooms.length > 1 && (task.room_ids || []).length < rooms.length && (
+                                    <button
+                                      className="w-full text-left text-xs text-primary px-2 py-1 hover:bg-muted rounded font-medium"
+                                      onClick={() => handleSelectAllRooms(task.id)}
+                                    >
+                                      {t("common.selectAll", "Alla rum")}
+                                    </button>
+                                  )}
                                   {(task.room_ids || []).length > 0 && (
                                     <button
                                       className="w-full text-left text-xs text-muted-foreground px-2 py-1 hover:bg-muted rounded"
                                       onClick={() => handleClearRooms(task.id)}
                                     >
-                                      {t("common.clearAll", "Clear all")}
+                                      {t("common.clearAll", "Rensa alla")}
                                     </button>
                                   )}
                                   <div className="border-t pt-1 mt-1">
@@ -2252,6 +2276,54 @@ export function PlanningTaskList({
                               </TooltipProvider>
                             );
                           })()}
+                        </TableCell>
+                      )}
+                      {show.rotAmount && (
+                        <TableCell className="text-right hidden sm:table-cell py-2.5">
+                          {task.rot_amount ? (() => {
+                            const laborCost = (task.estimated_hours || 0) * (task.hourly_rate || 0);
+                            const laborIncMoms = Math.round(laborCost * 1.25);
+                            return (
+                              <HoverCard openDelay={200} closeDelay={100}>
+                                <HoverCardTrigger asChild>
+                                  <button className="text-sm text-green-700 hover:underline" onClick={(e) => e.stopPropagation()}>
+                                    {formatCurrency(task.rot_amount, currency)}
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-56 p-3" align="end" side="top">
+                                  <div className="space-y-1.5 text-xs">
+                                    <p className="font-semibold text-sm mb-2">{t("tasks.rotEligible", "ROT-avdrag")}</p>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">{t("taskCost.ownLabor", "Eget arbete")}</span>
+                                      <span className="tabular-nums">{formatCurrency(laborCost, currency)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">{t("estimation.incMomsShort", "inc moms")} (25%)</span>
+                                      <span className="tabular-nums">{formatCurrency(laborIncMoms, currency)}</span>
+                                    </div>
+                                    <div className="flex justify-between pt-1.5 border-t font-semibold text-green-700">
+                                      <span>ROT 30%</span>
+                                      <span className="tabular-nums">{formatCurrency(task.rot_amount, currency)}</span>
+                                    </div>
+                                  </div>
+                                </HoverCardContent>
+                              </HoverCard>
+                            );
+                          })() : (
+                            <span className="text-xs text-muted-foreground">–</span>
+                          )}
+                        </TableCell>
+                      )}
+                      {show.budget && (
+                        <TableCell className="text-right hidden sm:table-cell py-2.5">
+                          {task.budget ? <span className="text-sm">{formatCurrency(task.budget, currency)}</span> : <span className="text-xs text-muted-foreground">–</span>}
+                        </TableCell>
+                      )}
+                      {show.materialEstimate && (
+                        <TableCell className="text-right hidden sm:table-cell py-2.5">
+                          {task.material_estimate ? (
+                            <span className="text-sm text-amber-700">{formatCurrency(task.material_estimate, currency)}</span>
+                          ) : <span className="text-xs text-muted-foreground">–</span>}
                         </TableCell>
                       )}
                       <TableCell className="text-right py-2.5">
@@ -2412,54 +2484,6 @@ export function PlanningTaskList({
                           </TableCell>
                         );
                       })()}
-                      {show.rotAmount && (
-                        <TableCell className="text-right hidden sm:table-cell py-2.5">
-                          {task.rot_amount ? (() => {
-                            const laborCost = (task.estimated_hours || 0) * (task.hourly_rate || 0);
-                            const laborIncMoms = Math.round(laborCost * 1.25);
-                            return (
-                              <HoverCard openDelay={200} closeDelay={100}>
-                                <HoverCardTrigger asChild>
-                                  <button className="text-sm text-green-700 hover:underline" onClick={(e) => e.stopPropagation()}>
-                                    {formatCurrency(task.rot_amount, currency)}
-                                  </button>
-                                </HoverCardTrigger>
-                                <HoverCardContent className="w-56 p-3" align="end" side="top">
-                                  <div className="space-y-1.5 text-xs">
-                                    <p className="font-semibold text-sm mb-2">{t("tasks.rotEligible", "ROT-avdrag")}</p>
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">{t("taskCost.ownLabor", "Eget arbete")}</span>
-                                      <span className="tabular-nums">{formatCurrency(laborCost, currency)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">{t("estimation.incMomsShort", "inc moms")} (25%)</span>
-                                      <span className="tabular-nums">{formatCurrency(laborIncMoms, currency)}</span>
-                                    </div>
-                                    <div className="flex justify-between pt-1.5 border-t font-semibold text-green-700">
-                                      <span>ROT 30%</span>
-                                      <span className="tabular-nums">{formatCurrency(task.rot_amount, currency)}</span>
-                                    </div>
-                                  </div>
-                                </HoverCardContent>
-                              </HoverCard>
-                            );
-                          })() : (
-                            <span className="text-xs text-muted-foreground">–</span>
-                          )}
-                        </TableCell>
-                      )}
-                      {show.budget && (
-                        <TableCell className="text-right hidden sm:table-cell py-2.5">
-                          {task.budget ? <span className="text-sm">{formatCurrency(task.budget, currency)}</span> : <span className="text-xs text-muted-foreground">–</span>}
-                        </TableCell>
-                      )}
-                      {show.materialEstimate && (
-                        <TableCell className="text-right hidden sm:table-cell py-2.5">
-                          {task.material_estimate ? (
-                            <span className="text-sm text-amber-700">{formatCurrency(task.material_estimate, currency)}</span>
-                          ) : <span className="text-xs text-muted-foreground">–</span>}
-                        </TableCell>
-                      )}
                       {!effectiveLock && (
                         <TableCell className="py-2.5">
                           <DropdownMenu>
@@ -2655,6 +2679,9 @@ export function PlanningTaskList({
                             const pr = mkp > 0 ? Math.round(base * mkp / 100) : 0;
                             return (
                               <>
+                                {show.rotAmount && <TableCell className="hidden sm:table-cell py-2" />}
+                                {show.budget && <TableCell className="hidden sm:table-cell py-2" />}
+                                {show.materialEstimate && <TableCell className="hidden sm:table-cell py-2" />}
                                 <TableCell className="text-right py-2">
                                   {cp > 0 ? (
                                     <span className="text-sm text-muted-foreground">{formatCurrency(cp, currency)}</span>
@@ -2685,9 +2712,6 @@ export function PlanningTaskList({
                                     ) : null}
                                   </TableCell>
                                 )}
-                                {show.rotAmount && <TableCell className="hidden sm:table-cell py-2" />}
-                                {show.budget && <TableCell className="hidden sm:table-cell py-2" />}
-                                {show.materialEstimate && <TableCell className="hidden sm:table-cell py-2" />}
                               </>
                             );
                           })()}
@@ -2820,18 +2844,6 @@ export function PlanningTaskList({
                     {show.hourlyRate && <td className="hidden sm:table-cell" />}
                     {show.room && <td className="hidden sm:table-cell" />}
                     {show.markup && <td className="hidden sm:table-cell" />}
-                    <td className="text-right px-3 py-2.5">
-                      <span className="text-sm font-bold tabular-nums text-primary">
-                        {formatCurrency(totalBudget, currency)}
-                      </span>
-                    </td>
-                    {show.profit && (
-                      <td className="text-right hidden sm:table-cell px-3 py-2.5">
-                        <span className={`text-sm font-bold tabular-nums ${totalProfit >= 0 ? "text-green-600" : "text-destructive"}`}>
-                          {totalProfit > 0 ? formatCurrency(totalProfit, currency) : null}
-                        </span>
-                      </td>
-                    )}
                     {show.rotAmount && (
                       <td className="text-right hidden sm:table-cell px-3 py-2.5">
                         {(() => {
@@ -2851,6 +2863,18 @@ export function PlanningTaskList({
                             <span className="text-sm font-bold tabular-nums text-amber-700">{formatCurrency(totalMat, currency)}</span>
                           ) : null;
                         })()}
+                      </td>
+                    )}
+                    <td className="text-right px-3 py-2.5">
+                      <span className="text-sm font-bold tabular-nums text-primary">
+                        {formatCurrency(totalBudget, currency)}
+                      </span>
+                    </td>
+                    {show.profit && (
+                      <td className="text-right hidden sm:table-cell px-3 py-2.5">
+                        <span className={`text-sm font-bold tabular-nums ${totalProfit >= 0 ? "text-green-600" : "text-destructive"}`}>
+                          {totalProfit > 0 ? formatCurrency(totalProfit, currency) : null}
+                        </span>
                       </td>
                     )}
                     {!effectiveLock && <td />}
