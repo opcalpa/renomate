@@ -1,5 +1,5 @@
 /**
- * Skatteöversikt — cross-project tax overview.
+ * Kostnadssummering — cross-project cost summary.
  * ROT progress per year + expandable property cards for förbättringsutgifter.
  */
 
