@@ -220,9 +220,10 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
   });
 
   const rooms = data?.rooms || [];
-  // Exclude before/during/after photos from inspiration gallery
+  // Separate inspiration photos from before/during/after photos
   const BA_SOURCES = new Set(["before", "during", "after"]);
   const allPhotos = useMemo(() => (data?.photos || []).filter((p) => !BA_SOURCES.has(p.source)), [data?.photos]);
+  const beforePhotos = useMemo(() => (data?.photos || []).filter((p) => p.source === "before"), [data?.photos]);
   const materialCards = data?.materialCards || [];
 
   const filteredPhotos = useMemo(() => {
@@ -231,9 +232,11 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
     return allPhotos.filter((p) => p.roomId === selectedRoom);
   }, [allPhotos, selectedRoom]);
 
-  // Before/During/After photos grouped by room
+  // Before/During/After photos grouped by room — uses ALL photos (not filtered allPhotos)
+  const allRawPhotos = data?.photos || [];
   const beforeAfterByRoom = useMemo(() => {
-    const targetPhotos = selectedRoom === "all" ? allPhotos : selectedRoom === "untagged" ? allPhotos.filter((p) => !p.roomId) : allPhotos.filter((p) => p.roomId === selectedRoom);
+    const baPhotos = allRawPhotos.filter((p) => BA_SOURCES.has(p.source));
+    const targetPhotos = selectedRoom === "all" ? baPhotos : selectedRoom === "untagged" ? baPhotos.filter((p) => !p.roomId) : baPhotos.filter((p) => p.roomId === selectedRoom);
     const roomGroups = new Map<string, { name: string; before: InspoPhoto[]; during: InspoPhoto[]; after: InspoPhoto[] }>();
 
     for (const photo of targetPhotos) {
@@ -250,7 +253,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
     return Array.from(roomGroups.entries())
       .map(([id, data]) => ({ id, ...data }))
       .filter((g) => g.before.length > 0 || g.during.length > 0 || g.after.length > 0);
-  }, [allPhotos, selectedRoom, t]);
+  }, [allRawPhotos, selectedRoom, t]);
 
   const totalCount = allPhotos.length + materialCards.filter((m) => m.photoUrl).length;
 
@@ -602,15 +605,40 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
         {/* Header */}
         <div className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-3")}>
           {/* Section title */}
-          <button
-            type="button"
-            onClick={() => { if (inspoView === "beforeafter") setInspoView("gallery"); else setCollapsed(!collapsed); }}
-            className="text-xs font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors bg-primary text-primary-foreground"
-          >
-            <Sparkles className="h-3 w-3" />
-            {t("inspiration.title")}
-            <ChevronDown className={cn("h-3 w-3 transition-transform", collapsed && "-rotate-90")} />
-          </button>
+          <div className="flex rounded-full border overflow-hidden">
+            <button
+              type="button"
+              onClick={() => { if (inspoView === "beforeafter") setInspoView("gallery"); else setCollapsed(!collapsed); }}
+              className={cn(
+                "text-xs font-medium flex items-center gap-1.5 px-3 py-1.5 transition-colors",
+                inspoView !== "beforeafter"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Sparkles className="h-3 w-3" />
+              {t("inspiration.title")}
+              {inspoView !== "beforeafter" && (
+                <ChevronDown className={cn("h-3 w-3 transition-transform", collapsed && "-rotate-90")} />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setInspoView("beforeafter"); setCollapsed(false); }}
+              className={cn(
+                "text-xs font-medium flex items-center gap-1.5 px-3 py-1.5 transition-colors border-l",
+                inspoView === "beforeafter"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Camera className="h-3 w-3" />
+              {t("inspiration.beforePhotos", "Före-bilder")}
+              {beforePhotos.length > 0 && (
+                <span className="text-[10px] opacity-75">({beforePhotos.length})</span>
+              )}
+            </button>
+          </div>
           {/* Room filter — shared across all views */}
           {hasPhotos && rooms.length > 0 && (
             <Popover>
@@ -645,8 +673,8 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               </PopoverContent>
             </Popover>
           )}
-          {/* Before/After: phase pills — hidden, feature parked */}
-          {false && inspoView === "beforeafter" && (
+          {/* Before/After: phase pills */}
+          {inspoView === "beforeafter" && (
             <BeforeAfterUploader
               selectedPhase={baPhase}
               onPhaseChange={setBaPhase}
@@ -764,8 +792,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               <Maximize2 className="h-3.5 w-3.5" />
             </button>
           )}
-          {hasPhotos && (
-            <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
+          <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
               <PopoverTrigger asChild>
                 <button
                   type="button"
@@ -806,7 +833,6 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
                 </button>
               </PopoverContent>
             </Popover>
-          )}
         </div>
 
         {/* Collapsible content */}
@@ -1084,9 +1110,14 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               onClick={() => setSelectedPhotoId(null)}
             >
               {filteredPhotos.length === 0 ? (
-                <div className="flex items-center justify-center py-12 text-sm" style={{ color: hexLuminance(moodboardBg) < 128 ? "#999" : "#888" }}>
+                <label
+                  htmlFor={uploading ? undefined : `inspo-file-${projectId}`}
+                  className="flex flex-col items-center justify-center py-12 text-sm cursor-pointer hover:opacity-70 transition-opacity gap-2"
+                  style={{ color: hexLuminance(moodboardBg) < 128 ? "#999" : "#888" }}
+                >
+                  <Upload className="h-5 w-5" />
                   {t("inspiration.emptyTitle")}
-                </div>
+                </label>
               ) : (
                 <div
                   ref={moodboardGridRef}
