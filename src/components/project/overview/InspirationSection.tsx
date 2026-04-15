@@ -158,7 +158,7 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
         supabase
           .from("photos")
           .select("id, url, caption, linked_to_id, linked_to_type, source, source_url, display_size, sort_order, crop_position, fit_mode, crop_zoom, crop_offset_x, crop_offset_y, crop_shape, grid_col_span, grid_row_span")
-          .or(`linked_to_type.eq.room,linked_to_type.eq.project`)
+          .or(`linked_to_type.eq.room,linked_to_type.eq.project,linked_to_type.eq.task`)
           .order("created_at", { ascending: false }),
         supabase
           .from("materials")
@@ -175,9 +175,18 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
       const roomIds = new Set(rooms.map((r) => r.id));
       const roomMap = new Map(rooms.map((r) => [r.id, r.name]));
 
-      // Room photos + project-level photos
+      // Also fetch task IDs for this project so task-linked photos are included
+      const { data: taskRows } = await supabase.from("tasks").select("id").eq("project_id", projectId);
+      const taskIds = new Set((taskRows || []).map((t) => t.id));
+
+      // Room photos + project-level photos + task-linked photos
       const photos: InspoPhoto[] = (photosRes.data || [])
-        .filter((p) => p.linked_to_type === "project" ? p.linked_to_id === projectId : roomIds.has(p.linked_to_id))
+        .filter((p) => {
+          if (p.linked_to_type === "project") return p.linked_to_id === projectId;
+          if (p.linked_to_type === "room") return roomIds.has(p.linked_to_id);
+          if (p.linked_to_type === "task") return taskIds.has(p.linked_to_id);
+          return false;
+        })
         .map((p) => ({
           id: p.id,
           url: p.url,
