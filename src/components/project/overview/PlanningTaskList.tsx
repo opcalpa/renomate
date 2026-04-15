@@ -1412,29 +1412,9 @@ export function PlanningTaskList({
             </CardDescription>
           </div>
           {tasks.length > 0 && (
-            <div className="flex flex-col items-end gap-0.5">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xs text-muted-foreground">
-                  {t("planningTasks.estimatedBudget", "Estimated budget")}
-                </span>
-                <span className="text-base font-semibold">
-                  {formatCurrency(totalBudget, currency)}
-                </span>
-              </div>
-              {!isHomeowner && totalProfit > 0 && (
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-xs text-muted-foreground">
-                    {t("planningTasks.estimatedProfit", "Est. profit")}
-                  </span>
-                  <span className={`text-sm font-semibold ${totalProfit >= 0 ? "text-green-600" : "text-destructive"}`}>
-                    {formatCurrency(totalProfit, currency)}
-                  </span>
-                </div>
-              )}
-              <span className="text-xs text-muted-foreground">
-                {pricedCount}/{tasks.length} {t("planningTasks.priced", "priced")}
-              </span>
-            </div>
+            <span className="text-xs text-muted-foreground">
+              {pricedCount}/{tasks.length} {t("planningTasks.priced", "priced")}
+            </span>
           )}
         </div>
       </CardHeader>
@@ -2778,6 +2758,64 @@ export function PlanningTaskList({
                     </TableRow>
                   )}
                 </TableBody>
+                {tasks.length > 0 && (
+                <tfoot>
+                  <tr className="border-t-2 border-primary/20 bg-primary/5">
+                    {show.costType && <td className="hidden sm:table-cell" />}
+                    <td className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {t("common.total", "Totalt")}
+                    </td>
+                    {show.description && <td className="hidden sm:table-cell" />}
+                    {show.hours && (
+                      <td className="text-right hidden sm:table-cell px-2 py-2.5">
+                        <span className="text-sm font-semibold tabular-nums">
+                          {(() => {
+                            const totalHours = tasks.reduce((s, t2) => s + (t2.estimated_hours || 0), 0);
+                            return totalHours > 0 ? `${totalHours}h` : null;
+                          })()}
+                        </span>
+                      </td>
+                    )}
+                    {show.hourlyRate && <td className="hidden sm:table-cell" />}
+                    {show.room && <td className="hidden sm:table-cell" />}
+                    {show.markup && <td className="hidden sm:table-cell" />}
+                    <td className="text-right px-3 py-2.5">
+                      <span className="text-sm font-bold tabular-nums text-primary">
+                        {formatCurrency(totalBudget, currency)}
+                      </span>
+                    </td>
+                    {show.profit && (
+                      <td className="text-right hidden sm:table-cell px-3 py-2.5">
+                        <span className={`text-sm font-bold tabular-nums ${totalProfit >= 0 ? "text-green-600" : "text-destructive"}`}>
+                          {totalProfit > 0 ? formatCurrency(totalProfit, currency) : null}
+                        </span>
+                      </td>
+                    )}
+                    {show.rotAmount && (
+                      <td className="text-right hidden sm:table-cell px-3 py-2.5">
+                        {(() => {
+                          const totalRot = tasks.reduce((s, t2) => s + (t2.rot_amount || 0), 0);
+                          return totalRot > 0 ? (
+                            <span className="text-sm font-bold tabular-nums text-green-700">{formatCurrency(totalRot, currency)}</span>
+                          ) : null;
+                        })()}
+                      </td>
+                    )}
+                    {show.budget && <td className="hidden sm:table-cell" />}
+                    {show.materialEstimate && (
+                      <td className="text-right hidden sm:table-cell px-3 py-2.5">
+                        {(() => {
+                          const totalMat = tasks.reduce((s, t2) => s + (t2.material_estimate || 0), 0);
+                          return totalMat > 0 ? (
+                            <span className="text-sm font-bold tabular-nums text-amber-700">{formatCurrency(totalMat, currency)}</span>
+                          ) : null;
+                        })()}
+                      </td>
+                    )}
+                    {!effectiveLock && <td />}
+                  </tr>
+                </tfoot>
+                )}
               </Table>
             </div>
 
