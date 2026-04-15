@@ -309,7 +309,7 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
     } finally {
       setUploading(false);
     }
-  }, [projectId, uploading, queryClient, t]);
+  }, [projectId, uploading, queryClient, t, inspoView, baPhase, selectedRoom]);
 
   // Before/After upload handler — tags photo with source and room
   const [baUploading, setBaUploading] = useState(false);
