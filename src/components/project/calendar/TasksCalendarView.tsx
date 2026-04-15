@@ -307,14 +307,14 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, mil
                   type="button"
                   onClick={(e) => onTaskClick(task.id, e)}
                   className={cn(
-                    "absolute rounded text-[10px] font-medium text-white px-1.5 truncate cursor-pointer hover:opacity-90 transition-opacity",
+                    "absolute rounded text-[10px] font-medium text-white px-1.5 text-left overflow-hidden cursor-pointer hover:opacity-90 transition-opacity",
                     colorClass,
                     selectedTaskIds?.has(task.id) && "ring-2 ring-primary ring-offset-1"
                   )}
                   style={{ left, width, top, height: TASK_BAR_HEIGHT }}
                   title={task.title}
                 >
-                  {task.title}
+                  <span className="sticky left-1.5 whitespace-nowrap">{task.title}</span>
                 </button>
               );
             })}
