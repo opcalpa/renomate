@@ -23,6 +23,28 @@ const isImageFile = (file: File) => file.type.startsWith("image/");
 const isImageUrl = (photo: Photo) =>
   !photo.mime_type || photo.mime_type.startsWith("image/");
 
+/** Source options per entity type */
+type SourceOption = { value: string; labelKey: string; icon: string };
+
+const TASK_SOURCE_OPTIONS: SourceOption[] = [
+  { value: "before", labelKey: "photoSource.before", icon: "📷" },
+  { value: "during", labelKey: "photoSource.during", icon: "🔨" },
+  { value: "after", labelKey: "photoSource.after", icon: "✅" },
+  { value: "receipt", labelKey: "photoSource.receipt", icon: "🧾" },
+  { value: "product", labelKey: "photoSource.product", icon: "📦" },
+];
+
+const MATERIAL_SOURCE_OPTIONS: SourceOption[] = [
+  { value: "product", labelKey: "photoSource.product", icon: "📦" },
+  { value: "receipt", labelKey: "photoSource.receipt", icon: "🧾" },
+];
+
+function getSourceOptions(entityType: string): SourceOption[] | null {
+  if (entityType === "task") return TASK_SOURCE_OPTIONS;
+  if (entityType === "material") return MATERIAL_SOURCE_OPTIONS;
+  return null; // room/shape — no classification needed
+}
+
 interface EntityPhotoGalleryProps {
   entityId: string;
   entityType: "task" | "room" | "material" | "shape";
@@ -39,8 +61,10 @@ export function EntityPhotoGallery({ entityId, entityType, projectId, storagePat
   const [uploading, setUploading] = useState(false);
   const [carouselOpen, setCarouselOpen] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [unclassifiedPhotos, setUnclassifiedPhotos] = useState<Photo[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const sourceOptions = getSourceOptions(entityType);
 
   const bucket = storagePath || "project-files";
   const useProjectPath = !!projectId;
@@ -125,19 +149,25 @@ export function EntityPhotoGallery({ entityId, entityType, projectId, storagePat
 
         const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName);
 
-        const { error: dbError } = await supabase.from("photos").insert({
+        const needsClassification = !!sourceOptions;
+        const { data: insertedPhoto, error: dbError } = await supabase.from("photos").insert({
           linked_to_type: entityType,
           linked_to_id: entityId,
           url: publicUrl,
           caption: file.name,
           mime_type: file.type,
           uploaded_by_user_id: profile.id,
-        });
+          source: needsClassification ? "unclassified" : "upload",
+        }).select("id, url, caption, source, mime_type, created_at").single();
 
-        if (dbError) {
+        if (dbError || !insertedPhoto) {
           console.error("Database error:", dbError);
           toast.error(t('entityPhotos.saveError', { name: file.name }));
           continue;
+        }
+
+        if (needsClassification && insertedPhoto) {
+          setUnclassifiedPhotos((prev) => [...prev, insertedPhoto]);
         }
 
         // Create task_file_links record so file appears in Files tab
@@ -197,6 +227,17 @@ export function EntityPhotoGallery({ entityId, entityType, projectId, storagePat
     } catch (error) {
       console.error("Error deleting photo:", error);
       toast.error(t('entityPhotos.deleteError'));
+    }
+  };
+
+  const classifyPhoto = async (photoId: string, source: string) => {
+    const { error } = await supabase
+      .from("photos")
+      .update({ source })
+      .eq("id", photoId);
+    if (!error) {
+      setUnclassifiedPhotos((prev) => prev.filter((p) => p.id !== photoId));
+      loadPhotos();
     }
   };
 
@@ -277,6 +318,36 @@ export function EntityPhotoGallery({ entityId, entityType, projectId, storagePat
           </PopoverContent>
         </Popover>
       </div>
+
+      {/* Classification prompt for newly uploaded photos */}
+      {unclassifiedPhotos.length > 0 && sourceOptions && (
+        <div className="space-y-2">
+          {unclassifiedPhotos.map((photo) => (
+            <div key={photo.id} className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <img
+                src={photo.url}
+                alt=""
+                className="w-14 h-14 rounded object-cover shrink-0"
+              />
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <p className="text-xs font-medium">{t("photoSource.classify", "What type of photo is this?")}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {sourceOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className="px-2.5 py-1 rounded-full text-xs border transition-colors hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                      onClick={() => classifyPhoto(photo.id, opt.value)}
+                    >
+                      {opt.icon} {t(opt.labelKey, opt.value)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {loadingPhotos ? (
         <div className="flex items-center justify-center py-8">

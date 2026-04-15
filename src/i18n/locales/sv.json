@@ -2541,6 +2541,14 @@
     "removePhoto": "Ta bort bild",
     "removeFile": "Ta bort fil"
   },
+  "photoSource": {
+    "classify": "Vilken typ av bild är detta?",
+    "before": "Före",
+    "during": "Pågående",
+    "after": "Färdigt",
+    "receipt": "Kvitto",
+    "product": "Produkt"
+  },
   "comments": {
     "title": "Kommentarer",
     "noComments": "Inga kommentarer än",

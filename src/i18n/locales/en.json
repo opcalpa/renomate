@@ -1508,6 +1508,14 @@
     "removePhoto": "Remove photo",
     "removeFile": "Remove file"
   },
+  "photoSource": {
+    "classify": "What type of photo is this?",
+    "before": "Before",
+    "during": "In progress",
+    "after": "Completed",
+    "receipt": "Receipt",
+    "product": "Product"
+  },
   "comments": {
     "title": "Comments",
     "noComments": "No comments yet",
