@@ -967,97 +967,77 @@ const Projects = () => {
                     </div>
                   </button>
 
-                  {/* Customer form — fill yourself or send to client (requires profile, hidden for guests) */}
-                  {!isGuest && (
-                  <div className="rounded-xl border-2 border-border p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <MessageSquare className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-base">{t('projects.methodCustomerForm', 'Customer form')}</p>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          {t('projects.methodCustomerFormDesc', 'Select rooms and work types to auto-create tasks')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className={`grid gap-2 ${isContractor ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDialogOpen(false);
-                          setTimeout(() => setShowGuidedSetup(true), 150);
-                        }}
-                        className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border transition-all text-left hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98]"
-                      >
-                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">{t('projects.methodFillSelf', 'Fill in yourself')}</span>
-                      </button>
-                      {isContractor && (
-                        <button
-                          type="button"
-                          onClick={() => { setDialogOpen(false); setTimeout(() => setCreateIntakeOpen(true), 150); }}
-                          className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border transition-all text-left hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98]"
-                        >
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{t('projects.methodSendToClient', 'Send to client')}</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  )}
-
-                  {/* Blank project option */}
+                  {/* Start planning — creates project instantly, wizard handles the rest */}
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       if (isGuest) {
-                        // Instant creation for guests — skip form
                         if (!canCreateGuestProject()) {
-                          toast({
-                            title: t('common.error'),
-                            description: t('guest.projectLimit', 'Guest mode is limited to {{max}} projects.', { max: GUEST_MAX_PROJECTS }),
-                            variant: "destructive",
-                          });
+                          toast({ title: t('common.error'), description: t('guest.projectLimit', 'Guest mode is limited to {{max}} projects.', { max: GUEST_MAX_PROJECTS }), variant: "destructive" });
                           return;
                         }
                         const guestProject = saveGuestProject({
-                          name: t('projects.defaultGuestProjectName', 'My renovation'),
-                          description: null,
-                          status: "planning",
-                          address: null,
-                          postal_code: null,
-                          city: null,
-                          project_type: null,
-                          start_date: null,
-                          finish_goal_date: null,
-                          total_budget: null,
+                          name: t('projects.defaultProjectName', 'My renovation'),
+                          description: null, status: "planning", address: null, postal_code: null, city: null, project_type: null, start_date: null, finish_goal_date: null, total_budget: null,
                         });
                         if (guestProject) {
                           setDialogOpen(false);
                           refreshStorageUsage();
                           navigate(`/projects/${guestProject.id}`);
-                          toast({
-                            title: t('projects.projectCreated'),
-                            description: t('projects.projectCreatedDescription'),
-                          });
                         }
                       } else {
-                        setCreateMethod("manual");
+                        setCreating(true);
+                        try {
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (!user) throw new Error("Not authenticated");
+                          const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+                          if (!profile) throw new Error("Profile not found");
+                          const { data, error } = await supabase.from("projects").insert({
+                            name: t('projects.defaultProjectName', 'My renovation'),
+                            owner_id: profile.id,
+                            status: "planning",
+                          }).select("id").single();
+                          if (error) throw error;
+                          setDialogOpen(false);
+                          navigate(`/projects/${data.id}`);
+                        } catch (err) {
+                          toast({ title: t('common.error'), description: (err as Error).message, variant: "destructive" });
+                        } finally {
+                          setCreating(false);
+                        }
                       }
                     }}
-                    className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98] border-border"
+                    className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98] border-primary/20 bg-primary/5"
                   >
-                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                      <FileText className="h-6 w-6 text-muted-foreground" />
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="h-6 w-6 text-primary" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-base">{t('projects.methodBlank', 'Plan from blank document')}</p>
+                      <p className="font-medium text-base">{t('projects.methodPlanRenovation', 'Plan your renovation')}</p>
                       <p className="text-sm text-muted-foreground mt-0.5">
-                        {t('projects.methodBlankDesc', 'Start with an empty project and add details manually')}
+                        {t('projects.methodPlanRenovationDesc', 'Describe what you want to do — we help you structure it')}
                       </p>
                     </div>
                   </button>
+
+                  {/* Send to client — contractor only */}
+                  {isContractor && !isGuest && (
+                    <button
+                      type="button"
+                      onClick={() => { setDialogOpen(false); setTimeout(() => setCreateIntakeOpen(true), 150); }}
+                      className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98] border-border"
+                    >
+                      <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                        <Mail className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-base">{t('projects.methodSendToClient', 'Send to client')}</p>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          {t('projects.methodSendToClientDesc', 'Send a form to your client to fill in project details')}
+                        </p>
+                      </div>
+                    </button>
+                  )}
                 </div>
               )}
 
