@@ -50,6 +50,8 @@ import { parsePinterestBoardUrl } from "@/components/pinterest";
 interface InspirationSectionProps {
   projectId: string;
   currency: string;
+  /** When true, before-photos show as simple gallery. When false, shows Före/Pågående/Efter columns. */
+  isPlanning?: boolean;
 }
 
 type DisplaySize = "sm" | "md" | "lg";
@@ -101,7 +103,7 @@ interface Room {
   name: string;
 }
 
-export function InspirationSection({ projectId, currency }: InspirationSectionProps) {
+export function InspirationSection({ projectId, currency, isPlanning = false }: InspirationSectionProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -674,15 +676,15 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
               </PopoverContent>
             </Popover>
           )}
-          {/* Before/After: phase pills */}
-          {inspoView === "beforeafter" && (
+          {/* Before/After: phase pills — only in active/completed projects */}
+          {inspoView === "beforeafter" && !isPlanning && (
             <BeforeAfterUploader
               selectedPhase={baPhase}
               onPhaseChange={setBaPhase}
             />
           )}
-          {/* Gallery/Moodboard sub-toggle — only for Inspiration tab */}
-          {hasPhotos && (
+          {/* Gallery/Moodboard sub-toggle — only for Inspiration tab, hidden in beforeafter */}
+          {hasPhotos && inspoView !== "beforeafter" && (
             <div className="flex rounded-md border bg-muted/30 p-0.5">
               <button
                 type="button"
@@ -1494,58 +1496,115 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
         {/* ===== BEFORE / AFTER VIEW ===== */}
         {inspoView === "beforeafter" && (
           <div className="space-y-4">
-            {beforeAfterByRoom.length === 0 && (
-              <div className="flex flex-col items-center py-8 text-center">
-                <Camera className="h-8 w-8 text-muted-foreground/30 mb-2" />
-                <p className="text-sm text-muted-foreground mb-1">{t("inspiration.noBeforeAfter", "Inga före & efter-bilder ännu")}</p>
-                <p className="text-xs text-muted-foreground/60 mb-3">{t("inspiration.noBeforeAfterHint", "Välj fas (Före/Pågående/Efter) ovan och klicka + för att ladda upp")}</p>
-                <Button size="sm" variant="outline" onClick={() => { fileInputRef.current?.click(); }}>
-                  <Upload className="h-3.5 w-3.5 mr-1.5" />
-                  {t("inspiration.upload")}
-                </Button>
-              </div>
-            )}
-            {beforeAfterByRoom.length > 0 && (
-              beforeAfterByRoom.map((group) => (
-                <div key={group.id} className="rounded-lg border overflow-hidden">
-                  <div className="px-3 py-2 bg-muted/30 border-b">
-                    <span className="text-sm font-medium">{group.name}</span>
-                  </div>
-                  <div className="grid grid-cols-3 divide-x">
-                    {(["before", "during", "after"] as const).map((phase) => {
-                      const photos = group[phase];
-                      const labels = {
-                        before: t("inspiration.before", "Före"),
-                        during: t("inspiration.during", "Pågående"),
-                        after: t("inspiration.after", "Efter"),
-                      };
-                      return (
-                        <div key={phase} className="p-2 space-y-2">
-                          <p className="text-[10px] font-medium text-muted-foreground uppercase text-center">{labels[phase]}</p>
-                          {photos.length > 0 ? (
-                            <div className="grid grid-cols-2 gap-1">
-                              {photos.map((photo) => (
-                                <img
-                                  key={photo.id}
-                                  src={photo.url}
-                                  alt={photo.caption || ""}
-                                  className="w-full aspect-square object-cover rounded cursor-pointer hover:opacity-90 transition-opacity"
-                                  loading="lazy"
-                                  onClick={() => openGallery(allPhotos.findIndex((p) => p.id === photo.id))}
-                                />
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center aspect-square rounded border-2 border-dashed text-muted-foreground/30">
-                              <Camera className="h-5 w-5" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+            {isPlanning ? (
+              /* Planning: simple gallery of before photos (same layout as inspiration) */
+              beforePhotos.length === 0 ? (
+                <div className="flex flex-col items-center py-8 text-center">
+                  <Camera className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                  <p className="text-sm text-muted-foreground mb-1">{t("inspiration.noBeforePhotos", "No before photos yet")}</p>
+                  <p className="text-xs text-muted-foreground/60 mb-3">{t("inspiration.noBeforePhotosHint", "Upload photos of the current state before renovation starts")}</p>
+                  <Button size="sm" variant="outline" onClick={() => { fileInputRef.current?.click(); }}>
+                    <Upload className="h-3.5 w-3.5 mr-1.5" />
+                    {t("inspiration.upload")}
+                  </Button>
                 </div>
-              ))
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-1">
+                  {beforePhotos.map((photo, idx) => (
+                    <div
+                      key={photo.id}
+                      className="relative group aspect-square rounded-lg overflow-hidden cursor-pointer"
+                      onClick={() => window.open(photo.url, "_blank")}
+                    >
+                      <img
+                        src={photo.url}
+                        alt={photo.caption || ""}
+                        className="w-full h-full object-cover transition-all group-hover:brightness-90"
+                        loading="lazy"
+                      />
+                      {photo.caption && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
+                          <p className="text-[10px] text-white truncate">{photo.caption}</p>
+                        </div>
+                      )}
+                      <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deletePhoto(photo.id); }}
+                          className="p-1 bg-black/50 rounded-full text-white hover:bg-red-500 transition-colors"
+                          title={t("common.delete")}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {/* Add more tile */}
+                  <label
+                    htmlFor={`inspo-file-${projectId}`}
+                    className="aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-accent/50 transition-colors text-muted-foreground"
+                  >
+                    <Upload className="h-5 w-5" />
+                    <span className="text-[10px]">{t("inspiration.addMore", "Lägg till")}</span>
+                  </label>
+                </div>
+              )
+            ) : (
+              /* Active/completed: Före/Pågående/Efter three-column layout */
+              <>
+                {beforeAfterByRoom.length === 0 && (
+                  <div className="flex flex-col items-center py-8 text-center">
+                    <Camera className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                    <p className="text-sm text-muted-foreground mb-1">{t("inspiration.noBeforeAfter", "Inga före & efter-bilder ännu")}</p>
+                    <p className="text-xs text-muted-foreground/60 mb-3">{t("inspiration.noBeforeAfterHint", "Välj fas ovan och klicka + för att ladda upp")}</p>
+                    <Button size="sm" variant="outline" onClick={() => { fileInputRef.current?.click(); }}>
+                      <Upload className="h-3.5 w-3.5 mr-1.5" />
+                      {t("inspiration.upload")}
+                    </Button>
+                  </div>
+                )}
+                {beforeAfterByRoom.length > 0 && (
+                  beforeAfterByRoom.map((group) => (
+                    <div key={group.id} className="rounded-lg border overflow-hidden">
+                      <div className="px-3 py-2 bg-muted/30 border-b">
+                        <span className="text-sm font-medium">{group.name}</span>
+                      </div>
+                      <div className="grid grid-cols-3 divide-x">
+                        {(["before", "during", "after"] as const).map((phase) => {
+                          const photos = group[phase];
+                          const labels = {
+                            before: t("inspiration.before", "Före"),
+                            during: t("inspiration.during", "Pågående"),
+                            after: t("inspiration.after", "Efter"),
+                          };
+                          return (
+                            <div key={phase} className="p-2 space-y-2">
+                              <p className="text-[10px] font-medium text-muted-foreground uppercase text-center">{labels[phase]}</p>
+                              {photos.length > 0 ? (
+                                <div className="grid grid-cols-2 gap-1">
+                                  {photos.map((photo) => (
+                                    <img
+                                      key={photo.id}
+                                      src={photo.url}
+                                      alt={photo.caption || ""}
+                                      className="w-full aspect-square object-cover rounded cursor-pointer hover:opacity-90 transition-opacity"
+                                      loading="lazy"
+                                      onClick={() => openGallery(allPhotos.findIndex((p) => p.id === photo.id))}
+                                    />
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-center aspect-square rounded border-2 border-dashed text-muted-foreground/30">
+                                  <Camera className="h-5 w-5" />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </>
             )}
           </div>
         )}

@@ -5250,6 +5250,8 @@
     "emptyDesc": "Släpp bilder, klistra en Pinterest-länk eller ta ett foto. Du kan tagga rum efteråt.",
     "beforeAfter": "Före & Efter",
     "beforePhotos": "Före-bilder",
+    "noBeforePhotos": "Inga före-bilder ännu",
+    "noBeforePhotosHint": "Ladda upp bilder på nuvarande skick innan renoveringen börjar",
     "before": "Före",
     "during": "Pågående",
     "after": "Efter",

@@ -5253,6 +5253,8 @@
     "emptyDesc": "Drop photos, paste a Pinterest link, or snap a picture. You can tag rooms later.",
     "beforeAfter": "Before & After",
     "beforePhotos": "Before photos",
+    "noBeforePhotos": "No before photos yet",
+    "noBeforePhotosHint": "Upload photos of the current state before renovation starts",
     "before": "Before",
     "during": "In progress",
     "after": "After",

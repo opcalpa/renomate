@@ -400,6 +400,7 @@ const OverviewTab = ({
         <InspirationSection
           projectId={project.id}
           currency={project.currency || "SEK"}
+          isPlanning
         />
       )}
 
