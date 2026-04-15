@@ -21,6 +21,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle, FileUp, ChevronRight, ChevronDown, ShoppingCart, Package, Wrench, Link2, MoreVertical, Paperclip, Hammer, Handshake } from "lucide-react";
 import {
   DropdownMenu,
@@ -2168,13 +2173,13 @@ export function PlanningTaskList({
                           }
 
                           return (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <button className="text-sm font-medium hover:underline hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>
+                            <HoverCard openDelay={200} closeDelay={100}>
+                              <HoverCardTrigger asChild>
+                                <button className="text-sm font-medium hover:underline hover:text-primary transition-colors" onClick={(e) => { e.stopPropagation(); setEditTaskId(task.id); }}>
                                   {task.budget ? formatCurrency(task.budget, currency) : "–"}
                                 </button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-64 p-3" align="end" onClick={(e) => e.stopPropagation()}>
+                              </HoverCardTrigger>
+                              <HoverCardContent className="w-64 p-3" align="end" side="top">
                                 <div className="space-y-1.5 text-xs">
                                   <p className="font-semibold text-sm mb-2">{t("taskCost.customerPrice", "Kundpris")}</p>
                                   {laborTotal > 0 && (
@@ -2216,8 +2221,8 @@ export function PlanningTaskList({
                                     <span className="tabular-nums text-primary">{formatCurrency(task.budget || 0, currency)}</span>
                                   </div>
                                 </div>
-                              </PopoverContent>
-                            </Popover>
+                              </HoverCardContent>
+                            </HoverCard>
                           );
                         })()}
                       </TableCell>
@@ -2233,13 +2238,13 @@ export function PlanningTaskList({
                         return (
                           <TableCell className="text-right hidden sm:table-cell py-2.5">
                             {rowProfit > 0 ? (
-                              <Popover>
-                                <PopoverTrigger asChild>
+                              <HoverCard openDelay={200} closeDelay={100}>
+                                <HoverCardTrigger asChild>
                                   <button className={`text-sm ${rowProfit >= 0 ? "text-green-600" : "text-destructive"} hover:underline`} onClick={(e) => e.stopPropagation()}>
                                     {formatCurrency(rowProfit, currency)}
                                   </button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-72 p-3" align="end" onClick={(e) => e.stopPropagation()}>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 p-3" align="end" side="top">
                                   <div className="space-y-2 text-xs">
                                     {laborProfit > 0 && (
                                       <div className="flex items-center justify-between gap-2">
@@ -2295,8 +2300,8 @@ export function PlanningTaskList({
                                       <span className="text-green-600">{formatCurrency(rowProfit, currency)}</span>
                                     </div>
                                   </div>
-                                </PopoverContent>
-                              </Popover>
+                                </HoverCardContent>
+                              </HoverCard>
                             ) : (
                               <span className="text-xs text-muted-foreground">–</span>
                             )}
