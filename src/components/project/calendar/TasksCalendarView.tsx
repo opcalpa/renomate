@@ -162,8 +162,8 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, mil
     t("timeline.calendarMon", "Mon"), t("timeline.calendarTue", "Tue"), t("timeline.calendarWed", "Wed"),
     t("timeline.calendarThu", "Thu"), t("timeline.calendarFri", "Fri"), t("timeline.calendarSat", "Sat"), t("timeline.calendarSun", "Sun"),
   ];
-  const TASK_BAR_HEIGHT = 22;
-  const TASK_BAR_GAP = 2;
+  const TASK_BAR_HEIGHT = calMode === "week" ? 30 : 22;
+  const TASK_BAR_GAP = calMode === "week" ? 3 : 2;
 
   return (
     <div className="flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -307,7 +307,8 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, mil
                   type="button"
                   onClick={(e) => onTaskClick(task.id, e)}
                   className={cn(
-                    "absolute rounded text-[10px] font-medium text-white px-1.5 text-left overflow-hidden cursor-pointer hover:opacity-90 transition-opacity",
+                    "absolute rounded font-medium text-white px-1.5 text-left overflow-hidden cursor-pointer hover:opacity-90 transition-opacity",
+                    calMode === "week" ? "text-xs" : "text-[10px]",
                     colorClass,
                     selectedTaskIds?.has(task.id) && "ring-2 ring-primary ring-offset-1"
                   )}
