@@ -231,6 +231,11 @@ export function QuickReceiptCaptureModal({
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Array<{id: string; title: string; budget: number | null; material_estimate: number | null; plannedMaterials: Array<{id: string; name: string; amount: number}>; is_ata: boolean; materialSpent: number}>>([]);
 
+  // Budget-post linking state
+  const [sourceMaterialId, setSourceMaterialId] = useState<string | null>(null);
+  const [allPlannedMaterials, setAllPlannedMaterials] = useState<Array<{id: string; name: string; amount: number; taskName: string | null}>>([]);
+  const [paidBySourceId, setPaidBySourceId] = useState<Map<string, number>>(new Map());
+
   // Data state
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
@@ -270,6 +275,7 @@ export function QuickReceiptCaptureModal({
     setLinkOption("new");
     setLinkedEntity(null);
     setSelectedTaskId(null);
+    setSourceMaterialId(null);
   };
 
   const fetchRooms = async () => {
@@ -281,7 +287,7 @@ export function QuickReceiptCaptureModal({
     setRooms(data || []);
   };
 
-  // Fetch tasks + their linked material spend when modal opens
+  // Fetch tasks + their linked material spend + all planned materials when modal opens
   useEffect(() => {
     if (!open || !projectId) return;
     const fetchTasks = async () => {
@@ -293,25 +299,44 @@ export function QuickReceiptCaptureModal({
           .order("created_at", { ascending: true }),
         supabase
           .from("materials")
-          .select("id, name, task_id, price_total, status, quantity, price_per_unit")
+          .select("id, name, task_id, price_total, status, quantity, price_per_unit, source_material_id, paid_amount")
           .eq("project_id", projectId)
-          .eq("exclude_from_budget", false)
-          .not("task_id", "is", null),
+          .eq("exclude_from_budget", false),
       ]);
+      const taskMap = new Map<string, string>();
+      (tasksRes.data || []).forEach(t => taskMap.set(t.id, t.title));
+
       const spendMap = new Map<string, number>();
       const plannedMap = new Map<string, Array<{id: string; name: string; amount: number}>>();
+      const allPlanned: Array<{id: string; name: string; amount: number; taskName: string | null}> = [];
+      const paidMap = new Map<string, number>();
+
       (materialsRes.data || []).forEach(m => {
-        if (m.task_id) {
-          const cost = m.price_total ?? ((m.quantity || 0) * (m.price_per_unit || 0));
-          if (m.status === "planned") {
+        const cost = m.price_total ?? ((m.quantity || 0) * (m.price_per_unit || 0));
+        if (m.status === "planned") {
+          allPlanned.push({
+            id: m.id,
+            name: m.name,
+            amount: cost,
+            taskName: m.task_id ? taskMap.get(m.task_id) || null : null,
+          });
+          if (m.task_id) {
             const items = plannedMap.get(m.task_id) || [];
             items.push({ id: m.id, name: m.name, amount: cost });
             plannedMap.set(m.task_id, items);
-          } else {
+          }
+        } else {
+          if (m.task_id) {
             spendMap.set(m.task_id, (spendMap.get(m.task_id) || 0) + cost);
+          }
+          if (m.source_material_id) {
+            const paid = m.paid_amount ?? (m.status === "paid" ? cost : 0);
+            paidMap.set(m.source_material_id, (paidMap.get(m.source_material_id) || 0) + paid);
           }
         }
       });
+      setAllPlannedMaterials(allPlanned);
+      setPaidBySourceId(paidMap);
       setTasks((tasksRes.data || []).map(t => ({
         ...t,
         is_ata: t.is_ata ?? false,
@@ -525,6 +550,7 @@ export function QuickReceiptCaptureModal({
               created_by_user_id: profile.id,
               room_id: roomId !== "none" ? roomId : null,
               task_id: selectedTaskId || null,
+              source_material_id: sourceMaterialId || null,
             })
             .select("id")
             .single();
@@ -639,14 +665,14 @@ export function QuickReceiptCaptureModal({
             {flowStep === "choose"
               ? t("purchases.registerPurchase", "Registrera inköp")
               : flowStep === "manual"
-                ? t("purchases.manualEntry", "Snabbregistrering")
+                ? t("purchases.flowPurchase", "Ny beställning")
                 : t("document.title")}
           </DialogTitle>
           <DialogDescription>
             {flowStep === "choose"
               ? t("purchases.chooseType", "Vad vill du registrera?")
               : flowStep === "manual"
-                ? t("purchases.manualEntryDesc", "Lägg till ett inköp snabbt — bifoga underlag senare")
+                ? t("purchases.flowPurchaseDesc", "Registrera inköp — bifoga underlag senare")
                 : t("document.description")}
           </DialogDescription>
         </DialogHeader>
@@ -664,8 +690,8 @@ export function QuickReceiptCaptureModal({
                   <Receipt className="h-5 w-5 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">{t("purchases.completedPurchase", "Utfört inköp")}</p>
-                  <p className="text-xs text-muted-foreground">{t("purchases.completedPurchaseDesc", "Har kvitto eller faktura att skanna")}</p>
+                  <p className="text-sm font-medium">{t("purchases.flowReceipt", "Registrera kvitto")}</p>
+                  <p className="text-xs text-muted-foreground">{t("purchases.flowReceiptDesc", "Har kvitto eller faktura att skanna")}</p>
                 </div>
               </button>
               <button
@@ -677,8 +703,8 @@ export function QuickReceiptCaptureModal({
                   <PenLine className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">{t("purchases.manualEntry", "Snabbregistrering")}</p>
-                  <p className="text-xs text-muted-foreground">{t("purchases.manualEntryDesc", "Lägg till ett inköp snabbt — bifoga underlag senare")}</p>
+                  <p className="text-sm font-medium">{t("purchases.flowPurchase", "Ny beställning")}</p>
+                  <p className="text-xs text-muted-foreground">{t("purchases.flowPurchaseDesc", "Registrera inköp — bifoga underlag senare")}</p>
                 </div>
               </button>
             </div>
@@ -865,7 +891,7 @@ export function QuickReceiptCaptureModal({
                           <div key={task.id} className="flex flex-col">
                             <button
                               type="button"
-                              onClick={() => setSelectedTaskId(task.id)}
+                              onClick={() => { setSelectedTaskId(task.id); setSourceMaterialId(null); }}
                               className={cn(
                                 "flex items-center justify-between p-2.5 rounded-lg border text-left text-sm transition-colors",
                                 selectedTaskId === task.id
@@ -899,16 +925,34 @@ export function QuickReceiptCaptureModal({
                               })()}
                             </button>
                             {selectedTaskId === task.id && task.plannedMaterials.length > 0 && (
-                              <div className="ml-4 pl-3 border-l-2 border-muted space-y-1 py-1">
+                              <div className="ml-4 pl-3 border-l-2 border-muted space-y-1.5 py-1.5">
                                 <span className="text-xs text-muted-foreground font-medium">
-                                  {t("costBreakdown.plannedMaterials")}
+                                  {t("purchases.linkToBudgetPost", "Koppla till budgetpost")}
                                 </span>
-                                {task.plannedMaterials.map((item) => (
-                                  <div key={item.id} className="flex justify-between text-xs">
-                                    <span className="text-muted-foreground">{item.name}</span>
-                                    <span>{formatCurrency(item.amount, currency)}</span>
-                                  </div>
-                                ))}
+                                {task.plannedMaterials.map((item) => {
+                                  const paid = paidBySourceId.get(item.id) || 0;
+                                  const remaining = item.amount - paid;
+                                  return (
+                                    <button
+                                      key={item.id}
+                                      type="button"
+                                      onClick={() => setSourceMaterialId(sourceMaterialId === item.id ? null : item.id)}
+                                      className={cn(
+                                        "flex items-center justify-between w-full text-xs p-1.5 rounded transition-colors",
+                                        sourceMaterialId === item.id
+                                          ? "bg-primary/10 text-primary font-medium"
+                                          : "text-muted-foreground hover:bg-accent"
+                                      )}
+                                    >
+                                      <span className="truncate">{item.name}</span>
+                                      <span className="shrink-0 ml-2">
+                                        {remaining > 0
+                                          ? t("purchases.budgetRemaining", "Kvar: {{amount}}", { amount: formatCurrency(remaining, currency) })
+                                          : formatCurrency(item.amount, currency)}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
@@ -926,6 +970,35 @@ export function QuickReceiptCaptureModal({
                           <span className="text-muted-foreground">{t("document.noTaskLink")}</span>
                         </button>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Budget-post picker when no task selected */}
+                  {selectedTaskId === null && allPlannedMaterials.length > 0 && linkOption === "new" && documentType !== "invoice" && (
+                    <div className="space-y-2">
+                      <Label className="text-sm">{t("purchases.linkToBudgetPost", "Koppla till budgetpost")}</Label>
+                      <Select
+                        value={sourceMaterialId || "none"}
+                        onValueChange={(v) => setSourceMaterialId(v === "none" ? null : v)}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder={t("purchases.noBudgetPost", "Ingen budgetpost")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{t("purchases.noBudgetPost", "Ingen budgetpost")}</SelectItem>
+                          {allPlannedMaterials.map((pm) => {
+                            const paid = paidBySourceId.get(pm.id) || 0;
+                            const remaining = pm.amount - paid;
+                            return (
+                              <SelectItem key={pm.id} value={pm.id}>
+                                {pm.name}
+                                {pm.taskName ? ` (${pm.taskName})` : ""}
+                                {remaining > 0 ? ` — ${t("purchases.remaining", "kvar")}: ${formatCurrency(remaining, currency)}` : ""}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
                     </div>
                   )}
 
@@ -1073,6 +1146,33 @@ export function QuickReceiptCaptureModal({
                       {rooms.map((r) => (
                         <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {allPlannedMaterials.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">{t("purchases.linkToBudgetPost", "Koppla till budgetpost")}</Label>
+                  <Select
+                    value={sourceMaterialId || "none"}
+                    onValueChange={(v) => setSourceMaterialId(v === "none" ? null : v)}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder={t("purchases.noBudgetPost", "Ingen budgetpost")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t("purchases.noBudgetPost", "Ingen budgetpost")}</SelectItem>
+                      {allPlannedMaterials.map((pm) => {
+                        const paid = paidBySourceId.get(pm.id) || 0;
+                        const remaining = pm.amount - paid;
+                        return (
+                          <SelectItem key={pm.id} value={pm.id}>
+                            {pm.name}
+                            {pm.taskName ? ` (${pm.taskName})` : ""}
+                            {remaining > 0 ? ` — ${t("purchases.remaining", "kvar")}: ${formatCurrency(remaining, currency)}` : ""}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
