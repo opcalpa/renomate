@@ -491,14 +491,17 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
   }, [projectId, queryClient]);
 
   // Update caption
+  const captionSavingRef = useRef(false);
   const updateCaption = useCallback(async (photoId: string, caption: string) => {
+    if (captionSavingRef.current) return; // prevent double-fire from Enter + blur
+    captionSavingRef.current = true;
+    setEditingCaption(null);
     const { error } = await supabase.from("photos").update({ caption: caption || null }).eq("id", photoId);
     if (error) {
       toast.error(t("common.error"));
-      return;
     }
     queryClient.invalidateQueries({ queryKey: ["inspiration", projectId] });
-    setEditingCaption(null);
+    captionSavingRef.current = false;
   }, [projectId, queryClient, t]);
 
   // Create room and optionally link a photo to it
