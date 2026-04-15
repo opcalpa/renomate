@@ -867,7 +867,7 @@ const ProjectDetail = () => {
   ) : null;
 
   return (
-    <div className={cn("min-h-[100dvh] bg-background flex flex-col md:pb-0", isHeaderVisible ? "pb-[calc(4rem+env(safe-area-inset-bottom))]" : "pb-0")}>
+    <div className={cn("min-h-[100dvh] bg-background md:pb-0", isHeaderVisible ? "pb-[calc(4rem+env(safe-area-inset-bottom))]" : "pb-0")}>
       {/* Unified Header - Hidden in Floor Plan edit mode */}
       {isHeaderVisible && (
         <div className="sticky top-0 z-50">
@@ -1110,7 +1110,7 @@ const ProjectDetail = () => {
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
 
         {/* Demo page guide — contextual onboarding modal for demo visitors */}
         {isPublicDemoProject && !user && demoPrefs.preferences.role && (
@@ -1324,7 +1324,7 @@ const ProjectDetail = () => {
           </ErrorBoundary>
         </TabsContent>
 
-        <TabsContent value="planning" className="m-0 pb-8">
+        <TabsContent value="planning" className="m-0">
           <ErrorBoundary>
           {isTabBlocked("planning") ? (
             <NoAccessPlaceholder />
