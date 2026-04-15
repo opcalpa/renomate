@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Layers, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Package, Hammer, Handshake } from "lucide-react";
+import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Layers, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Package, Hammer, Handshake, MoreVertical } from "lucide-react";
 import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
 import { FilePreviewPopover } from "@/components/shared/FilePreviewPopover";
 import { getStatusBadgeColor } from "@/lib/statusColors";
@@ -1787,21 +1787,20 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           </PopoverContent>
         </Popover>
 
-        {/* Filter+ button */}
+        {/* Secondary controls — visible on desktop, hidden on mobile */}
         <Button
           variant={hasAdvancedFilter ? "default" : "outline"}
           size="icon"
-          className="h-8 w-8"
+          className="h-8 w-8 hidden sm:flex"
           onClick={() => setShowAdvancedFilters((prev) => !prev)}
           title={t('budget.advancedFilter')}
         >
           <SlidersHorizontal className="h-4 w-4" />
         </Button>
 
-        {/* Columns toggle */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="icon" className="h-8 w-8" title={t('budget.columns')}>
+            <Button variant="outline" size="icon" className="h-8 w-8 hidden sm:flex" title={t('budget.columns')}>
               <Columns3 className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
@@ -1831,22 +1830,48 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           const verified = applicable.filter((r) => r.evidenceStatus === "verified").length;
           const missing = applicable.filter((r) => r.evidenceStatus === "missing").length;
           return (
-            <span className={cn("text-xs tabular-nums px-2 py-1 rounded-md border", missing > 0 ? "border-amber-300 text-amber-700 bg-amber-50" : "border-green-300 text-green-700 bg-green-50")}>
+            <span className={cn("text-xs tabular-nums px-2 py-1 rounded-md border hidden sm:inline-flex", missing > 0 ? "border-amber-300 text-amber-700 bg-amber-50" : "border-green-300 text-green-700 bg-green-50")}>
               {verified}/{applicable.length} {t("evidence.summaryLabel")}
             </span>
           );
         })()}
 
-        {/* Compact rows toggle */}
         <Button
           variant={compactRows ? "default" : "outline"}
           size="icon"
-          className="h-8 w-8"
+          className="h-8 w-8 hidden sm:flex"
           onClick={() => setCompactRows((prev) => !prev)}
           title={t('budget.compactRows', 'Compact rows')}
         >
           <Rows3 className="h-4 w-4" />
         </Button>
+
+        {/* Mobile overflow menu — contains all secondary controls */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:hidden">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48 p-1" align="end">
+            <button
+              type="button"
+              className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+              onClick={() => setShowAdvancedFilters((prev) => !prev)}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+              {t('budget.advancedFilter')}
+            </button>
+            <button
+              type="button"
+              className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+              onClick={() => setCompactRows((prev) => !prev)}
+            >
+              <Rows3 className="h-3.5 w-3.5 text-muted-foreground" />
+              {t('budget.compactRows', 'Kompakt')}
+            </button>
+          </PopoverContent>
+        </Popover>
 
         {/* Group by */}
         <Popover>
