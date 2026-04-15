@@ -1619,9 +1619,8 @@ export function PlanningTaskList({
                             {!effectiveLock && tasks.length > 0 ? (
                               <Popover>
                                 <PopoverTrigger asChild>
-                                  <button className="inline-flex items-center gap-1 text-xs font-normal text-amber-600 border border-amber-200 rounded-full px-2 py-0.5 hover:bg-amber-50 transition-colors">
-                                    <Link2 className="h-3 w-3" />
-                                    {t("planningTasks.standalone")}
+                                  <button className="inline-flex items-center text-amber-500 hover:text-amber-700 transition-colors p-0.5 rounded hover:bg-amber-50" title={t("planningTasks.linkToTask")}>
+                                    <Link2 className="h-3.5 w-3.5" />
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-52 p-2" align="start">
@@ -1641,11 +1640,7 @@ export function PlanningTaskList({
                                   </div>
                                 </PopoverContent>
                               </Popover>
-                            ) : (
-                              <Badge variant="outline" className="text-xs font-normal text-amber-600 border-amber-200">
-                                {t("planningTasks.standalone")}
-                              </Badge>
-                            )}
+                            ) : null}
                           </div>
                         </TableCell>
                         {show.description && <TableCell className="hidden sm:table-cell py-2.5" />}
