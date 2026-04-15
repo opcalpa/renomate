@@ -928,7 +928,7 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
                           <Link2 className="h-3 w-3 text-white" />
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-48 p-1" align="start" side="top">
+                      <PopoverContent className="w-48 p-1" align="start" side="top" onClick={(e) => e.stopPropagation()}>
                         <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">{t("inspiration.linkRoom")}</p>
                         {rooms.map((r) => (
                           <button
@@ -1575,24 +1575,42 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
                               <Link2 className="h-3 w-3 text-white" />
                             </button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-48 p-1" align="start" side="top">
+                          <PopoverContent className="w-48 p-1" align="start" side="top" onClick={(e) => e.stopPropagation()}>
                             <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">{t("inspiration.linkRoom")}</p>
                             {rooms.map((r) => (
                               <button
                                 key={r.id}
                                 type="button"
                                 className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
-                                onClick={() => assignPhoto(photo.id, "room", r.id)}
+                                onClick={(e) => { e.stopPropagation(); assignPhoto(photo.id, "room", r.id); }}
                               >
                                 <Home className="h-3 w-3 text-muted-foreground" />
                                 {r.name}
                               </button>
                             ))}
+                            {(tasks?.length ?? 0) > 0 && (
+                              <>
+                                <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase mt-1">{t("inspiration.linkTask")}</p>
+                                <div className="max-h-[120px] overflow-y-auto">
+                                  {(tasks || []).slice(0, 15).map((task) => (
+                                    <button
+                                      key={task.id}
+                                      type="button"
+                                      className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                                      onClick={(e) => { e.stopPropagation(); assignPhoto(photo.id, "task", task.id); }}
+                                    >
+                                      <Hammer className="h-3 w-3 text-muted-foreground" />
+                                      <span className="truncate">{task.title}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </>
+                            )}
                             {photo.roomId && (
                               <button
                                 type="button"
                                 className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-left text-muted-foreground mt-1 border-t"
-                                onClick={() => assignPhoto(photo.id, "project", projectId)}
+                                onClick={(e) => { e.stopPropagation(); assignPhoto(photo.id, "project", projectId); }}
                               >
                                 <X className="h-3 w-3" />
                                 {t("inspiration.unlink")}
