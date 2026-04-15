@@ -40,6 +40,7 @@ import {
   Loader2,
   Maximize2,
   Pencil,
+  Columns3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/compressImage";
@@ -269,6 +270,7 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
 
   // Before/After phase selector state (must be before handleUpload which references it)
   const [baPhase, setBaPhase] = useState<"before" | "during" | "after">("before");
+  const [baViewMode, setBaViewMode] = useState<"gallery" | "compare">("gallery");
 
   // Upload handler
   const handleUpload = useCallback(async (files: FileList | File[]) => {
@@ -688,12 +690,34 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
               </PopoverContent>
             </Popover>
           )}
-          {/* Before/After: phase pills — only in active/completed projects */}
-          {inspoView === "beforeafter" && !isPlanning && (
+          {/* Before/After: gallery/compare toggle + phase pills */}
+          {inspoView === "beforeafter" && (
+            <>
+            <div className="flex rounded-md border bg-muted/30 p-0.5">
+              <button
+                type="button"
+                onClick={() => setBaViewMode("gallery")}
+                title={t("inspiration.gallery", "Galleri")}
+                className={cn("p-1 rounded transition-colors", baViewMode === "gallery" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setBaViewMode("compare")}
+                title={t("inspiration.compareView", "Jämför före/efter")}
+                className={cn("p-1 rounded transition-colors", baViewMode === "compare" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+              >
+                <Columns3 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            {baViewMode === "compare" && (
             <BeforeAfterUploader
               selectedPhase={baPhase}
               onPhaseChange={setBaPhase}
             />
+            )}
+            </>
           )}
           {/* Gallery/Moodboard sub-toggle — only for Inspiration tab, hidden in beforeafter */}
           {hasPhotos && inspoView !== "beforeafter" && (
@@ -1508,8 +1532,8 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
         {/* ===== BEFORE / AFTER VIEW ===== */}
         {inspoView === "beforeafter" && (
           <div className="space-y-4">
-            {isPlanning ? (
-              /* Planning: simple gallery of before photos (same layout as inspiration) */
+            {baViewMode === "gallery" ? (
+              /* Gallery: simple grid of before photos */
               beforePhotos.length === 0 ? (
                 <div className="flex flex-col items-center py-8 text-center">
                   <Camera className="h-8 w-8 text-muted-foreground/30 mb-2" />
@@ -1648,7 +1672,7 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
                 </div>
               )
             ) : (
-              /* Active/completed: Före/Pågående/Efter three-column layout */
+              /* Compare: Före/Pågående/Efter three-column layout */
               <>
                 {beforeAfterByRoom.length === 0 && (
                   <div className="flex flex-col items-center py-8 text-center">
