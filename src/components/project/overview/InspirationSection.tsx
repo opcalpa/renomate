@@ -256,6 +256,9 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
 
   const totalCount = allPhotos.length + materialCards.filter((m) => m.photoUrl).length;
 
+  // Before/After phase selector state (must be before handleUpload which references it)
+  const [baPhase, setBaPhase] = useState<"before" | "during" | "after">("before");
+
   // Upload handler
   const handleUpload = useCallback(async (files: FileList | File[]) => {
     if (uploading) return;
@@ -313,7 +316,6 @@ export function InspirationSection({ projectId, currency }: InspirationSectionPr
 
   // Before/After upload handler — tags photo with source and room
   const [baUploading, setBaUploading] = useState(false);
-  const [baPhase, setBaPhase] = useState<"before" | "during" | "after">("before");
   const handleBeforeAfterUpload = useCallback(async (file: File, category: "before" | "during" | "after", roomId: string | null) => {
     setBaUploading(true);
     try {
