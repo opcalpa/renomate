@@ -144,26 +144,32 @@ export function TaskCostTable({
               <td className="px-3 py-1.5 text-xs font-medium">{t("taskCost.material", "Material")}</td>
               <td className="px-2 py-1.5 text-xs text-right text-muted-foreground">—</td>
               <td className="px-1 py-1">
-                <Input
-                  type="number"
-                  step="1"
-                  min="0"
-                  placeholder="kr"
-                  className={inputClass}
-                  value={materialEstimate?.toString() || ""}
-                  onChange={(e) => onChange({ material_estimate: e.target.value ? parseFloat(e.target.value) : null })}
-                />
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder="kr"
+                    className={`${inputClass} pr-5`}
+                    value={materialEstimate?.toString() || ""}
+                    onChange={(e) => onChange({ material_estimate: e.target.value ? parseFloat(e.target.value) : null })}
+                  />
+                  <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">kr</span>
+                </div>
               </td>
               <td className="px-1 py-1">
-                <Input
-                  type="number"
-                  step="1"
-                  min="0"
-                  placeholder="%"
-                  className={inputClass}
-                  value={materialMarkupPercent?.toString() || ""}
-                  onChange={(e) => onChange({ material_markup_percent: e.target.value ? parseFloat(e.target.value) : null })}
-                />
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder="%"
+                    className={`${inputClass} pr-4`}
+                    value={materialMarkupPercent?.toString() || ""}
+                    onChange={(e) => onChange({ material_markup_percent: e.target.value ? parseFloat(e.target.value) : null })}
+                  />
+                  <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">%</span>
+                </div>
               </td>
               <td className="px-3 py-1.5 text-xs text-right tabular-nums font-medium">
                 {matTotal > 0 ? formatCurrency(matTotal, currency) : "—"}
@@ -176,26 +182,32 @@ export function TaskCostTable({
             <td className="px-3 py-1.5 text-xs font-medium">{t("taskCost.subcontractor", "Subcontractor")}</td>
             <td className="px-2 py-1.5 text-xs text-right text-muted-foreground">—</td>
             <td className="px-1 py-1">
-              <Input
-                type="number"
-                step="1"
-                min="0"
-                placeholder="kr"
-                className={inputClass}
-                value={subcontractorCost?.toString() || ""}
-                onChange={(e) => onChange({ subcontractor_cost: e.target.value ? parseFloat(e.target.value) : null })}
-              />
+              <div className="relative">
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  placeholder="kr"
+                  className={`${inputClass} pr-5`}
+                  value={subcontractorCost?.toString() || ""}
+                  onChange={(e) => onChange({ subcontractor_cost: e.target.value ? parseFloat(e.target.value) : null })}
+                />
+                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">kr</span>
+              </div>
             </td>
             <td className="px-1 py-1">
-              <Input
-                type="number"
-                step="1"
-                min="0"
-                placeholder="%"
-                className={inputClass}
-                value={markupPercent?.toString() || ""}
-                onChange={(e) => onChange({ markup_percent: e.target.value ? parseFloat(e.target.value) : null })}
-              />
+              <div className="relative">
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  placeholder="%"
+                  className={`${inputClass} pr-4`}
+                  value={markupPercent?.toString() || ""}
+                  onChange={(e) => onChange({ markup_percent: e.target.value ? parseFloat(e.target.value) : null })}
+                />
+                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">%</span>
+              </div>
             </td>
             <td className="px-3 py-1.5 text-xs text-right tabular-nums font-medium">
               {ueTotal > 0 ? formatCurrency(ueTotal, currency) : "—"}
