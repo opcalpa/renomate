@@ -116,8 +116,13 @@ const Projects = () => {
   } | null>(null);
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<"grid" | "list" | "timeline">(() =>
-    (localStorage.getItem("projects_view_mode") as "grid" | "list" | "timeline") || "list"
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    const saved = localStorage.getItem("projects_view_mode");
+    // Migrate old 'timeline' value to 'list'
+    return saved === "grid" ? "grid" : "list";
+  });
+  const [timelineOpen, setTimelineOpen] = useState(() =>
+    localStorage.getItem("projects_timeline_open") !== "false"
   );
   const ALL_LIST_COLS = ["status", "description", "budget", "date", "owner", "address"] as const;
   const DEFAULT_HIDDEN_COLS: ListColKey[] = ["address"];
@@ -859,18 +864,10 @@ const Projects = () => {
                   <button
                     type="button"
                     onClick={() => { setViewMode("list"); localStorage.setItem("projects_view_mode", "list"); }}
-                    className={`p-1.5 transition-colors ${viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`p-1.5 rounded-r-md transition-colors ${viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     title={t("projects.listView", "List view")}
                   >
                     <List className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setViewMode("timeline"); localStorage.setItem("projects_view_mode", "timeline"); }}
-                    className={`p-1.5 rounded-r-md transition-colors ${viewMode === "timeline" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                    title={t("projects.timelineView", "Timeline")}
-                  >
-                    <GanttChart className="h-4 w-4" />
                   </button>
                 </div>
               )}
@@ -1332,6 +1329,37 @@ const Projects = () => {
           />
         )}
 
+        {/* Timeline section — collapsible, always visible when projects exist */}
+        {nonDemoProjects.length > 0 && (
+          <section className="mb-6">
+            <button
+              type="button"
+              className="flex items-center gap-2 w-full text-left py-2 group"
+              onClick={() => {
+                const next = !timelineOpen;
+                setTimelineOpen(next);
+                localStorage.setItem("projects_timeline_open", String(next));
+              }}
+            >
+              <GanttChart className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-semibold">{t("projects.timelineView", "Timeline")}</span>
+              {timelineOpen ? (
+                <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+            </button>
+            {timelineOpen && (
+              <div className="rounded-lg border bg-card overflow-hidden">
+                <PortfolioTimeline
+                  projectIds={nonDemoProjects.map((p) => p.id)}
+                  onProjectClick={(id) => navigate(`/projects/${id}`)}
+                />
+              </div>
+            )}
+          </section>
+        )}
+
         {visibleProjects.length === 0 && !showAdminProjects ? (
           <div className="max-w-lg mx-auto text-center py-12 space-y-8">
             <div>
@@ -1362,12 +1390,6 @@ const Projects = () => {
               </Button>
             </div>
           </div>
-        ) : viewMode === "timeline" ? (
-          /* ---- Timeline view ---- */
-          <PortfolioTimeline
-            projectIds={visibleProjects.filter((p) => !isDemoProject(p.project_type)).map((p) => p.id)}
-            onProjectClick={(id) => navigate(`/projects/${id}`)}
-          />
         ) : viewMode === "list" ? (
           /* ---- List view ---- */
           (() => {
