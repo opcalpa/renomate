@@ -315,6 +315,55 @@ export function PlanningTaskList({
     [visibleExtras]
   );
 
+  // Auto-show columns that have data
+  useEffect(() => {
+    if (tasks.length === 0 && materials.length === 0) return;
+    const autoShow = new Set<ExtraColumnKey>();
+    const hasAnyHours = tasks.some((t) => t.estimated_hours && t.estimated_hours > 0);
+    const hasAnyRate = tasks.some((t) => t.hourly_rate && t.hourly_rate > 0);
+    const hasAnyRoom = tasks.some((t) => t.room_names.length > 0) || materials.some((m) => m.room_id);
+    const hasAnyCostType = tasks.some((t) => {
+      const hasLabor = !!(t.estimated_hours && t.hourly_rate);
+      const hasMat = materials.some((m) => m.task_id === t.id) || !!(t.material_estimate && t.material_estimate > 0);
+      const hasUe = !!t.subcontractor_cost;
+      return (hasLabor ? 1 : 0) + (hasMat ? 1 : 0) + (hasUe ? 1 : 0) > 1;
+    });
+    const hasAnyMarkup = tasks.some((t) =>
+      (t.material_markup_percent && t.material_markup_percent > 0)
+      || (t.markup_percent && t.markup_percent > 0)
+      || (t.material_items || []).some((i) => i.markup_percent && i.markup_percent > 0)
+    ) || materials.some((m) => m.markup_percent && m.markup_percent > 0);
+    const hasAnyRot = tasks.some((t) => t.rot_amount && t.rot_amount > 0);
+    const hasAnyMaterialEstimate = tasks.some((t) => t.material_estimate && t.material_estimate > 0);
+    const hasAnyProfit = tasks.some((t) => {
+      const labor = (t.estimated_hours || 0) * (t.hourly_rate || 0);
+      return labor > 0 || (t.markup_percent && t.markup_percent > 0) || (t.material_markup_percent && t.material_markup_percent > 0);
+    });
+
+    if (hasAnyHours) autoShow.add("hours");
+    if (hasAnyRate) autoShow.add("hourlyRate");
+    if (hasAnyRoom) autoShow.add("room");
+    if (hasAnyCostType) autoShow.add("costType");
+    if (hasAnyMarkup) autoShow.add("markup");
+    if (hasAnyRot) autoShow.add("rotAmount");
+    if (hasAnyMaterialEstimate) autoShow.add("materialEstimate");
+    if (hasAnyProfit) autoShow.add("profit");
+
+    // Only add columns, never remove user-toggled ones
+    setVisibleExtras((prev) => {
+      const available = new Set(availableColumns.map((c) => c.key));
+      const merged = new Set(prev);
+      let changed = false;
+      autoShow.forEach((key) => {
+        if (available.has(key) && !merged.has(key)) {
+          merged.add(key);
+          changed = true;
+        }
+      });
+      return changed ? merged : prev;
+    });
+  }, [tasks, materials, availableColumns]);
+
   const extraCount = visibleExtras.size;
 
   // Category grouping state
