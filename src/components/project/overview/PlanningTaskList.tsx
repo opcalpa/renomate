@@ -1903,7 +1903,32 @@ export function PlanningTaskList({
                                 </TableCell>
                               )}
                               <TableCell className="text-right py-2.5">
-                                {customerPrice > 0 ? (
+                                {customerPrice > 0 && markup > 0 ? (
+                                  <HoverCard openDelay={200} closeDelay={100}>
+                                    <HoverCardTrigger asChild>
+                                      <button className="text-sm font-medium hover:underline hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>
+                                        {formatCurrency(customerPrice, currency)}
+                                      </button>
+                                    </HoverCardTrigger>
+                                    <HoverCardContent className="w-52 p-3" align="end" side="top">
+                                      <div className="space-y-1.5 text-xs">
+                                        <p className="font-semibold text-sm mb-2">{t("taskCost.customerPrice", "Kundpris")}</p>
+                                        <div className="flex justify-between">
+                                          <span className="text-muted-foreground">{mat.kind === "subcontractor" ? t("taskCost.subcontractor", "UE") : t("taskCost.material", "Material")}</span>
+                                          <span className="tabular-nums">{formatCurrency(base, currency)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-amber-700">
+                                          <span>{t("taskCost.markupShort", "Påslag")} {markup}%</span>
+                                          <span className="tabular-nums">+{formatCurrency(profit, currency)}</span>
+                                        </div>
+                                        <div className="flex justify-between pt-1.5 border-t font-semibold text-sm">
+                                          <span>{t("common.total", "Totalt")}</span>
+                                          <span className="tabular-nums text-primary">{formatCurrency(customerPrice, currency)}</span>
+                                        </div>
+                                      </div>
+                                    </HoverCardContent>
+                                  </HoverCard>
+                                ) : customerPrice > 0 ? (
                                   <span className="text-sm font-medium">{formatCurrency(customerPrice, currency)}</span>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">–</span>
@@ -2731,7 +2756,32 @@ export function PlanningTaskList({
                                 {show.materialEstimate && <TableCell className="hidden sm:table-cell py-2" />}
                                 {show.rotAmount && <TableCell className="hidden sm:table-cell py-2" />}
                                 <TableCell className="text-right py-2">
-                                  {cp > 0 ? (
+                                  {cp > 0 && mkp > 0 ? (
+                                    <HoverCard openDelay={200} closeDelay={100}>
+                                      <HoverCardTrigger asChild>
+                                        <button className="text-sm text-muted-foreground hover:underline hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>
+                                          {formatCurrency(cp, currency)}
+                                        </button>
+                                      </HoverCardTrigger>
+                                      <HoverCardContent className="w-52 p-3" align="end" side="top">
+                                        <div className="space-y-1.5 text-xs">
+                                          <p className="font-semibold text-sm mb-2">{t("taskCost.customerPrice", "Kundpris")}</p>
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">{mat.kind === "subcontractor" ? t("taskCost.subcontractor", "UE") : t("taskCost.material", "Material")}</span>
+                                            <span className="tabular-nums">{formatCurrency(base, currency)}</span>
+                                          </div>
+                                          <div className="flex justify-between text-amber-700">
+                                            <span>{t("taskCost.markupShort", "Påslag")} {mkp}%</span>
+                                            <span className="tabular-nums">+{formatCurrency(pr, currency)}</span>
+                                          </div>
+                                          <div className="flex justify-between pt-1.5 border-t font-semibold text-sm">
+                                            <span>{t("common.total", "Totalt")}</span>
+                                            <span className="tabular-nums text-primary">{formatCurrency(cp, currency)}</span>
+                                          </div>
+                                        </div>
+                                      </HoverCardContent>
+                                    </HoverCard>
+                                  ) : cp > 0 ? (
                                     <span className="text-sm text-muted-foreground">{formatCurrency(cp, currency)}</span>
                                   ) : null}
                                 </TableCell>
