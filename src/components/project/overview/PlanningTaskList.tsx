@@ -1546,10 +1546,7 @@ export function PlanningTaskList({
                     )}
                     {show.hourlyRate && (
                       <TableHead className="hidden sm:table-cell text-right w-[110px]">
-                        <div>
-                          {t("planningTasks.rateUnitPrice", "Timpris / Á-pris")}
-                          {!isHomeowner && <span className="block text-[10px] font-normal text-muted-foreground/70">{t("estimation.exMomsShort", "ex moms")}</span>}
-                        </div>
+                        {t("planningTasks.rateUnitPrice", "Timpris / Á-pris")}
                       </TableHead>
                     )}
                     {show.room && (
@@ -1569,10 +1566,7 @@ export function PlanningTaskList({
                     )}
                     {show.materialEstimate && (
                       <TableHead className="hidden sm:table-cell text-right w-[130px]">
-                        <div>
-                          {t("planningTasks.materialEstimate", "Materialbudget")}
-                          {!isHomeowner && <span className="block text-[10px] font-normal text-muted-foreground/70">{t("estimation.exMomsShort", "ex moms")}</span>}
-                        </div>
+                        {t("planningTasks.materialEstimate", "Materialbudget")}
                       </TableHead>
                     )}
                     {show.rotAmount && (
@@ -1613,10 +1607,7 @@ export function PlanningTaskList({
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="cursor-help">
-                                <span>{t("taskCost.result", "Resultat")}</span>
-                                <span className="block text-[10px] font-normal text-muted-foreground/70">{t("estimation.exMomsShort", "ex moms")}</span>
-                              </div>
+                              <span className="cursor-help">{t("taskCost.result", "Resultat")}</span>
                             </TooltipTrigger>
                             <TooltipContent side="top" className="max-w-[250px]">
                               <p className="text-xs">{t("planningTasks.profitFormula", "Profit from labor (hours × rate × margin) + markup on materials and subcontractors")}</p>
@@ -2335,12 +2326,8 @@ export function PlanningTaskList({
                                         <span className="tabular-nums">+{formatCurrency(markupAmt, currency)}</span>
                                       </div>
                                       <div className="flex justify-between pt-1.5 border-t font-semibold">
-                                        <span>{t("taskCost.withMarkup", "Med påslag")} <span className="font-normal text-[10px] text-muted-foreground">({t("estimation.exMomsShort", "ex moms")})</span></span>
+                                        <span>{t("taskCost.withMarkup", "Med påslag")}</span>
                                         <span className="tabular-nums">{formatCurrency(Math.round(matWithMarkup), currency)}</span>
-                                      </div>
-                                      <div className="flex justify-between text-[11px] text-muted-foreground">
-                                        <span>{t("estimation.incMomsShort", "ink moms")}</span>
-                                        <span className="tabular-nums">{formatCurrency(Math.round(matWithMarkup * 1.25), currency)}</span>
                                       </div>
                                     </div>
                                   </HoverCardContent>
@@ -2453,15 +2440,9 @@ export function PlanningTaskList({
                                       )}
                                     </>
                                   )}
-                                  <div className="pt-1.5 border-t space-y-0.5">
-                                    <div className="flex justify-between font-semibold text-sm">
-                                      <span>{t("common.total", "Totalt")} <span className="font-normal text-[10px] text-muted-foreground">({t("estimation.exMomsShort", "ex moms")})</span></span>
-                                      <span className="tabular-nums text-primary">{formatCurrency(task.budget || 0, currency)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-[11px] text-muted-foreground">
-                                      <span>{t("estimation.incMomsShort", "ink moms")}</span>
-                                      <span className="tabular-nums">{formatCurrency(Math.round((task.budget || 0) * 1.25), currency)}</span>
-                                    </div>
+                                  <div className="flex justify-between pt-1.5 border-t font-semibold text-sm">
+                                    <span>{t("common.total", "Totalt")}</span>
+                                    <span className="tabular-nums text-primary">{formatCurrency(task.budget || 0, currency)}</span>
                                   </div>
                                 </div>
                               </HoverCardContent>
