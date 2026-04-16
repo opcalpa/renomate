@@ -97,7 +97,11 @@ const LANGUAGES = [
   { code: 'es', name: 'Spanish', flag: '🇪🇸' },
 ];
 
-const Profile = () => {
+export function ProfileContent() {
+  return <Profile asDrawer />;
+}
+
+const Profile = ({ asDrawer = false }: { asDrawer?: boolean }) => {
   const { user, session, loading: authLoading, signOut } = useAuthSession();
   useProfileLanguage();
   const { t, i18n } = useTranslation();
@@ -575,20 +579,14 @@ const Profile = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      <AppHeader
-        userName={profile?.name}
-        userEmail={profile?.email || user?.email}
-        avatarUrl={profile?.avatar_url || undefined}
-        onSignOut={handleSignOut}
-      />
-
-      <main className="mx-auto px-4 py-8 max-w-3xl">
+  const mainContent = (
+    <main className={asDrawer ? "px-1 py-4 space-y-6" : "mx-auto px-4 py-8 max-w-3xl"}>
+      {!asDrawer && (
         <div className="mb-8">
           <h2 className="text-2xl font-semibold mb-2">{t('profile.title')}</h2>
           <p className="text-muted-foreground">{t('profile.description')}</p>
         </div>
+      )}
 
         <form onSubmit={handleSaveProfile} className="space-y-6">
           {/* Profile Information */}
@@ -1348,7 +1346,19 @@ const Profile = () => {
           </CardContent>
         </Card>
       </main>
+  );
 
+  if (asDrawer) return mainContent;
+
+  return (
+    <div className="min-h-screen bg-background overflow-x-hidden">
+      <AppHeader
+        userName={profile?.name}
+        userEmail={profile?.email || user?.email}
+        avatarUrl={profile?.avatar_url || undefined}
+        onSignOut={handleSignOut}
+      />
+      {mainContent}
       <PublicProfileSheet
         profileId={profile?.id || null}
         open={previewOpen}

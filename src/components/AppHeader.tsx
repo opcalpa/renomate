@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { LogOut, User, Globe, Lightbulb, MessageSquare, FolderOpen, ChevronDown, MoreHorizontal, Users, FileText, BarChart3, Sparkles } from "lucide-react";
+const ProfileDrawer = lazy(() => import("@/components/ProfileDrawer").then(m => ({ default: m.ProfileDrawer })));
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -69,6 +70,7 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
   const { isProfessional } = useIsProfessional();
 
   const isProjectMode = !!children;
+  const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
 
   const initials = userName
     ? userName
@@ -252,6 +254,7 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
   );
 
   return (
+    <>
     <header className="border-b border-border bg-card sticky top-0 z-50">
       <div className="container mx-auto px-4 py-2 flex items-center gap-2 md:gap-4">
         <div
@@ -386,7 +389,7 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
               <DropdownMenuSeparator />
               {!isGuest && (
                 <>
-                  <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer">
+                  <DropdownMenuItem onClick={() => setProfileDrawerOpen(true)} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     <span>{t('nav.profile')}</span>
                   </DropdownMenuItem>
@@ -426,5 +429,11 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
         </div>
       </div>
     </header>
+    <Suspense fallback={null}>
+      {profileDrawerOpen && (
+        <ProfileDrawer open={profileDrawerOpen} onOpenChange={setProfileDrawerOpen} />
+      )}
+    </Suspense>
+    </>
   );
 };
