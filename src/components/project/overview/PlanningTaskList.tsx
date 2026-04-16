@@ -1448,8 +1448,16 @@ export function PlanningTaskList({
     return laborProfit + ueProfit + materialProfit;
   }, [profileLaborCostPercent]);
 
-  const totalBudget = tasks.reduce((sum, t) => sum + (t.budget || 0), 0);
-  const totalProfit = tasks.reduce((sum, t) => sum + calcTaskProfit(t), 0);
+  const standaloneBudget = materialsByTask.standalone.reduce((sum, m) => {
+    const base = m.price_total ?? Math.round((m.quantity || 0) * (m.price_per_unit || 0));
+    return sum + Math.round(base * (1 + (m.markup_percent || 0) / 100));
+  }, 0);
+  const totalBudget = tasks.reduce((sum, t) => sum + (t.budget || 0), 0) + standaloneBudget;
+  const standaloneProfit = materialsByTask.standalone.reduce((sum, m) => {
+    const base = m.price_total ?? Math.round((m.quantity || 0) * (m.price_per_unit || 0));
+    return sum + Math.round(base * (m.markup_percent || 0) / 100);
+  }, 0);
+  const totalProfit = tasks.reduce((sum, t) => sum + calcTaskProfit(t), 0) + standaloneProfit;
   const pricedCount = tasks.filter((t) => t.budget && t.budget > 0).length;
 
   // Count visible columns for colspan on inline-add row
