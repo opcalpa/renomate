@@ -95,25 +95,28 @@ export default function CreateQuote() {
   const [quoteNumber, setQuoteNumber] = useState("");
   const [previewScale, setPreviewScale] = useState(0.75);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const previewScrollRef = useRef<HTMLDivElement>(null);
   const isMobile = useRef(typeof window !== "undefined" && window.innerWidth < 1024).current;
   // Scale the A4 document (794px wide) to fit the mobile screen width
   const mobilePreviewScale = isMobile
     ? Math.round(Math.max(0.3, (window.innerWidth - 48) / 794) * 100) / 100
     : 1;
 
-  // Pinch-zoom and Ctrl+wheel zoom on preview
+  // Pinch-zoom and Ctrl+wheel zoom on preview scroll area
   useEffect(() => {
-    const container = previewContainerRef.current;
-    if (!container) return;
+    const el = previewScrollRef.current;
+    if (!el) return;
     const handleWheel = (e: WheelEvent) => {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
+      e.stopPropagation();
       const delta = e.deltaY > 0 ? -0.05 : 0.05;
       setPreviewScale((s) => Math.min(1.5, Math.max(0.3, Math.round((s + delta) * 100) / 100)));
     };
     let lastDist = 0;
     const handleTouchMove = (e: TouchEvent) => {
       if (e.touches.length !== 2) return;
+      e.preventDefault();
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const dist = Math.hypot(dx, dy);
@@ -122,16 +125,15 @@ export default function CreateQuote() {
         setPreviewScale((s) => Math.min(1.5, Math.max(0.3, Math.round((s + delta) * 100) / 100)));
       }
       lastDist = dist;
-      e.preventDefault();
     };
     const handleTouchEnd = () => { lastDist = 0; };
-    container.addEventListener("wheel", handleWheel, { passive: false });
-    container.addEventListener("touchmove", handleTouchMove, { passive: false });
-    container.addEventListener("touchend", handleTouchEnd);
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    el.addEventListener("touchmove", handleTouchMove, { passive: false });
+    el.addEventListener("touchend", handleTouchEnd);
     return () => {
-      container.removeEventListener("wheel", handleWheel);
-      container.removeEventListener("touchmove", handleTouchMove);
-      container.removeEventListener("touchend", handleTouchEnd);
+      el.removeEventListener("wheel", handleWheel);
+      el.removeEventListener("touchmove", handleTouchMove);
+      el.removeEventListener("touchend", handleTouchEnd);
     };
   }, []);
 
@@ -1089,7 +1091,7 @@ export default function CreateQuote() {
             </div>
 
             {/* Scrollable preview area */}
-            <div className="flex-1 overflow-auto p-4">
+            <div ref={previewScrollRef} className="flex-1 overflow-auto p-4">
               <div
                 style={{
                   transform: `scale(${previewScale})`,
