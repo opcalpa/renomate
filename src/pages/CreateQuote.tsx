@@ -657,22 +657,21 @@ export default function CreateQuote() {
       if (newItems.length > 0) {
         // Preserve manually-set roomIds from current items
         setItems((prev) => {
-          // Collect roomId overrides: by sourceTaskId, by item id, and by description
+          // Collect roomId overrides from previous state
           const roomByTaskId = new Map<string, string>();
-          const roomByItemId = new Map<string, string>();
+          const roomByDesc = new Map<string, string>();
           for (const item of prev) {
-            if (item.roomId) {
+            if (item.roomId && !item.sectionHeader) {
               if (item.sourceTaskId) roomByTaskId.set(item.sourceTaskId, item.roomId);
-              roomByItemId.set(item.id, item.roomId);
+              roomByDesc.set(item.description, item.roomId);
             }
           }
-          if (roomByTaskId.size === 0 && roomByItemId.size === 0) return newItems;
+          if (roomByTaskId.size === 0 && roomByDesc.size === 0) return newItems;
           return newItems.map((item) => {
             if (item.sectionHeader) return item;
-            if (item.roomId) return item; // already has room from DB
-            // Try to restore from previous state
+            if (item.roomId) return item;
             const saved = (item.sourceTaskId && roomByTaskId.get(item.sourceTaskId))
-              || roomByItemId.get(item.id);
+              || roomByDesc.get(item.description);
             return saved ? { ...item, roomId: saved } : item;
           });
         });
@@ -704,14 +703,15 @@ export default function CreateQuote() {
     setImportRoomItemId(itemId);
   }, [projectId, t]);
 
-  const handleRoomSelect = useCallback((roomId: string, areaSqm: number) => {
+  const handleRoomSelect = useCallback((roomId: string, _areaSqm: number) => {
     if (!importRoomItemId) return;
     setItems((prev) =>
       prev.map((i) =>
-        i.id === importRoomItemId ? { ...i, quantity: areaSqm, unit: "m2", roomId } : i
+        i.id === importRoomItemId ? { ...i, roomId } : i
       )
     );
     setImportRoomItemId(null);
+    setHasManualEdits(true);
   }, [importRoomItemId]);
 
   const handleSaveDraft = async () => {
