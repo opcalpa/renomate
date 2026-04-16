@@ -146,7 +146,7 @@ export function QuoteDocument({
                   <tr key={item.id}>
                     <td
                       colSpan={hasAnyDiscount ? 5 : 4}
-                      className={`font-semibold text-sm uppercase tracking-wide text-foreground/70 ${idx === 0 ? "pt-1 pb-2" : "pt-5 pb-2"} border-b border-foreground/15`}
+                      className={`text-[13px] font-semibold text-foreground/60 ${idx === 0 ? "pt-1 pb-1.5" : "pt-4 pb-1.5"} border-b border-foreground/10`}
                     >
                       {item.sectionHeader}
                     </td>

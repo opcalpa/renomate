@@ -636,20 +636,9 @@ export default function CreateQuote() {
             newItems.push(item);
           }
         }
-        // Items without room at the end
-        if (noRoom.length > 0) {
-          newItems.push({
-            id: crypto.randomUUID(),
-            description: "",
-            quantity: 0,
-            unit: "",
-            unitPrice: 0,
-            isRotEligible: false,
-            sectionHeader: t("quotes.noRoom", "Övrigt"),
-          });
-          for (const item of noRoom) {
-            newItems.push(item);
-          }
+        // Items without room at the end — no header, just append
+        for (const item of noRoom) {
+          newItems.push(item);
         }
       } else if (groupByType === "grouped") {
         // Labor first, then materials — no room suffix (clean descriptions)
@@ -666,7 +655,23 @@ export default function CreateQuote() {
       }
 
       if (newItems.length > 0) {
-        setItems(newItems);
+        // Preserve manually-set roomIds from current items
+        setItems((prev) => {
+          const roomOverrides = new Map<string, string>();
+          for (const item of prev) {
+            if (item.roomId && item.sourceTaskId) {
+              roomOverrides.set(`${item.sourceTaskId}:${item.source || ""}:${item.description}`, item.roomId);
+            }
+          }
+          return newItems.map((item) => {
+            if (!item.roomId && item.sourceTaskId) {
+              const key = `${item.sourceTaskId}:${item.source || ""}:${item.description}`;
+              const savedRoom = roomOverrides.get(key);
+              if (savedRoom) return { ...item, roomId: savedRoom };
+            }
+            return item;
+          });
+        });
         setHasManualEdits(false);
       }
     };
