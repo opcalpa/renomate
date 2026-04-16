@@ -585,8 +585,8 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
     setFilterAttachment(new Set());
   };
 
-  // Split planned (budget references) from real orders
-  const plannedMaterials = materials.filter(m => m.status === "planned");
+  // Split planned (budget references) from real orders — exclude subcontractor rows from budget
+  const plannedMaterials = materials.filter(m => m.status === "planned" && m.description !== "__subcontractor__");
   const orderMaterials = materials.filter(m => m.status !== "planned");
 
   // Paid per planned row: only counts when purchase order status = "paid"
