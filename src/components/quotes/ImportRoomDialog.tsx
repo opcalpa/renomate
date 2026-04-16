@@ -14,7 +14,7 @@ interface ImportRoomDialogProps {
   open: boolean;
   onClose: () => void;
   projectId: string | null;
-  onSelect: (roomId: string, areaSqm: number) => void;
+  onSelect: (roomId: string, areaSqm: number, roomName: string) => void;
   /** Currently selected room ID — shows checkmark */
   selectedRoomId?: string;
 }
@@ -59,7 +59,7 @@ export function ImportRoomDialog({ open, onClose, projectId, onSelect, selectedR
                     : "border-border/50 hover:border-primary/30 hover:bg-accent/50"
                 }`}
                 onClick={() => {
-                  onSelect(room.id, area ?? 0);
+                  onSelect(room.id, area ?? 0, room.name);
                   onClose();
                 }}
               >

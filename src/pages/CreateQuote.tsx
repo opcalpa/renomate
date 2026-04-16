@@ -709,11 +709,11 @@ export default function CreateQuote() {
     setImportRoomItemId(itemId);
   }, [projectId, t]);
 
-  const handleRoomSelect = useCallback((roomId: string, _areaSqm: number) => {
+  const handleRoomSelect = useCallback((roomId: string, _areaSqm: number, roomName: string) => {
     if (!importRoomItemId) return;
     setItems((prev) =>
       prev.map((i) =>
-        i.id === importRoomItemId ? { ...i, roomId } : i
+        i.id === importRoomItemId ? { ...i, roomId, roomName } : i
       )
     );
     setImportRoomItemId(null);
@@ -1127,7 +1127,7 @@ export default function CreateQuote() {
               >
                 <QuoteDocument
                   projectName={projectName}
-                  items={displayItems}
+                  items={items}
                   freeText={freeText}
                   company={{
                     name: companyName,
@@ -1156,7 +1156,7 @@ export default function CreateQuote() {
               <div style={{ zoom: mobilePreviewScale }}>
                 <QuoteDocument
                   projectName={projectName}
-                  items={displayItems}
+                  items={items}
                   freeText={freeText}
                   company={{ name: companyName, logoUrl: companyLogoUrl, ...companyInfo }}
                   clientName={clients.find((c) => c.id === clientId)?.name}

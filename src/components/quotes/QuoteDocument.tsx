@@ -38,6 +38,7 @@ export function QuoteDocument({
   const { t } = useTranslation();
 
   const lineItems = items.filter((i) => !i.sectionHeader);
+  const hasAnyRoom = lineItems.some((i) => i.roomName);
   const subtotal = lineItems.reduce(
     (sum, i) => sum + i.quantity * i.unitPrice * (1 - (i.discountPercent ?? 0) / 100),
     0
@@ -128,6 +129,9 @@ export function QuoteDocument({
           <thead>
             <tr className="border-b-2 border-foreground/20">
               <th className={`text-left pr-4 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground ${compactMode ? "py-1.5" : "py-2.5"}`}>{t("quotes.description")}</th>
+              {hasAnyRoom && (
+                <th className={`text-left px-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap ${compactMode ? "py-1.5" : "py-2.5"}`}>{t("tasks.room", "Rum")}</th>
+              )}
               <th className={`text-right px-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap ${compactMode ? "py-1.5" : "py-2.5"}`}>{t("quotes.quantity")}</th>
               <th className={`text-right px-3 font-semibold text-[12px] uppercase tracking-wide text-muted-foreground whitespace-nowrap ${compactMode ? "py-1.5" : "py-2.5"}`}>{t("quotes.unitPrice")} <span className="normal-case tracking-normal font-normal">({t("budget.exVat", "ex moms")})</span></th>
               {hasAnyDiscount && (
@@ -139,21 +143,7 @@ export function QuoteDocument({
             </tr>
           </thead>
           <tbody>
-            {items.map((item, idx) => {
-              // Section header row (room divider)
-              if (item.sectionHeader) {
-                return (
-                  <tr key={item.id}>
-                    <td
-                      colSpan={hasAnyDiscount ? 5 : 4}
-                      className={`text-[13px] font-semibold text-foreground/60 ${idx === 0 ? "pt-1 pb-1.5" : "pt-4 pb-1.5"} border-b border-foreground/10`}
-                    >
-                      {item.sectionHeader}
-                    </td>
-                  </tr>
-                );
-              }
-
+            {lineItems.map((item) => {
               const discount = item.discountPercent ?? 0;
               const lineTotal = item.quantity * item.unitPrice * (1 - discount / 100);
               const cellPy = compactMode ? "py-1" : "py-2.5";
@@ -170,6 +160,11 @@ export function QuoteDocument({
                       </p>
                     )}
                   </td>
+                  {hasAnyRoom && (
+                    <td className={`text-left px-3 whitespace-nowrap text-[13px] text-muted-foreground ${cellPy}`}>
+                      {item.roomName || ""}
+                    </td>
+                  )}
                   <td className={`text-right px-3 whitespace-nowrap tabular-nums ${cellPy}`}>
                     {item.quantity} {item.unit}
                   </td>
