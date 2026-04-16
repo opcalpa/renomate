@@ -833,6 +833,18 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
   // Group tasks by status (supporting both old and new status values)
   // Note: 'done' is a legacy status that should be merged into 'completed'
   const statusOrder = ['planned', 'to_do', 'in_progress', 'waiting', 'completed', 'cancelled'] as const;
+  const kanbanHeaderBg = (status: string): string => {
+    const map: Record<string, string> = {
+      planned:     "bg-indigo-50 dark:bg-indigo-950/30",
+      to_do:       "bg-amber-50 dark:bg-amber-950/30",
+      in_progress: "bg-blue-50 dark:bg-blue-950/30",
+      waiting:     "bg-gray-100 dark:bg-gray-800/30",
+      completed:   "bg-emerald-50 dark:bg-emerald-950/30",
+      cancelled:   "bg-red-50 dark:bg-red-950/30",
+    };
+    return map[status] || "bg-muted/50";
+  };
+
   const statusLabels: Record<string, string> = {
     planned: t('statuses.planned', 'Planned'),
     to_do: t('statuses.toDo'),
@@ -1069,13 +1081,15 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
     return (
       <Card
         key={task.id}
-        className={cn("cursor-move hover:shadow-md transition-all bg-background p-3 group", bulk.selectedIds.has(task.id) && "ring-2 ring-primary")}
+        className={cn("cursor-move hover:shadow-md transition-all bg-white dark:bg-card border p-0 group overflow-hidden", bulk.selectedIds.has(task.id) && "ring-2 ring-primary")}
         draggable
         onDragStart={() => handleDragStart(task)}
         onDragEnd={() => setDraggedTask(null)}
         onClick={(e) => handleTaskClickWithModifier(task, e)}
       >
-        <div className="space-y-2">
+        <div className="flex">
+          <div className="w-1 shrink-0 rounded-l" style={{ backgroundColor: statusColor }} />
+          <div className="space-y-2 p-3 flex-1 min-w-0">
           {/* Task Title */}
           <p className={`text-sm font-medium leading-tight ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
             {task.title}
@@ -1132,6 +1146,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
 
             {/* Edit icon - visible on hover */}
             <Pencil className="h-3 w-3 ml-auto text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
           </div>
         </div>
       </Card>
@@ -1888,13 +1903,13 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
                     handleColumnDrop(status);
                   }}
                   onDragEnd={() => setDraggedColumn(null)}
-                  className={`flex-shrink-0 bg-muted/30 rounded-lg p-3 transition-all snap-center ${
-                    tasksForStatus.length === 0 ? 'w-auto' : 'w-[85vw] md:w-80'
+                  className={`flex-shrink-0 rounded-xl border bg-card/50 p-3 transition-all snap-center ${
+                    tasksForStatus.length === 0 ? 'w-auto min-w-[200px]' : 'w-[85vw] md:w-80'
                   } ${draggedColumn === status ? 'opacity-50' : ''} cursor-grab active:cursor-grabbing`}
                 >
-                  <div className="mb-3 flex items-center justify-between bg-background/50 rounded-md px-3 py-2">
+                  <div className={cn("mb-3 flex items-center justify-between rounded-lg px-3 py-2", kanbanHeaderBg(status))}>
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <GripVertical className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
                       {editingColumnName === status ? (
                         <Input
                           autoFocus
@@ -1927,12 +1942,12 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
                         </h4>
                       )}
                     </div>
-                    <Badge variant="secondary" className="text-xs ml-2 flex-shrink-0">
+                    <Badge variant="secondary" className="text-[10px] ml-2 flex-shrink-0 tabular-nums">
                       {tasksForStatus.length}
                     </Badge>
                   </div>
                   <div
-                    className={`${tableViewState.compactRows ? 'space-y-1' : 'space-y-3'} min-h-[100px]`}
+                    className={`${tableViewState.compactRows ? 'space-y-1' : 'space-y-2'} min-h-[80px]`}
                     onDragOver={(e) => {
                       e.stopPropagation();
                       handleDragOver(e);
@@ -1943,7 +1958,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
                     }}
                   >
                     {tasksForStatus.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground text-sm">
+                      <div className="text-center py-8 text-muted-foreground/60 text-xs border-2 border-dashed border-muted rounded-lg">
                         {t('tasks.dropTasksHere')}
                       </div>
                     ) : (

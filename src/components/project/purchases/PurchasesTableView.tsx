@@ -666,7 +666,7 @@ export function PurchasesTableView({
                         compactRows && "py-1 text-xs h-8",
                         dragColIdx === idx && "opacity-40",
                         dragOverIdx === idx && dragColIdx !== null && dragColIdx !== idx && "border-l-2 border-primary",
-                        idx === 0 && "sticky left-0 z-20 bg-card",
+                        /* no sticky — avoids visible seam between first and second column */
                       )}
                       draggable
                       onDragStart={() => handleDragStart(idx)}
@@ -720,7 +720,7 @@ export function PurchasesTableView({
                               col.align === "right" ? "text-right" : "",
                               compactRows && "py-1 text-xs",
                               dragOverIdx === colIdx && dragColIdx !== null && dragColIdx !== colIdx && "border-l-2 border-primary",
-                              colIdx === 0 && "sticky left-0 z-10 bg-card",
+                              /* no sticky — matches header */
                             )}
                           >
                             {renderCell(col, material)}
