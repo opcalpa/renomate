@@ -480,7 +480,6 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
           room_id: editingMaterial.room_id === "none" ? null : editingMaterial.room_id,
           task_id: editingMaterial.task_id === "none" ? null : editingMaterial.task_id,
           assigned_to_user_id: editingMaterial.assigned_to_user_id === "none" ? null : editingMaterial.assigned_to_user_id,
-          rot_amount: editingMaterial.rot_amount || null,
           paid_date: editingMaterial.paid_date || null,
         })
         .eq("id", editingMaterial.id);
@@ -1082,15 +1081,22 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-3xl lg:max-w-5xl max-h-[90vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
+          <DialogHeader className="sr-only">
             <DialogTitle>{t('purchases.editOrder')}</DialogTitle>
-            <DialogDescription>
-              {t('purchases.editOrderDescription')}
-            </DialogDescription>
           </DialogHeader>
           {editingMaterial && (
             <form onSubmit={handleEditMaterial} className="flex flex-col flex-1 overflow-hidden">
               <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+              <div className="sticky top-0 z-10 bg-background pb-3 -mt-2 space-y-2">
+                <Input
+                  id="edit-material-name"
+                  value={editingMaterial.name}
+                  onChange={(e) => setEditingMaterial({ ...editingMaterial, name: e.target.value })}
+                  required
+                  className="text-lg font-semibold h-auto py-1 px-0 border-0 shadow-none focus-visible:ring-0 rounded-none border-b border-transparent focus-visible:border-b-primary"
+                  placeholder={t('purchases.materialName')}
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-status">{t('common.status')}</Label>
                 <Select
@@ -1110,15 +1116,6 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                     <SelectItem value="paused">{t('materialStatuses.paused')}</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-material-name">{t('purchases.materialName')}*</Label>
-                <Input
-                  id="edit-material-name"
-                  value={editingMaterial.name}
-                  onChange={(e) => setEditingMaterial({ ...editingMaterial, name: e.target.value })}
-                  required
-                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-description">{t('common.description')}</Label>
@@ -1180,20 +1177,8 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                 </Label>
               </div>
 
-              {/* ROT + Betaldat */}
-              <div className={`grid ${showTaxDeduction ? "grid-cols-2" : "grid-cols-1"} gap-4 mt-3`}>
-                {showTaxDeduction && (
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-rot-amount">{t("files.rotAmount", "ROT-avdrag")}</Label>
-                    <Input
-                      id="edit-rot-amount"
-                      type="number"
-                      value={editingMaterial.rot_amount ?? ""}
-                      onChange={(e) => setEditingMaterial({ ...editingMaterial, rot_amount: e.target.value ? parseFloat(e.target.value) : null })}
-                      placeholder="0"
-                    />
-                  </div>
-                )}
+              {/* Betaldat */}
+              <div className="grid grid-cols-1 gap-4 mt-3">
                 <div className="space-y-2">
                   <Label htmlFor="edit-paid-date">{t("common.paidDate", "Betaldat")}</Label>
                   <Input

@@ -56,7 +56,6 @@ export function usePurchasesTableView(projectId: string) {
       { key: "createdAt", label: t("purchasesTable.date"), width: "w-[110px]", extra: true, editType: "none" },
       { key: "attachment", label: t("purchasesTable.attachment"), width: "w-[80px]", extra: true, editType: "none" },
       { key: "fileCategory", label: t("files.category", "Filkategori"), width: "w-[120px]", extra: true, editType: "none" },
-      { key: "rotAmount", label: t("files.rotAmount", "ROT-avdrag"), width: "w-[110px]", align: "right", extra: true, editType: "numeric", dbField: "rot_amount" },
       { key: "paidDate", label: t("common.paidDate", "Betaldat"), width: "w-[130px]", extra: true, editType: "none", dbField: "paid_date" },
       { key: "actions", label: t("common.actions"), width: "w-[60px]", editType: "none" },
     ],

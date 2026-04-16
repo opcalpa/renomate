@@ -17,7 +17,6 @@ export type PurchaseColumnKey =
   | "createdAt"
   | "attachment"
   | "fileCategory"
-  | "rotAmount"
   | "paidDate";
 
 export interface PurchaseColumnDef {
@@ -50,7 +49,6 @@ export const EXTRA_COLUMN_KEYS: PurchaseColumnKey[] = [
   "createdAt",
   "attachment",
   "fileCategory",
-  "rotAmount",
   "paidDate",
 ];
 

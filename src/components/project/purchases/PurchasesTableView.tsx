@@ -109,7 +109,6 @@ const SORT_FIELD_MAP: Record<PurchaseColumnKey, string | null> = {
   createdAt: "created_at",
   attachment: null,
   actions: null,
-  rotAmount: "rot_amount",
   paidDate: "paid_date",
 };
 
@@ -129,7 +128,6 @@ const DB_FIELD_MAP: Record<PurchaseColumnKey, string> = {
   createdAt: "",
   attachment: "",
   actions: "",
-  rotAmount: "rot_amount",
   paidDate: "paid_date",
 };
 
@@ -327,13 +325,11 @@ export function PurchasesTableView({
 
       case "pricePerUnit":
       case "priceTotal":
-      case "rotAmount":
       case "paidAmount": {
         const fieldMap: Record<string, keyof Material> = {
           pricePerUnit: "price_per_unit",
           priceTotal: "price_total",
           paidAmount: "paid_amount",
-          rotAmount: "rot_amount",
         };
         const val = material[fieldMap[col.key]] as number | null;
         const isBold = col.key === "priceTotal";
