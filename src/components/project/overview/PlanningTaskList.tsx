@@ -2914,16 +2914,9 @@ export function PlanningTaskList({
                       </td>
                     )}
                     <td className="text-right px-3 py-2.5">
-                      <div>
-                        <span className="text-sm font-bold tabular-nums text-primary">
-                          {formatCurrency(totalBudget, currency)}
-                        </span>
-                        {!isHomeowner && (
-                          <span className="block text-[10px] font-normal text-muted-foreground tabular-nums">
-                            {formatCurrency(Math.round(totalBudget * 1.25), currency)} {t("estimation.incMomsShort", "ink moms")}
-                          </span>
-                        )}
-                      </div>
+                      <span className="text-sm font-bold tabular-nums text-primary">
+                        {formatCurrency(totalBudget, currency)}
+                      </span>
                     </td>
                     {show.profit && (
                       <td className="text-right hidden sm:table-cell px-3 py-2.5">
