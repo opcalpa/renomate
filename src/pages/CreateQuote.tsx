@@ -657,19 +657,23 @@ export default function CreateQuote() {
       if (newItems.length > 0) {
         // Preserve manually-set roomIds from current items
         setItems((prev) => {
-          const roomOverrides = new Map<string, string>();
+          // Collect roomId overrides: by sourceTaskId, by item id, and by description
+          const roomByTaskId = new Map<string, string>();
+          const roomByItemId = new Map<string, string>();
           for (const item of prev) {
-            if (item.roomId && item.sourceTaskId) {
-              roomOverrides.set(`${item.sourceTaskId}:${item.source || ""}:${item.description}`, item.roomId);
+            if (item.roomId) {
+              if (item.sourceTaskId) roomByTaskId.set(item.sourceTaskId, item.roomId);
+              roomByItemId.set(item.id, item.roomId);
             }
           }
+          if (roomByTaskId.size === 0 && roomByItemId.size === 0) return newItems;
           return newItems.map((item) => {
-            if (!item.roomId && item.sourceTaskId) {
-              const key = `${item.sourceTaskId}:${item.source || ""}:${item.description}`;
-              const savedRoom = roomOverrides.get(key);
-              if (savedRoom) return { ...item, roomId: savedRoom };
-            }
-            return item;
+            if (item.sectionHeader) return item;
+            if (item.roomId) return item; // already has room from DB
+            // Try to restore from previous state
+            const saved = (item.sourceTaskId && roomByTaskId.get(item.sourceTaskId))
+              || roomByItemId.get(item.id);
+            return saved ? { ...item, roomId: saved } : item;
           });
         });
         setHasManualEdits(false);
