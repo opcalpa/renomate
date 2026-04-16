@@ -467,11 +467,73 @@ export function HomeownerPlanningView({
       if (error) throw error;
 
       // Transition planned tasks to to_do so they appear in kanban
-      await supabase
+      const { data: plannedTasks } = await supabase
         .from("tasks")
-        .update({ status: "to_do" })
+        .select("id, title, material_estimate, material_items")
         .eq("project_id", projectId)
         .eq("status", "planned");
+
+      if (plannedTasks && plannedTasks.length > 0) {
+        await supabase
+          .from("tasks")
+          .update({ status: "to_do" })
+          .in("id", plannedTasks.map((t) => t.id));
+
+        // Create planned material rows for tasks with material_estimate but no existing planned materials
+        const { data: existingMats } = await supabase
+          .from("materials")
+          .select("task_id")
+          .eq("project_id", projectId)
+          .eq("status", "planned")
+          .not("task_id", "is", null);
+        const tasksWithPlannedMat = new Set((existingMats || []).map((m) => m.task_id));
+
+        const { data: authData } = await supabase.auth.getUser();
+        const { data: profileRow } = authData?.user
+          ? await supabase.from("profiles").select("id").eq("user_id", authData.user.id).single()
+          : { data: null };
+
+        const materialsToInsert: Record<string, unknown>[] = [];
+        for (const task of plannedTasks) {
+          if (tasksWithPlannedMat.has(task.id)) continue;
+          const items = task.material_items as { amount: number; quantity?: number; unit?: string; unit_price?: number }[] | null;
+          if (items && items.length > 0) {
+            for (const item of items) {
+              if (!item.amount || item.amount <= 0) continue;
+              materialsToInsert.push({
+                id: crypto.randomUUID(),
+                name: `${task.title} — material`,
+                quantity: item.quantity ?? 1,
+                unit: item.unit ?? "st",
+                price_per_unit: item.unit_price ?? item.amount,
+                price_total: item.amount,
+                task_id: task.id,
+                project_id: projectId,
+                status: "planned",
+                exclude_from_budget: false,
+                created_by_user_id: profileRow?.id ?? null,
+              });
+            }
+          } else if (task.material_estimate && task.material_estimate > 0) {
+            materialsToInsert.push({
+              id: crypto.randomUUID(),
+              name: `${task.title} — material`,
+              quantity: 1,
+              unit: "st",
+              price_per_unit: task.material_estimate,
+              price_total: task.material_estimate,
+              task_id: task.id,
+              project_id: projectId,
+              status: "planned",
+              exclude_from_budget: false,
+              created_by_user_id: profileRow?.id ?? null,
+            });
+          }
+        }
+        if (materialsToInsert.length > 0) {
+          await supabase.from("materials").insert(materialsToInsert);
+        }
+      }
 
       toast({ description: t("homeownerPlanning.projectActivated", "Project activated!") });
       onActivate?.();
