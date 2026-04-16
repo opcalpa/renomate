@@ -259,6 +259,14 @@ export function PlanningTaskList({
         .update({ status: "active" })
         .eq("id", projectId);
       if (error) throw error;
+
+      // Transition planned tasks to to_do so they appear in kanban
+      await supabase
+        .from("tasks")
+        .update({ status: "to_do" })
+        .eq("project_id", projectId)
+        .eq("status", "planned");
+
       toast({ description: t("homeownerPlanning.projectActivated", "Project activated!") });
       onActivateProject?.();
     } catch {

@@ -1871,7 +1871,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
         <div className="overflow-x-auto pb-4 snap-x snap-mandatory">
           <div className="flex gap-4 min-w-min p-2">
             {[...columnOrder, ...unknownStatuses].filter(status =>
-              kanbanVisibleStatuses.has(status) || unknownStatuses.includes(status)
+              kanbanVisibleStatuses.has(status) || unknownStatuses.includes(status) || (groupedTasks[status]?.length ?? 0) > 0
             ).map((status) => {
               const tasksForStatus = groupedTasks[status] || [];
               const defaultLabel = statusLabels[status as keyof typeof statusLabels] || status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
