@@ -1666,9 +1666,9 @@ export function PlanningTaskList({
           </div>
         ) : (
           <>
-            <div className="rounded-md border overflow-x-auto">
+            <div className="rounded-md border overflow-auto max-h-[calc(100vh-20rem)]">
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-20 bg-card">
                   <TableRow className="hover:bg-transparent">
                     {show.costType && (
                       <TableHead className="hidden sm:table-cell w-[60px]">

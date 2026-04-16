@@ -2012,9 +2012,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       <p className="text-[11px] text-muted-foreground/60 mb-1 text-right">
         {isBuilder ? t('budget.exMomsNote', 'All amounts ex. VAT') : t('budget.incMomsNote', 'All amounts inc. VAT')}
       </p>
-      <div className="border rounded-lg overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0 bg-card">
+      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-20rem)] -mx-3 px-3 md:mx-0 md:px-0 bg-card">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-20 bg-card">
             <TableRow>
               {visibleColumns.map((col, idx) => (
                 <TableHead

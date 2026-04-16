@@ -783,9 +783,9 @@ export function HomeownerPlanningView({
         </CardHeader>
         <CardContent>
           {tasksWithRoomNames.length > 0 && (
-            <div className="rounded-md border overflow-x-auto mb-3">
+            <div className="rounded-md border overflow-auto max-h-[calc(100vh-20rem)] mb-3">
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-20 bg-card">
                   <TableRow onContextMenu={(e) => { e.preventDefault(); setHeaderMenu({ x: e.clientX, y: e.clientY }); }}>
                     <TableHead className="min-w-[140px]">{t("planningTasks.task", "Task")}</TableHead>
                     {show.description && <TableHead className="min-w-[120px]">{t("tasks.description", "Description")}</TableHead>}
