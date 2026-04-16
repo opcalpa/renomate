@@ -130,6 +130,7 @@ export default function CreateQuote() {
   const [createClientOpen, setCreateClientOpen] = useState(false);
   const [freeText, setFreeText] = useState("");
   const [quoteNumber, setQuoteNumber] = useState("");
+  const [objectDescription, setObjectDescription] = useState("");
   const [previewScale, setPreviewScale] = useState(0.75);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const previewScrollRef = useRef<HTMLDivElement>(null);
@@ -898,6 +899,15 @@ export default function CreateQuote() {
                 />
               </div>
               <div className="space-y-1.5">
+                <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("quotes.objectDescription", "Objekt")}</Label>
+                <Input
+                  value={objectDescription}
+                  onChange={(e) => setObjectDescription(e.target.value)}
+                  placeholder={t("quotes.objectPlaceholder", "t.ex. Lägenhet 80 kvm på Kungsholmen")}
+                  className="h-10"
+                />
+              </div>
+              <div className="space-y-1.5">
                 <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("quotes.notes", "Villkor / anteckningar")}</Label>
                 <Textarea
                   placeholder={t("quotes.freeTextPlaceholder")}
@@ -1127,6 +1137,7 @@ export default function CreateQuote() {
               >
                 <QuoteDocument
                   projectName={projectName}
+                  objectDescription={objectDescription}
                   items={items}
                   freeText={freeText}
                   company={{
@@ -1156,6 +1167,7 @@ export default function CreateQuote() {
               <div style={{ zoom: mobilePreviewScale }}>
                 <QuoteDocument
                   projectName={projectName}
+                  objectDescription={objectDescription}
                   items={items}
                   freeText={freeText}
                   company={{ name: companyName, logoUrl: companyLogoUrl, ...companyInfo }}
@@ -1173,6 +1185,7 @@ export default function CreateQuote() {
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
         projectName={projectName}
+        objectDescription={objectDescription}
         items={items}
         freeText={freeText}
         company={{

@@ -16,6 +16,7 @@ export interface QuoteCompanyInfo {
 
 interface QuoteDocumentProps {
   projectName: string;
+  objectDescription?: string;
   items: QuoteItem[];
   freeText?: string;
   company?: QuoteCompanyInfo;
@@ -27,6 +28,7 @@ interface QuoteDocumentProps {
 
 export function QuoteDocument({
   projectName,
+  objectDescription,
   items,
   freeText,
   company,
@@ -103,6 +105,11 @@ export function QuoteDocument({
           {projectName && (
             <p className="text-sm text-muted-foreground mt-1">
               {t("quotes.projectLabel", "Projekt")}: {projectName}
+            </p>
+          )}
+          {objectDescription && (
+            <p className="text-sm text-muted-foreground">
+              {t("quotes.objectLabel", "Objekt")}: {objectDescription}
             </p>
           )}
           {clientName && (

@@ -9,6 +9,7 @@ interface QuotePreviewProps {
   open: boolean;
   onClose: () => void;
   projectName: string;
+  objectDescription?: string;
   items: QuoteItem[];
   freeText?: string;
   company?: QuoteCompanyInfo;
@@ -26,6 +27,7 @@ export function QuotePreview({
   open,
   onClose,
   projectName,
+  objectDescription,
   items,
   freeText,
   company,
@@ -62,6 +64,7 @@ export function QuotePreview({
         <div className="flex-1 overflow-y-auto bg-neutral-100 dark:bg-neutral-900 p-3 sm:p-6 md:p-10">
           <QuoteDocument
             projectName={projectName}
+            objectDescription={objectDescription}
             items={items}
             freeText={freeText}
             company={co}
