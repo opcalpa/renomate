@@ -328,13 +328,28 @@ export default function CreateQuote() {
         if (tasks && tasks.length > 0) {
           for (const task of tasks) {
             const roomName = (task.rooms as { name: string } | null)?.name || null;
-            // Material cost for the quote: use planned materials with markup baked in,
-            // or fall back to flat estimate × global markup
+            // Material cost: prefer actual planned materials linked to this task.
+            // Only fall back to material_estimate if NO planned materials exist for this task.
+            const hasLinkedPlannedMaterials = plannedMaterialTotals.has(task.id) && plannedMaterialTotals.get(task.id)! > 0;
             const hasPerRowMarkup = plannedMaterialWithMarkup.has(task.id);
-            const materialCostForQuote = hasPerRowMarkup
-              ? Math.round(plannedMaterialWithMarkup.get(task.id)!)
-              : Math.round((plannedMaterialTotals.get(task.id) ?? (task.material_estimate ?? 0)) * (1 + (task.material_markup_percent || 0) / 100));
-            const materialCostBase = plannedMaterialTotals.get(task.id) ?? (task.material_estimate ?? 0);
+            let materialCostForQuote: number;
+            let materialCostBase: number;
+
+            if (hasLinkedPlannedMaterials) {
+              // Use actual planned materials (with their markup)
+              materialCostBase = plannedMaterialTotals.get(task.id)!;
+              materialCostForQuote = hasPerRowMarkup
+                ? Math.round(plannedMaterialWithMarkup.get(task.id)!)
+                : Math.round(materialCostBase * (1 + (task.material_markup_percent || 0) / 100));
+            } else if (task.material_estimate && task.material_estimate > 0) {
+              // Flat estimate — but only if no standalone materials are selected
+              // (to avoid double-counting when material_estimate conceptually includes standalone items)
+              materialCostBase = task.material_estimate;
+              materialCostForQuote = Math.round(materialCostBase * (1 + (task.material_markup_percent || 0) / 100));
+            } else {
+              materialCostBase = 0;
+              materialCostForQuote = 0;
+            }
 
             if (pricingFormat === "detailed") {
               const hasOwnLabor = !!(task.estimated_hours && task.hourly_rate);
@@ -777,7 +792,7 @@ export default function CreateQuote() {
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("quotes.project", "Projekt")}</Label>
                   <Select value={projectId} onValueChange={setProjectId}>
-                    <SelectTrigger className="h-10 bg-white dark:bg-background border-border/40">
+                    <SelectTrigger className="h-10">
                       <SelectValue placeholder={t("quotes.selectProject")} />
                     </SelectTrigger>
                     <SelectContent>
@@ -799,7 +814,7 @@ export default function CreateQuote() {
                       }
                     }}
                   >
-                    <SelectTrigger className="h-10 bg-white dark:bg-background border-border/40">
+                    <SelectTrigger className="h-10">
                       <SelectValue placeholder={t("quotes.selectRecipient")} />
                     </SelectTrigger>
                     <SelectContent>
@@ -817,7 +832,7 @@ export default function CreateQuote() {
                   value={quoteNumber}
                   onChange={(e) => setQuoteNumber(e.target.value)}
                   placeholder="OFF-2026-001"
-                  className="h-10 bg-white dark:bg-background border-border/40"
+                  className="h-10"
                 />
               </div>
               <div className="space-y-1.5">
@@ -827,7 +842,7 @@ export default function CreateQuote() {
                   value={freeText}
                   onChange={(e) => setFreeText(e.target.value)}
                   rows={2}
-                  className="bg-white dark:bg-background border-border/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 rounded-lg"
+                  className="rounded-lg"
                 />
               </div>
             </div>

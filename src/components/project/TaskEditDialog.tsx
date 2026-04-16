@@ -1134,7 +1134,7 @@ export const TaskEditDialog = ({
                   value={task.description || ""}
                   onChange={(e) => setTask({ ...task, description: e.target.value })}
                   rows={2}
-                  className="border-border/40 bg-white dark:bg-background focus:border-primary/50 focus:ring-1 focus:ring-primary/20 rounded-lg"
+                  className="rounded-lg"
                 />
               </div>
 
@@ -1305,7 +1305,7 @@ export const TaskEditDialog = ({
                   step="1"
                   min="0"
                   placeholder="SEK"
-                  className="border-border/40 bg-white dark:bg-background text-lg font-semibold tabular-nums focus:border-primary/50 focus:ring-1 focus:ring-primary/20 rounded-lg"
+                  className="text-lg font-semibold tabular-nums"
                   value={task.budget != null ? Math.round(task.budget).toString() : ""}
                   onChange={(e) =>
                     setTask({ ...task, budget: e.target.value ? parseFloat(e.target.value) : null })
