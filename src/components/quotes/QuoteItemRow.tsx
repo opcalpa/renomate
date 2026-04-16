@@ -25,6 +25,8 @@ export interface QuoteItem {
   source?: QuoteItemSource;
   /** Planning task this item was generated from */
   sourceTaskId?: string;
+  /** Room name — for display in room-grouped mode */
+  roomName?: string;
   /** Section header — rendered as a divider row, not a line item */
   sectionHeader?: string;
 }

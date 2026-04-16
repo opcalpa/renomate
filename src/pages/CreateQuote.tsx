@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, ArrowLeft, ChevronDown, ChevronUp, Eye, Maximize2, Plus, Settings2, ZoomIn, ZoomOut } from "lucide-react";
@@ -69,6 +69,43 @@ export default function CreateQuote() {
   const [projectId, setProjectId] = useState<string>("");
   const [projects, setProjects] = useState<SimpleProject[]>([]);
   const [items, setItems] = useState<QuoteItem[]>([newItem()]);
+
+  // Display items: add room section headers for "byRoom" mode
+  const displayItems = useMemo(() => {
+    // Filter out any old section headers from stored items
+    const cleanItems = items.filter((i) => !i.sectionHeader);
+    if (groupByType !== "byRoom") return cleanItems;
+
+    const roomGroups = new Map<string, QuoteItem[]>();
+    const noRoom: QuoteItem[] = [];
+    for (const item of cleanItems) {
+      if (item.roomId) {
+        const group = roomGroups.get(item.roomId) || [];
+        group.push(item);
+        roomGroups.set(item.roomId, group);
+      } else {
+        noRoom.push(item);
+      }
+    }
+
+    const result: QuoteItem[] = [];
+    for (const [roomId, group] of roomGroups) {
+      const roomName = group[0]?.roomName || roomId;
+      result.push({
+        id: `header-${roomId}`,
+        description: "",
+        quantity: 0,
+        unit: "",
+        unitPrice: 0,
+        isRotEligible: false,
+        sectionHeader: roomName,
+      });
+      result.push(...group);
+    }
+    result.push(...noRoom);
+    return result;
+  }, [items, groupByType]);
+
   const [previewOpen, setPreviewOpen] = useState(false);
   const [importRoomItemId, setImportRoomItemId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -605,41 +642,10 @@ export default function CreateQuote() {
       let newItems: QuoteItem[];
 
       if (groupByType === "byRoom") {
-        // Group by room: insert section headers, then items under each room
-        const roomMap = new Map<string, (QuoteItem & { roomName: string | null })[]>();
-        const noRoom: (QuoteItem & { roomName: string | null })[] = [];
-
-        for (const item of [...taskItems, ...materialItems]) {
-          if (item.roomId) {
-            const existing = roomMap.get(item.roomId) || [];
-            existing.push(item);
-            roomMap.set(item.roomId, existing);
-          } else {
-            noRoom.push(item);
-          }
-        }
-
-        newItems = [];
-        for (const [, roomItems] of roomMap) {
-          const roomName = roomItems[0]?.roomName || t("quotes.noRoom");
-          // Insert section header
-          newItems.push({
-            id: crypto.randomUUID(),
-            description: "",
-            quantity: 0,
-            unit: "",
-            unitPrice: 0,
-            isRotEligible: false,
-            sectionHeader: roomName,
-          });
-          for (const item of roomItems) {
-            newItems.push(item);
-          }
-        }
-        // Items without room at the end — no header, just append
-        for (const item of noRoom) {
-          newItems.push(item);
-        }
+        // Sort by room — section headers are added by displayItems useMemo
+        const withRoom = [...taskItems, ...materialItems].filter((i) => i.roomId);
+        const noRoom = [...taskItems, ...materialItems].filter((i) => !i.roomId);
+        newItems = [...withRoom, ...noRoom];
       } else if (groupByType === "grouped") {
         // Labor first, then materials — no room suffix (clean descriptions)
         newItems = [...taskItems, ...materialItems];
@@ -1121,7 +1127,7 @@ export default function CreateQuote() {
               >
                 <QuoteDocument
                   projectName={projectName}
-                  items={items}
+                  items={displayItems}
                   freeText={freeText}
                   company={{
                     name: companyName,
@@ -1150,7 +1156,7 @@ export default function CreateQuote() {
               <div style={{ zoom: mobilePreviewScale }}>
                 <QuoteDocument
                   projectName={projectName}
-                  items={items}
+                  items={displayItems}
                   freeText={freeText}
                   company={{ name: companyName, logoUrl: companyLogoUrl, ...companyInfo }}
                   clientName={clients.find((c) => c.id === clientId)?.name}
