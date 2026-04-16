@@ -466,6 +466,13 @@ export function HomeownerPlanningView({
         .eq("id", projectId);
       if (error) throw error;
 
+      // Get auth user for created_by
+      const { data: authData } = await supabase.auth.getUser();
+      const { data: profileRow } = authData?.user
+        ? await supabase.from("profiles").select("id").eq("user_id", authData.user.id).single()
+        : { data: null };
+      const creatorId = profileRow?.id ?? null;
+
       // Transition planned tasks to to_do so they appear in kanban
       const { data: plannedTasks } = await supabase
         .from("tasks")
@@ -482,16 +489,13 @@ export function HomeownerPlanningView({
         // Create planned material rows for tasks with material_estimate but no existing planned materials
         const { data: existingMats } = await supabase
           .from("materials")
-          .select("task_id")
+          .select("task_id, description")
           .eq("project_id", projectId)
           .eq("status", "planned")
           .not("task_id", "is", null);
-        const tasksWithPlannedMat = new Set((existingMats || []).map((m) => m.task_id));
-
-        const { data: authData } = await supabase.auth.getUser();
-        const { data: profileRow } = authData?.user
-          ? await supabase.from("profiles").select("id").eq("user_id", authData.user.id).single()
-          : { data: null };
+        const tasksWithPlannedMat = new Set(
+          (existingMats || []).filter((m) => m.description !== "__subcontractor__").map((m) => m.task_id)
+        );
 
         const materialsToInsert: Record<string, unknown>[] = [];
         for (const task of plannedTasks) {
@@ -511,7 +515,7 @@ export function HomeownerPlanningView({
                 project_id: projectId,
                 status: "planned",
                 exclude_from_budget: false,
-                created_by_user_id: profileRow?.id ?? null,
+                created_by_user_id: creatorId,
               });
             }
           } else if (task.material_estimate && task.material_estimate > 0) {
@@ -526,13 +530,60 @@ export function HomeownerPlanningView({
               project_id: projectId,
               status: "planned",
               exclude_from_budget: false,
-              created_by_user_id: profileRow?.id ?? null,
+              created_by_user_id: creatorId,
             });
           }
         }
         if (materialsToInsert.length > 0) {
           await supabase.from("materials").insert(materialsToInsert);
         }
+      }
+
+      // Convert UE (subcontractor) material rows into proper task cards
+      const { data: ueMaterials } = await supabase
+        .from("materials")
+        .select("id, name, task_id, price_total, markup_percent, room_id")
+        .eq("project_id", projectId)
+        .eq("status", "planned")
+        .eq("description", "__subcontractor__");
+
+      if (ueMaterials && ueMaterials.length > 0) {
+        // Task-linked UE: merge cost into task's subcontractor_cost
+        const taskLinked = ueMaterials.filter((m) => m.task_id);
+        const costByTask = new Map<string, number>();
+        for (const m of taskLinked) {
+          const amount = (m.price_total || 0) * (1 + (m.markup_percent || 0) / 100);
+          costByTask.set(m.task_id!, (costByTask.get(m.task_id!) || 0) + amount);
+        }
+        for (const [taskId, cost] of costByTask) {
+          await supabase
+            .from("tasks")
+            .update({ subcontractor_cost: cost, task_cost_type: "subcontractor" })
+            .eq("id", taskId);
+        }
+
+        // Standalone UE (no task_id): create new task cards
+        const standalone = ueMaterials.filter((m) => !m.task_id);
+        if (standalone.length > 0) {
+          const newTasks = standalone.map((m) => ({
+            id: crypto.randomUUID(),
+            project_id: projectId,
+            title: m.name,
+            status: "to_do",
+            priority: "medium",
+            task_cost_type: "subcontractor",
+            subcontractor_cost: (m.price_total || 0) * (1 + (m.markup_percent || 0) / 100),
+            room_id: m.room_id ?? null,
+            created_by_user_id: creatorId,
+          }));
+          await supabase.from("tasks").insert(newTasks);
+        }
+
+        // Delete all UE sentinel rows — their data is now on tasks
+        await supabase
+          .from("materials")
+          .delete()
+          .in("id", ueMaterials.map((m) => m.id));
       }
 
       toast({ description: t("homeownerPlanning.projectActivated", "Project activated!") });
