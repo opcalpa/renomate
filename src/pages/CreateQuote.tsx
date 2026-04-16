@@ -1174,6 +1174,7 @@ export default function CreateQuote() {
         onClose={() => setImportRoomItemId(null)}
         projectId={projectId || null}
         onSelect={handleRoomSelect}
+        selectedRoomId={importRoomItemId ? items.find((i) => i.id === importRoomItemId)?.roomId : undefined}
       />
 
       {profileId && (
