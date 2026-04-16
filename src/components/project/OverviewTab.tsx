@@ -338,6 +338,7 @@ const OverviewTab = ({
         isHomeowner={isHomeowner}
         onNavigateToTasks={(taskId) => onNavigateToTasks?.(taskId)}
         onCreateQuote={() => setQuoteDialogOpen(true)}
+        onActivateProject={handleProjectUpdate}
         locked={lockStatus.isLocked}
         roomsVersion={roomsVersion}
       />

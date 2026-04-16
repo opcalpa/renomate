@@ -4224,6 +4224,8 @@
     "hoursQty": "Timmar / Antal",
     "rateUnitPrice": "Timpris / Á-pris",
     "addCost": "Kostnad",
+    "activateProject": "Aktivera projekt",
+    "activateConfirm": "Aktivera projektet utan att skapa en offert först? Du kan fortfarande skapa offerter senare.",
     "addCostHint": "Lägg till material (kakel, färg, armaturer) eller underentreprenörskostnader (elektriker, rörmokare) i din kalkyl.",
     "addTaskHint": "Lägg till ett arbetsmoment, t.ex. målning, rivning eller plattsättning",
     "uploadFile": "Ladda upp fil",

@@ -27,7 +27,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { Plus, ClipboardList, ArrowRight, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle, FileUp, ChevronRight, ChevronDown, ShoppingCart, Package, Wrench, Link2, MoreVertical, Paperclip, Hammer, Handshake } from "lucide-react";
+import { Plus, ClipboardList, ArrowRight, Play, Pencil, Trash2, Columns3, Lock, Unlock, Info, Sparkles, Loader2, CheckCircle2, AlertTriangle, FileUp, ChevronRight, ChevronDown, ShoppingCart, Package, Wrench, Link2, MoreVertical, Paperclip, Hammer, Handshake } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +47,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogAction,
+  AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from "@/lib/currency";
@@ -155,6 +156,7 @@ interface PlanningTaskListProps {
   isHomeowner?: boolean;
   onNavigateToTasks?: (taskId?: string) => void;
   onCreateQuote?: () => void;
+  onActivateProject?: () => void;
   locked?: boolean;
   roomsVersion?: number;
 }
@@ -229,12 +231,15 @@ export function PlanningTaskList({
   isHomeowner = false,
   onNavigateToTasks,
   onCreateQuote,
+  onActivateProject,
   locked = false,
   roomsVersion = 0,
 }: PlanningTaskListProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { showTaxDeduction } = useTaxDeductionVisible();
+  const [confirmActivate, setConfirmActivate] = useState(false);
+  const [activating, setActivating] = useState(false);
   const [tasks, setTasks] = useState<PlanningTask[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomMap, setRoomMap] = useState<Map<string, Room>>(new Map());
@@ -245,6 +250,24 @@ export function PlanningTaskList({
   // Local override: user chose to unlock editing despite active quote
   const [lockOverridden, setLockOverridden] = useState(false);
   const effectiveLock = locked && !lockOverridden;
+
+  const handleActivateProject = useCallback(async () => {
+    setActivating(true);
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .update({ status: "active" })
+        .eq("id", projectId);
+      if (error) throw error;
+      toast({ description: t("homeownerPlanning.projectActivated", "Project activated!") });
+      onActivateProject?.();
+    } catch {
+      toast({ variant: "destructive", description: t("common.errorSaving", "Could not save") });
+    } finally {
+      setActivating(false);
+      setConfirmActivate(false);
+    }
+  }, [projectId, toast, t, onActivateProject]);
 
   // Inline add state — auto-open when list is empty
   const [isAdding, setIsAdding] = useState(false);
@@ -3091,14 +3114,25 @@ export function PlanningTaskList({
               </div>
 
               {!effectiveLock && tasks.length > 0 && (
-                <Button
-                  size="sm"
-                  className="gap-1"
-                  onClick={() => onCreateQuote?.()}
-                >
-                  {t("projectStatus.cta.generateQuote", "Generate quote")}
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    onClick={() => setConfirmActivate(true)}
+                  >
+                    <Play className="h-3.5 w-3.5" />
+                    {t("planningTasks.activateProject", "Activate project")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="gap-1"
+                    onClick={() => onCreateQuote?.()}
+                  >
+                    {t("projectStatus.cta.generateQuote", "Generate quote")}
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               )}
             </div>
           </>
@@ -3172,6 +3206,28 @@ export function PlanningTaskList({
         initialKind={addMaterialKind}
         onAdd={handleAddMaterialSubmit}
       />
+
+      {/* Confirm activate project without quote */}
+      <AlertDialog open={confirmActivate} onOpenChange={setConfirmActivate}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Play className="h-4 w-4 text-primary" />
+              {t("planningTasks.activateProject", "Activate project")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("planningTasks.activateConfirm", "Activate the project without creating a quote first? You can still create quotes later.")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel", "Cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleActivateProject} disabled={activating}>
+              {activating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              {t("planningTasks.activateProject", "Activate project")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
