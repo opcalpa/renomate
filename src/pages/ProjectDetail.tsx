@@ -880,40 +880,16 @@ const ProjectDetail = () => {
           guestUserType={isGuest ? guestRole : null}
           onGuestRoleChange={isGuest ? handleGuestRoleChange : undefined}
         >
-          {/* Mobile: Back button + project name */}
-          <div className="flex items-center gap-2 md:hidden">
+          {/* Navigation: single back button + tabs */}
+          <div className="flex items-center gap-3">
+            {/* Back button — always visible */}
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8 shrink-0"
-              onClick={() => {
-                // If on a sub-tab, go back to overview first
-                if (activeTab !== "overview") {
-                  setActiveTab("overview");
-                  setActiveSubTab(null);
-                } else {
-                  // Already on overview, go to previous page
-                  navigate(-1);
-                }
-              }}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm font-medium truncate">
-              {project?.name}
-            </span>
-          </div>
-          {/* Desktop navigation */}
-          <div className="hidden md:flex items-center gap-3">
-            {/* Back to start button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-2 shrink-0"
               onClick={() => navigate(user ? "/start" : "/")}
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="hidden lg:inline">{t('projectDetail.backToStart')}</span>
             </Button>
             <div className="flex items-center gap-5 lg:gap-7 flex-nowrap overflow-visible">
               {/* Client-only: Kundvy tab */}
