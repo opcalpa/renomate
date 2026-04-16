@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { usePurchasesTableView, type PurchasesTableViewState } from "./usePurchasesTableView";
 import { PurchaseColumnKey, PurchaseColumnDef, EXTRA_COLUMN_KEYS } from "./purchasesTypes";
+import { PaidDateConfirm } from "./PaidDateConfirm";
 
 interface Material {
   id: string;
@@ -179,6 +180,9 @@ export function PurchasesTableView({
   } | null>(null);
   const [editValue, setEditValue] = useState("");
 
+  // Paid date confirmation
+  const [paidConfirm, setPaidConfirm] = useState<{ materialId: string; materialName: string } | null>(null);
+
   // Sort materials
   const sortedMaterials = [...materials].sort((a, b) => {
     if (!sortKey) return 0;
@@ -284,7 +288,13 @@ export function PurchasesTableView({
         return (
           <Select
             value={material.status || "submitted"}
-            onValueChange={(v) => handleCellSave(material.id, "status", v)}
+            onValueChange={(v) => {
+              if (v === "paid" && material.status !== "paid") {
+                setPaidConfirm({ materialId: material.id, materialName: material.name });
+              } else {
+                handleCellSave(material.id, "status", v);
+              }
+            }}
           >
             <SelectTrigger
               className={cn("h-8 w-[120px] text-xs border", getStatusBadgeColor(material.status))}
@@ -781,6 +791,25 @@ export function PurchasesTableView({
           </div>
         </CardContent>
       </Card>
+
+      <PaidDateConfirm
+        open={!!paidConfirm}
+        materialName={paidConfirm?.materialName || ""}
+        onConfirm={async (paidDate) => {
+          if (!paidConfirm) return;
+          const { error } = await supabase
+            .from("materials")
+            .update({ status: "paid", paid_date: paidDate })
+            .eq("id", paidConfirm.materialId);
+          if (error) {
+            toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+          } else {
+            onMaterialUpdated();
+          }
+          setPaidConfirm(null);
+        }}
+        onCancel={() => setPaidConfirm(null)}
+      />
     </div>
   );
 }

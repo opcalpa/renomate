@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/currency";
 import { GripVertical, Store, Pencil, Paperclip } from "lucide-react";
 import { KANBAN_STATUS_ORDER } from "./purchasesTypes";
+import { PaidDateConfirm } from "./PaidDateConfirm";
 
 interface Material {
   id: string;
@@ -75,6 +76,9 @@ export function PurchasesKanbanView({
   // Card drag state
   const [draggedCard, setDraggedCard] = useState<Material | null>(null);
 
+  // Paid date confirmation
+  const [paidConfirm, setPaidConfirm] = useState<{ materialId: string; materialName: string } | null>(null);
+
   // Group materials by status
   const grouped: Record<string, Material[]> = {};
   for (const status of columnOrder) {
@@ -133,6 +137,13 @@ export function PurchasesKanbanView({
   const handleCardDrop = useCallback(
     async (targetStatus: string) => {
       if (!draggedCard || draggedCard.status === targetStatus || isReadOnly) {
+        setDraggedCard(null);
+        return;
+      }
+
+      // Intercept "paid" to prompt for payment date
+      if (targetStatus === "paid") {
+        setPaidConfirm({ materialId: draggedCard.id, materialName: draggedCard.name });
         setDraggedCard(null);
         return;
       }
@@ -268,6 +279,29 @@ export function PurchasesKanbanView({
           })}
         </div>
       </div>
+
+      <PaidDateConfirm
+        open={!!paidConfirm}
+        materialName={paidConfirm?.materialName || ""}
+        onConfirm={async (paidDate) => {
+          if (!paidConfirm) return;
+          const { error } = await supabase
+            .from("materials")
+            .update({ status: "paid", paid_date: paidDate })
+            .eq("id", paidConfirm.materialId);
+          if (error) {
+            toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+          } else {
+            toast({
+              title: t("purchases.statusUpdated"),
+              description: t("purchases.statusChangedTo", { status: t("materialStatuses.paid") }),
+            });
+            onMaterialUpdated();
+          }
+          setPaidConfirm(null);
+        }}
+        onCancel={() => setPaidConfirm(null)}
+      />
     </div>
   );
 }
