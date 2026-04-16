@@ -1202,23 +1202,25 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                     <Badge variant="secondary" className="ml-auto text-xs">{editingMaterial.vendor_name || "1"}</Badge>
                   )}
                 </CollapsibleTrigger>
-                <CollapsibleContent className="pt-3 space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-vendor-name">{t('purchases.vendorName')}</Label>
-                    <Input
-                      id="edit-vendor-name"
-                      value={editingMaterial.vendor_name || ""}
-                      onChange={(e) => setEditingMaterial({ ...editingMaterial, vendor_name: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-vendor-link">{t('purchases.vendorLink')}</Label>
-                    <Input
-                      id="edit-vendor-link"
-                      type="url"
-                      value={editingMaterial.vendor_link || ""}
-                      onChange={(e) => setEditingMaterial({ ...editingMaterial, vendor_link: e.target.value })}
-                    />
+                <CollapsibleContent className="pt-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-vendor-name">{t('purchases.vendorName')}</Label>
+                      <Input
+                        id="edit-vendor-name"
+                        value={editingMaterial.vendor_name || ""}
+                        onChange={(e) => setEditingMaterial({ ...editingMaterial, vendor_name: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-vendor-link">{t('purchases.vendorLink')}</Label>
+                      <Input
+                        id="edit-vendor-link"
+                        type="url"
+                        value={editingMaterial.vendor_link || ""}
+                        onChange={(e) => setEditingMaterial({ ...editingMaterial, vendor_link: e.target.value })}
+                      />
+                    </div>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
@@ -1235,63 +1237,65 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                     </Badge>
                   )}
                 </CollapsibleTrigger>
-                <CollapsibleContent className="pt-3 space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-task">{t('purchases.linkToTask')} ({t('common.optional')})</Label>
-                    <Select
-                      value={editingMaterial.task_id || "none"}
-                      onValueChange={(value) => setEditingMaterial({ ...editingMaterial, task_id: value === "none" ? null : value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={t('purchases.selectTask')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{t('purchases.noTask')}</SelectItem>
-                        {tasks.map((task) => (
-                          <SelectItem key={task.id} value={task.id}>
-                            {task.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-assigned-to">{t('purchases.assignTo')} ({t('common.optional')})</Label>
-                    <Select
-                      value={editingMaterial.assigned_to_user_id || "none"}
-                      onValueChange={(value) => setEditingMaterial({ ...editingMaterial, assigned_to_user_id: value === "none" ? null : value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={t('purchases.selectTeamMember')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{t('common.unassigned')}</SelectItem>
-                        {teamMembers.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
-                            {member.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-room">{t('purchases.room')} ({t('common.optional')})</Label>
-                    <Select
-                      value={editingMaterial.room_id || "none"}
-                      onValueChange={(value) => setEditingMaterial({ ...editingMaterial, room_id: value === "none" ? null : value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={t('purchases.selectRoom')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{t('purchases.noRoom')}</SelectItem>
-                        {rooms.map((room) => (
-                          <SelectItem key={room.id} value={room.id}>
-                            {room.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <CollapsibleContent className="pt-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-task">{t('purchases.linkToTask')} ({t('common.optional')})</Label>
+                      <Select
+                        value={editingMaterial.task_id || "none"}
+                        onValueChange={(value) => setEditingMaterial({ ...editingMaterial, task_id: value === "none" ? null : value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('purchases.selectTask')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{t('purchases.noTask')}</SelectItem>
+                          {tasks.map((task) => (
+                            <SelectItem key={task.id} value={task.id}>
+                              {task.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-assigned-to">{t('purchases.assignTo')} ({t('common.optional')})</Label>
+                      <Select
+                        value={editingMaterial.assigned_to_user_id || "none"}
+                        onValueChange={(value) => setEditingMaterial({ ...editingMaterial, assigned_to_user_id: value === "none" ? null : value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('purchases.selectTeamMember')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{t('common.unassigned')}</SelectItem>
+                          {teamMembers.map((member) => (
+                            <SelectItem key={member.id} value={member.id}>
+                              {member.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-room">{t('purchases.room')} ({t('common.optional')})</Label>
+                      <Select
+                        value={editingMaterial.room_id || "none"}
+                        onValueChange={(value) => setEditingMaterial({ ...editingMaterial, room_id: value === "none" ? null : value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('purchases.selectRoom')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{t('purchases.noRoom')}</SelectItem>
+                          {rooms.map((room) => (
+                            <SelectItem key={room.id} value={room.id}>
+                              {room.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </CollapsibleContent>
               </Collapsible>

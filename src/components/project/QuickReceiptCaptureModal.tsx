@@ -1115,24 +1115,14 @@ export function QuickReceiptCaptureModal({
                   autoFocus
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">{t("receipt.amount", "Belopp")}</Label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={totalAmount}
-                    onChange={(e) => setTotalAmount(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">{t("receipt.date", "Datum")}</Label>
-                  <DatePicker
-                    date={purchaseDate}
-                    onSelect={setPurchaseDate}
-                    placeholder={t("common.selectDate", "Välj datum")}
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t("receipt.amount", "Belopp")}</Label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={totalAmount}
+                  onChange={(e) => setTotalAmount(e.target.value)}
+                />
               </div>
               {rooms.length > 0 && (
                 <div className="space-y-1.5">
