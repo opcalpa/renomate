@@ -1,4 +1,4 @@
-import { Trash2, Ruler, AlertCircle, Hammer, Handshake, ShoppingCart } from "lucide-react";
+import { Trash2, DoorOpen, AlertCircle, Hammer, Handshake, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,6 +25,8 @@ export interface QuoteItem {
   source?: QuoteItemSource;
   /** Planning task this item was generated from */
   sourceTaskId?: string;
+  /** Section header — rendered as a divider row, not a line item */
+  sectionHeader?: string;
 }
 
 interface QuoteItemRowProps {
@@ -44,6 +46,20 @@ const SOURCE_STYLES: Record<QuoteItemSource, string> = {
 
 export function QuoteItemRow({ item, onChange, onDelete, onImportRoom }: QuoteItemRowProps) {
   const { t } = useTranslation();
+
+  // Section header — render as a simple divider
+  if (item.sectionHeader) {
+    return (
+      <div className="flex items-center gap-2 pt-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{item.sectionHeader}</span>
+        <div className="flex-1 h-px bg-border" />
+        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={() => onDelete(item.id)}>
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </div>
+    );
+  }
+
   const lineTotal = item.quantity * item.unitPrice * (1 - (item.discountPercent ?? 0) / 100);
   const isMissing = item.source === "missing";
 
@@ -144,8 +160,8 @@ export function QuoteItemRow({ item, onChange, onDelete, onImportRoom }: QuoteIt
           </span>
         </div>
         <div className="flex gap-1">
-          <Button variant="ghost" size="icon" className="min-h-[48px] min-w-[48px]" onClick={() => onImportRoom(item.id)}>
-            <Ruler className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="min-h-[48px] min-w-[48px]" onClick={() => onImportRoom(item.id)} title="Välj rum">
+            <DoorOpen className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" className="min-h-[48px] min-w-[48px] text-destructive" onClick={() => onDelete(item.id)}>
             <Trash2 className="h-4 w-4" />

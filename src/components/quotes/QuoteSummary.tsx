@@ -8,9 +8,10 @@ interface QuoteSummaryProps {
 export function QuoteSummary({ items }: QuoteSummaryProps) {
   const { t } = useTranslation();
 
-  const subtotal = items.reduce((sum, i) => sum + i.quantity * i.unitPrice * (1 - (i.discountPercent ?? 0) / 100), 0);
+  const lineItems = items.filter((i) => !i.sectionHeader);
+  const subtotal = lineItems.reduce((sum, i) => sum + i.quantity * i.unitPrice * (1 - (i.discountPercent ?? 0) / 100), 0);
   const vat = subtotal * 0.25;
-  const rotEligibleTotal = items
+  const rotEligibleTotal = lineItems
     .filter((i) => i.isRotEligible)
     .reduce((sum, i) => sum + i.quantity * i.unitPrice * (1 - (i.discountPercent ?? 0) / 100), 0);
   const rotDeduction = rotEligibleTotal * 1.25 * 0.3; // 30% of inc moms (Skatteverket)

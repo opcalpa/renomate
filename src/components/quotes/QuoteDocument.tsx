@@ -37,12 +37,13 @@ export function QuoteDocument({
 }: QuoteDocumentProps) {
   const { t } = useTranslation();
 
-  const subtotal = items.reduce(
+  const lineItems = items.filter((i) => !i.sectionHeader);
+  const subtotal = lineItems.reduce(
     (sum, i) => sum + i.quantity * i.unitPrice * (1 - (i.discountPercent ?? 0) / 100),
     0
   );
   const vat = subtotal * 0.25;
-  const rotEligibleTotal = items
+  const rotEligibleTotal = lineItems
     .filter((i) => i.isRotEligible)
     .reduce((sum, i) => sum + i.quantity * i.unitPrice * (1 - (i.discountPercent ?? 0) / 100), 0);
   const rotDeduction = rotEligibleTotal * 1.25 * 0.3; // 30% of inc moms (Skatteverket)
@@ -139,17 +140,26 @@ export function QuoteDocument({
           </thead>
           <tbody>
             {items.map((item, idx) => {
+              // Section header row (room divider)
+              if (item.sectionHeader) {
+                return (
+                  <tr key={item.id}>
+                    <td
+                      colSpan={hasAnyDiscount ? 5 : 4}
+                      className={`font-semibold text-sm uppercase tracking-wide text-foreground/70 ${idx === 0 ? "pt-1 pb-2" : "pt-5 pb-2"} border-b border-foreground/15`}
+                    >
+                      {item.sectionHeader}
+                    </td>
+                  </tr>
+                );
+              }
+
               const discount = item.discountPercent ?? 0;
               const lineTotal = item.quantity * item.unitPrice * (1 - discount / 100);
-              const prevRoom = idx > 0 ? (items[idx - 1].roomId ?? "__none__") : null;
-              const currRoom = item.roomId ?? "__none__";
-              const isNewRoomGroup = idx > 0 && currRoom !== prevRoom;
               const cellPy = compactMode ? "py-1" : "py-2.5";
-              const newGroupPt = compactMode ? "pt-3" : "pt-6";
-              const newGroupPb = compactMode ? "pb-1" : "pb-2.5";
               return (
-                <tr key={item.id} className={`border-b border-foreground/8 ${isNewRoomGroup ? "border-t border-foreground/8" : ""}`}>
-                  <td className={`pr-4 ${isNewRoomGroup ? `${newGroupPt} ${newGroupPb}` : cellPy}`}>
+                <tr key={item.id} className="border-b border-foreground/8">
+                  <td className={`pr-4 ${cellPy}`}>
                     {item.description || "—"}
                     {item.isRotEligible && (
                       <span className="text-[11px] text-muted-foreground ml-1.5">(ROT)</span>
@@ -160,16 +170,16 @@ export function QuoteDocument({
                       </p>
                     )}
                   </td>
-                  <td className={`text-right px-3 whitespace-nowrap tabular-nums ${isNewRoomGroup ? `${newGroupPt} ${newGroupPb}` : cellPy}`}>
+                  <td className={`text-right px-3 whitespace-nowrap tabular-nums ${cellPy}`}>
                     {item.quantity} {item.unit}
                   </td>
-                  <td className={`text-right px-3 whitespace-nowrap tabular-nums ${isNewRoomGroup ? `${newGroupPt} ${newGroupPb}` : cellPy}`}>{fmt(item.unitPrice)} kr</td>
+                  <td className={`text-right px-3 whitespace-nowrap tabular-nums ${cellPy}`}>{fmt(item.unitPrice)} kr</td>
                   {hasAnyDiscount && (
-                    <td className={`text-right px-3 whitespace-nowrap tabular-nums ${isNewRoomGroup ? `${newGroupPt} ${newGroupPb}` : cellPy}`}>
+                    <td className={`text-right px-3 whitespace-nowrap tabular-nums ${cellPy}`}>
                       {discount > 0 ? `${discount}%` : "—"}
                     </td>
                   )}
-                  <td className={`text-right pl-3 whitespace-nowrap tabular-nums font-medium ${isNewRoomGroup ? `${newGroupPt} ${newGroupPb}` : cellPy}`}>{fmt(lineTotal)} kr</td>
+                  <td className={`text-right pl-3 whitespace-nowrap tabular-nums font-medium ${cellPy}`}>{fmt(lineTotal)} kr</td>
                 </tr>
               );
             })}

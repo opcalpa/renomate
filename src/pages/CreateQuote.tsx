@@ -605,7 +605,7 @@ export default function CreateQuote() {
       let newItems: QuoteItem[];
 
       if (groupByType === "byRoom") {
-        // Group by room: collect all items by room, then flatten
+        // Group by room: insert section headers, then items under each room
         const roomMap = new Map<string, (QuoteItem & { roomName: string | null })[]>();
         const noRoom: (QuoteItem & { roomName: string | null })[] = [];
 
@@ -619,27 +619,41 @@ export default function CreateQuote() {
           }
         }
 
-        // Build items with room headers in description
         newItems = [];
         for (const [, roomItems] of roomMap) {
           const roomName = roomItems[0]?.roomName || t("quotes.noRoom");
+          // Insert section header
+          newItems.push({
+            id: crypto.randomUUID(),
+            description: "",
+            quantity: 0,
+            unit: "",
+            unitPrice: 0,
+            isRotEligible: false,
+            sectionHeader: roomName,
+          });
           for (const item of roomItems) {
-            newItems.push({
-              ...item,
-              description: `${item.description} (${roomName})`,
-            });
+            newItems.push(item);
           }
         }
-        // Add items without room at the end
-        for (const item of noRoom) {
-          newItems.push(item);
+        // Items without room at the end
+        if (noRoom.length > 0) {
+          newItems.push({
+            id: crypto.randomUUID(),
+            description: "",
+            quantity: 0,
+            unit: "",
+            unitPrice: 0,
+            isRotEligible: false,
+            sectionHeader: t("quotes.noRoom", "Övrigt"),
+          });
+          for (const item of noRoom) {
+            newItems.push(item);
+          }
         }
       } else if (groupByType === "grouped") {
-        // Labor first, then materials
-        newItems = [...taskItems, ...materialItems].map((item) => ({
-          ...item,
-          description: item.roomName ? `${item.description} (${item.roomName})` : item.description,
-        }));
+        // Labor first, then materials — no room suffix (clean descriptions)
+        newItems = [...taskItems, ...materialItems];
       } else {
         // Mixed - interleave by creation order
         const allItems = [];
@@ -648,10 +662,7 @@ export default function CreateQuote() {
           if (ti < taskItems.length) allItems.push(taskItems[ti++]);
           if (mi < materialItems.length) allItems.push(materialItems[mi++]);
         }
-        newItems = allItems.map((item) => ({
-          ...item,
-          description: item.roomName ? `${item.description} (${item.roomName})` : item.description,
-        }));
+        newItems = allItems;
       }
 
       if (newItems.length > 0) {
@@ -703,7 +714,7 @@ export default function CreateQuote() {
     setSaving(true);
 
     const itemPayloads = items
-      .filter((item) => item.description || item.unitPrice > 0)
+      .filter((item) => !item.sectionHeader && (item.description || item.unitPrice > 0))
       .map((item, idx) => ({
         description: item.description,
         quantity: item.quantity,
