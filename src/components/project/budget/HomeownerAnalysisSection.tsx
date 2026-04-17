@@ -288,7 +288,7 @@ export function HomeownerAnalysisSection({ projectId, currency }: AnalysisProps)
           : (inv.total_amount || 0) > 0 ? "registered" : "missing") as EvidenceStatus,
         rotPerPerson: invoiceRotPerPerson.get(inv.id),
         paymentYear: inv.paid_at ? new Date(inv.paid_at).getFullYear() : undefined,
-        notes: inv.notes || (inv.is_ata ? "ÄTA" : null),
+        notes: inv.notes || (inv.is_ata ? t('budget.addition', 'Tillägg') : null),
       });
     });
 

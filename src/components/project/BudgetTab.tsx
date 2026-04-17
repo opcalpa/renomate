@@ -1464,7 +1464,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
 
       result.push({
         id: "__ata_header__",
-        name: t("budget.ataSection", "ÄTA / Tilläggsarbeten"),
+        name: t("budget.ataSection", "Tillägg"),
         type: "task",
         budget: ataTotal,
         paid: 0,
@@ -1664,7 +1664,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
             </button>
             {/* ÄTA badge */}
             {row.isAta && (
-              <Badge variant="outline" className="ml-1 text-[10px] px-1 py-0 text-orange-600 border-orange-300">ÄTA</Badge>
+              <Badge variant="outline" className="ml-1 text-[10px] px-1 py-0 text-orange-600 border-orange-300">{t('budget.addition', 'Tillägg')}</Badge>
             )}
             {/* Task: expand to show material budget posts */}
             {row.type === "task" && (row.childCount ?? 0) > 0 && (
@@ -2561,7 +2561,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
                     <TableCell colSpan={visibleColumns.length + (isBuilder ? 1 : 0)} className="py-2">
                       <div className="flex items-center gap-2">
                         <ChevronDown className={`h-4 w-4 text-orange-500 transition-transform ${ataExpanded ? "" : "-rotate-90"}`} />
-                        <Badge variant="outline" className="text-xs text-orange-700 border-orange-300 bg-orange-100">ÄTA</Badge>
+                        <Badge variant="outline" className="text-xs text-orange-700 border-orange-300 bg-orange-100">{t('budget.addition', 'Tillägg')}</Badge>
                         <span className="text-sm font-medium text-orange-800">{row.name}</span>
                         <Badge variant="secondary" className="text-xs">{rowMeta.childCount}</Badge>
                         {row.budget > 0 && (

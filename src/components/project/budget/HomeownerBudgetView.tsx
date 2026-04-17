@@ -420,7 +420,7 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
                           <Badge variant="outline" className="text-[10px] px-1 py-0 text-green-700 border-green-300">ROT</Badge>
                         )}
                         {inv.is_ata && (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0">ÄTA</Badge>
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-300">{t('budget.addition', 'Tillägg')}</Badge>
                         )}
                         <Badge className={STATUS_COLORS[displayStatus] || STATUS_COLORS.draft}>
                           {t(`invoices.${invoiceStatusKey(displayStatus)}`)}
@@ -478,7 +478,7 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
         <div className="bg-muted/50 rounded-lg p-4 text-center space-y-1">
           <div className="flex items-center justify-center gap-1.5">
             <ShoppingBag className="h-3.5 w-3.5 text-orange-600" />
-            <p className="text-xs text-muted-foreground">{t("homeownerBudget.ataShort", "ÄTA")}</p>
+            <p className="text-xs text-muted-foreground">{t("homeownerBudget.ataShort", "Tillägg")}</p>
           </div>
           <p className="text-lg font-bold">{formatCurrency(computed.ataTotal, currency)}</p>
         </div>

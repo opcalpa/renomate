@@ -902,7 +902,7 @@ export function QuickReceiptCaptureModal({
                               <span className="truncate font-medium flex items-center gap-1.5">
                                 {task.title}
                                 {task.is_ata && (
-                                  <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-300 shrink-0">ÄTA</Badge>
+                                  <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-300 shrink-0">{t('budget.addition', 'Tillägg')}</Badge>
                                 )}
                               </span>
                               {(() => {
