@@ -24,7 +24,8 @@ export type TaskColumnKey =
   | "dependencies"
   | "attachment"
   | "fileCategory"
-  | "rotAmount";
+  | "rotAmount"
+  | "supplier";
 
 export interface TaskColumnDef {
   key: TaskColumnKey;
@@ -64,6 +65,7 @@ export const EXTRA_COLUMN_KEYS: TaskColumnKey[] = [
   "attachment",
   "fileCategory",
   "rotAmount",
+  "supplier",
 ];
 
 export const DEFAULT_VISIBLE_EXTRAS: TaskColumnKey[] = [

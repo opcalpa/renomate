@@ -84,6 +84,8 @@ interface Task {
   labor_cost_percent: number | null;
   material_markup_percent: number | null;
   material_items?: { amount?: number }[] | null;
+  // Supplier
+  supplier_id: string | null;
   // Sub-task / ÄTA fields
   is_ata?: boolean;
   parent_task_id?: string | null;

@@ -65,6 +65,7 @@ export function useTasksTableView(projectId: string) {
       { key: "attachment", label: t("tasksTable.attachment", "Bilagor"), width: "w-[80px]", extra: true, editType: "none" },
       { key: "fileCategory", label: t("files.category", "Filkategori"), width: "w-[120px]", extra: true, editType: "none" },
       { key: "rotAmount", label: t("files.rotAmount", "ROT-avdrag"), width: "w-[120px]", align: "right", extra: true, editType: "numeric", dbField: "rot_amount" },
+      { key: "supplier", label: t("budget.supplier", "Leverantör"), width: "w-[150px]", extra: true, editType: "none" },
       { key: "actions", label: t("common.actions"), width: "w-[60px]", editType: "none" },
     ],
     [t]

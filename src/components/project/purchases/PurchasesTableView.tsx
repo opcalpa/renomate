@@ -1,6 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { SupplierAutocomplete } from "@/components/shared/SupplierAutocomplete";
 import { MultiRoomSelect } from "@/components/shared/MultiRoomSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +63,7 @@ interface Material {
   paid_amount: number | null;
   vendor_name: string | null;
   vendor_link: string | null;
+  supplier_id: string | null;
   status: string;
   exclude_from_budget: boolean;
   created_at: string;
@@ -172,6 +174,21 @@ export function PurchasesTableView({
     collapsedGroups,
     toggleGroupCollapse,
   } = externalState || internalState;
+
+  // Supplier autocomplete state
+  const [purchaseSuppliers, setPurchaseSuppliers] = useState<{ id: string; name: string }[]>([]);
+  const [purchaseProfileId, setPurchaseProfileId] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: prof } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+      if (!prof) return;
+      setPurchaseProfileId(prof.id);
+      const { data: suppData } = await supabase.from("suppliers").select("id, name").eq("profile_id", prof.id).order("name");
+      setPurchaseSuppliers(suppData || []);
+    })();
+  }, []);
 
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{
@@ -390,24 +407,64 @@ export function PurchasesTableView({
         );
       }
 
-      case "vendor":
-        if (!material.vendor_name) {
-          return <span className="text-muted-foreground text-xs">-</span>;
+      case "vendor": {
+        const supplierName = purchaseSuppliers.find(s => s.id === material.supplier_id)?.name || material.vendor_name || "";
+        const isEditingVendor = editingCell?.rowId === material.id && editingCell?.col === "vendor";
+        if (isReadOnly) {
+          if (!supplierName) return <span className="text-muted-foreground text-xs">-</span>;
+          return material.vendor_link ? (
+            <a href={material.vendor_link} target="_blank" rel="noopener noreferrer"
+              className="text-primary hover:underline flex items-center gap-1 text-sm"
+              onClick={(e) => e.stopPropagation()}>
+              {supplierName}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          ) : <span className="text-sm">{supplierName}</span>;
         }
-        return material.vendor_link ? (
-          <a
-            href={material.vendor_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline flex items-center gap-1 text-sm"
-            onClick={(e) => e.stopPropagation()}
+        if (isEditingVendor) {
+          return (
+            <div onClick={(e) => e.stopPropagation()}>
+              <SupplierAutocomplete
+                profileId={purchaseProfileId}
+                suppliers={purchaseSuppliers}
+                value={supplierName}
+                compact
+                onChange={async (suppId, name) => {
+                  const { error } = await supabase.from("materials").update({
+                    supplier_id: suppId,
+                    vendor_name: name || null,
+                  }).eq("id", material.id);
+                  if (!error) { setEditingCell(null); onMaterialUpdated?.(); }
+                }}
+                onCreated={async () => {
+                  if (!purchaseProfileId) return;
+                  const { data } = await supabase.from("suppliers").select("id, name").eq("profile_id", purchaseProfileId).order("name");
+                  setPurchaseSuppliers(data || []);
+                }}
+              />
+            </div>
+          );
+        }
+        return (
+          <button
+            className="text-sm hover:bg-muted px-1 rounded cursor-text"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingCell({ rowId: material.id, col: "vendor" });
+              setEditValue(supplierName);
+            }}
           >
-            {material.vendor_name}
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        ) : (
-          <span className="text-sm">{material.vendor_name}</span>
+            {supplierName ? (
+              material.vendor_link ? (
+                <span className="flex items-center gap-1 text-primary">
+                  {supplierName}
+                  <ExternalLink className="h-3 w-3" />
+                </span>
+              ) : supplierName
+            ) : <span className="text-muted-foreground text-xs">-</span>}
+          </button>
         );
+      }
 
       case "paidDate": {
         const dateStr = (material as Record<string, unknown>).paid_date as string | null;

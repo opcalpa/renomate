@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { SupplierAutocomplete } from "@/components/shared/SupplierAutocomplete";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +95,7 @@ interface Task {
   markup_percent: number | null;
   material_estimate: number | null;
   rot_amount: number | null;
+  supplier_id: string | null;
   is_ata?: boolean;
   parent_task_id?: string | null;
 }
@@ -225,6 +227,21 @@ export function TasksTableView({
 
   const internalBulk = useBulkTaskActions({ tasks, projectId, onTaskUpdated });
   const bulk = externalBulk || internalBulk;
+
+  // Supplier autocomplete state
+  const [taskSuppliers, setTaskSuppliers] = useState<{ id: string; name: string }[]>([]);
+  const [taskProfileId, setTaskProfileId] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: prof } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+      if (!prof) return;
+      setTaskProfileId(prof.id);
+      const { data: suppData } = await supabase.from("suppliers").select("id, name").eq("profile_id", prof.id).order("name");
+      setTaskSuppliers(suppData || []);
+    })();
+  }, []);
 
   // Dependencies map: taskId → array of { id, depends_on_task_id, title }
   const [depsMap, setDepsMap] = useState<Map<string, { depId: string; taskId: string; title: string }[]>>(new Map());
@@ -925,6 +942,46 @@ export function TasksTableView({
           <span className="inline-flex flex-wrap gap-1">
             {cats.map(c => <Badge key={c} variant="outline" className="text-[10px] px-1 py-0">{catLabels[c] || c}</Badge>)}
           </span>
+        );
+      }
+
+      case "supplier": {
+        const supplierName = taskSuppliers.find(s => s.id === task.supplier_id)?.name || "";
+        if (isReadOnly) {
+          return <span className="text-sm">{supplierName || <span className="text-muted-foreground text-xs">-</span>}</span>;
+        }
+        if (isEditing) {
+          return (
+            <div onClick={(e) => e.stopPropagation()}>
+              <SupplierAutocomplete
+                profileId={taskProfileId}
+                suppliers={taskSuppliers}
+                value={supplierName}
+                compact
+                onChange={async (suppId) => {
+                  const { error } = await supabase.from("tasks").update({ supplier_id: suppId }).eq("id", task.id);
+                  if (!error) { setEditingCell(null); onTaskUpdated?.(); }
+                }}
+                onCreated={async () => {
+                  if (!taskProfileId) return;
+                  const { data } = await supabase.from("suppliers").select("id, name").eq("profile_id", taskProfileId).order("name");
+                  setTaskSuppliers(data || []);
+                }}
+              />
+            </div>
+          );
+        }
+        return (
+          <button
+            className="text-sm hover:bg-muted px-1 rounded cursor-text"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingCell({ rowId: task.id, col: "supplier" });
+              setEditValue(supplierName);
+            }}
+          >
+            {supplierName || <span className="text-muted-foreground text-xs">-</span>}
+          </button>
         );
       }
 
