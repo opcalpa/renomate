@@ -974,7 +974,7 @@ export function QuickReceiptCaptureModal({
                   )}
 
                   {/* Budget-post picker when no task selected */}
-                  {selectedTaskId === null && allPlannedMaterials.length > 0 && linkOption === "new" && documentType !== "invoice" && (
+                  {selectedTaskId === null && allPlannedMaterials.length > 0 && linkOption === "new" && (
                     <div className="space-y-2">
                       <Label className="text-sm">{t("purchases.linkToBudgetPost", "Koppla till budgetpost")}</Label>
                       <Select

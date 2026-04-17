@@ -23,6 +23,7 @@ import { RotSummaryCard } from "./overview/RotSummaryCard";
 import { useTaxDeductionVisible } from "@/hooks/useTaxDeduction";
 import { TaskEditDialog } from "./TaskEditDialog";
 import { MaterialEditDialog } from "./MaterialEditDialog";
+import { NewPurchaseFromBudgetDialog } from "./NewPurchaseFromBudgetDialog";
 import {
   Select,
   SelectContent,
@@ -54,7 +55,7 @@ import { Progress } from "@/components/ui/progress";
 interface BudgetRow {
   id: string;
   name: string;
-  type: "task" | "material";
+  type: "task" | "material" | "purchase";
   budget: number;
   paid: number;
   estimatedCost: number;
@@ -74,6 +75,11 @@ interface BudgetRow {
   materialBudget: number;
   materialConsumed: number;
   status?: string;
+  // Budget post fields (material budgets)
+  isBudgetPost?: boolean;
+  sourceMaterialId?: string;
+  parentBudgetPostId?: string;
+  consumedTotal?: number;
   // Task-specific
   estimatedHours?: number;
   hourlyRate?: number;
@@ -93,7 +99,7 @@ interface BudgetRow {
   evidenceStatus?: "verified" | "registered" | "missing" | "na";
 }
 
-type ColumnKey = "name" | "type" | "status" | "budget" | "paid" | "remaining" | "margin" | "matBudget" | "matConsumed" | "matRemaining" | "room" | "assignee" | "costCenter" | "startDate" | "finishDate" | "attachment" | "evidence" | "estimatedHours" | "hourlyRate" | "subcontractorCost" | "paymentStatus" | "quantity" | "pricePerUnit" | "orderedAmount" | "vendor" | "rotAmount";
+type ColumnKey = "name" | "type" | "status" | "budget" | "consumed" | "paid" | "remaining" | "margin" | "matBudget" | "matConsumed" | "matRemaining" | "room" | "assignee" | "costCenter" | "startDate" | "finishDate" | "attachment" | "evidence" | "estimatedHours" | "hourlyRate" | "subcontractorCost" | "paymentStatus" | "quantity" | "pricePerUnit" | "orderedAmount" | "vendor" | "rotAmount";
 
 interface ColumnDef {
   key: ColumnKey;
@@ -195,6 +201,22 @@ function computeTaskEstimatedCost(
   return laborCost + ueCost + materialCost;
 }
 
+/** Labor-only estimated cost for P&L view where materials are separate rows */
+function computeTaskLaborCost(
+  task: {
+    estimated_hours?: number | null;
+    hourly_rate?: number | null;
+    labor_cost_percent?: number | null;
+    subcontractor_cost?: number | null;
+  },
+  defaultLaborCostPercent: number,
+): number {
+  const laborTotal = (task.estimated_hours || 0) * (task.hourly_rate || 0);
+  const laborCost = laborTotal * ((task.labor_cost_percent ?? defaultLaborCostPercent) / 100);
+  const ueCost = task.subcontractor_cost || 0;
+  return laborCost + ueCost;
+}
+
 const getEffectiveCost = (row: BudgetRow) => row.paid > 0 ? row.paid : row.estimatedCost;
 
 function computeMaterialBudget(
@@ -222,7 +244,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [searchExpanded, setSearchExpanded] = useState(false);
-  const [filterType, setFilterType] = useState<"all" | "task" | "material">("all");
+  const [filterType, setFilterType] = useState<"all" | "task" | "material" | "purchase">("all");
 
   // Grouping
   type GroupByOption = "none" | "room" | "costCenter" | "status";
@@ -266,9 +288,10 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
     { key: "type", label: t('budget.type') },
     { key: "status", label: t('budget.status', 'Status') },
     { key: "budget", label: isBuilder ? t('budget.customerPrice') : t('homeownerBudget.quoted', 'Offert'), align: "right" },
-    { key: "matBudget", label: t('budget.matBudget'), align: "right" },
-    { key: "matConsumed", label: t('budget.matConsumed'), align: "right" },
-    { key: "matRemaining", label: t('budget.matRemaining'), align: "right" },
+    { key: "consumed", label: t('budget.consumed', 'Förbrukat'), align: "right" },
+    { key: "matBudget", label: t('budget.matBudget'), align: "right", extra: true },
+    { key: "matConsumed", label: t('budget.matConsumed'), align: "right", extra: true },
+    { key: "matRemaining", label: t('budget.matRemaining'), align: "right", extra: true },
     { key: "paid", label: isBuilder ? t('budget.cost') : t('homeownerBudget.paid', 'Betalat'), align: "right" },
     { key: "remaining", label: isBuilder ? t('budget.result') : t('homeownerBudget.outstanding', 'Kvarstående'), align: "right" },
     { key: "margin", label: t('budget.margin'), align: "right" },
@@ -353,17 +376,32 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
   const [editMaterialId, setEditMaterialId] = useState<string | null>(null);
   const [invoiceMethodOpen, setInvoiceMethodOpen] = useState(false);
 
+  // +Inköp from budget post
+  const [purchaseFromBudgetPost, setPurchaseFromBudgetPost] = useState<BudgetRow | null>(null);
+  const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
+
   const [compactRows, setCompactRows] = useState(
     () => budgetPrefs.current?.compactRows ?? true
   );
 
-  // Task → material grouping
+  // Task → material budget post grouping
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const toggleTaskExpand = useCallback((taskId: string) => {
     setExpandedTasks(prev => {
       const next = new Set(prev);
       if (next.has(taskId)) next.delete(taskId);
       else next.add(taskId);
+      return next;
+    });
+  }, []);
+
+  // Material budget post → purchase grouping
+  const [expandedBudgetPosts, setExpandedBudgetPosts] = useState<Set<string>>(new Set());
+  const toggleBudgetPostExpand = useCallback((budgetPostId: string) => {
+    setExpandedBudgetPosts(prev => {
+      const next = new Set(prev);
+      if (next.has(budgetPostId)) next.delete(budgetPostId);
+      else next.add(budgetPostId);
       return next;
     });
   }, []);
@@ -422,11 +460,14 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("default_labor_cost_percent")
+          .select("id, default_labor_cost_percent")
           .eq("user_id", user.id)
           .single();
-        if (profile?.default_labor_cost_percent != null) {
-          setDefaultLaborCostPercent(profile.default_labor_cost_percent);
+        if (profile) {
+          if (profile.default_labor_cost_percent != null) {
+            setDefaultLaborCostPercent(profile.default_labor_cost_percent);
+          }
+          setCurrentProfileId(profile.id);
         }
       }
 
@@ -437,7 +478,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           .eq("project_id", projectId),
         supabase
           .from("materials")
-          .select("id, name, price_total, quantity, price_per_unit, ordered_amount, paid_amount, status, room_id, task_id, vendor_name")
+          .select("id, name, price_total, quantity, price_per_unit, ordered_amount, paid_amount, status, room_id, task_id, vendor_name, source_material_id")
           .eq("project_id", projectId)
           .eq("exclude_from_budget", false),
         supabase
@@ -524,30 +565,45 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         }
       }
 
-      // Sum linked material costs per task — split planned vs actual
-      const materialConsumedMap = new Map<string, number>();
-      const materialPlannedMap = new Map<string, number>();
-      for (const m of materialsRes.data || []) {
-        if (m.task_id) {
+      // --- P&L row construction ---
+      // Split materials into budget posts (planned) vs purchases (actual)
+      const allMaterials = materialsRes.data || [];
+      const plannedMaterials = allMaterials.filter(m => m.status === "planned");
+      const purchaseMaterials = allMaterials.filter(m => m.status !== "planned");
+
+      // Build consumed-by-source map: source_material_id → sum of purchase costs
+      const consumedBySourceId = new Map<string, number>();
+      for (const m of purchaseMaterials) {
+        if (m.source_material_id) {
           const cost = m.price_total ?? (((m.quantity || 0) * (m.price_per_unit || 0)) || 0);
-          if (m.status === "planned") {
-            materialPlannedMap.set(m.task_id, (materialPlannedMap.get(m.task_id) || 0) + cost);
-          } else {
-            materialConsumedMap.set(m.task_id, (materialConsumedMap.get(m.task_id) || 0) + cost);
-          }
+          consumedBySourceId.set(m.source_material_id, (consumedBySourceId.get(m.source_material_id) || 0) + cost);
         }
       }
 
+      // Track which tasks have planned materials (for synthetic budget post fallback)
+      const tasksWithPlannedMaterials = new Set(plannedMaterials.filter(m => m.task_id).map(m => m.task_id));
+
+      // Keep legacy materialPlannedMap for computeTaskEstimatedCost (used in evidence calc)
+      const materialPlannedMap = new Map<string, number>();
+      for (const m of plannedMaterials) {
+        if (m.task_id) {
+          const cost = m.price_total ?? (((m.quantity || 0) * (m.price_per_unit || 0)) || 0);
+          materialPlannedMap.set(m.task_id, (materialPlannedMap.get(m.task_id) || 0) + cost);
+        }
+      }
+
+      // 1. Task rows (work budget posts) — labor cost only, materials are separate rows
       const taskRows: BudgetRow[] = (tasksRes.data || []).filter((t) => !t.is_ata).map((t) => {
         const attachmentCount = taskDocCounts.get(t.id) || 0;
-        const estCost = computeTaskEstimatedCost(t, defaultLaborCostPercent, materialPlannedMap.get(t.id));
+        const laborCost = computeTaskLaborCost(t, defaultLaborCostPercent);
+        const fullEstCost = computeTaskEstimatedCost(t, defaultLaborCostPercent, materialPlannedMap.get(t.id));
         return {
           id: t.id,
           name: t.title,
           type: "task" as const,
           budget: t.budget ?? 0,
           paid: t.paid_amount ?? 0,
-          estimatedCost: estCost,
+          estimatedCost: laborCost,
           isEstimated: (t.paid_amount ?? 0) <= 0,
           taskCostType: (t as Record<string, unknown>).task_cost_type as string | null ?? null,
           room: t.room_id ? roomMap.get(t.room_id) : undefined,
@@ -560,7 +616,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           hasAttachment: attachmentCount > 0,
           attachmentCount,
           materialBudget: computeMaterialBudget(t, materialPlannedMap.get(t.id)),
-          materialConsumed: materialConsumedMap.get(t.id) || 0,
+          materialConsumed: 0,
           status: t.status ?? undefined,
           estimatedHours: t.estimated_hours ?? undefined,
           hourlyRate: t.hourly_rate ?? undefined,
@@ -576,23 +632,93 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
             status: t.status,
             budget: t.budget ?? 0,
             paid: t.paid_amount ?? 0,
-            cost: estCost,
+            cost: fullEstCost,
             hasQualifyingFile: taskHasInvoice.get(t.id) ?? false,
             fileCount: attachmentCount,
           }),
         };
       });
 
-      const materialRows: BudgetRow[] = (materialsRes.data || []).map((m) => {
+      // 2. Material budget post rows (planned materials as own rows)
+      const materialBudgetRows: BudgetRow[] = plannedMaterials.map((m) => {
         const attachmentCount = materialDocCounts.get(m.id) || 0;
-        const materialTotal = m.price_total ?? (((m.quantity || 0) * (m.price_per_unit || 0)) || 0);
+        const budgetAmount = m.price_total ?? (((m.quantity || 0) * (m.price_per_unit || 0)) || 0);
+        const consumed = consumedBySourceId.get(m.id) || 0;
         return {
           id: m.id,
           name: m.name,
           type: "material" as const,
+          isBudgetPost: true,
+          budget: budgetAmount,
+          paid: m.paid_amount ?? 0,
+          estimatedCost: budgetAmount,
+          isEstimated: true,
+          room: m.room_id ? roomMap.get(m.room_id) : undefined,
+          roomId: m.room_id ?? undefined,
+          hasAttachment: attachmentCount > 0,
+          attachmentCount,
+          isUnlinked: !m.task_id,
+          taskId: m.task_id ?? undefined,
+          materialBudget: budgetAmount,
+          materialConsumed: consumed,
+          consumedTotal: consumed,
+          status: m.status ?? undefined,
+          quantity: m.quantity ?? undefined,
+          pricePerUnit: m.price_per_unit ?? undefined,
+          orderedAmount: m.ordered_amount ?? undefined,
+          vendor: m.vendor_name ?? undefined,
+          evidenceStatus: computeEvidenceStatus({
+            rowType: "material",
+            status: m.status,
+            budget: budgetAmount,
+            paid: m.paid_amount ?? 0,
+            cost: budgetAmount,
+            hasQualifyingFile: materialHasInvoice.get(m.id) ?? false,
+            fileCount: attachmentCount,
+          }),
+        };
+      });
+
+      // 3. Synthetic material budget posts for tasks with material_estimate but no planned rows
+      const syntheticBudgetRows: BudgetRow[] = [];
+      for (const t of tasksRes.data || []) {
+        if (t.is_ata) continue;
+        if (tasksWithPlannedMaterials.has(t.id)) continue;
+        const matEst = t.material_estimate || 0;
+        if (matEst <= 0) continue;
+        syntheticBudgetRows.push({
+          id: `__synthetic_mat_${t.id}`,
+          name: `${t.title} — materialbudget`,
+          type: "material" as const,
+          isBudgetPost: true,
+          budget: matEst,
+          paid: 0,
+          estimatedCost: matEst,
+          isEstimated: true,
+          room: t.room_id ? roomMap.get(t.room_id) : undefined,
+          roomId: t.room_id ?? undefined,
+          hasAttachment: false,
+          attachmentCount: 0,
+          isUnlinked: false,
+          taskId: t.id,
+          materialBudget: matEst,
+          materialConsumed: 0,
+          consumedTotal: 0,
+          status: "planned",
+        });
+      }
+
+      // 4. Purchase rows (actual orders/invoices that consume budget posts)
+      const purchaseRows: BudgetRow[] = purchaseMaterials.map((m) => {
+        const attachmentCount = materialDocCounts.get(m.id) || 0;
+        const purchaseTotal = m.price_total ?? (((m.quantity || 0) * (m.price_per_unit || 0)) || 0);
+        return {
+          id: m.id,
+          name: m.name,
+          type: "purchase" as const,
           budget: 0,
           paid: m.paid_amount ?? 0,
-          estimatedCost: materialTotal,
+          estimatedCost: purchaseTotal,
           isEstimated: (m.paid_amount ?? 0) <= 0,
           room: m.room_id ? roomMap.get(m.room_id) : undefined,
           roomId: m.room_id ?? undefined,
@@ -602,6 +728,8 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           taskId: m.task_id ?? undefined,
           materialBudget: 0,
           materialConsumed: 0,
+          sourceMaterialId: m.source_material_id ?? undefined,
+          parentBudgetPostId: m.source_material_id ?? undefined,
           status: m.status ?? undefined,
           quantity: m.quantity ?? undefined,
           pricePerUnit: m.price_per_unit ?? undefined,
@@ -612,14 +740,14 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
             status: m.status,
             budget: 0,
             paid: m.paid_amount ?? 0,
-            cost: materialTotal,
+            cost: purchaseTotal,
             hasQualifyingFile: materialHasInvoice.get(m.id) ?? false,
             fileCount: attachmentCount,
           }),
         };
       });
 
-      setRows([...taskRows, ...materialRows]);
+      setRows([...taskRows, ...materialBudgetRows, ...syntheticBudgetRows, ...purchaseRows]);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : t('budget.failedToLoadData');
       toast({ title: t('common.error'), description: msg, variant: "destructive" });
@@ -937,6 +1065,8 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
   // --- Open edit dialog ---
 
   const openDetail = (row: BudgetRow) => {
+    // Synthetic budget posts don't have a real material ID
+    if (row.id.startsWith("__")) return;
     if (row.type === "task") {
       setEditTaskId(row.id);
     } else {
@@ -985,6 +1115,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       if (sortKey === "paid") {
         av = getEffectiveCost(a);
         bv = getEffectiveCost(b);
+      } else if (sortKey === "consumed") {
+        av = a.consumedTotal ?? 0;
+        bv = b.consumedTotal ?? 0;
       } else if (sortKey === "remaining") {
         if (isBuilder) {
           av = a.budget - getEffectiveCost(a);
@@ -1065,71 +1198,132 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
   }
 
   const totals = filtered.reduce(
-    (acc, r) => ({
-      budget: acc.budget + r.budget,
-      paid: acc.paid + r.paid,
-      cost: acc.cost + getEffectiveCost(r),
-      matBudget: acc.matBudget + (r.type === "task" ? r.materialBudget : 0),
-      matConsumed: acc.matConsumed + (r.type === "task" ? r.materialConsumed : 0),
-    }),
-    { budget: 0, paid: 0, cost: 0, matBudget: 0, matConsumed: 0 }
+    (acc, r) => {
+      // Purchase rows are already reflected via consumedTotal on their budget post — skip
+      if (r.type === "purchase") return acc;
+      return {
+        budget: acc.budget + r.budget,
+        paid: acc.paid + r.paid,
+        cost: acc.cost + getEffectiveCost(r),
+        consumed: acc.consumed + (r.consumedTotal ?? 0),
+        matBudget: acc.matBudget + (r.type === "task" ? r.materialBudget : 0),
+        matConsumed: acc.matConsumed + (r.type === "task" ? r.materialConsumed : 0),
+      };
+    },
+    { budget: 0, paid: 0, cost: 0, consumed: 0, matBudget: 0, matConsumed: 0 }
   );
 
   // Group linked materials under their parent task for display
   const [unlinkedExpanded, setUnlinkedExpanded] = useState(false);
+  const [orphanExpanded, setOrphanExpanded] = useState(false);
+
+  type DisplayRow = BudgetRow & { isChild?: boolean; isPurchaseChild?: boolean; childCount?: number; purchaseCount?: number; isSectionHeader?: boolean };
 
   const displayRows = useMemo(() => {
-    const childMap = new Map<string, BudgetRow[]>();
-    const topLevel: BudgetRow[] = [];
-    const unlinkedMaterials: BudgetRow[] = [];
+    // Separate rows by type
+    const taskRows: BudgetRow[] = [];
+    const materialBudgetPosts: BudgetRow[] = [];
+    const purchaseRows: BudgetRow[] = [];
 
     for (const row of filtered) {
-      if (row.type === "material" && row.taskId) {
-        const parentInList = filtered.some(r => r.type === "task" && r.id === row.taskId);
+      if (row.type === "task") taskRows.push(row);
+      else if (row.type === "material" && row.isBudgetPost) materialBudgetPosts.push(row);
+      else if (row.type === "purchase") purchaseRows.push(row);
+      else if (row.type === "material") materialBudgetPosts.push(row); // legacy non-budgetpost materials
+    }
+
+    // Build maps for hierarchy
+    const budgetPostsByTask = new Map<string, BudgetRow[]>();
+    const standaloneBudgetPosts: BudgetRow[] = [];
+    for (const bp of materialBudgetPosts) {
+      if (bp.taskId) {
+        const parentInList = taskRows.some(t => t.id === bp.taskId);
         if (parentInList) {
-          if (!childMap.has(row.taskId)) childMap.set(row.taskId, []);
-          childMap.get(row.taskId)!.push(row);
+          if (!budgetPostsByTask.has(bp.taskId)) budgetPostsByTask.set(bp.taskId, []);
+          budgetPostsByTask.get(bp.taskId)!.push(bp);
           continue;
         }
       }
-      // Separate unlinked materials
-      if (row.type === "material" && row.isUnlinked) {
-        unlinkedMaterials.push(row);
-        continue;
-      }
-      topLevel.push(row);
+      standaloneBudgetPosts.push(bp);
     }
 
-    const result: Array<BudgetRow & { isChild?: boolean; childCount?: number; isSectionHeader?: boolean }> = [];
-    for (const row of topLevel) {
-      const children = row.type === "task" ? (childMap.get(row.id) || []) : [];
-      result.push({ ...row, childCount: children.length });
-      if (row.type === "task" && expandedTasks.has(row.id)) {
-        for (const child of children) {
-          result.push({ ...child, isChild: true });
+    const purchasesByBudgetPost = new Map<string, BudgetRow[]>();
+    const orphanPurchases: BudgetRow[] = [];
+    for (const p of purchaseRows) {
+      if (p.parentBudgetPostId) {
+        if (!purchasesByBudgetPost.has(p.parentBudgetPostId)) purchasesByBudgetPost.set(p.parentBudgetPostId, []);
+        purchasesByBudgetPost.get(p.parentBudgetPostId)!.push(p);
+      } else {
+        orphanPurchases.push(p);
+      }
+    }
+
+    const result: DisplayRow[] = [];
+
+    // Helper: add a budget post + its purchases
+    const addBudgetPostWithPurchases = (bp: BudgetRow, isChild: boolean) => {
+      const purchases = purchasesByBudgetPost.get(bp.id) || [];
+      result.push({ ...bp, isChild, purchaseCount: purchases.length });
+      if (expandedBudgetPosts.has(bp.id)) {
+        for (const p of purchases) {
+          result.push({ ...p, isChild: true, isPurchaseChild: true });
+        }
+      }
+    };
+
+    // 1. Task rows with their material budget posts
+    for (const task of taskRows) {
+      const budgetPosts = budgetPostsByTask.get(task.id) || [];
+      result.push({ ...task, childCount: budgetPosts.length });
+      if (expandedTasks.has(task.id)) {
+        for (const bp of budgetPosts) {
+          addBudgetPostWithPurchases(bp, true);
         }
       }
     }
 
-    // Add unlinked materials section
-    if (unlinkedMaterials.length > 0) {
-      const unlinkedTotal = unlinkedMaterials.reduce((sum, m) => sum + (m.paid || m.estimatedCost || 0), 0);
+    // 2. Standalone material budget posts section
+    if (standaloneBudgetPosts.length > 0) {
+      const standaloneTotal = standaloneBudgetPosts.reduce((sum, bp) => sum + bp.budget, 0);
       result.push({
-        id: "__unlinked_header__",
-        name: t("budget.unlinkedMaterials", "Standalone materials"),
+        id: "__standalone_bp_header__",
+        name: t("budget.standaloneBudgetPosts", "Fristående materialbudgetar"),
         type: "material",
-        budget: 0,
-        paid: unlinkedTotal,
-        estimatedCost: unlinkedTotal,
+        budget: standaloneTotal,
+        paid: 0,
+        estimatedCost: standaloneTotal,
         isEstimated: false,
         materialBudget: 0,
         materialConsumed: 0,
-        childCount: unlinkedMaterials.length,
+        childCount: standaloneBudgetPosts.length,
         isSectionHeader: true,
-      } as BudgetRow & { isChild?: boolean; childCount?: number; isSectionHeader?: boolean });
+      } as DisplayRow);
       if (unlinkedExpanded) {
-        for (const m of unlinkedMaterials) {
-          result.push({ ...m, isChild: true });
+        for (const bp of standaloneBudgetPosts) {
+          addBudgetPostWithPurchases(bp, true);
+        }
+      }
+    }
+
+    // 3. Orphan purchases section (no budget post linked)
+    if (orphanPurchases.length > 0) {
+      const orphanTotal = orphanPurchases.reduce((sum, p) => sum + (p.paid || p.estimatedCost || 0), 0);
+      result.push({
+        id: "__orphan_header__",
+        name: t("budget.orphanPurchases", "Okopplade inköp"),
+        type: "purchase",
+        budget: 0,
+        paid: orphanTotal,
+        estimatedCost: orphanTotal,
+        isEstimated: false,
+        materialBudget: 0,
+        materialConsumed: 0,
+        childCount: orphanPurchases.length,
+        isSectionHeader: true,
+      } as DisplayRow);
+      if (orphanExpanded) {
+        for (const p of orphanPurchases) {
+          result.push({ ...p, isChild: true });
         }
       }
     }
@@ -1177,30 +1371,37 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       }
     };
 
-    // Group rows (skip section headers — they'll be replaced)
+    // Group rows (skip section headers and children — they'll follow their parents)
     const groups = new Map<string, Array<typeof result[0]>>();
     const groupOrder: string[] = [];
     for (const row of result) {
-      if (row.isSectionHeader || row.isChild) continue;
+      if (row.isSectionHeader || row.isChild || row.isPurchaseChild) continue;
       const key = getGroupKey(row);
       if (!groups.has(key)) {
         groups.set(key, []);
         groupOrder.push(key);
       }
       groups.get(key)!.push(row);
-      // Also add children if expanded
+      // Also add children (budget posts under tasks, purchases under budget posts)
       if (row.type === "task" && expandedTasks.has(row.id)) {
-        const children = result.filter((r) => r.isChild && r.taskId === row.id);
-        groups.get(key)!.push(...children);
+        const children = result.filter((r) => r.isChild && r.taskId === row.id && !r.isPurchaseChild);
+        for (const child of children) {
+          groups.get(key)!.push(child);
+          // And purchases under that budget post
+          if (child.isBudgetPost && expandedBudgetPosts.has(child.id)) {
+            const purchases = result.filter((r) => r.isPurchaseChild && r.parentBudgetPostId === child.id);
+            groups.get(key)!.push(...purchases);
+          }
+        }
       }
     }
-    // Also add unlinked section rows
-    const unlinkedRows = result.filter((r) => r.isSectionHeader || (r.isChild && r.isUnlinked));
+    // Section rows (standalone budget posts, orphan purchases)
+    const sectionRows = result.filter((r) => r.isSectionHeader || (r.isChild && (r.isUnlinked || r.type === "purchase")));
 
     const grouped: typeof result = [];
     for (const key of groupOrder) {
       const groupRows = groups.get(key)!;
-      const topRows = groupRows.filter((r) => !r.isChild);
+      const topRows = groupRows.filter((r) => !r.isChild && !r.isPurchaseChild);
       const groupBudget = topRows.reduce((s, r) => s + r.budget, 0);
       const groupPaid = topRows.reduce((s, r) => s + r.paid, 0);
       grouped.push({
@@ -1223,11 +1424,11 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         grouped.push(...groupRows);
       }
     }
-    // Append unlinked materials at the end
-    grouped.push(...unlinkedRows);
+    // Append standalone/orphan sections at the end
+    grouped.push(...sectionRows);
 
     return grouped;
-  }, [filtered, expandedTasks, unlinkedExpanded, groupBy, collapsedGroups, t]);
+  }, [filtered, expandedTasks, expandedBudgetPosts, unlinkedExpanded, orphanExpanded, groupBy, collapsedGroups, t]);
 
   const clearAllFilters = () => {
     setSearchQuery("");
@@ -1248,16 +1449,30 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
 
   // --- Cell renderers ---
 
-  const renderCell = (col: ColumnDef, row: BudgetRow & { isChild?: boolean; childCount?: number }) => {
+  const renderCell = (col: ColumnDef, row: DisplayRow) => {
+    const isPurchase = row.type === "purchase" || row.isPurchaseChild;
+    const isMaterialBudgetPost = row.type === "material" && row.isBudgetPost;
     switch (col.key) {
-      case "name":
+      case "name": {
+        // Indent: purchase children get deepest indent, budget posts under task get medium indent
+        const indentClass = isPurchase && row.isChild
+          ? " pl-10"
+          : (isMaterialBudgetPost && row.isChild)
+            ? " pl-6"
+            : "";
         return (
-          <span className={`inline-flex items-center gap-1${row.isChild ? " pl-6" : ""}`}>
-            {row.isChild && (
+          <span className={`inline-flex items-center gap-1${indentClass}`}>
+            {isPurchase && row.isChild && (
+              <span className="text-muted-foreground text-xs mr-0.5">↳</span>
+            )}
+            {isMaterialBudgetPost && row.isChild && !isPurchase && (
               <span className="text-muted-foreground text-xs mr-0.5">└</span>
             )}
             <button
-              className="font-medium text-left hover:underline text-primary cursor-pointer"
+              className={cn(
+                "font-medium text-left hover:underline cursor-pointer",
+                isPurchase ? "text-muted-foreground" : "text-primary"
+              )}
               onClick={(e) => {
                 e.stopPropagation();
                 openDetail(row);
@@ -1265,6 +1480,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
             >
               {row.name}
             </button>
+            {/* Task: expand to show material budget posts */}
             {row.type === "task" && (row.childCount ?? 0) > 0 && (
               <button
                 className="ml-1.5 inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors rounded px-1 py-0.5 hover:bg-muted"
@@ -1273,18 +1489,48 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
                   toggleTaskExpand(row.id);
                 }}
               >
-                <ShoppingCart className="h-3 w-3" />
+                <Package className="h-3 w-3" />
                 <span className="text-xs">{row.childCount}</span>
               </button>
             )}
-            {row.isUnlinked && (
-              <span className="ml-1.5 text-amber-500" title={t("budget.unlinkedWarning")}>
+            {/* Material budget post: expand to show purchases */}
+            {isMaterialBudgetPost && (row.purchaseCount ?? 0) > 0 && (
+              <button
+                className="ml-1.5 inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors rounded px-1 py-0.5 hover:bg-muted"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleBudgetPostExpand(row.id);
+                }}
+              >
+                <span className="text-xs">↳ {row.purchaseCount}</span>
+              </button>
+            )}
+            {/* Orphan warning for purchases without budget post */}
+            {row.type === "purchase" && !row.parentBudgetPostId && !row.isSectionHeader && (
+              <span className="ml-1.5 text-amber-500" title={t("budget.orphanWarning", "Ej kopplat till budgetpost")}>
                 &#9888;
               </span>
             )}
           </span>
         );
+      }
       case "type": {
+        if (isPurchase) {
+          return (
+            <Badge variant="outline" className="gap-1 text-muted-foreground">
+              <ShoppingCart className="h-3 w-3" />
+              {t('budget.purchase', 'Inköp')}
+            </Badge>
+          );
+        }
+        if (isMaterialBudgetPost) {
+          return (
+            <Badge variant="secondary" className="gap-1">
+              <Package className="h-3 w-3" />
+              {t('budget.materialBudget', 'Materialbudget')}
+            </Badge>
+          );
+        }
         if (row.type === "material") {
           return (
             <Badge variant={row.isChild ? "outline" : "secondary"} className="gap-1">
@@ -1311,8 +1557,21 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           : t(`materialStatuses.${row.status}`, row.status);
         return <Badge className={cn("border", getStatusBadgeColor(row.status))}>{statusLabel}</Badge>;
       }
+      case "consumed": {
+        // Show consumed total for material budget posts
+        if (!isMaterialBudgetPost) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        const consumed = row.consumedTotal ?? 0;
+        return consumed > 0
+          ? <span>{formatCurrency(consumed, currency)}</span>
+          : <span className="text-muted-foreground">{"\u2014"}</span>;
+      }
       case "budget": {
-        if (row.type === "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        // Purchases don't have a budget — they consume one
+        if (isPurchase) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        // Material budget posts show their planned budget
+        if (isMaterialBudgetPost) return <span>{formatCurrency(row.budget, currency)}</span>;
+        // Legacy non-budget-post materials
+        if (row.type === "material" && !row.isBudgetPost) return <span className="text-muted-foreground">{"\u2014"}</span>;
         if (!isBuilder) return <span>{formatCurrency(row.budget, currency)}</span>;
         const isEditing = editingCell?.rowId === row.id && editingCell?.col === col.key;
         if (isEditing) {
@@ -1387,6 +1646,18 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         );
       }
       case "remaining": {
+        // Purchases don't have remaining — they are the consumption
+        if (isPurchase) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        // Material budget posts: remaining = budget - consumed
+        if (isMaterialBudgetPost) {
+          const consumed = row.consumedTotal ?? 0;
+          const remaining = row.budget - consumed;
+          const pctLeft = row.budget > 0 ? remaining / row.budget : 0;
+          let matColorClass = "text-green-600";
+          if (pctLeft <= 0) matColorClass = "text-destructive";
+          else if (pctLeft <= 0.2) matColorClass = "text-amber-500";
+          return <span className={matColorClass}>{formatCurrency(remaining, currency)}</span>;
+        }
         if (isBuilder) {
           // Builder: remaining = budget - effective cost (tasks only)
           if (row.type === "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
@@ -1408,7 +1679,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         );
       }
       case "margin": {
-        if (row.type === "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
         const effectiveCost = getEffectiveCost(row);
         const result = row.budget - effectiveCost;
         const marginPct = row.budget > 0 ? Math.round((result / row.budget) * 100) : 0;
@@ -1464,7 +1735,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           <FilePreviewPopover
             projectId={projectId}
             taskId={row.type === "task" ? row.id : undefined}
-            materialId={row.type === "material" ? row.id : undefined}
+            materialId={(row.type === "material" || row.type === "purchase") ? row.id : undefined}
           >
             <button type="button" className="cursor-pointer">
               <AttachmentIndicator hasAttachment={row.hasAttachment} count={row.attachmentCount} />
@@ -1535,6 +1806,10 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         return <span className="font-bold">{t('budget.totals')}</span>;
       case "budget":
         return <span className="font-bold">{formatCurrency(totals.budget, currency)}</span>;
+      case "consumed":
+        return totals.consumed > 0
+          ? <span className="font-bold">{formatCurrency(totals.consumed, currency)}</span>
+          : null;
       case "paid":
         // Homeowner: sum of actual payments only; Builder: sum of effective costs
         return <span className="font-bold">{formatCurrency(isBuilder ? totals.cost : totals.paid, currency)}</span>;
@@ -1547,11 +1822,10 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
             </span>
           );
         }
-        // Homeowner: sum of (quoted - paid) for tasks + unlinked materials only
-        // Linked materials are already included in the parent task's quote
+        // Homeowner: sum of (quoted - paid) for tasks + budget posts only — skip purchase rows
         const totalOutstanding = filtered.reduce((sum, r) => {
-          if (r.type === "material" && r.taskId) return sum; // skip linked materials
-          const quoted = r.type === "task" ? r.budget : r.estimatedCost;
+          if (r.type === "purchase") return sum; // purchases are already consumed via budget post
+          const quoted = r.budget > 0 ? r.budget : r.estimatedCost;
           return sum + (quoted > 0 ? quoted - r.paid : 0);
         }, 0);
         return (
@@ -1718,7 +1992,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           )}
         </div>
         <div className="w-[130px]">
-          <Select value={filterType} onValueChange={(v) => setFilterType(v as "all" | "task" | "material")}>
+          <Select value={filterType} onValueChange={(v) => setFilterType(v as "all" | "task" | "material" | "purchase")}>
             <SelectTrigger className="h-8">
               <SelectValue />
             </SelectTrigger>
@@ -2053,17 +2327,36 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
               displayRows.map((row) => {
                 const rowMeta = row as unknown as { isSectionHeader?: boolean; childCount?: number; _groupKey?: string };
 
-                // Unlinked materials section header
-                if (rowMeta.isSectionHeader && row.id === "__unlinked_header__") return (
+                // Standalone material budgets section header
+                if (rowMeta.isSectionHeader && row.id === "__standalone_bp_header__") return (
                   <TableRow
-                    key="unlinked-header"
-                    className={`cursor-pointer hover:bg-muted/50 bg-amber-50/50 border-t-2 border-amber-200${compactRows ? " h-8" : ""}`}
+                    key="standalone-bp-header"
+                    className={`cursor-pointer hover:bg-muted/50 bg-blue-50/50 border-t-2 border-blue-200${compactRows ? " h-8" : ""}`}
                     onClick={() => setUnlinkedExpanded(!unlinkedExpanded)}
                   >
                     <TableCell colSpan={visibleColumns.length + (isBuilder ? 1 : 0)} className="py-2">
                       <div className="flex items-center gap-2">
-                        <ChevronDown className={`h-4 w-4 text-amber-500 transition-transform ${unlinkedExpanded ? "" : "-rotate-90"}`} />
-                        <Package className="h-4 w-4 text-amber-500" />
+                        <ChevronDown className={`h-4 w-4 text-blue-500 transition-transform ${unlinkedExpanded ? "" : "-rotate-90"}`} />
+                        <Package className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm font-medium text-blue-700">{row.name}</span>
+                        <Badge variant="secondary" className="text-xs">{rowMeta.childCount}</Badge>
+                        <span className="text-xs text-muted-foreground ml-auto">{formatCurrency(row.budget, currency)}</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+
+                // Orphan purchases section header
+                if (rowMeta.isSectionHeader && row.id === "__orphan_header__") return (
+                  <TableRow
+                    key="orphan-header"
+                    className={`cursor-pointer hover:bg-muted/50 bg-amber-50/50 border-t-2 border-amber-200${compactRows ? " h-8" : ""}`}
+                    onClick={() => setOrphanExpanded(!orphanExpanded)}
+                  >
+                    <TableCell colSpan={visibleColumns.length + (isBuilder ? 1 : 0)} className="py-2">
+                      <div className="flex items-center gap-2">
+                        <ChevronDown className={`h-4 w-4 text-amber-500 transition-transform ${orphanExpanded ? "" : "-rotate-90"}`} />
+                        <span className="text-amber-500 text-sm">⚠</span>
                         <span className="text-sm font-medium text-amber-700">{row.name}</span>
                         <Badge variant="secondary" className="text-xs">{rowMeta.childCount}</Badge>
                         <span className="text-xs text-muted-foreground ml-auto">{formatCurrency(row.estimatedCost, currency)}</span>
@@ -2095,16 +2388,25 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
                 );
 
                 // Regular row
+                const isPurchaseRow = row.type === "purchase" || (row as DisplayRow).isPurchaseChild;
+                const isBudgetPostRow = row.type === "material" && row.isBudgetPost;
+                const rowBg = isPurchaseRow
+                  ? "bg-muted/20"
+                  : isBudgetPostRow && row.isChild
+                    ? "bg-blue-50/30"
+                    : row.isChild
+                      ? "bg-muted/30"
+                      : "";
                 return (
                 <TableRow
                   key={`${row.type}-${row.id}`}
-                  className={`cursor-pointer hover:bg-muted/50${compactRows ? " h-8" : ""}${row.isChild ? " bg-muted/30" : ""}`}
+                  className={`cursor-pointer hover:bg-muted/50${compactRows ? " h-8" : ""} ${rowBg}`}
                   onClick={() => openDetail(row)}
                 >
                   {visibleColumns.map((col, colIdx) => (
                     <TableCell
                       key={col.key}
-                      className={`${col.align === "right" ? "text-right" : ""}${compactRows ? " py-0.5 px-2 text-xs" : ""}${row.isChild && compactRows ? " text-[11px]" : ""}${colIdx === 0 ? ` sticky left-0 z-10 ${row.isChild ? "bg-muted/30" : "bg-card"} after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border` : ""}`}
+                      className={`${col.align === "right" ? "text-right" : ""}${compactRows ? " py-0.5 px-2 text-xs" : ""}${row.isChild && compactRows ? " text-[11px]" : ""}${colIdx === 0 ? ` sticky left-0 z-10 ${rowBg || "bg-card"} after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border` : ""}`}
                     >
                       {renderCell(col, row)}
                     </TableCell>
@@ -2113,6 +2415,18 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
                   {isBuilder && (
                     <TableCell className={`${compactRows ? "py-0.5 px-1" : "px-2"}`} onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-0.5">
+                        {/* +Inköp button for material budget posts */}
+                        {isBudgetPostRow && !row.id.startsWith("__") && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`${compactRows ? "h-6 w-6" : "h-8 w-8"} text-blue-600 hover:text-blue-700`}
+                            onClick={() => setPurchaseFromBudgetPost(row)}
+                            title={t('budget.addPurchase', 'Lägg till inköp')}
+                          >
+                            <Plus className={compactRows ? "h-3 w-3" : "h-4 w-4"} />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -2306,6 +2620,30 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           onOpenChange={setInvoiceMethodOpen}
         />
       )}
+
+      {/* +Inköp from budget post dialog */}
+      <NewPurchaseFromBudgetDialog
+        open={purchaseFromBudgetPost !== null}
+        onOpenChange={(open) => { if (!open) setPurchaseFromBudgetPost(null); }}
+        planned={purchaseFromBudgetPost ? {
+          id: purchaseFromBudgetPost.id,
+          name: purchaseFromBudgetPost.name,
+          price_total: purchaseFromBudgetPost.budget,
+          task_id: purchaseFromBudgetPost.taskId ?? null,
+          room_id: purchaseFromBudgetPost.roomId ?? null,
+          quantity: purchaseFromBudgetPost.quantity ?? 0,
+          unit: "",
+          price_per_unit: purchaseFromBudgetPost.pricePerUnit ?? null,
+        } : null}
+        projectId={projectId}
+        currentProfileId={currentProfileId}
+        currency={currency}
+        usedAmount={purchaseFromBudgetPost?.consumedTotal ?? 0}
+        onCreated={() => {
+          setPurchaseFromBudgetPost(null);
+          fetchData();
+        }}
+      />
     </div>
   );
 };
