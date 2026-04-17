@@ -1521,8 +1521,8 @@ export const TaskEditDialog = ({
                       </span>
                     </div>
                     <div className="space-y-1.5 pt-2 border-t">
-                      {/* Cost type selector */}
-                      <div className="flex items-center justify-between gap-3">
+                      {/* Cost type selector — builder only */}
+                      {isBuilder && <div className="flex items-center justify-between gap-3">
                         <span className="text-xs text-muted-foreground">{t("tasks.costType", "Kostnadstyp")}</span>
                         <Select
                           value={task.task_cost_type || "own_labor"}
@@ -1543,7 +1543,7 @@ export const TaskEditDialog = ({
                             <SelectItem value="subcontractor">{t("tasks.costTypeSubcontractor", "Underentreprenör")}</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
+                      </div>}
                       {/* Labor row — click to edit */}
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-xs text-muted-foreground">
