@@ -384,6 +384,21 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
   const [purchaseFromBudgetPost, setPurchaseFromBudgetPost] = useState<BudgetRow | null>(null);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
 
+  // Column header context menu
+  const [colContextMenu, setColContextMenu] = useState<{ x: number; y: number; colKey: ColumnKey } | null>(null);
+  const handleColContextMenu = useCallback((e: React.MouseEvent, colKey: ColumnKey) => {
+    e.preventDefault();
+    setColContextMenu({ x: e.clientX, y: e.clientY, colKey });
+  }, []);
+  // Close on click outside
+  useEffect(() => {
+    if (!colContextMenu) return;
+    const close = () => setColContextMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("contextmenu", close);
+    return () => { window.removeEventListener("click", close); window.removeEventListener("contextmenu", close); };
+  }, [colContextMenu]);
+
   // Supplier registry
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
 
@@ -2783,7 +2798,18 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
                   onDragStart={() => handleDragStart(idx)}
                   onDragOver={(e) => handleDragOver(e, idx)}
                   onDrop={handleDrop}
-                  onDragEnd={handleDragEnd}
+                  onDragEnd={(e) => {
+                    // If dropped outside table area, hide the column
+                    const table = (e.target as HTMLElement).closest("table");
+                    if (table && col.extra) {
+                      const rect = table.getBoundingClientRect();
+                      if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+                        toggleExtraColumn(col.key);
+                      }
+                    }
+                    handleDragEnd();
+                  }}
+                  onContextMenu={(e) => handleColContextMenu(e, col.key)}
                 >
                   <div className="inline-flex items-center gap-1">
                     <button
@@ -3084,6 +3110,78 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       )}
 
       {/* ROT section — hidden for builders (ROT is the customer's deduction, not the builder's) */}
+
+      {/* Column context menu */}
+      {colContextMenu && (
+        <div
+          className="fixed z-50 min-w-[160px] bg-popover border rounded-md shadow-md py-1 text-sm"
+          style={{ left: colContextMenu.x, top: colContextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Sort options */}
+          <button
+            className="w-full text-left px-3 py-1.5 hover:bg-muted flex items-center gap-2"
+            onClick={() => {
+              setSortKey(colContextMenu.colKey);
+              setSortDir("asc");
+              setColContextMenu(null);
+            }}
+          >
+            <ArrowUp className="h-3.5 w-3.5" />
+            {t("budget.sortAsc", "Sortera stigande")}
+          </button>
+          <button
+            className="w-full text-left px-3 py-1.5 hover:bg-muted flex items-center gap-2"
+            onClick={() => {
+              setSortKey(colContextMenu.colKey);
+              setSortDir("desc");
+              setColContextMenu(null);
+            }}
+          >
+            <ArrowDown className="h-3.5 w-3.5" />
+            {t("budget.sortDesc", "Sortera fallande")}
+          </button>
+          {/* Clear sort */}
+          {sortKey === colContextMenu.colKey && (
+            <button
+              className="w-full text-left px-3 py-1.5 hover:bg-muted flex items-center gap-2 text-muted-foreground"
+              onClick={() => {
+                setSortKey(null);
+                setColContextMenu(null);
+              }}
+            >
+              <ArrowUpDown className="h-3.5 w-3.5" />
+              {t("budget.clearSort", "Ta bort sortering")}
+            </button>
+          )}
+          {/* Separator */}
+          <div className="border-t my-1" />
+          {/* Hide column — only for extra columns, never for core (name) */}
+          {colContextMenu.colKey !== "name" && effectiveColumns.find(c => c.key === colContextMenu.colKey)?.extra && (
+            <button
+              className="w-full text-left px-3 py-1.5 hover:bg-muted flex items-center gap-2"
+              onClick={() => {
+                toggleExtraColumn(colContextMenu.colKey);
+                setColContextMenu(null);
+              }}
+            >
+              <Columns3 className="h-3.5 w-3.5" />
+              {t("budget.hideColumn", "Dölj kolumn")}
+            </button>
+          )}
+          {/* Reset column order */}
+          <button
+            className="w-full text-left px-3 py-1.5 hover:bg-muted flex items-center gap-2 text-muted-foreground"
+            onClick={() => {
+              setColumns(ALL_COLUMNS);
+              setColContextMenu(null);
+            }}
+          >
+            <Layers className="h-3.5 w-3.5" />
+            {t("budget.resetColumns", "Återställ kolumnordning")}
+          </button>
+        </div>
+      )}
 
       {/* Task Edit Dialog */}
       <TaskEditDialog

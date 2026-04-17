@@ -2141,6 +2141,11 @@
     "noBudgetPostFits": "Passar ingen budgetpost?",
     "supplier": "Leverantör",
     "supplierPlaceholder": "Skriv leverantörsnamn...",
+    "sortAsc": "Sortera stigande",
+    "sortDesc": "Sortera fallande",
+    "clearSort": "Ta bort sortering",
+    "hideColumn": "Dölj kolumn",
+    "resetColumns": "Återställ kolumnordning",
     "ataSection": "Tillägg",
     "addition": "Tillägg",
     "builder": {

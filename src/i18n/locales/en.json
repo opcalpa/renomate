@@ -2670,6 +2670,11 @@
     "noBudgetPostFits": "No matching budget post?",
     "supplier": "Supplier",
     "supplierPlaceholder": "Type supplier name...",
+    "sortAsc": "Sort ascending",
+    "sortDesc": "Sort descending",
+    "clearSort": "Clear sorting",
+    "hideColumn": "Hide column",
+    "resetColumns": "Reset column order",
     "ataSection": "Additions",
     "addition": "Addition",
     "builder": {
