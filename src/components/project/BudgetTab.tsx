@@ -305,7 +305,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
     { key: "costCenter", label: t('budget.costCenter'), extra: true },
     { key: "startDate", label: t('common.startDate'), extra: true },
     { key: "finishDate", label: t('common.finishDate'), extra: true },
-    { key: "attachment", label: t('common.attachment'), extra: true },
+    { key: "attachment", label: t('budget.attachments', 'Bilagor'), extra: true },
     { key: "evidence", label: t('evidence.column', 'Underlag'), extra: true },
     // Task-specific extras
     { key: "estimatedHours", label: t('budget.estimatedHours', 'Est. hours'), align: "right", extra: true },
