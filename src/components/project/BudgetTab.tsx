@@ -2058,7 +2058,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         return <span className={matColorClass}>{formatCurrency(matRemaining, currency)}</span>;
       }
       case "room": {
-        if (row.id.startsWith("__") || row.type === "purchase") return <span className="text-sm">{row.room || "\u2014"}</span>;
+        if (row.id.startsWith("__") || row.type === "purchase") return <span>{row.room || "–"}</span>;
         const isEditingRoom = editingCell?.rowId === row.id && editingCell?.col === "room";
         if (isEditingRoom) {
           return (
@@ -2073,16 +2073,16 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           );
         }
         return (
-          <button className="text-sm hover:bg-muted px-1 rounded cursor-text"
+          <button className="hover:bg-muted px-1 rounded cursor-text"
             onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: row.id, col: "room" }); }}>
             {row.room || <span className="text-muted-foreground/30">{"–"}</span>}
           </button>
         );
       }
       case "assignee":
-        return <span className="text-sm">{row.assignee || "\u2014"}</span>;
+        return <span>{row.assignee || "–"}</span>;
       case "costCenter": {
-        if (row.id.startsWith("__") || row.type !== "task") return <span className="text-sm">{row.costCenter || "\u2014"}</span>;
+        if (row.id.startsWith("__") || row.type !== "task") return <span>{row.costCenter || "–"}</span>;
         const isEditingCC = editingCell?.rowId === row.id && editingCell?.col === "costCenter";
         if (isEditingCC) {
           return (
@@ -2097,16 +2097,16 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           );
         }
         return (
-          <button className="text-sm hover:bg-muted px-1 rounded cursor-text"
+          <button className="hover:bg-muted px-1 rounded cursor-text"
             onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: row.id, col: "costCenter" }); }}>
             {row.costCenter || <span className="text-muted-foreground/30">{"–"}</span>}
           </button>
         );
       }
       case "startDate":
-        return <span className="text-sm">{formatDate(row.startDate)}</span>;
+        return <span>{formatDate(row.startDate)}</span>;
       case "finishDate":
-        return <span className="text-sm">{formatDate(row.finishDate)}</span>;
+        return <span>{formatDate(row.finishDate)}</span>;
       case "attachment":
         if (!row.hasAttachment) return null;
         return (
@@ -2165,7 +2165,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           );
         }
         return (
-          <button className="text-sm hover:bg-muted px-1 rounded cursor-text"
+          <button className="hover:bg-muted px-1 rounded cursor-text"
             onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: row.id, col: col.key }); setEditValue(numVal != null ? String(numVal) : ""); }}>
             {numVal != null ? (isCurr ? formatCurrency(numVal, currency) : String(numVal)) : <span className="text-muted-foreground/30">{"–"}</span>}
           </button>
@@ -2220,7 +2220,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           );
         }
         return (
-          <button className="text-sm hover:bg-muted px-1 rounded cursor-text"
+          <button className="hover:bg-muted px-1 rounded cursor-text"
             onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: row.id, col: col.key }); setEditValue(matVal != null ? String(matVal) : ""); }}>
             {matVal != null ? (isMatCurr ? formatCurrency(matVal, currency) : String(matVal)) : <span className="text-muted-foreground/30">{"–"}</span>}
           </button>
@@ -2268,7 +2268,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         return (
           <button
             type="button"
-            className="text-sm hover:bg-muted px-1 rounded cursor-text"
+            className="hover:bg-muted px-1 rounded cursor-text"
             onClick={(e) => {
               e.stopPropagation();
               setEditingCell({ rowId: row.id, col: "supplier" });
@@ -2281,10 +2281,10 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       }
       case "vendor":
         if (row.type !== "material") return <span className="text-muted-foreground/30">{"–"}</span>;
-        return <span className="text-sm">{row.vendor || "\u2014"}</span>;
+        return <span>{row.vendor || "–"}</span>;
       case "rotAmount":
         if (row.type !== "task") return <span className="text-muted-foreground/30">{"–"}</span>;
-        return <span className="text-sm">{row.rotAmount ? formatCurrency(row.rotAmount, currency) : "\u2014"}</span>;
+        return <span>{row.rotAmount ? formatCurrency(row.rotAmount, currency) : "–"}</span>;
       default:
         return null;
     }
@@ -2924,7 +2924,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
                   {visibleColumns.map((col, colIdx) => (
                     <TableCell
                       key={col.key}
-                      className={`${col.align === "right" ? "text-right" : ""}${compactRows ? " py-0.5 px-2 text-xs" : ""}${row.isChild && compactRows ? " text-[11px]" : ""}${colIdx === 0 ? ` sticky left-0 z-10 ${rowBg || "bg-card"} after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border` : ""}`}
+                      className={`${col.align === "right" ? "text-right" : ""}${compactRows ? " py-0.5 px-2 text-xs" : " text-sm"}${row.isChild && compactRows ? " text-[11px]" : ""}${colIdx === 0 ? ` sticky left-0 z-10 ${rowBg || "bg-card"} after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border` : ""}`}
                     >
                       {renderCell(col, row)}
                     </TableCell>
