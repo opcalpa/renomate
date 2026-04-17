@@ -2664,6 +2664,7 @@
     "standaloneBudgetPosts": "Standalone material budgets",
     "createAsAta": "Create as change order",
     "noBudgetPostFits": "No matching budget post?",
+    "ataSection": "Change Orders (ÄTA)",
     "builder": {
       "contract": "Contract",
       "invoiced": "Invoiced",

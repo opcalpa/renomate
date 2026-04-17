@@ -80,6 +80,7 @@ interface BudgetRow {
   sourceMaterialId?: string;
   parentBudgetPostId?: string;
   consumedTotal?: number;
+  isAta?: boolean;
   // Task-specific
   estimatedHours?: number;
   hourlyRate?: number;
@@ -483,7 +484,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           .eq("exclude_from_budget", false),
         supabase
           .from("materials")
-          .select("price_total")
+          .select("id, name, price_total, quantity, price_per_unit, ordered_amount, paid_amount, status, room_id, task_id, vendor_name, source_material_id")
           .eq("project_id", projectId)
           .eq("exclude_from_budget", true),
         supabase
@@ -509,11 +510,11 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
 
       setProjectBudget(projectRes.data?.total_budget ?? 0);
 
-      // Calculate ÄTA total from both materials (exclude_from_budget) and tasks (is_ata)
-      const materialAtaTotal = (extraRes.data || []).reduce((sum, m) => sum + (m.price_total || 0), 0);
-      const taskAtaTotal = (tasksRes.data || [])
-        .filter((t) => t.is_ata)
-        .reduce((sum, t) => sum + (t.budget || 0), 0);
+      // Build ÄTA rows from both tasks (is_ata) and materials (exclude_from_budget)
+      const ataTasks = (tasksRes.data || []).filter((t) => t.is_ata);
+      const ataMaterials = extraRes.data || [];
+      const materialAtaTotal = ataMaterials.reduce((sum, m) => sum + (m.price_total || 0), 0);
+      const taskAtaTotal = ataTasks.reduce((sum, t) => sum + (t.budget || 0), 0);
       setExtraTotal(materialAtaTotal + taskAtaTotal);
 
       // Build document count maps + qualifying file maps (invoice/receipt)
@@ -747,7 +748,102 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         };
       });
 
-      setRows([...taskRows, ...materialBudgetRows, ...syntheticBudgetRows, ...purchaseRows]);
+      // 5. ÄTA task rows
+      const ataTaskRows: BudgetRow[] = ataTasks.map((t) => {
+        const attachmentCount = taskDocCounts.get(t.id) || 0;
+        return {
+          id: t.id,
+          name: t.title,
+          type: "task" as const,
+          isAta: true,
+          budget: t.budget ?? 0,
+          paid: t.paid_amount ?? 0,
+          estimatedCost: computeTaskLaborCost(t, defaultLaborCostPercent),
+          isEstimated: (t.paid_amount ?? 0) <= 0,
+          taskCostType: (t as Record<string, unknown>).task_cost_type as string | null ?? null,
+          room: t.room_id ? roomMap.get(t.room_id) : undefined,
+          roomId: t.room_id ?? undefined,
+          assignee: undefined,
+          assigneeId: undefined,
+          costCenter: t.cost_center ?? undefined,
+          hasAttachment: attachmentCount > 0,
+          attachmentCount,
+          materialBudget: 0,
+          materialConsumed: 0,
+          status: t.status ?? undefined,
+          subcontractorCost: t.subcontractor_cost ?? undefined,
+          paymentStatus: t.payment_status ?? undefined,
+        };
+      });
+
+      // 6. ÄTA material rows — split planned vs purchases same as main
+      const ataPlanned = ataMaterials.filter(m => m.status === "planned");
+      const ataPurchases = ataMaterials.filter(m => m.status !== "planned");
+
+      const ataConsumedBySource = new Map<string, number>();
+      for (const m of ataPurchases) {
+        if (m.source_material_id) {
+          const cost = m.price_total ?? (((m.quantity || 0) * (m.price_per_unit || 0)) || 0);
+          ataConsumedBySource.set(m.source_material_id, (ataConsumedBySource.get(m.source_material_id) || 0) + cost);
+        }
+      }
+
+      const ataMaterialBudgetRows: BudgetRow[] = ataPlanned.map((m) => {
+        const budgetAmount = m.price_total ?? (((m.quantity || 0) * (m.price_per_unit || 0)) || 0);
+        return {
+          id: m.id,
+          name: m.name,
+          type: "material" as const,
+          isAta: true,
+          isBudgetPost: true,
+          budget: budgetAmount,
+          paid: m.paid_amount ?? 0,
+          estimatedCost: budgetAmount,
+          isEstimated: true,
+          room: m.room_id ? roomMap.get(m.room_id) : undefined,
+          roomId: m.room_id ?? undefined,
+          hasAttachment: false,
+          attachmentCount: 0,
+          isUnlinked: !m.task_id,
+          taskId: m.task_id ?? undefined,
+          materialBudget: budgetAmount,
+          materialConsumed: ataConsumedBySource.get(m.id) || 0,
+          consumedTotal: ataConsumedBySource.get(m.id) || 0,
+          status: m.status ?? undefined,
+          quantity: m.quantity ?? undefined,
+          pricePerUnit: m.price_per_unit ?? undefined,
+          vendor: m.vendor_name ?? undefined,
+        };
+      });
+
+      const ataPurchaseRows: BudgetRow[] = ataPurchases.map((m) => {
+        const purchaseTotal = m.price_total ?? (((m.quantity || 0) * (m.price_per_unit || 0)) || 0);
+        return {
+          id: m.id,
+          name: m.name,
+          type: "purchase" as const,
+          isAta: true,
+          budget: 0,
+          paid: m.paid_amount ?? 0,
+          estimatedCost: purchaseTotal,
+          isEstimated: (m.paid_amount ?? 0) <= 0,
+          room: m.room_id ? roomMap.get(m.room_id) : undefined,
+          roomId: m.room_id ?? undefined,
+          hasAttachment: false,
+          attachmentCount: 0,
+          taskId: m.task_id ?? undefined,
+          materialBudget: 0,
+          materialConsumed: 0,
+          sourceMaterialId: m.source_material_id ?? undefined,
+          parentBudgetPostId: m.source_material_id ?? undefined,
+          status: m.status ?? undefined,
+          quantity: m.quantity ?? undefined,
+          pricePerUnit: m.price_per_unit ?? undefined,
+          vendor: m.vendor_name ?? undefined,
+        };
+      });
+
+      setRows([...taskRows, ...materialBudgetRows, ...syntheticBudgetRows, ...purchaseRows, ...ataTaskRows, ...ataMaterialBudgetRows, ...ataPurchaseRows]);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : t('budget.failedToLoadData');
       toast({ title: t('common.error'), description: msg, variant: "destructive" });
@@ -1094,7 +1190,11 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
 
   const hasAdvancedFilter = filterRoom !== "all" || filterAssignee !== "all" || filterCostCenter !== "all" || filterStartDate !== "" || filterFinishDate !== "" || filterAttachment !== "all";
 
-  const filtered = rows.filter((r) => {
+  // Separate ÄTA rows from main rows for distinct display
+  const mainRows = rows.filter(r => !r.isAta);
+  const ataRows = rows.filter(r => r.isAta);
+
+  const filtered = mainRows.filter((r) => {
     if (filterType !== "all" && r.type !== filterType) return false;
     if (filterStatuses.size > 0 && (!r.status || !filterStatuses.has(r.status))) return false;
     if (searchQuery && !r.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
@@ -1216,6 +1316,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
   // Group linked materials under their parent task for display
   const [unlinkedExpanded, setUnlinkedExpanded] = useState(false);
   const [orphanExpanded, setOrphanExpanded] = useState(false);
+  const [ataExpanded, setAtaExpanded] = useState(true);
 
   type DisplayRow = BudgetRow & { isChild?: boolean; isPurchaseChild?: boolean; childCount?: number; purchaseCount?: number; isSectionHeader?: boolean };
 
@@ -1328,6 +1429,87 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       }
     }
 
+    // 4. ÄTA section — change orders shown in their own block
+    if (ataRows.length > 0) {
+      const ataTasksFiltered = ataRows.filter(r => r.type === "task");
+      const ataBudgetPosts = ataRows.filter(r => r.type === "material" && r.isBudgetPost);
+      const ataPurchasesFiltered = ataRows.filter(r => r.type === "purchase");
+
+      const ataBpByTask = new Map<string, BudgetRow[]>();
+      const ataStandaloneBp: BudgetRow[] = [];
+      for (const bp of ataBudgetPosts) {
+        if (bp.taskId && ataTasksFiltered.some(t => t.id === bp.taskId)) {
+          if (!ataBpByTask.has(bp.taskId)) ataBpByTask.set(bp.taskId, []);
+          ataBpByTask.get(bp.taskId)!.push(bp);
+        } else {
+          ataStandaloneBp.push(bp);
+        }
+      }
+
+      const ataPurchasesByBp = new Map<string, BudgetRow[]>();
+      const ataOrphanPurchases: BudgetRow[] = [];
+      for (const p of ataPurchasesFiltered) {
+        if (p.parentBudgetPostId) {
+          if (!ataPurchasesByBp.has(p.parentBudgetPostId)) ataPurchasesByBp.set(p.parentBudgetPostId, []);
+          ataPurchasesByBp.get(p.parentBudgetPostId)!.push(p);
+        } else {
+          ataOrphanPurchases.push(p);
+        }
+      }
+
+      const ataTotal = ataRows.reduce((sum, r) => {
+        if (r.type === "purchase") return sum;
+        return sum + r.budget;
+      }, 0);
+
+      result.push({
+        id: "__ata_header__",
+        name: t("budget.ataSection", "ÄTA / Tilläggsarbeten"),
+        type: "task",
+        budget: ataTotal,
+        paid: 0,
+        estimatedCost: 0,
+        isEstimated: false,
+        materialBudget: 0,
+        materialConsumed: 0,
+        childCount: ataTasksFiltered.length + ataStandaloneBp.length + ataOrphanPurchases.length,
+        isSectionHeader: true,
+      } as DisplayRow);
+
+      if (ataExpanded) {
+        // Add ÄTA tasks with their budget posts
+        for (const task of ataTasksFiltered) {
+          const bps = ataBpByTask.get(task.id) || [];
+          result.push({ ...task, childCount: bps.length });
+          if (expandedTasks.has(task.id)) {
+            for (const bp of bps) {
+              const purchases = ataPurchasesByBp.get(bp.id) || [];
+              result.push({ ...bp, isChild: true, purchaseCount: purchases.length });
+              if (expandedBudgetPosts.has(bp.id)) {
+                for (const p of purchases) {
+                  result.push({ ...p, isChild: true, isPurchaseChild: true });
+                }
+              }
+            }
+          }
+        }
+        // Standalone ÄTA budget posts
+        for (const bp of ataStandaloneBp) {
+          const purchases = ataPurchasesByBp.get(bp.id) || [];
+          result.push({ ...bp, purchaseCount: purchases.length });
+          if (expandedBudgetPosts.has(bp.id)) {
+            for (const p of purchases) {
+              result.push({ ...p, isChild: true, isPurchaseChild: true });
+            }
+          }
+        }
+        // Orphan ÄTA purchases
+        for (const p of ataOrphanPurchases) {
+          result.push({ ...p, isChild: true });
+        }
+      }
+    }
+
     // Apply grouping if active
     if (groupBy === "none") return result;
 
@@ -1428,7 +1610,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
     grouped.push(...sectionRows);
 
     return grouped;
-  }, [filtered, expandedTasks, expandedBudgetPosts, unlinkedExpanded, orphanExpanded, groupBy, collapsedGroups, t]);
+  }, [filtered, ataRows, expandedTasks, expandedBudgetPosts, unlinkedExpanded, orphanExpanded, ataExpanded, groupBy, collapsedGroups, t]);
 
   const clearAllFilters = () => {
     setSearchQuery("");
@@ -1480,6 +1662,10 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
             >
               {row.name}
             </button>
+            {/* ÄTA badge */}
+            {row.isAta && (
+              <Badge variant="outline" className="ml-1 text-[10px] px-1 py-0 text-orange-600 border-orange-300">ÄTA</Badge>
+            )}
             {/* Task: expand to show material budget posts */}
             {row.type === "task" && (row.childCount ?? 0) > 0 && (
               <button
@@ -2360,6 +2546,29 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
                         <span className="text-sm font-medium text-amber-700">{row.name}</span>
                         <Badge variant="secondary" className="text-xs">{rowMeta.childCount}</Badge>
                         <span className="text-xs text-muted-foreground ml-auto">{formatCurrency(row.estimatedCost, currency)}</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+
+                // ÄTA section header
+                if (rowMeta.isSectionHeader && row.id === "__ata_header__") return (
+                  <TableRow
+                    key="ata-header"
+                    className={`cursor-pointer hover:bg-muted/50 bg-orange-50/60 border-t-2 border-orange-300${compactRows ? " h-8" : ""}`}
+                    onClick={() => setAtaExpanded(!ataExpanded)}
+                  >
+                    <TableCell colSpan={visibleColumns.length + (isBuilder ? 1 : 0)} className="py-2">
+                      <div className="flex items-center gap-2">
+                        <ChevronDown className={`h-4 w-4 text-orange-500 transition-transform ${ataExpanded ? "" : "-rotate-90"}`} />
+                        <Badge variant="outline" className="text-xs text-orange-700 border-orange-300 bg-orange-100">ÄTA</Badge>
+                        <span className="text-sm font-medium text-orange-800">{row.name}</span>
+                        <Badge variant="secondary" className="text-xs">{rowMeta.childCount}</Badge>
+                        {row.budget > 0 && (
+                          <span className="text-xs text-muted-foreground ml-auto tabular-nums">
+                            {formatCurrency(row.budget, currency)}
+                          </span>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

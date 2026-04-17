@@ -2135,6 +2135,7 @@
     "standaloneBudgetPosts": "Fristående materialbudgetar",
     "createAsAta": "Skapa som ÄTA",
     "noBudgetPostFits": "Passar ingen budgetpost?",
+    "ataSection": "ÄTA / Tilläggsarbeten",
     "builder": {
       "contract": "Kontrakt",
       "invoiced": "Fakturerat",
