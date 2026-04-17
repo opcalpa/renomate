@@ -316,7 +316,6 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
     { key: "quantity", label: t('budget.quantity', 'Quantity'), align: "right", extra: true },
     { key: "pricePerUnit", label: t('budget.pricePerUnit', 'Price/unit'), align: "right", extra: true },
     { key: "orderedAmount", label: t('budget.orderedAmount', 'Ordered'), align: "right", extra: true },
-    { key: "vendor", label: t('budget.vendor', 'Vendor'), extra: true },
     // ROT
     { key: "rotAmount", label: t('files.rotAmount', 'ROT-avdrag'), align: "right", extra: true },
   ], [t, isBuilder]);
