@@ -388,15 +388,18 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
   const [colContextMenu, setColContextMenu] = useState<{ x: number; y: number; colKey: ColumnKey } | null>(null);
   const handleColContextMenu = useCallback((e: React.MouseEvent, colKey: ColumnKey) => {
     e.preventDefault();
+    e.stopPropagation();
     setColContextMenu({ x: e.clientX, y: e.clientY, colKey });
   }, []);
-  // Close on click outside
+  // Close on click outside — delay to avoid catching the same event
   useEffect(() => {
     if (!colContextMenu) return;
     const close = () => setColContextMenu(null);
-    window.addEventListener("click", close);
-    window.addEventListener("contextmenu", close);
-    return () => { window.removeEventListener("click", close); window.removeEventListener("contextmenu", close); };
+    const timer = setTimeout(() => {
+      window.addEventListener("click", close);
+      window.addEventListener("contextmenu", close);
+    }, 10);
+    return () => { clearTimeout(timer); window.removeEventListener("click", close); window.removeEventListener("contextmenu", close); };
   }, [colContextMenu]);
 
   // Supplier registry
