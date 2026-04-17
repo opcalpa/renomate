@@ -1521,9 +1521,36 @@ export const TaskEditDialog = ({
                       </span>
                     </div>
                     <div className="space-y-1.5 pt-2 border-t">
+                      {/* Cost type selector */}
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs text-muted-foreground">{t("tasks.costType", "Kostnadstyp")}</span>
+                        <Select
+                          value={task.task_cost_type || "own_labor"}
+                          onValueChange={(v) => {
+                            const updates: Partial<Task> = { task_cost_type: v };
+                            if (v === "own_labor" && task.task_cost_type === "subcontractor") {
+                              updates.estimated_hours = null;
+                              updates.hourly_rate = null;
+                            }
+                            setTask({ ...task, ...updates });
+                          }}
+                        >
+                          <SelectTrigger className="h-7 w-44 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="own_labor">{t("tasks.costTypeOwnLabor", "Eget arbete")}</SelectItem>
+                            <SelectItem value="subcontractor">{t("tasks.costTypeSubcontractor", "Underentreprenör")}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       {/* Labor row — click to edit */}
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs text-muted-foreground">{t("tasks.rotLaborCost", "Arbetskostnad")}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {(task.task_cost_type || "own_labor") === "subcontractor"
+                            ? t("tasks.subcontractorCost", "UE-kostnad")
+                            : t("tasks.rotLaborCost", "Arbetskostnad")}
+                        </span>
                         {editingBudgetField === "labor" ? (
                           <div className="flex items-center gap-1">
                             <Input
