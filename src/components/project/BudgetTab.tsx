@@ -1136,13 +1136,23 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
 
   // --- Column drag reorder ---
 
+  const [draggingColIdx, setDraggingColIdx] = useState<number | null>(null);
+  const [dragOverColIdx, setDragOverColIdx] = useState<number | null>(null);
+
   const handleDragStart = (idx: number) => {
     dragCol.current = idx;
+    setDraggingColIdx(idx);
   };
 
   const handleDragOver = (e: React.DragEvent, idx: number) => {
     e.preventDefault();
     dragOverCol.current = idx;
+    setDragOverColIdx(idx);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingColIdx(null);
+    setDragOverColIdx(null);
   };
 
   const handleDrop = () => {
@@ -1156,6 +1166,8 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
 
     dragCol.current = null;
     dragOverCol.current = null;
+    setDraggingColIdx(null);
+    setDragOverColIdx(null);
   };
 
   // --- Open edit dialog ---
@@ -2476,26 +2488,43 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         <Table>
           <TableHeader className="sticky top-0 z-20 bg-card">
             <TableRow>
-              {visibleColumns.map((col, idx) => (
+              {visibleColumns.map((col, idx) => {
+                const isDragging = draggingColIdx === idx;
+                const isDropTarget = dragOverColIdx === idx && draggingColIdx !== null && draggingColIdx !== idx;
+                return (
                 <TableHead
                   key={col.key}
-                  className={`${col.align === "right" ? "text-right" : ""} select-none${compactRows ? " py-1 text-xs h-8" : ""}${idx === 0 ? " sticky left-0 z-20 bg-card after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border" : ""}`}
-                  draggable
+                  className={cn(
+                    col.align === "right" ? "text-right" : "",
+                    "select-none transition-colors",
+                    compactRows ? "py-1 text-xs h-8" : "",
+                    idx === 0 ? "sticky left-0 z-20 bg-card after:content-[''] after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border" : "",
+                    isDragging && "opacity-50",
+                    isDropTarget && "bg-primary/10 border-l-2 border-l-primary",
+                  )}
+                  draggable={idx !== 0}
                   onDragStart={() => handleDragStart(idx)}
                   onDragOver={(e) => handleDragOver(e, idx)}
                   onDrop={handleDrop}
+                  onDragEnd={handleDragEnd}
                 >
-                  <button
-                    className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-                    onClick={() => handleSort(col.key)}
-                  >
-                    {col.label}
-                    {sortKey === col.key && (
-                      sortDir === "asc" ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />
+                  <div className="inline-flex items-center gap-1 group">
+                    {idx !== 0 && (
+                      <GripVertical className="h-3 w-3 text-muted-foreground/30 group-hover:text-muted-foreground/70 transition-colors cursor-grab shrink-0" />
                     )}
-                  </button>
+                    <button
+                      className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                      onClick={() => handleSort(col.key)}
+                    >
+                      {col.label}
+                      {sortKey === col.key && (
+                        sortDir === "asc" ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />
+                      )}
+                    </button>
+                  </div>
                 </TableHead>
-              ))}
+                );
+              })}
               {/* Actions column header (builder only) */}
               {isBuilder && (
                 <TableHead className={`w-20${compactRows ? " py-1 text-xs h-8" : ""}`} />
