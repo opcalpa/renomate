@@ -14,7 +14,6 @@ import {
   Receipt,
   Wallet,
   ChevronDown,
-  ChevronRight,
   ExternalLink,
   ShoppingBag,
 } from "lucide-react";
@@ -113,7 +112,6 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
   const [budgetInput, setBudgetInput] = useState("");
 
   // Collapsible sections
-  const [purchasesExpanded, setPurchasesExpanded] = useState(false);
 
   // --- Data fetching ---
 
@@ -533,68 +531,7 @@ export function HomeownerBudgetView({ projectId, currency }: HomeownerBudgetView
         </div>
       )}
 
-      {/* Egna inköp */}
-      {ownPurchases.length > 0 && (
-        <div className="border rounded-lg">
-          <button
-            type="button"
-            onClick={() => setPurchasesExpanded(!purchasesExpanded)}
-            className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="h-4 w-4 text-teal-600" />
-              <span className="font-medium">
-                {t("homeownerBudget.myPurchases", "Mina inköp")}
-              </span>
-              <Badge variant="outline" className="text-xs">
-                {ownPurchases.length}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">
-                {formatCurrency(computed.ownPurchasesTotal, currency)}
-              </span>
-              {purchasesExpanded ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              )}
-            </div>
-          </button>
-          {purchasesExpanded && (
-            <div className="px-4 pb-4 space-y-1">
-              {ownPurchases.map((m) => (
-                <div
-                  key={m.id}
-                  className="flex items-center justify-between px-3 py-2 rounded-md text-sm"
-                >
-                  <span className="flex-1 min-w-0 truncate">{m.name}</span>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="font-medium">
-                      {formatCurrency(m.price_total || 0, currency)}
-                    </span>
-                    {(m.paid_amount || 0) > 0 && (
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] px-1 py-0 text-green-700 border-green-300"
-                      >
-                        {t("homeownerBudget.paidBadge", "Betald")}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
-              <Separator className="my-2" />
-              <div className="flex items-center justify-between px-3 text-sm">
-                <span className="font-medium">{t("common.total")}</span>
-                <span className="font-bold">
-                  {formatCurrency(computed.ownPurchasesTotal, currency)}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Egna inköp — removed: now shown in the budget table under standalone/orphan sections */}
     </div>
   );
 }
