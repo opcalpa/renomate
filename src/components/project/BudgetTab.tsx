@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Layers, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Package, Hammer, Handshake, MoreVertical } from "lucide-react";
+import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Layers, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Hammer, Handshake, MoreVertical } from "lucide-react";
 import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
 import { FilePreviewPopover } from "@/components/shared/FilePreviewPopover";
 import { getStatusBadgeColor } from "@/lib/statusColors";
@@ -1483,13 +1483,13 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
             {/* Task: expand to show material budget posts */}
             {row.type === "task" && (row.childCount ?? 0) > 0 && (
               <button
-                className="ml-1.5 inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors rounded px-1 py-0.5 hover:bg-muted"
+                className="ml-1.5 inline-flex items-center gap-0.5 text-blue-500 hover:text-blue-700 transition-colors rounded px-1 py-0.5 hover:bg-blue-50"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleTaskExpand(row.id);
                 }}
               >
-                <Package className="h-3 w-3" />
+                <ShoppingCart className="h-3 w-3" />
                 <span className="text-xs">{row.childCount}</span>
               </button>
             )}
@@ -1517,16 +1517,16 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       case "type": {
         if (isPurchase) {
           return (
-            <Badge variant="outline" className="gap-1 text-muted-foreground">
-              <ShoppingCart className="h-3 w-3" />
+            <Badge variant="outline" className="gap-1 text-gray-500">
+              <ShoppingCart className="h-3 w-3 text-gray-400" />
               {t('budget.purchase', 'Inköp')}
             </Badge>
           );
         }
         if (isMaterialBudgetPost) {
           return (
-            <Badge variant="secondary" className="gap-1">
-              <Package className="h-3 w-3" />
+            <Badge variant="secondary" className="gap-1 text-blue-700 bg-blue-50 border-blue-200">
+              <ShoppingCart className="h-3 w-3 text-blue-500" />
               {t('budget.materialBudget', 'Materialbudget')}
             </Badge>
           );
@@ -1534,7 +1534,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         if (row.type === "material") {
           return (
             <Badge variant={row.isChild ? "outline" : "secondary"} className="gap-1">
-              <ShoppingCart className="h-3 w-3" />
+              <ShoppingCart className="h-3 w-3 text-blue-500" />
               {t('budget.material')}
             </Badge>
           );
@@ -1543,7 +1543,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         const hasOwnLabor = row.taskCostType === "own_labor" || (!row.taskCostType && (row.estimatedHours ?? 0) > 0);
         return (
           <Badge variant="default" className="gap-1">
-            {isSubcontractor ? <Handshake className="h-3 w-3" /> : <Hammer className="h-3 w-3" />}
+            {isSubcontractor ? <Handshake className="h-3 w-3 text-amber-100" /> : <Hammer className="h-3 w-3" />}
             {isSubcontractor && !hasOwnLabor
               ? t('budget.subcontractor', 'UE')
               : t('budget.task')}
@@ -2337,7 +2337,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
                     <TableCell colSpan={visibleColumns.length + (isBuilder ? 1 : 0)} className="py-2">
                       <div className="flex items-center gap-2">
                         <ChevronDown className={`h-4 w-4 text-blue-500 transition-transform ${unlinkedExpanded ? "" : "-rotate-90"}`} />
-                        <Package className="h-4 w-4 text-blue-500" />
+                        <ShoppingCart className="h-4 w-4 text-blue-500" />
                         <span className="text-sm font-medium text-blue-700">{row.name}</span>
                         <Badge variant="secondary" className="text-xs">{rowMeta.childCount}</Badge>
                         <span className="text-xs text-muted-foreground ml-auto">{formatCurrency(row.budget, currency)}</span>
