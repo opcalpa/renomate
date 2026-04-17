@@ -1131,30 +1131,51 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
 
   // --- Inline cell save ---
 
+  const TASK_FIELD_MAP: Record<string, string> = {
+    budget: "budget", paid: "paid_amount",
+    estimatedHours: "estimated_hours", hourlyRate: "hourly_rate",
+    subcontractorCost: "subcontractor_cost", rotAmount: "rot_amount",
+    room: "room_id", costCenter: "cost_center", paymentStatus: "payment_status",
+  };
+  const MATERIAL_FIELD_MAP: Record<string, string> = {
+    budget: "price_total", paid: "paid_amount",
+    quantity: "quantity", pricePerUnit: "price_per_unit",
+    orderedAmount: "ordered_amount",
+    room: "room_id",
+  };
+
   const handleCellSave = async (row: BudgetRow, col: string, value: string) => {
-    const numValue = parseFloat(value);
-    if (isNaN(numValue)) {
-      setEditingCell(null);
+    setEditingCell(null);
+    if (row.id.startsWith("__")) return;
+
+    // String fields (room, costCenter, paymentStatus)
+    const isStringField = ["room", "costCenter", "paymentStatus"].includes(col);
+    if (isStringField) {
+      const dbField = row.type === "task" ? TASK_FIELD_MAP[col] : MATERIAL_FIELD_MAP[col];
+      if (!dbField) return;
+      const table = row.type === "task" ? "tasks" : "materials";
+      const saveValue = value === "none" || value === "" ? null : value;
+      try {
+        const { error } = await supabase.from(table).update({ [dbField]: saveValue }).eq("id", row.id);
+        if (error) throw error;
+        await fetchData();
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : t('budget.failedToUpdateValue');
+        toast({ title: t('common.error'), description: msg, variant: "destructive" });
+      }
       return;
     }
 
+    // Numeric fields
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return;
+
     try {
-      if (row.type === "task") {
-        const fieldMap: Record<string, string> = { budget: "budget", paid: "paid_amount" };
-        const { error } = await supabase
-          .from("tasks")
-          .update({ [fieldMap[col]]: numValue })
-          .eq("id", row.id);
-        if (error) throw error;
-      } else {
-        const fieldMap: Record<string, string> = { budget: "price_total", paid: "paid_amount" };
-        const { error } = await supabase
-          .from("materials")
-          .update({ [fieldMap[col]]: numValue })
-          .eq("id", row.id);
-        if (error) throw error;
-      }
-      setEditingCell(null);
+      const dbField = row.type === "task" ? TASK_FIELD_MAP[col] : MATERIAL_FIELD_MAP[col];
+      if (!dbField) return;
+      const table = row.type === "task" ? "tasks" : "materials";
+      const { error } = await supabase.from(table).update({ [dbField]: numValue }).eq("id", row.id);
+      if (error) throw error;
       await fetchData();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : t('budget.failedToUpdateValue');
@@ -2022,12 +2043,52 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         else if (pctLeft <= 0.2) matColorClass = "text-amber-500";
         return <span className={matColorClass}>{formatCurrency(matRemaining, currency)}</span>;
       }
-      case "room":
-        return <span className="text-sm">{row.room || "\u2014"}</span>;
+      case "room": {
+        if (row.id.startsWith("__") || row.type === "purchase") return <span className="text-sm">{row.room || "\u2014"}</span>;
+        const isEditingRoom = editingCell?.rowId === row.id && editingCell?.col === "room";
+        if (isEditingRoom) {
+          return (
+            <Select value={row.roomId || "none"} onValueChange={(v) => handleCellSave(row, "room", v)}
+              open onOpenChange={(open) => { if (!open) setEditingCell(null); }}>
+              <SelectTrigger className="h-7 w-32 text-xs" onClick={(e) => e.stopPropagation()}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{"\u2014"}</SelectItem>
+                {allRooms.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          );
+        }
+        return (
+          <button className="text-sm hover:bg-muted px-1 rounded cursor-text"
+            onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: row.id, col: "room" }); }}>
+            {row.room || <span className="text-muted-foreground">{"\u2014"}</span>}
+          </button>
+        );
+      }
       case "assignee":
         return <span className="text-sm">{row.assignee || "\u2014"}</span>;
-      case "costCenter":
-        return <span className="text-sm">{row.costCenter || "\u2014"}</span>;
+      case "costCenter": {
+        if (row.id.startsWith("__") || row.type !== "task") return <span className="text-sm">{row.costCenter || "\u2014"}</span>;
+        const isEditingCC = editingCell?.rowId === row.id && editingCell?.col === "costCenter";
+        if (isEditingCC) {
+          return (
+            <Select value={row.costCenter || "none"} onValueChange={(v) => handleCellSave(row, "costCenter", v)}
+              open onOpenChange={(open) => { if (!open) setEditingCell(null); }}>
+              <SelectTrigger className="h-7 w-32 text-xs" onClick={(e) => e.stopPropagation()}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{"\u2014"}</SelectItem>
+                {distinctCostCenters.map(cc => <SelectItem key={cc} value={cc}>{cc}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          );
+        }
+        return (
+          <button className="text-sm hover:bg-muted px-1 rounded cursor-text"
+            onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: row.id, col: "costCenter" }); }}>
+            {row.costCenter || <span className="text-muted-foreground">{"\u2014"}</span>}
+          </button>
+        );
+      }
       case "startDate":
         return <span className="text-sm">{formatDate(row.startDate)}</span>;
       case "finishDate":
@@ -2064,34 +2125,93 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         }
         return dot;
       }
-      // Task-specific extras
+      // Task-specific extras — inline editable numeric cells
       case "estimatedHours":
-        if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
-        return <span className="text-sm">{row.estimatedHours != null ? row.estimatedHours : "\u2014"}</span>;
       case "hourlyRate":
-        if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
-        return <span className="text-sm">{row.hourlyRate != null ? formatCurrency(row.hourlyRate, currency) : "\u2014"}</span>;
       case "subcontractorCost":
-        if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
-        return <span className="text-sm">{row.subcontractorCost ? formatCurrency(row.subcontractorCost, currency) : "\u2014"}</span>;
+      case "rotAmount": {
+        if (row.type !== "task" || row.id.startsWith("__")) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        const numFieldMap: Record<string, number | undefined> = {
+          estimatedHours: row.estimatedHours,
+          hourlyRate: row.hourlyRate,
+          subcontractorCost: row.subcontractorCost,
+          rotAmount: row.rotAmount,
+        };
+        const numVal = numFieldMap[col.key];
+        const isCurr = col.key !== "estimatedHours";
+        const isEditingNum = editingCell?.rowId === row.id && editingCell?.col === col.key;
+        if (isEditingNum) {
+          return (
+            <Input type="number" className="w-24 h-7 text-right text-xs" autoFocus
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleCellSave(row, col.key, editValue); if (e.key === "Escape") setEditingCell(null); }}
+              onBlur={() => handleCellSave(row, col.key, editValue)}
+              onClick={(e) => e.stopPropagation()} />
+          );
+        }
+        return (
+          <button className="text-sm hover:bg-muted px-1 rounded cursor-text"
+            onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: row.id, col: col.key }); setEditValue(numVal != null ? String(numVal) : ""); }}>
+            {numVal != null ? (isCurr ? formatCurrency(numVal, currency) : String(numVal)) : <span className="text-muted-foreground">{"\u2014"}</span>}
+          </button>
+        );
+      }
       case "paymentStatus": {
-        if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
-        if (!row.paymentStatus) return <span className="text-muted-foreground">{"\u2014"}</span>;
-        const pmtKey = budgetStatusKey(row.paymentStatus);
+        if (row.type !== "task" || row.id.startsWith("__")) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        const isEditingPmt = editingCell?.rowId === row.id && editingCell?.col === "paymentStatus";
+        if (isEditingPmt) {
+          return (
+            <Select value={row.paymentStatus || "not_paid"} onValueChange={(v) => handleCellSave(row, "paymentStatus", v)}
+              open onOpenChange={(open) => { if (!open) setEditingCell(null); }}>
+              <SelectTrigger className="h-7 w-32 text-xs" onClick={(e) => e.stopPropagation()}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="not_paid">{t("paymentStatuses.notPaid", "Ej betalt")}</SelectItem>
+                <SelectItem value="paid">{t("paymentStatuses.paid", "Betalt")}</SelectItem>
+                <SelectItem value="partially_paid">{t("paymentStatuses.partiallyPaid", "Delbetalt")}</SelectItem>
+              </SelectContent>
+            </Select>
+          );
+        }
+        const pmtKey = budgetStatusKey(row.paymentStatus || "not_paid");
         const pmtColor = row.paymentStatus === "paid" ? "bg-green-100 text-green-700"
           : row.paymentStatus === "partially_paid" ? "bg-amber-100 text-amber-700"
           : "bg-gray-100 text-gray-700";
-        return <Badge className={pmtColor}>{t(`paymentStatuses.${pmtKey}`, row.paymentStatus)}</Badge>;
+        return (
+          <button type="button" onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: row.id, col: "paymentStatus" }); }}>
+            <Badge className={cn(pmtColor, "cursor-pointer hover:opacity-80")}>{t(`paymentStatuses.${pmtKey}`, row.paymentStatus || "not_paid")}</Badge>
+          </button>
+        );
       }
-      // Material-specific extras
+      // Material-specific extras — inline editable
       case "quantity":
-        if (row.type !== "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
-        return <span className="text-sm">{row.quantity != null ? row.quantity : "\u2014"}</span>;
       case "pricePerUnit":
-        if (row.type !== "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
-        return <span className="text-sm">{row.pricePerUnit != null ? formatCurrency(row.pricePerUnit, currency) : "\u2014"}</span>;
-      case "orderedAmount":
-        return <span className="text-sm">{row.orderedAmount ? formatCurrency(row.orderedAmount, currency) : "\u2014"}</span>;
+      case "orderedAmount": {
+        if ((col.key === "quantity" || col.key === "pricePerUnit") && row.type !== "material" && row.type !== "purchase") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (row.id.startsWith("__")) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        const matFieldMap: Record<string, number | undefined> = {
+          quantity: row.quantity, pricePerUnit: row.pricePerUnit, orderedAmount: row.orderedAmount,
+        };
+        const matVal = matFieldMap[col.key];
+        const isMatCurr = col.key !== "quantity";
+        const isEditingMat = editingCell?.rowId === row.id && editingCell?.col === col.key;
+        if (isEditingMat) {
+          return (
+            <Input type="number" className="w-24 h-7 text-right text-xs" autoFocus
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleCellSave(row, col.key, editValue); if (e.key === "Escape") setEditingCell(null); }}
+              onBlur={() => handleCellSave(row, col.key, editValue)}
+              onClick={(e) => e.stopPropagation()} />
+          );
+        }
+        return (
+          <button className="text-sm hover:bg-muted px-1 rounded cursor-text"
+            onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: row.id, col: col.key }); setEditValue(matVal != null ? String(matVal) : ""); }}>
+            {matVal != null ? (isMatCurr ? formatCurrency(matVal, currency) : String(matVal)) : <span className="text-muted-foreground">{"\u2014"}</span>}
+          </button>
+        );
+      }
       case "supplier": {
         if (row.type !== "task" || row.id.startsWith("__")) return <span className="text-muted-foreground">{"\u2014"}</span>;
         const isEditingSupplier = editingCell?.rowId === row.id && editingCell?.col === "supplier";
