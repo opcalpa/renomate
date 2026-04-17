@@ -1894,23 +1894,23 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           >
             {row.status
               ? <Badge className={cn("border cursor-pointer hover:opacity-80", getStatusBadgeColor(row.status))}>{statusLabel}</Badge>
-              : <span className="text-muted-foreground cursor-pointer hover:text-foreground">{"\u2014"}</span>}
+              : <span className="text-muted-foreground cursor-pointer hover:text-foreground">{"–"}</span>}
           </button>
         );
       }
       case "consumed": {
         // Show consumed total for material budget posts
-        if (!isMaterialBudgetPost) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (!isMaterialBudgetPost) return <span className="text-muted-foreground/30">{"–"}</span>;
         const consumed = row.consumedTotal ?? 0;
         return consumed > 0
           ? <span>{formatCurrency(consumed, currency)}</span>
-          : <span className="text-muted-foreground">{"\u2014"}</span>;
+          : <span className="text-muted-foreground/30">{"–"}</span>;
       }
       case "budget": {
         // Purchases don't have a budget — they consume one
-        if (isPurchase) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (isPurchase) return <span className="text-muted-foreground/30">{"–"}</span>;
         // Legacy non-budget-post materials
-        if (row.type === "material" && !row.isBudgetPost) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (row.type === "material" && !row.isBudgetPost) return <span className="text-muted-foreground/30">{"–"}</span>;
         // Synthetic rows are not editable
         if (row.id.startsWith("__")) return <span>{formatCurrency(row.budget, currency)}</span>;
         // Homeowner: read-only
@@ -1947,7 +1947,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         );
       }
       case "paid": {
-        if (row.id.startsWith("__")) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (row.id.startsWith("__")) return <span className="text-muted-foreground/30">{"–"}</span>;
         const displayAmount = isBuilder ? getEffectiveCost(row) : row.paid;
         const isEditingPaid = editingCell?.rowId === row.id && editingCell?.col === col.key;
         if (isEditingPaid) {
@@ -1985,7 +1985,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       }
       case "remaining": {
         // Purchases don't have remaining — they are the consumption
-        if (isPurchase) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (isPurchase) return <span className="text-muted-foreground/30">{"–"}</span>;
         // Material budget posts: remaining = budget - consumed
         if (isMaterialBudgetPost) {
           const consumed = row.consumedTotal ?? 0;
@@ -1998,7 +1998,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         }
         if (isBuilder) {
           // Builder: remaining = budget - effective cost (tasks only)
-          if (row.type === "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
+          if (row.type === "material") return <span className="text-muted-foreground/30">{"–"}</span>;
           const result = row.budget - getEffectiveCost(row);
           return (
             <span className={result < 0 ? "text-destructive" : result > 0 ? "text-green-600" : ""}>
@@ -2008,7 +2008,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         }
         // Homeowner: outstanding = quoted - paid (all rows)
         const quoted = row.type === "task" ? row.budget : row.estimatedCost;
-        if (quoted <= 0) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (quoted <= 0) return <span className="text-muted-foreground/30">{"–"}</span>;
         const outstanding = quoted - row.paid;
         return (
           <span className={outstanding < 0 ? "text-destructive" : outstanding > 0 ? "text-amber-600" : "text-green-600"}>
@@ -2017,7 +2017,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         );
       }
       case "margin": {
-        if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (row.type !== "task") return <span className="text-muted-foreground/30">{"–"}</span>;
         const effectiveCost = getEffectiveCost(row);
         const result = row.budget - effectiveCost;
         const marginPct = row.budget > 0 ? Math.round((result / row.budget) * 100) : 0;
@@ -2038,18 +2038,18 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         );
       }
       case "matBudget":
-        if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (row.type !== "task") return <span className="text-muted-foreground/30">{"–"}</span>;
         return row.materialBudget > 0
           ? <span>{formatCurrency(row.materialBudget, currency)}</span>
-          : <span className="text-muted-foreground">{"\u2014"}</span>;
+          : <span className="text-muted-foreground/30">{"–"}</span>;
       case "matConsumed":
-        if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (row.type !== "task") return <span className="text-muted-foreground/30">{"–"}</span>;
         return row.materialConsumed > 0
           ? <span>{formatCurrency(row.materialConsumed, currency)}</span>
-          : <span className="text-muted-foreground">{"\u2014"}</span>;
+          : <span className="text-muted-foreground/30">{"–"}</span>;
       case "matRemaining": {
         if (row.type !== "task" || row.materialBudget <= 0)
-          return <span className="text-muted-foreground">{"\u2014"}</span>;
+          return <span className="text-muted-foreground/30">{"–"}</span>;
         const matRemaining = row.materialBudget - row.materialConsumed;
         const pctLeft = row.materialBudget > 0 ? matRemaining / row.materialBudget : 0;
         let matColorClass = "text-green-600";
@@ -2066,7 +2066,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
               open onOpenChange={(open) => { if (!open) setEditingCell(null); }}>
               <SelectTrigger className="h-7 w-32 text-xs" onClick={(e) => e.stopPropagation()}><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">{"\u2014"}</SelectItem>
+                <SelectItem value="none">{"–"}</SelectItem>
                 {allRooms.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -2075,7 +2075,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         return (
           <button className="text-sm hover:bg-muted px-1 rounded cursor-text"
             onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: row.id, col: "room" }); }}>
-            {row.room || <span className="text-muted-foreground">{"\u2014"}</span>}
+            {row.room || <span className="text-muted-foreground/30">{"–"}</span>}
           </button>
         );
       }
@@ -2090,7 +2090,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
               open onOpenChange={(open) => { if (!open) setEditingCell(null); }}>
               <SelectTrigger className="h-7 w-32 text-xs" onClick={(e) => e.stopPropagation()}><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">{"\u2014"}</SelectItem>
+                <SelectItem value="none">{"–"}</SelectItem>
                 {distinctCostCenters.map(cc => <SelectItem key={cc} value={cc}>{cc}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -2099,7 +2099,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         return (
           <button className="text-sm hover:bg-muted px-1 rounded cursor-text"
             onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: row.id, col: "costCenter" }); }}>
-            {row.costCenter || <span className="text-muted-foreground">{"\u2014"}</span>}
+            {row.costCenter || <span className="text-muted-foreground/30">{"–"}</span>}
           </button>
         );
       }
@@ -2144,7 +2144,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       case "hourlyRate":
       case "subcontractorCost":
       case "rotAmount": {
-        if (row.type !== "task" || row.id.startsWith("__")) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (row.type !== "task" || row.id.startsWith("__")) return <span className="text-muted-foreground/30">{"–"}</span>;
         const numFieldMap: Record<string, number | undefined> = {
           estimatedHours: row.estimatedHours,
           hourlyRate: row.hourlyRate,
@@ -2167,12 +2167,12 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         return (
           <button className="text-sm hover:bg-muted px-1 rounded cursor-text"
             onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: row.id, col: col.key }); setEditValue(numVal != null ? String(numVal) : ""); }}>
-            {numVal != null ? (isCurr ? formatCurrency(numVal, currency) : String(numVal)) : <span className="text-muted-foreground">{"\u2014"}</span>}
+            {numVal != null ? (isCurr ? formatCurrency(numVal, currency) : String(numVal)) : <span className="text-muted-foreground/30">{"–"}</span>}
           </button>
         );
       }
       case "paymentStatus": {
-        if (row.type !== "task" || row.id.startsWith("__")) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (row.type !== "task" || row.id.startsWith("__")) return <span className="text-muted-foreground/30">{"–"}</span>;
         const isEditingPmt = editingCell?.rowId === row.id && editingCell?.col === "paymentStatus";
         if (isEditingPmt) {
           return (
@@ -2201,8 +2201,8 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       case "quantity":
       case "pricePerUnit":
       case "orderedAmount": {
-        if ((col.key === "quantity" || col.key === "pricePerUnit") && row.type !== "material" && row.type !== "purchase") return <span className="text-muted-foreground">{"\u2014"}</span>;
-        if (row.id.startsWith("__")) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if ((col.key === "quantity" || col.key === "pricePerUnit") && row.type !== "material" && row.type !== "purchase") return <span className="text-muted-foreground/30">{"–"}</span>;
+        if (row.id.startsWith("__")) return <span className="text-muted-foreground/30">{"–"}</span>;
         const matFieldMap: Record<string, number | undefined> = {
           quantity: row.quantity, pricePerUnit: row.pricePerUnit, orderedAmount: row.orderedAmount,
         };
@@ -2222,12 +2222,12 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         return (
           <button className="text-sm hover:bg-muted px-1 rounded cursor-text"
             onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: row.id, col: col.key }); setEditValue(matVal != null ? String(matVal) : ""); }}>
-            {matVal != null ? (isMatCurr ? formatCurrency(matVal, currency) : String(matVal)) : <span className="text-muted-foreground">{"\u2014"}</span>}
+            {matVal != null ? (isMatCurr ? formatCurrency(matVal, currency) : String(matVal)) : <span className="text-muted-foreground/30">{"–"}</span>}
           </button>
         );
       }
       case "supplier": {
-        if (row.type !== "task" || row.id.startsWith("__")) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (row.type !== "task" || row.id.startsWith("__")) return <span className="text-muted-foreground/30">{"–"}</span>;
         const isEditingSupplier = editingCell?.rowId === row.id && editingCell?.col === "supplier";
         if (isEditingSupplier) {
           const filtered = editValue.trim()
@@ -2275,15 +2275,15 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
               setEditValue(row.supplierName || "");
             }}
           >
-            {row.supplierName || <span className="text-muted-foreground">{"\u2014"}</span>}
+            {row.supplierName || <span className="text-muted-foreground/30">{"–"}</span>}
           </button>
         );
       }
       case "vendor":
-        if (row.type !== "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (row.type !== "material") return <span className="text-muted-foreground/30">{"–"}</span>;
         return <span className="text-sm">{row.vendor || "\u2014"}</span>;
       case "rotAmount":
-        if (row.type !== "task") return <span className="text-muted-foreground">{"\u2014"}</span>;
+        if (row.type !== "task") return <span className="text-muted-foreground/30">{"–"}</span>;
         return <span className="text-sm">{row.rotAmount ? formatCurrency(row.rotAmount, currency) : "\u2014"}</span>;
       default:
         return null;
