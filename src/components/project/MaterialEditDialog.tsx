@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { SupplierAutocomplete } from "@/components/shared/SupplierAutocomplete";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ interface Material {
   paid_amount: number | null;
   vendor_name: string | null;
   vendor_link: string | null;
+  supplier_id: string | null;
   status: string;
   exclude_from_budget: boolean;
   task_id: string | null;
@@ -73,6 +75,8 @@ export const MaterialEditDialog = ({
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
   const [tasks, setTasks] = useState<{ id: string; title: string }[]>([]);
   const [teamMembers, setTeamMembers] = useState<{ id: string; name: string }[]>([]);
+  const [matProfileId, setMatProfileId] = useState<string | null>(null);
+  const [matSuppliers, setMatSuppliers] = useState<{ id: string; name: string }[]>([]);
 
   const fetchMaterial = useCallback(async () => {
     if (!materialId) return;
@@ -130,6 +134,17 @@ export const MaterialEditDialog = ({
       } else {
         setTeamMembers([]);
       }
+
+      // Fetch suppliers for autocomplete
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: prof } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+        if (prof) {
+          setMatProfileId(prof.id);
+          const { data: suppData } = await supabase.from("suppliers").select("id, name").eq("profile_id", prof.id).order("name");
+          setMatSuppliers(suppData || []);
+        }
+      }
     } catch (error) {
       console.error("Failed to fetch supporting data:", error);
     }
@@ -161,6 +176,7 @@ export const MaterialEditDialog = ({
           status: material.status || "submitted",
           vendor_name: material.vendor_name,
           vendor_link: material.vendor_link,
+          supplier_id: material.supplier_id || null,
           exclude_from_budget: material.exclude_from_budget,
           ordered_amount: material.ordered_amount || null,
           paid_amount: material.paid_amount || null,
@@ -315,11 +331,17 @@ export const MaterialEditDialog = ({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-vendor-name">{t("purchases.vendorName")}</Label>
-                <Input
-                  id="edit-vendor-name"
-                  value={material.vendor_name || ""}
-                  onChange={(e) => setMaterial({ ...material, vendor_name: e.target.value })}
+                <Label>{t("purchases.vendorName")}</Label>
+                <SupplierAutocomplete
+                  profileId={matProfileId}
+                  suppliers={matSuppliers}
+                  value={matSuppliers.find(s => s.id === material.supplier_id)?.name || material.vendor_name || ""}
+                  onChange={(suppId, name) => setMaterial({ ...material, supplier_id: suppId, vendor_name: name || null })}
+                  onCreated={async () => {
+                    if (!matProfileId) return;
+                    const { data } = await supabase.from("suppliers").select("id, name").eq("profile_id", matProfileId).order("name");
+                    setMatSuppliers(data || []);
+                  }}
                 />
               </div>
 

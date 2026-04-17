@@ -1045,6 +1045,7 @@ export type Database = {
           rot_amount: number | null
           source_material_id: string | null
           status: string
+          supplier_id: string | null
           task_id: string | null
           unit: string | null
           updated_at: string
@@ -1073,6 +1074,7 @@ export type Database = {
           rot_amount?: number | null
           source_material_id?: string | null
           status?: string
+          supplier_id?: string | null
           task_id?: string | null
           unit?: string | null
           updated_at?: string
@@ -1101,6 +1103,7 @@ export type Database = {
           rot_amount?: number | null
           source_material_id?: string | null
           status?: string
+          supplier_id?: string | null
           task_id?: string | null
           unit?: string | null
           updated_at?: string
@@ -1155,6 +1158,13 @@ export type Database = {
             columns: ["source_material_id"]
             isOneToOne: false
             referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "materials_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
           {

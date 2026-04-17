@@ -5,6 +5,7 @@ import { useMeasurement } from "@/contexts/MeasurementContext";
 import { useTaxDeductionVisible } from "@/hooks/useTaxDeduction";
 import { supabase } from "@/integrations/supabase/client";
 import { MultiRoomSelect } from "@/components/shared/MultiRoomSelect";
+import { SupplierAutocomplete } from "@/components/shared/SupplierAutocomplete";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -139,6 +140,7 @@ interface Task {
   is_ata: boolean;
   rot_eligible: boolean;
   rot_amount: number | null;
+  supplier_id: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -682,6 +684,8 @@ export const TaskEditDialog = ({
   const [profileDefaultRate, setProfileDefaultRate] = useState<number | null>(null);
   const [profileLaborCostPercent, setProfileLaborCostPercent] = useState<number | null>(null);
   const [userType, setUserType] = useState<string | null>(null);
+  const [taskProfileId, setTaskProfileId] = useState<string | null>(null);
+  const [taskSuppliers, setTaskSuppliers] = useState<{ id: string; name: string }[]>([]);
   const isBuilder = permissions.isOwner && userType !== "homeowner";
   const isHomeowner = userType === "homeowner";
   const hasAutoFilledRef = useRef(false);
@@ -840,6 +844,13 @@ export const TaskEditDialog = ({
       setProfileDefaultRate(data?.default_hourly_rate ?? null);
       setProfileLaborCostPercent(data?.default_labor_cost_percent ?? null);
       setUserType(data?.onboarding_user_type ?? null);
+      // Fetch profile id + suppliers for autocomplete
+      const { data: prof } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+      if (prof) {
+        setTaskProfileId(prof.id);
+        const { data: suppData } = await supabase.from("suppliers").select("id, name").eq("profile_id", prof.id).order("name");
+        setTaskSuppliers(suppData || []);
+      }
       if (data?.estimation_settings) {
         setEstimationSettings(
           parseEstimationSettings(data.estimation_settings as Record<string, unknown>)
@@ -992,6 +1003,11 @@ export const TaskEditDialog = ({
       // ÄTA field — only include if the column existed when we fetched
       if ("is_ata" in task) {
         payload.is_ata = task.is_ata;
+      }
+
+      // Supplier
+      if ("supplier_id" in task) {
+        payload.supplier_id = task.supplier_id || null;
       }
 
       // ROT fields
@@ -1869,6 +1885,24 @@ export const TaskEditDialog = ({
                           </div>
                         );
                       })() : null}
+
+                      {/* Supplier */}
+                      {"supplier_id" in task && (
+                        <div className="space-y-2">
+                          <Label>{t("budget.supplier", "Leverantör")}</Label>
+                          <SupplierAutocomplete
+                            profileId={taskProfileId}
+                            suppliers={taskSuppliers}
+                            value={taskSuppliers.find(s => s.id === task.supplier_id)?.name || ""}
+                            onChange={(suppId) => setTask({ ...task, supplier_id: suppId })}
+                            onCreated={async () => {
+                              if (!taskProfileId) return;
+                              const { data } = await supabase.from("suppliers").select("id, name").eq("profile_id", taskProfileId).order("name");
+                              setTaskSuppliers(data || []);
+                            }}
+                          />
+                        </div>
+                      )}
 
                       {!isBuilder && task.budget && (
                         <div className="space-y-2">
