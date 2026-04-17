@@ -94,13 +94,16 @@ interface BudgetRow {
   pricePerUnit?: number;
   orderedAmount?: number;
   vendor?: string;
+  // Supplier
+  supplierId?: string;
+  supplierName?: string;
   // ROT
   rotAmount?: number;
   // Evidence status
   evidenceStatus?: "verified" | "registered" | "missing" | "na";
 }
 
-type ColumnKey = "name" | "type" | "status" | "budget" | "consumed" | "paid" | "remaining" | "margin" | "matBudget" | "matConsumed" | "matRemaining" | "room" | "assignee" | "costCenter" | "startDate" | "finishDate" | "attachment" | "evidence" | "estimatedHours" | "hourlyRate" | "subcontractorCost" | "paymentStatus" | "quantity" | "pricePerUnit" | "orderedAmount" | "vendor" | "rotAmount";
+type ColumnKey = "name" | "type" | "status" | "budget" | "consumed" | "paid" | "remaining" | "margin" | "supplier" | "matBudget" | "matConsumed" | "matRemaining" | "room" | "assignee" | "costCenter" | "startDate" | "finishDate" | "attachment" | "evidence" | "estimatedHours" | "hourlyRate" | "subcontractorCost" | "paymentStatus" | "quantity" | "pricePerUnit" | "orderedAmount" | "vendor" | "rotAmount";
 
 interface ColumnDef {
   key: ColumnKey;
@@ -293,6 +296,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
     { key: "matBudget", label: t('budget.matBudget'), align: "right", extra: true },
     { key: "matConsumed", label: t('budget.matConsumed'), align: "right", extra: true },
     { key: "matRemaining", label: t('budget.matRemaining'), align: "right", extra: true },
+    { key: "supplier", label: t('budget.supplier', 'Leverantör') },
     { key: "paid", label: isBuilder ? t('budget.cost') : t('homeownerBudget.paid', 'Betalat'), align: "right" },
     { key: "remaining", label: isBuilder ? t('budget.result') : t('homeownerBudget.outstanding', 'Kvarstående'), align: "right" },
     { key: "margin", label: t('budget.margin'), align: "right" },
@@ -381,6 +385,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
   const [purchaseFromBudgetPost, setPurchaseFromBudgetPost] = useState<BudgetRow | null>(null);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
 
+  // Supplier registry
+  const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
+
   const [compactRows, setCompactRows] = useState(
     () => budgetPrefs.current?.compactRows ?? true
   );
@@ -456,7 +463,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
 
   const fetchData = useCallback(async () => {
     try {
-      // Fetch profile defaults for labor cost percent
+      // Fetch profile defaults for labor cost percent + suppliers
+      let fetchedProfileId: string | null = null;
+      const fetchedSuppliers: { id: string; name: string }[] = [];
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: profile } = await supabase
@@ -469,13 +478,24 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
             setDefaultLaborCostPercent(profile.default_labor_cost_percent);
           }
           setCurrentProfileId(profile.id);
+          fetchedProfileId = profile.id;
+          // Fetch suppliers for this profile
+          const { data: suppData } = await supabase
+            .from("suppliers")
+            .select("id, name")
+            .eq("profile_id", profile.id)
+            .order("name");
+          if (suppData) {
+            fetchedSuppliers.push(...suppData);
+            setSuppliers(suppData);
+          }
         }
       }
 
       const [tasksRes, materialsRes, extraRes, projectRes, taskDocsRes, materialDocsRes] = await Promise.all([
         supabase
           .from("tasks")
-          .select("id, title, status, budget, ordered_amount, payment_status, paid_amount, room_id, cost_center, start_date, finish_date, is_ata, estimated_hours, hourly_rate, labor_cost_percent, subcontractor_cost, markup_percent, material_estimate, material_markup_percent, task_cost_type, rot_amount")
+          .select("id, title, status, budget, ordered_amount, payment_status, paid_amount, room_id, cost_center, start_date, finish_date, is_ata, estimated_hours, hourly_rate, labor_cost_percent, subcontractor_cost, markup_percent, material_estimate, material_markup_percent, task_cost_type, rot_amount, supplier_id")
           .eq("project_id", projectId),
         supabase
           .from("materials")
@@ -566,6 +586,12 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         }
       }
 
+      // Build supplier name map
+      const supplierMap = new Map<string, string>();
+      for (const s of fetchedSuppliers) {
+        supplierMap.set(s.id, s.name);
+      }
+
       // --- P&L row construction ---
       // Split materials into budget posts (planned) vs purchases (actual)
       const allMaterials = materialsRes.data || [];
@@ -627,6 +653,8 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           laborCostPercent: t.labor_cost_percent ?? undefined,
           paymentStatus: t.payment_status ?? undefined,
           orderedAmount: t.ordered_amount ?? undefined,
+          supplierId: (t as Record<string, unknown>).supplier_id as string ?? undefined,
+          supplierName: (t as Record<string, unknown>).supplier_id ? supplierMap.get((t as Record<string, unknown>).supplier_id as string) : undefined,
           rotAmount: (t as Record<string, unknown>).rot_amount as number ?? undefined,
           evidenceStatus: computeEvidenceStatus({
             rowType: "task",
@@ -1151,6 +1179,44 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
     }
   };
 
+  const handleSupplierSave = async (row: BudgetRow, supplierName: string) => {
+    if (!currentProfileId || row.type !== "task") { setEditingCell(null); return; }
+    const trimmed = supplierName.trim();
+    if (!trimmed) {
+      // Clear supplier
+      try {
+        const { error } = await supabase.from("tasks").update({ supplier_id: null }).eq("id", row.id);
+        if (error) throw error;
+        setEditingCell(null);
+        await fetchData();
+      } catch { setEditingCell(null); }
+      return;
+    }
+    try {
+      // Find existing or create new supplier
+      let supplierId: string;
+      const existing = suppliers.find(s => s.name.toLowerCase() === trimmed.toLowerCase());
+      if (existing) {
+        supplierId = existing.id;
+      } else {
+        const { data, error } = await supabase
+          .from("suppliers")
+          .insert({ profile_id: currentProfileId, name: trimmed })
+          .select("id")
+          .single();
+        if (error) throw error;
+        supplierId = data.id;
+      }
+      const { error } = await supabase.from("tasks").update({ supplier_id: supplierId }).eq("id", row.id);
+      if (error) throw error;
+      setEditingCell(null);
+      await fetchData();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t('budget.failedToUpdateValue');
+      toast({ title: t('common.error'), description: msg, variant: "destructive" });
+    }
+  };
+
   // --- Column drag reorder ---
 
   const [draggingColIdx, setDraggingColIdx] = useState<number | null>(null);
@@ -1306,6 +1372,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       } else if (sortKey === "orderedAmount") {
         av = a.orderedAmount ?? 0;
         bv = b.orderedAmount ?? 0;
+      } else if (sortKey === "supplier") {
+        av = a.supplierName || "";
+        bv = b.supplierName || "";
       } else if (sortKey === "vendor") {
         av = a.vendor || "";
         bv = b.vendor || "";
@@ -2023,6 +2092,59 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         return <span className="text-sm">{row.pricePerUnit != null ? formatCurrency(row.pricePerUnit, currency) : "\u2014"}</span>;
       case "orderedAmount":
         return <span className="text-sm">{row.orderedAmount ? formatCurrency(row.orderedAmount, currency) : "\u2014"}</span>;
+      case "supplier": {
+        if (row.type !== "task" || row.id.startsWith("__")) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        const isEditingSupplier = editingCell?.rowId === row.id && editingCell?.col === "supplier";
+        if (isEditingSupplier) {
+          const filtered = editValue.trim()
+            ? suppliers.filter(s => s.name.toLowerCase().includes(editValue.trim().toLowerCase()))
+            : suppliers;
+          return (
+            <div className="relative" onClick={(e) => e.stopPropagation()}>
+              <Input
+                type="text"
+                className="w-36 h-7 text-xs"
+                autoFocus
+                placeholder={t('budget.supplierPlaceholder', 'Skriv leverantörsnamn...')}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSupplierSave(row, editValue);
+                  if (e.key === "Escape") setEditingCell(null);
+                }}
+                onBlur={() => { setTimeout(() => handleSupplierSave(row, editValue), 150); }}
+              />
+              {filtered.length > 0 && editValue.trim() && (
+                <div className="absolute top-8 left-0 z-30 w-48 bg-popover border rounded-md shadow-md max-h-32 overflow-y-auto">
+                  {filtered.map(s => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted truncate"
+                      onMouseDown={(e) => { e.preventDefault(); handleSupplierSave(row, s.name); }}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        }
+        return (
+          <button
+            type="button"
+            className="text-sm hover:bg-muted px-1 rounded cursor-text"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingCell({ rowId: row.id, col: "supplier" });
+              setEditValue(row.supplierName || "");
+            }}
+          >
+            {row.supplierName || <span className="text-muted-foreground">{"\u2014"}</span>}
+          </button>
+        );
+      }
       case "vendor":
         if (row.type !== "material") return <span className="text-muted-foreground">{"\u2014"}</span>;
         return <span className="text-sm">{row.vendor || "\u2014"}</span>;

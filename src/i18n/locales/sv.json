@@ -2139,6 +2139,8 @@
     "standaloneBudgetPosts": "Fristående materialbudgetar",
     "createAsAta": "Skapa som tillägg",
     "noBudgetPostFits": "Passar ingen budgetpost?",
+    "supplier": "Leverantör",
+    "supplierPlaceholder": "Skriv leverantörsnamn...",
     "ataSection": "Tillägg",
     "addition": "Tillägg",
     "builder": {

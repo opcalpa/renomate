@@ -2668,6 +2668,8 @@
     "standaloneBudgetPosts": "Standalone material budgets",
     "createAsAta": "Create as addition",
     "noBudgetPostFits": "No matching budget post?",
+    "supplier": "Supplier",
+    "supplierPlaceholder": "Type supplier name...",
     "ataSection": "Additions",
     "addition": "Addition",
     "builder": {

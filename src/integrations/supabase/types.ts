@@ -1041,6 +1041,7 @@ export type Database = {
           project_id: string | null
           quantity: number | null
           room_id: string | null
+          room_ids: string[] | null
           rot_amount: number | null
           source_material_id: string | null
           status: string
@@ -1068,6 +1069,7 @@ export type Database = {
           project_id?: string | null
           quantity?: number | null
           room_id?: string | null
+          room_ids?: string[] | null
           rot_amount?: number | null
           source_material_id?: string | null
           status?: string
@@ -1095,6 +1097,7 @@ export type Database = {
           project_id?: string | null
           quantity?: number | null
           room_id?: string | null
+          room_ids?: string[] | null
           rot_amount?: number | null
           source_material_id?: string | null
           status?: string
@@ -1163,6 +1166,61 @@ export type Database = {
           },
         ]
       }
+      milestones: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          created_by_user_id: string | null
+          date: string
+          id: string
+          project_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          created_by_user_id?: string | null
+          date: string
+          id?: string
+          project_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          created_by_user_id?: string | null
+          date?: string
+          id?: string
+          project_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milestones_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "milestones_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           content: string
@@ -1212,11 +1270,21 @@ export type Database = {
         Row: {
           caption: string | null
           created_at: string
+          crop_offset_x: number | null
+          crop_offset_y: number | null
+          crop_position: string | null
+          crop_shape: string | null
+          crop_zoom: number | null
+          display_size: string | null
+          fit_mode: string | null
+          grid_col_span: number
+          grid_row_span: number
           id: string
           linked_to_id: string
           linked_to_type: string
           mime_type: string | null
           pinterest_pin_id: string | null
+          sort_order: number | null
           source: string | null
           source_url: string | null
           uploaded_by_user_id: string
@@ -1225,11 +1293,21 @@ export type Database = {
         Insert: {
           caption?: string | null
           created_at?: string
+          crop_offset_x?: number | null
+          crop_offset_y?: number | null
+          crop_position?: string | null
+          crop_shape?: string | null
+          crop_zoom?: number | null
+          display_size?: string | null
+          fit_mode?: string | null
+          grid_col_span?: number
+          grid_row_span?: number
           id?: string
           linked_to_id: string
           linked_to_type: string
           mime_type?: string | null
           pinterest_pin_id?: string | null
+          sort_order?: number | null
           source?: string | null
           source_url?: string | null
           uploaded_by_user_id: string
@@ -1238,11 +1316,21 @@ export type Database = {
         Update: {
           caption?: string | null
           created_at?: string
+          crop_offset_x?: number | null
+          crop_offset_y?: number | null
+          crop_position?: string | null
+          crop_shape?: string | null
+          crop_zoom?: number | null
+          display_size?: string | null
+          fit_mode?: string | null
+          grid_col_span?: number
+          grid_row_span?: number
           id?: string
           linked_to_id?: string
           linked_to_type?: string
           mime_type?: string | null
           pinterest_pin_id?: string | null
+          sort_order?: number | null
           source?: string | null
           source_url?: string | null
           uploaded_by_user_id?: string
@@ -2345,6 +2433,42 @@ export type Database = {
           },
         ]
       }
+      suppliers: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suppliers_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_dependencies: {
         Row: {
           created_at: string
@@ -2561,6 +2685,7 @@ export type Database = {
           start_date: string | null
           status: string | null
           subcontractor_cost: number | null
+          supplier_id: string | null
           task_cost_type: string | null
           title: string
           updated_at: string
@@ -2606,6 +2731,7 @@ export type Database = {
           start_date?: string | null
           status?: string | null
           subcontractor_cost?: number | null
+          supplier_id?: string | null
           task_cost_type?: string | null
           title: string
           updated_at?: string
@@ -2651,6 +2777,7 @@ export type Database = {
           start_date?: string | null
           status?: string | null
           subcontractor_cost?: number | null
+          supplier_id?: string | null
           task_cost_type?: string | null
           title?: string
           updated_at?: string
@@ -2710,6 +2837,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
