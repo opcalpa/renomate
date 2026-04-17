@@ -1842,7 +1842,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
             </Badge>
           );
         }
-        const isSubcontractor = row.taskCostType === "subcontractor" || (!row.taskCostType && (row.subcontractorCost ?? 0) > 0);
+        const isSubcontractor = isBuilder && (row.taskCostType === "subcontractor" || (!row.taskCostType && (row.subcontractorCost ?? 0) > 0));
         const hasOwnLabor = row.taskCostType === "own_labor" || (!row.taskCostType && (row.estimatedHours ?? 0) > 0);
         return (
           <Badge variant="default" className="gap-1">
