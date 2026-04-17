@@ -1844,14 +1844,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       }
       case "paid": {
         if (row.id.startsWith("__")) return <span className="text-muted-foreground">{"\u2014"}</span>;
-        if (!isBuilder) {
-          // Homeowner: show only actual paid amount — no estimate fallback
-          return <span>{formatCurrency(row.paid, currency)}</span>;
-        }
-        // Builder: show effectiveCost (falls back to estimate when no payment)
-        const effectiveCost = getEffectiveCost(row);
-        const isEditing = editingCell?.rowId === row.id && editingCell?.col === col.key;
-        if (isEditing) {
+        const displayAmount = isBuilder ? getEffectiveCost(row) : row.paid;
+        const isEditingPaid = editingCell?.rowId === row.id && editingCell?.col === col.key;
+        if (isEditingPaid) {
           return (
             <Input
               type="number"
@@ -1877,9 +1872,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
               setEditValue(row.paid > 0 ? String(row.paid) : "");
             }}
           >
-            <span className={row.isEstimated ? "text-muted-foreground italic" : ""}>
-              {formatCurrency(effectiveCost, currency)}
-              {row.isEstimated && effectiveCost > 0 && <span className="ml-0.5">*</span>}
+            <span className={isBuilder && row.isEstimated ? "text-muted-foreground italic" : ""}>
+              {formatCurrency(displayAmount, currency)}
+              {isBuilder && row.isEstimated && displayAmount > 0 && <span className="ml-0.5">*</span>}
             </span>
           </button>
         );
