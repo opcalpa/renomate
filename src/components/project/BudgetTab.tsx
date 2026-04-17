@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Layers, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Hammer, Handshake, MoreVertical } from "lucide-react";
+import { Loader2, Search, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Layers, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Hammer, Handshake, MoreVertical } from "lucide-react";
 import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
 import { FilePreviewPopover } from "@/components/shared/FilePreviewPopover";
 import { getStatusBadgeColor } from "@/lib/statusColors";
@@ -2785,10 +2785,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
                   onDrop={handleDrop}
                   onDragEnd={handleDragEnd}
                 >
-                  <div className="inline-flex items-center gap-1 group">
-                    {idx !== 0 && (
-                      <GripVertical className="h-3 w-3 text-muted-foreground/30 group-hover:text-muted-foreground/70 transition-colors cursor-grab shrink-0" />
-                    )}
+                  <div className="inline-flex items-center gap-1">
                     <button
                       className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
                       onClick={() => handleSort(col.key)}
