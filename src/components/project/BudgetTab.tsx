@@ -1327,7 +1327,6 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
 
   // Group linked materials under their parent task for display
   const [unlinkedExpanded, setUnlinkedExpanded] = useState(false);
-  const [orphanExpanded, setOrphanExpanded] = useState(false);
   const [ataExpanded, setAtaExpanded] = useState(true);
 
   type DisplayRow = BudgetRow & { isChild?: boolean; isPurchaseChild?: boolean; childCount?: number; purchaseCount?: number; isSectionHeader?: boolean };
@@ -1418,27 +1417,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       }
     }
 
-    // 3. Orphan purchases section (no budget post linked)
-    if (orphanPurchases.length > 0) {
-      const orphanTotal = orphanPurchases.reduce((sum, p) => sum + (p.paid || p.estimatedCost || 0), 0);
-      result.push({
-        id: "__orphan_header__",
-        name: t("budget.orphanPurchases", "Okopplade inköp"),
-        type: "purchase",
-        budget: 0,
-        paid: orphanTotal,
-        estimatedCost: orphanTotal,
-        isEstimated: false,
-        materialBudget: 0,
-        materialConsumed: 0,
-        childCount: orphanPurchases.length,
-        isSectionHeader: true,
-      } as DisplayRow);
-      if (orphanExpanded) {
-        for (const p of orphanPurchases) {
-          result.push({ ...p, isChild: true });
-        }
-      }
+    // 3. Orphan purchases — shown as regular rows (not a separate section)
+    for (const p of orphanPurchases) {
+      result.push(p);
     }
 
     // 4. ÄTA section — change orders shown in their own block
@@ -1622,7 +1603,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
     grouped.push(...sectionRows);
 
     return grouped;
-  }, [filtered, ataRows, expandedTasks, expandedBudgetPosts, unlinkedExpanded, orphanExpanded, ataExpanded, groupBy, collapsedGroups, t]);
+  }, [filtered, ataRows, expandedTasks, expandedBudgetPosts, unlinkedExpanded, ataExpanded, groupBy, collapsedGroups, t]);
 
   const clearAllFilters = () => {
     setSearchQuery("");
@@ -2561,26 +2542,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
                   </TableRow>
                 );
 
-                // Orphan purchases section header
-                if (rowMeta.isSectionHeader && row.id === "__orphan_header__") return (
-                  <TableRow
-                    key="orphan-header"
-                    className={`cursor-pointer hover:bg-muted/50 bg-amber-50/50 border-t-2 border-amber-200${compactRows ? " h-8" : ""}`}
-                    onClick={() => setOrphanExpanded(!orphanExpanded)}
-                  >
-                    <TableCell colSpan={visibleColumns.length + (isBuilder ? 1 : 0)} className="py-2">
-                      <div className="flex items-center gap-2">
-                        <ChevronDown className={`h-4 w-4 text-amber-500 transition-transform ${orphanExpanded ? "" : "-rotate-90"}`} />
-                        <span className="text-amber-500 text-sm">⚠</span>
-                        <span className="text-sm font-medium text-amber-700">{row.name}</span>
-                        <Badge variant="secondary" className="text-xs">{rowMeta.childCount}</Badge>
-                        <span className="text-xs text-muted-foreground ml-auto">{formatCurrency(row.estimatedCost, currency)}</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-
-                // ÄTA section header
+                // Tillägg section header
                 if (rowMeta.isSectionHeader && row.id === "__ata_header__") return (
                   <TableRow
                     key="ata-header"
