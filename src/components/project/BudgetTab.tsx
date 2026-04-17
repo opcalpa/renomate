@@ -1134,6 +1134,23 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
     }
   };
 
+  const handleStatusSave = async (row: BudgetRow, newStatus: string) => {
+    try {
+      if (row.type === "task") {
+        const { error } = await supabase.from("tasks").update({ status: newStatus }).eq("id", row.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("materials").update({ status: newStatus }).eq("id", row.id);
+        if (error) throw error;
+      }
+      setEditingCell(null);
+      await fetchData();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : t('budget.failedToUpdateStatus');
+      toast({ title: t('common.error'), description: msg, variant: "destructive" });
+    }
+  };
+
   // --- Column drag reorder ---
 
   const [draggingColIdx, setDraggingColIdx] = useState<number | null>(null);
@@ -1730,11 +1747,52 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         );
       }
       case "status": {
-        if (!row.status) return <span className="text-muted-foreground">{"\u2014"}</span>;
-        const statusLabel = row.type === "task"
-          ? t(`statuses.${budgetStatusKey(row.status)}`, row.status)
-          : t(`materialStatuses.${row.status}`, row.status);
-        return <Badge className={cn("border", getStatusBadgeColor(row.status))}>{statusLabel}</Badge>;
+        if (row.id.startsWith("__")) return null;
+        const isEditingStatus = editingCell?.rowId === row.id && editingCell?.col === "status";
+        const statusLabel = row.status
+          ? (row.type === "task"
+            ? t(`statuses.${budgetStatusKey(row.status)}`, row.status)
+            : t(`materialStatuses.${row.status}`, row.status))
+          : "\u2014";
+
+        if (isEditingStatus) {
+          const options = row.type === "task"
+            ? ["to_do", "in_progress", "done", "on_hold"]
+            : ["planned", "submitted", "approved", "billed", "paid", "paused"];
+          return (
+            <Select
+              value={row.status || ""}
+              onValueChange={(v) => handleStatusSave(row, v)}
+              open
+              onOpenChange={(open) => { if (!open) setEditingCell(null); }}
+            >
+              <SelectTrigger className="h-7 w-32 text-xs" onClick={(e) => e.stopPropagation()}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {row.type === "task" ? t(`statuses.${budgetStatusKey(s)}`, s) : t(`materialStatuses.${s}`, s)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+        }
+
+        return (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingCell({ rowId: row.id, col: "status" });
+            }}
+          >
+            {row.status
+              ? <Badge className={cn("border cursor-pointer hover:opacity-80", getStatusBadgeColor(row.status))}>{statusLabel}</Badge>
+              : <span className="text-muted-foreground cursor-pointer hover:text-foreground">{"\u2014"}</span>}
+          </button>
+        );
       }
       case "consumed": {
         // Show consumed total for material budget posts
@@ -1747,10 +1805,11 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       case "budget": {
         // Purchases don't have a budget — they consume one
         if (isPurchase) return <span className="text-muted-foreground">{"\u2014"}</span>;
-        // Material budget posts show their planned budget
-        if (isMaterialBudgetPost) return <span>{formatCurrency(row.budget, currency)}</span>;
         // Legacy non-budget-post materials
         if (row.type === "material" && !row.isBudgetPost) return <span className="text-muted-foreground">{"\u2014"}</span>;
+        // Synthetic rows are not editable
+        if (row.id.startsWith("__")) return <span>{formatCurrency(row.budget, currency)}</span>;
+        // Homeowner: read-only
         if (!isBuilder) return <span>{formatCurrency(row.budget, currency)}</span>;
         const isEditing = editingCell?.rowId === row.id && editingCell?.col === col.key;
         if (isEditing) {
@@ -1784,6 +1843,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
         );
       }
       case "paid": {
+        if (row.id.startsWith("__")) return <span className="text-muted-foreground">{"\u2014"}</span>;
         if (!isBuilder) {
           // Homeowner: show only actual paid amount — no estimate fallback
           return <span>{formatCurrency(row.paid, currency)}</span>;
@@ -2600,8 +2660,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
                 return (
                 <TableRow
                   key={`${row.type}-${row.id}`}
-                  className={`cursor-pointer hover:bg-muted/50${compactRows ? " h-8" : ""} ${rowBg}`}
-                  onClick={() => openDetail(row)}
+                  className={`hover:bg-muted/50${compactRows ? " h-8" : ""} ${rowBg}`}
                 >
                   {visibleColumns.map((col, colIdx) => (
                     <TableCell
