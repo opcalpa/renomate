@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Plus, ChevronRight, ChevronLeft, Users, User, BookOpen, Trash2, Upload, FileText, X, Loader2, Sparkles, ChevronDown, ChevronUp, MessageSquare, Mail, LayoutGrid, List, Settings2, ShieldCheck, GanttChart } from "lucide-react";
 import { PortfolioTimeline } from "@/components/project/PortfolioTimeline";
+import { TaskEditDialog } from "@/components/project/TaskEditDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -124,6 +125,8 @@ const Projects = () => {
   const [timelineOpen, setTimelineOpen] = useState(() =>
     localStorage.getItem("projects_timeline_open") !== "false"
   );
+  // Task drawer from timeline
+  const [drawerTask, setDrawerTask] = useState<{ projectId: string; taskId: string } | null>(null);
   const ALL_LIST_COLS = ["status", "description", "budget", "date", "owner", "address"] as const;
   const DEFAULT_HIDDEN_COLS: ListColKey[] = ["address"];
   type ListColKey = typeof ALL_LIST_COLS[number];
@@ -1354,7 +1357,7 @@ const Projects = () => {
                 <PortfolioTimeline
                   projectIds={nonDemoProjects.map((p) => p.id)}
                   onProjectClick={(id) => navigate(`/projects/${id}`)}
-                  onTaskClick={(projectId, taskId) => navigate(`/projects/${projectId}?tab=tasks&entityId=${taskId}`)}
+                  onTaskClick={(projectId, taskId) => setDrawerTask({ projectId, taskId })}
                 />
               </div>
             )}
@@ -1671,6 +1674,14 @@ const Projects = () => {
           setShowAIImport(false);
           navigate(`/projects/${projectId}`);
         }}
+      />
+      {/* Task drawer from timeline */}
+      <TaskEditDialog
+        taskId={drawerTask?.taskId ?? null}
+        projectId={drawerTask?.projectId ?? ""}
+        open={drawerTask !== null}
+        onOpenChange={(open) => { if (!open) setDrawerTask(null); }}
+        variant="sheet"
       />
     </div>
   );
