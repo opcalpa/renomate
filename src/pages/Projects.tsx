@@ -1354,6 +1354,7 @@ const Projects = () => {
                 <PortfolioTimeline
                   projectIds={nonDemoProjects.map((p) => p.id)}
                   onProjectClick={(id) => navigate(`/projects/${id}`)}
+                  onTaskClick={(projectId, taskId) => navigate(`/projects/${projectId}?tab=tasks&entityId=${taskId}`)}
                 />
               </div>
             )}

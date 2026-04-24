@@ -12,6 +12,7 @@ import { sv } from "date-fns/locale";
 interface PortfolioTimelineProps {
   projectIds: string[];
   onProjectClick: (projectId: string) => void;
+  onTaskClick?: (projectId: string, taskId: string) => void;
 }
 
 const ROW_HEIGHT = 40;
@@ -31,7 +32,7 @@ function getProjectColor(status: string | null): string {
   return colors[s] || "#94a3b8";
 }
 
-export function PortfolioTimeline({ projectIds, onProjectClick }: PortfolioTimelineProps) {
+export function PortfolioTimeline({ projectIds, onProjectClick, onTaskClick }: PortfolioTimelineProps) {
   const { t } = useTranslation();
   const { data, isLoading } = usePortfolioTimelineData(projectIds);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -255,15 +256,16 @@ export function PortfolioTimeline({ projectIds, onProjectClick }: PortfolioTimel
                 {isExpanded && tasks.map((task) => (
                   <div
                     key={task.id}
-                    className="flex border-b border-dashed hover:bg-muted/20 transition-colors"
+                    className="flex border-b border-dashed hover:bg-muted/20 transition-colors cursor-pointer"
                     style={{ height: TASK_ROW_HEIGHT }}
+                    onClick={() => onTaskClick?.(project.id, task.id)}
                   >
                     {/* Task label */}
                     <div
                       className="shrink-0 flex items-center pl-9 pr-3 border-r overflow-hidden bg-card sticky left-0 z-20"
                       style={{ width: LABEL_WIDTH }}
                     >
-                      <span className="text-[11px] text-muted-foreground truncate">
+                      <span className="text-[11px] text-muted-foreground truncate hover:text-primary hover:underline">
                         {task.title}
                       </span>
                     </div>
