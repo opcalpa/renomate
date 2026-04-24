@@ -256,22 +256,27 @@ export function PortfolioTimeline({ projectIds, onProjectClick, onTaskClick }: P
                 {isExpanded && tasks.map((task) => (
                   <div
                     key={task.id}
-                    className="flex border-b border-dashed hover:bg-muted/20 transition-colors cursor-pointer"
+                    className="flex border-b border-dashed hover:bg-muted/20 transition-colors"
                     style={{ height: TASK_ROW_HEIGHT }}
-                    onClick={() => onTaskClick?.(project.id, task.id)}
                   >
                     {/* Task label */}
-                    <div
-                      className="shrink-0 flex items-center pl-9 pr-3 border-r overflow-hidden bg-card sticky left-0 z-20"
+                    <button
+                      type="button"
+                      className="shrink-0 flex items-center pl-9 pr-3 border-r overflow-hidden bg-card sticky left-0 z-20 cursor-pointer hover:bg-muted/30 text-left"
                       style={{ width: LABEL_WIDTH }}
+                      onClick={() => onTaskClick?.(project.id, task.id)}
                     >
                       <span className="text-[11px] text-muted-foreground truncate hover:text-primary hover:underline">
                         {task.title}
                       </span>
-                    </div>
+                    </button>
 
                     {/* Task bar */}
-                    <div className="relative flex-1" style={{ width: timelineWidth }}>
+                    <div
+                      className="relative flex-1 cursor-pointer"
+                      style={{ width: timelineWidth }}
+                      onClick={() => onTaskClick?.(project.id, task.id)}
+                    >
                       {renderBar(
                         task.start_date,
                         task.finish_date,
