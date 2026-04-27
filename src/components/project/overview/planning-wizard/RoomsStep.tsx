@@ -135,9 +135,9 @@ export function RoomsStep({ formData, updateFormData }: PlanningStepProps) {
                     />
                   ) : (
                     <p
-                      className="text-sm font-medium flex items-center gap-1.5 cursor-text"
-                      onDoubleClick={() => { setEditingRoomId(room.id); setEditingName(room.name); }}
-                      title={t("planningWizard.doubleClickRename", "Double-click to rename")}
+                      className="text-sm font-medium flex items-center gap-1.5 cursor-text hover:text-primary transition-colors"
+                      onClick={() => { setEditingRoomId(room.id); setEditingName(room.name); }}
+                      title={t("planningWizard.clickToRename", "Click to rename")}
                     >
                       {room.name}
                       {room.aiSuggested && <Sparkles className="h-3 w-3 text-primary" />}
