@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -54,6 +54,8 @@ import {
   canCreateGuestProject,
 } from "@/services/guestStorageService";
 import { GUEST_MAX_PROJECTS } from "@/types/guest.types";
+
+const DashboardRedesign = lazy(() => import("@/components/dashboard/DashboardRedesign"));
 
 interface Project {
   id: string;
@@ -122,6 +124,9 @@ const Projects = () => {
     // Migrate old 'timeline' value to 'list'
     return saved === "grid" ? "grid" : "list";
   });
+  const [editorialDashboard, setEditorialDashboard] = useState(() =>
+    localStorage.getItem("rf_dashboard_v2") === "true"
+  );
   const [timelineOpen, setTimelineOpen] = useState(() =>
     localStorage.getItem("projects_timeline_open") !== "false"
   );
@@ -836,7 +841,22 @@ const Projects = () => {
       {/* Guest mode banner - sticky below header */}
       {isGuest && <GuestBanner compact />}
 
-      <main className="container py-4 sm:py-8">
+      {/* A/B: Editorial dashboard */}
+      {editorialDashboard && !isGuest && user?.id && (
+        <Suspense fallback={<div className="container py-8 text-center text-muted-foreground">Laddar ny design...</div>}>
+          <DashboardRedesign
+            userId={user.id}
+            userName={profile?.name as string | undefined}
+            onNewProject={() => setDialogOpen(true)}
+            onToggleBack={() => {
+              setEditorialDashboard(false);
+              localStorage.setItem("rf_dashboard_v2", "false");
+            }}
+          />
+        </Suspense>
+      )}
+
+      <main className={`container py-4 sm:py-8 ${editorialDashboard && !isGuest ? "hidden" : ""}`}>
 
         {/* Pipeline Section - Leads & Quotes (hidden in guest mode and for homeowners) */}
         {!isGuest && (
@@ -854,7 +874,7 @@ const Projects = () => {
             <h2 className="text-2xl font-bold tracking-tight">{t('projects.title')}</h2>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-              {visibleProjects.length > 0 && (
+              {visibleProjects.length > 0 && !editorialDashboard && (
                 <div className="flex items-center border rounded-md">
                   <button
                     type="button"
@@ -873,6 +893,25 @@ const Projects = () => {
                     <List className="h-4 w-4" />
                   </button>
                 </div>
+              )}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !editorialDashboard;
+                    setEditorialDashboard(next);
+                    localStorage.setItem("rf_dashboard_v2", String(next));
+                  }}
+                  className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                    editorialDashboard
+                      ? "bg-emerald-100 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                  title="Testa ny dashboard (A/B)"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Ny design</span>
+                </button>
               )}
               {isAdmin && (
                 <button

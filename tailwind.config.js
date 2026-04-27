@@ -19,6 +19,9 @@ export default {
     },
     fontFamily: {
       sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+      display: ['Fraunces', 'ui-serif', 'Georgia', 'serif'],
+      mono: ['JetBrains Mono', 'ui-monospace', 'SF Mono', 'Menlo', 'Consolas', 'monospace'],
+      body: ['Inter Tight', 'Inter', 'system-ui', 'sans-serif'],
     },
     extend: {
       borderRadius: {

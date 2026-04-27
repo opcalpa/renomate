@@ -1,0 +1,126 @@
+/* Dashboard Redesign — Editorial "Paper" theme
+   Scoped to .rf-dashboard to avoid collision with shadcn HSL tokens.
+   Tokens lifted verbatim from design handoff tokens.css (OKLCH). */
+
+.rf-dashboard {
+  /* Paper — warm greige, editorial, confident */
+  --bg: oklch(97.4% 0.004 85);
+  --bg-sunken: oklch(95.5% 0.006 85);
+  --surface: oklch(99.5% 0.002 85);
+  --surface-2: oklch(96.8% 0.004 85);
+  --fg: oklch(22% 0.01 260);
+  --fg-muted: oklch(48% 0.01 260);
+  --fg-subtle: oklch(62% 0.008 260);
+  --border: oklch(90% 0.005 85);
+  --border-strong: oklch(82% 0.006 85);
+  --hairline: oklch(88% 0.005 85);
+  --primary: oklch(52% 0.09 155);
+  --primary-hover: oklch(47% 0.1 155);
+  --primary-fg: oklch(99% 0.002 85);
+  --accent-ink: oklch(22% 0.01 260);
+  --warn: oklch(72% 0.12 75);
+  --danger: oklch(58% 0.14 25);
+  --info: oklch(55% 0.08 230);
+  --success: oklch(60% 0.1 155);
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-xs: 0 1px 0 0 oklch(22% 0.01 260 / 0.05);
+  --shadow-sm: 0 1px 2px 0 oklch(22% 0.01 260 / 0.06);
+  --shadow-md: 0 2px 8px -2px oklch(22% 0.01 260 / 0.08), 0 1px 2px 0 oklch(22% 0.01 260 / 0.04);
+
+  /* Typography */
+  font-family: "Inter Tight", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11", "cv02";
+  letter-spacing: -0.003em;
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+}
+
+.rf-dashboard .font-display {
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-variation-settings: "opsz" 144, "SOFT" 50;
+  letter-spacing: -0.022em;
+}
+
+.rf-dashboard .mono {
+  font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-feature-settings: "ss02", "cv02";
+  font-variation-settings: "wght" 450;
+}
+
+.rf-dashboard .tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Component primitives */
+.rf-dashboard .rf-card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+}
+
+.rf-dashboard .rf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  color: var(--fg-muted);
+}
+
+.rf-dashboard .rf-chip.chip-primary {
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
+  color: var(--primary);
+  border-color: color-mix(in oklab, var(--primary) 25%, transparent);
+}
+
+.rf-dashboard .rf-chip.chip-warn {
+  background: color-mix(in oklab, var(--warn) 15%, transparent);
+  color: oklch(35% 0.1 75);
+  border-color: color-mix(in oklab, var(--warn) 35%, transparent);
+}
+
+.rf-dashboard .rf-chip.chip-muted {
+  background: var(--surface-2);
+}
+
+.rf-dashboard .rf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.002em;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 120ms ease;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.rf-dashboard .rf-btn-primary {
+  background: var(--primary);
+  color: var(--primary-fg);
+}
+.rf-dashboard .rf-btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.rf-dashboard .rf-btn-ghost {
+  background: transparent;
+  color: var(--fg);
+  border-color: var(--hairline);
+}
+.rf-dashboard .rf-btn-ghost:hover {
+  background: var(--surface-2);
+}
