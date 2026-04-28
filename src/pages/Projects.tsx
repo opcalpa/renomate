@@ -56,6 +56,7 @@ import {
 import { GUEST_MAX_PROJECTS } from "@/types/guest.types";
 
 const DashboardRedesign = lazy(() => import("@/components/dashboard/DashboardRedesign"));
+const OwnerStart = lazy(() => import("@/pages/owner/OwnerStart"));
 import { ResourcePlanningView } from "@/components/project/ResourcePlanningView";
 
 interface Project {
@@ -827,6 +828,15 @@ const Projects = () => {
   // Show loading while auth or data is loading
   if (authLoading || loading) {
     return <PageLoadingSkeleton />;
+  }
+
+  // Dispatch: homeowners (non-admin, non-guest) get their own start page
+  if (!isGuest && !isContractor && !isAdmin && profile) {
+    return (
+      <Suspense fallback={<PageLoadingSkeleton />}>
+        <OwnerStart />
+      </Suspense>
+    );
   }
 
   return (

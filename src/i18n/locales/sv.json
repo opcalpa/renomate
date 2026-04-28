@@ -5396,5 +5396,11 @@
     "allTasks": "Alla arbeten",
     "summary": "Summering",
     "loggedVsEstimated": "{{logged}}h loggat / {{estimated}}h estimerat"
+  },
+  "ownerStart": {
+    "welcome": "Välkommen till Renofine",
+    "welcomeDescription": "Håll koll på din renovering — budget, arbeten och dokument på ett ställe.",
+    "createProject": "Skapa ditt första projekt",
+    "myRenovations": "Mina renoveringar"
   }
 }
