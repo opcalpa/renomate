@@ -27,6 +27,7 @@ interface WorkerViewData {
   canToggleChecklist: boolean;
   tasks: WorkerTask[];
   floorPlan: FloorPlanShape[] | null;
+  floorPlanImage: { url: string; x: number; y: number } | null;
 }
 
 type ErrorState = "not_found" | "expired" | "error" | null;
@@ -319,6 +320,7 @@ export default function WorkerView() {
               canToggleChecklist={data.canToggleChecklist}
               canUploadPhotos={data.canUploadPhotos}
               floorPlan={data.floorPlan}
+              floorPlanImage={data.floorPlanImage}
               onTaskUpdate={handleTaskUpdate}
             />
           ))}

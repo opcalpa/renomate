@@ -122,6 +122,7 @@ interface WorkerTaskCardProps {
   canToggleChecklist: boolean;
   canUploadPhotos: boolean;
   floorPlan: FloorPlanShape[] | null;
+  floorPlanImage?: { url: string; x: number; y: number } | null;
   onTaskUpdate: (taskId: string, updates: Partial<WorkerTask>) => void;
 }
 
@@ -170,6 +171,7 @@ export function WorkerTaskCard({
   canToggleChecklist,
   canUploadPhotos,
   floorPlan,
+  floorPlanImage,
   onTaskUpdate,
 }: WorkerTaskCardProps) {
   const { t } = useTranslation();
@@ -297,6 +299,7 @@ export function WorkerTaskCard({
             <RoomMiniMap
               shapes={floorPlan}
               highlightRoomId={task.roomId}
+              backgroundImage={floorPlanImage}
               className="rounded"
             />
           </div>

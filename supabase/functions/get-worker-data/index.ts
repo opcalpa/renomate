@@ -100,21 +100,37 @@ serve(async (req) => {
       }
     }
 
-    // 5b. Fetch floor plan shapes for the project (rooms only, for mini-map)
+    // 5b. Fetch floor plan shapes for the project (rooms + images, for mini-map)
     const { data: floorShapes } = await sb
       .from("floor_map_shapes")
       .select("id, shape_type, shape_data, room_id, color, stroke_color")
       .eq("project_id", tokenRecord.project_id)
-      .eq("shape_type", "room");
+      .in("shape_type", ["room", "image"]);
 
-    const floorPlanShapes = (floorShapes || []).map((s) => ({
-      id: s.id,
-      roomId: s.room_id,
-      points: (s.shape_data as Record<string, unknown>)?.points || [],
-      color: s.color || "rgba(59, 130, 246, 0.2)",
-      strokeColor: s.stroke_color || "rgba(41, 91, 172, 0.8)",
-      name: roomsMap[s.room_id as string] ? (roomsMap[s.room_id as string] as Record<string, unknown>).name : null,
-    }));
+    const floorPlanShapes = (floorShapes || [])
+      .filter((s) => s.shape_type === "room")
+      .map((s) => ({
+        id: s.id,
+        roomId: s.room_id,
+        points: (s.shape_data as Record<string, unknown>)?.points || [],
+        color: s.color || "rgba(59, 130, 246, 0.2)",
+        strokeColor: s.stroke_color || "rgba(41, 91, 172, 0.8)",
+        name: roomsMap[s.room_id as string] ? (roomsMap[s.room_id as string] as Record<string, unknown>).name : null,
+      }));
+
+    // Pick the first/largest image as background for minimap
+    const imageShapes = (floorShapes || []).filter((s) => s.shape_type === "image");
+    const backgroundImage = imageShapes.length > 0
+      ? {
+          url: (imageShapes[0].shape_data as Record<string, unknown>)?.imageUrl as string || null,
+          x: ((imageShapes[0].shape_data as Record<string, unknown>)?.points as Record<string, number>)?.x
+            ?? ((imageShapes[0].shape_data as Record<string, unknown>)?.coordinates as Record<string, number>)?.x
+            ?? 0,
+          y: ((imageShapes[0].shape_data as Record<string, unknown>)?.points as Record<string, number>)?.y
+            ?? ((imageShapes[0].shape_data as Record<string, unknown>)?.coordinates as Record<string, number>)?.y
+            ?? 0,
+        }
+      : null;
 
     // 5c. Fetch room photos (reference/instruction images + categorized worker photos)
     let roomPhotosMap: Record<string, unknown[]> = {};
@@ -260,6 +276,7 @@ serve(async (req) => {
       canToggleChecklist: tokenRecord.can_toggle_checklist,
       tasks: workerTasks,
       floorPlan: floorPlanShapes.length > 0 ? floorPlanShapes : null,
+      floorPlanImage: backgroundImage,
     }, 200, req);
   } catch (error) {
     console.error("get-worker-data error:", error);
