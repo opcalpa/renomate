@@ -10,9 +10,10 @@ interface AtaApprovalSectionProps {
   taskId: string;
   projectId: string;
   ataStatus: string | null;
+  isHomeowner?: boolean;
 }
 
-export function AtaApprovalSection({ taskId, projectId, ataStatus }: AtaApprovalSectionProps) {
+export function AtaApprovalSection({ taskId, projectId, ataStatus, isHomeowner }: AtaApprovalSectionProps) {
   const { t } = useTranslation();
   const { user } = useAuthSession();
   const { toast } = useToast();
@@ -126,7 +127,10 @@ export function AtaApprovalSection({ taskId, projectId, ataStatus }: AtaApproval
     );
   }
 
-  // Not sent yet — show send button
+  // Homeowner sees nothing if not yet sent — they ARE the approver
+  if (isHomeowner) return null;
+
+  // Not sent yet — show send button (proffs only)
   return (
     <Button
       variant="outline"

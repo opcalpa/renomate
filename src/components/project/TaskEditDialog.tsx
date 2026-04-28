@@ -1958,7 +1958,7 @@ export const TaskEditDialog = ({
                         </TooltipProvider>
                       </div>
                       {task.is_ata && (
-                        <AtaApprovalSection taskId={task.id} projectId={projectId} ataStatus={(task as Record<string, unknown>).ata_status as string | null} />
+                        <AtaApprovalSection taskId={task.id} projectId={projectId} ataStatus={(task as Record<string, unknown>).ata_status as string | null} isHomeowner={isHomeowner} />
                       )}
                     </div>
                   )}
