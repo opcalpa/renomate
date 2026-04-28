@@ -3521,7 +3521,9 @@
     "reviseQuote": "Revise quote",
     "revisionOf": "Revision of {{number}}",
     "revisedAs": "Revised as {{number}}",
-    "creatingRevision": "Creating revision..."
+    "creatingRevision": "Creating revision...",
+    "createInvoice": "Create invoice",
+    "invoiceCreated": "Invoice created from quote"
   },
   "invoices": {
     "title": "Invoices",

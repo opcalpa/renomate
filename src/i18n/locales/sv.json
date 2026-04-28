@@ -3518,7 +3518,9 @@
     "reviseQuote": "Revidera offert",
     "revisionOf": "Revision av {{number}}",
     "revisedAs": "Reviderad som {{number}}",
-    "creatingRevision": "Skapar revision..."
+    "creatingRevision": "Skapar revision...",
+    "createInvoice": "Skapa faktura",
+    "invoiceCreated": "Faktura skapad från offert"
   },
   "invoices": {
     "title": "Fakturor",

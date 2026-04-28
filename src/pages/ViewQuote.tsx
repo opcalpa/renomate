@@ -8,7 +8,8 @@ import { updateQuoteStatus, createTasksFromQuote, markQuoteViewed, reviseQuote }
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle, Download, Trash2, ArrowLeft, Pencil, Send, MessageCircle, XCircle, Eye, ChevronUp, ChevronDown, RefreshCw } from "lucide-react";
+import { Loader2, CheckCircle, Download, Trash2, ArrowLeft, Pencil, Send, MessageCircle, XCircle, Eye, ChevronUp, ChevronDown, RefreshCw, FileText } from "lucide-react";
+import { createInvoiceFromQuote } from "@/services/invoiceService";
 import { ShareQuoteDialog } from "@/components/quotes/ShareQuoteDialog";
 import { RotDetailsDialog } from "@/components/project/RotDetailsDialog";
 import {
@@ -740,6 +741,44 @@ export default function ViewQuote() {
                 <RefreshCw className="h-4 w-4 mr-1" />
               )}
               {acting ? t("quotes.creatingRevision") : t("quotes.reviseQuote")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPdf}
+            >
+              <Download className="h-4 w-4 mr-1" />
+              PDF
+            </Button>
+          </div>
+        )}
+
+        {/* Quick actions for owner - accepted */}
+        {isOwner && quote.status === "accepted" && (
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              size="sm"
+              onClick={async () => {
+                if (!quoteId || !quote) return;
+                setActing(true);
+                try {
+                  const invoice = await createInvoiceFromQuote(quoteId, quote.creator_id);
+                  if (invoice) {
+                    toast.success(t("quotes.invoiceCreated", "Faktura skapad från offert"));
+                    navigate(`/invoices/${invoice.id}`);
+                  }
+                } finally {
+                  setActing(false);
+                }
+              }}
+              disabled={acting}
+            >
+              {acting ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4 mr-1" />
+              )}
+              {t("quotes.createInvoice", "Skapa faktura")}
             </Button>
             <Button
               variant="outline"
