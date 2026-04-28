@@ -122,7 +122,8 @@ const Projects = () => {
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<"grid" | "list" | "resource">(() => {
     const saved = localStorage.getItem("projects_view_mode");
-    if (saved === "grid" || saved === "resource") return saved;
+    if (saved === "grid") return "grid";
+    if (saved === "resource") return "resource"; // will be clamped to "list" for homeowners below
     return "list";
   });
   const [editorialDashboard, setEditorialDashboard] = useState(() =>
@@ -822,6 +823,9 @@ const Projects = () => {
 
   const isContractor = (profile?.onboarding_user_type as string) === "contractor";
 
+  // Homeowners should never see resource planning — clamp to list
+  const effectiveViewMode = (!isContractor && viewMode === "resource") ? "list" : viewMode;
+
   // Show loading while auth or data is loading
   if (authLoading || loading) {
     return <PageLoadingSkeleton />;
@@ -880,7 +884,7 @@ const Projects = () => {
                   <button
                     type="button"
                     onClick={() => { setViewMode("grid"); localStorage.setItem("projects_view_mode", "grid"); }}
-                    className={`p-1.5 rounded-l-md transition-colors ${viewMode === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`p-1.5 rounded-l-md transition-colors ${effectiveViewMode === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     title={t("projects.gridView", "Card view")}
                   >
                     <LayoutGrid className="h-4 w-4" />
@@ -888,19 +892,21 @@ const Projects = () => {
                   <button
                     type="button"
                     onClick={() => { setViewMode("list"); localStorage.setItem("projects_view_mode", "list"); }}
-                    className={`p-1.5 transition-colors ${viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`p-1.5 transition-colors ${!isContractor ? "rounded-r-md" : ""} ${effectiveViewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     title={t("projects.listView", "List view")}
                   >
                     <List className="h-4 w-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => { setViewMode("resource"); localStorage.setItem("projects_view_mode", "resource"); }}
-                    className={`p-1.5 rounded-r-md transition-colors ${viewMode === "resource" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                    title={t("resourcePlanning.title", "Resource planning")}
-                  >
-                    <Users className="h-4 w-4" />
-                  </button>
+                  {isContractor && (
+                    <button
+                      type="button"
+                      onClick={() => { setViewMode("resource"); localStorage.setItem("projects_view_mode", "resource"); }}
+                      className={`p-1.5 rounded-r-md transition-colors ${viewMode === "resource" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                      title={t("resourcePlanning.title", "Resource planning")}
+                    >
+                      <Users className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               )}
               {isAdmin && (
@@ -937,7 +943,7 @@ const Projects = () => {
                   <span className="hidden sm:inline">{showAdminProjects ? t("projects.adminOn", "Admin") : t("projects.adminOff", "Admin")}</span>
                 </button>
               )}
-              {viewMode === "list" && (
+              {effectiveViewMode === "list" && (
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
@@ -1442,10 +1448,10 @@ const Projects = () => {
               </Button>
             </div>
           </div>
-        ) : viewMode === "resource" ? (
+        ) : effectiveViewMode === "resource" ? (
           /* ---- Resource planning view ---- */
           <ResourcePlanningView projectIds={visibleProjects.map(p => p.id)} />
-        ) : viewMode === "list" ? (
+        ) : effectiveViewMode === "list" ? (
           /* ---- List view ---- */
           (() => {
             const colAlign: Partial<Record<ListColKey, "right">> = { budget: "right" };
