@@ -1718,6 +1718,8 @@
     "manualNote": "Du kan bifoga kvitto eller faktura senare via Inköpslistan.",
     "addReceiptLater": "Du kan bifoga underlag senare",
     "requestCreated": "Inköpsförfrågan skapad",
+    "approve": "Godkänn",
+    "markPaid": "Markera betald",
     "quoteLineItems": "Materialposter från offert",
     "materialBudget": "Materialbudget",
     "budgetPost": "Budgetpost",

@@ -46,6 +46,8 @@ import {
   Trash2,
   ExternalLink,
   Package,
+  CheckCircle,
+  CreditCard,
 } from "lucide-react";
 import { usePurchasesTableView, type PurchasesTableViewState } from "./usePurchasesTableView";
 import { PurchaseColumnKey, PurchaseColumnDef, EXTRA_COLUMN_KEYS } from "./purchasesTypes";
@@ -616,16 +618,47 @@ export function PurchasesTableView({
 
       case "actions":
         return canEditMaterial(material) ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onMaterialClick(material);
-            }}
-          >
-            <Pencil className="h-3 w-3" />
-          </Button>
+          <div className="flex items-center gap-0.5">
+            {material.status === "submitted" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-green-700 hover:text-green-800 hover:bg-green-50"
+                title={t("purchases.approve", "Godkänn")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCellSave(material.id, "status", "approved");
+                }}
+              >
+                <CheckCircle className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {(material.status === "approved" || material.status === "billed") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-blue-700 hover:text-blue-800 hover:bg-blue-50"
+                title={t("purchases.markPaid", "Markera betald")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPaidConfirm({ materialId: material.id, materialName: material.name });
+                }}
+              >
+                <CreditCard className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMaterialClick(material);
+              }}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+          </div>
         ) : null;
 
       default:

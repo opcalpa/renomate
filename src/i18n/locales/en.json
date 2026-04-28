@@ -2247,6 +2247,8 @@
     "manualNote": "You can attach a receipt or invoice later from the Purchases list.",
     "addReceiptLater": "You can attach documentation later",
     "requestCreated": "Purchase request created",
+    "approve": "Approve",
+    "markPaid": "Mark as paid",
     "quoteLineItems": "Quote line items",
     "materialBudget": "Material budget",
     "budgetPost": "Budget post",

@@ -132,7 +132,27 @@ export function BatchTolkSummaryTable({
     const nameField = entityType === 'task' ? 'title' : 'name';
     const insertData: Record<string, unknown> = { project_id: projectId, [nameField]: name };
     if (entityType === 'task') insertData.status = 'to_do';
-    if (entityType === 'material') insertData.status = 'planned';
+    if (entityType === 'material') {
+      // Auto-populate from classification result
+      const classItem = items.find(i => i.file.path === filePath);
+      const r = classItem?.result;
+      const isInvoiceOrReceipt = r?.type === 'invoice' || r?.type === 'receipt';
+      insertData.status = isInvoiceOrReceipt ? (r?.type === 'receipt' ? 'paid' : 'billed') : 'submitted';
+      if (r?.vendor_name) insertData.vendor_name = r.vendor_name;
+      if (r?.invoice_amount != null) insertData.price_total = r.invoice_amount;
+      // Auto-match supplier
+      if (r?.vendor_name && profileId) {
+        const { data: supplier } = await supabase
+          .from('suppliers')
+          .select('id')
+          .eq('profile_id', profileId)
+          .ilike('name', r.vendor_name)
+          .maybeSingle();
+        if (supplier) {
+          insertData.supplier_id = supplier.id;
+        }
+      }
+    }
     if (profileId) insertData.created_by_user_id = profileId;
 
     const { data, error } = await supabase.from(table).insert(insertData).select('id').single();
