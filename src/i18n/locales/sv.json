@@ -5346,6 +5346,13 @@
     "skipWizard": "Hoppa över — lägg till manuellt",
     "startPlanning": "Planera din renovering"
   },
+  "resourcePlanning": {
+    "title": "Resursplanering",
+    "person": "Person",
+    "unassigned": "Ej tilldelad",
+    "noData": "Inga schemalagda resurser",
+    "noDataDescription": "Tilldela teammedlemmar till arbeten med datum för att se resursplaneringen."
+  },
   "ata": {
     "approved": "Tilläggsarbete godkänt av kund",
     "rejected": "Tilläggsarbete nekat av kund",

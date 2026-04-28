@@ -56,6 +56,7 @@ import {
 import { GUEST_MAX_PROJECTS } from "@/types/guest.types";
 
 const DashboardRedesign = lazy(() => import("@/components/dashboard/DashboardRedesign"));
+import { ResourcePlanningView } from "@/components/project/ResourcePlanningView";
 
 interface Project {
   id: string;
@@ -119,10 +120,10 @@ const Projects = () => {
   } | null>(null);
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "resource">(() => {
     const saved = localStorage.getItem("projects_view_mode");
-    // Migrate old 'timeline' value to 'list'
-    return saved === "grid" ? "grid" : "list";
+    if (saved === "grid" || saved === "resource") return saved;
+    return "list";
   });
   const [editorialDashboard, setEditorialDashboard] = useState(() =>
     localStorage.getItem("rf_dashboard_v2") === "true"
@@ -887,10 +888,18 @@ const Projects = () => {
                   <button
                     type="button"
                     onClick={() => { setViewMode("list"); localStorage.setItem("projects_view_mode", "list"); }}
-                    className={`p-1.5 rounded-r-md transition-colors ${viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`p-1.5 transition-colors ${viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     title={t("projects.listView", "List view")}
                   >
                     <List className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setViewMode("resource"); localStorage.setItem("projects_view_mode", "resource"); }}
+                    className={`p-1.5 rounded-r-md transition-colors ${viewMode === "resource" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    title={t("resourcePlanning.title", "Resource planning")}
+                  >
+                    <Users className="h-4 w-4" />
                   </button>
                 </div>
               )}
@@ -1433,6 +1442,9 @@ const Projects = () => {
               </Button>
             </div>
           </div>
+        ) : viewMode === "resource" ? (
+          /* ---- Resource planning view ---- */
+          <ResourcePlanningView projectIds={visibleProjects.map(p => p.id)} />
         ) : viewMode === "list" ? (
           /* ---- List view ---- */
           (() => {

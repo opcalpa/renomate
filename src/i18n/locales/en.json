@@ -5349,6 +5349,13 @@
     "skipWizard": "Skip — add manually",
     "startPlanning": "Plan your renovation"
   },
+  "resourcePlanning": {
+    "title": "Resource planning",
+    "person": "Person",
+    "unassigned": "Unassigned",
+    "noData": "No scheduled resources",
+    "noDataDescription": "Assign team members to tasks with dates to see the resource plan."
+  },
   "ata": {
     "approved": "Change order approved by customer",
     "rejected": "Change order rejected by customer",
