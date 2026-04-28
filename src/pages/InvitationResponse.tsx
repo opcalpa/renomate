@@ -250,6 +250,7 @@ const InvitationResponse = () => {
         teams_access: coOwnerAccess || perms.teams_access || invitation.teams_access || 'none',
         budget_access: coOwnerAccess || perms.budget_access || invitation.budget_access || (isClientInvite ? 'view' : 'none'),
         files_access: coOwnerAccess || perms.files_access || invitation.files_access || 'none',
+        customer_view_access: coOwnerAccess || (isClientInvite ? 'view' : 'none'),
       };
 
       // RFQ builders: skip share on homeowner's project — they only get the clone

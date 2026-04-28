@@ -311,6 +311,7 @@ export async function shareQuoteWithCustomer(
       teams_access: "view",
       budget_access: "view",
       files_access: "view",
+      customer_view_access: "view",
     };
 
     // 4. Create invitation (set token explicitly — the alias column has no auto-default)

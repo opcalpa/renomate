@@ -416,6 +416,7 @@ export async function shareInvoiceWithCustomer(
       teams_access: "view",
       budget_access: "view",
       files_access: "view",
+      customer_view_access: "view",
     };
 
     const token = crypto.randomUUID();
