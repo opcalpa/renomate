@@ -5349,6 +5349,14 @@
     "skipWizard": "Skip — add manually",
     "startPlanning": "Plan your renovation"
   },
+  "ata": {
+    "approved": "Change order approved by customer",
+    "rejected": "Change order rejected by customer",
+    "pendingApproval": "Waiting for customer approval",
+    "sendForApproval": "Send for customer approval",
+    "linkCreated": "Approval link created",
+    "sendLinkInstruction": "Send this link to your customer via SMS, email or chat."
+  },
   "timeTracking": {
     "title": "Time",
     "tabLabel": "Time",

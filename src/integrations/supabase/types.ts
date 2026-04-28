@@ -72,6 +72,80 @@ export type Database = {
           },
         ]
       }
+      ata_approval_tokens: {
+        Row: {
+          created_at: string | null
+          created_by_user_id: string
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          expires_at: string | null
+          id: string
+          project_id: string
+          response: string | null
+          task_id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by_user_id: string
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          expires_at?: string | null
+          id?: string
+          project_id: string
+          response?: string | null
+          task_id: string
+          token?: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by_user_id?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          expires_at?: string | null
+          id?: string
+          project_id?: string
+          response?: string | null
+          task_id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ata_approval_tokens_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ata_approval_tokens_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ata_approval_tokens_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ata_approval_tokens_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -2660,6 +2734,10 @@ export type Database = {
         Row: {
           assigned_to_contractor_id: string | null
           assigned_to_stakeholder_id: string | null
+          ata_approved_at: string | null
+          ata_approved_by_name: string | null
+          ata_rejection_reason: string | null
+          ata_status: string | null
           budget: number | null
           checklists: Json | null
           cost_center: string | null
@@ -2706,6 +2784,10 @@ export type Database = {
         Insert: {
           assigned_to_contractor_id?: string | null
           assigned_to_stakeholder_id?: string | null
+          ata_approved_at?: string | null
+          ata_approved_by_name?: string | null
+          ata_rejection_reason?: string | null
+          ata_status?: string | null
           budget?: number | null
           checklists?: Json | null
           cost_center?: string | null
@@ -2752,6 +2834,10 @@ export type Database = {
         Update: {
           assigned_to_contractor_id?: string | null
           assigned_to_stakeholder_id?: string | null
+          ata_approved_at?: string | null
+          ata_approved_by_name?: string | null
+          ata_rejection_reason?: string | null
+          ata_status?: string | null
           budget?: number | null
           checklists?: Json | null
           cost_center?: string | null

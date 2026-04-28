@@ -5346,6 +5346,14 @@
     "skipWizard": "Hoppa över — lägg till manuellt",
     "startPlanning": "Planera din renovering"
   },
+  "ata": {
+    "approved": "Tilläggsarbete godkänt av kund",
+    "rejected": "Tilläggsarbete nekat av kund",
+    "pendingApproval": "Väntar på kundens godkännande",
+    "sendForApproval": "Skicka för kundens godkännande",
+    "linkCreated": "Godkännande-länk skapad",
+    "sendLinkInstruction": "Skicka denna länk till din kund via SMS, e-post eller chatt."
+  },
   "timeTracking": {
     "title": "Tid",
     "tabLabel": "Tid",

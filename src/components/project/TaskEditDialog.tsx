@@ -23,6 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, Plus, Tag, ChevronDown, ChevronRight, Trash2, X, Info, Sparkles, Calculator } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AtaApprovalSection } from "./AtaApprovalSection";
 import {
   Dialog,
   DialogContent,
@@ -1933,27 +1934,32 @@ export const TaskEditDialog = ({
                           </Select>
                         </div>
                       )}
-                  {/* ÄTA checkbox — at bottom of finance section */}
+                  {/* ÄTA checkbox + approval — at bottom of finance section */}
                   {!isPlanning && "is_ata" in task && (
-                    <div className="flex items-center space-x-2 pt-2 border-t">
-                      <Checkbox
-                        id="edit-task-is-ata"
-                        checked={task.is_ata}
-                        onCheckedChange={(checked) => setTask({ ...task, is_ata: !!checked })}
-                      />
-                      <Label htmlFor="edit-task-is-ata" className="text-sm font-normal cursor-pointer">
-                        {t("tasks.isAta")}
-                      </Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="max-w-[240px]">
-                            <p className="text-xs">{t("tasks.ataTooltip")}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                    <div className="space-y-2 pt-2 border-t">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="edit-task-is-ata"
+                          checked={task.is_ata}
+                          onCheckedChange={(checked) => setTask({ ...task, is_ata: !!checked })}
+                        />
+                        <Label htmlFor="edit-task-is-ata" className="text-sm font-normal cursor-pointer">
+                          {t("tasks.isAta")}
+                        </Label>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-[240px]">
+                              <p className="text-xs">{t("tasks.ataTooltip")}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      {task.is_ata && (
+                        <AtaApprovalSection taskId={task.id} projectId={projectId} ataStatus={(task as Record<string, unknown>).ata_status as string | null} />
+                      )}
                     </div>
                   )}
                 </div>
