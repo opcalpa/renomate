@@ -85,6 +85,15 @@ interface WorkerRoom {
   ceilingHeightMm: number | null;
 }
 
+interface WorkerMessage {
+  id: string;
+  content: string;
+  createdAt: string;
+  authorName: string;
+  isWorker: boolean;
+  images: Array<{ id: string; url: string; filename?: string }>;
+}
+
 export interface WorkerTask {
   id: string;
   title: string;
@@ -93,6 +102,7 @@ export interface WorkerTask {
   progress: number;
   checklists: Checklist[];
   photos: Photo[];
+  messages: WorkerMessage[];
   roomId: string | null;
   room: WorkerRoom | null;
 }
@@ -449,15 +459,74 @@ export function WorkerTaskCard({
         </div>
       )}
 
-      {/* Message input */}
+      {/* Messages */}
       <div className="px-4 pb-4 space-y-2">
         <div className="flex items-center gap-2">
           <MessageCircle className="h-4 w-4 text-muted-foreground" />
           <span className="text-xs font-medium text-muted-foreground">
-            {t("worker.askQuestion", "Ask a question")}
+            {t("worker.messages", "Messages")}
+            {task.messages.length > 0 && ` (${task.messages.length})`}
           </span>
         </div>
-        <WorkerMessageInput token={token} taskId={task.id} />
+
+        {/* Message history */}
+        {task.messages.length > 0 && (
+          <div className="space-y-2 max-h-60 overflow-y-auto rounded-lg bg-muted/30 p-2">
+            {task.messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex flex-col ${msg.isWorker ? "items-end" : "items-start"}`}
+              >
+                <div
+                  className={`rounded-lg px-3 py-2 max-w-[85%] text-sm ${
+                    msg.isWorker
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background border"
+                  }`}
+                >
+                  {!msg.isWorker && (
+                    <p className="text-[10px] font-medium text-muted-foreground mb-0.5">
+                      {msg.authorName}
+                    </p>
+                  )}
+                  {msg.content.startsWith("🎤") ? (
+                    <audio controls src={msg.content.replace("🎤 ", "")} className="h-8 max-w-full" />
+                  ) : (
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  )}
+                  {msg.images.length > 0 && (
+                    <div className="flex gap-1 mt-1">
+                      {msg.images.map((img) => (
+                        <img key={img.id} src={img.url} alt="" className="h-16 w-16 rounded object-cover" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span className="text-[10px] text-muted-foreground mt-0.5 px-1">
+                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Message input */}
+        <WorkerMessageInput
+          token={token}
+          taskId={task.id}
+          onMessageSent={(content) => {
+            onTaskUpdate(task.id, {
+              messages: [...task.messages, {
+                id: crypto.randomUUID(),
+                content,
+                createdAt: new Date().toISOString(),
+                authorName: "",
+                isWorker: true,
+                images: [],
+              }],
+            });
+          }}
+        />
       </div>
     </div>
   );

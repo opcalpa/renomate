@@ -88,7 +88,46 @@ export default function WorkerView() {
         i18n.changeLanguage(result.language);
       }
 
-      setData(result as WorkerViewData);
+      const viewData = result as WorkerViewData;
+      setData(viewData);
+
+      // Auto-translate non-worker messages if worker language differs from sv/en
+      const lang = result.language;
+      if (lang && lang !== "sv" && lang !== "en") {
+        const allMessages = viewData.tasks.flatMap((t) =>
+          t.messages.filter((m) => !m.isWorker && m.content)
+        );
+        if (allMessages.length > 0) {
+          supabase.functions
+            .invoke("translate-comments", {
+              body: {
+                comments: allMessages.map((m) => ({ id: m.id, content: m.content })),
+                targetLanguage: lang,
+              },
+            })
+            .then(({ data: trData }) => {
+              if (trData?.translations) {
+                const trMap = new Map<string, string>(
+                  trData.translations.map((t: { id: string; translatedContent: string }) => [t.id, t.translatedContent])
+                );
+                setData((prev) => {
+                  if (!prev) return prev;
+                  return {
+                    ...prev,
+                    tasks: prev.tasks.map((task) => ({
+                      ...task,
+                      messages: task.messages.map((msg) => ({
+                        ...msg,
+                        content: trMap.get(msg.id) || msg.content,
+                      })),
+                    })),
+                  };
+                });
+              }
+            })
+            .catch((err) => console.error("Translation failed:", err));
+        }
+      }
     } catch (err) {
       console.error("Failed to load worker data:", err);
       setError("error");
@@ -96,6 +135,69 @@ export default function WorkerView() {
       setLoading(false);
     }
   };
+
+  // Real-time subscription for new messages on assigned tasks
+  useEffect(() => {
+    if (!data || data.tasks.length === 0) return;
+
+    const taskIds = data.tasks.map((t) => t.id);
+    const channel = supabase
+      .channel(`worker-messages-${token}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "comments",
+          filter: `entity_type=eq.task`,
+        },
+        (payload) => {
+          const newComment = payload.new as {
+            id: string;
+            content: string;
+            created_at: string;
+            author_display_name: string | null;
+            entity_id: string;
+            images: Array<{ id: string; url: string; filename?: string }> | null;
+          };
+
+          // Only add if it's for one of our assigned tasks
+          if (!taskIds.includes(newComment.entity_id)) return;
+
+          const isWorker = !!(newComment.author_display_name && newComment.author_display_name.includes("(worker)"));
+
+          setData((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              tasks: prev.tasks.map((t) =>
+                t.id === newComment.entity_id
+                  ? {
+                      ...t,
+                      messages: [
+                        ...t.messages,
+                        {
+                          id: newComment.id,
+                          content: newComment.content,
+                          createdAt: newComment.created_at,
+                          authorName: newComment.author_display_name || "",
+                          isWorker,
+                          images: newComment.images || [],
+                        },
+                      ],
+                    }
+                  : t
+              ),
+            };
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [data?.tasks.length, token]);
 
   const handleTaskUpdate = useCallback(
     (taskId: string, updates: Partial<WorkerTask>) => {

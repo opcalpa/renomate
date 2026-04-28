@@ -12,9 +12,10 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 interface WorkerMessageInputProps {
   token: string;
   taskId: string;
+  onMessageSent?: (content: string) => void;
 }
 
-export function WorkerMessageInput({ token, taskId }: WorkerMessageInputProps) {
+export function WorkerMessageInput({ token, taskId, onMessageSent }: WorkerMessageInputProps) {
   const { t } = useTranslation();
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -47,9 +48,11 @@ export function WorkerMessageInput({ token, taskId }: WorkerMessageInputProps) {
         body: { token, taskId, message: message.trim() },
       });
       if (error || data?.error) throw new Error(data?.error || "Send failed");
+      const sentText = message.trim();
       setMessage("");
       setSent(true);
       setTimeout(() => setSent(false), 3000);
+      onMessageSent?.(sentText);
     } catch (err) {
       console.error("Send failed:", err);
       toast.error(t("common.error", "Could not send message"));
@@ -94,6 +97,7 @@ export function WorkerMessageInput({ token, taskId }: WorkerMessageInputProps) {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           setSent(true);
           setTimeout(() => setSent(false), 3000);
+          onMessageSent?.("🎤 Voice message");
         } catch (err) {
           console.error("Voice send failed:", err);
           toast.error(t("common.error", "Could not send voice message"));

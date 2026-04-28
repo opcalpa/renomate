@@ -5193,6 +5193,7 @@
     "notFoundDescription": "Denna länk är ogiltig eller har återkallats.",
     "errorDescription": "Försök igen senare.",
     "askQuestion": "Ställ en fråga",
+    "messages": "Meddelanden",
     "messagePlaceholder": "Ställ en fråga...",
     "messageSent": "Meddelande skickat!",
     "recording": "Spelar in...",

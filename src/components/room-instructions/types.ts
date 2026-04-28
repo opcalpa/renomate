@@ -43,6 +43,15 @@ export interface JoinerySpec {
   trim_type?: string;
 }
 
+export interface TaskMessage {
+  id: string;
+  content: string;
+  createdAt: string;
+  authorName: string;
+  isWorker: boolean;
+  images: Array<{ id: string; url: string; filename?: string }>;
+}
+
 export interface RoomTask {
   id: string;
   title: string;
@@ -51,6 +60,7 @@ export interface RoomTask {
   progress: number;
   checklists: Checklist[];
   photos: Photo[];
+  messages: TaskMessage[];
 }
 
 export interface RoomMaterial {

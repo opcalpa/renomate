@@ -5196,6 +5196,7 @@
     "notFoundDescription": "This link is invalid or has been revoked.",
     "errorDescription": "Please try again later.",
     "askQuestion": "Ask a question",
+    "messages": "Messages",
     "messagePlaceholder": "Ask a question...",
     "messageSent": "Message sent!",
     "recording": "Recording...",

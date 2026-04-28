@@ -104,6 +104,7 @@ export function useRoomInstructionsData(projectId: string, profileId: string | n
           progress: t.progress || 0,
           checklists,
           photos: taskPhotoMap.get(t.id) || [],
+          messages: [],
         };
         for (const rid of ids) {
           const arr = roomTaskMap.get(rid) || [];
@@ -209,6 +210,7 @@ export function groupWorkerTasksByRoom(
       progress: t.progress,
       checklists: t.checklists,
       photos: t.photos,
+      messages: (t as unknown as { messages?: RoomTask["messages"] }).messages || [],
     });
   }
 

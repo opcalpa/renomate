@@ -182,6 +182,43 @@ serve(async (req) => {
       photosByTask[tid].push({ id: photo.id, url: photo.url, caption: photo.caption, source: photo.source || "upload" });
     }
 
+    // 6b. Fetch comments (messages) for assigned tasks
+    const { data: comments } = await sb
+      .from("comments")
+      .select("id, content, created_at, author_display_name, created_by_user_id, entity_id, images")
+      .eq("entity_type", "task")
+      .in("entity_id", taskIds)
+      .is("parent_comment_id", null)
+      .order("created_at", { ascending: true })
+      .limit(200);
+
+    // Fetch author names for non-worker messages
+    const authorIds = [...new Set((comments || []).map(c => c.created_by_user_id).filter(Boolean))];
+    let authorNames: Record<string, string> = {};
+    if (authorIds.length > 0) {
+      const { data: authors } = await sb
+        .from("profiles")
+        .select("id, name")
+        .in("id", authorIds);
+      for (const a of authors || []) {
+        authorNames[a.id] = a.name || "";
+      }
+    }
+
+    const messagesByTask: Record<string, unknown[]> = {};
+    for (const c of comments || []) {
+      const tid = c.entity_id;
+      if (!messagesByTask[tid]) messagesByTask[tid] = [];
+      messagesByTask[tid].push({
+        id: c.id,
+        content: c.content,
+        createdAt: c.created_at,
+        authorName: c.author_display_name || authorNames[c.created_by_user_id] || "",
+        isWorker: !!(c.author_display_name && c.author_display_name.includes("(worker)")),
+        images: c.images || [],
+      });
+    }
+
     // 7. Assemble response (use translations when available)
     const workerTasks = (tasks || []).map((task) => {
       const room = task.room_id ? roomsMap[task.room_id] as Record<string, unknown> | undefined : null;
@@ -194,6 +231,7 @@ serve(async (req) => {
         progress: task.progress || 0,
         checklists: tr?.checklists || task.checklists || [],
         photos: photosByTask[task.id] || [],
+        messages: messagesByTask[task.id] || [],
         roomId: task.room_id || null,
         room: room
           ? {
