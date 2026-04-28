@@ -1992,6 +1992,9 @@
   "budget": {
     "title": "Budget",
     "description": "Samlad vy av arbetsbudgetar och materialkostnader. Dra kolumnrubriker för att ändra ordning.",
+    "sieExport": "Exportera SIE4 till bokföring",
+    "sieExported": "SIE4-fil exporterad",
+    "sieNoData": "Inga fakturor att exportera för detta år.",
     "name": "Namn",
     "type": "Typ",
     "status": "Status",

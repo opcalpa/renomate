@@ -2521,6 +2521,9 @@
   "budget": {
     "title": "Budget",
     "description": "Unified view of task budgets and material costs. Drag column headers to reorder.",
+    "sieExport": "Export SIE4 for accounting",
+    "sieExported": "SIE4 file exported",
+    "sieNoData": "No invoices to export for this year.",
     "name": "Name",
     "type": "Type",
     "status": "Status",

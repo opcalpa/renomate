@@ -6,8 +6,10 @@ import { formatCurrency } from "@/lib/currency";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Plus, ExternalLink } from "lucide-react";
+import { FileText, Plus, ExternalLink, Download } from "lucide-react";
 import { getDisplayStatus } from "@/services/invoiceService";
+import { useAuthSession } from "@/hooks/useAuthSession";
+import { useToast } from "@/hooks/use-toast";
 
 interface Invoice {
   id: string;
@@ -47,7 +49,32 @@ const invoiceStatusKey = (status: string) => {
 export function InvoiceListSection({ projectId, currency, onCreateInvoice }: InvoiceListSectionProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user } = useAuthSession();
+  const { toast } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [exporting, setExporting] = useState(false);
+
+  const handleSieExport = async () => {
+    if (!user) return;
+    setExporting(true);
+    try {
+      const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+      if (!profile) return;
+      const { generateSie4Export, downloadSieFile } = await import("@/services/sieExportService");
+      const year = new Date().getFullYear();
+      const { content, filename } = await generateSie4Export(profile.id, year);
+      if (!content) {
+        toast({ description: t("budget.sieNoData", "No invoices to export for this year.") });
+        return;
+      }
+      downloadSieFile(content, filename);
+      toast({ description: t("budget.sieExported", "SIE4 file exported") });
+    } catch {
+      toast({ title: t("common.error"), description: "SIE export failed", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     fetchInvoices();
@@ -74,15 +101,28 @@ export function InvoiceListSection({ projectId, currency, onCreateInvoice }: Inv
             {t("budget.builder.invoices", "Invoices")}
             <Badge variant="secondary" className="ml-1">{invoices.length}</Badge>
           </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onCreateInvoice ? onCreateInvoice() : navigate(`/invoices/new?projectId=${projectId}`)}
-            className="gap-1"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {t("budget.builder.newInvoice", "New")}
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSieExport}
+              disabled={exporting}
+              className="gap-1 text-muted-foreground"
+              title={t("budget.sieExport", "Export SIE4 for accounting")}
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">SIE</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onCreateInvoice ? onCreateInvoice() : navigate(`/invoices/new?projectId=${projectId}`)}
+              className="gap-1"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t("budget.builder.newInvoice", "New")}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
