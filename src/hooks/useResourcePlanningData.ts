@@ -140,11 +140,17 @@ export function useResourcePlanningData(projectIds: string[]): ResourcePlanningD
   let rangeEnd = new Date(now);
   rangeEnd.setDate(rangeEnd.getDate() + 56); // default 8 weeks
 
+  // Clamp range: max 3 months back, 6 months forward from today
+  const minStart = new Date(now);
+  minStart.setMonth(minStart.getMonth() - 3);
+  const maxEnd = new Date(now);
+  maxEnd.setMonth(maxEnd.getMonth() + 6);
+
   if (allTasks.length > 0) {
     const starts = allTasks.map((t) => new Date(t.startDate).getTime());
     const ends = allTasks.map((t) => new Date(t.endDate).getTime());
-    rangeStart = new Date(Math.min(...starts, now.getTime()));
-    rangeEnd = new Date(Math.max(...ends, rangeEnd.getTime()));
+    rangeStart = new Date(Math.max(Math.min(...starts, now.getTime()), minStart.getTime()));
+    rangeEnd = new Date(Math.min(Math.max(...ends, rangeEnd.getTime()), maxEnd.getTime()));
     // Pad 1 week each side
     rangeStart.setDate(rangeStart.getDate() - 7);
     rangeEnd.setDate(rangeEnd.getDate() + 7);
