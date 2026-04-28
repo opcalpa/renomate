@@ -54,7 +54,7 @@ export function useDashboardData(userId: string | undefined): DashboardData {
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("name, currency")
+        .select("name")
         .eq("user_id", userId!)
         .single();
       return data;

@@ -1796,18 +1796,20 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
 
       {/* ===== SCHEDULE SECTION (collapsible): Timeline | Calendar ===== */}
       <section className="mb-4">
-        <button
-          type="button"
-          className="flex items-center gap-2 w-full text-left py-2 group"
-          onClick={() => { const next = !scheduleOpen; setScheduleOpen(next); localStorage.setItem(`tasks-schedule-open-${projectId}`, String(next)); }}
-        >
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">
-            {safeScheduleView === 'timeline' ? t('projectDetail.timeline', 'Tidslinje') : t('timeline.calendar', 'Kalender')}
-          </span>
-          {scheduleOpen ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+        <div className="flex items-center gap-2 w-full text-left py-2 group">
+          <button
+            type="button"
+            className="flex items-center gap-2 flex-1 text-left"
+            onClick={() => { const next = !scheduleOpen; setScheduleOpen(next); localStorage.setItem(`tasks-schedule-open-${projectId}`, String(next)); }}
+          >
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold">
+              {safeScheduleView === 'timeline' ? t('projectDetail.timeline', 'Tidslinje') : t('timeline.calendar', 'Kalender')}
+            </span>
+            {scheduleOpen ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+          </button>
           {/* Schedule sub-toggle */}
-          <div className="flex rounded-md border bg-muted/30 p-0.5 ml-2" onClick={(e) => e.stopPropagation()}>
+          <div className="flex rounded-md border bg-muted/30 p-0.5 ml-2">
             <button
               type="button"
               onClick={() => { setScheduleView('timeline'); setScheduleOpen(true); }}
@@ -1823,7 +1825,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
               {t('timeline.calendar', 'Kalender')}
             </button>
           </div>
-        </button>
+        </div>
         {scheduleOpen && (
           <Card className="overflow-hidden">
             <CardContent className="p-0 overflow-hidden">
