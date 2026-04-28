@@ -15,20 +15,27 @@ interface RequireRoleProps {
 
 /**
  * Route wrapper: checks profile.onboarding_user_type against allowed roles.
- * Redirects to /start if user doesn't have the required role.
+ * System admins (is_system_admin) always pass through.
+ * Redirects to fallback if user doesn't have the required role.
  *
  * Must be used inside RequireAuth (assumes user is authenticated).
  */
 export function RequireRole({ children, allow, fallback = "/start" }: RequireRoleProps) {
-  const { user } = useAuthSession();
-  const { role, loading } = useUserRole(user?.id);
+  const { user, loading: authLoading } = useAuthSession();
+  const { role, isAdmin, loading: roleLoading } = useUserRole(user?.id);
 
-  if (loading) {
+  // Wait for both auth and role to resolve before deciding
+  if (authLoading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+
+  // System admins bypass role checks
+  if (isAdmin) {
+    return <>{children}</>;
   }
 
   const allowed = Array.isArray(allow) ? allow : [allow];

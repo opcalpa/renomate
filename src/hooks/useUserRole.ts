@@ -3,11 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface UserRoleResult {
   role: string | null;
+  isAdmin: boolean;
   loading: boolean;
 }
 
 /**
- * Returns the user's onboarding_user_type from profiles.
+ * Returns the user's onboarding_user_type + admin flag from profiles.
  * Cached via React Query with 5 min staleTime — avoids re-fetching on every route change.
  */
 export function useUserRole(userId: string | undefined): UserRoleResult {
@@ -16,17 +17,21 @@ export function useUserRole(userId: string | undefined): UserRoleResult {
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("onboarding_user_type")
+        .select("onboarding_user_type, is_system_admin")
         .eq("user_id", userId!)
         .single();
-      return data?.onboarding_user_type ?? null;
+      return {
+        role: data?.onboarding_user_type ?? null,
+        isAdmin: data?.is_system_admin === true,
+      };
     },
     enabled: !!userId,
     staleTime: 300_000,
   });
 
   return {
-    role: data ?? null,
+    role: data?.role ?? null,
+    isAdmin: data?.isAdmin ?? false,
     loading: isLoading && !!userId,
   };
 }
