@@ -201,19 +201,17 @@ const Projects = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Don't redirect while auth is still loading
+    // Auth redirect handled by RequireAuth wrapper in App.tsx
     if (authLoading) return;
 
-    if (!user && !isGuest) {
-      navigate("/auth");
-    } else if (isGuest) {
+    if (isGuest) {
       // Load guest projects from localStorage
       fetchGuestProjects();
       // Show welcome modal for new guests
       if (!localStorage.getItem("guest_onboarding_completed")) {
         setShowWelcomeModal(true);
       }
-    } else {
+    } else if (user) {
       fetchProfile();
       fetchProjects();
     }

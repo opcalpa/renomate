@@ -24,13 +24,15 @@ import Changelog from "./pages/Changelog";
 // EmailConfirmed page removed — using toast on /start?confirmed=true instead
 import Feedback from "./pages/Feedback";
 import FindProfessionals from "./pages/FindProfessionals";
-import CreateQuote from "./pages/CreateQuote";
+import CreateQuote from "./pages/contractor/CreateQuote";
 import ViewQuote from "./pages/ViewQuote";
-import CreateInvoice from "./pages/CreateInvoice";
+import CreateInvoice from "./pages/contractor/CreateInvoice";
 import ViewInvoice from "./pages/ViewInvoice";
-import ClientRegistry from "./pages/ClientRegistry";
+import ClientRegistry from "./pages/contractor/ClientRegistry";
 import CustomerIntake from "./pages/CustomerIntake";
-import IntakeRequests from "./pages/IntakeRequests";
+import IntakeRequests from "./pages/contractor/IntakeRequests";
+import { RequireAuth } from "./components/auth/RequireAuth";
+import { RequireRole } from "./components/auth/RequireRole";
 import { lazy, Suspense } from "react";
 
 const WorkerView = lazy(() => import("./pages/WorkerView"));
@@ -79,12 +81,9 @@ const App = () => (
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <BetaBanner />
             <Routes>
+              {/* ── Public routes ── */}
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/start" element={<Projects />} />
-              <Route path="/projects" element={<Navigate to="/start" replace />} />
-              <Route path="/projects/:projectId" element={<ProjectDetail />} />
-              <Route path="/profile" element={<Profile />} />
               <Route path="/invitation" element={<InvitationResponse />} />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
@@ -93,19 +92,27 @@ const App = () => (
               <Route path="/pinterest/callback" element={<PinterestCallback />} />
               <Route path="/tips" element={<Tips />} />
               <Route path="/changelog" element={<Changelog />} />
-              {/* Email confirmation redirects to /start?confirmed=true — toast shown there */}
               <Route path="/feedback" element={<Feedback />} />
               <Route path="/find-pros" element={<FindProfessionals />} />
-              <Route path="/quotes/new" element={<CreateQuote />} />
-              <Route path="/quotes/:quoteId" element={<ViewQuote />} />
-              <Route path="/invoices/new" element={<CreateInvoice />} />
-              <Route path="/invoices/:invoiceId" element={<ViewInvoice />} />
-              <Route path="/clients" element={<ClientRegistry />} />
               <Route path="/intake/:token" element={<CustomerIntake />} />
               <Route path="/w/:token" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}><WorkerView /></Suspense>} />
               <Route path="/ata/:token" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}><AtaApproval /></Suspense>} />
               <Route path="/landing-test" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}><LandingTest /></Suspense>} />
-              <Route path="/intake-requests" element={<IntakeRequests />} />
+
+              {/* ── Auth required (any role, guests allowed) ── */}
+              <Route path="/start" element={<RequireAuth><Projects /></RequireAuth>} />
+              <Route path="/projects" element={<Navigate to="/start" replace />} />
+              <Route path="/projects/:projectId" element={<RequireAuth><ProjectDetail /></RequireAuth>} />
+              <Route path="/profile" element={<RequireAuth allowGuest={false}><Profile /></RequireAuth>} />
+              <Route path="/quotes/:quoteId" element={<ViewQuote />} />
+              <Route path="/invoices/:invoiceId" element={<ViewInvoice />} />
+
+              {/* ── Contractor-only routes ── */}
+              <Route path="/quotes/new" element={<RequireAuth allowGuest={false}><RequireRole allow="contractor"><CreateQuote /></RequireRole></RequireAuth>} />
+              <Route path="/invoices/new" element={<RequireAuth allowGuest={false}><RequireRole allow="contractor"><CreateInvoice /></RequireRole></RequireAuth>} />
+              <Route path="/clients" element={<RequireAuth allowGuest={false}><RequireRole allow="contractor"><ClientRegistry /></RequireRole></RequireAuth>} />
+              <Route path="/intake-requests" element={<RequireAuth allowGuest={false}><RequireRole allow="contractor"><IntakeRequests /></RequireRole></RequireAuth>} />
+
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

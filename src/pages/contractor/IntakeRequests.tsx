@@ -24,11 +24,7 @@ export default function IntakeRequests() {
   const [selectedRequest, setSelectedRequest] = useState<IntakeRequest | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
+  // Auth + role check handled by RequireAuth + RequireRole wrappers in App.tsx
 
   useEffect(() => {
     if (user) {

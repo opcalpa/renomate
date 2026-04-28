@@ -103,11 +103,8 @@ export default function ClientRegistry() {
     navigate("/auth");
   };
 
-  if (authLoading) return null;
-  if (!user) {
-    navigate("/auth");
-    return null;
-  }
+  // Auth + role check handled by RequireAuth + RequireRole wrappers in App.tsx
+  if (authLoading || !user) return null;
 
   return (
     <div className="min-h-screen bg-background">

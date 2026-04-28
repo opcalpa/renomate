@@ -170,11 +170,7 @@ const Profile = ({ asDrawer = false }: { asDrawer?: boolean }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
+  // Auth redirect handled by RequireAuth wrapper in App.tsx
 
   useEffect(() => {
     if (user) {

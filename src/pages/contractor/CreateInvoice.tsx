@@ -418,11 +418,8 @@ export default function CreateInvoice() {
     navigate("/auth");
   };
 
-  if (authLoading) return null;
-  if (!user) {
-    navigate("/auth");
-    return null;
-  }
+  // Auth + role check handled by RequireAuth + RequireRole wrappers in App.tsx
+  if (authLoading || !user) return null;
 
   const projectName = projects.find((p) => p.id === projectId)?.name ?? "";
 

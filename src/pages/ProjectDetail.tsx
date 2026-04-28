@@ -309,11 +309,10 @@ const ProjectDetail = () => {
     // Don't redirect while auth is still loading
     if (authLoading) return;
 
+    // Auth redirect handled by RequireAuth wrapper in App.tsx
     // Public demo is accessible to everyone
     if (isPublicDemoProject) {
       loadPublicDemoData();
-    } else if (!user && !isGuest) {
-      navigate("/auth");
     } else if (isGuest) {
       loadGuestData();
     } else {
