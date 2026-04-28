@@ -10,17 +10,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface Task {
   id: string;
   title: string;
+  hourly_rate: number | null;
 }
 
 interface LogTimeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tasks: Task[];
-  onSave: (entry: { taskId: string | null; date: string; hours: number; description: string }) => Promise<void>;
+  defaultRate: number;
+  onSave: (entry: { taskId: string | null; date: string; hours: number; description: string; hourlyRate: number | null }) => Promise<void>;
   initial?: { taskId: string | null; date: string; hours: number; description: string };
 }
 
-export function LogTimeDialog({ open, onOpenChange, tasks, onSave, initial }: LogTimeDialogProps) {
+export function LogTimeDialog({ open, onOpenChange, tasks, defaultRate, onSave, initial }: LogTimeDialogProps) {
   const { t } = useTranslation();
   const [taskId, setTaskId] = useState(initial?.taskId || "");
   const [date, setDate] = useState(initial?.date || new Date().toISOString().split("T")[0]);
@@ -33,11 +35,14 @@ export function LogTimeDialog({ open, onOpenChange, tasks, onSave, initial }: Lo
     if (!h || h <= 0) return;
     setSaving(true);
     try {
+      const selectedTask = tasks.find((t) => t.id === taskId);
+      const hourlyRate = selectedTask?.hourly_rate || defaultRate || null;
       await onSave({
         taskId: taskId || null,
         date,
         hours: h,
         description: description.trim(),
+        hourlyRate,
       });
       onOpenChange(false);
       setTaskId("");

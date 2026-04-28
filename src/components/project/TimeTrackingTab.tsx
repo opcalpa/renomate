@@ -21,6 +21,7 @@ interface TimeEntry {
   date: string;
   hours: number;
   description: string | null;
+  hourly_rate: number | null;
   approved: boolean;
   approved_by: string | null;
   created_at: string;
@@ -32,6 +33,7 @@ interface Task {
   id: string;
   title: string;
   estimated_hours: number | null;
+  hourly_rate: number | null;
 }
 
 export function TimeTrackingTab({ projectId, isReadOnly, userType }: TimeTrackingTabProps) {
@@ -44,6 +46,7 @@ export function TimeTrackingTab({ projectId, isReadOnly, userType }: TimeTrackin
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+  const [defaultRate, setDefaultRate] = useState(0);
 
   const isHomeowner = userType === "homeowner";
 
@@ -52,11 +55,16 @@ export function TimeTrackingTab({ projectId, isReadOnly, userType }: TimeTrackin
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id")
+      .select("id, default_hourly_rate")
       .eq("user_id", user.id)
       .single();
 
-    if (profile) setProfileId(profile.id);
+    if (profile) {
+      setProfileId(profile.id);
+      if ((profile as Record<string, unknown>).default_hourly_rate) {
+        setDefaultRate(Number((profile as Record<string, unknown>).default_hourly_rate));
+      }
+    }
 
     const [entriesRes, tasksRes] = await Promise.all([
       supabase
@@ -66,7 +74,7 @@ export function TimeTrackingTab({ projectId, isReadOnly, userType }: TimeTrackin
         .order("date", { ascending: false }),
       supabase
         .from("tasks")
-        .select("id, title, estimated_hours")
+        .select("id, title, estimated_hours, hourly_rate")
         .eq("project_id", projectId)
         .order("title"),
     ]);
@@ -106,13 +114,13 @@ export function TimeTrackingTab({ projectId, isReadOnly, userType }: TimeTrackin
     return () => { supabase.removeChannel(channel); };
   }, [projectId, fetchData]);
 
-  const handleSave = async (entry: { taskId: string | null; date: string; hours: number; description: string }) => {
+  const handleSave = async (entry: { taskId: string | null; date: string; hours: number; description: string; hourlyRate: number | null }) => {
     if (!profileId) return;
 
     if (editingEntry) {
       const { error } = await supabase
         .from("time_entries")
-        .update({ task_id: entry.taskId, date: entry.date, hours: entry.hours, description: entry.description || null })
+        .update({ task_id: entry.taskId, date: entry.date, hours: entry.hours, description: entry.description || null, hourly_rate: entry.hourlyRate })
         .eq("id", editingEntry.id);
       if (error) {
         toast({ title: t("common.error"), description: error.message, variant: "destructive" });
@@ -127,6 +135,7 @@ export function TimeTrackingTab({ projectId, isReadOnly, userType }: TimeTrackin
         date: entry.date,
         hours: entry.hours,
         description: entry.description || null,
+        hourly_rate: entry.hourlyRate,
       });
       if (error) {
         toast({ title: t("common.error"), description: error.message, variant: "destructive" });
@@ -170,6 +179,8 @@ export function TimeTrackingTab({ projectId, isReadOnly, userType }: TimeTrackin
   const totalLogged = entries.reduce((sum, e) => sum + Number(e.hours), 0);
   const totalEstimated = tasks.reduce((sum, t) => sum + (t.estimated_hours || 0), 0);
   const progressPct = totalEstimated > 0 ? Math.min(100, Math.round((totalLogged / totalEstimated) * 100)) : 0;
+  const totalLoggedCost = entries.reduce((sum, e) => sum + Number(e.hours) * (e.hourly_rate || 0), 0);
+  const totalEstimatedCost = tasks.reduce((sum, t) => sum + (t.estimated_hours || 0) * (t.hourly_rate || 0), 0);
 
   // Group by week
   const weekGroups = new Map<string, TimeEntry[]>();
@@ -203,6 +214,14 @@ export function TimeTrackingTab({ projectId, isReadOnly, userType }: TimeTrackin
                   </span>
                 )}
               </div>
+              {!isHomeowner && totalLoggedCost > 0 && (
+                <div className="text-sm text-muted-foreground mt-1 tabular-nums">
+                  {Math.round(totalLoggedCost).toLocaleString("sv-SE")} kr
+                  {totalEstimatedCost > 0 && (
+                    <span> / {Math.round(totalEstimatedCost).toLocaleString("sv-SE")} kr</span>
+                  )}
+                </div>
+              )}
             </div>
             {!isReadOnly && (
               <Button onClick={() => { setEditingEntry(null); setDialogOpen(true); }}>
@@ -233,13 +252,19 @@ export function TimeTrackingTab({ projectId, isReadOnly, userType }: TimeTrackin
         <div className="space-y-6">
           {[...weekGroups.entries()].map(([weekKey, weekEntries]) => {
             const weekTotal = weekEntries.reduce((s, e) => s + Number(e.hours), 0);
+            const weekCost = weekEntries.reduce((s, e) => s + Number(e.hours) * (e.hourly_rate || 0), 0);
             const weekLabel = new Date(weekKey).toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
 
             return (
               <div key={weekKey}>
                 <div className="flex items-center justify-between mb-2 text-xs text-muted-foreground uppercase tracking-wider">
                   <span>v.{getWeekNumber(new Date(weekKey))} · {weekLabel}</span>
-                  <span className="tabular-nums font-medium">{weekTotal}{t("timeTracking.hoursShort")}</span>
+                  <span className="tabular-nums font-medium">
+                    {weekTotal}{t("timeTracking.hoursShort")}
+                    {!isHomeowner && weekCost > 0 && (
+                      <span className="ml-2">{Math.round(weekCost).toLocaleString("sv-SE")} kr</span>
+                    )}
+                  </span>
                 </div>
                 <div className="border rounded-lg overflow-hidden">
                   {weekEntries.map((entry, i) => (
@@ -265,9 +290,14 @@ export function TimeTrackingTab({ projectId, isReadOnly, userType }: TimeTrackin
                         {entry.user_name}
                       </div>
 
-                      {/* Hours */}
-                      <div className="w-12 shrink-0 text-right font-medium tabular-nums">
-                        {Number(entry.hours)}{t("timeTracking.hoursShort")}
+                      {/* Hours + cost */}
+                      <div className="w-20 shrink-0 text-right tabular-nums">
+                        <div className="font-medium">{Number(entry.hours)}{t("timeTracking.hoursShort")}</div>
+                        {!isHomeowner && entry.hourly_rate && (
+                          <div className="text-xs text-muted-foreground">
+                            {Math.round(Number(entry.hours) * entry.hourly_rate).toLocaleString("sv-SE")} kr
+                          </div>
+                        )}
                       </div>
 
                       {/* Status + actions */}
@@ -324,6 +354,7 @@ export function TimeTrackingTab({ projectId, isReadOnly, userType }: TimeTrackin
         open={dialogOpen}
         onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditingEntry(null); }}
         tasks={tasks}
+        defaultRate={defaultRate}
         onSave={handleSave}
         initial={editingEntry ? {
           taskId: editingEntry.task_id,
