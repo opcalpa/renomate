@@ -1786,6 +1786,7 @@ export type Database = {
           tasks_access: string | null
           tasks_scope: string | null
           teams_access: string | null
+          time_tracking_access: string | null
           timeline_access: string | null
         }
         Insert: {
@@ -1815,6 +1816,7 @@ export type Database = {
           tasks_access?: string | null
           tasks_scope?: string | null
           teams_access?: string | null
+          time_tracking_access?: string | null
           timeline_access?: string | null
         }
         Update: {
@@ -1844,6 +1846,7 @@ export type Database = {
           tasks_access?: string | null
           tasks_scope?: string | null
           teams_access?: string | null
+          time_tracking_access?: string | null
           timeline_access?: string | null
         }
         Relationships: [
@@ -2854,6 +2857,94 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_entries: {
+        Row: {
+          approved: boolean | null
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          date: string
+          description: string | null
+          hours: number
+          id: string
+          project_id: string
+          task_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          date: string
+          description?: string | null
+          hours: number
+          id?: string
+          project_id: string
+          task_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          hours?: number
+          id?: string
+          project_id?: string
+          task_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entries_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

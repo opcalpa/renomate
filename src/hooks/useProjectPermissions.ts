@@ -22,6 +22,7 @@ export interface ProjectPermissions {
   budget: string;
   files: string;
   teams: string;
+  timeTracking: string;
   loading: boolean;
 }
 
@@ -43,6 +44,7 @@ const ALL_EDIT: Omit<ProjectPermissions, "loading"> = {
   budget: "edit",
   files: "edit",
   teams: "invite",
+  timeTracking: "edit",
 };
 
 // View-only permissions for demo project (non-admin users)
@@ -65,6 +67,7 @@ const DEMO_VIEW_ONLY: Omit<ProjectPermissions, "loading"> = {
   budget: "edit",
   files: "view",
   teams: "none",
+  timeTracking: "view",
 };
 
 const ALL_NONE: Omit<ProjectPermissions, "loading"> = {
@@ -85,6 +88,7 @@ const ALL_NONE: Omit<ProjectPermissions, "loading"> = {
   budget: "none",
   files: "none",
   teams: "none",
+  timeTracking: "none",
 };
 
 export function useProjectPermissions(projectId: string | undefined): ProjectPermissions {
@@ -153,7 +157,7 @@ export function useProjectPermissions(projectId: string | undefined): ProjectPer
       // Check for project_shares (works for both demo and regular projects)
       const { data: share } = await supabase
         .from("project_shares")
-        .select("role, role_type, customer_view_access, overview_access, timeline_access, tasks_access, tasks_scope, space_planner_access, purchases_access, purchases_scope, budget_access, files_access, teams_access")
+        .select("role, role_type, customer_view_access, overview_access, timeline_access, tasks_access, tasks_scope, space_planner_access, purchases_access, purchases_scope, budget_access, files_access, teams_access, time_tracking_access")
         .eq("project_id", projectId)
         .eq("shared_with_user_id", profile.id)
         .maybeSingle();
@@ -190,6 +194,7 @@ export function useProjectPermissions(projectId: string | undefined): ProjectPer
           budget: share.budget_access || "none",
           files: share.files_access || "none",
           teams: share.teams_access || "none",
+          timeTracking: (share as Record<string, unknown>).time_tracking_access as string || "none",
         });
       } else if (isDemo) {
         // Demo project without invite - view only

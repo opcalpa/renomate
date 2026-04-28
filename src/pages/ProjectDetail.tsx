@@ -23,6 +23,7 @@ import OverviewTab from "@/components/project/OverviewTab";
 import TeamManagement from "@/components/project/TeamManagement";
 import PurchaseRequestsTab from "@/components/project/PurchaseRequestsTab";
 import BudgetTab from "@/components/project/BudgetTab";
+import { TimeTrackingTab } from "@/components/project/TimeTrackingTab";
 import ProjectFeedTab from "@/components/project/ProjectFeedTab";
 import ProjectFilesTab from "@/components/project/ProjectFilesTab";
 import CustomerViewTab from "@/components/project/CustomerViewTab";
@@ -190,7 +191,7 @@ const ProjectDetail = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     const tabParam = searchParams.get("tab");
-    const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "table", "team", "customer", "planning", "chat"];
+    const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "timetracking", "table", "team", "customer", "planning", "chat"];
     return tabParam && validTabs.includes(tabParam) ? tabParam : "overview";
   });
   const [openEntityId, setOpenEntityId] = useState<string | null>(() => searchParams.get("entityId"));
@@ -204,7 +205,7 @@ const ProjectDetail = () => {
     const subtabParam = searchParams.get("subtab");
     const sectionParam = searchParams.get("section");
     const entityParam = searchParams.get("entityId");
-    const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "table", "team", "customer", "planning", "chat"];
+    const validTabs = ["overview", "spaceplanner", "files", "tasks", "purchases", "budget", "timetracking", "table", "team", "customer", "planning", "chat"];
 
     if (tabParam && validTabs.includes(tabParam)) {
       if (tabParam !== activeTab || subtabParam) {
@@ -993,6 +994,19 @@ const ProjectDetail = () => {
                 activeValue={activeTab === "budget" ? "budget" : undefined}
               />
 
+              {/* 4b. Tid */}
+              {permissions.timeTracking !== "none" && (
+                <div
+                  className={cn(
+                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    activeTab === "timetracking" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={() => setActiveTab("timetracking")}
+                >
+                  {t('timeTracking.tabLabel')}
+                </div>
+              )}
+
               {/* 5. Yta */}
               <HoverTabMenu
                 trigger={
@@ -1277,6 +1291,22 @@ const ProjectDetail = () => {
                 isReadOnly={permissions.budget === "view"}
                 userType={effectiveUserType}
                 country={project?.country}
+              />
+            </div>
+          )}
+          </ErrorBoundary>
+        </TabsContent>
+
+        <TabsContent value="timetracking" className="m-0 pb-8">
+          <ErrorBoundary>
+          {permissions.timeTracking === "none" ? (
+            <NoAccessPlaceholder />
+          ) : (
+            <div className="container py-4 md:py-8">
+              <TimeTrackingTab
+                projectId={project.id}
+                isReadOnly={permissions.timeTracking === "view"}
+                userType={effectiveUserType}
               />
             </div>
           )}
