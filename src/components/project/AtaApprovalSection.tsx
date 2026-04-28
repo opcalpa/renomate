@@ -51,7 +51,10 @@ export function AtaApprovalSection({ taskId, projectId, ataStatus, isHomeowner }
         .update({ ata_status: "pending" })
         .eq("id", taskId);
 
-      const link = `${window.location.origin}/ata/${tokenData.token}`;
+      const appOrigin = window.location.hostname === "localhost"
+        ? "https://app.renofine.com"
+        : window.location.origin;
+      const link = `${appOrigin}/ata/${tokenData.token}`;
       setApprovalLink(link);
 
       toast({ description: t("ata.linkCreated", "Approval link created") });

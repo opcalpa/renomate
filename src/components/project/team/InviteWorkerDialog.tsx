@@ -173,7 +173,11 @@ export function InviteWorkerDialog({
 
       if (error) throw error;
 
-      const link = `${window.location.origin}/w/${tokenRecord.token}`;
+      // Use production URL for shareable links — localhost doesn't work from WhatsApp/SMS
+      const appOrigin = window.location.hostname === "localhost"
+        ? "https://app.renofine.com"
+        : window.location.origin;
+      const link = `${appOrigin}/w/${tokenRecord.token}`;
       setGeneratedTokenId(tokenRecord.id);
       setGeneratedLink(link);
 

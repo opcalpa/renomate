@@ -724,6 +724,8 @@ function transformIntakeRequest(data: Record<string, unknown>): IntakeRequest {
  * Generate public intake form URL
  */
 export function getIntakeFormUrl(token: string): string {
-  const baseUrl = window.location.origin;
+  const baseUrl = window.location.hostname === "localhost"
+    ? "https://app.renofine.com"
+    : window.location.origin;
   return `${baseUrl}/intake/${token}`;
 }

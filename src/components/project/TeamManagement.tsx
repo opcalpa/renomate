@@ -664,7 +664,10 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
   };
 
   const handleCopyWorkerLink = async (token: string) => {
-    const link = `${window.location.origin}/w/${token}`;
+    const appOrigin = window.location.hostname === "localhost"
+      ? "https://app.renofine.com"
+      : window.location.origin;
+    const link = `${appOrigin}/w/${token}`;
     await navigator.clipboard.writeText(link);
     toast({ description: t("teamWorker.linkCopied", "Link copied to clipboard") });
   };
