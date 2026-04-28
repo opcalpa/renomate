@@ -830,8 +830,9 @@ const Projects = () => {
     return <PageLoadingSkeleton />;
   }
 
-  // Dispatch: homeowners (non-admin, non-guest) get their own start page
-  if (!isGuest && !isContractor && !isAdmin && profile) {
+  // Dispatch: homeowners (non-guest) get their own start page
+  // Admin bypass only applies to route guards, not UI — admins flip role in settings to test
+  if (!isGuest && !isContractor && profile) {
     return (
       <Suspense fallback={<PageLoadingSkeleton />}>
         <OwnerStart />
