@@ -5503,6 +5503,14 @@
     "financialAnalysis": {
       "name": "Financial overview",
       "description": "Portfolio-level budget and revenue analysis"
+    },
+    "rotDeduction": {
+      "name": "ROT tax deduction",
+      "description": "Swedish ROT/RUT tax deduction tracking and calculation"
+    },
+    "payrollExport": {
+      "name": "Payroll export (PAXml)",
+      "description": "Export time entries to Swedish payroll systems"
     }
   }
 }

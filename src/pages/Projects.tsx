@@ -50,6 +50,7 @@ import { useProjectsData } from "@/hooks/useProjectsData";
 const OwnerStart = lazy(() => import("@/pages/owner/OwnerStart"));
 import { ResourcePlanningView } from "@/components/project/ResourcePlanningView";
 import { useEnabledModules } from "@/hooks/useEnabledModules";
+import { resolveRegion } from "@/lib/modules";
 
 interface Project {
   id: string;
@@ -69,7 +70,7 @@ const Projects = () => {
   const { user, signOut } = useAuthSession();
   const { isGuest, refreshStorageUsage } = useGuestMode();
   useProfileLanguage();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     profile, projects, sharedProjectIds, ownerNames, projectFinancials,
     loading, authLoading, needsWelcomeModal, refetch,
@@ -304,7 +305,7 @@ const Projects = () => {
   };
 
   const isContractor = (profile?.onboarding_user_type as string) === "contractor";
-  const { isSectionEnabled } = useEnabledModules(isContractor ? "small" : "homeowner");
+  const { isSectionEnabled } = useEnabledModules(isContractor ? "small" : "homeowner", resolveRegion(i18n.language));
 
   // Homeowners should never see resource planning — clamp to list
   const effectiveViewMode = (!isContractor && viewMode === "resource") || (viewMode === "resource" && !isSectionEnabled("resource_planning")) ? "list" : viewMode;

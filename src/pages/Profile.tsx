@@ -20,8 +20,8 @@ import { PROFESSIONAL_CATEGORIES } from "@/lib/professionalCategories";
 import { validatePersonnummer } from "@/lib/personnummerValidator";
 import { Switch } from "@/components/ui/switch";
 import { useEnabledModules } from "@/hooks/useEnabledModules";
-import { MODULE_REGISTRY } from "@/lib/modules";
-import { ShoppingCart, Clock, FileText, Users as UsersIcon2, PencilRuler, ClipboardCheck, QrCode, CalendarRange, Contact, TrendingUp, Puzzle } from "lucide-react";
+import { MODULE_REGISTRY, resolveRegion } from "@/lib/modules";
+import { ShoppingCart, Clock, FileText, Users as UsersIcon2, PencilRuler, ClipboardCheck, QrCode, CalendarRange, Contact, TrendingUp, Puzzle, Receipt, FileDown } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -74,11 +74,12 @@ function CollapsibleCard({
 const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   ShoppingCart, Clock, FileText, Users: UsersIcon2, PencilRuler,
   ClipboardCheck, QrCode, CalendarRange, Contact, TrendingUp,
+  Receipt, FileDown,
 };
 
-function ModulesSection({ profileSize }: { profileSize: "solo" | "small" | "company" | "homeowner" }) {
+function ModulesSection({ profileSize, region }: { profileSize: "solo" | "small" | "company" | "homeowner"; region: string | null }) {
   const { t } = useTranslation();
-  const { enabledModules, toggleModule, resetToDefaults, allModules } = useEnabledModules(profileSize);
+  const { enabledModules, toggleModule, resetToDefaults, allModules } = useEnabledModules(profileSize, region);
 
   const visibleModules = allModules.filter(
     (m) => m.audience === "both" || m.audience === (profileSize === "homeowner" ? "homeowner" : "contractor"),
@@ -1136,7 +1137,7 @@ const Profile = ({ asDrawer = false }: { asDrawer?: boolean }) => {
 
           {/* Feature Modules — toggle which features are visible */}
           {userType === "contractor" && (
-            <ModulesSection profileSize="small" />
+            <ModulesSection profileSize="small" region={resolveRegion(languagePreference)} />
           )}
 
           {/* Professional Profile — hidden for homeowners */}

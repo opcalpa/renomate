@@ -20,6 +20,8 @@ export interface ModuleDefinition {
   icon: string;
   /** Which audiences can see this module in settings */
   audience: "contractor" | "homeowner" | "both";
+  /** ISO country code if region-specific (e.g. "SE"). Null = universal. */
+  region: string | null;
   /** Project-detail tab ids this module controls (tab hidden when module off) */
   tabs: string[];
   /** Start-page section ids this module controls */
@@ -36,13 +38,14 @@ export interface ModuleDefinition {
 }
 
 export const MODULE_REGISTRY: ModuleDefinition[] = [
-  // ── Lager 2: Onboarding-moduler ──────────────────────────────
+  // ── Universal modules (all regions) ──────────────────────────
   {
     id: "purchases",
     labelKey: "modules.purchases.name",
     descriptionKey: "modules.purchases.description",
     icon: "ShoppingCart",
     audience: "contractor",
+    region: null,
     tabs: ["purchases"],
     sections: [],
     routes: [],
@@ -54,6 +57,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     descriptionKey: "modules.timeTracking.description",
     icon: "Clock",
     audience: "contractor",
+    region: null,
     tabs: ["timetracking"],
     sections: [],
     routes: [],
@@ -65,6 +69,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     descriptionKey: "modules.quotes.description",
     icon: "FileText",
     audience: "contractor",
+    region: null,
     tabs: [],
     sections: ["pipeline"],
     routes: ["/quotes/new", "/invoices/new"],
@@ -76,6 +81,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     descriptionKey: "modules.customerPortal.description",
     icon: "Users",
     audience: "contractor",
+    region: null,
     tabs: ["customer"],
     sections: [],
     routes: [],
@@ -87,32 +93,21 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     descriptionKey: "modules.floorPlan.description",
     icon: "PencilRuler",
     audience: "both",
+    region: null,
     tabs: [],
     sections: [],
     routes: [],
     defaults: { solo: false, small: false, company: false, homeowner: false },
   },
-
-  // ── Lager 3: Avancerade moduler ──────────────────────────────
   {
     id: "quality_control",
     labelKey: "modules.qualityControl.name",
     descriptionKey: "modules.qualityControl.description",
     icon: "ClipboardCheck",
     audience: "contractor",
+    region: null,
     tabs: ["inspections"],
     sections: [],
-    routes: [],
-    defaults: { solo: false, small: false, company: true, homeowner: false },
-  },
-  {
-    id: "attendance",
-    labelKey: "modules.attendance.name",
-    descriptionKey: "modules.attendance.description",
-    icon: "QrCode",
-    audience: "contractor",
-    tabs: [],
-    sections: ["attendance"],
     routes: [],
     defaults: { solo: false, small: false, company: true, homeowner: false },
   },
@@ -122,6 +117,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     descriptionKey: "modules.resourcePlanning.description",
     icon: "CalendarRange",
     audience: "contractor",
+    region: null,
     tabs: [],
     sections: ["resource_planning"],
     routes: [],
@@ -133,6 +129,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     descriptionKey: "modules.clientRegistry.description",
     icon: "Contact",
     audience: "contractor",
+    region: null,
     tabs: [],
     sections: [],
     routes: ["/clients"],
@@ -144,8 +141,47 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     descriptionKey: "modules.financialAnalysis.description",
     icon: "TrendingUp",
     audience: "contractor",
+    region: null,
     tabs: [],
     sections: ["financial_analysis"],
+    routes: [],
+    defaults: { solo: false, small: true, company: true, homeowner: false },
+  },
+
+  // ── Sweden-specific modules (region: "SE") ───────────────────
+  {
+    id: "attendance",
+    labelKey: "modules.attendance.name",
+    descriptionKey: "modules.attendance.description",
+    icon: "QrCode",
+    audience: "contractor",
+    region: "SE",
+    tabs: [],
+    sections: ["attendance"],
+    routes: [],
+    defaults: { solo: false, small: false, company: true, homeowner: false },
+  },
+  {
+    id: "rot_deduction",
+    labelKey: "modules.rotDeduction.name",
+    descriptionKey: "modules.rotDeduction.description",
+    icon: "Receipt",
+    audience: "both",
+    region: "SE",
+    tabs: [],
+    sections: ["rot"],
+    routes: [],
+    defaults: { solo: true, small: true, company: true, homeowner: true },
+  },
+  {
+    id: "payroll_export",
+    labelKey: "modules.payrollExport.name",
+    descriptionKey: "modules.payrollExport.description",
+    icon: "FileDown",
+    audience: "contractor",
+    region: "SE",
+    tabs: [],
+    sections: ["payroll_export"],
     routes: [],
     defaults: { solo: false, small: true, company: true, homeowner: false },
   },
@@ -171,7 +207,24 @@ export function modulesForRoute(route: string): string[] {
 
 export type ProfileSize = "solo" | "small" | "company" | "homeowner";
 
-/** Return default enabled module ids for a profile type */
-export function defaultModulesForProfile(size: ProfileSize): string[] {
-  return MODULE_REGISTRY.filter((m) => m.defaults[size]).map((m) => m.id);
+/**
+ * Resolve user region from language/country.
+ * Language "sv" → "SE", country "DE" → "DE", fallback → null (universal only).
+ */
+export function resolveRegion(language?: string | null, country?: string | null): string | null {
+  if (country) return country.toUpperCase();
+  if (language === "sv") return "SE";
+  return null;
+}
+
+/** Filter modules visible for a given region. Universal + matching region. */
+export function modulesForRegion(region: string | null): ModuleDefinition[] {
+  return MODULE_REGISTRY.filter((m) => m.region === null || m.region === region);
+}
+
+/** Return default enabled module ids for a profile type and region */
+export function defaultModulesForProfile(size: ProfileSize, region?: string | null): string[] {
+  return MODULE_REGISTRY
+    .filter((m) => m.defaults[size] && (m.region === null || m.region === region))
+    .map((m) => m.id);
 }

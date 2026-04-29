@@ -1,10 +1,10 @@
 import { useCallback, useMemo } from "react";
 import { usePersistedPreference } from "./usePersistedPreference";
 import {
-  MODULE_REGISTRY,
   modulesForTab,
   modulesForSection,
   modulesForRoute,
+  modulesForRegion,
   defaultModulesForProfile,
   type ProfileSize,
 } from "@/lib/modules";
@@ -15,10 +15,13 @@ const STORAGE_KEY = "enabled_modules";
  * Hook for reading and toggling feature modules.
  *
  * Modules are persisted in localStorage + synced to profiles.ui_preferences.
- * `null` means "never configured" → use defaults for the profile type.
+ * `null` means "never configured" → use defaults for the profile type + region.
+ *
+ * @param profileSize - User's profile type (solo/small/company/homeowner)
+ * @param region - ISO country code (e.g. "SE") or null for universal-only
  */
-export function useEnabledModules(profileSize: ProfileSize = "small") {
-  const defaults = useMemo(() => defaultModulesForProfile(profileSize), [profileSize]);
+export function useEnabledModules(profileSize: ProfileSize = "small", region: string | null = null) {
+  const defaults = useMemo(() => defaultModulesForProfile(profileSize, region), [profileSize, region]);
   const [stored, setStored] = usePersistedPreference<string[] | null>(STORAGE_KEY, null);
 
   /** Active module ids — defaults until user explicitly configures */
@@ -82,14 +85,14 @@ export function useEnabledModules(profileSize: ProfileSize = "small") {
     [setStored],
   );
 
-  /** Reset to defaults for current profile type */
+  /** Reset to defaults for current profile type + region */
   const resetToDefaults = useCallback(
     () => setStored(null),
     [setStored],
   );
 
-  /** All available modules for the settings UI */
-  const allModules = MODULE_REGISTRY;
+  /** Modules visible for this region (for settings UI) */
+  const allModules = useMemo(() => modulesForRegion(region), [region]);
 
   return {
     enabledModules,

@@ -5500,6 +5500,14 @@
     "financialAnalysis": {
       "name": "Finansiell översikt",
       "description": "Budget- och intäktsanalys på portföljnivå"
+    },
+    "rotDeduction": {
+      "name": "ROT-avdrag",
+      "description": "Spårning och beräkning av ROT/RUT-avdrag"
+    },
+    "payrollExport": {
+      "name": "Löneexport (PAXml)",
+      "description": "Exportera tidrapporter till lönesystem"
     }
   }
 }
