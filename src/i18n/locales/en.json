@@ -5439,5 +5439,25 @@
     "catPainting": "Painting",
     "catTiling": "Tiling",
     "catGeneral": "General"
+  },
+  "attendance": {
+    "title": "Attendance",
+    "legalNotice": "Staff register as required by law",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "phone": "Phone",
+    "checkIn": "Check in",
+    "checkOut": "Check out",
+    "checkedIn": "Checked in!",
+    "checkedOut": "Checked out!",
+    "activeCheckIn": "You are checked in",
+    "since": "Since",
+    "checkInFailed": "Could not check in",
+    "checkOutFailed": "Could not check out",
+    "qrTitle": "Attendance QR",
+    "qrDescription": "Workers scan this to check in/out",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied",
+    "todayCount": "{{count}} checked in today"
   }
 }

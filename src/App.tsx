@@ -37,6 +37,7 @@ import { lazy, Suspense } from "react";
 
 const WorkerView = lazy(() => import("./pages/WorkerView"));
 const AtaApproval = lazy(() => import("./pages/AtaApproval"));
+const AttendanceCheckIn = lazy(() => import("./pages/AttendanceCheckIn"));
 const LandingTest = lazy(() => import("./pages/LandingTest"));
 import { HelpBot } from "./components/HelpBot";
 import { BetaBanner } from "./components/BetaBanner";
@@ -98,6 +99,7 @@ const App = () => (
               <Route path="/w/:token" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}><WorkerView /></Suspense>} />
               <Route path="/ata/:token" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}><AtaApproval /></Suspense>} />
               <Route path="/landing-test" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}><LandingTest /></Suspense>} />
+              <Route path="/checkin/:projectId" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}><AttendanceCheckIn /></Suspense>} />
 
               {/* ── Auth required (any role, guests allowed) ── */}
               <Route path="/start" element={<RequireAuth><Projects /></RequireAuth>} />

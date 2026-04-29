@@ -5436,5 +5436,25 @@
     "catPainting": "Målning",
     "catTiling": "Plattsättning",
     "catGeneral": "Övrigt"
+  },
+  "attendance": {
+    "title": "Personalliggare",
+    "legalNotice": "Personalliggare enligt lag",
+    "name": "Namn",
+    "namePlaceholder": "Ditt namn",
+    "phone": "Telefon",
+    "checkIn": "Checka in",
+    "checkOut": "Checka ut",
+    "checkedIn": "Incheckad!",
+    "checkedOut": "Utcheckad!",
+    "activeCheckIn": "Du är incheckad",
+    "since": "Sedan",
+    "checkInFailed": "Kunde inte checka in",
+    "checkOutFailed": "Kunde inte checka ut",
+    "qrTitle": "Personalliggare QR",
+    "qrDescription": "Arbetare skannar för att checka in/ut",
+    "copyLink": "Kopiera länk",
+    "linkCopied": "Länk kopierad",
+    "todayCount": "{{count}} incheckade idag"
   }
 }
