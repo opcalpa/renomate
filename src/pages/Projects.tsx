@@ -52,6 +52,7 @@ import {
 
 const DashboardRedesign = lazy(() => import("@/components/dashboard/DashboardRedesign"));
 import { CreateProjectDialog } from "@/components/project/CreateProjectDialog";
+import { useProjectsData } from "@/hooks/useProjectsData";
 const OwnerStart = lazy(() => import("@/pages/owner/OwnerStart"));
 import { ResourcePlanningView } from "@/components/project/ResourcePlanningView";
 
@@ -70,15 +71,15 @@ interface Project {
 }
 
 const Projects = () => {
-  const { user, signOut, loading: authLoading } = useAuthSession();
+  const { signOut } = useAuthSession();
   const { isGuest, refreshStorageUsage } = useGuestMode();
   useProfileLanguage();
   const { t } = useTranslation();
-  const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [sharedProjectIds, setSharedProjectIds] = useState<Set<string>>(new Set());
+  const {
+    profile, projects, sharedProjectIds, ownerNames, projectFinancials,
+    loading, authLoading, needsWelcomeModal, refetch,
+  } = useProjectsData();
   const [showAdminProjects, setShowAdminProjects] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   const [guestRole, setGuestRole] = useState<string | null>(() =>
     isGuest ? localStorage.getItem("guest_user_type") : null
@@ -90,6 +91,11 @@ const Projects = () => {
   }, []);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+
+  // Sync welcome modal trigger from data hook
+  useEffect(() => {
+    if (needsWelcomeModal) setShowWelcomeModal(true);
+  }, [needsWelcomeModal]);
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
   const [showAIImport, setShowAIImport] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
@@ -177,27 +183,10 @@ const Projects = () => {
   );
 
   const [createIntakeOpen, setCreateIntakeOpen] = useState(false);
-  const [projectFinancials, setProjectFinancials] = useState<Record<string, { budget: number; profit: number }>>({});
-  const [ownerNames, setOwnerNames] = useState<Record<string, string>>({});
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Auth redirect handled by RequireAuth wrapper in App.tsx
-    if (authLoading) return;
-
-    if (isGuest) {
-      // Load guest projects from localStorage
-      fetchGuestProjects();
-      // Show welcome modal for new guests
-      if (!localStorage.getItem("guest_onboarding_completed")) {
-        setShowWelcomeModal(true);
-      }
-    } else if (user) {
-      fetchProfile();
-      fetchProjects();
-    }
-  }, [user, authLoading, isGuest]);
+  // Data fetching handled by useProjectsData hook
 
   // Show welcome toast after email confirmation
   useEffect(() => {
@@ -212,135 +201,6 @@ const Projects = () => {
     }
   }, []);
 
-  const fetchGuestProjects = () => {
-    try {
-      const guestProjects = getGuestProjects();
-      // Map guest projects to the Project interface
-      setProjects(guestProjects.map((p) => ({
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        status: p.status,
-        created_at: p.created_at,
-        address: p.address,
-        postal_code: p.postal_code,
-        city: p.city,
-        project_type: p.project_type,
-        owner_id: null,
-      })));
-      refreshStorageUsage();
-    } catch (error) {
-      console.error("Error loading guest projects:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchProfile = async () => {
-    try {
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user?.id)
-        .single();
-      setProfile(data);
-
-      // Check if we need to show the welcome modal
-      if (data && !data.onboarding_welcome_completed) {
-        setShowWelcomeModal(true);
-      }
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-    }
-  };
-
-  const fetchProjects = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id, default_labor_cost_percent")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!profile) return;
-
-      const { data, error } = await supabase
-        .from("projects")
-        .select("*")
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      setProjects(data || []);
-
-      // Fetch shared project IDs to distinguish own+shared from admin-visible
-      const { data: shares } = await supabase
-        .from("project_shares")
-        .select("project_id")
-        .eq("shared_with_user_id", profile.id);
-      if (shares) {
-        setSharedProjectIds(new Set(shares.map((s: { project_id: string }) => s.project_id)));
-      }
-
-      // Fetch owner names
-      const uniqueOwnerIds = [...new Set((data || []).map((p: Project) => p.owner_id).filter(Boolean))] as string[];
-      if (uniqueOwnerIds.length > 0) {
-        const { data: owners } = await supabase
-          .from("profiles")
-          .select("id, name")
-          .in("id", uniqueOwnerIds);
-        if (owners) {
-          const map: Record<string, string> = {};
-          for (const o of owners) {
-            map[o.id] = o.name || "";
-          }
-          setOwnerNames(map);
-        }
-      }
-
-      const laborCostPct = (profile as { default_labor_cost_percent?: number | null })?.default_labor_cost_percent ?? 50;
-      const ids = (data || []).map((p: Project) => p.id);
-      fetchProjectFinancials(ids, laborCostPct);
-    } catch (error: unknown) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchProjectFinancials = async (projectIds: string[], laborCostPercent: number) => {
-    if (projectIds.length === 0) return;
-    const { data: tasks } = await supabase
-      .from("tasks")
-      .select("project_id, budget, estimated_hours, hourly_rate, labor_cost_percent, subcontractor_cost, markup_percent, material_estimate, material_markup_percent")
-      .in("project_id", projectIds);
-
-    if (!tasks) return;
-
-    const financials: Record<string, { budget: number; profit: number }> = {};
-    for (const task of tasks) {
-      if (!financials[task.project_id]) {
-        financials[task.project_id] = { budget: 0, profit: 0 };
-      }
-      financials[task.project_id].budget += task.budget || 0;
-
-      const laborTotal = (task.estimated_hours || 0) * (task.hourly_rate || 0);
-      const costPct = task.labor_cost_percent ?? laborCostPercent;
-      const laborProfit = laborTotal * (1 - costPct / 100);
-      const ueProfit = (task.subcontractor_cost || 0) * (task.markup_percent || 0) / 100;
-      const matProfit = (task.material_estimate || 0) * (task.material_markup_percent || 0) / 100;
-      financials[task.project_id].profit += laborProfit + ueProfit + matProfit;
-    }
-    setProjectFinancials(financials);
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -352,10 +212,10 @@ const Projects = () => {
 
     if (isGuest) {
       // Guest mode: refresh guest projects
-      fetchGuestProjects();
+      refetch();
     } else {
-      // Refresh projects - fetchProjects() already handles demo seeding
-      await fetchProjects();
+      // Refresh projects - refetch() already handles demo seeding
+      await refetch();
     }
 
     // Handle quick start choice
@@ -419,7 +279,7 @@ const Projects = () => {
           description: t("projects.deleteSuccessDescription", { name: deleteTarget.name }),
         });
         setDeleteTarget(null);
-        fetchGuestProjects();
+        refetch();
         return;
       }
 
@@ -436,7 +296,7 @@ const Projects = () => {
         description: t("projects.deleteSuccessDescription", { name: deleteTarget.name }),
       });
       setDeleteTarget(null);
-      fetchProjects();
+      refetch();
     } catch (error: unknown) {
       toast({
         title: t("common.error"),
