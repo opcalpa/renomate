@@ -5,7 +5,7 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Check, X, Clock, Pencil, Trash2 } from "lucide-react";
+import { Plus, Check, X, Clock, Pencil, Trash2, Download, Loader2 } from "lucide-react";
 import { LogTimeDialog } from "./LogTimeDialog";
 
 interface TimeTrackingTabProps {
@@ -49,6 +49,7 @@ export function TimeTrackingTab({ projectId, isReadOnly, userType }: TimeTrackin
   const [defaultRate, setDefaultRate] = useState(0);
 
   const isHomeowner = userType === "homeowner";
+  const [exporting, setExporting] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -223,12 +224,51 @@ export function TimeTrackingTab({ projectId, isReadOnly, userType }: TimeTrackin
                 </div>
               )}
             </div>
-            {!isReadOnly && (
-              <Button onClick={() => { setEditingEntry(null); setDialogOpen(true); }}>
-                <Plus className="h-4 w-4 mr-1" />
-                {t("timeTracking.logTime")}
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {!isReadOnly && !isHomeowner && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={exporting || entries.length === 0}
+                  onClick={async () => {
+                    if (!profileId) return;
+                    setExporting(true);
+                    try {
+                      const { generatePaxmlExport, downloadPaxmlFile } = await import("@/services/paxmlExportService");
+                      const now = new Date();
+                      const result = await generatePaxmlExport(profileId, now.getFullYear(), now.getMonth() + 1);
+                      if (result) {
+                        downloadPaxmlFile(result.content, result.filename);
+                        toast({
+                          title: t("timeTracking.paxmlExported", "Löneunderlag exporterat"),
+                          description: t("timeTracking.paxmlExportedDesc", "{{workers}} personer, {{hours}}h, {{amount}} kr", {
+                            workers: result.workerCount,
+                            hours: result.totalHours.toFixed(1),
+                            amount: Math.round(result.totalAmount).toLocaleString("sv-SE"),
+                          }),
+                        });
+                      } else {
+                        toast({ title: t("timeTracking.paxmlNoData", "Inga godkända timmar denna månad"), variant: "destructive" });
+                      }
+                    } catch (err) {
+                      console.error("PAXml export failed:", err);
+                      toast({ title: t("common.error"), variant: "destructive" });
+                    } finally {
+                      setExporting(false);
+                    }
+                  }}
+                >
+                  {exporting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
+                  {t("timeTracking.exportPayroll", "Löneexport")}
+                </Button>
+              )}
+              {!isReadOnly && (
+                <Button onClick={() => { setEditingEntry(null); setDialogOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  {t("timeTracking.logTime")}
+                </Button>
+              )}
+            </div>
           </div>
           {totalEstimated > 0 && (
             <div className="h-2 bg-muted rounded-full overflow-hidden">

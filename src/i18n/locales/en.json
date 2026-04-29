@@ -5399,7 +5399,11 @@
     "selectTask": "Select task",
     "allTasks": "All tasks",
     "summary": "Summary",
-    "loggedVsEstimated": "{{logged}}h logged / {{estimated}}h estimated"
+    "loggedVsEstimated": "{{logged}}h logged / {{estimated}}h estimated",
+    "exportPayroll": "Payroll export",
+    "paxmlExported": "Payroll data exported",
+    "paxmlExportedDesc": "{{workers}} workers, {{hours}}h, {{amount}} kr",
+    "paxmlNoData": "No approved hours this month"
   },
   "ownerStart": {
     "welcome": "Welcome to Renofine",

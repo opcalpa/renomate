@@ -5396,7 +5396,11 @@
     "selectTask": "Välj arbete",
     "allTasks": "Alla arbeten",
     "summary": "Summering",
-    "loggedVsEstimated": "{{logged}}h loggat / {{estimated}}h estimerat"
+    "loggedVsEstimated": "{{logged}}h loggat / {{estimated}}h estimerat",
+    "exportPayroll": "Löneexport",
+    "paxmlExported": "Löneunderlag exporterat",
+    "paxmlExportedDesc": "{{workers}} personer, {{hours}}h, {{amount}} kr",
+    "paxmlNoData": "Inga godkända timmar denna månad"
   },
   "ownerStart": {
     "welcome": "Välkommen till Renofine",
