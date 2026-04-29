@@ -20,7 +20,8 @@ import { PROFESSIONAL_CATEGORIES } from "@/lib/professionalCategories";
 import { validatePersonnummer } from "@/lib/personnummerValidator";
 import { Switch } from "@/components/ui/switch";
 import { useEnabledModules } from "@/hooks/useEnabledModules";
-import { MODULE_REGISTRY, resolveRegion } from "@/lib/modules";
+import { MODULE_REGISTRY, MARKETS } from "@/lib/modules";
+import { useMarket } from "@/hooks/useMarket";
 import { ShoppingCart, Clock, FileText, Users as UsersIcon2, PencilRuler, ClipboardCheck, QrCode, CalendarRange, Contact, TrendingUp, Puzzle, Receipt, FileDown } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -77,13 +78,16 @@ const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   Receipt, FileDown,
 };
 
-function ModulesSection({ profileSize, region }: { profileSize: "solo" | "small" | "company" | "homeowner"; region: string | null }) {
+function ModulesSection({ profileSize }: { profileSize: "solo" | "small" | "company" | "homeowner" }) {
   const { t } = useTranslation();
-  const { enabledModules, toggleModule, resetToDefaults, allModules } = useEnabledModules(profileSize, region);
+  const [market, setMarket] = useMarket();
+  const { enabledModules, toggleModule, resetToDefaults, allModules } = useEnabledModules(profileSize, market);
 
   const visibleModules = allModules.filter(
     (m) => m.audience === "both" || m.audience === (profileSize === "homeowner" ? "homeowner" : "contractor"),
   );
+
+  const currentMarket = MARKETS.find((m) => m.code === market) || MARKETS[0];
 
   return (
     <CollapsibleCard
@@ -91,6 +95,26 @@ function ModulesSection({ profileSize, region }: { profileSize: "solo" | "small"
       description={t("modules.description", "Choose which features are visible in your workspace")}
       icon={<Puzzle className="h-5 w-5 text-primary shrink-0" />}
     >
+      {/* Market selector */}
+      <div className="mb-4">
+        <Label className="text-sm font-medium">{t("modules.market.label", "Operating market")}</Label>
+        <p className="text-xs text-muted-foreground mb-2">{t("modules.market.description", "Determines which region-specific features are available. Independent from your UI language.")}</p>
+        <Select value={market ?? "__intl"} onValueChange={(v) => setMarket(v === "__intl" ? null : v)}>
+          <SelectTrigger className="w-full max-w-xs">
+            <SelectValue>{currentMarket.flag} {t(currentMarket.labelKey)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {MARKETS.map((m) => (
+              <SelectItem key={m.code ?? "__intl"} value={m.code ?? "__intl"}>
+                {m.flag} {t(m.labelKey)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Separator className="mb-3" />
+
       <div className="space-y-1">
         {visibleModules.map((mod) => {
           const Icon = MODULE_ICONS[mod.icon];
@@ -103,7 +127,10 @@ function ModulesSection({ profileSize, region }: { profileSize: "solo" | "small"
               <div className="flex items-center gap-3 min-w-0">
                 {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
                 <div className="min-w-0">
-                  <div className="text-sm font-medium">{t(mod.labelKey)}</div>
+                  <div className="text-sm font-medium">
+                    {t(mod.labelKey)}
+                    {mod.region && <span className="ml-1.5 text-[10px] text-muted-foreground/70 font-normal">{mod.region}</span>}
+                  </div>
                   <div className="text-xs text-muted-foreground">{t(mod.descriptionKey)}</div>
                 </div>
               </div>
@@ -1137,7 +1164,7 @@ const Profile = ({ asDrawer = false }: { asDrawer?: boolean }) => {
 
           {/* Feature Modules — toggle which features are visible */}
           {userType === "contractor" && (
-            <ModulesSection profileSize="small" region={resolveRegion(languagePreference)} />
+            <ModulesSection profileSize="small" />
           )}
 
           {/* Professional Profile — hidden for homeowners */}

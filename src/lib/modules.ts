@@ -207,12 +207,21 @@ export function modulesForRoute(route: string): string[] {
 
 export type ProfileSize = "solo" | "small" | "company" | "homeowner";
 
+/** Available markets with their display info */
+export const MARKETS = [
+  { code: null, labelKey: "modules.market.international", flag: "🌍" },
+  { code: "SE", labelKey: "modules.market.sweden", flag: "🇸🇪" },
+  { code: "NO", labelKey: "modules.market.norway", flag: "🇳🇴" },
+  { code: "DE", labelKey: "modules.market.germany", flag: "🇩🇪" },
+  { code: "US", labelKey: "modules.market.usa", flag: "🇺🇸" },
+  { code: "GB", labelKey: "modules.market.uk", flag: "🇬🇧" },
+] as const;
+
 /**
- * Resolve user region from language/country.
- * Language "sv" → "SE", country "DE" → "DE", fallback → null (universal only).
+ * Guess initial market from language when user hasn't explicitly chosen.
+ * Only used as a fallback — explicit market setting always wins.
  */
-export function resolveRegion(language?: string | null, country?: string | null): string | null {
-  if (country) return country.toUpperCase();
+export function guessMarketFromLanguage(language?: string | null): string | null {
   if (language === "sv") return "SE";
   return null;
 }

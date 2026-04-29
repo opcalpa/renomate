@@ -5508,6 +5508,16 @@
     "payrollExport": {
       "name": "Löneexport (PAXml)",
       "description": "Exportera tidrapporter till lönesystem"
+    },
+    "market": {
+      "label": "Verksam marknad",
+      "description": "Bestämmer vilka regionsspecifika funktioner som visas. Oberoende av ditt UI-språk.",
+      "international": "Internationell",
+      "sweden": "Sverige",
+      "norway": "Norge",
+      "germany": "Tyskland",
+      "usa": "USA",
+      "uk": "Storbritannien"
     }
   }
 }

@@ -41,7 +41,7 @@ import { RoomsList } from "@/components/floormap/RoomsList";
 import { RoomDetailDialog } from "@/components/floormap/RoomDetailDialog";
 import { useFloorMapStore } from "@/components/floormap/store";
 import { useEnabledModules } from "@/hooks/useEnabledModules";
-import { resolveRegion } from "@/lib/modules";
+import { useMarket } from "@/hooks/useMarket";
 import { FloorMapShape } from "@/components/floormap/types";
 import { v4 as uuidv4 } from "uuid";
 import { useDemoPreferences } from "@/hooks/useDemoPreferences";
@@ -100,7 +100,8 @@ const ProjectDetail = () => {
   const demoPrefs = useDemoPreferences();
   const [showDemoRoleModal, setShowDemoRoleModal] = useState(false);
   useProfileLanguage();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const [market] = useMarket();
 
   // Menu configurations for hover dropdowns
   const menuConfigs = {
@@ -182,7 +183,7 @@ const ProjectDetail = () => {
 
   // Module system: determine profile size for defaults
   const profileSize = effectiveUserType === "homeowner" ? "homeowner" as const : "small" as const;
-  const { isTabEnabled } = useEnabledModules(profileSize, resolveRegion(i18n.language));
+  const { isTabEnabled } = useEnabledModules(profileSize, market);
 
   const isTabBlocked = (tab: string) => tabPermissionMap[tab] === "none" || !isTabEnabled(tab);
 
