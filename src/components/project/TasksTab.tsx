@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { useTasksData } from "@/hooks/useTasksData";
 import { analytics, AnalyticsEvents } from "@/lib/analytics";
 import { usePersistedPreference } from "@/hooks/usePersistedPreference";
 import { Button } from "@/components/ui/button";
@@ -128,15 +129,14 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
   const isPlanning = projectStatus === "planning";
   const isBuilder = userType !== "homeowner";
   const canEditTasks = tasksAccess === 'edit';
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    tasks, setTasks, loading, rooms, stakeholders, teamMembers,
+    taskDependencies, currentProfileId, defaultLaborCostPercent,
+    canCreateRequests, taskMaterialSpend, taskMaterialPlanned,
+    refetchTasks: fetchTasks, refetchRooms: fetchRooms,
+    refetchStakeholders: fetchStakeholders, refetchTeamMembers: fetchTeamMembers,
+  } = useTasksData(projectId, tasksScope);
   const [creating, setCreating] = useState(false);
-  const [canCreateRequests, setCanCreateRequests] = useState(false);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [taskDependencies, setTaskDependencies] = useState<{ [key: string]: TaskDependency[] }>({});
-  const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
-  const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
-  const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
   const [createStakeholderDialogOpen, setCreateStakeholderDialogOpen] = useState(false);
   const [newStakeholderName, setNewStakeholderName] = useState("");
   const [newStakeholderRole, setNewStakeholderRole] = useState<'contractor' | 'client' | 'other'>('contractor');
@@ -156,9 +156,6 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
   const [customCostCenterValue, setCustomCostCenterValue] = useState("");
   const [newTaskIsAta, setNewTaskIsAta] = useState(false);
   const [newTaskParentId, setNewTaskParentId] = useState<string | null>(null);
-  const [taskMaterialSpend, setTaskMaterialSpend] = useState<Map<string, number>>(new Map());
-  const [taskMaterialPlanned, setTaskMaterialPlanned] = useState<Map<string, number>>(new Map());
-  const [defaultLaborCostPercent, setDefaultLaborCostPercent] = useState(57);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -253,245 +250,6 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
   const [poUnit, setPoUnit] = useState("pcs");
   const [poPricePerUnit, setPoPricePerUnit] = useState("");
 
-  useEffect(() => {
-    fetchTasks();
-    checkPermissions();
-    fetchTeamMembers();
-    fetchStakeholders();
-    fetchTaskDependencies();
-    fetchRooms();
-  }, [projectId]);
-
-  // Re-fetch tasks when profile ID is resolved and scope filtering is needed
-  useEffect(() => {
-    if (tasksScope === 'assigned' && currentProfileId) {
-      fetchTasks();
-    }
-  }, [currentProfileId, tasksScope]);
-
-  // Fetch materials when editing a task
-  useEffect(() => {
-    if (editingTask) {
-      fetchEditTaskMaterials(editingTask.id);
-    }
-  }, [editingTask?.id]);
-
-  // Auto-open a specific task from notification deep link or feed navigation
-  useEffect(() => {
-    if (!openEntityId || loading) return;
-    const task = tasks.find((t) => t.id === openEntityId);
-    if (task) {
-      setEditingTask(task);
-      setEditDialogOpen(true);
-      onEntityOpened?.();
-    } else if (tasks.length > 0) {
-      // Entity not found in loaded tasks — clear to avoid stale state
-      onEntityOpened?.();
-    }
-  }, [openEntityId, loading, tasks]);
-
-  const fetchRooms = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("rooms")
-        .select("id, name")
-        .eq("project_id", projectId)
-        .order("name");
-
-      if (error) throw error;
-      setRooms(data || []);
-    } catch (error: unknown) {
-      console.error("Error fetching rooms:", error);
-    }
-  };
-
-  const checkPermissions = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id, default_labor_cost_percent")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!profile) return;
-
-      setCurrentProfileId(profile.id);
-      if (profile.default_labor_cost_percent != null) {
-        setDefaultLaborCostPercent(profile.default_labor_cost_percent);
-      }
-
-      // Check if user can create purchase requests
-      const { data: shareData } = await supabase
-        .from("project_shares")
-        .select("can_create_purchase_requests")
-        .eq("project_id", projectId)
-        .eq("shared_with_user_id", profile.id)
-        .maybeSingle();
-
-      setCanCreateRequests(shareData?.can_create_purchase_requests || false);
-    } catch (error) {
-      setCanCreateRequests(false);
-    }
-  };
-
-  const fetchStakeholders = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("stakeholders" as any)
-        .select("id, name, role, contractor_category")
-        .eq("project_id", projectId)
-        .order("name");
-
-      if (error) throw error;
-      setStakeholders((data || []) as unknown as Stakeholder[]);
-    } catch (error: unknown) {
-      console.error("Error fetching stakeholders:", error);
-    }
-  };
-
-  const fetchTasks = async () => {
-    try {
-      let query = supabase
-        .from("tasks")
-        .select("*")
-        .eq("project_id", projectId);
-
-      // Filter at DB level when scope is 'assigned'
-      if (tasksScope === 'assigned' && currentProfileId) {
-        query = query.eq("assigned_to_stakeholder_id", currentProfileId);
-      }
-
-      const [{ data, error }, materialsRes, fileLinksRes] = await Promise.all([
-        query.order("created_at", { ascending: false }),
-        supabase
-          .from("materials")
-          .select("task_id, price_total, status, quantity, price_per_unit")
-          .eq("project_id", projectId)
-          .eq("exclude_from_budget", false)
-          .not("task_id", "is", null),
-        supabase
-          .from("task_file_links")
-          .select("task_id, file_type")
-          .eq("project_id", projectId)
-          .not("task_id", "is", null),
-      ]);
-
-      if (error) throw error;
-
-      // Build material spend map per task (exclude planned — those are budget, not spend)
-      const spendMap = new Map<string, number>();
-      const plannedMap = new Map<string, number>();
-      (materialsRes.data || []).forEach((m: { task_id: string | null; price_total: number | null; status: string | null; quantity: number | null; price_per_unit: number | null }) => {
-        if (m.task_id) {
-          const cost = m.price_total ?? ((m.quantity || 0) * (m.price_per_unit || 0));
-          if (m.status === "planned") {
-            plannedMap.set(m.task_id, (plannedMap.get(m.task_id) || 0) + cost);
-          } else {
-            spendMap.set(m.task_id, (spendMap.get(m.task_id) || 0) + cost);
-          }
-        }
-      });
-      setTaskMaterialSpend(spendMap);
-      setTaskMaterialPlanned(plannedMap);
-
-      // Build attachment count + category map per task
-      const attachCountMap = new Map<string, number>();
-      const fileCatMap = new Map<string, Set<string>>();
-      (fileLinksRes.data || []).forEach((l: { task_id: string | null; file_type: string }) => {
-        if (l.task_id) {
-          attachCountMap.set(l.task_id, (attachCountMap.get(l.task_id) || 0) + 1);
-          if (!fileCatMap.has(l.task_id)) fileCatMap.set(l.task_id, new Set());
-          fileCatMap.get(l.task_id)!.add(l.file_type);
-        }
-      });
-
-      // Map database fields to our interface (assigned_to_contractor_id is deprecated, use assigned_to_stakeholder_id)
-      const mappedTasks = (data || []).map((task: any) => ({
-        ...task,
-        assigned_to_stakeholder_id: task.assigned_to_stakeholder_id || task.assigned_to_contractor_id || null,
-        attachmentCount: attachCountMap.get(task.id) || 0,
-        fileCategories: fileCatMap.has(task.id) ? [...fileCatMap.get(task.id)!] : [],
-      }));
-
-      setTasks(mappedTasks as Task[]);
-    } catch (error: unknown) {
-      toast({
-        title: t('common.error'),
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchTeamMembers = async () => {
-    try {
-      // Fetch project owner
-      const { data: projectData } = await supabase
-        .from("projects")
-        .select("owner_id, profiles!projects_owner_id_fkey(id, name)")
-        .eq("id", projectId)
-        .single();
-
-      const members: TeamMember[] = [];
-      if (projectData?.profiles) {
-        members.push({
-          id: projectData.profiles.id,
-          name: projectData.profiles.name,
-          role: "Owner",
-        });
-      }
-
-      // Fetch shared team members
-      const { data: shares } = await supabase
-        .from("project_shares")
-        .select("shared_with_user_id, role, profiles!project_shares_shared_with_user_id_fkey(id, name)")
-        .eq("project_id", projectId);
-
-      if (shares) {
-        const existingIds = new Set(members.map(m => m.id));
-        shares.forEach((share: any) => {
-          if (share.profiles && !existingIds.has(share.profiles.id)) {
-            existingIds.add(share.profiles.id);
-            members.push({
-              id: share.profiles.id,
-              name: share.profiles.name,
-              role: share.role,
-            });
-          }
-        });
-      }
-
-      setTeamMembers(members);
-    } catch (error: unknown) {
-      console.error("Error fetching team members:", error);
-    }
-  };
-
-  const fetchTaskDependencies = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("task_dependencies")
-        .select("*")
-        .in("task_id", tasks.map(t => t.id));
-
-      if (error) throw error;
-
-      const deps: { [key: string]: TaskDependency[] } = {};
-      data?.forEach((dep: any) => {
-        if (!deps[dep.task_id]) deps[dep.task_id] = [];
-        deps[dep.task_id].push(dep);
-      });
-
-      setTaskDependencies(deps);
-    } catch (error: unknown) {
-      console.error("Error fetching dependencies:", error);
-    }
-  };
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
