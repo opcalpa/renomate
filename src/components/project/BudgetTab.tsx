@@ -3084,8 +3084,13 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
               )
             )}
           </TableBody>
-          {filtered.length > 0 && (
-            <TableFooter>
+        </Table>
+      </div>
+      {/* Summary row — pinned below the scroll area, always visible */}
+      {filtered.length > 0 && (
+        <div className="border border-t-2 border-border rounded-b-lg -mt-[1px] -mx-3 px-3 md:mx-0 md:px-0 bg-muted/50 overflow-x-auto">
+          <Table>
+            <TableFooter className="border-t-0">
               <TableRow>
                 {visibleColumns.map((col) => (
                   <TableCell
@@ -3098,9 +3103,9 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
                 {isBuilder && <TableCell />}
               </TableRow>
             </TableFooter>
-          )}
-        </Table>
-      </div>
+          </Table>
+        </div>
+      )}
 
       {/* Budget Charts Section (builder only) */}
       {isBuilder && <BudgetChartsSection rows={rows} currency={currency} />}
