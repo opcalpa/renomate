@@ -7,10 +7,9 @@ import { analytics, AnalyticsEvents } from "@/lib/analytics";
 import { useProfileLanguage } from "@/hooks/useProfileLanguage";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ChevronRight, ChevronLeft, Users, User, BookOpen, Trash2, Upload, FileText, X, Loader2, Sparkles, ChevronDown, ChevronUp, MessageSquare, Mail, LayoutGrid, List, Settings2, ShieldCheck, GanttChart } from "lucide-react";
+import { Plus, Users, User, BookOpen, Trash2, Loader2, Sparkles, ChevronDown, ChevronUp, LayoutGrid, List, Settings2, ShieldCheck, GanttChart } from "lucide-react";
 import { PortfolioTimeline } from "@/components/project/PortfolioTimeline";
 import { TaskEditDialog } from "@/components/project/TaskEditDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -26,11 +25,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { WelcomeModal, QuickStartChoice } from "@/components/onboarding/WelcomeModal";
 import { GuidedSetupWizard } from "@/components/onboarding/GuidedSetupWizard";
 import { PageLoadingSkeleton } from "@/components/ui/skeleton-screens";
@@ -71,7 +65,7 @@ interface Project {
 }
 
 const Projects = () => {
-  const { signOut } = useAuthSession();
+  const { user, signOut } = useAuthSession();
   const { isGuest, refreshStorageUsage } = useGuestMode();
   useProfileLanguage();
   const { t } = useTranslation();
@@ -364,7 +358,7 @@ const Projects = () => {
         {!isGuest && (
           <section id="pipeline">
             <LeadsPipelineSection
-              onRefetch={fetchProjects}
+              onRefetch={refetch}
               userType={profile?.onboarding_user_type as string | null}
             />
           </section>
