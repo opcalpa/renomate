@@ -135,6 +135,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
     canCreateRequests, taskMaterialSpend, taskMaterialPlanned,
     refetchTasks: fetchTasks, refetchRooms: fetchRooms,
     refetchStakeholders: fetchStakeholders, refetchTeamMembers: fetchTeamMembers,
+    refetchTaskDependencies: fetchTaskDependencies,
   } = useTasksData(projectId, tasksScope);
   const [creating, setCreating] = useState(false);
   const [createStakeholderDialogOpen, setCreateStakeholderDialogOpen] = useState(false);

@@ -77,6 +77,7 @@ interface UseTasksDataResult {
   refetchRooms: () => Promise<void>;
   refetchStakeholders: () => Promise<void>;
   refetchTeamMembers: () => Promise<void>;
+  refetchTaskDependencies: () => Promise<void>;
 }
 
 export function useTasksData(
@@ -292,5 +293,6 @@ export function useTasksData(
     refetchRooms: fetchRooms,
     refetchStakeholders: fetchStakeholders,
     refetchTeamMembers: fetchTeamMembers,
+    refetchTaskDependencies: fetchTaskDependencies,
   };
 }
