@@ -2038,6 +2038,8 @@
     "extraColumns": "Extra kolumner",
     "columns": "Kolumner",
     "compactRows": "Kompakt",
+    "fullscreen": "Helskärm",
+    "exitFullscreen": "Stäng helskärm",
     "groupBy": "Gruppera",
     "groupNone": "Ingen gruppering",
     "groupByRoom": "Gruppera per rum",

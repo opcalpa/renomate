@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Layers, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Hammer, Handshake, MoreVertical } from "lucide-react";
+import { Loader2, Search, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Layers, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Hammer, Handshake, MoreVertical, Maximize2, Minimize2 } from "lucide-react";
 import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
 import { FilePreviewPopover } from "@/components/shared/FilePreviewPopover";
 import { getStatusBadgeColor } from "@/lib/statusColors";
@@ -247,6 +247,15 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Escape key exits fullscreen
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIsFullscreen(false); };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [isFullscreen]);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [filterType, setFilterType] = useState<"all" | "task" | "material" | "purchase">("all");
 
@@ -2439,21 +2448,33 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
   }
 
   return (
-    <div>
-      {isBuilder ? (
-        <>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">{t('budget.title')}</h2>
-          <p className="text-muted-foreground mb-6">
-            {t('budget.description')}
-          </p>
-          <div className="mb-6">
-            <BuilderSummaryCards projectId={projectId} currency={currency} onCreateInvoice={() => setInvoiceMethodOpen(true)} />
-          </div>
-        </>
-      ) : (
-        <div className="mb-6">
-          <HomeownerBudgetView projectId={projectId} currency={currency} />
+    <div className={isFullscreen ? "fixed inset-0 z-50 bg-background overflow-auto p-4 pt-2" : ""}>
+      {/* Fullscreen close bar */}
+      {isFullscreen && (
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('budget.title')}</h2>
+          <Button variant="ghost" size="sm" onClick={() => setIsFullscreen(false)}>
+            <Minimize2 className="h-4 w-4 mr-1.5" />
+            {t('budget.exitFullscreen', 'Exit fullscreen')}
+          </Button>
         </div>
+      )}
+      {!isFullscreen && (
+        isBuilder ? (
+          <>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">{t('budget.title')}</h2>
+            <p className="text-muted-foreground mb-6">
+              {t('budget.description')}
+            </p>
+            <div className="mb-6">
+              <BuilderSummaryCards projectId={projectId} currency={currency} onCreateInvoice={() => setInvoiceMethodOpen(true)} />
+            </div>
+          </>
+        ) : (
+          <div className="mb-6">
+            <HomeownerBudgetView projectId={projectId} currency={currency} />
+          </div>
+        )
       )}
 
       {/* Filters */}
@@ -2611,6 +2632,16 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           title={t('budget.compactRows', 'Compact rows')}
         >
           <Rows3 className="h-4 w-4" />
+        </Button>
+
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 hidden sm:flex"
+          onClick={() => setIsFullscreen((prev) => !prev)}
+          title={t('budget.fullscreen', 'Fullscreen')}
+        >
+          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </Button>
 
         {/* Mobile overflow menu — contains all secondary controls */}
@@ -2779,7 +2810,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       <p className="text-[11px] text-muted-foreground/60 mb-1 text-right">
         {isBuilder ? t('budget.exMomsNote', 'All amounts ex. VAT') : t('budget.incMomsNote', 'All amounts inc. VAT')}
       </p>
-      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-20rem)] -mx-3 px-3 md:mx-0 md:px-0 bg-card">
+      <div className={cn("border rounded-lg overflow-auto bg-card", isFullscreen ? "max-h-[calc(100vh-8rem)] mx-0 px-0" : "max-h-[calc(100vh-20rem)] -mx-3 px-3 md:mx-0 md:px-0")}>
         <Table>
           <TableHeader className="sticky top-0 z-20 bg-card">
             <TableRow>

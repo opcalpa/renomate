@@ -2567,6 +2567,8 @@
     "extraColumns": "Extra Columns",
     "columns": "Columns",
     "compactRows": "Compact",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
     "groupBy": "Group by",
     "groupNone": "No grouping",
     "groupByRoom": "Group by room",
