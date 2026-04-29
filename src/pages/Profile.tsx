@@ -19,6 +19,9 @@ import { PublicProfileSheet } from "@/components/shared/PublicProfileSheet";
 import { PROFESSIONAL_CATEGORIES } from "@/lib/professionalCategories";
 import { validatePersonnummer } from "@/lib/personnummerValidator";
 import { Switch } from "@/components/ui/switch";
+import { useEnabledModules } from "@/hooks/useEnabledModules";
+import { MODULE_REGISTRY } from "@/lib/modules";
+import { ShoppingCart, Clock, FileText, Users as UsersIcon2, PencilRuler, ClipboardCheck, QrCode, CalendarRange, Contact, TrendingUp, Puzzle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -65,6 +68,60 @@ function CollapsibleCard({
         </CollapsibleContent>
       </Card>
     </Collapsible>
+  );
+}
+
+const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  ShoppingCart, Clock, FileText, Users: UsersIcon2, PencilRuler,
+  ClipboardCheck, QrCode, CalendarRange, Contact, TrendingUp,
+};
+
+function ModulesSection({ profileSize }: { profileSize: "solo" | "small" | "company" | "homeowner" }) {
+  const { t } = useTranslation();
+  const { enabledModules, toggleModule, resetToDefaults, allModules } = useEnabledModules(profileSize);
+
+  const visibleModules = allModules.filter(
+    (m) => m.audience === "both" || m.audience === (profileSize === "homeowner" ? "homeowner" : "contractor"),
+  );
+
+  return (
+    <CollapsibleCard
+      title={t("modules.title", "Modules")}
+      description={t("modules.description", "Choose which features are visible in your workspace")}
+      icon={<Puzzle className="h-5 w-5 text-primary shrink-0" />}
+    >
+      <div className="space-y-1">
+        {visibleModules.map((mod) => {
+          const Icon = MODULE_ICONS[mod.icon];
+          const enabled = enabledModules.includes(mod.id);
+          return (
+            <label
+              key={mod.id}
+              className="flex items-center justify-between py-2.5 px-1 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">{t(mod.labelKey)}</div>
+                  <div className="text-xs text-muted-foreground">{t(mod.descriptionKey)}</div>
+                </div>
+              </div>
+              <Switch
+                checked={enabled}
+                onCheckedChange={() => toggleModule(mod.id)}
+              />
+            </label>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={resetToDefaults}
+        className="text-xs text-muted-foreground hover:text-foreground underline mt-2"
+      >
+        {t("modules.resetDefaults", "Reset to defaults")}
+      </button>
+    </CollapsibleCard>
   );
 }
 
@@ -1076,6 +1133,11 @@ const Profile = ({ asDrawer = false }: { asDrawer?: boolean }) => {
                 </div>
                 </>)}
             </CollapsibleCard>
+
+          {/* Feature Modules — toggle which features are visible */}
+          {userType === "contractor" && (
+            <ModulesSection profileSize="small" />
+          )}
 
           {/* Professional Profile — hidden for homeowners */}
           {userType !== "homeowner" && (

@@ -5456,5 +5456,50 @@
     "copyLink": "Kopiera länk",
     "linkCopied": "Länk kopierad",
     "todayCount": "{{count}} incheckade idag"
+  },
+  "modules": {
+    "title": "Moduler",
+    "description": "Välj vilka funktioner som syns i din arbetsyta",
+    "resetDefaults": "Återställ till standard",
+    "purchases": {
+      "name": "Inköp",
+      "description": "Materialbeställningar och inköpshantering"
+    },
+    "timeTracking": {
+      "name": "Tidrapportering",
+      "description": "Spåra arbetstimmar och personalaktivitet"
+    },
+    "quotes": {
+      "name": "Offerter & Fakturor",
+      "description": "Skapa offerter, fakturor och hantera din pipeline"
+    },
+    "customerPortal": {
+      "name": "Kundportal",
+      "description": "Ge kunder insyn i sitt projekt"
+    },
+    "floorPlan": {
+      "name": "Avancerad planritning",
+      "description": "Fullständig riteditor för planritningar"
+    },
+    "qualityControl": {
+      "name": "Kvalitetskontroll",
+      "description": "Besiktningar och egenkontrollchecklistor"
+    },
+    "attendance": {
+      "name": "Personalliggare",
+      "description": "QR-baserad in-/utcheckning på plats"
+    },
+    "resourcePlanning": {
+      "name": "Resursplanering",
+      "description": "Se vem som jobbar var över alla projekt"
+    },
+    "clientRegistry": {
+      "name": "Kundregister",
+      "description": "Hantera dina kundkontakter"
+    },
+    "financialAnalysis": {
+      "name": "Finansiell översikt",
+      "description": "Budget- och intäktsanalys på portföljnivå"
+    }
   }
 }

@@ -5459,5 +5459,50 @@
     "copyLink": "Copy link",
     "linkCopied": "Link copied",
     "todayCount": "{{count}} checked in today"
+  },
+  "modules": {
+    "title": "Modules",
+    "description": "Choose which features are visible in your workspace",
+    "resetDefaults": "Reset to defaults",
+    "purchases": {
+      "name": "Purchases",
+      "description": "Material requests and purchase management"
+    },
+    "timeTracking": {
+      "name": "Time tracking",
+      "description": "Track labor hours and worker activity"
+    },
+    "quotes": {
+      "name": "Quotes & Invoices",
+      "description": "Create quotes, invoices, and manage your pipeline"
+    },
+    "customerPortal": {
+      "name": "Customer portal",
+      "description": "Give customers insight into their project"
+    },
+    "floorPlan": {
+      "name": "Advanced floor plan",
+      "description": "Full canvas editor for drawing floor plans"
+    },
+    "qualityControl": {
+      "name": "Quality control",
+      "description": "Inspections and self-check checklists"
+    },
+    "attendance": {
+      "name": "Attendance tracking",
+      "description": "QR-based worker check-in/out on site"
+    },
+    "resourcePlanning": {
+      "name": "Resource planning",
+      "description": "See who works where across all projects"
+    },
+    "clientRegistry": {
+      "name": "Client registry",
+      "description": "Manage your customer contacts"
+    },
+    "financialAnalysis": {
+      "name": "Financial overview",
+      "description": "Portfolio-level budget and revenue analysis"
+    }
   }
 }

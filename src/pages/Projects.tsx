@@ -49,6 +49,7 @@ import { CreateProjectDialog } from "@/components/project/CreateProjectDialog";
 import { useProjectsData } from "@/hooks/useProjectsData";
 const OwnerStart = lazy(() => import("@/pages/owner/OwnerStart"));
 import { ResourcePlanningView } from "@/components/project/ResourcePlanningView";
+import { useEnabledModules } from "@/hooks/useEnabledModules";
 
 interface Project {
   id: string;
@@ -303,9 +304,10 @@ const Projects = () => {
   };
 
   const isContractor = (profile?.onboarding_user_type as string) === "contractor";
+  const { isSectionEnabled } = useEnabledModules(isContractor ? "small" : "homeowner");
 
   // Homeowners should never see resource planning — clamp to list
-  const effectiveViewMode = (!isContractor && viewMode === "resource") ? "list" : viewMode;
+  const effectiveViewMode = (!isContractor && viewMode === "resource") || (viewMode === "resource" && !isSectionEnabled("resource_planning")) ? "list" : viewMode;
 
   // Show loading while auth or data is loading
   if (authLoading || loading) {
@@ -354,8 +356,8 @@ const Projects = () => {
 
       <main className={`container py-4 sm:py-8 ${editorialDashboard && !isGuest ? "hidden" : ""}`}>
 
-        {/* Pipeline Section - Leads & Quotes (hidden in guest mode and for homeowners) */}
-        {!isGuest && (
+        {/* Pipeline Section - Leads & Quotes (hidden in guest mode, for homeowners, or when quotes module disabled) */}
+        {!isGuest && isSectionEnabled("pipeline") && (
           <section id="pipeline">
             <LeadsPipelineSection
               onRefetch={refetch}
@@ -388,7 +390,7 @@ const Projects = () => {
                   >
                     <List className="h-4 w-4" />
                   </button>
-                  {isContractor && (
+                  {isContractor && isSectionEnabled("resource_planning") && (
                     <button
                       type="button"
                       onClick={() => { setViewMode("resource"); localStorage.setItem("projects_view_mode", "resource"); }}
@@ -736,7 +738,7 @@ const Projects = () => {
         </section>
 
         {/* Financial Analysis - contractors only, at the bottom */}
-        {isContractor && !isGuest && nonDemoProjects.length > 0 && (
+        {isContractor && !isGuest && nonDemoProjects.length > 0 && isSectionEnabled("financial_analysis") && (
           <section className="mt-6 sm:mt-8">
             <FinancialAnalysisSection
               projects={nonDemoProjects}

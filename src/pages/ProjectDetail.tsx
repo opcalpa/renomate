@@ -40,6 +40,7 @@ import { HoverTabMenu } from "@/components/ui/HoverTabMenu";
 import { RoomsList } from "@/components/floormap/RoomsList";
 import { RoomDetailDialog } from "@/components/floormap/RoomDetailDialog";
 import { useFloorMapStore } from "@/components/floormap/store";
+import { useEnabledModules } from "@/hooks/useEnabledModules";
 import { FloorMapShape } from "@/components/floormap/types";
 import { v4 as uuidv4 } from "uuid";
 import { useDemoPreferences } from "@/hooks/useDemoPreferences";
@@ -178,7 +179,11 @@ const ProjectDetail = () => {
     chat: "view",
   };
 
-  const isTabBlocked = (tab: string) => tabPermissionMap[tab] === "none";
+  // Module system: determine profile size for defaults
+  const profileSize = effectiveUserType === "homeowner" ? "homeowner" as const : "small" as const;
+  const { isTabEnabled } = useEnabledModules(profileSize);
+
+  const isTabBlocked = (tab: string) => tabPermissionMap[tab] === "none" || !isTabEnabled(tab);
 
   // Sub-tab permission checks
   const isSubTabBlocked = (tab: string, subTab: string) => {
@@ -995,7 +1000,7 @@ const ProjectDetail = () => {
               />
 
               {/* 4b. Tid */}
-              {permissions.timeTracking !== "none" && (
+              {permissions.timeTracking !== "none" && isTabEnabled("timetracking") && (
                 <div
                   className={cn(
                     "py-1.5 text-sm font-medium cursor-pointer transition-colors",
@@ -1059,7 +1064,7 @@ const ProjectDetail = () => {
               />
 
               {/* 8. Kontroll (contractor only) */}
-              {effectiveUserType === "contractor" && (
+              {effectiveUserType === "contractor" && isTabEnabled("inspections") && (
                 <div
                   className={cn(
                     "py-1.5 text-sm font-medium cursor-pointer transition-colors",
