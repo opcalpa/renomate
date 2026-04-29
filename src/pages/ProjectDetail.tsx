@@ -24,6 +24,7 @@ import TeamManagement from "@/components/project/TeamManagement";
 import PurchaseRequestsTab from "@/components/project/PurchaseRequestsTab";
 import BudgetTab from "@/components/project/BudgetTab";
 import { TimeTrackingTab } from "@/components/project/TimeTrackingTab";
+import { InspectionsTab } from "@/components/project/InspectionsTab";
 import ProjectFeedTab from "@/components/project/ProjectFeedTab";
 import ProjectFilesTab from "@/components/project/ProjectFilesTab";
 import CustomerViewTab from "@/components/project/CustomerViewTab";
@@ -1056,6 +1057,19 @@ const ProjectDetail = () => {
                 onMainClick={() => handleMenuSelect('team', 'team')}
                 activeValue={activeTab === "team" ? activeSubTab || "team" : undefined}
               />
+
+              {/* 8. Kontroll (contractor only) */}
+              {effectiveUserType === "contractor" && (
+                <div
+                  className={cn(
+                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
+                    activeTab === "inspections" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={() => setActiveTab("inspections")}
+                >
+                  {t("inspections.tabLabel", "Kontroll")}
+                </div>
+              )}
             </div>
           </div>
         </AppHeader>
@@ -1399,6 +1413,14 @@ const ProjectDetail = () => {
           )}
           </ErrorBoundary>
         </TabsContent>
+
+        {effectiveUserType === "contractor" && (
+          <TabsContent value="inspections" className="m-0 pb-8">
+            <div className="container py-4 md:py-8">
+              <InspectionsTab projectId={project.id} rooms={roomsData} />
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Room Detail Dialog */}
