@@ -142,6 +142,31 @@ export function LinkPurchaseDialog({
         const base64 = await compressImage(file);
         const result = await analyzeDocument(base64);
         setExtraction(result);
+
+        // Auto-match ROT personnummer if extracted
+        if (result.rot_personnummer && projectId) {
+          const { data: existingPerson } = await supabase
+            .from("project_rot_persons")
+            .select("id, name")
+            .eq("project_id", projectId)
+            .eq("personnummer", result.rot_personnummer)
+            .maybeSingle();
+
+          if (!existingPerson) {
+            // New personnummer found — offer to add as ROT person
+            toast({
+              title: t("linkPurchase.newRotPerson", "Nytt personnummer hittat"),
+              description: `${result.rot_personnummer} — ${t("linkPurchase.addAsRotPerson", "läggs till som ROT-person automatiskt")}`,
+            });
+            // Auto-create ROT person
+            await supabase.from("project_rot_persons").insert({
+              project_id: projectId,
+              name: result.vendor_name || "Okänd",
+              personnummer: result.rot_personnummer,
+            });
+          }
+        }
+
         setStep("choose");
       } catch (err) {
         console.error("Extraction error:", err);

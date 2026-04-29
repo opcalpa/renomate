@@ -34,6 +34,8 @@ interface DocumentAnalysisResult {
   invoice_number: string | null;
   ocr_number: string | null;
   line_items: LineItem[];
+  rot_amount: number | null;
+  rot_personnummer: string | null;
   confidence: number;
 }
 
@@ -80,6 +82,11 @@ For Swedish documents:
 - "Fakturanummer" or "Fakturanr" = invoice number
 - "OCR" or "Betalningsreferens" = ocr_number
 
+For ROT/RUT tax deductions (common in Swedish renovation invoices):
+- "ROT-avdrag" or "Rutavdrag" = rot_amount (the deduction amount, NOT the total)
+- Look for Swedish personnummer (YYYYMMDD-XXXX or YYMMDD-XXXX format) associated with the ROT deduction
+- The personnummer is the property owner who claims the deduction
+
 RETURN FORMAT:
 {
   "document_type": "receipt" or "invoice",
@@ -93,6 +100,8 @@ RETURN FORMAT:
   "line_items": [
     {"description": "Item name", "quantity": 1, "unit_price": 99.00, "total": 99.00}
   ],
+  "rot_amount": 15000.00,
+  "rot_personnummer": "19850101-1234",
   "confidence": 0.85
 }
 
@@ -103,6 +112,8 @@ RULES:
 - purchase_date should be in ISO format (YYYY-MM-DD) or null if not found
 - due_date, invoice_number, ocr_number should be null for receipts
 - line_items can be an empty array if items are unclear
+- rot_amount is the ROT/RUT deduction amount (null if not a ROT invoice)
+- rot_personnummer is the Swedish personal ID linked to the ROT deduction (null if not found)
 - confidence is a number between 0 and 1 indicating how confident you are
 
 Return ONLY valid JSON, no explanations.`;

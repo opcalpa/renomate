@@ -17,6 +17,8 @@ export interface DocumentAnalysisResult {
   invoice_number: string | null;
   ocr_number: string | null;
   line_items: DocumentLineItem[];
+  rot_amount: number | null;
+  rot_personnummer: string | null;
   confidence: number;
 }
 
