@@ -86,9 +86,9 @@ export function ResourcePlanningView({ projectIds }: ResourcePlanningViewProps) 
         <div className="overflow-x-auto">
           <div style={{ minWidth: LABEL_WIDTH + totalWidth }}>
             {/* Week header */}
-            <div className="flex border-b bg-muted/30 sticky top-0 z-10">
+            <div className="flex border-b bg-muted/30 sticky top-0 z-10" style={{ height: 32 }}>
               <div
-                className="shrink-0 border-r bg-card sticky left-0 z-20 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                className="shrink-0 border-r bg-muted/30 sticky left-0 z-20 px-3 flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider"
                 style={{ width: LABEL_WIDTH }}
               >
                 {t("resourcePlanning.person", "Person")}
@@ -97,11 +97,12 @@ export function ResourcePlanningView({ projectIds }: ResourcePlanningViewProps) 
                 {weeks.map((w, i) => (
                   <div
                     key={i}
-                    className="absolute top-0 border-r border-border/50 px-2 py-2"
+                    className="absolute top-0 h-full border-r border-muted flex items-center px-2"
                     style={{ left: w.x, width: w.width }}
                   >
-                    <div className="text-xs font-medium text-muted-foreground">V.{w.weekNum}</div>
-                    <div className="text-[10px] text-muted-foreground/60">{w.label}</div>
+                    <span className="text-[11px] text-muted-foreground font-medium truncate">
+                      V.{w.weekNum} {w.label}
+                    </span>
                   </div>
                 ))}
               </div>
