@@ -2,9 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Responsive container padding — more breathing room on larger screens */
-@media (min-width: 1280px) { .container { padding-left: 2.5rem; padding-right: 2.5rem; } }
-@media (min-width: 1536px) { .container { padding-left: 3rem; padding-right: 3rem; } }
+/* Responsive container padding — @layer ensures it overrides Tailwind base */
+@layer base {
+  @media (min-width: 1280px) {
+    .container { padding-left: 2.5rem; padding-right: 2.5rem; }
+  }
+  @media (min-width: 1536px) {
+    .container { padding-left: 3rem; padding-right: 3rem; }
+  }
+}
 
 /* Keep Leaflet map below modals/sheets/dropdowns (z-50 = 50 in Tailwind) */
 .professionals-map {
