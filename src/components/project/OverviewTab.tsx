@@ -385,7 +385,7 @@ const OverviewTab = ({
       {isPlanning && (!isInvitedClient || isPlanningContributor) && planningSection}
 
       {/* Invite customer to fill in planning — shown below the planning card as secondary option */}
-      {!isHomeowner && isPlanning && !isRfqProject && (
+      {!isHomeowner && isPlanning && !isRfqProject && (isProjectOwner || overviewAccess === 'edit') && (
         <div className="flex justify-center -mt-2">
           <Button
             size="sm"
@@ -412,7 +412,7 @@ const OverviewTab = ({
       {!isPlanning && (
         <>
           <div className="flex items-center gap-2 flex-wrap">
-              {!isHomeowner && !projectStatus?.startsWith("active") && (
+              {!isHomeowner && !projectStatus?.startsWith("active") && (isProjectOwner || overviewAccess === 'edit') && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="flex-1 sm:flex-none gap-1">
