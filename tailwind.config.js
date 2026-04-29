@@ -16,7 +16,7 @@ export default {
         '2xl': '4rem',
       },
       screens: {
-        '2xl': '1440px',
+        '2xl': '1600px',
       },
     },
     fontFamily: {
