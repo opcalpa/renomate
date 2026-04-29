@@ -10,6 +10,152 @@ export interface ChangelogEntry {
 export const DEMO_PROJECT_PATH = "/projects/demo";
 
 export const changelog: ChangelogEntry[] = [
+  // ── 2026-04-29 ──
+  {
+    date: "2026-04-29",
+    title: "Egenkontroller (KMA)",
+    description: "Ny \"Kontroll\"-flik i projektet. Skapa kvalitetskontroller med branschspecifika checklistor (fuktkontroll, el, VVS, brand, bygg, målning, plattsättning). Bocka av punkter direkt — status uppdateras automatiskt.",
+    tags: ["KMA", "Kvalitet", "Nytt"],
+  },
+  {
+    date: "2026-04-29",
+    title: "Löneexport (PAXml)",
+    description: "Exportera godkända timmar till PAXml-fil direkt från Tid-fliken. Kompatibel med Fortnox Lön, Hogia, Visma och andra svenska lönesystem. Grupperat per person med personnummer.",
+    tags: ["Tid", "Lön", "Export"],
+  },
+  {
+    date: "2026-04-29",
+    title: "Personalliggare med QR-kod",
+    description: "Arbetare skannar en QR-kod för att checka in och ut på arbetsplatsen. Ingen inloggning krävs. Projektledaren ser vilka som är på plats.",
+    tags: ["Team", "Nytt"],
+  },
+  {
+    date: "2026-04-29",
+    title: "ROT-avdrag från fakturaskanning",
+    description: "När du skannar en faktura extraheras nu ROT-belopp och personnummer automatiskt. Nya ROT-personer skapas direkt — ingen manuell inmatning.",
+    tags: ["ROT", "AI", "Faktura"],
+  },
+
+  // ── 2026-04-28 ──
+  {
+    date: "2026-04-28",
+    title: "Offert till faktura med ett klick",
+    description: "Godkänd offert? Klicka \"Skapa faktura\" — alla rader kopieras automatiskt. Ingen dubbelinmatning.",
+    tags: ["Faktura", "Offert", "Produktivitet"],
+  },
+  {
+    date: "2026-04-28",
+    title: "Tidrapportering med ekonomi",
+    description: "Ny Tid-flik i projektet. Logga timmar per uppgift, timkostnad beräknas automatiskt. Godkännandeflöde för projektledare. Hemägare ser timmar men inte kostnader.",
+    tags: ["Tid", "Nytt"],
+  },
+  {
+    date: "2026-04-28",
+    title: "ÄTA-godkännande utan inloggning",
+    description: "Skicka en godkännandenlänk till kunden — de godkänner eller avböjer ÄTA direkt i mobilen utan att behöva logga in.",
+    tags: ["ÄTA", "UX"],
+  },
+  {
+    date: "2026-04-28",
+    title: "Resursplanering — vem jobbar var?",
+    description: "Ny vy på startsidan: se alla teammedlemmars scheman över alla projekt. Vilka veckor är lediga? Vem är dubbelbokad? Perfekt för företag med flera anställda.",
+    tags: ["Resursplanering", "Nytt"],
+  },
+  {
+    date: "2026-04-28",
+    title: "SIE4-export för bokföring",
+    description: "Ladda ner SIE4-fil från fakturalistan. Importera direkt i Fortnox, Visma eller valfritt bokföringsprogram. Svensk kontoplan (BAS) med moms och ROT.",
+    tags: ["Bokföring", "Export"],
+  },
+  {
+    date: "2026-04-28",
+    title: "Arbetsinstruktioner med chatt",
+    description: "Arbetare kan nu se meddelanden från projektledaren direkt i sin instruktionsvy — och svara tillbaka med text eller röstmeddelande. Översätts automatiskt om arbetaren har ett annat språk.",
+    tags: ["WorkerView", "Chatt", "i18n"],
+  },
+  {
+    date: "2026-04-28",
+    title: "Snabb-attestering av inköp",
+    description: "Godkänn eller markera inköp som betalda med ett klick direkt i inköpstabellen. Nya ikoner i åtgärdskolumnen.",
+    tags: ["Inköp", "Produktivitet"],
+  },
+  {
+    date: "2026-04-28",
+    title: "Hemägarens startsida",
+    description: "Hemägare med flera projekt ser nu en enkel lista med progress och kostnadssummering. Har du bara ett projekt? Du landar direkt i det — inget extra klick.",
+    tags: ["Hemägare", "UX"],
+  },
+
+  // ── 2026-04-27 ──
+  {
+    date: "2026-04-27",
+    title: "Ny dashboard (A/B-test)",
+    description: "Experimentell dashboard med redaktionell design. Aktivera via Admin-knappen på startsidan för att testa.",
+    tags: ["Dashboard", "Design"],
+  },
+
+  // ── 2026-04-25 ──
+  {
+    date: "2026-04-25",
+    title: "Klickbar portfolio-tidslinje",
+    description: "Klicka på en uppgift i portfolio-tidslinjen för att öppna den direkt i en sidopanel — utan att lämna startsidan.",
+    tags: ["UX", "Produktivitet"],
+  },
+
+  // ── 2026-04-17 ──
+  {
+    date: "2026-04-17",
+    title: "Leverantörsregister",
+    description: "Spara leverantörer en gång, återanvänd överallt. Autocomplete i budget, inköp och uppgifter. Slipper skriva samma namn flera gånger.",
+    tags: ["Inköp", "Produktivitet"],
+  },
+  {
+    date: "2026-04-17",
+    title: "Budget med P&L och hierarki",
+    description: "Budgettabellen visar nu vinst per post, hierarkisk uppdelning med inköp under uppgifter, och inline-redigering av alla kolumner.",
+    tags: ["Budget", "Design"],
+  },
+
+  // ── 2026-04-16 ──
+  {
+    date: "2026-04-16",
+    title: "Aktivera projekt utan offert",
+    description: "Starta arbete direkt från planering — materialbudget konverteras automatiskt till inköpsposter.",
+    tags: ["Arbetsflöde", "UX"],
+  },
+
+  // ── 2026-04-15 ──
+  {
+    date: "2026-04-15",
+    title: "Fotokategorisering vid uppladdning",
+    description: "När du laddar upp bilder får du nu välja kategori (före, under, efter) direkt. Smarta standardval baserat på var du laddar upp.",
+    tags: ["Filer", "UX"],
+  },
+
+  // ── 2026-04-14 ──
+  {
+    date: "2026-04-14",
+    title: "Planeringsguide i 4 steg",
+    description: "Ny guided setup: beskriv ditt projekt med fritext → AI extraherar rum och arbeten → du finjusterar. Från tom sida till strukturerat projekt på 2 minuter.",
+    tags: ["Onboarding", "AI", "Nytt"],
+  },
+
+  // ── 2026-04-13 ──
+  {
+    date: "2026-04-13",
+    title: "Momshantering + ROT-compliance",
+    description: "Rensat och förenklat momskategorier (15 → 12). Finansiell analys omdesignad med tydligare vinst/kostnad-separation.",
+    tags: ["Budget", "ROT"],
+  },
+
+  // ── 2026-04-12 ──
+  {
+    date: "2026-04-12",
+    title: "ROT per person i deklarationstabellen",
+    description: "Se ROT-avdrag per person direkt i budgetöversikten. Årsgruppering med subtotaler och progress-bar mot taket.",
+    tags: ["ROT", "Budget"],
+  },
+
   // ── 2026-04-01 ──
   {
     date: "2026-04-01",
