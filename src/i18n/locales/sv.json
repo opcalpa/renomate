@@ -1796,6 +1796,8 @@
     "comments": "Kommentarer"
   },
   "overview": {
+    "messagesHeading": "Meddelanden",
+    "imagesHeading": "Bilder",
     "projectOverview": "Projektöversikt",
     "guestPlanningTitle": "Logga in för att börja planera",
     "guestPlanningDesc": "Skapa ett konto för att lägga till rum, arbetsmoment och material i ditt projekt. Ditt projekt sparas och du kan bjuda in samarbetspartners.",

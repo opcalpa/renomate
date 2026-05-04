@@ -545,6 +545,7 @@ const OverviewTab = ({
         />
       )}
 
+      <h2 className="font-display text-xl font-normal tracking-tight mt-6 mb-3">{t("overview.messagesHeading", "Meddelanden")}</h2>
       <ProjectChatSection
         projectId={project.id}
         userType={userType}
@@ -554,10 +555,13 @@ const OverviewTab = ({
 
       {/* Inspiration — room photos, Pinterest, material images (non-planning only, planning has its own above) */}
       {!isPlanning && (
-      <InspirationSection
-        projectId={project.id}
-        currency={project.currency || "SEK"}
-      />
+        <>
+          <h2 className="font-display text-xl font-normal tracking-tight mt-6 mb-3">{t("overview.imagesHeading", "Bilder")}</h2>
+          <InspirationSection
+            projectId={project.id}
+            currency={project.currency || "SEK"}
+          />
+        </>
       )}
 
       {/* Quotes & Invoices unified card - contractors, active phases */}

@@ -2325,6 +2325,8 @@
     "comments": "Comments"
   },
   "overview": {
+    "messagesHeading": "Messages",
+    "imagesHeading": "Images",
     "projectOverview": "Project Overview",
     "guestPlanningTitle": "Sign in to start planning",
     "guestPlanningDesc": "Create an account to add rooms, tasks, and materials to your project. Your project will be saved and you can invite collaborators.",
