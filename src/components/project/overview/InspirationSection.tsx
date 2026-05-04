@@ -1,6 +1,7 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect, lazy, Suspense } from "react";
 import { usePersistedPreference } from "@/hooks/usePersistedPreference";
 import { useTranslation } from "react-i18next";
+import { CommentsSection } from "@/components/comments/CommentsSection";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -609,12 +610,19 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
 
   const hasPhotos = totalCount > 0;
 
+  // Unified gallery: all photos (inspiration + before) for the lightbox
+  const allGalleryPhotos = useMemo(() => [...filteredPhotos, ...beforePhotos], [filteredPhotos, beforePhotos]);
+
   // Gallery navigation
   const openGallery = (index: number) => setGalleryIndex(index);
+  const openGalleryById = (photoId: string) => {
+    const idx = allGalleryPhotos.findIndex((p) => p.id === photoId);
+    if (idx !== -1) setGalleryIndex(idx);
+  };
   const closeGallery = () => { setGalleryIndex(null); setEditingCaption(null); };
-  const galleryPhoto = galleryIndex !== null ? filteredPhotos[galleryIndex] : null;
+  const galleryPhoto = galleryIndex !== null ? allGalleryPhotos[galleryIndex] : null;
   const galleryPrev = () => setGalleryIndex((i) => i !== null && i > 0 ? i - 1 : i);
-  const galleryNext = () => setGalleryIndex((i) => i !== null && i < filteredPhotos.length - 1 ? i + 1 : i);
+  const galleryNext = () => setGalleryIndex((i) => i !== null && i < allGalleryPhotos.length - 1 ? i + 1 : i);
 
   return (
     <Card ref={inspoRef}>
@@ -1550,7 +1558,7 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
                     <div
                       key={photo.id}
                       className="relative group aspect-square rounded-lg overflow-hidden cursor-pointer"
-                      onClick={() => window.open(photo.url, "_blank")}
+                      onClick={() => openGalleryById(photo.id)}
                     >
                       <img
                         src={photo.url}
@@ -1782,7 +1790,7 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
                     <ChevronLeft className="h-6 w-6 text-white" />
                   </button>
                 )}
-                {galleryIndex !== null && galleryIndex < filteredPhotos.length - 1 && (
+                {galleryIndex !== null && galleryIndex < allGalleryPhotos.length - 1 && (
                   <button
                     type="button"
                     className="absolute right-3 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 flex items-center justify-center transition-all"
@@ -1803,7 +1811,7 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
                       )}
                     </div>
                     <span className="text-white/50 text-xs tabular-nums">
-                      {(galleryIndex ?? 0) + 1} / {filteredPhotos.length}
+                      {(galleryIndex ?? 0) + 1} / {allGalleryPhotos.length}
                     </span>
                   </div>
                 </div>
@@ -1943,6 +1951,15 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
                   <Trash2 className="h-3 w-3" />
                   {t("common.delete")}
                 </Button>
+
+                {/* Comments on photo */}
+                <div className="border-t pt-3">
+                  <CommentsSection
+                    entityId={galleryPhoto.id}
+                    entityType="photo"
+                    projectId={projectId}
+                  />
+                </div>
               </div>
             </>
           )}
