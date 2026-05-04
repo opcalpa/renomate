@@ -31,6 +31,7 @@ import { compressImage } from "@/lib/compressImage";
 import { formatDistanceToNow } from "date-fns";
 import { getDateLocale } from "@/lib/dateFnsLocale";
 import type { FeedComment, UnifiedFeedItem, FeedFilterMode, PhotoFeedItem, ActivityLogItem } from "../feed/types";
+import { ImageLightbox, useLightbox } from "@/components/shared/ImageLightbox";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -176,6 +177,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
   const isClient = userType === "homeowner";
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
+  const lightbox = useLightbox();
 
   // Feed state
   const [comments, setComments] = useState<FeedComment[]>([]);
@@ -556,6 +558,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
           onNavigate={onNavigateToEntity}
           onReply={handleReply}
           currentProfileId={currentProfileId}
+          projectId={projectId}
         />
       );
     }
@@ -563,9 +566,16 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
       return <ActivityCard key={`a-${item.activity.id}`} activity={item.activity} />;
     }
     if (item.type === "photo" && item.photo) {
+      const photoIdx = visiblePhotos.findIndex((p) => p.id === item.photo!.id);
       return (
         <div key={item.photo.id} className="space-y-1 py-1.5">
-          <div className="rounded-lg overflow-hidden bg-muted cursor-pointer max-w-sm" onClick={() => onNavigateToFiles?.()}>
+          <div
+            className="rounded-lg overflow-hidden bg-muted cursor-pointer max-w-sm"
+            onClick={() => lightbox.open(
+              visiblePhotos.map((p) => ({ id: p.id, url: p.url, caption: p.caption, roomName: p.sourceName })),
+              Math.max(0, photoIdx)
+            )}
+          >
             <img src={item.photo.url} alt={item.photo.caption || "Photo"} className="w-full h-auto max-h-64 object-cover" loading="lazy" />
           </div>
           <p className="text-xs text-muted-foreground">
@@ -891,6 +901,7 @@ export function ProjectChatSection({ projectId, userType, onNavigateToEntity, on
           )}
         </div>
       )}
+      <ImageLightbox {...lightbox.props} projectId={projectId} />
     </div>
   );
 }
