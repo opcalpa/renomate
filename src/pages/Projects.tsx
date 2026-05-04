@@ -518,11 +518,11 @@ const Projects = () => {
           </div>
         </div>
 
-        {/* Dashboard strip — reminders, right below header */}
-        {visibleProjects.length > 0 && (
+        {/* Dashboard strip — reminders, right below header (excludes demo project) */}
+        {nonDemoProjects.length > 0 && (
           <DashboardStrip
-            projectIds={visibleProjects.map((p) => p.id)}
-            currency={visibleProjects[0]?.currency || "SEK"}
+            projectIds={nonDemoProjects.map((p) => p.id)}
+            currency={nonDemoProjects[0]?.currency || "SEK"}
           />
         )}
 
