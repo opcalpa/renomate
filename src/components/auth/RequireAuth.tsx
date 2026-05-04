@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useGuestMode } from "@/hooks/useGuestMode";
+import { PUBLIC_DEMO_PROJECT_ID } from "@/constants/publicDemo";
 import { Loader2 } from "lucide-react";
 
 interface RequireAuthProps {
@@ -12,12 +13,17 @@ interface RequireAuthProps {
 /**
  * Route wrapper: redirects to /auth if user is not authenticated.
  * By default, guest users are allowed through — pass allowGuest={false}
- * to require a real login.
+ * to require a real login. The public demo project is always accessible.
  */
 export function RequireAuth({ children, allowGuest = true }: RequireAuthProps) {
   const { user, loading } = useAuthSession();
   const { isGuest } = useGuestMode();
   const location = useLocation();
+
+  // Public demo project is always accessible without auth
+  if (location.pathname.includes(PUBLIC_DEMO_PROJECT_ID)) {
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (
