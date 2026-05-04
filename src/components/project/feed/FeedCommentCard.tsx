@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ImageLightbox, useLightbox, type LightboxImage } from "@/components/shared/ImageLightbox";
 import { formatDistanceToNow } from "date-fns";
 import { getDateLocale } from "@/lib/dateFnsLocale";
 import { CheckSquare, Package, Home, Pencil, MessageSquare, Reply } from "lucide-react";
@@ -33,10 +34,12 @@ interface FeedCommentCardProps {
   onNavigate?: (comment: FeedComment) => void;
   onAvatarClick?: (profileId: string, name: string) => void;
   currentProfileId?: string | null;
+  projectId?: string;
 }
 
-export const FeedCommentCard = ({ comment, compact, translatedContent, onReply, onNavigate, onAvatarClick, currentProfileId }: FeedCommentCardProps) => {
+export const FeedCommentCard = ({ comment, compact, translatedContent, onReply, onNavigate, onAvatarClick, currentProfileId, projectId }: FeedCommentCardProps) => {
   const { t, i18n } = useTranslation();
+  const lightbox = useLightbox();
   const contextType = getContextType(comment);
   const contextLabel = getContextLabel(comment);
   const isEntityComment = contextType !== "project";
@@ -88,17 +91,21 @@ export const FeedCommentCard = ({ comment, compact, translatedContent, onReply, 
         <p className="text-sm whitespace-pre-wrap break-words">{renderContentWithMentions(translatedContent || comment.content)}</p>
         {comment.images && comment.images.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-1">
-            {comment.images.map((image) => (
+            {comment.images.map((image, idx) => (
               <img
                 key={image.id}
                 src={image.url}
                 alt={image.filename}
                 className="max-w-32 max-h-32 object-cover rounded border cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => window.open(image.url, "_blank")}
+                onClick={() => lightbox.open(
+                  comment.images!.map((img) => ({ id: img.id, url: img.url, filename: img.filename })),
+                  idx
+                )}
               />
             ))}
           </div>
         )}
+        <ImageLightbox {...lightbox.props} projectId={projectId} />
         <div className="flex items-center gap-2">
           {isEntityComment && onReply && (
             <Button

@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getAvatarColor } from "@/lib/avatarColor";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Send, Trash2, MessageSquare, Camera, X, Languages, Lock, Reply, ChevronDown } from "lucide-react";
+import { ImageLightbox, useLightbox } from "@/components/shared/ImageLightbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCommentTranslation } from "@/hooks/useCommentTranslation";
 import { formatDistanceToNow } from "date-fns";
@@ -59,6 +60,7 @@ const COLLAPSED_REPLY_THRESHOLD = 2;
 
 export const CommentsSection = ({ taskId, materialId, entityId, entityType, drawingObjectId, projectId, chatMode = false }: CommentsSectionProps) => {
   const { t, i18n } = useTranslation();
+  const lightbox = useLightbox();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
@@ -598,13 +600,13 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
             {/* Images */}
             {comment.images && comment.images.length > 0 && (
               <div className={`flex flex-wrap gap-1.5 ${isOwn ? 'justify-end' : ''}`}>
-                {comment.images.map((image) => (
+                {comment.images.map((image, idx) => (
                   <img
                     key={image.id}
                     src={image.url}
                     alt={image.filename}
                     className="max-w-28 max-h-28 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => window.open(image.url, '_blank')}
+                    onClick={() => lightbox.open(comment.images!.map((img) => ({ id: img.id, url: img.url, filename: img.filename })), idx)}
                   />
                 ))}
               </div>
@@ -816,13 +818,13 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
             {/* Comment images */}
             {comment.images && comment.images.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {comment.images.map((image) => (
+                {comment.images.map((image, idx) => (
                   <div key={image.id} className="relative group">
                     <img
                       src={image.url}
                       alt={image.filename}
                       className="max-w-32 max-h-32 object-cover rounded border cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => window.open(image.url, '_blank')}
+                      onClick={() => lightbox.open(comment.images!.map((img) => ({ id: img.id, url: img.url, filename: img.filename })), idx)}
                     />
                   </div>
                 ))}
@@ -1042,6 +1044,7 @@ export const CommentsSection = ({ taskId, materialId, entityId, entityType, draw
           </Button>
         </div>
       </div>
+      <ImageLightbox {...lightbox.props} projectId={projectId} />
     </div>
   );
 };

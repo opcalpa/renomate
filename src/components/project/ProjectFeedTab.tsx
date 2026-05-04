@@ -175,6 +175,7 @@ const ProjectFeedTab = ({ projectId, onNavigateToEntity, restrictToUserId }: Pro
             key={`c-${item.comment.id}`}
             comment={item.comment}
             onNavigate={onNavigateToEntity}
+            projectId={projectId}
           />
         );
       }
