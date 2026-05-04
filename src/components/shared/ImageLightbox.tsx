@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { CommentsSection } from "@/components/comments/CommentsSection";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, Download } from "lucide-react";
 
 export interface LightboxImage {
   id: string;
@@ -10,6 +11,8 @@ export interface LightboxImage {
   caption?: string | null;
   roomName?: string | null;
   filename?: string | null;
+  /** Optional download URL (if different from display URL) */
+  downloadUrl?: string | null;
 }
 
 interface ImageLightboxProps {
@@ -22,44 +25,79 @@ interface ImageLightboxProps {
 
 /**
  * Unified image lightbox used across the app.
- * Shows image on the left with an info/comments sidebar on the right.
+ * Combines the best of InspirationSection gallery + Files preview:
+ * - Cinematic dark image area with navigation arrows
+ * - Zoom (25–400%) and rotate controls
+ * - Sidebar with image info and comments
+ * - Keyboard: arrows = nav, +/- = zoom, R = rotate, Escape = close
  */
 export function ImageLightbox({ images, initialIndex, open, onClose, projectId }: ImageLightboxProps) {
   const { t } = useTranslation();
   const [index, setIndex] = useState(initialIndex);
+  const [zoom, setZoom] = useState(100);
+  const [rotation, setRotation] = useState(0);
 
-  useEffect(() => { setIndex(initialIndex); }, [initialIndex]);
+  useEffect(() => { setIndex(initialIndex); setZoom(100); setRotation(0); }, [initialIndex]);
+
+  // Reset zoom/rotation when navigating
+  const goTo = (i: number) => { setIndex(i); setZoom(100); setRotation(0); };
 
   const photo = images[index];
   if (!photo) return null;
 
-  const prev = () => setIndex((i) => (i > 0 ? i - 1 : i));
-  const next = () => setIndex((i) => (i < images.length - 1 ? i + 1 : i));
+  const prev = () => { if (index > 0) goTo(index - 1); };
+  const next = () => { if (index < images.length - 1) goTo(index + 1); };
+  const zoomIn = () => setZoom((z) => Math.min(400, z + 25));
+  const zoomOut = () => setZoom((z) => Math.max(25, z - 25));
+  const rotate = () => setRotation((r) => (r + 90) % 360);
+
+  const handleDownload = () => {
+    const url = photo.downloadUrl || photo.url;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = photo.filename || "image";
+    a.target = "_blank";
+    a.click();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowLeft") prev();
+    if (e.key === "ArrowRight") next();
+    if (e.key === "+" || e.key === "=") { e.preventDefault(); zoomIn(); }
+    if (e.key === "-") { e.preventDefault(); zoomOut(); }
+    if (e.key === "r" || e.key === "R") { e.preventDefault(); rotate(); }
+  };
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent
         className="!max-w-[min(1200px,94vw)] w-[94vw] !max-h-[88vh] h-[88vh] !p-0 gap-0 flex flex-col sm:flex-row overflow-hidden !rounded-xl"
-        onKeyDown={(e) => {
-          if (e.key === "ArrowLeft") prev();
-          if (e.key === "ArrowRight") next();
-        }}
+        onKeyDown={handleKeyDown}
       >
         <DialogTitle className="sr-only">{t("inspiration.gallery", "Gallery")}</DialogTitle>
 
         {/* Image area */}
-        <div className="relative flex-1 bg-neutral-950 flex items-center justify-center min-h-0 min-w-0">
-          <img
-            src={photo.url}
-            alt={photo.caption || photo.filename || ""}
-            className="w-full h-full object-contain select-none"
-            draggable={false}
-          />
+        <div className="relative flex-1 bg-neutral-950 flex flex-col min-h-0 min-w-0">
+          {/* Image container with zoom/rotate */}
+          <div className="flex-1 flex items-center justify-center overflow-auto min-h-0">
+            <img
+              src={photo.url}
+              alt={photo.caption || photo.filename || ""}
+              className="select-none transition-transform duration-150"
+              style={{
+                transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
+                maxWidth: zoom <= 100 ? "100%" : "none",
+                maxHeight: zoom <= 100 ? "100%" : "none",
+              }}
+              draggable={false}
+            />
+          </div>
+
           {/* Nav arrows */}
           {index > 0 && (
             <button
               type="button"
-              className="absolute left-3 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 flex items-center justify-center transition-all"
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 flex items-center justify-center transition-all z-10"
               onClick={(e) => { e.stopPropagation(); prev(); }}
             >
               <ChevronLeft className="h-6 w-6 text-white" />
@@ -68,25 +106,45 @@ export function ImageLightbox({ images, initialIndex, open, onClose, projectId }
           {index < images.length - 1 && (
             <button
               type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 flex items-center justify-center transition-all"
+              className="absolute right-3 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 flex items-center justify-center transition-all z-10"
               onClick={(e) => { e.stopPropagation(); next(); }}
             >
               <ChevronRight className="h-6 w-6 text-white" />
             </button>
           )}
-          {/* Bottom bar */}
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-6 pb-4 pt-10 pointer-events-none">
-            <div className="flex items-end justify-between">
-              <div>
-                {photo.caption && <p className="text-white text-sm font-medium mb-1">{photo.caption}</p>}
-                {photo.roomName && <p className="text-white/60 text-xs">{photo.roomName}</p>}
-                {!photo.caption && photo.filename && <p className="text-white/70 text-xs">{photo.filename}</p>}
+
+          {/* Bottom toolbar: zoom, rotate, download, counter */}
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 pb-3 pt-10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                {/* Zoom controls */}
+                <button type="button" onClick={zoomOut} disabled={zoom <= 25} className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 flex items-center justify-center transition-all">
+                  <ZoomOut className="h-4 w-4 text-white" />
+                </button>
+                <span className="text-white/70 text-xs tabular-nums min-w-[40px] text-center">{zoom}%</span>
+                <button type="button" onClick={zoomIn} disabled={zoom >= 400} className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 flex items-center justify-center transition-all">
+                  <ZoomIn className="h-4 w-4 text-white" />
+                </button>
+                {/* Rotate */}
+                <button type="button" onClick={rotate} className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all ml-1" title="Rotate (R)">
+                  <RotateCw className="h-4 w-4 text-white" />
+                </button>
+                {/* Download */}
+                <button type="button" onClick={handleDownload} className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all ml-1" title={t("common.download", "Download")}>
+                  <Download className="h-4 w-4 text-white" />
+                </button>
               </div>
-              {images.length > 1 && (
-                <span className="text-white/50 text-xs tabular-nums">
-                  {index + 1} / {images.length}
-                </span>
-              )}
+              <div className="text-right">
+                {photo.caption && <p className="text-white text-sm font-medium mb-0.5">{photo.caption}</p>}
+                <div className="flex items-center gap-2 justify-end">
+                  {(photo.roomName || photo.filename) && (
+                    <span className="text-white/60 text-xs">{photo.roomName || photo.filename}</span>
+                  )}
+                  {images.length > 1 && (
+                    <span className="text-white/40 text-xs tabular-nums">{index + 1}/{images.length}</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

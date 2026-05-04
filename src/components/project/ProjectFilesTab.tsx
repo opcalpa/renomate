@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from "react";
+import { ImageLightbox, useLightbox } from "@/components/shared/ImageLightbox";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -121,7 +122,11 @@ interface ProjectFilesTabProps {
   onUseAsBackground?: (imageUrl: string, fileName: string) => void;
 }
 
+const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "heic", "svg", "bmp"]);
+const isImageFile = (name: string) => IMAGE_EXTS.has(name.split(".").pop()?.toLowerCase() || "");
+
 const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToFloorPlan, onUseAsBackground }: ProjectFilesTabProps) => {
+  const imageLightbox = useLightbox();
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentFolder, setCurrentFolder] = useState<string>('');
@@ -923,6 +928,19 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
         .from('project-files')
         .getPublicUrl(file.path);
 
+      // Images → unified lightbox with zoom/rotate/comments
+      if (isImageFile(file.name)) {
+        const imageFiles = allPreviewableFiles.filter((f) => isImageFile(f.name));
+        const idx = imageFiles.findIndex((f) => f.path === file.path);
+        const images = imageFiles.map((f) => {
+          const { data: { publicUrl: url } } = supabase.storage.from('project-files').getPublicUrl(f.path);
+          return { id: f.path, url, filename: f.name, downloadUrl: url };
+        });
+        imageLightbox.open(images, Math.max(0, idx));
+        return;
+      }
+
+      // PDFs and other files → existing dialog with zoom/rotate
       setPreviewUrl(publicUrl);
       setPreviewFile(file);
       setImageZoom(100);
@@ -2571,6 +2589,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
           }
         }}
       />
+      <ImageLightbox {...imageLightbox.props} projectId={projectId} />
     </div>
   );
 };
