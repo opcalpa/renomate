@@ -55,10 +55,9 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
       const [overdueRes, commentsRes, purchasesRes, budgetRes] = await Promise.all([
         supabase
           .from("tasks")
-          .select("id, title, project_id, projects!inner(name)")
+          .select("id, title, project_id, due_date, finish_date, status, projects!inner(name)")
           .in("project_id", projectIds)
-          .lt("due_date", today)
-          .not("status", "eq", "done"),
+          .neq("status", "completed"),
         supabase
           .from("comments")
           .select("id, content, project_id, projects!inner(name)")
@@ -114,8 +113,14 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
         totalSpent += s;
       }
 
+      // Filter overdue in JS: due_date OR finish_date < today, matching PulseCards logic
+      const overdueTasks = (overdueRes.data || []).filter((t) => {
+        const effectiveDate = (t as Record<string, unknown>).due_date || (t as Record<string, unknown>).finish_date;
+        return effectiveDate && String(effectiveDate) < today;
+      });
+
       return {
-        overdueTasks: groupByProject(overdueRes.data || [], "title"),
+        overdueTasks: groupByProject(overdueTasks as Array<{ project_id: string; projects: unknown; title: string }>, "title"),
         recentComments: groupByProject(commentsRes.data || [], "content"),
         pendingPurchases: groupByProject(purchasesRes.data || [], "name"),
         budgetByProject,
