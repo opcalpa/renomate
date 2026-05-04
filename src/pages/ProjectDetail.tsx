@@ -899,7 +899,7 @@ const ProjectDetail = () => {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="flex items-center gap-5 lg:gap-7 flex-nowrap overflow-visible">
+            <div className="hidden md:flex items-center gap-5 lg:gap-7 flex-nowrap overflow-visible">
               {/* Client-only: Kundvy tab */}
               {!isTabBlocked("customer") && (
                 <div
