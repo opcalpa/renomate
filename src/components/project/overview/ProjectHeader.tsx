@@ -323,7 +323,7 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange, onStatus
       {/* Title + status + actions */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="text-xl sm:text-2xl font-bold leading-tight tracking-tight">{project.name}</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-normal leading-tight tracking-tight">{project.name}</h1>
           {onOpenSettings && (
             <Button
               variant="ghost"
