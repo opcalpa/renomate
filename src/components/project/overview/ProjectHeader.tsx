@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { MapPin, Pencil, Camera, X, Loader2, GripVertical, Check, ZoomIn, ZoomOut, AlertTriangle } from "lucide-react";
+import { MapPin, Pencil, Camera, X, Loader2, GripVertical, Check, ZoomIn, ZoomOut, AlertTriangle, Upload, Link2, Images } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -35,6 +36,11 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange, onStatus
   const [isAutoCover, setIsAutoCover] = useState(false);
   const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
   const [confirmStatus, setConfirmStatus] = useState<ProjectStatus | null>(null);
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
+  const [coverPickerMode, setCoverPickerMode] = useState<"menu" | "url" | "existing">("menu");
+  const [urlInput, setUrlInput] = useState("");
+  const [existingImages, setExistingImages] = useState<{ url: string; name: string }[]>([]);
+  const [loadingExisting, setLoadingExisting] = useState(false);
 
   // Statuses available from current status
   const availableStatuses = PROJECT_STATUSES.filter((s) => s !== status && s !== "quote_rejected" && s !== "cancelled");
@@ -94,6 +100,66 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange, onStatus
 
     return () => { cancelled = true; };
   }, [project.id, project.cover_image_url]);
+
+  // Set cover from an existing URL (no upload needed)
+  const setCoverFromUrl = async (url: string) => {
+    setCoverUrl(url);
+    setCoverPosition(50);
+    setCoverZoom(100);
+    setIsAutoCover(false);
+    await supabase.from("projects").update({
+      cover_image_url: url,
+      cover_image_position: 50,
+      cover_image_zoom: 100,
+    } as Record<string, unknown>).eq("id", project.id);
+    onCoverChange?.(url);
+    setCoverPickerOpen(false);
+    setCoverPickerMode("menu");
+  };
+
+  // Load all images from the project (storage + inspiration)
+  const loadExistingImages = async () => {
+    setLoadingExisting(true);
+    const images: { url: string; name: string }[] = [];
+
+    // Storage files
+    const IMAGE_EXTS = ["jpg", "jpeg", "png", "webp", "heic", "gif"];
+    const folders = ["", "inspiration", "Uppladdade filer", "Random"];
+    for (const folder of folders) {
+      const path = folder ? `projects/${project.id}/${folder}` : `projects/${project.id}`;
+      const { data: files } = await supabase.storage
+        .from("project-files")
+        .list(path, { limit: 50, sortBy: { column: "created_at", order: "desc" } });
+      if (files) {
+        for (const f of files) {
+          const ext = f.name.split(".").pop()?.toLowerCase() || "";
+          if (IMAGE_EXTS.includes(ext)) {
+            const fullPath = folder ? `${path}/${f.name}` : `projects/${project.id}/${f.name}`;
+            const { data: { publicUrl } } = supabase.storage.from("project-files").getPublicUrl(fullPath);
+            images.push({ url: publicUrl, name: f.name });
+          }
+        }
+      }
+    }
+
+    // Inspiration photos from project_photos table
+    const { data: photos } = await supabase
+      .from("project_photos")
+      .select("url, caption")
+      .eq("project_id", project.id)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    if (photos) {
+      for (const p of photos) {
+        if (p.url && !images.some((i) => i.url === p.url)) {
+          images.push({ url: p.url, name: p.caption || "Inspiration" });
+        }
+      }
+    }
+
+    setExistingImages(images);
+    setLoadingExisting(false);
+  };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -334,16 +400,98 @@ export function ProjectHeader({ project, onOpenSettings, onCoverChange, onStatus
               <Pencil className="h-3.5 w-3.5" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-muted-foreground/50 hover:text-muted-foreground"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            title={t("overview.addCoverPhoto", "Add project photo")}
-          >
-            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
-          </Button>
+          <Popover open={coverPickerOpen} onOpenChange={(open) => { setCoverPickerOpen(open); if (!open) setCoverPickerMode("menu"); }}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground/50 hover:text-muted-foreground"
+                disabled={uploading}
+                title={t("overview.addCoverPhoto", "Add project photo")}
+              >
+                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-1.5" align="start">
+              {coverPickerMode === "menu" && (
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full px-2.5 py-2 text-sm rounded-md hover:bg-accent transition-colors text-left"
+                    onClick={() => { setCoverPickerOpen(false); fileRef.current?.click(); }}
+                  >
+                    <Upload className="h-4 w-4 text-muted-foreground" />
+                    {t("overview.coverUpload", "Ladda upp bild")}
+                  </button>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full px-2.5 py-2 text-sm rounded-md hover:bg-accent transition-colors text-left"
+                    onClick={() => setCoverPickerMode("url")}
+                  >
+                    <Link2 className="h-4 w-4 text-muted-foreground" />
+                    {t("overview.coverUrl", "Klistra länk")}
+                  </button>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full px-2.5 py-2 text-sm rounded-md hover:bg-accent transition-colors text-left"
+                    onClick={() => { setCoverPickerMode("existing"); loadExistingImages(); }}
+                  >
+                    <Images className="h-4 w-4 text-muted-foreground" />
+                    {t("overview.coverExisting", "Välj bland bilder")}
+                  </button>
+                </div>
+              )}
+              {coverPickerMode === "url" && (
+                <div className="space-y-2 p-1">
+                  <Input
+                    autoFocus
+                    placeholder="https://..."
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && urlInput.trim()) setCoverFromUrl(urlInput.trim()); }}
+                    className="h-8 text-sm"
+                  />
+                  <div className="flex gap-1">
+                    <Button size="sm" className="h-7 text-xs flex-1" disabled={!urlInput.trim()} onClick={() => setCoverFromUrl(urlInput.trim())}>
+                      {t("common.save")}
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setCoverPickerMode("menu")}>
+                      {t("common.back", "Tillbaka")}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {coverPickerMode === "existing" && (
+                <div className="space-y-2 p-1">
+                  <p className="text-xs font-medium text-muted-foreground">{t("overview.coverPickExisting", "Välj omslagsbild")}</p>
+                  {loadingExisting ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : existingImages.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-4 text-center">{t("overview.noExistingImages", "Inga bilder hittades")}</p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-1 max-h-48 overflow-y-auto">
+                      {existingImages.map((img, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          className="aspect-square rounded overflow-hidden hover:ring-2 ring-primary transition-all"
+                          onClick={() => setCoverFromUrl(img.url)}
+                          title={img.name}
+                        >
+                          <img src={img.url} alt={img.name} className="w-full h-full object-cover" loading="lazy" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <Button size="sm" variant="ghost" className="h-7 text-xs w-full" onClick={() => setCoverPickerMode("menu")}>
+                    {t("common.back", "Tillbaka")}
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
           {onStatusChange ? (
             <Popover open={statusPopoverOpen} onOpenChange={setStatusPopoverOpen}>
               <PopoverTrigger asChild>
