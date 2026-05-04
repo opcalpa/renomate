@@ -9,7 +9,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Users, User, BookOpen, Trash2, Loader2, Sparkles, ChevronDown, ChevronUp, LayoutGrid, List, Settings2, ShieldCheck, GanttChart } from "lucide-react";
+import { Plus, Users, User, BookOpen, Trash2, Loader2, Sparkles, ChevronDown, ChevronUp, LayoutGrid, List, Settings2, ShieldCheck, GanttChart, EyeOff } from "lucide-react";
 import { PortfolioTimeline } from "@/components/project/PortfolioTimeline";
 import { TaskEditDialog } from "@/components/project/TaskEditDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -114,6 +114,9 @@ const Projects = () => {
   const [editorialDashboard, setEditorialDashboard] = useState(() =>
     localStorage.getItem("rf_dashboard_v2") === "true"
   );
+  const [hideDemo, setHideDemo] = useState(() =>
+    localStorage.getItem("rf_hide_demo") === "true"
+  );
   const [timelineOpen, setTimelineOpen] = useState(() =>
     localStorage.getItem("projects_timeline_open") !== "false"
   );
@@ -172,6 +175,14 @@ const Projects = () => {
       (p) => p.owner_id === profileId || sharedProjectIds.has(p.id)
     );
   }, [projects, isAdmin, showAdminProjects, profileId, sharedProjectIds]);
+
+  const hasDemoProject = visibleProjects.some((p) => isDemoProject(p.project_type));
+
+  // Projects actually shown in the list (respects hideDemo toggle)
+  const displayProjects = useMemo(
+    () => hideDemo ? visibleProjects.filter((p) => !isDemoProject(p.project_type)) : visibleProjects,
+    [visibleProjects, hideDemo]
+  );
 
   // Exclude demo projects from financial/tax aggregations
   const nonDemoProjects = useMemo(
@@ -397,7 +408,7 @@ const Projects = () => {
             <h2 className="text-2xl font-bold tracking-tight">{t('projects.title')}</h2>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-              {visibleProjects.length > 0 && !editorialDashboard && (
+              {displayProjects.length > 0 && !editorialDashboard && (
                 <div className="flex items-center border rounded-md">
                   <button
                     type="button"
@@ -459,6 +470,25 @@ const Projects = () => {
                 >
                   <ShieldCheck className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">{showAdminProjects ? t("projects.adminOn", "Admin") : t("projects.adminOff", "Admin")}</span>
+                </button>
+              )}
+              {hasDemoProject && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !hideDemo;
+                    setHideDemo(next);
+                    localStorage.setItem("rf_hide_demo", String(next));
+                  }}
+                  className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                    hideDemo
+                      ? "bg-muted border-border text-foreground"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                  title={t("projects.hideDemo", "Hide demo project")}
+                >
+                  <EyeOff className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Demo</span>
                 </button>
               )}
               {effectiveViewMode === "list" && (
@@ -558,7 +588,7 @@ const Projects = () => {
           </section>
         )}
 
-        {visibleProjects.length === 0 && !showAdminProjects ? (
+        {displayProjects.length === 0 && !showAdminProjects ? (
           <div className="max-w-lg mx-auto text-center py-12 space-y-8">
             <div>
               <h3 className="text-2xl font-semibold mb-2">{t('onboarding.welcome')}</h3>
@@ -590,7 +620,7 @@ const Projects = () => {
           </div>
         ) : effectiveViewMode === "resource" ? (
           /* ---- Resource planning view ---- */
-          <ResourcePlanningView projectIds={visibleProjects.map(p => p.id)} />
+          <ResourcePlanningView projectIds={displayProjects.map(p => p.id)} />
         ) : effectiveViewMode === "list" ? (
           /* ---- List view ---- */
           (() => {
@@ -677,7 +707,7 @@ const Projects = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleProjects.map((project) => {
+                      {displayProjects.map((project) => {
                         const isDemo = isDemoProject(project.project_type);
                         return (
                           <tr
@@ -732,7 +762,7 @@ const Projects = () => {
         ) : (
           /* ---- Grid / card view ---- */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-            {visibleProjects.map((project) => {
+            {displayProjects.map((project) => {
               const isDemo = isDemoProject(project.project_type);
               const projectStatus = normalizeStatus(project.status);
               const statusMeta = STATUS_META[projectStatus];
