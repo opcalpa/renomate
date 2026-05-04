@@ -70,7 +70,7 @@ const Projects = () => {
   const { user, signOut } = useAuthSession();
   const { isGuest, refreshStorageUsage } = useGuestMode();
   useProfileLanguage();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [market] = useMarket();
   const {
     profile, projects, sharedProjectIds, ownerNames, projectFinancials,
@@ -357,6 +357,29 @@ const Projects = () => {
       )}
 
       <main className={`container py-4 sm:py-8 ${editorialDashboard && !isGuest ? "hidden" : ""}`}>
+
+        {/* Personal greeting */}
+        {!isGuest && profile?.name && (
+          <section className="mb-8">
+            <p className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground mb-3">
+              {t("dashboard.myStart", "My start")} · {new Date().toLocaleDateString(i18n.language === "sv" ? "sv-SE" : i18n.language, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            </p>
+            <h1 className="font-display text-4xl sm:text-5xl font-normal tracking-tight leading-[1.05] mb-2.5">
+              {(() => {
+                const h = new Date().getHours();
+                const key = h < 5 ? "night" : h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
+                return t(`dashboard.greeting.${key}`);
+              })()}, {(profile.name as string).split(" ")[0]}.
+            </h1>
+            <p className="text-[15px] text-muted-foreground leading-relaxed">
+              {t("dashboard.summaryPrefix", "You have")}{" "}
+              <strong className="text-foreground">{nonDemoProjects.length} {t("dashboard.summaryProjects", "active projects")}</strong>
+              {" "}{t("dashboard.summaryAnd", "and")}{" "}
+              <strong className="text-foreground">0 {t("dashboard.summaryTasks", "tasks")}</strong>
+              {" "}{t("dashboard.summarySuffix", "this week")}.
+            </p>
+          </section>
+        )}
 
         {/* Pipeline Section - Leads & Quotes (hidden in guest mode, for homeowners, or when quotes module disabled) */}
         {!isGuest && isSectionEnabled("pipeline") && (

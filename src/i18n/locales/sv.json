@@ -5253,6 +5253,18 @@
     "completeWithErrors": "Klart ({{errors}} fel)"
   },
   "dashboard": {
+    "myStart": "Min start",
+    "greeting": {
+      "night": "God natt",
+      "morning": "God morgon",
+      "afternoon": "God eftermiddag",
+      "evening": "God kväll"
+    },
+    "summaryPrefix": "Du har",
+    "summaryProjects": "aktiva projekt",
+    "summaryAnd": "och",
+    "summaryTasks": "uppgifter",
+    "summarySuffix": "denna vecka",
     "overdue": "Försenade",
     "allOnTrack": "Allt i fas",
     "overdueTooltip": "Arbeten som passerat deadline, per projekt:",

@@ -5256,6 +5256,18 @@
     "completeWithErrors": "Done ({{errors}} errors)"
   },
   "dashboard": {
+    "myStart": "My start",
+    "greeting": {
+      "night": "Good night",
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "summaryPrefix": "You have",
+    "summaryProjects": "active projects",
+    "summaryAnd": "and",
+    "summaryTasks": "tasks",
+    "summarySuffix": "this week",
     "overdue": "Overdue",
     "allOnTrack": "All on track",
     "overdueTooltip": "Tasks past their deadline, by project:",
