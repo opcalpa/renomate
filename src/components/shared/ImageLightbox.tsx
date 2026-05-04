@@ -15,6 +15,21 @@ export interface LightboxImage {
   downloadUrl?: string | null;
 }
 
+/**
+ * Derive a stable comment entity ID from a photo URL.
+ * Extracts the Supabase storage path so the same physical file
+ * always gets the same comment thread regardless of where it's viewed.
+ */
+function stableEntityId(photo: LightboxImage): string {
+  try {
+    const url = new URL(photo.url);
+    // Supabase storage URLs: /storage/v1/object/public/project-files/projects/...
+    const match = url.pathname.match(/\/storage\/v1\/object\/public\/(.+)/);
+    if (match) return match[1]; // e.g. "project-files/projects/{id}/inspiration/file.jpg"
+  } catch { /* not a valid URL, use id */ }
+  return photo.id;
+}
+
 interface ImageLightboxProps {
   images: LightboxImage[];
   initialIndex: number;
@@ -159,11 +174,11 @@ export function ImageLightbox({ images, initialIndex, open, onClose, projectId }
             </div>
           )}
 
-          {/* Comments */}
+          {/* Comments — uses stable URL-based ID so same image gets same thread everywhere */}
           {projectId && (
             <div className="border-t pt-3">
               <CommentsSection
-                entityId={photo.id}
+                entityId={stableEntityId(photo)}
                 entityType="photo"
                 projectId={projectId}
               />

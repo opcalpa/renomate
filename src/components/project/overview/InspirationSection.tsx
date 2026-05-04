@@ -2,6 +2,16 @@ import { useState, useMemo, useRef, useCallback, useEffect, lazy, Suspense } fro
 import { usePersistedPreference } from "@/hooks/usePersistedPreference";
 import { useTranslation } from "react-i18next";
 import { CommentsSection } from "@/components/comments/CommentsSection";
+
+/** Extract stable storage path from Supabase URL for consistent comment threading */
+function stablePhotoEntityId(url: string, fallbackId: string): string {
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(/\/storage\/v1\/object\/public\/(.+)/);
+    if (match) return match[1];
+  } catch { /* use fallback */ }
+  return fallbackId;
+}
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1952,10 +1962,10 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
                   {t("common.delete")}
                 </Button>
 
-                {/* Comments on photo */}
+                {/* Comments on photo — uses stable URL-based ID for cross-view consistency */}
                 <div className="border-t pt-3">
                   <CommentsSection
-                    entityId={galleryPhoto.id}
+                    entityId={stablePhotoEntityId(galleryPhoto.url, galleryPhoto.id)}
                     entityType="photo"
                     projectId={projectId}
                   />
