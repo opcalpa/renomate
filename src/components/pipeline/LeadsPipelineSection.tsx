@@ -61,7 +61,7 @@ export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSecti
 
   return (
     <div className="mb-6">
-      <h2 className="text-2xl font-bold tracking-tight mb-4">{t("pipeline.myQuotes", "Mina offerter")}</h2>
+      <h2 className="text-2xl font-display font-normal tracking-tight mb-4">{t("pipeline.myQuotes", "Mina offerter")}</h2>
       <Card>
         <CardContent className="pt-4 pb-4 px-4">
           <div className="flex items-stretch divide-x">
@@ -77,7 +77,7 @@ export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSecti
                     {t("pipeline.intakeRequests")}
                   </span>
                 </div>
-                <p className="text-lg font-bold">{data.intakeRequests.total}</p>
+                <p className="text-lg font-display font-normal">{data.intakeRequests.total}</p>
                 <div className="text-xs text-muted-foreground mt-1 space-y-1">
                   {data.intakeRequests.pending > 0 && (
                     <p>
@@ -105,7 +105,7 @@ export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSecti
                     {t("pipeline.drafts")}
                   </span>
                 </div>
-                <p className="text-lg font-bold">{projectQuotes.draft.count}</p>
+                <p className="text-lg font-display font-normal">{projectQuotes.draft.count}</p>
                 {projectQuotes.draft.totalAmount > 0 && (
                   <div className="text-xs text-muted-foreground mt-1 space-y-1">
                     <p>{t("planningTasks.estimatedBudget", "Estimated budget")}: <span className="font-medium text-foreground">{formatCurrency(projectQuotes.draft.totalAmount)}</span></p>
@@ -127,7 +127,7 @@ export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSecti
                     {t("pipeline.sentQuotes")}
                   </span>
                 </div>
-                <p className="text-lg font-bold">{projectQuotes.sent.count}</p>
+                <p className="text-lg font-display font-normal">{projectQuotes.sent.count}</p>
                 {projectQuotes.sent.totalAmount > 0 && (
                   <div className="text-xs text-muted-foreground mt-1 space-y-1">
                     <p>{t("planningTasks.estimatedBudget", "Estimated budget")}: <span className="font-medium text-foreground">{formatCurrency(projectQuotes.sent.totalAmount)}</span></p>
@@ -149,7 +149,7 @@ export function LeadsPipelineSection({ onRefetch, userType }: LeadsPipelineSecti
                     {t("pipeline.accepted")}
                   </span>
                 </div>
-                <p className="text-lg font-bold">{projectQuotes.accepted.count}</p>
+                <p className="text-lg font-display font-normal">{projectQuotes.accepted.count}</p>
                 {projectQuotes.accepted.totalAmount > 0 && (
                   <div className="text-xs text-muted-foreground mt-1 space-y-1">
                     <p>{t("planningTasks.estimatedBudget", "Estimated budget")}: <span className="font-medium text-foreground">{formatCurrency(projectQuotes.accepted.totalAmount)}</span></p>

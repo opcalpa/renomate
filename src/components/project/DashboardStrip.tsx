@@ -179,14 +179,14 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
             </div>
             {totalOverdue > 0 ? (
               <>
-                <p className="text-2xl font-bold tabular-nums text-red-600">{totalOverdue}</p>
+                <p className="text-2xl font-display font-normal tabular-nums text-red-600">{totalOverdue}</p>
                 <p className="text-xs text-muted-foreground mt-1 truncate">
                   {data.overdueTasks.map((p) => `${p.projectName} (${p.count})`).join(", ")}
                 </p>
               </>
             ) : (
               <>
-                <p className="text-2xl font-bold tabular-nums text-green-600">0</p>
+                <p className="text-2xl font-display font-normal tabular-nums text-green-600">0</p>
                 <p className="text-xs text-muted-foreground mt-1">{t("dashboard.allOnTrack")}</p>
               </>
             )}
@@ -237,12 +237,12 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
             </div>
             {totalComments > 0 ? (
               <>
-                <p className="text-2xl font-bold tabular-nums">{totalComments}</p>
+                <p className="text-2xl font-display font-normal tabular-nums">{totalComments}</p>
                 <p className="text-xs text-muted-foreground mt-1 truncate">{t("dashboard.lastWeek")}</p>
               </>
             ) : (
               <>
-                <p className="text-2xl font-bold tabular-nums text-muted-foreground">0</p>
+                <p className="text-2xl font-display font-normal tabular-nums text-muted-foreground">0</p>
                 <p className="text-xs text-muted-foreground mt-1">{t("dashboard.noRecent")}</p>
               </>
             )}
@@ -293,14 +293,14 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
             </div>
             {totalPurchases > 0 ? (
               <>
-                <p className="text-2xl font-bold tabular-nums text-amber-600">{totalPurchases}</p>
+                <p className="text-2xl font-display font-normal tabular-nums text-amber-600">{totalPurchases}</p>
                 <p className="text-xs text-muted-foreground mt-1 truncate">
                   {data.pendingPurchases.map((p) => `${p.projectName} (${p.count})`).join(", ")}
                 </p>
               </>
             ) : (
               <>
-                <p className="text-2xl font-bold tabular-nums text-muted-foreground">0</p>
+                <p className="text-2xl font-display font-normal tabular-nums text-muted-foreground">0</p>
                 <p className="text-xs text-muted-foreground mt-1">{t("dashboard.noPending")}</p>
               </>
             )}
@@ -343,7 +343,7 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
                   {t("dashboard.budget")}
                 </span>
               </div>
-              <p className="text-2xl font-bold tabular-nums">
+              <p className="text-2xl font-display font-normal tabular-nums">
                 {formatCurrency(data.totalSpent, currency)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">

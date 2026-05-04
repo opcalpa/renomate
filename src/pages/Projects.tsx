@@ -405,7 +405,7 @@ const Projects = () => {
         <section id="projekt" className="scroll-mt-20">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">{t('projects.title')}</h2>
+            <h2 className="text-2xl font-display font-normal tracking-tight">{t('projects.title')}</h2>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
               {displayProjects.length > 0 && !editorialDashboard && (

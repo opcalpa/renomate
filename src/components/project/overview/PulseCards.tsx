@@ -84,7 +84,7 @@ export function PulseCards({
               {t("overview.pulseCards.tasks")}
             </span>
           </div>
-          <p className={`text-xl sm:text-2xl font-bold ${getTaskColor(taskStats.percentage)}`}>
+          <p className={`text-xl sm:text-2xl font-display font-normal ${getTaskColor(taskStats.percentage)}`}>
             {taskStats.completed}/{taskStats.total}
           </p>
           <Progress
@@ -131,7 +131,7 @@ export function PulseCards({
             </span>
           </div>
           {timelineStats.daysRemaining !== null ? (
-            <p className={`text-lg sm:text-2xl font-bold truncate ${getTimelineColor(timelineStats.daysRemaining, taskStats.percentage)}`}>
+            <p className={`text-lg sm:text-2xl font-display font-normal truncate ${getTimelineColor(timelineStats.daysRemaining, taskStats.percentage)}`}>
               {timelineStats.daysRemaining < 0
                 ? t("overview.pulseCards.daysOverdue", { count: Math.abs(timelineStats.daysRemaining) })
                 : t("overview.pulseCards.daysRemaining", { count: timelineStats.daysRemaining })}
@@ -164,7 +164,7 @@ export function PulseCards({
           </div>
           {isBuilder && budgetStats.contractTotal > 0 ? (
             <>
-              <p className="text-base sm:text-lg font-bold truncate">
+              <p className="text-base sm:text-lg font-display font-normal truncate">
                 {formatCurrency(budgetStats.contractTotal, currency, { compact: true })}
               </p>
               <p className="text-xs sm:text-sm text-muted-foreground truncate mt-0.5">
@@ -182,7 +182,7 @@ export function PulseCards({
             </>
           ) : budgetStats.total ? (
             <>
-              <p className={`text-base sm:text-lg font-bold truncate ${getBudgetColor(budgetStats.percentage)}`}>
+              <p className={`text-base sm:text-lg font-display font-normal truncate ${getBudgetColor(budgetStats.percentage)}`}>
                 {formatCurrency(budgetStats.spent, currency, { compact: true })}
                 <span className="text-xs sm:text-sm font-normal text-muted-foreground">
                   {" / "}
@@ -222,7 +222,7 @@ export function PulseCards({
               {t("overview.pulseCards.orders")}
             </span>
           </div>
-          <p className={`text-xl sm:text-2xl font-bold ${getOrderColor(orderStats.pendingCount)}`}>
+          <p className={`text-xl sm:text-2xl font-display font-normal ${getOrderColor(orderStats.pendingCount)}`}>
             {orderStats.pendingCount}
           </p>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
