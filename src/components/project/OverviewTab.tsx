@@ -484,7 +484,7 @@ const OverviewTab = ({
             className="gap-1.5"
           >
             <Plus className="h-3.5 w-3.5" />
-            {isPlanning ? t("overview.quickQuote", "Offert") : t("overview.quickAta", "Tillägg")}
+            {isPlanning ? t("overview.quickQuote", "Offert") : t("overview.quickNewQuote", "Ny offert")}
           </Button>
           <Button
             variant="outline"
