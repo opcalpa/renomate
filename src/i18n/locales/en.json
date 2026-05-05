@@ -4838,10 +4838,15 @@
       }
     },
     "contractor": {
+      "planning": {
+        "title": "Planning",
+        "body": "Build your project step by step — add rooms, describe tasks, estimate costs and create a quote.\n\nWhen planning is complete, activate the project to start tracking progress.",
+        "tip": "Tip: Use Smart Import to quickly import tasks from a quote or document."
+      },
       "overview": {
-        "title": "Welcome — Planning Phase",
-        "body": "You're starting in the Planning phase — where every project begins. Here you define the scope, add tasks, and prepare a quote for the client.\n\nWhen you're ready, use the phase stepper in the bar above to switch to 'Quote sent' and 'Active project' to see how the project evolves through each stage.",
-        "tip": "Tip: Try all three phases! Each one unlocks different tools and views tailored to that stage of the project."
+        "title": "Project Dashboard",
+        "body": "The home page for your active project. See quick status — tasks, budget, messages and action items that need your attention.\n\nUse the Planning tab to change the project scope.",
+        "tip": "Tip: The summary cards at the top show what needs attention right now."
       },
       "tasks": {
         "title": "Task Management",

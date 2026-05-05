@@ -4835,10 +4835,15 @@
       }
     },
     "contractor": {
+      "planning": {
+        "title": "Planering",
+        "body": "Här bygger du upp ditt projekt steg för steg — lägg till rum, beskriv arbetsuppgifter, uppskatta kostnader och skapa en offert.\n\nNär planeringen är klar kan du aktivera projektet till pågående.",
+        "tip": "Tips: Använd Smart Import för att snabbt importera arbeten från en offert eller dokument."
+      },
       "overview": {
-        "title": "Välkommen — Planeringsfasen",
-        "body": "Du startar i Planeringsfasen — där varje projekt börjar. Här definierar du omfattningen, lägger till arbetsmoment och förbereder en offert till kunden.\n\nNär du är redo, använd fasstegen i baren ovanför för att byta till 'Offert skickad' och 'Pågående projekt' och se hur projektet utvecklas genom varje fas.",
-        "tip": "Tips: Testa alla tre faser! Varje fas visar olika verktyg och vyer anpassade för det steget i projektet."
+        "title": "Projektöversikt",
+        "body": "Startsidan för ditt pågående projekt. Här ser du snabb status — uppgifter, budget, meddelanden och action items som väntar på dig.\n\nAnvänd Planering-fliken för att ändra projektets omfattning.",
+        "tip": "Tips: Sammanfattningskorten överst ger dig en snabb bild av vad som behöver uppmärksamhet."
       },
       "tasks": {
         "title": "Arbetshantering",
