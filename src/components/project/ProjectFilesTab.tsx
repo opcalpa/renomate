@@ -1311,7 +1311,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto space-y-4">
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Hidden file inputs */}
         {canEdit && (
           <>
@@ -1335,133 +1335,131 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
           </>
         )}
 
-        {/* Unified Files Card — header merged in */}
-        <Card>
-          <CardHeader className="pb-3">
-            {/* Row 1: Title + view switcher */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <FolderOpen className="h-5 w-5 text-primary shrink-0" />
-                <div className="min-w-0">
-                  <CardTitle className="text-base sm:text-lg font-semibold truncate">{t('files.title')}</CardTitle>
-                  <CardDescription className="text-xs truncate">{projectName}</CardDescription>
-                </div>
-              </div>
+        {/* Header — matches Overview's ProjectHeader pattern */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <FolderOpen className="h-5 w-5 text-primary shrink-0" />
+            <div className="min-w-0">
+              <h2 className="font-display text-xl font-normal tracking-tight">{t('files.title')}</h2>
+              <p className="text-sm text-muted-foreground truncate">{projectName}</p>
+            </div>
+          </div>
 
-              <div className="flex items-center gap-1.5 shrink-0">
-                {/* View switcher — always visible */}
-                <div className="flex rounded-md border">
-                  <Button
-                    variant={viewMode === 'folder' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="h-7 w-7 p-0 rounded-r-none border-0"
-                    onClick={() => changeViewMode('folder')}
-                    title={t('files.viewFolder', 'Mappar')}
-                  >
-                    <List className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="h-7 w-7 p-0 rounded-none border-0"
-                    onClick={() => changeViewMode('grid')}
-                    title={t('files.viewGrid', 'Rutnät')}
-                  >
-                    <LayoutGrid className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant={viewMode === 'flat' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="h-7 w-7 p-0 rounded-l-none border-0"
-                    onClick={() => changeViewMode('flat')}
-                    title={t('files.viewFlat', 'Alla filer')}
-                  >
-                    <Layers className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-
-                {/* Upload button */}
-                {canEdit && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="sm" className="h-7 px-2" disabled={uploading}>
-                        {uploading ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Upload className="h-3.5 w-3.5" />
-                        )}
-                        <span className="hidden sm:inline ml-1.5">
-                          {uploading ? t('files.uploading') : t('files.upload', 'Ladda upp')}
-                        </span>
-                        <ChevronDown className="h-3 w-3 ml-0.5 opacity-60" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                        <Upload className="h-4 w-4 mr-2" />
-                        {t('files.regularUpload', 'Vanlig uppladdning')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setShowSmartUpload(true)}>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        {t('smartUpload.title', 'Smart uppladdning')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => cameraInputRef.current?.click()}>
-                        <Camera className="h-4 w-4 mr-2" />
-                        {t('files.takePhoto', 'Ta foto')}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-
-                {/* More actions — compact, new folder, help (hidden on mobile as individual buttons) */}
-                {canEdit && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                        <MoreVertical className="h-3.5 w-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {viewMode !== 'grid' && (
-                        <DropdownMenuItem onClick={toggleCompact}>
-                          <AlignJustify className="h-4 w-4 mr-2" />
-                          {t('tasksTable.compactRows', 'Kompakt vy')}
-                          {compactRows && <Check className="h-3.5 w-3.5 ml-auto" />}
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={() => setShowNewFolderDialog(true)}>
-                        <FolderPlus className="h-4 w-4 mr-2" />
-                        {t('files.newFolder')}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <div className="px-2 py-1.5">
-                        <p className="text-xs font-medium mb-1">{t('files.supportedFormats')}</p>
-                        <p className="text-[11px] text-muted-foreground">JPEG, PNG, GIF, WebP, PDF</p>
-                        <p className="text-[11px] text-muted-foreground">{t('files.maxSize')}: {t('files.maxSizeValue')}</p>
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* View switcher */}
+            <div className="flex rounded-md border">
+              <Button
+                variant={viewMode === 'folder' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-7 w-7 p-0 rounded-r-none border-0"
+                onClick={() => changeViewMode('folder')}
+                title={t('files.viewFolder', 'Mappar')}
+              >
+                <List className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-7 w-7 p-0 rounded-none border-0"
+                onClick={() => changeViewMode('grid')}
+                title={t('files.viewGrid', 'Rutnät')}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant={viewMode === 'flat' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-7 w-7 p-0 rounded-l-none border-0"
+                onClick={() => changeViewMode('flat')}
+                title={t('files.viewFlat', 'Alla filer')}
+              >
+                <Layers className="h-3.5 w-3.5" />
+              </Button>
             </div>
 
-            {/* File stats strip — clickable category summaries */}
-            {allProjectFiles.length > 0 && (
-              <div className="mt-2">
-                <FileStatsStrip
-                  fileLinks={fileLinks}
-                  allFilePaths={allProjectFiles.map(f => f.path)}
-                  getCategory={getCategoryForPath}
-                  activeFilter={categoryFilter}
-                  onFilterChange={handleCategoryFilter}
-                  onFilterMissing={handleMissingAmountFilter}
-                />
-              </div>
+            {/* Upload button */}
+            {canEdit && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" className="h-7 px-2" disabled={uploading}>
+                    {uploading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5" />
+                    )}
+                    <span className="hidden sm:inline ml-1.5">
+                      {uploading ? t('files.uploading') : t('files.upload', 'Ladda upp')}
+                    </span>
+                    <ChevronDown className="h-3 w-3 ml-0.5 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    {t('files.regularUpload', 'Vanlig uppladdning')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowSmartUpload(true)}>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {t('smartUpload.title', 'Smart uppladdning')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => cameraInputRef.current?.click()}>
+                    <Camera className="h-4 w-4 mr-2" />
+                    {t('files.takePhoto', 'Ta foto')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
 
-            {/* Row 2: Search + active filter chips */}
+            {/* More actions */}
+            {canEdit && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                    <MoreVertical className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {viewMode !== 'grid' && (
+                    <DropdownMenuItem onClick={toggleCompact}>
+                      <AlignJustify className="h-4 w-4 mr-2" />
+                      {t('tasksTable.compactRows', 'Kompakt vy')}
+                      {compactRows && <Check className="h-3.5 w-3.5 ml-auto" />}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => setShowNewFolderDialog(true)}>
+                    <FolderPlus className="h-4 w-4 mr-2" />
+                    {t('files.newFolder')}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5">
+                    <p className="text-xs font-medium mb-1">{t('files.supportedFormats')}</p>
+                    <p className="text-[11px] text-muted-foreground">JPEG, PNG, GIF, WebP, PDF</p>
+                    <p className="text-[11px] text-muted-foreground">{t('files.maxSize')}: {t('files.maxSizeValue')}</p>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        </div>
+
+        {/* File stats strip — same spacing as PulseCards on Overview */}
+        {allProjectFiles.length > 0 && (
+          <FileStatsStrip
+            fileLinks={fileLinks}
+            allFilePaths={allProjectFiles.map(f => f.path)}
+            getCategory={getCategoryForPath}
+            activeFilter={categoryFilter}
+            onFilterChange={handleCategoryFilter}
+            onFilterMissing={handleMissingAmountFilter}
+          />
+        )}
+
+        {/* File list card — search + table */}
+        <Card>
+          <CardContent className="pt-4">
+            {/* Search + filter chips */}
             {(files.length > 0 || folders.length > 0 || allProjectFiles.length > 0) && (
-              <div className="relative mt-2">
+              <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   value={fileSearch}
@@ -1474,7 +1472,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
             {/* Active filter chips */}
             {categoryFilter && (
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-2 mt-3">
                 <Badge
                   variant="secondary"
                   className="cursor-pointer gap-1 pl-2"
@@ -1499,9 +1497,9 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
               </div>
             )}
 
-            {/* Breadcrumbs — also serve as drop targets for moving files up */}
+            {/* Breadcrumbs */}
             {currentFolder && (
-              <div className="flex items-center gap-1 text-sm text-muted-foreground mt-2">
+              <div className="flex items-center gap-1 text-sm text-muted-foreground mt-3">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1535,8 +1533,9 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                 })}
               </div>
             )}
-          </CardHeader>
-          <CardContent>
+
+            {/* File table / content — mt-4 for spacing after search */}
+            <div className="mt-4">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -2445,6 +2444,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
               </Table>
               </div>
             </>)}
+            </div>
           </CardContent>
         </Card>
 
