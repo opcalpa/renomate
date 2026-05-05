@@ -27,26 +27,12 @@ export function GreetingBlock({ userName, stats, onNewProject }: GreetingBlockPr
   const firstName = userName.split(" ")[0] || "";
 
   return (
-    <div style={{
-      display: "flex",
-      alignItems: "flex-end",
-      justifyContent: "space-between",
-      marginBottom: 32,
-      paddingBottom: 24,
-      borderBottom: "1px solid var(--hairline)",
-    }}>
+    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-6 md:mb-8 pb-5 md:pb-6 border-b" style={{ borderColor: "var(--hairline)" }}>
       <div>
-        <div className="mono" style={{
-          fontSize: 11,
-          textTransform: "uppercase",
-          letterSpacing: "0.1em",
-          color: "var(--fg-subtle)",
-          marginBottom: 12,
-        }}>
+        <div className="kicker mb-3">
           Min start · {formatDate()}
         </div>
-        <h1 className="font-display" style={{
-          fontSize: 48,
+        <h1 className="font-display text-3xl sm:text-4xl md:text-5xl" style={{
           fontWeight: 400,
           letterSpacing: "-0.025em",
           margin: 0,
@@ -54,13 +40,7 @@ export function GreetingBlock({ userName, stats, onNewProject }: GreetingBlockPr
         }}>
           {getGreeting()}, {firstName}.
         </h1>
-        <p style={{
-          fontSize: 15,
-          color: "var(--fg-muted)",
-          marginTop: 10,
-          maxWidth: 540,
-          lineHeight: 1.5,
-        }}>
+        <p className="text-sm md:text-[15px] mt-2.5 max-w-[540px] leading-relaxed" style={{ color: "var(--fg-muted)" }}>
           Du har{" "}
           <strong style={{ color: "var(--fg)" }}>{stats.activeProjects} aktiva projekt</strong>
           {" "}och{" "}
@@ -68,7 +48,7 @@ export function GreetingBlock({ userName, stats, onNewProject }: GreetingBlockPr
           {" "}denna vecka.
         </p>
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
+      <div className="flex gap-2 mt-4 sm:mt-0">
         <button className="rf-btn rf-btn-primary" onClick={onNewProject}>
           <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 5v14M5 12h14" />

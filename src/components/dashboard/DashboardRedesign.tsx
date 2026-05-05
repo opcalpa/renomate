@@ -30,7 +30,7 @@ export default function DashboardRedesign({ userId, userName, onNewProject, onTo
   if (data.isLoading) {
     return (
       <div className="rf-dashboard" data-theme="paper">
-        <main style={{ padding: "32px 40px", maxWidth: 1280, margin: "0 auto" }}>
+        <main className="px-4 sm:px-6 md:px-10 py-6 md:py-8 max-w-[1280px] mx-auto">
           {/* Greeting skeleton */}
           <div style={{ marginBottom: 24 }}>
             <div className="animate-pulse rounded bg-muted/60 h-3 w-32 mb-2" />
@@ -50,7 +50,7 @@ export default function DashboardRedesign({ userId, userName, onNewProject, onTo
             </div>
           </div>
           {/* Content skeleton */}
-          <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 32 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 lg:gap-8">
             <div>
               {[1,2,3].map(i => (
                 <div key={i} className="flex items-center gap-4 py-4 border-b" style={{ borderColor: "var(--hairline)" }}>
@@ -84,9 +84,9 @@ export default function DashboardRedesign({ userId, userName, onNewProject, onTo
 
   return (
     <div className="rf-dashboard" data-theme="paper">
-      <main style={{ padding: "32px 40px", maxWidth: 1280, margin: "0 auto" }}>
+      <main className="px-4 sm:px-6 md:px-10 py-6 md:py-8 max-w-[1280px] mx-auto">
         {/* View mode toggle row */}
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <div className="flex justify-end items-center gap-2 mb-2">
           {/* View switcher */}
           {data.projects.length > 0 && (
             <div className="flex rounded-md bg-muted/40 border border-border/60 p-0.5">
@@ -145,11 +145,7 @@ export default function DashboardRedesign({ userId, userName, onNewProject, onTo
           /* Path A: Editorial — 2-col with activity rail (default) */
           <>
             <StatStrip stats={data.stats} />
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "1.6fr 1fr",
-              gap: 32,
-            }}>
+            <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 lg:gap-8">
               <ProjectsList projects={data.projects} />
               <ActivityRail activities={data.activities} />
             </div>

@@ -78,14 +78,9 @@ export function EmptyState({ onNewProject }: EmptyStateProps) {
       </div>
 
       {/* Onboarding steps */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(3, 1fr)",
-        gap: 1,
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-px rounded-xl overflow-hidden border" style={{
         background: "var(--hairline, oklch(88% 0.005 85))",
-        borderRadius: 12,
-        overflow: "hidden",
-        border: "1px solid var(--hairline, oklch(88% 0.005 85))",
+        borderColor: "var(--hairline, oklch(88% 0.005 85))",
       }}>
         {steps.map((step) => (
           <div key={step.num} style={{

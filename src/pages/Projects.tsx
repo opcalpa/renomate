@@ -6,6 +6,7 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { analytics, AnalyticsEvents } from "@/lib/analytics";
 import { useProfileLanguage } from "@/hooks/useProfileLanguage";
 import { AppHeader } from "@/components/AppHeader";
+import { AppBottomNav } from "@/components/AppBottomNav";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -891,6 +892,9 @@ const Projects = () => {
         onOpenChange={(open) => { if (!open) setDrawerTask(null); }}
         variant="sheet"
       />
+
+      {/* Mobile bottom navigation */}
+      <AppBottomNav />
     </div>
   );
 };

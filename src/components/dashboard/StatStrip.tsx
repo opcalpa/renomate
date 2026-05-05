@@ -54,12 +54,7 @@ export function StatStrip({ stats }: StatStripProps) {
   const totalTkr = Math.round(stats.totalBudget / 1000);
 
   return (
-    <div className="rf-card" style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(4, 1fr)",
-      marginBottom: 32,
-      overflow: "hidden",
-    }}>
+    <div className="rf-card grid grid-cols-2 md:grid-cols-4 mb-6 md:mb-8 overflow-hidden">
       <Stat
         label="Aktiva projekt"
         value={stats.activeProjects}
