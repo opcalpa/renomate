@@ -139,17 +139,16 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
   if (projectIds.length < 2) return null;
 
   if (isLoading || !data) return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-      {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="rounded-xl border bg-card p-4 animate-pulse">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="h-4 w-4 rounded bg-muted" />
-            <div className="h-3 w-20 rounded bg-muted" />
+    <div className="rounded-xl border bg-card overflow-hidden mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-border">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="p-4 lg:p-5 animate-pulse">
+            <div className="h-3 w-20 rounded bg-muted mb-3" />
+            <div className="h-7 w-12 rounded bg-muted mb-1" />
+            <div className="h-3 w-28 rounded bg-muted" />
           </div>
-          <div className="h-7 w-12 rounded bg-muted mb-1" />
-          <div className="h-3 w-28 rounded bg-muted" />
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 
@@ -159,7 +158,8 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
   const budgetPct = data.totalBudget > 0 ? Math.round((data.totalSpent / data.totalBudget) * 100) : 0;
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <div className="rounded-xl border bg-card overflow-hidden mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-border">
       {/* Overdue tasks */}
       <Tooltip>
         <TooltipTrigger asChild>
@@ -169,11 +169,11 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
               const first = data.overdueTasks[0];
               if (first) navigate(`/projects/${first.projectId}?tab=tasks`);
             }}
-            className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-shadow"
+            className="p-4 lg:p-5 text-left hover:bg-accent/50 transition-colors"
           >
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className={`h-4 w-4 ${totalOverdue > 0 ? "text-red-500" : "text-green-500"}`} />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <span className="kicker">
                 {t("dashboard.overdue")}
               </span>
             </div>
@@ -227,11 +227,11 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
               const first = data.recentComments[0];
               if (first) navigate(`/projects/${first.projectId}?tab=overview`);
             }}
-            className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-shadow"
+            className="p-4 lg:p-5 text-left hover:bg-accent/50 transition-colors"
           >
             <div className="flex items-center gap-2 mb-2">
               <MessageSquare className={`h-4 w-4 ${totalComments > 0 ? "text-blue-500" : "text-muted-foreground"}`} />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <span className="kicker">
                 {t("dashboard.comments")}
               </span>
             </div>
@@ -283,11 +283,11 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
               const first = data.pendingPurchases[0];
               if (first) navigate(`/projects/${first.projectId}?tab=purchases`);
             }}
-            className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-shadow"
+            className="p-4 lg:p-5 text-left hover:bg-accent/50 transition-colors"
           >
             <div className="flex items-center gap-2 mb-2">
               <ShoppingCart className={`h-4 w-4 ${totalPurchases > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <span className="kicker">
                 {t("dashboard.purchases")}
               </span>
             </div>
@@ -336,10 +336,10 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
       {data.totalBudget > 0 && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="rounded-xl border bg-card p-4">
+            <div className="p-4 lg:p-5">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className={`h-4 w-4 ${budgetPct > 90 ? "text-red-500" : budgetPct > 70 ? "text-amber-500" : "text-green-500"}`} />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                <span className="kicker">
                   {t("dashboard.budget")}
                 </span>
               </div>
@@ -379,6 +379,7 @@ export function DashboardStrip({ projectIds, currency = "SEK" }: DashboardStripP
           </TooltipContent>
         </Tooltip>
       )}
+      </div>
     </div>
   );
 }

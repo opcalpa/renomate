@@ -103,7 +103,7 @@ export function ProjectGridCard({
 
   return (
     <Card
-      className={`cursor-pointer card-elevated overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${isDemo ? "ring-2 ring-primary/30" : ""}`}
+      className={`cursor-pointer overflow-hidden hover:shadow-md transition-shadow duration-150 ${isDemo ? "ring-2 ring-primary/30" : ""}`}
       onClick={() => navigate(`/projects/${project.id}`)}
     >
       {/* Demo banner */}

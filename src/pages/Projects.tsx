@@ -372,7 +372,7 @@ const Projects = () => {
 
         {/* Personal greeting */}
         {!isGuest && profile?.name && (
-          <section className="mb-8">
+          <section className="mb-8 pb-6 border-b border-border">
             <p className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground mb-3">
               {t("dashboard.myStart", "My start")} · {new Date().toLocaleDateString(i18n.language === "sv" ? "sv-SE" : i18n.language, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
             </p>
@@ -659,8 +659,8 @@ const Projects = () => {
               <div className="rounded-lg border bg-card">
                   <table className="w-full text-sm table-fixed">
                     <thead>
-                      <tr className="bg-muted/50 border-b">
-                        <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">{t("projects.colName", "Namn")}</th>
+                      <tr className="bg-muted border-b">
+                        <th className="px-3 py-2.5 text-left kicker">{t("projects.colName", "Namn")}</th>
                         {visibleListCols.map((col) => {
                           // Hide less important columns on smaller viewports
                           const responsiveHide =
@@ -676,7 +676,7 @@ const Projects = () => {
                               onDragOver={handleColDragOver}
                               onDrop={() => handleColDrop(col)}
                               onDragEnd={() => setDraggedCol(null)}
-                              className={`px-3 py-2.5 text-xs font-medium text-muted-foreground whitespace-nowrap select-none ${
+                              className={`px-3 py-2.5 kicker whitespace-nowrap select-none ${
                                 colAlign[col] === "right" ? "text-right" : "text-left"
                               } ${draggedCol === col ? "opacity-40" : ""} ${responsiveHide}`}
                             >
