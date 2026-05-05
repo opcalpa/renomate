@@ -266,7 +266,17 @@
       "micro": "No account required \u00b7 Import a project in 2 minutes \u00b7 Cancel anytime"
     },
     "logos": {
-      "label": "Built for everyone who renovates"
+      "label": "Built for everyone who renovates",
+      "builder": "The Builder",
+      "builderType": "General contracting & tax deductions",
+      "architect": "The Architect",
+      "architectType": "Drawing to final inspection",
+      "homeowner": "The Homeowner",
+      "homeownerType": "Follow your renovation",
+      "pm": "The Project Manager",
+      "pmType": "Budget, time & team",
+      "specialist": "The Specialist",
+      "specialistType": "Electrical, plumbing & tiling"
     },
     "stats": {
       "oneAppLabel": "One app instead of Excel, email and binders",
@@ -285,13 +295,13 @@
       "readMore": "Read more",
       "quoteKicker": "Quote & contract",
       "quoteTitle": "Send a quote in 10 min",
-      "quoteDesc": "AI template that learns your pricing. Tax deduction tasks pre-filled. Client signs digitally.",
+      "quoteDesc": "Create quotes with built-in tax deduction calculations. Add line items, see the PDF preview instantly, send to client.",
       "timelineKicker": "Timeline",
       "timelineTitle": "A schedule that actually keeps up",
-      "timelineDesc": "Drag-and-drop Gantt with supplier tracks, weather forecast and dependencies. No rework on delays.",
+      "timelineDesc": "Drag-and-drop Gantt with task dependencies. Move one task and the rest follows automatically.",
       "budgetKicker": "Purchasing & tax deductions",
       "budgetTitle": "One ledger for the build",
-      "budgetDesc": "Drag-and-drop receipts, automatic tax deduction allocation, client approvals in the app. The end of Excel chaos.",
+      "budgetDesc": "Log purchases, link them to tasks, let the client approve in the app. Everything in one place instead of email.",
       "clientKicker": "Client view",
       "clientTitle": "Invite the client — free of charge",
       "clientDesc": "Your client gets their own view. Sees progress, approves purchases, sees tax deduction balance. They like you more."
@@ -343,7 +353,7 @@
       "q3": "Can my clients also use the app?",
       "a3": "Yes, free of charge. Invite unlimited clients. They get their own view where they see project progress, tax deduction balance, and can approve purchases digitally.",
       "q4": "Does it work on site / with poor coverage?",
-      "a4": "Yes. The mobile app works offline — syncs when you get coverage again. All critical project data is stored locally on the device.",
+      "a4": "Yes. The app is mobile-optimized and works in all modern mobile browsers. Log time, register purchases and comment directly from the job site.",
       "q5": "Can I export my data if I cancel?",
       "a5": "Yes, always. The entire project archive exports as PDF + Excel. We believe data is yours, and insurance against lock-in is insurance against a bad product."
     },

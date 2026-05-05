@@ -14,7 +14,7 @@ export function BuilderFeatures({ onDemoTab }: BuilderFeaturesProps) {
     {
       kicker: t("landingV2.features.quoteKicker", "Offert & avtal"),
       title: t("landingV2.features.quoteTitle", "Skicka offert p\u00e5 10 min"),
-      desc: t("landingV2.features.quoteDesc", "AI-mall som l\u00e4r sig din priss\u00e4ttning. ROT-uppgifter f\u00f6rifyllda. Kund signerar digitalt."),
+      desc: t("landingV2.features.quoteDesc", "Skapa offerter med inbyggd ROT-ber\u00e4kning. L\u00e4gg till rader, se PDF-f\u00f6rhandsgranskning direkt, skicka till kund."),
       src: "/screenshots/Quote.png",
       alt: "offert-vy",
       tab: "overview",
@@ -22,7 +22,7 @@ export function BuilderFeatures({ onDemoTab }: BuilderFeaturesProps) {
     {
       kicker: t("landingV2.features.timelineKicker", "Tidsplan"),
       title: t("landingV2.features.timelineTitle", "Schema som faktiskt h\u00e4nger med"),
-      desc: t("landingV2.features.timelineDesc", "Drag-and-drop Gantt med leverant\u00f6rssp\u00e5r, v\u00e4derprognos och beroenden. Ingen omarbetning vid f\u00f6rseningar."),
+      desc: t("landingV2.features.timelineDesc", "Drag-and-drop Gantt med beroenden mellan arbeten. Flytta ett arbete s\u00e5 f\u00f6ljer resten med automatiskt."),
       src: "/screenshots/Timeline.png",
       alt: "tidsplan-vy",
       tab: "tasks",
@@ -30,7 +30,7 @@ export function BuilderFeatures({ onDemoTab }: BuilderFeaturesProps) {
     {
       kicker: t("landingV2.features.budgetKicker", "Ink\u00f6p & ROT"),
       title: t("landingV2.features.budgetTitle", "En kassabok f\u00f6r bygget"),
-      desc: t("landingV2.features.budgetDesc", "Dra-och-sl\u00e4pp kvitton, automatisk ROT-f\u00f6rdelning, kund-godk\u00e4nnanden i appen. Slutet p\u00e5 Excel-trasslet."),
+      desc: t("landingV2.features.budgetDesc", "Registrera ink\u00f6p, koppla till arbeten, l\u00e5t kunden godk\u00e4nna i appen. Allt p\u00e5 ett st\u00e4lle ist\u00e4llet f\u00f6r i mejlen."),
       src: "/screenshots/Budget.png",
       alt: "ink\u00f6p-vy",
       tab: "budget",

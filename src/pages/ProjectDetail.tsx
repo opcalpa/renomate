@@ -922,16 +922,7 @@ const ProjectDetail = () => {
               >
                 {t("projectDetail.chat", "Chat")}
               </div>
-              <div
-                className={cn(
-                  "hidden md:flex items-center py-1.5 cursor-pointer transition-colors",
-                  activeTab === "chat" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-                onClick={() => handleMenuSelect('chat', 'chat')}
-                title={t("projectDetail.chat", "Chat")}
-              >
-                <MessageSquare className="h-4 w-4" />
-              </div>
+              {/* Chat icon — mobile only (desktop users access chat via Översikt scroll) */}
               {/* Primary tabs */}
               {/* 1. Översikt / Planering */}
               <HoverTabMenu

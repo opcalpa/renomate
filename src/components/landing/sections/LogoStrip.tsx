@@ -1,11 +1,11 @@
 import { useTranslation } from "react-i18next";
 
 const PERSONAS = [
-  { name: "Lindqvist Bygg AB", type: "Byggfirma" },
-  { name: "Kök & Bad i Syd", type: "Specialistnisch" },
-  { name: "JM Fastighetstjänst", type: "Fastighetsbolag" },
-  { name: "Erik, hemägare", type: "Privatperson" },
-  { name: "Studio Reno", type: "Enmansföretag" },
+  { nameKey: "landingV2.logos.builder", name: "Byggfirman", typeKey: "landingV2.logos.builderType", type: "Totalentreprenad & ROT" },
+  { nameKey: "landingV2.logos.architect", name: "Arkitekten", typeKey: "landingV2.logos.architectType", type: "Ritning till slutbesiktning" },
+  { nameKey: "landingV2.logos.homeowner", name: "Hem\u00e4garen", typeKey: "landingV2.logos.homeownerType", type: "F\u00f6lj din renovering" },
+  { nameKey: "landingV2.logos.pm", name: "Projektledaren", typeKey: "landingV2.logos.pmType", type: "Budget, tid & team" },
+  { nameKey: "landingV2.logos.specialist", name: "Specialisten", typeKey: "landingV2.logos.specialistType", type: "El, VVS & platts\u00e4ttning" },
 ];
 
 export function LogoStrip() {
@@ -48,7 +48,7 @@ export function LogoStrip() {
                   letterSpacing: "-0.01em",
                 }}
               >
-                {p.name}
+                {t(p.nameKey, p.name)}
               </span>
               <span
                 style={{
@@ -59,7 +59,7 @@ export function LogoStrip() {
                   letterSpacing: "0.08em",
                 }}
               >
-                {p.type}
+                {t(p.typeKey, p.type)}
               </span>
             </div>
           ))}
@@ -93,7 +93,7 @@ export function LogoStrip() {
                   whiteSpace: "nowrap",
                 }}
               >
-                {p.name}
+                {t(p.nameKey, p.name)}
               </span>
               <span
                 style={{
@@ -104,7 +104,7 @@ export function LogoStrip() {
                   letterSpacing: "0.08em",
                 }}
               >
-                {p.type}
+                {t(p.typeKey, p.type)}
               </span>
             </div>
           ))}
