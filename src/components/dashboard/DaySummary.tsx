@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { DashboardProject, DashboardStats } from "@/hooks/useDashboardData";
+import { CashForecastChart } from "./CashForecastChart";
 
 interface DaySummaryProps {
   stats: DashboardStats;
@@ -89,6 +90,11 @@ export function DaySummary({ stats, projects }: DaySummaryProps) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Cash forecast chart */}
+      <div className="mt-3">
+        <CashForecastChart projectIds={projects.map(p => p.id)} />
       </div>
     </section>
   );

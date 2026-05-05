@@ -5612,6 +5612,14 @@
     "previewRotTitle": "Deduction calculated live",
     "previewRotBody": "We separate labor from materials so the tax deduction just works."
   },
+  "cashForecast": {
+    "kicker": "Next 30 days",
+    "title": "Cash forecast",
+    "unit": "k net flow",
+    "inflow": "Invoice inflow",
+    "outflow": "Material outflow",
+    "tkr": "k"
+  },
   "contractorStart": {
     "welcomeKicker": "Welcome, {{name}} · No projects yet",
     "defaultName": "there",

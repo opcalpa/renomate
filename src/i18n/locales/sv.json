@@ -5609,6 +5609,14 @@
     "previewRotTitle": "Avdraget räknas live",
     "previewRotBody": "Vi separerar arbete från material så Skatteverket-grejen bara funkar."
   },
+  "cashForecast": {
+    "kicker": "Nästa 30 dagar",
+    "title": "Likviditetsprognos",
+    "unit": "tkr nettoflöde",
+    "inflow": "Inflöde fakturor",
+    "outflow": "Utflöde material",
+    "tkr": "tkr"
+  },
   "contractorStart": {
     "welcomeKicker": "Välkommen, {{name}} · Inga projekt ännu",
     "defaultName": "du",
