@@ -4,10 +4,10 @@ export function StatsBand() {
   const { t } = useTranslation();
 
   const stats = [
-    { v: "8 h", l: t("landingV2.stats.adminLabel", "Mindre admin per projekt"), s: t("landingV2.stats.adminSource", "Genomsnitt \u00f6ver 612 avslutade projekt") },
-    { v: "3.2 d", l: t("landingV2.stats.quoteLabel", "Snabbare till skickad offert"), s: t("landingV2.stats.quoteSource", "Fr\u00e5n f\u00f6rsta kundm\u00f6te") },
-    { v: "94 %", l: t("landingV2.stats.renewLabel", "F\u00f6rnyar abonnemanget \u00e5r 2"), s: t("landingV2.stats.renewSource", "Av betalande firmor") },
-    { v: "4.7/5", l: t("landingV2.stats.ratingLabel", "Hur byggare bety\u0067s\u00e4tter Renofine"), s: t("landingV2.stats.ratingSource", "Trustpilot \u00b7 47 omd\u00f6men") },
+    { v: "1", l: t("landingV2.stats.oneAppLabel", "App istället för Excel, mejl och pärmar"), s: t("landingV2.stats.oneAppSource", "Allt på ett ställe") },
+    { v: "0 kr", l: t("landingV2.stats.freeLabel", "Att testa under hela beta"), s: t("landingV2.stats.freeSource", "Inga kort, inga krångel") },
+    { v: "47", l: t("landingV2.stats.featuresLabel", "Inbyggda funktioner"), s: t("landingV2.stats.featuresSource", "Och fler varje vecka") },
+    { v: "∞", l: t("landingV2.stats.coffeeLabel", "Kaffekoppar under utvecklingen"), s: t("landingV2.stats.coffeeSource", "Ungefärlig siffra") },
   ];
 
   return (

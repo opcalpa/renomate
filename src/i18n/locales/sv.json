@@ -266,17 +266,17 @@
       "micro": "Inga kontokrav \u00b7 Importera projekt p\u00e5 2 minuter \u00b7 Avsluta n\u00e4r du vill"
     },
     "logos": {
-      "label": "142 firmor anv\u00e4nder Renofine dagligen"
+      "label": "Byggt av en byggare, f\u00f6r byggare"
     },
     "stats": {
-      "adminLabel": "Mindre admin per projekt",
-      "adminSource": "Genomsnitt \u00f6ver 612 avslutade projekt",
-      "quoteLabel": "Snabbare till skickad offert",
-      "quoteSource": "Fr\u00e5n f\u00f6rsta kundm\u00f6te",
-      "renewLabel": "F\u00f6rnyar abonnemanget \u00e5r 2",
-      "renewSource": "Av betalande firmor",
-      "ratingLabel": "Hur byggare bety\u0067s\u00e4tter Renofine",
-      "ratingSource": "Trustpilot \u00b7 47 omd\u00f6men"
+      "oneAppLabel": "App ist\u00e4llet f\u00f6r Excel, mejl och p\u00e4rmar",
+      "oneAppSource": "Allt p\u00e5 ett st\u00e4lle",
+      "freeLabel": "Att testa under hela beta",
+      "freeSource": "Inga kort, inga kr\u00e5ngel",
+      "featuresLabel": "Inbyggda funktioner",
+      "featuresSource": "Och fler varje vecka",
+      "coffeeLabel": "Kaffekoppar under utvecklingen",
+      "coffeeSource": "Ungef\u00e4rlig siffra"
     },
     "features": {
       "pill": "Funktioner",
@@ -313,10 +313,10 @@
       "ctaSuffix": "till Renofine."
     },
     "testimonial": {
-      "kicker": "Kunder \u00b7 Holmberg Bygg AB",
-      "kickerShort": "Kunder",
-      "quote": "\u201cVi gick fr\u00e5n 14 timmars administration per projekt till under 2. Det \u00e4r en l\u00f6ne\u00f6kning f\u00f6r mina arbetsledare \u2014 utan att det kostar mig n\u00e5got.\u201d",
-      "quoteMobile": "\u201cVi gick fr\u00e5n 14 timmars admin till under 2 per projekt.\u201d"
+      "kicker": "Fr\u00e5n grundaren",
+      "quote": "\u201cJag byggde Renofine f\u00f6r att jag var tr\u00f6tt p\u00e5 att jaga kvitton i mejlen och budgetar i Excel. Om du k\u00e4nner igen dig \u2014 v\u00e4lkommen, vi \u00e4r inte m\u00e5nga \u00e4n, men verktyget finns h\u00e4r.\u201d",
+      "quoteMobile": "\u201cJag byggde det h\u00e4r f\u00f6r att jag var tr\u00f6tt p\u00e5 Excel och mejl. V\u00e4lkommen \u2014 verktyget finns h\u00e4r.\u201d",
+      "role": "Grundare \u00b7 Renofine"
     },
     "pricing": {
       "pill": "Pris",

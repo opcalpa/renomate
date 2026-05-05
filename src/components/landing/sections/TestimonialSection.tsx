@@ -18,7 +18,7 @@ export function TestimonialSection() {
               marginBottom: 24,
             }}
           >
-            {t("landingV2.testimonial.kicker", "Kunder \u00b7 Holmberg Bygg AB")}
+            {t("landingV2.testimonial.kicker", "Från grundaren")}
           </div>
           <blockquote
             style={{
@@ -34,7 +34,7 @@ export function TestimonialSection() {
           >
             {t(
               "landingV2.testimonial.quote",
-              "\u201cVi gick fr\u00e5n 14 timmars administration per projekt till under 2. Det \u00e4r en l\u00f6ne\u00f6kning f\u00f6r mina arbetsledare \u2014 utan att det kostar mig n\u00e5got.\u201d"
+              "\u201cJag byggde Renofine för att jag var trött på att jaga kvitton i mejlen och budgetar i Excel. Om du känner igen dig — välkommen, vi är inte många än, men verktyget finns här.\u201d"
             )}
           </blockquote>
           <div className="flex items-center justify-center gap-3.5">
@@ -43,17 +43,18 @@ export function TestimonialSection() {
               style={{
                 width: 48,
                 height: 48,
-                background: `repeating-linear-gradient(45deg, var(--lp-surface-2) 0 8px, var(--lp-bg-sunken) 8px 16px)`,
-                color: "var(--lp-fg-subtle)",
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: 9,
+                background: "var(--lp-accent)",
+                color: "var(--lp-bg)",
+                fontFamily: '"Fraunces", ui-serif, Georgia, serif',
+                fontSize: 18,
+                fontWeight: 500,
               }}
             >
-              foto
+              C
             </div>
             <div className="text-left">
-              <div style={{ fontSize: 14, fontWeight: 500 }}>Marcus Holmberg</div>
-              <div style={{ fontSize: 12, color: "var(--lp-fg-muted)" }}>VD · Holmberg Bygg AB · Stockholm</div>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>Carl Palmquist</div>
+              <div style={{ fontSize: 12, color: "var(--lp-fg-muted)" }}>{t("landingV2.testimonial.role", "Grundare · Renofine")}</div>
             </div>
           </div>
         </div>
@@ -74,7 +75,7 @@ export function TestimonialSection() {
             marginBottom: 14,
           }}
         >
-          {t("landingV2.testimonial.kickerShort", "Kunder")}
+          {t("landingV2.testimonial.kicker", "Från grundaren")}
         </div>
         <blockquote
           style={{
@@ -87,7 +88,7 @@ export function TestimonialSection() {
             fontStyle: "italic",
           }}
         >
-          {t("landingV2.testimonial.quoteMobile", "\u201cVi gick fr\u00e5n 14 timmars admin till under 2 per projekt.\u201d")}
+          {t("landingV2.testimonial.quoteMobile", "\u201cJag byggde det här för att jag var trött på Excel och mejl. Välkommen — verktyget finns här.\u201d")}
         </blockquote>
         <div className="flex items-center gap-2.5">
           <div
@@ -95,17 +96,18 @@ export function TestimonialSection() {
             style={{
               width: 40,
               height: 40,
-              background: `repeating-linear-gradient(45deg, var(--lp-surface-2) 0 8px, var(--lp-bg-sunken) 8px 16px)`,
-              color: "var(--lp-fg-subtle)",
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 9,
+              background: "var(--lp-accent)",
+              color: "var(--lp-bg)",
+              fontFamily: '"Fraunces", ui-serif, Georgia, serif',
+              fontSize: 16,
+              fontWeight: 500,
             }}
           >
-            foto
+            C
           </div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>Marcus Holmberg</div>
-            <div style={{ fontSize: 11, color: "var(--lp-fg-muted)" }}>VD · Holmberg Bygg AB</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>Carl Palmquist</div>
+            <div style={{ fontSize: 11, color: "var(--lp-fg-muted)" }}>{t("landingV2.testimonial.role", "Grundare · Renofine")}</div>
           </div>
         </div>
       </div>

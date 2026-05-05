@@ -266,17 +266,17 @@
       "micro": "No account required \u00b7 Import a project in 2 minutes \u00b7 Cancel anytime"
     },
     "logos": {
-      "label": "142 companies use Renofine daily"
+      "label": "Built by a builder, for builders"
     },
     "stats": {
-      "adminLabel": "Less admin per project",
-      "adminSource": "Average across 612 completed projects",
-      "quoteLabel": "Faster to sent quote",
-      "quoteSource": "From first client meeting",
-      "renewLabel": "Renew subscription year 2",
-      "renewSource": "Of paying companies",
-      "ratingLabel": "How builders rate Renofine",
-      "ratingSource": "Trustpilot \u00b7 47 reviews"
+      "oneAppLabel": "One app instead of Excel, email and binders",
+      "oneAppSource": "Everything in one place",
+      "freeLabel": "To try during the entire beta",
+      "freeSource": "No card, no hassle",
+      "featuresLabel": "Built-in features",
+      "featuresSource": "And more every week",
+      "coffeeLabel": "Cups of coffee during development",
+      "coffeeSource": "Approximate figure"
     },
     "features": {
       "pill": "Features",
@@ -313,10 +313,10 @@
       "ctaSuffix": "to Renofine."
     },
     "testimonial": {
-      "kicker": "Customers \u00b7 Holmberg Bygg AB",
-      "kickerShort": "Customers",
-      "quote": "\u201cWe went from 14 hours of administration per project to under 2. It's a pay raise for my foremen — without costing me anything.\u201d",
-      "quoteMobile": "\u201cWe went from 14 hours of admin to under 2 per project.\u201d"
+      "kicker": "From the founder",
+      "quote": "\u201cI built Renofine because I was tired of chasing receipts in email and budgets in Excel. If that sounds familiar — welcome, we're not many yet, but the tool is here.\u201d",
+      "quoteMobile": "\u201cI built this because I was tired of Excel and email. Welcome — the tool is here.\u201d",
+      "role": "Founder \u00b7 Renofine"
     },
     "pricing": {
       "pill": "Pricing",

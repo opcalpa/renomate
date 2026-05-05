@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-const LOGOS = ["Holmberg Bygg", "Skanlund AB", "Wallin & S\u00f6ner", "BoBygg Stockholm", "Andersson Renoverar", "M\u00e4lar Bygg"];
+const TRAITS = ["Offerthantering", "Budgetuppföljning", "Tidslinje", "Filarkiv", "ROT-avdrag", "Ritverktyg"];
 
 export function LogoStrip() {
   const { t } = useTranslation();
@@ -28,10 +28,10 @@ export function LogoStrip() {
             flexShrink: 0,
           }}
         >
-          {t("landingV2.logos.label", "142 firmor anv\u00e4nder Renofine dagligen")}
+          {t("landingV2.logos.label", "Byggt av en byggare, för byggare")}
         </span>
         <div className="flex items-center gap-12 flex-wrap justify-end flex-1">
-          {LOGOS.map((n) => (
+          {TRAITS.map((n) => (
             <span
               key={n}
               style={{
@@ -60,10 +60,10 @@ export function LogoStrip() {
             marginBottom: 12,
           }}
         >
-          {t("landingV2.logos.label", "142 firmor anv\u00e4nder Renofine dagligen")}
+          {t("landingV2.logos.label", "Byggt av en byggare, för byggare")}
         </div>
         <div className="flex gap-6 overflow-x-auto scrollbar-hide" style={{ marginLeft: -20, marginRight: -20, paddingLeft: 20, paddingRight: 20 }}>
-          {LOGOS.slice(0, 5).map((n) => (
+          {TRAITS.map((n) => (
             <span
               key={n}
               className="shrink-0"
