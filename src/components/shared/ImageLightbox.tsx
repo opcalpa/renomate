@@ -96,7 +96,7 @@ export function ImageLightbox({ images, initialIndex, open, onClose, projectId }
         <DialogTitle className="sr-only">{t("inspiration.gallery", "Gallery")}</DialogTitle>
 
         {/* Image area */}
-        <div className="relative flex-1 bg-neutral-950 flex flex-col min-h-0 min-w-0">
+        <div className="relative flex-1 bg-neutral-950 flex flex-col min-h-[45vh] sm:min-h-0 min-w-0">
           {/* Image container with zoom/rotate */}
           <div className="flex-1 flex items-center justify-center overflow-auto min-h-0">
             <img
@@ -169,7 +169,7 @@ export function ImageLightbox({ images, initialIndex, open, onClose, projectId }
         </div>
 
         {/* Sidebar */}
-        <div className="w-full sm:w-72 shrink-0 border-t sm:border-t-0 sm:border-l bg-background p-4 space-y-4 overflow-y-auto">
+        <div className="w-full sm:w-72 shrink-0 border-t sm:border-t-0 sm:border-l bg-background p-4 space-y-4 overflow-y-auto max-h-[43vh] sm:max-h-none">
           {/* Info */}
           {(photo.caption || photo.filename) && (
             <div>

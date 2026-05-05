@@ -1784,7 +1784,7 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
           {galleryPhoto && (
             <>
               {/* Image area — cinematic dark backdrop */}
-              <div className="relative flex-1 bg-neutral-950 flex items-center justify-center min-h-0 min-w-0">
+              <div className="relative flex-1 bg-neutral-950 flex items-center justify-center min-h-[45vh] sm:min-h-0 min-w-0">
                 <img
                   src={galleryPhoto.url}
                   alt={galleryPhoto.caption || ""}
@@ -1829,7 +1829,7 @@ export function InspirationSection({ projectId, currency, isPlanning = false }: 
               </div>
 
               {/* Side panel */}
-              <div className="w-full sm:w-72 shrink-0 border-t sm:border-t-0 sm:border-l bg-background p-4 space-y-4 overflow-y-auto">
+              <div className="w-full sm:w-72 shrink-0 border-t sm:border-t-0 sm:border-l bg-background p-4 space-y-4 overflow-y-auto max-h-[43vh] sm:max-h-none">
                 {/* Caption */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
