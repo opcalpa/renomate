@@ -2342,6 +2342,18 @@
     "unlinkFile": "Unlink file",
     "fileUnlinked": "File unlinked"
   },
+  "fileStats": {
+    "quote": "Quotes",
+    "invoice": "Invoices",
+    "receipt": "Receipts",
+    "contract": "Contracts",
+    "specification": "Specifications",
+    "drawing": "Drawings",
+    "missingAmount": "missing amount",
+    "unclassified": "Unclassified",
+    "toClassify": "to classify",
+    "backToFolders": "Back to folders"
+  },
   "purchases": {
     "title": "Purchase Orders",
     "description": "Manage all purchase orders for this project",

@@ -93,6 +93,7 @@ import { BatchSmartUploadDialog, readDroppedItems, type DroppedFile } from "./Ba
 import { BatchSmartTolkDialog } from "./batch-tolk";
 import { FilesGridView } from "./files/FilesGridView";
 import { FileActionMenu } from "./files/FileActionMenu";
+import { FileStatsStrip } from "./files/FileStatsStrip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ProjectFile {
@@ -305,6 +306,12 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
   // Search filter
   const [fileSearch, setFileSearch] = useState('');
 
+  // Category filter from FileStatsStrip
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [missingAmountFilter, setMissingAmountFilter] = useState<string | null>(null);
+  // Track the view mode before filter was applied so we can restore it
+  const [preFilterViewMode, setPreFilterViewMode] = useState<'folder' | 'grid' | 'flat' | null>(null);
+
   // Compact row toggle
   const [compactRows, setCompactRows] = useState(() => localStorage.getItem('files_compact') === 'true');
   const toggleCompact = () => {
@@ -392,8 +399,14 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     }
   };
 
+  // Always fetch all files for the stats strip (and flat view)
   useEffect(() => {
-    if (viewMode === 'flat') fetchAllFiles();
+    fetchAllFiles();
+  }, [projectId]);
+
+  // Re-fetch when switching to flat view explicitly
+  useEffect(() => {
+    if (viewMode === 'flat' && allProjectFiles.length === 0) fetchAllFiles();
   }, [viewMode]);
 
   // Batch selection
@@ -717,6 +730,56 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
 
     // No meaningful category — show nothing instead of redundant "Bild"/"Dokument"
     return '';
+  };
+
+  // Category resolver for FileStatsStrip — wraps guessCategory + overrides
+  const getCategoryForPath = useCallback((path: string): string => {
+    if (categoryOverrides[path]) return categoryOverrides[path];
+    // Create a minimal ProjectFile-like object for guessCategory
+    const links = getFileLinksForPath(path);
+    for (const link of links) {
+      const label = FILE_TYPE_LABELS[link.file_type];
+      if (label) return label;
+    }
+    // Path heuristics
+    const p = path.toLowerCase();
+    if (p.includes('/offerter/') || p.includes('offert')) return 'Offert';
+    if (p.includes('/fakturor/') || p.includes('faktura') || p.includes('invoice')) return 'Faktura';
+    if (p.includes('/kvitton/') || p.includes('kvitto') || p.includes('receipt')) return 'Kvitto';
+    if (p.includes('/ritningar/') || p.includes('ritning') || p.includes('floor-plan')) return 'Ritning';
+    if (p.includes('/kontrakt/') || p.includes('kontrakt') || p.includes('contract')) return 'Kontrakt';
+    return '';
+  }, [categoryOverrides, getFileLinksForPath]);
+
+  // Handlers for FileStatsStrip
+  const handleCategoryFilter = (category: string | null) => {
+    if (category) {
+      if (!preFilterViewMode) setPreFilterViewMode(viewMode);
+      changeViewMode('flat');
+    } else {
+      if (preFilterViewMode) {
+        changeViewMode(preFilterViewMode);
+        setPreFilterViewMode(null);
+      }
+    }
+    setCategoryFilter(category);
+    setMissingAmountFilter(null);
+  };
+
+  const handleMissingAmountFilter = (category: string) => {
+    if (!preFilterViewMode) setPreFilterViewMode(viewMode);
+    changeViewMode('flat');
+    setCategoryFilter(category);
+    setMissingAmountFilter(category);
+  };
+
+  const clearCategoryFilter = () => {
+    setCategoryFilter(null);
+    setMissingAmountFilter(null);
+    if (preFilterViewMode) {
+      changeViewMode(preFilterViewMode);
+      setPreFilterViewMode(null);
+    }
   };
 
   // Helper to check if file is a document (PDF, DOC, DOCX, TXT)
@@ -1098,16 +1161,45 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
     e.stopPropagation();
   }, []);
 
-  // Filtered files/folders for search
+  // Filtered files/folders for search + category filter
   const searchQ = fileSearch.toLowerCase().trim();
-  const filteredFolders = searchQ ? folders.filter(f => f.name.toLowerCase().includes(searchQ)) : folders;
-  const filteredFiles = searchQ ? files.filter(f => {
-    if (f.name.toLowerCase().includes(searchQ)) return true;
-    const cat = (categoryOverrides[f.path] || guessCategory(f)).toLowerCase();
-    if (cat.includes(searchQ)) return true;
-    const links = getFileLinksForPath(f.path);
-    return links.some(l => l.task_name?.toLowerCase().includes(searchQ) || l.material_name?.toLowerCase().includes(searchQ) || l.room_name?.toLowerCase().includes(searchQ));
-  }) : files;
+  const filteredFolders = (searchQ || categoryFilter) ? folders.filter(f => !categoryFilter && f.name.toLowerCase().includes(searchQ)) : folders;
+
+  // Choose source: flat view uses allProjectFiles, folder view uses files
+  const fileSource = (viewMode === 'flat' || viewMode === 'grid') ? allProjectFiles : files;
+  const filteredFiles = useMemo(() => {
+    let result = fileSource;
+
+    // Category filter from stats strip
+    if (categoryFilter) {
+      result = result.filter(f => {
+        const cat = categoryOverrides[f.path] || guessCategory(f);
+        if (categoryFilter === '__unclassified__') return !cat;
+        return cat === categoryFilter;
+      });
+
+      // Additional: filter to only files missing amount
+      if (missingAmountFilter) {
+        result = result.filter(f => {
+          const links = getFileLinksForPath(f.path);
+          return !links.some(l => l.invoice_amount != null);
+        });
+      }
+    }
+
+    // Text search
+    if (searchQ) {
+      result = result.filter(f => {
+        if (f.name.toLowerCase().includes(searchQ)) return true;
+        const cat = (categoryOverrides[f.path] || guessCategory(f)).toLowerCase();
+        if (cat.includes(searchQ)) return true;
+        const links = getFileLinksForPath(f.path);
+        return links.some(l => l.task_name?.toLowerCase().includes(searchQ) || l.material_name?.toLowerCase().includes(searchQ) || l.room_name?.toLowerCase().includes(searchQ));
+      });
+    }
+
+    return result;
+  }, [fileSource, categoryFilter, missingAmountFilter, searchQ, categoryOverrides, getFileLinksForPath]);
 
   // Sorted files
   const sortedFiles = useMemo(() => {
@@ -1353,8 +1445,22 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
               </div>
             </div>
 
-            {/* Row 2: Search (only when files exist) */}
-            {(files.length > 0 || folders.length > 0) && (
+            {/* File stats strip — clickable category summaries */}
+            {allProjectFiles.length > 0 && (
+              <div className="mt-2">
+                <FileStatsStrip
+                  fileLinks={fileLinks}
+                  allFilePaths={allProjectFiles.map(f => f.path)}
+                  getCategory={getCategoryForPath}
+                  activeFilter={categoryFilter}
+                  onFilterChange={handleCategoryFilter}
+                  onFilterMissing={handleMissingAmountFilter}
+                />
+              </div>
+            )}
+
+            {/* Row 2: Search + active filter chips */}
+            {(files.length > 0 || folders.length > 0 || allProjectFiles.length > 0) && (
               <div className="relative mt-2">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
@@ -1363,6 +1469,33 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                   placeholder={t('files.search', 'Sök filer...')}
                   className="h-8 pl-8 text-sm"
                 />
+              </div>
+            )}
+
+            {/* Active filter chips */}
+            {categoryFilter && (
+              <div className="flex items-center gap-2 mt-2">
+                <Badge
+                  variant="secondary"
+                  className="cursor-pointer gap-1 pl-2"
+                  onClick={clearCategoryFilter}
+                >
+                  <X className="h-3 w-3" />
+                  {categoryFilter === '__unclassified__'
+                    ? t('fileStats.unclassified', 'Oklassificerade')
+                    : categoryFilter}
+                  {missingAmountFilter && ` (${t('fileStats.missingAmount', 'saknar belopp')})`}
+                </Badge>
+                {preFilterViewMode && preFilterViewMode !== viewMode && (
+                  <Badge
+                    variant="outline"
+                    className="cursor-pointer gap-1 pl-2"
+                    onClick={clearCategoryFilter}
+                  >
+                    <ChevronLeft className="h-3 w-3" />
+                    {t('fileStats.backToFolders', 'Tillbaka till mappar')}
+                  </Badge>
+                )}
               </div>
             )}
 
@@ -1489,8 +1622,7 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {allProjectFiles
-                          .filter(f => !fileSearch || f.name.toLowerCase().includes(fileSearch.toLowerCase()) || (f.folder || '').toLowerCase().includes(fileSearch.toLowerCase()))
+                        {filteredFiles
                           .map((file) => (
                           <TableRow
                             key={file.path}

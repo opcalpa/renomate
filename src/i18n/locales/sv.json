@@ -1813,6 +1813,18 @@
     "unlinkFile": "Koppla bort fil",
     "fileUnlinked": "Fil bortkopplad"
   },
+  "fileStats": {
+    "quote": "Offerter",
+    "invoice": "Fakturor",
+    "receipt": "Kvitton",
+    "contract": "Kontrakt",
+    "specification": "Specifikationer",
+    "drawing": "Ritningar",
+    "missingAmount": "saknar belopp",
+    "unclassified": "Oklassificerade",
+    "toClassify": "att tolka",
+    "backToFolders": "Tillbaka till mappar"
+  },
   "purchases": {
     "title": "Inköpsordrar",
     "description": "Hantera alla inköpsordrar för detta projekt",
