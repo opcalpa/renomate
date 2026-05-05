@@ -2603,16 +2603,57 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
           }
         />
 
-        {/* Evidence summary */}
+        {/* Evidence summary — clickable popover listing unverified items */}
         {(() => {
           const applicable = filtered.filter((r) => r.evidenceStatus && r.evidenceStatus !== "na");
           if (applicable.length === 0) return null;
           const verified = applicable.filter((r) => r.evidenceStatus === "verified").length;
           const missing = applicable.filter((r) => r.evidenceStatus === "missing").length;
+          const unverified = applicable.filter((r) => r.evidenceStatus !== "verified");
           return (
-            <span className={cn("text-xs tabular-nums px-2 py-1 rounded-md border hidden sm:inline-flex", missing > 0 ? "border-amber-300 text-amber-700 bg-amber-50" : "border-green-300 text-green-700 bg-green-50")}>
-              {verified}/{applicable.length} {t("evidence.summaryLabel")}
-            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn("text-xs tabular-nums px-2 py-1 rounded-md border hidden sm:inline-flex cursor-pointer hover:opacity-80 transition-opacity", missing > 0 ? "border-amber-300 text-amber-700 bg-amber-50" : "border-green-300 text-green-700 bg-green-50")}>
+                  {verified}/{applicable.length} {t("evidence.summaryLabel")}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-0">
+                <div className="px-3 py-2.5 border-b">
+                  <h4 className="text-sm font-semibold">{t("evidence.popoverTitle", "Verifieringsstatus")}</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {missing > 0
+                      ? t("evidence.popoverMissing", "{{count}} poster saknar underlag", { count: unverified.length })
+                      : t("evidence.popoverAllGood", "Alla poster har underlag")}
+                  </p>
+                </div>
+                {unverified.length > 0 && (
+                  <div className="max-h-64 overflow-y-auto p-1.5 space-y-0.5">
+                    {unverified.map((row) => (
+                      <button
+                        key={row.id}
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md hover:bg-muted transition-colors text-left"
+                        onClick={() => {
+                          const el = document.getElementById(`budget-row-${row.id}`);
+                          if (el) {
+                            el.scrollIntoView({ behavior: "smooth", block: "center" });
+                            el.classList.add("ring-2", "ring-amber-400");
+                            setTimeout(() => el.classList.remove("ring-2", "ring-amber-400"), 2000);
+                          }
+                        }}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{row.name}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{t(`budget.${row.type === "task" ? "tasks" : "materials"}`)}</p>
+                        </div>
+                        <span className={cn("text-[10px] px-1.5 py-0.5 rounded border", row.evidenceStatus === "missing" ? "border-amber-300 text-amber-700 bg-amber-50" : "border-border text-muted-foreground")}>
+                          {t(`evidence.${row.evidenceStatus}`, row.evidenceStatus)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
           );
         })()}
 
@@ -2945,7 +2986,8 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
                 return (
                 <TableRow
                   key={`${row.type}-${row.id}`}
-                  className={`hover:bg-muted/50${compactRows ? " h-8" : ""} ${rowBg}`}
+                  id={`budget-row-${row.id}`}
+                  className={`hover:bg-muted/50${compactRows ? " h-8" : ""} ${rowBg} transition-all`}
                 >
                   {visibleColumns.map((col, colIdx) => (
                     <TableCell
