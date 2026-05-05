@@ -3,12 +3,13 @@ import { usePersistedPreference } from "@/hooks/usePersistedPreference";
 import { useTranslation } from "react-i18next";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 
-/** Extract stable storage path from Supabase URL for consistent comment threading */
+/** Extract stable storage path from Supabase URL for consistent comment threading.
+ *  Returns "photo:<relative-path>" to avoid UUID cast errors in RLS policies. */
 function stablePhotoEntityId(url: string, fallbackId: string): string {
   try {
     const parsed = new URL(url);
-    const match = parsed.pathname.match(/\/storage\/v1\/object\/public\/(.+)/);
-    if (match) return match[1];
+    const match = parsed.pathname.match(/\/projects\/[a-f0-9-]+\/(.+)/);
+    if (match) return `photo:${match[1]}`;
   } catch { /* use fallback */ }
   return fallbackId;
 }
