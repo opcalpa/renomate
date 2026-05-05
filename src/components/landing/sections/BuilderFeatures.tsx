@@ -15,8 +15,8 @@ export function BuilderFeatures({ onDemoTab }: BuilderFeaturesProps) {
       kicker: t("landingV2.features.quoteKicker", "Offert & avtal"),
       title: t("landingV2.features.quoteTitle", "Skicka offert p\u00e5 10 min"),
       desc: t("landingV2.features.quoteDesc", "AI-mall som l\u00e4r sig din priss\u00e4ttning. ROT-uppgifter f\u00f6rifyllda. Kund signerar digitalt."),
-      src: null as string | null,
-      alt: "offert-vy (kommer snart)",
+      src: "/screenshots/Quote.png",
+      alt: "offert-vy",
       tab: "overview",
     },
     {
@@ -39,8 +39,8 @@ export function BuilderFeatures({ onDemoTab }: BuilderFeaturesProps) {
       kicker: t("landingV2.features.clientKicker", "Kundvy"),
       title: t("landingV2.features.clientTitle", "Bjud in kunden \u2014 kostnadsfritt"),
       desc: t("landingV2.features.clientDesc", "Din kund f\u00e5r en egen, snygg vy. Ser progress, godk\u00e4nner ink\u00f6p, ser ROT-saldo. De gillar dig mer."),
-      src: null as string | null,
-      alt: "kundvy mobil (kommer snart)",
+      src: "/screenshots/ClientView.png",
+      alt: "kundvy",
       tab: "overview",
     },
   ];
