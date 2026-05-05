@@ -1,5 +1,4 @@
 import { useTranslation } from "react-i18next";
-import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CheckSquare, Calendar, Wallet, ShoppingCart, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
@@ -71,16 +70,18 @@ export function PulseCards({
   const { t } = useTranslation();
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="rounded-xl border bg-card overflow-hidden">
+      <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-border">
       {/* Tasks Card */}
-      <Card
-        className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-w-0 shadow-sm"
+      <button
+        type="button"
+        className="cursor-pointer min-w-0 text-left hover:bg-accent/50 transition-colors"
         onClick={() => navigation.onNavigateToTasks()}
       >
-        <CardContent className="pt-3 pb-3 px-3 sm:pt-4 sm:pb-4 sm:px-4">
+        <div className="p-3 sm:p-4 lg:p-5">
           <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
             <CheckSquare className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 ${getTaskColor(taskStats.percentage)}`} />
-            <span className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
+            <span className="kicker truncate">
               {t("overview.pulseCards.tasks")}
             </span>
           </div>
@@ -109,12 +110,13 @@ export function PulseCards({
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </button>
 
       {/* Timeline Card */}
-      <Card
-        className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-w-0 shadow-sm"
+      <button
+        type="button"
+        className="cursor-pointer min-w-0 text-left hover:bg-accent/50 transition-colors"
         onClick={() => {
           if (timelineStats.daysRemaining === null) {
             navigation.onOpenSettings();
@@ -123,10 +125,10 @@ export function PulseCards({
           }
         }}
       >
-        <CardContent className="pt-3 pb-3 px-3 sm:pt-4 sm:pb-4 sm:px-4">
+        <div className="p-3 sm:p-4 lg:p-5">
           <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
             <Calendar className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 ${getTimelineColor(timelineStats.daysRemaining, taskStats.percentage)}`} />
-            <span className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
+            <span className="kicker truncate">
               {t("overview.pulseCards.timeline")}
             </span>
           </div>
@@ -141,12 +143,13 @@ export function PulseCards({
               {t("overview.pulseCards.noDeadlineSet")}
             </p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </button>
 
       {/* Budget Card */}
-      <Card
-        className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-w-0 shadow-sm"
+      <button
+        type="button"
+        className="cursor-pointer min-w-0 text-left hover:bg-accent/50 transition-colors"
         onClick={() => {
           if (!budgetStats.total && !budgetStats.contractTotal) {
             navigation.onOpenSettings();
@@ -155,10 +158,10 @@ export function PulseCards({
           }
         }}
       >
-        <CardContent className="pt-3 pb-3 px-3 sm:pt-4 sm:pb-4 sm:px-4">
+        <div className="p-3 sm:p-4 lg:p-5">
           <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
             <Wallet className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 ${isBuilder && budgetStats.contractTotal > 0 ? "text-foreground" : getBudgetColor(budgetStats.percentage)}`} />
-            <span className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
+            <span className="kicker truncate">
               {t("overview.pulseCards.budget")}
             </span>
           </div>
@@ -207,18 +210,19 @@ export function PulseCards({
               {t("overview.pulseCards.noBudgetSet")}
             </p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </button>
 
       {/* Orders Card */}
-      <Card
-        className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-w-0 shadow-sm"
+      <button
+        type="button"
+        className="cursor-pointer min-w-0 text-left hover:bg-accent/50 transition-colors"
         onClick={() => navigation.onNavigateToPurchases()}
       >
-        <CardContent className="pt-3 pb-3 px-3 sm:pt-4 sm:pb-4 sm:px-4">
+        <div className="p-3 sm:p-4 lg:p-5">
           <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
             <ShoppingCart className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 ${getOrderColor(orderStats.pendingCount)}`} />
-            <span className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
+            <span className="kicker truncate">
               {t("overview.pulseCards.orders")}
             </span>
           </div>
@@ -230,8 +234,9 @@ export function PulseCards({
               ? t("overview.pulseCards.needsReview")
               : t("overview.pulseCards.noPending")}
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </button>
+      </div>
     </div>
   );
 }
