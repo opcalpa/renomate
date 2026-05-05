@@ -13,21 +13,23 @@
   /* ─── Color ───────────────────────────────────────────────── */
   --color-ink:       #1A1A1A;       /* primary text + mark fill */
   --color-paper:     #FAFAF7;       /* primary background, light */
-  --color-green:     oklch(38% 0.08 155);  /* accent — fallback below */
-  --color-cream:     #F4EFE6;       /* subtle surface */
+  --color-green:     #1F4D3A;       /* primary accent */
+  --color-surface:   #EDEAE3;       /* card / elevated surface */
+  --color-cream:     #F4EFE6;       /* subtle sunken surface */
+  --color-warn:      #C9A84C;       /* warning / attention */
+  --color-danger:    #B5636A;       /* error / destructive */
   --color-hairline:  rgba(20, 20, 20, 0.10);
-
-  /* Solid hex fallback for tools that don't support oklch */
-  --color-green-hex: #1F4D3A;
 
   /* Semantic */
   --bg:              var(--color-paper);
   --bg-sunken:       var(--color-cream);
-  --surface:         #FFFFFF;
+  --surface:         var(--color-surface);
   --fg:              var(--color-ink);
   --fg-muted:        rgba(20, 20, 20, 0.60);
   --fg-subtle:       rgba(20, 20, 20, 0.45);
   --primary:         var(--color-green);
+  --warn:            var(--color-warn);
+  --danger:          var(--color-danger);
   --accent-ink:      var(--color-ink);
   --hairline:        var(--color-hairline);
 
