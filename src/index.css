@@ -53,76 +53,79 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Palette: Renofine Studio — Paper theme */
-    --background: 60 23% 97%;
-    --foreground: 0 0% 10%;
+    /* Renofine Studio — Paper theme
+       bg (95%) → bg-sunken (92%) → surface-2 (94%) → surface (98%)
+       Page is warm, cards are lighter, hierarchy via subtle contrast */
+    --background: 45 33% 95%;
+    --foreground: 228 10% 19%;
 
-    --card: 42 22% 91%;
-    --card-foreground: 0 0% 10%;
+    --card: 45 50% 98%;
+    --card-foreground: 228 10% 19%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover: 45 50% 98%;
+    --popover-foreground: 228 10% 19%;
 
-    --primary: 160 33% 27%;
-    --primary-foreground: 60 23% 97%;
+    --primary: 153 39% 30%;
+    --primary-foreground: 45 50% 98%;
 
-    --secondary: 42 16% 94%;
-    --secondary-foreground: 0 0% 10%;
+    --secondary: 42 31% 94%;
+    --secondary-foreground: 228 10% 19%;
 
-    --muted: 42 16% 93%;
-    --muted-foreground: 150 8% 40%;
+    --muted: 44 26% 92%;
+    --muted-foreground: 228 4% 44%;
 
-    --accent: 42 16% 92%;
-    --accent-foreground: 0 0% 10%;
+    --accent: 42 31% 94%;
+    --accent-foreground: 228 10% 19%;
 
-    --destructive: 355 36% 55%;
+    --destructive: 0 47% 53%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 42 12% 87%;
-    --input: 42 12% 89%;
-    --ring: 160 33% 27%;
+    --border: 44 15% 86%;
+    --input: 45 50% 98%;
+    --ring: 153 39% 30%;
 
     --radius: 0.75rem;
 
-    --success: 160 33% 27%;
-    --warning: 44 54% 54%;
-    --info: 160 25% 35%;
+    --success: 153 39% 30%;
+    --warning: 43 53% 51%;
+    --info: 220 15% 40%;
 
-    --shadow-sm: 0 1px 2px 0 hsl(220 5% 28% / 0.04);
-    --shadow-md: 0 4px 6px -1px hsl(220 5% 28% / 0.06);
-    --shadow-lg: 0 10px 15px -3px hsl(220 5% 28% / 0.08);
+    --shadow-sm: 0 1px 2px 0 hsl(228 10% 19% / 0.06);
+    --shadow-md: 0 2px 8px -2px hsl(228 10% 19% / 0.08), 0 1px 2px 0 hsl(228 10% 19% / 0.04);
+    --shadow-lg: 0 12px 32px -8px hsl(228 10% 19% / 0.12), 0 4px 8px -2px hsl(228 10% 19% / 0.06);
 
-    --transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 120ms ease;
   }
 
   .dark {
-    --background: 40 10% 7%;
-    --foreground: 60 14% 95%;
+    /* Charcoal theme */
+    --background: 230 12% 9%;
+    --foreground: 45 20% 95%;
 
-    --card: 40 8% 11%;
-    --card-foreground: 60 14% 95%;
+    --card: 230 10% 12%;
+    --card-foreground: 45 20% 95%;
 
-    --popover: 40 8% 11%;
-    --popover-foreground: 60 14% 95%;
+    --popover: 230 10% 12%;
+    --popover-foreground: 45 20% 95%;
 
-    --primary: 160 33% 35%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 150 40% 42%;
+    --primary-foreground: 230 12% 9%;
 
-    --secondary: 40 6% 16%;
-    --secondary-foreground: 60 14% 95%;
+    --secondary: 230 8% 16%;
+    --secondary-foreground: 45 20% 95%;
 
-    --muted: 40 6% 16%;
-    --muted-foreground: 42 8% 55%;
+    --muted: 230 8% 16%;
+    --muted-foreground: 0 0% 55%;
 
     --accent: 155 18% 18%;
-    --accent-foreground: 60 14% 95%;
+    --accent-foreground: 45 20% 95%;
 
-    --destructive: 355 36% 48%;
+    --destructive: 0 47% 44%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 6% 18%;
-    --input: 40 6% 18%;
-    --ring: 160 33% 35%;
+    --border: 230 8% 18%;
+    --input: 230 8% 16%;
+    --ring: 150 40% 42%;
   }
 }
 
@@ -172,6 +175,19 @@ All colors MUST be HSL.
   .card-elevated:hover {
     box-shadow: var(--shadow-lg);
     transform: translateY(-2px);
+  }
+
+  /* Tabular numerics for dashboards, budgets */
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* Mono kicker — section labels */
+  .kicker {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: hsl(var(--muted-foreground));
   }
 }
 
