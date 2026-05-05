@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ColumnToggle } from "@/components/shared/ColumnToggle";
 import {
   Popover,
   PopoverContent,
@@ -167,31 +168,21 @@ export function UnifiedTableToolbar({
 
       {/* Columns toggle (table only) */}
       {viewMode === "table" && (
-        <Popover>
-          <PopoverTrigger asChild>
+        <ColumnToggle
+          columns={EXTRA_COLUMN_KEYS}
+          labels={Object.fromEntries(allColumns.map(c => [c.key, c.label])) as Record<string, string>}
+          visible={visibleExtras}
+          onChange={(vis) => {
+            for (const key of EXTRA_COLUMN_KEYS) {
+              if (vis.has(key) !== visibleExtras.has(key)) toggleExtraColumn(key);
+            }
+          }}
+          trigger={
             <Button variant="outline" size="icon" className="h-8 w-8" title={t("unifiedTable.columns")}>
               <Columns3 className="h-4 w-4" />
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-52" align="end">
-            <div className="space-y-2">
-              <p className="text-sm font-medium mb-2">{t("unifiedTable.extraColumns")}</p>
-              {EXTRA_COLUMN_KEYS.map((key) => {
-                const col = allColumns.find((c) => c.key === key);
-                if (!col) return null;
-                return (
-                  <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox
-                      checked={visibleExtras.has(key)}
-                      onCheckedChange={() => toggleExtraColumn(key)}
-                    />
-                    {col.label}
-                  </label>
-                );
-              })}
-            </div>
-          </PopoverContent>
-        </Popover>
+          }
+        />
       )}
 
       {/* Compact rows (table only) */}

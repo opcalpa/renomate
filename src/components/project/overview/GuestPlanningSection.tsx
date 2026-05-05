@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ColumnToggle } from "@/components/shared/ColumnToggle";
 import {
   Table,
   TableBody,
@@ -611,27 +612,17 @@ export function GuestPlanningSection({ projectId, projectStatus, onActivate }: G
                   </Tooltip>
                 </TooltipProvider>
 
-                <Popover>
-                  <PopoverTrigger asChild>
+                <ColumnToggle
+                  columns={TASK_COLUMNS.map(c => c.key)}
+                  labels={Object.fromEntries(TASK_COLUMNS.map(c => [c.key, t(c.labelKey)])) as Record<string, string>}
+                  visible={visibleCols}
+                  onChange={setVisibleCols}
+                  trigger={
                     <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto" data-tour="task-columns" title={t("planningTasks.showColumns", "Columns")}>
                       <Columns3 className="h-3.5 w-3.5" />
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-48 p-2" align="end">
-                    {TASK_COLUMNS.map((col) => (
-                      <label
-                        key={col.key}
-                        className="flex items-center gap-2 py-1 px-1 rounded hover:bg-muted cursor-pointer text-sm"
-                      >
-                        <Checkbox
-                          checked={visibleCols.has(col.key)}
-                          onCheckedChange={() => toggleColumn(col.key)}
-                        />
-                        {t(col.labelKey)}
-                      </label>
-                    ))}
-                  </PopoverContent>
-                </Popover>
+                  }
+                />
               </div>
             </>
           )}

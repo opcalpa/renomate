@@ -2357,6 +2357,11 @@
     "toClassify": "to classify",
     "backToFolders": "Back to folders"
   },
+  "columns": {
+    "title": "Show/hide columns",
+    "showAll": "Show all",
+    "hideAll": "Hide all"
+  },
   "purchases": {
     "title": "Purchase Orders",
     "description": "Manage all purchase orders for this project",

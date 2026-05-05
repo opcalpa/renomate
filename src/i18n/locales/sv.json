@@ -1828,6 +1828,11 @@
     "toClassify": "att tolka",
     "backToFolders": "Tillbaka till mappar"
   },
+  "columns": {
+    "title": "Visa/dölj kolumner",
+    "showAll": "Visa alla",
+    "hideAll": "Dölj alla"
+  },
   "purchases": {
     "title": "Inköpsordrar",
     "description": "Hantera alla inköpsordrar för detta projekt",

@@ -51,6 +51,7 @@ import {
 } from "lucide-react";
 import { usePurchasesTableView, type PurchasesTableViewState } from "./usePurchasesTableView";
 import { PurchaseColumnKey, PurchaseColumnDef, EXTRA_COLUMN_KEYS } from "./purchasesTypes";
+import { ColumnToggle } from "@/components/shared/ColumnToggle";
 import { PaidDateConfirm } from "./PaidDateConfirm";
 
 interface Material {
@@ -671,35 +672,22 @@ export function PurchasesTableView({
       {/* Toolbar */}
       {!hideToolbar && <div className="flex items-center gap-2 flex-wrap">
         {/* Columns toggle */}
-        <Popover>
-          <PopoverTrigger asChild>
+        <ColumnToggle
+          columns={EXTRA_COLUMN_KEYS}
+          labels={Object.fromEntries(ALL_COLUMNS.map(c => [c.key, c.label])) as Record<string, string>}
+          visible={visibleExtras}
+          onChange={(vis) => {
+            for (const key of EXTRA_COLUMN_KEYS) {
+              if (vis.has(key) !== visibleExtras.has(key)) toggleExtraColumn(key);
+            }
+          }}
+          align="start"
+          trigger={
             <Button variant="outline" size="icon" className="h-8 w-8" title={t("purchasesTable.columns")}>
               <Columns3 className="h-4 w-4" />
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-52" align="start">
-            <div className="space-y-2">
-              <p className="text-sm font-medium mb-2">
-                {t("purchasesTable.extraColumns")}
-              </p>
-              {EXTRA_COLUMN_KEYS.map((key) => {
-                const col = ALL_COLUMNS.find((c) => c.key === key);
-                return (
-                  <label
-                    key={key}
-                    className="flex items-center gap-2 text-sm cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={visibleExtras.has(key)}
-                      onCheckedChange={() => toggleExtraColumn(key)}
-                    />
-                    {col?.label}
-                  </label>
-                );
-              })}
-            </div>
-          </PopoverContent>
-        </Popover>
+          }
+        />
 
         {/* Compact toggle */}
         <Button

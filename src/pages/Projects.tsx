@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { WelcomeModal, QuickStartChoice } from "@/components/onboarding/WelcomeModal";
+import { ColumnToggle } from "@/components/shared/ColumnToggle";
 import { GuidedSetupWizard } from "@/components/onboarding/GuidedSetupWizard";
 import { PageLoadingSkeleton } from "@/components/ui/skeleton-screens";
 import { isDemoProject } from "@/services/demoProjectService";
@@ -492,42 +493,22 @@ const Projects = () => {
                 </button>
               )}
               {effectiveViewMode === "list" && (
-                <Popover>
-                  <PopoverTrigger asChild>
+                <ColumnToggle
+                  columns={listColumnOrder}
+                  labels={colLabels}
+                  visible={new Set(listColumnOrder.filter(k => !hiddenListCols.has(k)))}
+                  onChange={(vis) => {
+                    const hidden = new Set(listColumnOrder.filter(k => !vis.has(k)));
+                    setHiddenListCols(hidden);
+                    saveListColPrefs(listColumnOrder, hidden);
+                  }}
+                  trigger={
                     <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
                       <Settings2 className="h-3 w-3" />
                       {t("declaration.columns", "Kolumner")}
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-52 p-2">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">
-                      {t("declaration.toggleColumns", "Visa/dölj kolumner")}
-                    </p>
-                    <div className="space-y-1">
-                      {listColumnOrder.map((key) => (
-                        <label
-                          key={key}
-                          className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted cursor-pointer text-sm"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={!hiddenListCols.has(key)}
-                            onChange={() => {
-                              setHiddenListCols((prev) => {
-                                const next = new Set(prev);
-                                next.has(key) ? next.delete(key) : next.add(key);
-                                saveListColPrefs(listColumnOrder, next);
-                                return next;
-                              });
-                            }}
-                            className="h-3.5 w-3.5 rounded border-gray-300"
-                          />
-                          {colLabels[key]}
-                        </label>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                  }
+                />
               )}
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="h-4 w-4 sm:mr-2" />

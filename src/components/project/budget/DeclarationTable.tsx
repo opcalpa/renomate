@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 import { Settings2, FileText, ShoppingCart } from "lucide-react";
+import { ColumnToggle } from "@/components/shared/ColumnToggle";
 import { type EvidenceStatus, getEvidenceColor } from "@/lib/evidenceStatus";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -209,35 +210,18 @@ export function DeclarationTable({ rows, currency, showProject }: DeclarationTab
         <p className="text-xs text-muted-foreground">
           {rows.length} {t("declaration.rowCount", "rader")} <span className="text-muted-foreground/60">· {t("budget.incMomsNote", "All amounts inc. VAT")}</span>
         </p>
-        <Popover>
-          <PopoverTrigger asChild>
+        <ColumnToggle
+          columns={COLUMNS.map(c => c.key)}
+          labels={Object.fromEntries(COLUMNS.map(c => [c.key, t(c.labelKey)])) as Record<ColumnKey, string>}
+          visible={visibleCols}
+          onChange={setVisibleCols}
+          trigger={
             <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
               <Settings2 className="h-3 w-3" />
               {t("declaration.columns", "Kolumner")}
             </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-56 p-2">
-            <p className="text-xs font-medium text-muted-foreground mb-2">
-              {t("declaration.toggleColumns", "Visa/dölj kolumner")}
-            </p>
-            <div className="space-y-1">
-              {COLUMNS.map((col) => (
-                <label
-                  key={col.key}
-                  className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted cursor-pointer text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={visibleCols.has(col.key)}
-                    onChange={() => toggleColumn(col.key)}
-                    className="h-3.5 w-3.5 rounded border-gray-300"
-                  />
-                  {t(col.labelKey)}
-                </label>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+          }
+        />
       </div>
 
       {/* Table */}

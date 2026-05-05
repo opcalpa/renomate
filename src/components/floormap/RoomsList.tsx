@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ColumnToggle } from "@/components/shared/ColumnToggle";
 import { Loader2, Home, Plus, Search, Trash2, MapPin, Calendar, X, ArrowUpDown, LayoutGrid, Table as TableIcon, Settings2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -440,28 +441,21 @@ export const RoomsList = ({ projectId, rooms: externalRooms, onRoomClick, onAddR
           </div>
         )}
 
-        <Popover>
-          <PopoverTrigger asChild>
+        <ColumnToggle
+          columns={FIELD_DEFINITIONS.map(f => f.key)}
+          labels={Object.fromEntries(FIELD_DEFINITIONS.map(f => [f.key, t(f.labelKey, f.key)])) as Record<string, string>}
+          visible={visibleFields}
+          onChange={(vis) => {
+            setVisibleFields(vis);
+            localStorage.setItem(VISIBLE_FIELDS_STORAGE_KEY, JSON.stringify([...vis]));
+          }}
+          trigger={
             <Button variant="outline" size="sm" className="gap-1">
               <Settings2 className="h-4 w-4" />
               <span className="hidden sm:inline">{t('rooms.fields', 'Fält')}</span>
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-56" align="end">
-            <div className="space-y-2">
-              <p className="text-sm font-medium mb-3">{t('rooms.visibleFields', 'Synliga fält')}</p>
-              {FIELD_DEFINITIONS.map(({ key, labelKey }) => (
-                <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <Checkbox
-                    checked={visibleFields.has(key)}
-                    onCheckedChange={() => toggleFieldVisibility(key)}
-                  />
-                  {t(labelKey, key)}
-                </label>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+          }
+        />
 
       </div>
 

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ColumnToggle } from "@/components/shared/ColumnToggle";
 import { useToast } from "@/hooks/use-toast";
 import {
   ShoppingCart,
@@ -968,30 +969,24 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
                 {/* Table view toolbar items (inline) */}
                 {viewMode === 'table' && (
                   <>
-                    <Popover>
-                      <PopoverTrigger asChild>
+                    <ColumnToggle
+                      columns={PURCHASE_EXTRA_COLUMN_KEYS}
+                      labels={Object.fromEntries(purchaseTableViewState.ALL_COLUMNS.map(c => [c.key, c.label])) as Record<string, string>}
+                      visible={purchaseTableViewState.visibleExtras}
+                      onChange={(vis) => {
+                        for (const key of PURCHASE_EXTRA_COLUMN_KEYS) {
+                          const isVisible = vis.has(key);
+                          const wasVisible = purchaseTableViewState.visibleExtras.has(key);
+                          if (isVisible !== wasVisible) purchaseTableViewState.toggleExtraColumn(key);
+                        }
+                      }}
+                      align="start"
+                      trigger={
                         <Button variant="outline" size="icon" className="h-8 w-8" title={t("purchasesTable.columns")}>
                           <Columns3 className="h-4 w-4" />
                         </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-52" align="start">
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium mb-2">{t("purchasesTable.extraColumns")}</p>
-                          {PURCHASE_EXTRA_COLUMN_KEYS.map((key) => {
-                            const col = purchaseTableViewState.ALL_COLUMNS.find((c) => c.key === key);
-                            return (
-                              <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
-                                <Checkbox
-                                  checked={purchaseTableViewState.visibleExtras.has(key)}
-                                  onCheckedChange={() => purchaseTableViewState.toggleExtraColumn(key)}
-                                />
-                                {col?.label}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                      }
+                    />
                     <Button
                       variant={purchaseTableViewState.compactRows ? "default" : "outline"}
                       size="icon"

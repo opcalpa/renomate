@@ -94,6 +94,7 @@ import { BatchSmartTolkDialog } from "./batch-tolk";
 import { FilesGridView } from "./files/FilesGridView";
 import { FileActionMenu } from "./files/FileActionMenu";
 import { FileStatsStrip } from "./files/FileStatsStrip";
+import { ColumnToggle } from "@/components/shared/ColumnToggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ProjectFile {
@@ -1911,29 +1912,21 @@ const ProjectFilesTab = ({ projectId, projectName, canEdit = true, onNavigateToF
                       </TableHead>
                     ))}
                     <TableHead className="w-8 text-right sticky right-0 bg-white dark:bg-card z-10">
-                      <Popover>
-                        <PopoverTrigger asChild>
+                      <ColumnToggle
+                        columns={ALL_FILE_COLS}
+                        labels={fileColLabels}
+                        visible={new Set(visibleFileCols)}
+                        onChange={(vis) => {
+                          const hidden = new Set(ALL_FILE_COLS.filter(k => !vis.has(k)));
+                          setHiddenFileCols(hidden);
+                          localStorage.setItem('files_hidden_cols', JSON.stringify([...hidden]));
+                        }}
+                        trigger={
                           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs -mr-2">
                             <Settings2 className="h-3 w-3" />
                           </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="end" className="w-44 p-2">
-                          <p className="text-xs font-medium text-muted-foreground mb-2">
-                            {t('declaration.toggleColumns', 'Visa/dölj kolumner')}
-                          </p>
-                          {ALL_FILE_COLS.map(key => (
-                            <label key={key} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted cursor-pointer text-sm">
-                              <input
-                                type="checkbox"
-                                checked={!hiddenFileCols.has(key)}
-                                onChange={() => toggleFileCol(key)}
-                                className="h-3.5 w-3.5 rounded border-gray-300"
-                              />
-                              {fileColLabels[key]}
-                            </label>
-                          ))}
-                        </PopoverContent>
-                      </Popover>
+                        }
+                      />
                     </TableHead>
                   </TableRow>
                 </TableHeader>
