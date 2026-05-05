@@ -132,7 +132,7 @@ export function PublicNav({ onCta, onLogin, onScrollTo }: PublicNavProps) {
               fontWeight: 500,
             }}
           >
-            {t("landingV2.nav.cta", "Prova fritt 14 dagar")}
+            {t("landingV2.nav.cta", "Kom ig\u00e5ng \u2014 gratis")}
           </button>
         </nav>
       </div>
@@ -233,7 +233,7 @@ export function PublicNav({ onCta, onLogin, onScrollTo }: PublicNavProps) {
               minHeight: 44,
             }}
           >
-            {t("landingV2.nav.cta", "Prova fritt 14 dagar")}
+            {t("landingV2.nav.cta", "Kom ig\u00e5ng \u2014 gratis")}
           </button>
         </nav>
       )}

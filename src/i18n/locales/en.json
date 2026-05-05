@@ -254,14 +254,14 @@
       "pricing": "Pricing",
       "homeowner": "For homeowners",
       "login": "Log in",
-      "cta": "Try free for 14 days"
+      "cta": "Get started \u2014 free"
     },
     "hero": {
       "pill": "For the renovation industry",
       "h1": "The only project\u00adoffice you'll ever need",
       "body": "Quotes, tax deductions, timelines, purchasing and client\u00adcommunication — in one tool built for those who actually do the work, not for the Excel consultant.",
       "bodyMobile": "Quotes, tax deductions, timelines, purchasing and client\u00adcommunication — in one tool built for those who actually do the work.",
-      "cta": "Try free for 14 days",
+      "cta": "Get started \u2014 free",
       "ctaSecondary": "See demo project",
       "micro": "No account required \u00b7 Import a project in 2 minutes \u00b7 Cancel anytime"
     },
@@ -359,8 +359,8 @@
     },
     "finalCta": {
       "h2": "Build the industry's sharpest project office.",
-      "body": "14-day free trial. No account required. Import your first project in two minutes.",
-      "bodyMobile": "14-day free trial. No account required.",
+      "body": "Free during the entire beta. No account required. Import your first project in two minutes.",
+      "bodyMobile": "Free during the entire beta. No account required.",
       "demo": "Book a 15 min demo",
       "ctaMobile": "Get started"
     },

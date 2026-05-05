@@ -254,14 +254,14 @@
       "pricing": "Priser",
       "homeowner": "F\u00f6r hem\u00e4gare",
       "login": "Logga in",
-      "cta": "Prova fritt 14 dagar"
+      "cta": "Kom ig\u00e5ng \u2014 gratis"
     },
     "hero": {
       "pill": "F\u00f6r renoveringsbranschen",
       "h1": "Det enda projekt\u00adkontoret du kommer beh\u00f6va",
       "body": "Offerter, ROT, tidsplan, ink\u00f6p och kund\u00adkommunikation \u2014 i ett verktyg byggt f\u00f6r dig som faktiskt utf\u00f6r jobbet, inte f\u00f6r Excel-konsulten.",
       "bodyMobile": "Offerter, ROT, tidsplan, ink\u00f6p och kund\u00adkommunikation \u2014 i ett verktyg byggt f\u00f6r dig som faktiskt utf\u00f6r jobbet.",
-      "cta": "Prova fritt 14 dagar",
+      "cta": "Kom ig\u00e5ng \u2014 gratis",
       "ctaSecondary": "Se demoprojekt",
       "micro": "Inga kontokrav \u00b7 Importera projekt p\u00e5 2 minuter \u00b7 Avsluta n\u00e4r du vill"
     },
@@ -359,8 +359,8 @@
     },
     "finalCta": {
       "h2": "Bygg branschens vassaste projektkontor.",
-      "body": "14 dagars fri provperiod. Inga kontokrav. Importera ditt f\u00f6rsta projekt p\u00e5 tv\u00e5 minuter.",
-      "bodyMobile": "14 dagars fri provperiod. Inga kontokrav.",
+      "body": "Gratis under hela beta. Inga kontokrav. Importera ditt f\u00f6rsta projekt p\u00e5 tv\u00e5 minuter.",
+      "bodyMobile": "Gratis under hela beta. Inga kontokrav.",
       "demo": "Boka 15 min demo",
       "ctaMobile": "Kom ig\u00e5ng"
     },

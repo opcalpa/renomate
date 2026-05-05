@@ -30,7 +30,7 @@ export function FinalCTA({ onCta }: FinalCTAProps) {
           {t("landingV2.finalCta.h2", "Bygg branschens vassaste projektkontor.")}
         </h2>
         <p style={{ fontSize: 16, color: "var(--lp-fg-muted)", margin: "0 0 32px", lineHeight: 1.55 }}>
-          {t("landingV2.finalCta.body", "14 dagars fri provperiod. Inga kontokrav. Importera ditt f\u00f6rsta projekt p\u00e5 tv\u00e5 minuter.")}
+          {t("landingV2.finalCta.body", "Gratis under hela beta. Inga kontokrav. Importera ditt f\u00f6rsta projekt p\u00e5 tv\u00e5 minuter.")}
         </p>
         <div className="flex gap-2.5 justify-center">
           <button
@@ -45,7 +45,7 @@ export function FinalCTA({ onCta }: FinalCTAProps) {
               fontWeight: 500,
             }}
           >
-            {t("landingV2.hero.cta", "Prova fritt 14 dagar")}
+            {t("landingV2.hero.cta", "Kom ig\u00e5ng \u2014 gratis")}
             <ArrowRight size={14} />
           </button>
           <button
@@ -80,7 +80,7 @@ export function FinalCTA({ onCta }: FinalCTAProps) {
           {t("landingV2.finalCta.h2", "Bygg branschens vassaste projektkontor.")}
         </h2>
         <p style={{ fontSize: 14, color: "var(--lp-fg-muted)", margin: "0 0 22px", lineHeight: 1.55 }}>
-          {t("landingV2.finalCta.bodyMobile", "14 dagars fri provperiod. Inga kontokrav.")}
+          {t("landingV2.finalCta.bodyMobile", "Gratis under hela beta. Inga kontokrav.")}
         </p>
         <button
           onClick={onCta}

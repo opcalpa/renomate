@@ -61,7 +61,7 @@ export function HeroSection({ onCta, onDemo, onScreenshotClick }: HeroSectionPro
                 fontWeight: 500,
               }}
             >
-              {t("landingV2.hero.cta", "Prova fritt 14 dagar")}
+              {t("landingV2.hero.cta", "Kom ig\u00e5ng \u2014 gratis")}
               <ArrowRight size={14} />
             </button>
             <button
@@ -132,7 +132,7 @@ export function HeroSection({ onCta, onDemo, onScreenshotClick }: HeroSectionPro
               minHeight: 48,
             }}
           >
-            {t("landingV2.hero.cta", "Prova fritt 14 dagar")}
+            {t("landingV2.hero.cta", "Kom ig\u00e5ng \u2014 gratis")}
             <ArrowRight size={15} />
           </button>
           <button
