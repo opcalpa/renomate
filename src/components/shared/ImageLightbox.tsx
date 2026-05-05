@@ -17,15 +17,19 @@ export interface LightboxImage {
 
 /**
  * Derive a stable comment entity ID from a photo URL.
- * Extracts the Supabase storage path so the same physical file
+ * Extracts a short, stable path segment so the same physical file
  * always gets the same comment thread regardless of where it's viewed.
+ *
+ * Uses "photo:<relative-path>" format to avoid collisions with UUID-based
+ * entity_ids (the RLS policy for quotes casts entity_id::uuid which would
+ * fail on a full storage path).
  */
 function stableEntityId(photo: LightboxImage): string {
   try {
     const url = new URL(photo.url);
-    // Supabase storage URLs: /storage/v1/object/public/project-files/projects/...
-    const match = url.pathname.match(/\/storage\/v1\/object\/public\/(.+)/);
-    if (match) return match[1]; // e.g. "project-files/projects/{id}/inspiration/file.jpg"
+    // Supabase storage URLs: /storage/v1/object/public/project-files/projects/{uuid}/...
+    const match = url.pathname.match(/\/projects\/[a-f0-9-]+\/(.+)/);
+    if (match) return `photo:${match[1]}`; // e.g. "photo:inspiration/file.jpg"
   } catch { /* not a valid URL, use id */ }
   return photo.id;
 }
