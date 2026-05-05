@@ -4901,6 +4901,8 @@
     "defaultSaved": "Default saved to profile"
   },
   "homeownerPlanning": {
+    "introTitle": "Plan your project",
+    "introDescription": "Add rooms, describe tasks and estimate costs. When you're ready, create a quote or activate the project.",
     "rfqSummary": "Your renovation plan",
     "rfqDescription": "Add tasks and rooms to build a detailed request for quotes",
     "shareRfq": "Share as quote request",

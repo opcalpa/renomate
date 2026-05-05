@@ -4898,6 +4898,8 @@
     "defaultSaved": "Standardvärde sparat i profilen"
   },
   "homeownerPlanning": {
+    "introTitle": "Planera ditt projekt",
+    "introDescription": "Lägg till rum, beskriv arbetsuppgifter och uppskatta kostnader. När du är nöjd kan du skapa en offert eller aktivera projektet.",
     "rfqSummary": "Din renoveringsplan",
     "rfqDescription": "Lägg till uppgifter och rum för att skapa en detaljerad offertförfrågan",
     "shareRfq": "Dela som offertförfrågan",

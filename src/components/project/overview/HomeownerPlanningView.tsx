@@ -724,6 +724,21 @@ export function HomeownerPlanningView({
 
   return (
     <div className="space-y-6">
+      {/* Intro card — explains what Planning is for */}
+      <div className="rounded-xl border border-border/60 bg-card p-5 flex flex-col sm:flex-row gap-4 items-start">
+        <div className="w-10 h-10 rounded-lg bg-primary/10 grid place-items-center shrink-0 mt-0.5">
+          <ClipboardList className="h-5 w-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base font-medium tracking-tight">
+            {t("homeownerPlanning.introTitle", "Planera ditt projekt")}
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+            {t("homeownerPlanning.introDescription", "Lägg till rum, beskriv arbetsuppgifter och uppskatta kostnader. När du är nöjd kan du skapa en offert eller aktivera projektet.")}
+          </p>
+        </div>
+      </div>
+
       {/* Task list */}
       <Card>
         <CardHeader className="pb-3">
