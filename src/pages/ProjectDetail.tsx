@@ -899,13 +899,13 @@ const ProjectDetail = () => {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="hidden md:flex items-center gap-5 lg:gap-7 flex-nowrap overflow-visible">
+            <div className="hidden md:flex items-center gap-0.5 flex-nowrap overflow-visible">
               {/* Client-only: Kundvy tab */}
               {!isTabBlocked("customer") && (
                 <div
                   className={cn(
-                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                    activeTab === "customer" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"
+                    "px-2.5 py-1.5 text-[13px] tracking-[-0.002em] cursor-pointer rounded-md transition-colors",
+                    activeTab === "customer" ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal"
                   )}
                   onClick={() => handleMenuSelect('customer', 'customer')}
                 >
@@ -915,8 +915,8 @@ const ProjectDetail = () => {
               {/* Chat tab — mobile: own tab; desktop: navigate to Overview + scroll to chat */}
               <div
                 className={cn(
-                  "px-2 py-1.5 text-sm font-medium cursor-pointer transition-colors md:hidden",
-                  activeTab === "chat" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"
+                  "px-2.5 py-1.5 text-[13px] tracking-[-0.002em] cursor-pointer rounded-md transition-colors md:hidden",
+                  activeTab === "chat" ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal"
                 )}
                 onClick={() => handleMenuSelect('chat', 'chat')}
               >
@@ -937,8 +937,8 @@ const ProjectDetail = () => {
               <HoverTabMenu
                 trigger={
                   <div className={cn(
-                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                    activeTab === "overview" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    "px-2.5 py-1.5 text-[13px] tracking-[-0.002em] cursor-pointer rounded-md transition-colors",
+                    activeTab === "overview" ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal",
                     isTabBlocked("overview") && "opacity-40 pointer-events-none cursor-default"
                   )}>
                     {projectStatus === "planning" ? t("projectDetail.planning", "Planering") : t("projectDetail.overview")}
@@ -954,8 +954,8 @@ const ProjectDetail = () => {
               <HoverTabMenu
                 trigger={
                   <div className={cn(
-                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                    activeTab === "tasks" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    "px-2.5 py-1.5 text-[13px] tracking-[-0.002em] cursor-pointer rounded-md transition-colors",
+                    activeTab === "tasks" ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal",
                     isTabBlocked("tasks") && "opacity-40 pointer-events-none cursor-default"
                   )}>
                     {t("projectDetail.tasks")}
@@ -971,8 +971,8 @@ const ProjectDetail = () => {
               <HoverTabMenu
                 trigger={
                   <div className={cn(
-                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                    activeTab === "purchases" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    "px-2.5 py-1.5 text-[13px] tracking-[-0.002em] cursor-pointer rounded-md transition-colors",
+                    activeTab === "purchases" ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal",
                     isTabBlocked("purchases") && "opacity-40 pointer-events-none cursor-default"
                   )}>
                     {t('projectDetail.purchases')}
@@ -988,8 +988,8 @@ const ProjectDetail = () => {
               <HoverTabMenu
                 trigger={
                   <div className={cn(
-                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                    activeTab === "budget" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    "px-2.5 py-1.5 text-[13px] tracking-[-0.002em] cursor-pointer rounded-md transition-colors",
+                    activeTab === "budget" ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal",
                     isTabBlocked("budget") && "opacity-40 pointer-events-none cursor-default"
                   )}>
                     {t('common.budget')}
@@ -1005,8 +1005,8 @@ const ProjectDetail = () => {
               {permissions.timeTracking !== "none" && isTabEnabled("timetracking") && (
                 <div
                   className={cn(
-                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                    activeTab === "timetracking" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    "px-2.5 py-1.5 text-[13px] tracking-[-0.002em] cursor-pointer rounded-md transition-colors",
+                    activeTab === "timetracking" ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal",
                   )}
                   onClick={() => setActiveTab("timetracking")}
                 >
@@ -1018,8 +1018,8 @@ const ProjectDetail = () => {
               <HoverTabMenu
                 trigger={
                   <div className={cn(
-                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                    activeTab === "spaceplanner" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    "px-2.5 py-1.5 text-[13px] tracking-[-0.002em] cursor-pointer rounded-md transition-colors",
+                    activeTab === "spaceplanner" ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal",
                     isTabBlocked("spaceplanner") && "opacity-40 pointer-events-none cursor-default"
                   )}>
                     {t('projectDetail.spacePlanner')}
@@ -1035,8 +1035,8 @@ const ProjectDetail = () => {
               <HoverTabMenu
                 trigger={
                   <div className={cn(
-                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                    activeTab === "files" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    "px-2.5 py-1.5 text-[13px] tracking-[-0.002em] cursor-pointer rounded-md transition-colors",
+                    activeTab === "files" ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal",
                     isTabBlocked("files") && "opacity-40 pointer-events-none cursor-default"
                   )}>
                     {t('projectDetail.files')}
@@ -1052,8 +1052,8 @@ const ProjectDetail = () => {
               <HoverTabMenu
                 trigger={
                   <div className={cn(
-                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                    activeTab === "team" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    "px-2.5 py-1.5 text-[13px] tracking-[-0.002em] cursor-pointer rounded-md transition-colors",
+                    activeTab === "team" ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal",
                     isTabBlocked("team") && "opacity-40 pointer-events-none cursor-default"
                   )}>
                     {t('projectDetail.team')}
@@ -1069,8 +1069,8 @@ const ProjectDetail = () => {
               {effectiveUserType === "contractor" && isTabEnabled("inspections") && (
                 <div
                   className={cn(
-                    "py-1.5 text-sm font-medium cursor-pointer transition-colors",
-                    activeTab === "inspections" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
+                    "px-2.5 py-1.5 text-[13px] tracking-[-0.002em] cursor-pointer rounded-md transition-colors",
+                    activeTab === "inspections" ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal",
                   )}
                   onClick={() => setActiveTab("inspections")}
                 >

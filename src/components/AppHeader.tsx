@@ -132,33 +132,27 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
 
   const siteNavLinks = (
     <>
-      <Button
-        variant="ghost"
-        size="sm"
-        className={`gap-1.5 text-sm ${isActive("/tips") ? "bg-accent" : ""}`}
+      <button
+        type="button"
+        className={`px-2.5 py-1.5 text-[13px] tracking-[-0.002em] rounded-md transition-colors ${isActive("/tips") ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal"}`}
         onClick={() => navigate("/tips")}
       >
-        <Lightbulb className="h-4 w-4" />
-        <span className="hidden sm:inline">{t('nav.tips')}</span>
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className={`gap-1.5 text-sm ${isActive("/changelog") ? "bg-accent" : ""}`}
+        {t('nav.tips')}
+      </button>
+      <button
+        type="button"
+        className={`px-2.5 py-1.5 text-[13px] tracking-[-0.002em] rounded-md transition-colors ${isActive("/changelog") ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal"}`}
         onClick={() => navigate("/changelog")}
       >
-        <Sparkles className="h-4 w-4" />
-        <span className="hidden sm:inline">{t('nav.changelog', 'Nyheter')}</span>
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className={`gap-1.5 text-sm ${isActive("/feedback") ? "bg-accent" : ""}`}
+        {t('nav.changelog', 'Nyheter')}
+      </button>
+      <button
+        type="button"
+        className={`px-2.5 py-1.5 text-[13px] tracking-[-0.002em] rounded-md transition-colors ${isActive("/feedback") ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal"}`}
         onClick={() => navigate("/feedback")}
       >
-        <MessageSquare className="h-4 w-4" />
-        <span className="hidden sm:inline">{t('nav.feedback')}</span>
-      </Button>
+        {t('nav.feedback')}
+      </button>
     </>
   );
 
@@ -166,20 +160,18 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
 
   const projectsDropdown = hasDropdownItems ? (
     <div className="flex items-center">
-      <Button
-        variant="ghost"
-        size="sm"
-        className={`gap-1.5 text-sm font-medium rounded-r-none pr-1.5 ${isActive("/start") ? "bg-accent" : ""}`}
+      <button
+        type="button"
+        className={`px-2.5 py-1.5 text-[13px] tracking-[-0.002em] rounded-l-md transition-colors ${isActive("/start") ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal"}`}
         onClick={() => navigate("/start")}
       >
-        <FolderOpen className="h-4 w-4" />
-        <span className="hidden sm:inline">{t('nav.start')}</span>
-      </Button>
+        {t('nav.start')}
+      </button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="rounded-l-none px-1 h-8">
+          <button type="button" className="px-1 py-1.5 rounded-r-md text-muted-foreground hover:text-foreground transition-colors">
             <ChevronDown className="h-3 w-3" />
-          </Button>
+          </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64 bg-popover z-[100]">
           {/* Mina Projekt */}
@@ -242,21 +234,19 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
       </DropdownMenu>
     </div>
   ) : (
-    <Button
-      variant="ghost"
-      size="sm"
-      className={`gap-1.5 text-sm font-medium ${isActive("/start") ? "bg-accent" : ""}`}
+    <button
+      type="button"
+      className={`px-2.5 py-1.5 text-[13px] tracking-[-0.002em] rounded-md transition-colors ${isActive("/start") ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal"}`}
       onClick={() => navigate("/start")}
     >
-      <FolderOpen className="h-4 w-4" />
-      <span className="hidden sm:inline">{t('nav.start')}</span>
-    </Button>
+      {t('nav.start')}
+    </button>
   );
 
   return (
     <>
-    <header className="border-b border-border bg-card sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-2 flex items-center gap-2 md:gap-4">
+    <header className="border-b border-border/60 bg-card sticky top-0 z-50 h-[52px]">
+      <div className="container mx-auto px-5 h-full flex items-center gap-5">
         <div
           className="flex items-center cursor-pointer shrink-0"
           onClick={() => navigate(user && !isGuest ? "/start" : "/")}
@@ -271,9 +261,9 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
           </div>
         ) : (
           /* Default mode: show projects dropdown + site nav links */
-          <div className="flex-1 flex items-center gap-1">
+          <div className="flex-1 flex items-center gap-0.5">
             {projectsDropdown}
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden md:flex items-center gap-0.5 ml-3">
               {siteNavLinks}
             </div>
           </div>
