@@ -335,14 +335,9 @@ const ProjectDetail = () => {
     }
   }, [isPublicDemoProject, loading, demoPrefs.hasChosenRole, user]);
 
-  // Override project status based on demo phase stepper (contractor only)
+  // Demo project always shows as active (planning is a separate tab now)
   const effectiveProject = (isPublicDemoProject && demoPrefs.preferences.role === "contractor" && project)
-    ? {
-        ...project,
-        status: demoPrefs.preferences.phase === "planning" ? "planning"
-          : demoPrefs.preferences.phase === "quote_sent" ? "quote_sent"
-          : "in_progress",
-      }
+    ? { ...project, status: "in_progress" }
     : project;
 
   const loadGuestData = () => {
@@ -1487,6 +1482,8 @@ const ProjectDetail = () => {
           setShowDemoRoleModal(false);
           if (role === "homeowner") {
             setActiveTab("customer");
+          } else {
+            setActiveTab("overview");
           }
         }}
         onDismiss={() => {
