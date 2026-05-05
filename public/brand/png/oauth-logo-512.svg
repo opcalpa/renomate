@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Renofine">
+  <!-- Solid background -->
+  <rect width="512" height="512" fill="#FAFAF7"/>
+
+  <!-- Mark centered -->
+  <g transform="translate(206, 100)">
+    <path d="M50 9.375 a40.625 40.625 0 1 0 40.625 40.625 h-18.75 v-21.875 h-21.875 z" fill="#2F5D4E"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="256" y="310" text-anchor="middle" font-family="Georgia, serif" font-weight="400" font-size="72" letter-spacing="-1.8" fill="#2F5D4E">Renofine</text>
+
+  <!-- Tagline -->
+  <text x="256" y="360" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="400" font-size="20" letter-spacing="0.5" fill="#2F5D4E" opacity="0.45">Projektkontor för renovering</text>
+</svg>

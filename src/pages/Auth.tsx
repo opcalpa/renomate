@@ -190,10 +190,6 @@ const Auth = () => {
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/start`,
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
         },
       });
 

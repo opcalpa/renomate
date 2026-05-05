@@ -199,15 +199,30 @@ const Projects = () => {
 
   // Data fetching handled by useProjectsData hook
 
-  // Show welcome toast after email confirmation
+  // Show welcome toast after email confirmation, or auth error toast
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace("#", "?"));
+
     if (params.get("confirmed") === "true") {
       toast({
         title: "✅ Email verified — welcome to Renofine!",
         description: "Your account is ready. Let's get started!",
       });
-      // Clean URL
+      window.history.replaceState({}, "", "/start");
+    }
+
+    // Handle OAuth errors (e.g. Google sign-in failure)
+    const error = params.get("error") || hashParams.get("error");
+    const errorDesc = params.get("error_description") || hashParams.get("error_description");
+    if (error) {
+      toast({
+        title: t("auth.loginFailed", "Sign in failed"),
+        description: errorDesc
+          ? decodeURIComponent(errorDesc)
+          : t("auth.tryAgain", "Please try again or use email sign in."),
+        variant: "destructive",
+      });
       window.history.replaceState({}, "", "/start");
     }
   }, []);
