@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings2, ShoppingCart, FileText, Mail, ChevronDown, ChevronRight, ExternalLink, UserPlus, Bell, Info, X, Play } from "lucide-react";
+import { Settings2, ShoppingCart, FileText, Mail, ChevronDown, ChevronRight, ExternalLink, UserPlus, Bell, Info, X, Play, Plus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
@@ -381,56 +381,8 @@ const OverviewTab = ({
 
       {/* Planning content moved to dedicated Planering tab */}
 
-      {/* Dashboard action buttons */}
+      {/* Reminders/tips + settings — kept above PulseCards */}
       <div className="flex items-center gap-2 flex-wrap">
-              {!isHomeowner && !projectStatus?.startsWith("active") && (isProjectOwner || overviewAccess === 'edit') && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="flex-1 sm:flex-none gap-1">
-                      <FileText className="h-4 w-4" />
-                      <span className="hidden sm:inline">{t("overview.quoteMenu")}</span>
-                      <ChevronDown className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-64">
-                    <DropdownMenuItem
-                      onClick={() => setCustomerFormOpen(true)}
-                      className="flex flex-col items-start cursor-pointer py-3"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        <span className="font-medium">{t("overview.customerForm")}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground ml-6">
-                        {t("overview.customerFormHint")}
-                      </span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setQuoteDialogOpen(true)}
-                      className="flex flex-col items-start cursor-pointer py-3"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        <span className="font-medium">{t("overview.createQuote")}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground ml-6">
-                        {t("overview.createQuoteHint")}
-                      </span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              {(isProjectOwner || purchasesAccess === 'edit' || purchasesAccess === 'create') && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setReceiptModalOpen(true)}
-                className="flex-1 sm:flex-none"
-              >
-                <ShoppingCart className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">{t("overview.addPurchase")}</span>
-              </Button>
-              )}
               {/* Reminders + tips popover — compact button */}
               {(reminders.length > 0 || tips.length > 0) && (
                 <Popover>
@@ -503,6 +455,39 @@ const OverviewTab = ({
           isBuilder={!isHomeowner}
       />
 
+      {/* Quick action buttons — contractor only */}
+      {!isHomeowner && (isProjectOwner || overviewAccess === 'edit') && (
+        <div className="flex items-center gap-2 flex-wrap -mt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setInvoiceMethodOpen(true)}
+            className="gap-1.5"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t("overview.quickInvoice", "Faktura")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setQuoteDialogOpen(true)}
+            className="gap-1.5"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t("overview.quickQuote", "Offert")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setReceiptModalOpen(true)}
+            className="gap-1.5"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t("overview.quickReceipt", "Inbetalning")}
+          </Button>
+        </div>
+      )}
+
       {isHomeowner && isProjectOwner && showTaxDeduction && (
         <HouseholdRotDialog
           projectId={project.id}
@@ -520,23 +505,15 @@ const OverviewTab = ({
         onNavigateToFiles={onNavigateToFiles}
       />
 
-      {/* Inspiration — room photos, Pinterest, material images (non-planning only, planning has its own above) */}
+      {/* Inspiration — room photos, Pinterest, material images */}
       <h2 className="font-display text-xl font-normal tracking-tight mt-6 mb-3">{t("overview.imagesHeading", "Bilder")}</h2>
       <InspirationSection
         projectId={project.id}
         currency={project.currency || "SEK"}
       />
 
-      {/* Quotes & Invoices unified card */}
-      {!isHomeowner && (
-        <ProjectDocumentsCard
-          projectId={project.id}
-          currency={project.currency}
-          onCreateQuote={() => setQuoteDialogOpen(true)}
-          onCreateInvoice={() => setInvoiceMethodOpen(true)}
-          estimatedProfit={budgetStats.estimatedProfit}
-        />
-      )}
+      {/* Documents card removed from Overview — lives on Budget tab.
+         Quick action buttons above replace the create buttons. */}
 
       {/* Planning reference removed from active phase — data already migrated
          to Tasks, Purchases, and Rooms tabs via quote acceptance. Original
