@@ -1,119 +1,71 @@
-# Renofine — Brand Assets
+# Renofine Brand Pack
 
-Brand identity package for **Renofine** — projektkontoret för byggare.
+**Version 1.0 · Skåra mark + Fraunces wordmark**
 
-This folder contains everything needed to apply the Renofine brand to a web app, marketing site, social media, and app icons.
+A complete asset pack for Renofine: SVG logos, raster app icons, favicons, social cards, design tokens, and a drop-in React component.
 
-## Structure
+## What's inside
 
 ```
 brand/
-├── README.md                    ← this file
-├── BRAND-GUIDE.md               ← usage rules, do/don't, colors, type
-├── tokens.css                   ← drop-in CSS variables
-├── svg/
-│   ├── mark/                    ← Rf monogram (the icon)
-│   │   ├── rf-mark-ink.svg          (black plate, paper Rf — primary)
-│   │   ├── rf-mark-green.svg        (green plate, paper Rf — accent)
-│   │   ├── rf-mark-paper.svg        (paper plate, ink Rf — for dark bg)
-│   │   ├── rf-glyph-ink.svg         (Rf only, no plate, ink)
-│   │   ├── rf-glyph-green.svg       (Rf only, no plate, green)
-│   │   └── rf-glyph-paper.svg       (Rf only, no plate, paper)
-│   ├── lockup/                  ← Rf mark + "Renofine" wordmark together
-│   │   ├── horizontal-ink.svg       (most-used: header, navbar)
-│   │   ├── horizontal-green.svg
-│   │   ├── horizontal-on-dark.svg   (paper version for dark surfaces)
-│   │   ├── stacked-ink.svg          (for square/portrait spaces)
-│   │   ├── stacked-green.svg
-│   │   └── stacked-on-dark.svg
-│   └── wordmark/                ← "Renofine" text only (no mark)
-│       ├── wordmark-ink.svg
-│       ├── wordmark-green.svg
-│       └── wordmark-paper.svg
-└── png/
-    ├── app-icons/
-    │   ├── app-icon-1024.png        (App Store / Play Store)
-    │   ├── app-icon-512.png         (PWA, manifest.json)
-    │   ├── app-icon-green-1024.png  (alt: green plate)
-    │   ├── app-icon-green-512.png
-    │   └── apple-touch-icon-180.png (iOS home screen)
-    ├── favicon/
-    │   ├── favicon-16.png
-    │   ├── favicon-32.png
-    │   └── favicon-48.png
-    └── social/
-        └── og-image-1200x630.png    (Open Graph / Twitter card)
+├── svg/                       # Vector — primary deliverables
+│   ├── mark/                  # Just the symbol
+│   │   ├── mark-ink.svg
+│   │   ├── mark-paper.svg
+│   │   └── mark-green.svg
+│   ├── wordmark/              # Just "Renofine" in Fraunces
+│   ├── lockup/                # Mark + wordmark together
+│   │   ├── lockup-horizontal-{ink,green,on-dark,on-paper}.svg
+│   │   └── lockup-stacked-{ink,green,on-dark}.svg
+│   ├── app-icon/              # Mark on a colored plate (squircle)
+│   └── social/                # OG card 1200×630
+│
+├── png/                       # Raster — for places that can't use SVG
+│   ├── favicon/               # 16, 32, 48 (transparent + paper bg)
+│   ├── app-icons/             # 180 (iOS), 192 (Android), 512, 1024 — 3 plate variants
+│   └── social/                # OG card PNG
+│
+├── components/
+│   └── Logo.jsx               # Drop-in React component
+├── tokens.css                 # CSS variables (colors, type, spacing)
+├── BRAND-GUIDE.md             # Usage rules, do's & don'ts
+├── brand-sheet.html           # Printable one-page reference
+└── README.md
 ```
 
-## Quick install
+## Quick start
 
-### 1. Copy this folder into your project
-Place `brand/` at your project root, or under `public/brand/` for a Vite/Next/CRA app.
+### Web (React)
+```jsx
+import { Logo, Mark } from "./brand/components/Logo";
+import "./brand/tokens.css";
 
-### 2. Add favicons + OG to `index.html`
+<Logo size={28} />                      // mark + wordmark
+<Logo size={28} variant="green" />      // green
+<Logo size={28} stacked />              // mark above text
+<Mark size={20} color="#2F5D4E" />      // mark only
+```
 
+### Favicon HTML
 ```html
-<link rel="icon" type="image/png" sizes="16x16"  href="/brand/png/favicon/favicon-16.png">
-<link rel="icon" type="image/png" sizes="32x32"  href="/brand/png/favicon/favicon-32.png">
-<link rel="icon" type="image/png" sizes="48x48"  href="/brand/png/favicon/favicon-48.png">
-<link rel="apple-touch-icon"      sizes="180x180" href="/brand/png/app-icons/apple-touch-icon-180.png">
-
-<meta property="og:image"          content="/brand/png/social/og-image-1200x630.png">
-<meta property="og:image:width"    content="1200">
-<meta property="og:image:height"   content="630">
-<meta property="twitter:card"      content="summary_large_image">
-<meta property="twitter:image"     content="/brand/png/social/og-image-1200x630.png">
+<link rel="icon" type="image/svg+xml" href="/brand/svg/mark/mark-ink.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/brand/png/favicon/favicon-32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/brand/png/app-icons/app-icon-paper-180.png" />
 ```
 
-### 3. Import design tokens
-
-```css
-@import "/brand/tokens.css";
-```
-
-Or in a Vite/Next app:
-```js
-import "@/brand/tokens.css";
-```
-
-### 4. Use the lockup in headers
-
-```jsx
-// Header component
-<img src="/brand/svg/lockup/horizontal-ink.svg"
-     alt="Renofine"
-     style={{ height: 32 }}/>
-```
-
-For dark backgrounds:
-```jsx
-<img src="/brand/svg/lockup/horizontal-on-dark.svg"
-     alt="Renofine"
-     style={{ height: 32 }}/>
-```
-
-### 5. Use the mark alone
-
-```jsx
-// In a tight UI spot (e.g. avatar, menu icon, loading state)
-<img src="/brand/svg/mark/rf-mark-ink.svg"
-     alt="Renofine"
-     style={{ width: 32, height: 32, borderRadius: 6 }}/>
-```
-
-## Web font
-
-Renofine wordmark uses **Fraunces** (variable serif, Google Fonts).
-
+### Open Graph / social
 ```html
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
+<meta property="og:image" content="https://renofine.com/brand/png/social/og-card-1200x630.png" />
+<meta name="twitter:card" content="summary_large_image" />
 ```
 
-The SVG files reference `Fraunces` and fall back to `Georgia` on render failure — visually similar, ok as fallback.
+## Design choices (the short version)
 
-## See also
+- **Mark — Skåra**: A solid disc with an exact rectangular notch in the upper-right quadrant. Reads as a precision-cut shape, references measured construction without literal hammers/houses. Holds at 14 px.
+- **Wordmark — Fraunces**: Editorial serif that gives the brand a hand-built, considered feel. Use the regular weight; never bold.
+- **Colors**: Warm paper (`#FAFAF7`) as the default canvas, ink (`#1A1A17`) for type, green (`#2F5D4E`) for ROT/primary action accents. The pack avoids large fields of green — green is a moment, not a wash.
 
-- **`BRAND-GUIDE.md`** — usage rules, color tokens, typographic scale, do/don't
-- **`tokens.css`** — CSS variables ready to drop in
+See `BRAND-GUIDE.md` for clear-space, sizing rules, and what not to do.
+
+---
+Need a variant that's not in here? Tell me what surface you're applying it to and I'll generate it.

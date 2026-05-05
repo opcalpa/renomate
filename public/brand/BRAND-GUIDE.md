@@ -1,122 +1,84 @@
-# Renofine — Brand Guide
+# Renofine Brand Guide
 
-> A short, opinionated guide. Read once, refer to it when in doubt.
+**v1.0** — A short, opinionated guide. If something isn't covered here, ask.
 
----
+## 1 · The mark — Skåra
 
-## 1. The mark
+A solid disc with a rectangular notch in the upper-right quadrant.
 
-The **Rf monogram** is Renofine's primary identity mark. It's the letters "Rf" in **Fraunces medium** sitting in a rounded square.
+- **Why it works**: It's a constructed shape, not a typographic monogram. It references measured, cut, fitted work without falling into building/tool clichés.
+- **Always**: Use the provided SVG. Don't redraw, recolor outside the palette, or apply effects (drop shadows, gradients, outlines).
+- **Minimum size**: 14 px (digital), 8 mm (print). Below that, use the wordmark instead.
 
-**Default version:** ink (`#1A1A1A`) plate, paper (`#FAFAF7`) Rf.
+## 2 · The wordmark — Renofine
 
-### Use the mark when:
-- App icon, favicon, social profile pic
-- Anywhere the wordmark "Renofine" already appears nearby (avoid redundancy)
-- Tight UI spots: loading states, avatar, badge, menu icon
+Set in **Fraunces**, regular weight, letter-spacing −2.5%.
 
-### Do NOT:
-- ❌ Render the plate without the Rf inside (an empty rounded square is not the brand)
-- ❌ Skew, rotate beyond 0/90/180/270, or stretch the mark
-- ❌ Put a stroke around the plate
-- ❌ Change the corner radius (currently `10/64` = `15.6%`)
-- ❌ Use the mark below 16px — use the favicon-16 PNG instead at that size
+- Never use bold, italic, condensed, or alternate weights for the mark itself.
+- The wordmark may exist without the mark in tight horizontal contexts (footers, mobile nav).
+- The mark may exist without the wordmark in app icons and favicons.
 
----
+## 3 · Color
 
-## 2. The lockup
+| Token | Hex | Use |
+|---|---|---|
+| Ink | `#1A1A17` | Primary text, mark on paper |
+| Paper | `#FAFAF7` | Default background |
+| Green | `#2F5D4E` | ROT highlights, primary CTA, accent only |
+| Surface 1 | `#F5F2E8` | Card |
+| Surface 2 | `#EFEAE0` | Hover / sunken |
+| Hairline | `#E8E4D8` | Borders, dividers |
 
-The **lockup** = the Rf mark + "Renofine" wordmark side by side (or stacked).
+**Green is a seasoning, not the dish.** Use it for one element per screen — primary button, ROT badge, key chart accent. Never as a large flood color or full-bleed background.
 
-Use the lockup when:
-- Website header / navbar
-- Email signature
-- Documents (invoices, quotes)
-- Marketing material where the brand needs to be named
+## 4 · Clear space
 
-**Horizontal lockup** is default. **Stacked** only when horizontal won't fit (square crops, profile photos with no width).
+Reserve a margin equal to **the height of the notch** around the mark on all sides. Around the lockup, reserve **the cap-height of the wordmark** on all sides.
 
-### Sizing
-- Min width for horizontal lockup: **96px**
-- Below that, drop to mark only
-
-### Clear space
-Reserve at least **half the mark's height** of empty space on all sides of the lockup. Don't crowd it.
-
----
-
-## 3. Color
-
-| Token         | Hex       | Use                                    |
-|---------------|-----------|----------------------------------------|
-| `--ink`       | `#1A1A1A` | Primary text, primary mark fill        |
-| `--paper`     | `#FAFAF7` | Background (light mode), inverted text |
-| `--green`     | `#1F4D3A` | Accent (CTAs, links, highlights)       |
-| `--cream`     | `#F4EFE6` | Subtle surfaces (sidebars, cards)      |
-| `--hairline`  | `rgba(20,20,20,0.10)` | Borders, dividers           |
-
-Don't introduce new brand colors without need. The palette is deliberately small.
-
----
-
-## 4. Typography
-
-| Family            | Use                                    |
-|-------------------|----------------------------------------|
-| **Fraunces**      | Headings, wordmark, marketing display  |
-| **Inter Tight**   | Body, UI, paragraphs                   |
-| **JetBrains Mono**| Kickers, labels, data, code            |
-
-### Type scale
 ```
-Display    72 / 1.0   Fraunces 300, letter-spacing -0.03em
-H1         48 / 1.05  Fraunces 400, letter-spacing -0.025em
-H2         36 / 1.1   Fraunces 400
-H3         24 / 1.2   Fraunces 500
-Body       15 / 1.55  Inter Tight 400
-Caption    13 / 1.5   Inter Tight 400
-Mono kicker 10 / 1.2  JetBrains Mono 500, uppercase, tracking 0.12em
+┌──────────────┐     ← cap-height of "R"
+│  ┌────────┐  │
+│  │  ▣ Renofine
+│  └────────┘  │
+└──────────────┘     ← cap-height of "R"
 ```
 
-Fraunces gets *italic emphasis* for editorial accents — use sparingly, for the one word in a sentence that matters.
+## 5 · Sizing rules
+
+| Context | Mark | Wordmark |
+|---|---|---|
+| Browser tab (favicon) | 16 px (transparent) | – |
+| App icon (iOS) | 180 px on full-bleed plate | – |
+| Top-nav (desktop) | 24–28 px | 28–32 px |
+| Top-nav (mobile) | 22–24 px | 26–28 px |
+| Hero / marketing | 64–120 px | 56–96 px |
+| Print letterhead | 12 mm | 14 mm |
+
+## 6 · Don'ts
+
+- ❌ Don't put the mark on a busy photo without the paper plate
+- ❌ Don't recolor the notch or fill it with a different color
+- ❌ Don't outline the mark — it's a solid form
+- ❌ Don't add a drop shadow, glow, or gradient
+- ❌ Don't tilt or rotate the mark — the notch position is fixed
+- ❌ Don't use the green plate variant alongside green CTA buttons (it competes)
+- ❌ Don't pair the wordmark with any font other than Fraunces
+
+## 7 · Background pairings
+
+| Background | Use |
+|---|---|
+| Paper (`#FAFAF7`) | `mark-ink.svg` + `wordmark-ink.svg` |
+| White | Same as paper |
+| Ink (`#1A1A17`) | `mark-paper.svg` + `wordmark-paper.svg` |
+| Green (`#2F5D4E`) | `mark-paper.svg` + `wordmark-paper.svg` |
+| Photo | Use lockup with paper plate (`lockup-horizontal-on-paper.svg`) |
+
+## 8 · Voice (one-liner)
+
+> Renofine helps homeowners and craftsmen run renovations like they actually run — with the paperwork, the budgets, and the reality of who's on site this Tuesday.
+
+Calm. Specific. Swedish-first. No hype, no exclamation marks, no "revolutionize."
 
 ---
-
-## 5. Voice
-
-Renofine is **calm, competent, hand-tools-clean**.
-
-Anti-Excel-tone — but not anti-corporate or anti-tech. Tone for builders, written by a builder. Plain Swedish, short sentences, no jargon.
-
-✅ "Skicka offert på 10 minuter."
-❌ "Streamlined offer creation workflow."
-
-✅ "8 timmar mindre administration per projekt."
-❌ "Save up to 8 hours per project!"
-
----
-
-## 6. App icons
-
-**Primary:** `app-icon-1024.png` — ink plate, paper Rf.
-**Accent:** `app-icon-green-1024.png` — green plate, paper Rf. Use only when context calls for color (a folder of mostly-black icons, etc).
-
-**Never** ship an icon that's a colored rounded square without the Rf inside. The Rf is the brand.
-
----
-
-## 7. Open Graph
-
-`og-image-1200x630.png` — full-bleed green with white lockup and tagline. Use for all social shares unless a specific page has a custom share image.
-
----
-
-## 8. File hygiene
-
-When updating brand assets:
-1. Edit the SVG source first
-2. Re-export PNGs at all required sizes
-3. Update this guide if you've changed something foundational
-4. Bump `BRAND_VERSION` at the top of `tokens.css`
-
-Don't ship one-off logo variants in product code. If a use case isn't covered here, talk to design first.
+Last updated: brand v1.0 · Skåra mark

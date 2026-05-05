@@ -188,7 +188,7 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
           key={i}
           className={cn(
             "h-1 rounded-full transition-all",
-            i === current ? "w-6 bg-[#1F4D3A]" : "w-1.5 bg-border"
+            i === current ? "w-6 bg-[#2F5D4E]" : "w-1.5 bg-border"
           )}
         />
       ))}
@@ -211,7 +211,7 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
         {/* Brand header */}
         <div className="flex flex-col items-center pt-8 pb-4 px-6">
           <img
-            src="/brand/svg/mark/rf-mark-green.svg"
+            src="/brand/svg/mark/mark-green.svg"
             alt="Renofine"
             className="h-12 w-12 mb-4"
           />
@@ -236,8 +236,8 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
                     className={cn(
                       "flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all",
                       selectedLanguage === lang.code
-                        ? "border-[#1F4D3A] bg-[#1F4D3A]/5"
-                        : "border-border hover:border-[#1F4D3A]/30"
+                        ? "border-[#2F5D4E] bg-[#2F5D4E]/5"
+                        : "border-border hover:border-[#2F5D4E]/30"
                     )}
                   >
                     <span className="text-2xl">{lang.flag}</span>
@@ -259,7 +259,7 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
               <Button
                 onClick={handleLanguageContinue}
                 disabled={!selectedLanguage}
-                className="w-full mt-4 bg-[#1F4D3A] hover:bg-[#1F4D3A]/90"
+                className="w-full mt-4 bg-[#2F5D4E] hover:bg-[#2F5D4E]/90"
                 size="lg"
               >
                 {t("welcome.continue", "Continue")}
@@ -290,8 +290,8 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
                     className={cn(
                       "flex flex-col items-center gap-2 rounded-lg border p-5 transition-all",
                       selectedMeasurement === m.key
-                        ? "border-[#1F4D3A] bg-[#1F4D3A]/5"
-                        : "border-border hover:border-[#1F4D3A]/30"
+                        ? "border-[#2F5D4E] bg-[#2F5D4E]/5"
+                        : "border-border hover:border-[#2F5D4E]/30"
                     )}
                   >
                     <span className="font-medium">{m.label}</span>
@@ -301,7 +301,7 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
               </div>
 
               <Button
-                className="w-full mt-4 bg-[#1F4D3A] hover:bg-[#1F4D3A]/90"
+                className="w-full mt-4 bg-[#2F5D4E] hover:bg-[#2F5D4E]/90"
                 size="lg"
                 onClick={handleMeasurementContinue}
               >
@@ -333,20 +333,20 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
                     className={cn(
                       "flex flex-col items-center gap-3 p-5 rounded-lg border transition-all",
                       selectedType === type
-                        ? "border-[#1F4D3A] bg-[#1F4D3A]/5"
-                        : "border-border hover:border-[#1F4D3A]/30"
+                        ? "border-[#2F5D4E] bg-[#2F5D4E]/5"
+                        : "border-border hover:border-[#2F5D4E]/30"
                     )}
                   >
                     <div
                       className={cn(
                         "h-12 w-12 rounded-full flex items-center justify-center",
-                        selectedType === type ? "bg-[#1F4D3A]/10" : "bg-muted"
+                        selectedType === type ? "bg-[#2F5D4E]/10" : "bg-muted"
                       )}
                     >
                       <Icon
                         className={cn(
                           "h-6 w-6",
-                          selectedType === type ? "text-[#1F4D3A]" : "text-muted-foreground"
+                          selectedType === type ? "text-[#2F5D4E]" : "text-muted-foreground"
                         )}
                       />
                     </div>
@@ -361,7 +361,7 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
               <Button
                 onClick={handleUserTypeContinue}
                 disabled={!selectedType || saving}
-                className="w-full mt-4 bg-[#1F4D3A] hover:bg-[#1F4D3A]/90"
+                className="w-full mt-4 bg-[#2F5D4E] hover:bg-[#2F5D4E]/90"
                 size="lg"
               >
                 {saving ? (
@@ -415,20 +415,20 @@ export function WelcomeModal({ open, profileId, onComplete }: WelcomeModalProps)
                     disabled={saving}
                     className={cn(
                       "flex items-center gap-3.5 p-3.5 rounded-lg border transition-all text-left relative",
-                      "hover:border-[#1F4D3A]/40 hover:bg-[#1F4D3A]/5 active:scale-[0.99]",
-                      recommended ? "border-[#1F4D3A]/30 bg-[#1F4D3A]/5" : "border-border"
+                      "hover:border-[#2F5D4E]/40 hover:bg-[#2F5D4E]/5 active:scale-[0.99]",
+                      recommended ? "border-[#2F5D4E]/30 bg-[#2F5D4E]/5" : "border-border"
                     )}
                   >
                     {recommended && (
-                      <span className="absolute -top-2 right-3 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#1F4D3A] text-white">
+                      <span className="absolute -top-2 right-3 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#2F5D4E] text-white">
                         {t("welcome.recommended", "Recommended")}
                       </span>
                     )}
                     <div className={cn(
                       "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",
-                      recommended ? "bg-[#1F4D3A]/10" : "bg-muted"
+                      recommended ? "bg-[#2F5D4E]/10" : "bg-muted"
                     )}>
-                      <Icon className={cn("h-5 w-5", recommended ? "text-[#1F4D3A]" : "text-muted-foreground")} />
+                      <Icon className={cn("h-5 w-5", recommended ? "text-[#2F5D4E]" : "text-muted-foreground")} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm">{t(labelKey)}</p>

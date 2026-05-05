@@ -249,7 +249,7 @@ const Auth = () => {
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center mb-8">
           <a href="/">
-            <img src="/brand/svg/lockup/horizontal-green.svg" alt="Renofine" className="h-10 w-auto cursor-pointer" />
+            <img src="/brand/svg/lockup/lockup-horizontal-green.svg" alt="Renofine" className="h-10 w-auto cursor-pointer" />
           </a>
         </div>
 

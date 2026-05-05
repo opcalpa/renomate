@@ -1,48 +1,90 @@
-// Drop-in React Logo component for Renofine.
-// Place under src/components/Logo.tsx (or .jsx) and import.
-//
+// Renofine logo — drop-in React component
 // Usage:
-//   <Logo />                                 // horizontal lockup, light surface, 32px
-//   <Logo variant="stacked" />               // stacked lockup
-//   <Logo variant="mark" size={48} />        // just the Rf mark
-//   <Logo surface="dark" />                  // for dark backgrounds
-//   <Logo variant="wordmark" size={28} />    // text only, no mark
+//   import { Logo, Mark } from "./Logo";
+//   <Logo size={32} />              // mark + wordmark, ink on paper
+//   <Logo size={32} variant="green"/>
+//   <Logo size={32} stacked />
+//   <Mark size={24} color="#2F5D4E"/>
 //
-// All assets live in /brand/svg/. Adjust BASE if your asset path differs.
+// Variants: "ink" (default) | "paper" | "green"
 
-const BASE = "/brand/svg";
+import React from "react";
 
-const VARIANTS = {
-  "horizontal-light":  `${BASE}/lockup/horizontal-ink.svg`,
-  "horizontal-dark":   `${BASE}/lockup/horizontal-on-dark.svg`,
-  "stacked-light":     `${BASE}/lockup/stacked-ink.svg`,
-  "stacked-dark":      `${BASE}/lockup/stacked-on-dark.svg`,
-  "mark-light":        `${BASE}/mark/rf-mark-ink.svg`,
-  "mark-dark":         `${BASE}/mark/rf-mark-paper.svg`,
-  "mark-green-light":  `${BASE}/mark/rf-mark-green.svg`,
-  "mark-green-dark":   `${BASE}/mark/rf-mark-green.svg`,
-  "wordmark-light":    `${BASE}/wordmark/wordmark-ink.svg`,
-  "wordmark-dark":     `${BASE}/wordmark/wordmark-paper.svg`,
+const PATH = "M32 6 a26 26 0 1 0 26 26 h-12 v-14 h-14 z";
+
+const COLORS = {
+  ink:   "#1A1A17",
+  paper: "#FAFAF7",
+  green: "#2F5D4E",
 };
 
+export function Mark({ size = 32, color = "currentColor", title = "Renofine", ...rest }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label={title}
+      {...rest}
+    >
+      <title>{title}</title>
+      <path d={PATH} fill={color} />
+    </svg>
+  );
+}
+
+export function Wordmark({ size = 32, color = "currentColor", ...rest }) {
+  // size = font-size in px
+  return (
+    <span
+      style={{
+        fontFamily: '"Fraunces", Georgia, serif',
+        fontWeight: 400,
+        fontSize: size,
+        letterSpacing: "-0.025em",
+        color,
+        lineHeight: 1,
+        whiteSpace: "nowrap",
+      }}
+      {...rest}
+    >
+      Renofine
+    </span>
+  );
+}
+
 export function Logo({
-  variant = "horizontal",   // "horizontal" | "stacked" | "mark" | "mark-green" | "wordmark"
-  surface = "light",        // "light" | "dark"
-  size = 32,                // height in px (width auto-scales)
-  className = "",
-  style = {},
+  size = 28,                 // mark height in px
+  variant = "ink",           // "ink" | "paper" | "green"
+  stacked = false,
   ...rest
 }) {
-  const key = `${variant}-${surface}`;
-  const src = VARIANTS[key] ?? VARIANTS["horizontal-light"];
+  const fill = COLORS[variant] || variant;
+  const wordSize = Math.round(size * 1.15);
+
+  if (stacked) {
+    return (
+      <span
+        style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: size * 0.4 }}
+        {...rest}
+      >
+        <Mark size={size * 1.4} color={fill} />
+        <Wordmark size={wordSize} color={fill} />
+      </span>
+    );
+  }
+
   return (
-    <img
-      src={src}
-      alt="Renofine"
-      className={className}
-      style={{ height: size, width: "auto", display: "block", ...style }}
+    <span
+      style={{ display: "inline-flex", alignItems: "center", gap: size * 0.4 }}
       {...rest}
-    />
+    >
+      <Mark size={size} color={fill} />
+      <Wordmark size={wordSize} color={fill} />
+    </span>
   );
 }
 

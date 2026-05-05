@@ -35,7 +35,7 @@ export function GuestRoleModal({ open, onSelect, onOpenChange }: GuestRoleModalP
       <DialogContent className="sm:max-w-sm p-0 gap-0 overflow-hidden border-0 shadow-lg">
         <div className="flex flex-col items-center pt-8 pb-4 px-6">
           <img
-            src="/brand/svg/mark/rf-mark-green.svg"
+            src="/brand/svg/mark/mark-green.svg"
             alt="Renofine"
             className="h-12 w-12 mb-4"
           />
@@ -55,7 +55,7 @@ export function GuestRoleModal({ open, onSelect, onOpenChange }: GuestRoleModalP
                 onClick={() => onSelect(type)}
                 className={cn(
                   "flex flex-col items-center gap-3 p-5 rounded-lg border transition-all",
-                  "hover:border-[#1F4D3A]/50 hover:bg-[#1F4D3A]/5 active:scale-[0.98]",
+                  "hover:border-[#2F5D4E]/50 hover:bg-[#2F5D4E]/5 active:scale-[0.98]",
                   "border-border"
                 )}
               >

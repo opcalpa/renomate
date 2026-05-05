@@ -30,7 +30,7 @@ export default function EmailConfirmed() {
     <div className="min-h-screen flex items-center justify-center bg-muted/20 px-4">
       <div className="max-w-md w-full text-center space-y-6">
         <div className="flex items-center justify-center">
-          <img src="/brand/svg/lockup/horizontal-green.svg" alt="Renofine" className="h-8" />
+          <img src="/brand/svg/lockup/lockup-horizontal-green.svg" alt="Renofine" className="h-8" />
         </div>
 
         {checking ? (
