@@ -1,10 +1,17 @@
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import "./dashboard-tokens.css";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { usePersistedPreference } from "@/hooks/usePersistedPreference";
 import { GreetingBlock } from "./GreetingBlock";
 import { StatStrip } from "./StatStrip";
 import { ProjectsList } from "./ProjectsList";
 import { ActivityRail } from "./ActivityRail";
 import { EmptyState } from "./EmptyState";
+import { ProjectsOpsTable } from "./ProjectsOpsTable";
+import { ProjectsPortfolio } from "./ProjectsPortfolio";
+
+type DashboardView = "editorial" | "ops" | "portfolio";
 
 interface DashboardRedesignProps {
   userId: string;
@@ -14,8 +21,11 @@ interface DashboardRedesignProps {
 }
 
 export default function DashboardRedesign({ userId, userName, onNewProject, onToggleBack }: DashboardRedesignProps) {
+  const { t } = useTranslation();
   const data = useDashboardData(userId);
   const displayName = userName || data.userName;
+  const [viewMode, setViewMode] = usePersistedPreference<string>("dashboard-view-mode", "editorial");
+  const safeView = (["editorial", "ops", "portfolio"].includes(viewMode) ? viewMode : "editorial") as DashboardView;
 
   if (data.isLoading) {
     return (
@@ -75,15 +85,43 @@ export default function DashboardRedesign({ userId, userName, onNewProject, onTo
   return (
     <div className="rf-dashboard" data-theme="paper">
       <main style={{ padding: "32px 40px", maxWidth: 1280, margin: "0 auto" }}>
-        {/* A/B toggle — switch back to old design */}
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
-          <button
-            className="rf-btn rf-btn-ghost"
-            onClick={onToggleBack}
-            style={{ fontSize: 12, padding: "4px 10px", color: "var(--fg-subtle)" }}
-          >
-            ← Tillbaka till klassisk vy
-          </button>
+        {/* View mode toggle row */}
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          {/* View switcher */}
+          {data.projects.length > 0 && (
+            <div className="flex rounded-md bg-muted/40 border border-border/60 p-0.5">
+              {([
+                { key: "editorial" as DashboardView, icon: "M4 6h16M4 12h16M4 18h7", label: t("dashboard.viewEditorial", "Redaktionell") },
+                { key: "ops" as DashboardView, icon: "M3 6h18M3 10h18M3 14h18M3 18h18", label: t("dashboard.viewOps", "Tabell") },
+                { key: "portfolio" as DashboardView, icon: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z", label: t("dashboard.viewPortfolio", "Kort") },
+              ]).map(v => (
+                <button
+                  key={v.key}
+                  onClick={() => setViewMode(v.key)}
+                  title={v.label}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    padding: "4px 10px",
+                    borderRadius: 4,
+                    fontSize: 12,
+                    border: safeView === v.key ? "1px solid var(--hairline)" : "1px solid transparent",
+                    background: safeView === v.key ? "var(--surface)" : "transparent",
+                    color: safeView === v.key ? "var(--fg)" : "var(--fg-muted)",
+                    fontWeight: safeView === v.key ? 500 : 400,
+                    cursor: "pointer",
+                    transition: "all 120ms ease",
+                  }}
+                >
+                  <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={v.icon} />
+                  </svg>
+                  <span className="hidden sm:inline">{v.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <GreetingBlock
@@ -94,7 +132,17 @@ export default function DashboardRedesign({ userId, userName, onNewProject, onTo
 
         {data.projects.length === 0 ? (
           <EmptyState onNewProject={onNewProject} />
+        ) : safeView === "ops" ? (
+          /* Path B: Ops — dense single-column table */
+          <>
+            <StatStrip stats={data.stats} />
+            <ProjectsOpsTable projects={data.projects} />
+          </>
+        ) : safeView === "portfolio" ? (
+          /* Path C: Portfolio — card grid */
+          <ProjectsPortfolio projects={data.projects} />
         ) : (
+          /* Path A: Editorial — 2-col with activity rail (default) */
           <>
             <StatStrip stats={data.stats} />
             <div style={{
