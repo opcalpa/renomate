@@ -17,6 +17,7 @@ export function AppBottomNav({ onProfileClick }: AppBottomNavProps) {
     { path: "/tips", icon: Lightbulb, label: t("nav.tips", "Tips") },
     { path: "/changelog", icon: Sparkles, label: t("nav.changelog", "Nyheter") },
     { path: "/feedback", icon: MessageSquare, label: t("nav.feedback", "Kontakt") },
+    { path: "/profile", icon: User, label: t("nav.profile", "Profil") },
   ];
 
   return (
@@ -27,7 +28,13 @@ export function AppBottomNav({ onProfileClick }: AppBottomNavProps) {
           return (
             <button
               key={path}
-              onClick={() => navigate(path)}
+              onClick={() => {
+                if (path === "/profile" && onProfileClick) {
+                  onProfileClick();
+                } else {
+                  navigate(path);
+                }
+              }}
               className={cn(
                 "flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors",
                 active ? "text-primary" : "text-muted-foreground"
@@ -39,15 +46,6 @@ export function AppBottomNav({ onProfileClick }: AppBottomNavProps) {
             </button>
           );
         })}
-        {onProfileClick && (
-          <button
-            onClick={onProfileClick}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 text-muted-foreground"
-          >
-            <User className="h-5 w-5" />
-            <span className="text-[10px] font-medium">{t("nav.profile", "Profil")}</span>
-          </button>
-        )}
       </div>
     </nav>
   );
