@@ -1,10 +1,9 @@
 /**
- * OwnerStart — Homeowner start page.
+ * OwnerStart — Homeowner start page (handoff design).
  *
- * Architecture decision: separate page for homeowners (50%+ different from contractor).
  * - 1 project → redirect straight into it
- * - 0 projects → welcome screen with CTA
- * - 2+ projects → project cards with progress + ROT summary
+ * - 0 projects → welcome with onboarding CTA
+ * - 2+ projects → editorial cards with progress + ROT summary
  */
 
 import { useEffect, useState } from "react";
@@ -13,14 +12,10 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { AppHeader } from "@/components/AppHeader";
+import { AppBottomNav } from "@/components/AppBottomNav";
 import { HomeownerYearlyAnalysis } from "@/components/project/HomeownerYearlyAnalysis";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Loader2, Plus, Home, ChevronRight, CheckCircle } from "lucide-react";
+import { Loader2, Plus, Home } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
-import { cn } from "@/lib/utils";
 
 interface OwnerProject {
   id: string;
@@ -37,12 +32,20 @@ interface ProjectProgress {
   total: number;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  planning: "bg-blue-100 text-blue-700 border-blue-200",
-  active: "bg-green-100 text-green-700 border-green-200",
-  on_hold: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  completed: "bg-gray-100 text-gray-600 border-gray-200",
-};
+function chipClass(status: string | null): string {
+  if (!status) return "rf-chip";
+  if (status === "completed") return "rf-chip chip-muted";
+  if (status === "on_hold") return "rf-chip chip-warn";
+  return "rf-chip chip-primary";
+}
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 5) return "God natt";
+  if (hour < 12) return "God morgon";
+  if (hour < 17) return "God eftermiddag";
+  return "God kväll";
+}
 
 export default function OwnerStart() {
   const { user } = useAuthSession();
@@ -92,17 +95,13 @@ export default function OwnerStart() {
         }
       }
 
-      // Merge and deduplicate
       const allProjects = [...(ownProjects || [])];
       for (const sp of sharedProjects) {
-        if (!allProjects.some(p => p.id === sp.id)) {
-          allProjects.push(sp);
-        }
+        if (!allProjects.some(p => p.id === sp.id)) allProjects.push(sp);
       }
 
       setProjects(allProjects);
 
-      // Fetch task progress per project
       if (allProjects.length > 0) {
         const projectIds = allProjects.map(p => p.id);
         const { data: tasks } = await supabase
@@ -115,7 +114,7 @@ export default function OwnerStart() {
           for (const task of tasks) {
             if (!prog[task.project_id]) prog[task.project_id] = { done: 0, total: 0 };
             prog[task.project_id].total++;
-            if (task.status === "done") prog[task.project_id].done++;
+            if (task.status === "completed" || task.status === "done") prog[task.project_id].done++;
           }
           setProgress(prog);
         }
@@ -140,16 +139,19 @@ export default function OwnerStart() {
     );
   }
 
-  // 1 project → redirect into it
+  // 1 project → redirect
   if (projects.length === 1) {
     navigate(`/projects/${projects[0].id}`, { replace: true });
     return null;
   }
 
-  const nonDemoProjects = projects.filter(p => p.status !== "demo");
+  const firstName = profile?.name?.split(" ")[0] || "";
+  const activeProjects = projects.filter(p => p.status !== "completed" && p.status !== "archived");
+  const completedProjects = projects.filter(p => p.status === "completed");
+  const totalInvested = projects.reduce((s, p) => s + (p.total_budget || 0), 0);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20 md:pb-0">
       <AppHeader
         userName={profile?.name}
         userEmail={profile?.email || user?.email}
@@ -157,95 +159,143 @@ export default function OwnerStart() {
         onSignOut={handleSignOut}
       />
 
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
-        {/* 0 projects → welcome */}
+      <main className="px-4 sm:px-6 md:px-10 py-6 md:py-8 max-w-[900px] mx-auto">
+        {/* 0 projects → welcome empty state */}
         {projects.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <Home className="h-16 w-16 text-muted-foreground/30" />
-            <h1 className="text-2xl font-semibold">
-              {t("ownerStart.welcome")}
+          <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+            <div style={{
+              width: 56, height: 56, borderRadius: 12,
+              background: "var(--bg-sunken, hsl(var(--muted)))",
+              border: "1px solid var(--hairline, hsl(var(--border)))",
+              display: "grid", placeItems: "center",
+            }}>
+              <Home className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <h1 className="font-display text-3xl sm:text-4xl font-normal tracking-tight">
+              {t("ownerStart.welcomeTitle", "Välkommen till Renofine")}
             </h1>
-            <p className="text-muted-foreground text-center max-w-md">
-              {t("ownerStart.welcomeDescription")}
+            <p className="text-[15px] text-muted-foreground max-w-md leading-relaxed">
+              {t("ownerStart.welcomeDescription", "Här samlar du allt om din renovering — budget, tidslinje, inköp och kommunikation med din byggare.")}
             </p>
-            <Button size="lg" onClick={() => navigate("/start")} className="mt-4">
-              <Plus className="h-5 w-5 mr-2" />
-              {t("ownerStart.createProject")}
-            </Button>
+            <button
+              className="rf-btn rf-btn-primary mt-4"
+              style={{ padding: "10px 20px", fontSize: 14 }}
+              onClick={() => navigate("/start")}
+            >
+              <Plus className="h-4 w-4" />
+              {t("ownerStart.createProject", "Skapa projekt")}
+            </button>
           </div>
         )}
 
-        {/* 2+ projects → project cards */}
+        {/* 2+ projects */}
         {projects.length > 1 && (
           <>
-            <h1 className="text-2xl font-semibold mb-6">
-              {t("ownerStart.myRenovations")}
-            </h1>
+            {/* Greeting */}
+            <div className="mb-6 md:mb-8 pb-5 border-b border-border/60">
+              <span className="kicker">
+                {t("ownerStart.kicker", "Mina renoveringar")}
+              </span>
+              <h1 className="font-display text-3xl sm:text-4xl font-normal tracking-tight mt-1">
+                {getGreeting()}, {firstName}.
+              </h1>
+              {totalInvested > 0 && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  {t("ownerStart.summary", "{{active}} aktiva projekt · {{invested}} investerat", {
+                    active: activeProjects.length,
+                    invested: formatCurrency(totalInvested),
+                  })}
+                </p>
+              )}
+            </div>
 
-            <div className="space-y-3 mb-8">
-              {projects.map(project => {
-                const prog = progress[project.id];
-                const pct = prog && prog.total > 0 ? Math.round((prog.done / prog.total) * 100) : 0;
+            {/* Active project cards */}
+            {activeProjects.length > 0 && (
+              <section className="mb-8">
+                <div className="flex flex-col gap-3">
+                  {activeProjects.map(project => {
+                    const prog = progress[project.id];
+                    const pct = prog && prog.total > 0 ? Math.round((prog.done / prog.total) * 100) : 0;
+                    const budgetTkr = project.total_budget ? Math.round(project.total_budget / 1000) : 0;
 
-                return (
-                  <Card
-                    key={project.id}
-                    className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => navigate(`/projects/${project.id}`)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium truncate">{project.name}</span>
-                            {project.status && (
-                              <Badge
-                                variant="outline"
-                                className={cn("text-xs shrink-0 border", STATUS_COLORS[project.status] || "")}
-                              >
-                                {t(`projectStatus.${project.status}`, project.status)}
-                              </Badge>
+                    return (
+                      <div
+                        key={project.id}
+                        onClick={() => navigate(`/projects/${project.id}`)}
+                        className="rounded-xl border border-border/60 bg-card p-4 sm:p-5 cursor-pointer hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="text-[15px] font-medium tracking-[-0.003em]">{project.name}</h3>
+                            {(project.address || project.city) && (
+                              <p className="font-mono text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">
+                                {[project.address, project.city].filter(Boolean).join(", ")}
+                                {budgetTkr > 0 && ` · ${budgetTkr}k kr`}
+                              </p>
                             )}
                           </div>
-                          {(project.address || project.city) && (
-                            <p className="text-sm text-muted-foreground truncate mt-0.5">
-                              {[project.address, project.city].filter(Boolean).join(", ")}
-                            </p>
-                          )}
+                          <span className={chipClass(project.status)} style={{ flexShrink: 0 }}>
+                            {t(`projectStatus.${project.status}`, project.status || "")}
+                          </span>
                         </div>
-                        {project.total_budget != null && project.total_budget > 0 && (
-                          <span className="text-sm font-medium text-muted-foreground shrink-0">
+
+                        {prog && prog.total > 0 && (
+                          <div className="flex items-center gap-3 mt-3">
+                            <div className="flex-1 h-[3px] bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-primary transition-all"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="font-mono text-[11px] text-muted-foreground tnum">
+                              {prog.done}/{prog.total}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* Completed projects */}
+            {completedProjects.length > 0 && (
+              <section className="mb-8">
+                <span className="kicker">{t("ownerStart.completedKicker", "Avslutade")}</span>
+                <div className="flex flex-col gap-2 mt-3">
+                  {completedProjects.map(project => (
+                    <div
+                      key={project.id}
+                      onClick={() => navigate(`/projects/${project.id}`)}
+                      className="rounded-xl border border-border/60 bg-card/60 p-3 sm:p-4 cursor-pointer hover:bg-card transition-colors flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <span className="text-sm font-medium">{project.name}</span>
+                        {project.total_budget && project.total_budget > 0 && (
+                          <span className="font-mono text-[10px] text-muted-foreground ml-2 tnum">
                             {formatCurrency(project.total_budget)}
                           </span>
                         )}
-                        <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
                       </div>
+                      <span className="rf-chip chip-muted">{t("projectStatus.completed", "Klar")}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
-                      {/* Task progress */}
-                      {prog && prog.total > 0 && (
-                        <div className="mt-3 flex items-center gap-3">
-                          <Progress value={pct} className="h-1.5 flex-1" />
-                          <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3" />
-                            {prog.done}/{prog.total}
-                          </span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-
-            {/* ROT/cost summary */}
-            {nonDemoProjects.length > 0 && (
+            {/* ROT/cost yearly analysis */}
+            {projects.filter(p => p.status !== "demo").length > 0 && (
               <HomeownerYearlyAnalysis
-                projects={nonDemoProjects.map(p => ({ id: p.id, name: p.name }))}
+                projects={projects.filter(p => p.status !== "demo").map(p => ({ id: p.id, name: p.name }))}
               />
             )}
           </>
         )}
-      </div>
+      </main>
+
+      <AppBottomNav />
     </div>
   );
 }

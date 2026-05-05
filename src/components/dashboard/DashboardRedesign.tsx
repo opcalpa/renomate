@@ -10,6 +10,7 @@ import { ActivityRail } from "./ActivityRail";
 import { EmptyState } from "./EmptyState";
 import { ProjectsOpsTable } from "./ProjectsOpsTable";
 import { ProjectsPortfolio } from "./ProjectsPortfolio";
+import { DaySummary } from "./DaySummary";
 
 type DashboardView = "editorial" | "ops" | "portfolio";
 
@@ -142,8 +143,9 @@ export default function DashboardRedesign({ userId, userName, onNewProject, onTo
           /* Path C: Portfolio — card grid */
           <ProjectsPortfolio projects={data.projects} />
         ) : (
-          /* Path A: Editorial — 2-col with activity rail (default) */
+          /* Path A: Editorial — day summary + 2-col with activity rail (default) */
           <>
+            <DaySummary stats={data.stats} projects={data.projects} />
             <StatStrip stats={data.stats} />
             <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 lg:gap-8">
               <ProjectsList projects={data.projects} />
