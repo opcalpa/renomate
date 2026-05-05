@@ -661,121 +661,14 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
     <div className="space-y-6">
       <ProjectLockBanner lockStatus={lockStatus} />
 
-      {/* Materialbudget — informational overview above main purchase orders */}
-      {plannedMaterials.length > 0 && (
-        <Collapsible defaultOpen>
-          <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/40 bg-gradient-to-b from-emerald-50/60 to-white dark:from-emerald-950/20 dark:to-card p-4">
-            <div className="flex items-center gap-2">
-              <CollapsibleTrigger asChild>
-                <button className="flex items-center gap-2 text-sm font-semibold text-emerald-800 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-200 flex-1 group">
-                  <ChevronDown className="h-4 w-4 transition-transform group-data-[state=closed]:-rotate-90" />
-                  {t("purchases.materialBudget", "Materialbudget")}
-                  <span className="ml-1 text-xs bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded-full px-2 py-0.5">{plannedMaterials.length}</span>
-                  <span className="ml-auto text-sm font-semibold tabular-nums">
-                    {formatCurrency(plannedMaterials.reduce((s, m) => s + (m.price_total || 0), 0), currency)}
-                  </span>
-                </button>
-              </CollapsibleTrigger>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
-                    <Columns3 className="h-3.5 w-3.5" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-44" align="end">
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">{t("tasksTable.columns", "Columns")}</p>
-                    {[
-                      { key: "description", label: t("tasks.description", "Beskrivning") },
-                      { key: "room", label: t("common.room", "Rum") },
-                      { key: "quantity", label: t("common.quantity", "Antal") },
-                    ].map((col) => (
-                      <label key={col.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Checkbox
-                          checked={budgetExtraCols.has(col.key)}
-                          onCheckedChange={() => toggleBudgetCol(col.key)}
-                        />
-                        {col.label}
-                      </label>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <CollapsibleContent>
-              <div className="rounded-lg border border-emerald-100 dark:border-emerald-900/30 bg-white dark:bg-card overflow-hidden mt-3">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-emerald-50/50 dark:bg-emerald-950/20">
-                      <th className="text-left px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("common.name", "Namn")}</th>
-                      {budgetExtraCols.has("description") && <th className="text-left px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("tasks.description", "Beskrivning")}</th>}
-                      <th className="text-left px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("purchases.task")}</th>
-                      {budgetExtraCols.has("room") && <th className="text-left px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("common.room", "Rum")}</th>}
-                      {budgetExtraCols.has("quantity") && <th className="text-right px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("common.quantity", "Antal")}</th>}
-                      <th className="text-right px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("purchases.quoteBudget", "Budget")}</th>
-                      <th className="text-right px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("purchases.ordered", "Beställt")}</th>
-                      <th className="text-right px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("purchases.paid", "Betalt")}</th>
-                      <th className="text-right px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("purchases.remaining", "Kvar")}</th>
-                      <th className="px-4 py-2.5" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {plannedMaterials.map((m) => {
-                      const paid = paidByPlannedId.get(m.id) || 0;
-                      const ordered = orderedByPlannedId.get(m.id) || 0;
-                      const budget = m.price_total || 0;
-                      const remaining = budget - paid;
-                      return (
-                        <tr key={m.id} className="border-b last:border-0 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10 transition-colors">
-                          <td className="px-4 py-3 font-medium">{m.name}</td>
-                          {budgetExtraCols.has("description") && <td className="px-4 py-3 text-muted-foreground max-w-[200px] truncate">{m.description || "—"}</td>}
-                          <td className="px-4 py-3 text-muted-foreground">{m.task?.title || "—"}</td>
-                          {budgetExtraCols.has("room") && <td className="px-4 py-3 text-muted-foreground">{m.room?.name || "—"}</td>}
-                          {budgetExtraCols.has("quantity") && <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{m.quantity} {m.unit}</td>}
-                          <td className="px-4 py-3 text-right tabular-nums font-medium">{formatCurrency(budget, currency)}</td>
-                          <td className="px-4 py-3 text-right tabular-nums text-amber-600">
-                            {ordered > 0 ? formatCurrency(ordered, currency) : <span className="text-muted-foreground">—</span>}
-                          </td>
-                          <td className="px-4 py-3 text-right tabular-nums text-emerald-600">
-                            {paid > 0 ? formatCurrency(paid, currency) : <span className="text-muted-foreground">—</span>}
-                          </td>
-                          <td className={`px-4 py-3 text-right tabular-nums font-semibold ${remaining < 0 ? "text-destructive" : remaining === 0 && paid > 0 ? "text-emerald-600" : ""}`}>
-                            {formatCurrency(remaining, currency)}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <Button
-                              size="sm"
-                              className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                              onClick={() => setBudgetPurchaseDialog({ open: true, planned: m, usedAmount: paid })}
-                            >
-                              {t("purchases.newPurchase", "+ Inköp")}
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
-      )}
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <ShoppingCart className="h-4 w-4" />
-                {t('purchases.title')} ({orderMaterials.length})
-              </CardTitle>
-              <CardDescription>
-                {t('purchases.description')}
-              </CardDescription>
-            </div>
-            {(isProjectOwner || userPurchasesAccess === 'edit' || userPurchasesAccess === 'create') && (
-            <>
+      {/* Page header — matches Overview pattern */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <ShoppingCart className="h-5 w-5 text-primary shrink-0" />
+          <h2 className="font-display text-xl font-normal tracking-tight">{t('purchases.pageTitle', 'Materialinköp')}</h2>
+        </div>
+        {(isProjectOwner || userPurchasesAccess === 'edit' || userPurchasesAccess === 'create') && (
+          <>
             <Button size="sm" onClick={() => setReceiptModalOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               {t('purchases.addOrder')}
@@ -786,12 +679,79 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
               onOpenChange={setReceiptModalOpen}
               onSuccess={() => fetchMaterials()}
             />
-            </>
-            )}
-          </div>
-        </CardHeader>
+          </>
+        )}
+      </div>
 
-        <CardContent>
+      {/* Material budget — PulseCards-style summary */}
+      {plannedMaterials.length > 0 && (() => {
+        const totalBudget = plannedMaterials.reduce((s, m) => s + (m.price_total || 0), 0);
+        const totalOrdered = plannedMaterials.reduce((s, m) => s + (orderedByPlannedId.get(m.id) || 0), 0);
+        const totalPaid = plannedMaterials.reduce((s, m) => s + (paidByPlannedId.get(m.id) || 0), 0);
+        return (
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-0.5 -mx-1 px-1">
+            {plannedMaterials.map((m) => {
+              const budget = m.price_total || 0;
+              const ordered = orderedByPlannedId.get(m.id) || 0;
+              const paid = paidByPlannedId.get(m.id) || 0;
+              const spent = paid + ordered;
+              const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+              const overBudget = spent > budget;
+              return (
+                <Card
+                  key={m.id}
+                  className="shrink-0 min-w-0 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
+                  onClick={() => setBudgetPurchaseDialog({ open: true, planned: m, usedAmount: paid })}
+                >
+                  <CardContent className="pt-3 pb-3 px-3 sm:pt-4 sm:pb-4 sm:px-4" style={{ minWidth: 150 }}>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Store className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground truncate">{m.name}</span>
+                    </div>
+                    <p className={`text-2xl font-display font-normal tabular-nums ${overBudget ? "text-destructive" : ""}`}>
+                      {formatCurrency(budget, currency)}
+                    </p>
+                    <div className="h-1.5 mt-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${overBudget ? "bg-destructive" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`}
+                        style={{ width: `${Math.min(pct, 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[11px] text-muted-foreground mt-1.5 tabular-nums">
+                      <span>{t("purchases.ordered", "Beställt")}: {formatCurrency(ordered, currency)}</span>
+                      <span>{t("purchases.paid", "Betalt")}: {formatCurrency(paid, currency)}</span>
+                    </div>
+                    {m.task?.title && (
+                      <p className="text-[11px] text-muted-foreground mt-1 truncate">{m.task.title}</p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+            {/* Totals card */}
+            <Card className="shrink-0 min-w-0 shadow-sm">
+              <CardContent className="pt-3 pb-3 px-3 sm:pt-4 sm:pb-4 sm:px-4" style={{ minWidth: 150 }}>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <ShoppingCart className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">{t("purchases.totalBudget", "Totalbudget")}</span>
+                </div>
+                <p className="text-2xl font-display font-normal tabular-nums">
+                  {formatCurrency(totalBudget, currency)}
+                </p>
+                <div className="flex flex-col gap-0.5 mt-2 text-[11px] tabular-nums">
+                  <span className="text-amber-600">{t("purchases.ordered", "Beställt")}: {formatCurrency(totalOrdered, currency)}</span>
+                  <span className="text-emerald-600">{t("purchases.paid", "Betalt")}: {formatCurrency(totalPaid, currency)}</span>
+                  <span className="font-medium">{t("purchases.remaining", "Kvar")}: {formatCurrency(totalBudget - totalPaid, currency)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
+
+      {/* Purchase orders section */}
+      <Card>
+        <CardContent className="pt-4">
           {materials.length === 0 ? (
             <div className="text-center py-12">
               <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
