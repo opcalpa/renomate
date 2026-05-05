@@ -80,6 +80,7 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, mil
   const { t } = useTranslation();
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [calMode, setCalMode] = useState<"month" | "week">("month");
+  const [showUnscheduled, setShowUnscheduled] = useState(false);
 
   const prev = useCallback(() => {
     setCurrentDate((d) => calMode === "month" ? subMonths(d, 1) : subWeeks(d, 1));
@@ -130,7 +131,11 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, mil
     () => tasks.filter((t) => t.start_date && t.finish_date),
     [tasks]
   );
-  const unscheduledCount = tasks.length - scheduledTasks.length;
+  const unscheduledTasks = useMemo(
+    () => tasks.filter((t) => !t.start_date || !t.finish_date),
+    [tasks]
+  );
+  const unscheduledCount = unscheduledTasks.length;
 
   // Earliest task date for "Project" button
   const projectStart = useMemo(() => {
@@ -197,15 +202,49 @@ export const TasksCalendarView: React.FC<TasksCalendarViewProps> = ({ tasks, mil
         </Select>
       </div>
 
-      {/* Missing dates hint */}
+      {/* Missing dates hint — expandable with task list */}
       {unscheduledCount > 0 && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b text-xs text-amber-700">
-          <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-          <span>
-            {scheduledTasks.length === 0
-              ? t("timeline.calendarNoDates", "No tasks have start and end dates. Add dates to see them on the calendar.")
-              : t("timeline.calendarSomeDates", "{{count}} task(s) without dates are not shown.", { count: unscheduledCount })}
-          </span>
+        <div className="border-b bg-amber-50 dark:bg-amber-950/20">
+          <button
+            type="button"
+            onClick={() => setShowUnscheduled(!showUnscheduled)}
+            className="w-full flex items-center gap-2 px-4 py-2 text-xs text-amber-700 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-950/30 transition-colors cursor-pointer bg-transparent border-none text-left"
+          >
+            <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+            <span className="flex-1">
+              {scheduledTasks.length === 0
+                ? t("timeline.calendarNoDates", "Inga arbeten har start- och slutdatum. Lägg till datum för att visa dem i kalendern.")
+                : t("timeline.calendarSomeDates", "{{count}} arbeten utan datum visas inte.", { count: unscheduledCount })}
+            </span>
+            <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${showUnscheduled ? "rotate-180" : ""}`} />
+          </button>
+          {showUnscheduled && (
+            <div className="px-4 pb-3 space-y-1">
+              {unscheduledTasks.map((task) => (
+                <button
+                  key={task.id}
+                  type="button"
+                  onClick={() => onTaskClick(task.id)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors cursor-pointer bg-transparent border-none text-left group"
+                >
+                  <span
+                    className="h-2 w-2 rounded-full shrink-0"
+                    style={{ background: getStatusSolidColor(task.status) }}
+                  />
+                  <span className="flex-1 truncate text-foreground group-hover:text-primary transition-colors">
+                    {task.title}
+                  </span>
+                  <span className="text-amber-600/60 dark:text-amber-400/60 shrink-0">
+                    {!task.start_date && !task.finish_date
+                      ? t("timeline.noDates", "inga datum")
+                      : !task.start_date
+                        ? t("timeline.noStartDate", "saknar start")
+                        : t("timeline.noEndDate", "saknar slut")}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
