@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Receipt, ShoppingCart, ClipboardList, ArrowLeft } from "lucide-react";
+import { Receipt, ShoppingCart, ArrowLeft, Camera, Upload, X, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 
 interface BudgetMaterial {
@@ -38,7 +38,7 @@ interface Props {
   onCreated: () => void;
 }
 
-type FlowStep = "choose" | "receipt" | "purchase" | "request";
+type FlowStep = "choose" | "completed" | "order";
 
 export function NewPurchaseFromBudgetDialog({
   open,
@@ -55,6 +55,10 @@ export function NewPurchaseFromBudgetDialog({
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const remaining = (planned?.price_total ?? 0) - usedAmount;
 
@@ -62,82 +66,120 @@ export function NewPurchaseFromBudgetDialog({
     setStep("choose");
     setAmount("");
     setDescription("");
+    setReceiptFile(null);
+    setReceiptPreview(null);
   }, []);
 
-  const handleClose = useCallback((open: boolean) => {
-    if (!open) reset();
-    onOpenChange(open);
-  }, [onOpenChange, reset]);
+  const handleClose = useCallback(
+    (open: boolean) => {
+      if (!open) reset();
+      onOpenChange(open);
+    },
+    [onOpenChange, reset]
+  );
+
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setReceiptFile(file);
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = () => setReceiptPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setReceiptPreview(null);
+    }
+  };
+
+  const uploadReceipt = async (materialId: string): Promise<void> => {
+    if (!receiptFile) return;
+    const ext = receiptFile.name.split(".").pop() || "jpg";
+    const filePath = `projects/${projectId}/kvitton/${Date.now()}-${materialId}.${ext}`;
+    const { error } = await supabase.storage
+      .from("project-files")
+      .upload(filePath, receiptFile, { upsert: false });
+    if (error) {
+      console.error("Receipt upload failed:", error);
+      return;
+    }
+    // Link file to the material
+    await supabase.from("task_file_links").insert({
+      project_id: projectId,
+      file_path: filePath,
+      file_name: receiptFile.name,
+      file_type: "receipt",
+      material_id: materialId,
+      linked_by_user_id: currentProfileId,
+    });
+  };
 
   const handleSave = useCallback(async () => {
     if (!planned || !currentProfileId) return;
     setSaving(true);
 
-    const isReceipt = step === "receipt";
-    const isRequest = step === "request";
+    const isCompleted = step === "completed";
     const parsedAmount = amount ? parseFloat(amount) : null;
+    const status = isCompleted ? "paid" : "to_order";
 
-    const status = isReceipt ? "paid" : isRequest ? "submitted" : "to_order";
-
-    const { error } = await supabase.from("materials").insert({
-      project_id: projectId,
-      task_id: planned.task_id,
-      room_id: planned.room_id,
-      name: planned.name,
-      description: description || null,
-      quantity: parsedAmount ? 1 : (planned.quantity || 1),
-      unit: planned.unit || "st",
-      price_per_unit: parsedAmount,
-      price_total: parsedAmount,
-      paid_amount: isReceipt ? parsedAmount : null,
-      status,
-      source_material_id: planned.id,
-      created_by_user_id: currentProfileId,
-    });
-
-    setSaving(false);
+    const { data, error } = await supabase
+      .from("materials")
+      .insert({
+        project_id: projectId,
+        task_id: planned.task_id,
+        room_id: planned.room_id,
+        name: planned.name,
+        description: description || null,
+        quantity: parsedAmount ? 1 : planned.quantity || 1,
+        unit: planned.unit || "st",
+        price_per_unit: parsedAmount,
+        price_total: parsedAmount,
+        paid_amount: isCompleted ? parsedAmount : null,
+        status,
+        source_material_id: planned.id,
+        created_by_user_id: currentProfileId,
+      })
+      .select("id")
+      .single();
 
     if (error) {
+      setSaving(false);
       toast.error(t("purchases.createOrderFailed", "Kunde inte skapa inköp"));
       return;
     }
 
-    const labels: Record<string, string> = {
-      receipt: t("purchases.receiptRegistered", "Kvitto registrerat"),
-      purchase: t("purchases.purchaseCreated", "Inköp registrerat"),
-      request: t("purchases.requestCreated", "Inköpsförfrågan skapad"),
-    };
-    toast.success(labels[step]);
+    // Upload receipt file if provided
+    if (receiptFile && data?.id) {
+      await uploadReceipt(data.id);
+    }
+
+    setSaving(false);
+    toast.success(
+      isCompleted
+        ? t("purchases.completedPurchaseSaved", "Utfört köp registrerat")
+        : t("purchases.orderCreated", "Beställning skapad")
+    );
     handleClose(false);
     onCreated();
-  }, [planned, currentProfileId, step, amount, description, projectId, t, handleClose, onCreated]);
+  }, [step, amount, description, planned, projectId, currentProfileId, receiptFile]);
 
   if (!planned) return null;
 
   const choices = [
     {
-      key: "receipt" as FlowStep,
+      key: "completed" as FlowStep,
       icon: Receipt,
-      title: t("purchases.flowReceipt", "Registrera kvitto"),
-      desc: t("purchases.flowReceiptDesc", "Har belopp och kvitto"),
+      title: t("purchases.flowCompleted", "Utfört köp"),
+      desc: t("purchases.flowCompletedDesc", "Redan köpt — fota eller ladda upp kvitto"),
       color: "text-emerald-600",
-      bg: "hover:bg-emerald-50 hover:border-emerald-200",
+      bg: "hover:bg-emerald-50 hover:border-emerald-200 dark:hover:bg-emerald-950/20",
     },
     {
-      key: "purchase" as FlowStep,
+      key: "order" as FlowStep,
       icon: ShoppingCart,
-      title: t("purchases.flowPurchase", "Registrera inköp"),
-      desc: t("purchases.flowPurchaseDesc", "Vet belopp, kvitto kommer"),
+      title: t("purchases.flowOrder", "Beställning"),
+      desc: t("purchases.flowOrderDesc", "Ska köpas — belopp valfritt"),
       color: "text-blue-600",
-      bg: "hover:bg-blue-50 hover:border-blue-200",
-    },
-    {
-      key: "request" as FlowStep,
-      icon: ClipboardList,
-      title: t("purchases.flowRequest", "Inköpsförfrågan"),
-      desc: t("purchases.flowRequestDesc", "Belopp okänt, någon ska köpa"),
-      color: "text-amber-600",
-      bg: "hover:bg-amber-50 hover:border-amber-200",
+      bg: "hover:bg-blue-50 hover:border-blue-200 dark:hover:bg-blue-950/20",
     },
   ];
 
@@ -173,10 +215,10 @@ export function NewPurchaseFromBudgetDialog({
               <button
                 key={c.key}
                 type="button"
-                className={`flex items-start gap-3 w-full rounded-lg border p-3 text-left transition-colors ${c.bg}`}
                 onClick={() => setStep(c.key)}
+                className={`w-full flex items-center gap-3 p-4 rounded-lg border text-left transition-colors bg-transparent cursor-pointer ${c.bg}`}
               >
-                <c.icon className={`h-5 w-5 mt-0.5 shrink-0 ${c.color}`} />
+                <c.icon className={`h-5 w-5 shrink-0 ${c.color}`} />
                 <div>
                   <p className="text-sm font-medium">{c.title}</p>
                   <p className="text-xs text-muted-foreground">{c.desc}</p>
@@ -197,10 +239,11 @@ export function NewPurchaseFromBudgetDialog({
               {t("common.back", "Tillbaka")}
             </Button>
 
+            {/* Amount */}
             <div className="space-y-2">
               <Label htmlFor="purchase-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("purchases.amount", "Belopp")} (SEK)
-                {step === "request" && (
+                {step === "order" && (
                   <span className="normal-case tracking-normal font-normal ml-1">
                     — {t("purchases.optional", "valfritt")}
                   </span>
@@ -211,17 +254,17 @@ export function NewPurchaseFromBudgetDialog({
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder={step === "request" ? t("purchases.amountUnknown", "Okänt") : "0"}
+                placeholder={step === "order" ? t("purchases.amountUnknown", "Okänt") : "0"}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 autoFocus
-                required={step !== "request"}
+                required={step === "completed"}
                 className="text-lg font-semibold tabular-nums"
               />
               {remaining > 0 && (
                 <button
                   type="button"
-                  className="text-xs text-primary hover:underline"
+                  className="text-xs text-primary hover:underline bg-transparent border-none cursor-pointer p-0"
                   onClick={() => setAmount(String(remaining))}
                 >
                   {t("purchases.useRemaining", "Fyll i kvarvarande")}: {formatCurrency(remaining, currency)}
@@ -229,10 +272,86 @@ export function NewPurchaseFromBudgetDialog({
               )}
             </div>
 
+            {/* Receipt upload — only for completed purchases */}
+            {step === "completed" && (
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("purchases.receipt", "Kvitto / faktura")}
+                </Label>
+
+                {receiptFile ? (
+                  <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+                    {receiptPreview && (
+                      <img src={receiptPreview} alt="" className="h-12 w-12 rounded object-cover shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{receiptFile.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(receiptFile.size / 1024).toFixed(0)} KB
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0"
+                      onClick={() => { setReceiptFile(null); setReceiptPreview(null); }}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-1.5"
+                      onClick={() => cameraInputRef.current?.click()}
+                    >
+                      <Camera className="h-3.5 w-3.5" />
+                      {t("purchases.photoReceipt", "Fota kvitto")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-1.5"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      {t("purchases.uploadReceipt", "Ladda upp")}
+                    </Button>
+                  </div>
+                )}
+
+                <p className="text-[11px] text-muted-foreground">
+                  {t("purchases.receiptOptionalHint", "Du kan även bifoga kvitto senare via filfliken.")}
+                </p>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="hidden"
+                  onChange={handleFileSelected}
+                />
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleFileSelected}
+                />
+              </div>
+            )}
+
+            {/* Note */}
             <div className="space-y-2">
               <Label htmlFor="purchase-desc" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("purchases.note", "Anteckning")}
-                {step === "request" && (
+                {step === "order" && (
                   <span className="normal-case tracking-normal font-normal ml-1">
                     — {t("purchases.whatToBuy", "vad ska köpas?")}
                   </span>
@@ -242,24 +361,24 @@ export function NewPurchaseFromBudgetDialog({
                 id="purchase-desc"
                 rows={2}
                 placeholder={
-                  step === "request"
-                    ? t("purchases.requestPlaceholder", "T.ex. 'Behöver 2 burkar vit spackel'")
+                  step === "order"
+                    ? t("purchases.orderPlaceholder", "T.ex. 'Behöver 2 burkar vit spackel'")
                     : t("purchases.notePlaceholder", "Valfri anteckning...")
                 }
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                required={step === "request" && !amount}
               />
             </div>
 
             <Button
               className="w-full"
-              disabled={saving || (step !== "request" && !amount)}
+              disabled={saving || (step === "completed" && !amount)}
               onClick={handleSave}
             >
-              {step === "receipt" && t("purchases.saveReceipt", "Spara kvitto")}
-              {step === "purchase" && t("purchases.savePurchase", "Registrera inköp")}
-              {step === "request" && t("purchases.saveRequest", "Skicka förfrågan")}
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {step === "completed"
+                ? t("purchases.saveCompleted", "Registrera köp")
+                : t("purchases.saveOrder", "Skapa beställning")}
             </Button>
           </div>
         )}
