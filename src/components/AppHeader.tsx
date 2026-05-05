@@ -261,10 +261,7 @@ export const AppHeader = ({ userName, userEmail, avatarUrl, onSignOut, children,
           className="flex items-center cursor-pointer shrink-0"
           onClick={() => navigate(user && !isGuest ? "/start" : "/")}
         >
-          <div className="flex items-center gap-1.5">
-            <img src="/logo.png" alt="Renofine" className="h-7 w-auto" />
-            <span className="text-base font-bold tracking-tight hidden sm:inline">Renofine</span>
-          </div>
+          <img src="/brand/svg/lockup/horizontal-ink.svg" alt="Renofine" className="h-7 w-auto" />
         </div>
 
         {isProjectMode ? (

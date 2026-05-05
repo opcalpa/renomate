@@ -11,7 +11,7 @@ const Privacy = () => {
       <header className="container mx-auto px-4 pt-8 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <div className="flex items-center gap-2"><img src="/logo.png" alt="Renofine" className="h-8 w-auto" /><span className="text-lg font-bold tracking-tight">Renofine</span></div>
+            <img src="/brand/svg/lockup/horizontal-ink.svg" alt="Renofine" className="h-8 w-auto" />
           </div>
           <Button variant="ghost" onClick={() => navigate("/")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
