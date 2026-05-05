@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useProjectReminders } from "@/hooks/useProjectReminders";
 import { useJuniorStore } from "@/stores/juniorStore";
@@ -20,6 +21,7 @@ import { ProjectDocumentsCard } from "./overview/ProjectDocumentsCard";
 // OverviewFeedSection removed — unified into ProjectChatSection
 import { ProjectSettingsDialog } from "./overview/ProjectSettingsDialog";
 import { QuickReceiptCaptureModal } from "./QuickReceiptCaptureModal";
+import { RegisterPaymentDialog } from "./RegisterPaymentDialog";
 import { CreateQuoteDialog } from "./CreateQuoteDialog";
 import { SendCustomerFormDialog } from "./SendCustomerFormDialog";
 import { InvoiceMethodDialog } from "@/components/invoices/InvoiceMethodDialog";
@@ -114,6 +116,7 @@ const OverviewTab = ({
   onNavigateToRoom,
 }: OverviewTabProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { lockStatus } = useProjectLock(isGuest ? undefined : project.id);
   const { showTaxDeduction } = useTaxDeductionVisible(project.country);
   const isHomeowner = userType === "homeowner";
@@ -133,6 +136,7 @@ const OverviewTab = ({
     onProjectUpdate?.();
   }, [project.id, onProjectUpdate, t]);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
   const [customerFormOpen, setCustomerFormOpen] = useState(false);
   const [invoiceMethodOpen, setInvoiceMethodOpen] = useState(false);
@@ -470,20 +474,26 @@ const OverviewTab = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setQuoteDialogOpen(true)}
+            onClick={() => {
+              if (isPlanning) {
+                setQuoteDialogOpen(true);
+              } else {
+                navigate(`/quotes/new?projectId=${project.id}&is_ata=true`);
+              }
+            }}
             className="gap-1.5"
           >
             <Plus className="h-3.5 w-3.5" />
-            {t("overview.quickQuote", "Offert")}
+            {isPlanning ? t("overview.quickQuote", "Offert") : t("overview.quickAta", "Tillägg")}
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setReceiptModalOpen(true)}
+            onClick={() => setPaymentDialogOpen(true)}
             className="gap-1.5"
           >
             <Plus className="h-3.5 w-3.5" />
-            {t("overview.quickReceipt", "Inbetalning")}
+            {t("overview.quickPayment", "Inbetalning")}
           </Button>
         </div>
       )}
@@ -540,6 +550,14 @@ const OverviewTab = ({
         projectId={project.id}
         open={quoteDialogOpen}
         onOpenChange={setQuoteDialogOpen}
+      />
+
+      <RegisterPaymentDialog
+        projectId={project.id}
+        currency={project.currency}
+        open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        onSuccess={refetch}
       />
 
       <SendCustomerFormDialog
