@@ -884,8 +884,60 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
     <div className="space-y-6">
       <ProjectLockBanner lockStatus={lockStatus} />
 
+      {/* ===== SCHEDULE SECTION (collapsible): Timeline | Calendar ===== */}
+      <section className="mb-0">
+        <div className="flex items-center gap-2 w-full text-left py-2 group">
+          <button
+            type="button"
+            className="flex items-center gap-2 flex-1 text-left"
+            onClick={() => { const next = !scheduleOpen; setScheduleOpen(next); localStorage.setItem(`tasks-schedule-open-${projectId}`, String(next)); }}
+          >
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold">
+              {safeScheduleView === 'timeline' ? t('projectDetail.timeline', 'Tidslinje') : t('timeline.calendar', 'Kalender')}
+            </span>
+            {scheduleOpen ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+          </button>
+          {/* Schedule sub-toggle */}
+          <div className="flex rounded-md bg-muted/40 border border-border/60 p-0.5 ml-2">
+            {(['timeline', 'calendar'] as const).map(v => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => { setScheduleView(v); setScheduleOpen(true); }}
+                className={cn(
+                  "px-2.5 py-1 rounded text-xs transition-colors",
+                  safeScheduleView === v
+                    ? "bg-card shadow-sm font-medium text-foreground border border-border/60"
+                    : "text-muted-foreground hover:text-foreground border border-transparent"
+                )}
+              >
+                {v === 'timeline' ? t('projectDetail.timeline', 'Tidslinje') : t('timeline.calendar', 'Kalender')}
+              </button>
+            ))}
+          </div>
+        </div>
+        {scheduleOpen && (
+          <Card className="overflow-hidden">
+            <CardContent className="p-0 overflow-hidden">
+              {safeScheduleView === 'timeline' ? (
+                <KonvaTimeline projectId={projectId} projectName={projectName} filteredTaskIds={filteredTasks.map(t => t.id)} selectedTaskIds={bulk.selectedIds} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} onTaskClick={(taskId, nativeEvent) => {
+                    const task = tasks.find(t => t.id === taskId);
+                    if (task) handleTaskClickWithModifier(task, nativeEvent);
+                  }} />
+              ) : (
+                <TasksCalendarView tasks={tasks} milestones={calendarMilestones} selectedTaskIds={bulk.selectedIds} onTaskClick={(taskId, nativeEvent) => {
+                  const task = tasks.find(t => t.id === taskId);
+                  if (task) handleTaskClickWithModifier(task, nativeEvent);
+                }} />
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
       <div className="flex flex-col gap-4">
-        {/* View tabs */}
+        {/* View tabs — controls for Table/Kanban below */}
         <div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* Detail view toggle: Table | Kanban */}
@@ -1527,58 +1579,6 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
           isLoading={bulk.isBulkLoading}
         />
       )}
-
-      {/* ===== SCHEDULE SECTION (collapsible): Timeline | Calendar ===== */}
-      <section className="mb-4">
-        <div className="flex items-center gap-2 w-full text-left py-2 group">
-          <button
-            type="button"
-            className="flex items-center gap-2 flex-1 text-left"
-            onClick={() => { const next = !scheduleOpen; setScheduleOpen(next); localStorage.setItem(`tasks-schedule-open-${projectId}`, String(next)); }}
-          >
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-semibold">
-              {safeScheduleView === 'timeline' ? t('projectDetail.timeline', 'Tidslinje') : t('timeline.calendar', 'Kalender')}
-            </span>
-            {scheduleOpen ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-          </button>
-          {/* Schedule sub-toggle */}
-          <div className="flex rounded-md bg-muted/40 border border-border/60 p-0.5 ml-2">
-            {(['timeline', 'calendar'] as const).map(v => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => { setScheduleView(v); setScheduleOpen(true); }}
-                className={cn(
-                  "px-2.5 py-1 rounded text-xs transition-colors",
-                  safeScheduleView === v
-                    ? "bg-card shadow-sm font-medium text-foreground border border-border/60"
-                    : "text-muted-foreground hover:text-foreground border border-transparent"
-                )}
-              >
-                {v === 'timeline' ? t('projectDetail.timeline', 'Tidslinje') : t('timeline.calendar', 'Kalender')}
-              </button>
-            ))}
-          </div>
-        </div>
-        {scheduleOpen && (
-          <Card className="overflow-hidden">
-            <CardContent className="p-0 overflow-hidden">
-              {safeScheduleView === 'timeline' ? (
-                <KonvaTimeline projectId={projectId} projectName={projectName} filteredTaskIds={filteredTasks.map(t => t.id)} selectedTaskIds={bulk.selectedIds} onNavigateToRoom={onNavigateToRoom} currency={currency} isDemo={projectId === PUBLIC_DEMO_PROJECT_ID} onTaskClick={(taskId, nativeEvent) => {
-                    const task = tasks.find(t => t.id === taskId);
-                    if (task) handleTaskClickWithModifier(task, nativeEvent);
-                  }} />
-              ) : (
-                <TasksCalendarView tasks={tasks} milestones={calendarMilestones} selectedTaskIds={bulk.selectedIds} onTaskClick={(taskId, nativeEvent) => {
-                  const task = tasks.find(t => t.id === taskId);
-                  if (task) handleTaskClickWithModifier(task, nativeEvent);
-                }} />
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </section>
 
       {/* ===== DETAIL SECTION: Table | Kanban ===== */}
       {loading ? (
