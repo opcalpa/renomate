@@ -201,15 +201,25 @@ export function useDashboardData(userId: string | undefined): DashboardData {
     };
   });
 
-  const activities: DashboardActivity[] = (rawActivities || []).map((a, i) => ({
-    id: a.id,
-    action: a.action,
-    entityType: a.entity_type,
-    entityName: a.entity_name,
-    createdAt: a.created_at,
-    actorName: (a.actor as { name: string } | null)?.name || null,
-    actorColor: ACTIVITY_COLORS[i % ACTIVITY_COLORS.length],
-  }));
+  // Assign colors per unique actor (not per index) so each person gets a consistent color
+  const actorColorMap = new Map<string, string>();
+  let colorIdx = 0;
+  const activities: DashboardActivity[] = (rawActivities || []).map((a) => {
+    const actorKey = (a.actor as { name: string } | null)?.name || "system";
+    if (!actorColorMap.has(actorKey)) {
+      actorColorMap.set(actorKey, ACTIVITY_COLORS[colorIdx % ACTIVITY_COLORS.length]);
+      colorIdx++;
+    }
+    return {
+      id: a.id,
+      action: a.action,
+      entityType: a.entity_type,
+      entityName: a.entity_name,
+      createdAt: a.created_at,
+      actorName: actorKey === "system" ? null : actorKey,
+      actorColor: actorColorMap.get(actorKey)!,
+    };
+  });
 
   return {
     userName: profile?.name || "",

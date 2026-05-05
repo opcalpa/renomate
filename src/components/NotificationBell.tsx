@@ -57,10 +57,13 @@ function notificationLabel(item: NotificationItem, t: (key: string, fallback?: s
   }
 }
 
+type FilterTab = "all" | "mentions" | "warnings";
+
 export function NotificationBell() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { notifications, unreadCount, markAllRead, markOneRead, loading } = useNotifications();
@@ -130,74 +133,108 @@ export function NotificationBell() {
       {open && (
         <div
           ref={panelRef}
-          className="fixed sm:absolute right-2 sm:right-0 left-2 sm:left-auto top-14 sm:top-full sm:mt-2 w-auto sm:w-80 max-h-[70vh] sm:max-h-[28rem] overflow-hidden rounded-lg border border-border bg-popover shadow-lg z-50 flex flex-col"
+          className="fixed sm:absolute right-2 sm:right-0 left-2 sm:left-auto top-14 sm:top-full sm:mt-2 w-auto sm:w-96 max-h-[70vh] sm:max-h-[32rem] overflow-hidden rounded-xl border border-border/60 bg-card shadow-lg z-50 flex flex-col"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="text-sm font-semibold">
-              {t("notifications.title", "Notifications")}
-            </span>
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllRead}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <CheckCheck className="h-3.5 w-3.5" />
-                {t("notifications.markAllRead", "Mark all as read")}
-              </button>
-            )}
+          <div className="px-4 pt-4 pb-3 border-b border-border/60">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <span className="kicker">{t("notifications.kicker", "Aviseringar")}</span>
+                <h3 className="font-display text-lg font-normal tracking-tight mt-0.5">
+                  {unreadCount > 0
+                    ? t("notifications.unreadTitle", "{{count}} olästa", { count: unreadCount })
+                    : t("notifications.title", "Aviseringar")}
+                </h3>
+              </div>
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllRead}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <CheckCheck className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            {/* Filter tabs */}
+            <div className="flex rounded-md bg-muted/40 border border-border/60 p-0.5">
+              {([
+                { key: "all" as FilterTab, label: t("notifications.tabAll", "Alla") },
+                { key: "mentions" as FilterTab, label: t("notifications.tabMentions", "Nämnda") },
+                { key: "warnings" as FilterTab, label: t("notifications.tabWarnings", "Varningar") },
+              ]).map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={cn(
+                    "flex-1 px-2 py-1 rounded text-xs transition-colors",
+                    activeTab === tab.key
+                      ? "bg-card shadow-sm font-medium text-foreground border border-border/60"
+                      : "text-muted-foreground hover:text-foreground border border-transparent"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* List */}
           <div className="overflow-y-auto flex-1">
             {loading && notifications.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">
+              <div className="p-6 text-center text-[13px] text-muted-foreground">
                 {t("common.loading", "Loading...")}
               </div>
-            ) : notifications.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                {t("notifications.noNotifications", "No new notifications")}
-              </div>
-            ) : (
-              notifications.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleItemClick(item)}
-                  className={cn(
-                    "w-full text-left px-4 py-3 flex gap-3 hover:bg-accent/50 transition-colors border-b border-border/50 last:border-b-0",
-                    item.isUnread && "bg-accent/30"
-                  )}
-                >
-                  <div className="mt-0.5">
-                    <NotificationIcon type={item.type} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm leading-snug">
-                      <span className={cn(item.isUnread && "font-semibold")}>
-                        {notificationLabel(item, t)}
-                      </span>
-                    </p>
-                    {item.preview && (
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {item.preview}
-                      </p>
+            ) : (() => {
+              const filtered = notifications.filter(item => {
+                if (activeTab === "mentions") return item.type === "mention";
+                if (activeTab === "warnings") return item.type === "task" || item.type === "material" || item.type === "quote_rejected";
+                return true;
+              });
+              return filtered.length === 0 ? (
+                <div className="p-6 text-center text-[13px] text-muted-foreground">
+                  {t("notifications.noNotifications", "Inga aviseringar")}
+                </div>
+              ) : (
+                filtered.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleItemClick(item)}
+                    className={cn(
+                      "w-full text-left px-4 py-3 flex gap-3 hover:bg-accent/40 transition-colors border-b border-border/40 last:border-b-0",
+                      item.isUnread && "bg-accent/20"
                     )}
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {item.projectName && (
-                        <span>
-                          {t("notifications.inProject", "in {{project}}", { project: item.projectName })}
-                          {" \u00b7 "}
+                  >
+                    <div className="mt-0.5">
+                      <NotificationIcon type={item.type} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] leading-snug">
+                        <span className={cn(item.isUnread && "font-medium")}>
+                          {notificationLabel(item, t)}
                         </span>
+                      </p>
+                      {item.preview && (
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                          {item.preview}
+                        </p>
                       )}
-                      {formatRelativeTime(item.createdAt)}
-                    </p>
-                  </div>
-                  {item.isUnread && (
-                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
-                  )}
-                </button>
-              ))
-            )}
+                      <p className="font-mono text-[10.5px] text-muted-foreground mt-1 uppercase tracking-wider tnum">
+                        {item.projectName && (
+                          <span>
+                            {item.projectName}
+                            {" \u00b7 "}
+                          </span>
+                        )}
+                        {formatRelativeTime(item.createdAt)}
+                      </p>
+                    </div>
+                    {item.isUnread && (
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                    )}
+                  </button>
+                ))
+              );
+            })()}
           </div>
         </div>
       )}

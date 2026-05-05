@@ -28,7 +28,17 @@ const ICON_PATHS: Record<string, string> = {
   deleted: "M5 12h14",
   member_added: "M16 11a3 3 0 1 0-6 0 3 3 0 0 0 6 0ZM5 20a7 7 0 0 1 14 0",
   member_removed: "M16 11a3 3 0 1 0-6 0 3 3 0 0 0 6 0ZM5 20a7 7 0 0 1 14 0",
+  comment: "M4 5h16v11H9l-5 4V5Z",
+  photo: "M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5Zm0 11l5-5 4 4 4-4 5 5M9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z",
+  alert: "M12 9v4M12 17h.01M4.93 19h14.14a2 2 0 0 0 1.73-3L13.73 4a2 2 0 0 0-3.46 0L3.2 16a2 2 0 0 0 1.73 3Z",
 };
+
+// Pick icon based on action + entity type for richer visual variation
+function getActivityIcon(action: string, entityType: string): string {
+  if (action === "comment" || entityType === "comment") return ICON_PATHS.comment;
+  if (entityType === "photo" || entityType === "inspiration") return ICON_PATHS.photo;
+  return ICON_PATHS[action] || ICON_PATHS.created;
+}
 
 function relativeTime(dateStr: string): string {
   const now = Date.now();
@@ -98,7 +108,7 @@ export function ActivityRail({ activities }: ActivityRailProps) {
               flexShrink: 0,
             }}>
               <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d={ICON_PATHS[a.action] || ICON_PATHS.created} />
+                <path d={getActivityIcon(a.action, a.entityType)} />
               </svg>
             </div>
             <div style={{ fontSize: 13, lineHeight: 1.5, flex: 1 }}>
