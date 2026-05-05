@@ -50,6 +50,7 @@ const DashboardRedesign = lazy(() => import("@/components/dashboard/DashboardRed
 import { CreateProjectDialog } from "@/components/project/CreateProjectDialog";
 import { useProjectsData } from "@/hooks/useProjectsData";
 const OwnerStart = lazy(() => import("@/pages/owner/OwnerStart"));
+const ContractorStart = lazy(() => import("@/pages/contractor/ContractorStart"));
 import { ResourcePlanningView } from "@/components/project/ResourcePlanningView";
 import { useEnabledModules } from "@/hooks/useEnabledModules";
 import { useMarket } from "@/hooks/useMarket";
@@ -335,6 +336,15 @@ const Projects = () => {
     return (
       <Suspense fallback={<PageLoadingSkeleton />}>
         <OwnerStart />
+      </Suspense>
+    );
+  }
+
+  // Dispatch: contractors with 0 projects get setup start page
+  if (!isGuest && isContractor && profile && nonDemoProjects.length === 0) {
+    return (
+      <Suspense fallback={<PageLoadingSkeleton />}>
+        <ContractorStart />
       </Suspense>
     );
   }
