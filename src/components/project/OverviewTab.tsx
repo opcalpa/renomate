@@ -456,7 +456,7 @@ const OverviewTab = ({
       />
 
       {/* Quick action buttons — contractor only */}
-      {!isHomeowner && (isProjectOwner || overviewAccess === 'edit') && (
+      {!isHomeowner && (
         <div className="flex items-center gap-2 flex-wrap -mt-2">
           <Button
             variant="outline"
