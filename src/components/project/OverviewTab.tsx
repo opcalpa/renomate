@@ -489,6 +489,15 @@ const OverviewTab = ({
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setReceiptModalOpen(true)}
+            className="gap-1.5"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t("overview.quickPurchase", "Inköp")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setPaymentDialogOpen(true)}
             className="gap-1.5"
           >
