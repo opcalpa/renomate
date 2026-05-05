@@ -69,34 +69,8 @@ export function DemoBanner({ role, phase, onPhaseChange, onRoleChange, infoText 
           </Popover>
         </div>
 
-        {/* Phase selector — contractor only */}
-        {role === "contractor" && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="inline-flex items-center rounded-full bg-primary-foreground text-primary px-3 py-1 text-xs font-medium hover:bg-primary-foreground/90 transition-colors">
-                {t(currentPhase.labelKey)}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-48 p-1" align="center">
-              {PHASES.map((p) => (
-                <button
-                  key={p.value}
-                  onClick={() => onPhaseChange(p.value)}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm transition-colors",
-                    phase === p.value
-                      ? "bg-accent font-medium"
-                      : "hover:bg-muted"
-                  )}
-                >
-                  {phase === p.value && <Check className="h-3.5 w-3.5 shrink-0" />}
-                  {phase !== p.value && <span className="w-3.5 shrink-0" />}
-                  {t(p.labelKey)}
-                </button>
-              ))}
-            </PopoverContent>
-          </Popover>
-        )}
+        {/* Phase selector removed — planning is now a permanent tab,
+           so users can see all views without switching project phase */}
 
         {/* Sign up CTA */}
         <Button
