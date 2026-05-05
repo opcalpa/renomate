@@ -11,7 +11,7 @@ const Terms = () => {
       <header className="container mx-auto px-4 pt-8 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <img src="/brand/svg/lockup/horizontal-ink.svg" alt="Renofine" className="h-8 w-auto" />
+            <img src="/brand/svg/lockup/horizontal-green.svg" alt="Renofine" className="h-8 w-auto" />
           </div>
           <Button variant="ghost" onClick={() => navigate("/")}>
             <ArrowLeft className="h-4 w-4 mr-2" />

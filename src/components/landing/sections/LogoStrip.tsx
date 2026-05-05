@@ -1,6 +1,12 @@
 import { useTranslation } from "react-i18next";
 
-const TRAITS = ["Offerthantering", "Budgetuppföljning", "Tidslinje", "Filarkiv", "ROT-avdrag", "Ritverktyg"];
+const PERSONAS = [
+  { name: "Lindqvist Bygg AB", type: "Byggfirma" },
+  { name: "Kök & Bad i Syd", type: "Specialistnisch" },
+  { name: "JM Fastighetstjänst", type: "Fastighetsbolag" },
+  { name: "Erik, hemägare", type: "Privatperson" },
+  { name: "Studio Reno", type: "Enmansföretag" },
+];
 
 export function LogoStrip() {
   const { t } = useTranslation();
@@ -28,22 +34,34 @@ export function LogoStrip() {
             flexShrink: 0,
           }}
         >
-          {t("landingV2.logos.label", "Byggt av en byggare, för byggare")}
+          {t("landingV2.logos.label", "Byggt för alla som renoverar")}
         </span>
-        <div className="flex items-center gap-12 flex-wrap justify-end flex-1">
-          {TRAITS.map((n) => (
-            <span
-              key={n}
-              style={{
-                fontFamily: '"Fraunces", ui-serif, Georgia, serif',
-                fontSize: 15,
-                color: "var(--lp-fg-muted)",
-                fontWeight: 500,
-                letterSpacing: "-0.01em",
-              }}
-            >
-              {n}
-            </span>
+        <div className="flex items-center gap-10 flex-wrap justify-end flex-1">
+          {PERSONAS.map((p) => (
+            <div key={p.name} className="flex flex-col items-center gap-0.5">
+              <span
+                style={{
+                  fontFamily: '"Fraunces", ui-serif, Georgia, serif',
+                  fontSize: 15,
+                  color: "var(--lp-fg-muted)",
+                  fontWeight: 500,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                {p.name}
+              </span>
+              <span
+                style={{
+                  fontFamily: '"JetBrains Mono", monospace',
+                  fontSize: 9,
+                  color: "var(--lp-fg-subtle)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                {p.type}
+              </span>
+            </div>
           ))}
         </div>
       </div>
@@ -60,24 +78,35 @@ export function LogoStrip() {
             marginBottom: 12,
           }}
         >
-          {t("landingV2.logos.label", "Byggt av en byggare, för byggare")}
+          {t("landingV2.logos.label", "Byggt för alla som renoverar")}
         </div>
         <div className="flex gap-6 overflow-x-auto scrollbar-hide" style={{ marginLeft: -20, marginRight: -20, paddingLeft: 20, paddingRight: 20 }}>
-          {TRAITS.map((n) => (
-            <span
-              key={n}
-              className="shrink-0"
-              style={{
-                fontFamily: '"Fraunces", ui-serif, Georgia, serif',
-                fontSize: 14,
-                color: "var(--lp-fg-muted)",
-                fontWeight: 500,
-                letterSpacing: "-0.01em",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {n}
-            </span>
+          {PERSONAS.map((p) => (
+            <div key={p.name} className="flex flex-col shrink-0 gap-0.5">
+              <span
+                style={{
+                  fontFamily: '"Fraunces", ui-serif, Georgia, serif',
+                  fontSize: 14,
+                  color: "var(--lp-fg-muted)",
+                  fontWeight: 500,
+                  letterSpacing: "-0.01em",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {p.name}
+              </span>
+              <span
+                style={{
+                  fontFamily: '"JetBrains Mono", monospace',
+                  fontSize: 8,
+                  color: "var(--lp-fg-subtle)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                {p.type}
+              </span>
+            </div>
           ))}
         </div>
       </div>

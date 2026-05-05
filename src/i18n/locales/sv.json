@@ -266,7 +266,7 @@
       "micro": "Inga kontokrav \u00b7 Importera projekt p\u00e5 2 minuter \u00b7 Avsluta n\u00e4r du vill"
     },
     "logos": {
-      "label": "Byggt av en byggare, f\u00f6r byggare"
+      "label": "Byggt f\u00f6r alla som renoverar"
     },
     "stats": {
       "oneAppLabel": "App ist\u00e4llet f\u00f6r Excel, mejl och p\u00e4rmar",
@@ -320,28 +320,19 @@
     },
     "pricing": {
       "pill": "Pris",
-      "h2": "Ett pris. Allt inkluderat.",
-      "sub": "Bjud in obegr\u00e4nsat antal kunder kostnadsfritt. De \u00e4r din distribution.",
-      "subMobile": "Bjud in obegr\u00e4nsat antal kunder gratis.",
-      "seeAll": "Se alla planer",
-      "perMonth": "per m\u00e5nad",
-      "soloDesc": "F\u00f6r enskilda byggare",
-      "soloLimit": "3 aktiva projekt",
-      "teamDesc": "F\u00f6r mindre firmor (1\u20135 personer)",
-      "teamLimit": "Obegr\u00e4nsat antal projekt",
-      "enterprise": "St\u00f6rre firma",
-      "enterpriseDesc": "F\u00f6r 6+ personer, anpassad onboarding",
-      "enterpriseLimit": "Skr\u00e4ddarsydd l\u00f6sning",
-      "tryFree": "Prova fritt",
-      "bookDemo": "Boka demo",
-      "popular": "Mest popul\u00e4r",
+      "h2": "Gratis under beta.",
+      "sub": "Vi bygger fortfarande. Du f\u00e5r tillg\u00e5ng till allt \u2014 utan kostnad, utan tidsgr\u00e4ns, utan kort. N\u00e4r vi lanserar betalplaner f\u00e5r du som tidig anv\u00e4ndare ett f\u00f6rm\u00e5nligt pris.",
+      "subMobile": "Allt ing\u00e5r. Inga kort, ingen tidsgr\u00e4ns.",
+      "betaLabel": "Publik beta",
+      "betaDesc": "Allt inkluderat. Inga begr\u00e4nsningar.",
+      "betaCta": "Skapa konto \u2014 gratis",
       "f1": "Obegr\u00e4nsat antal kunder",
       "f2": "Offert + faktura + ROT",
       "f3": "Tidsplan & ink\u00f6p",
       "f4": "Mobilapp",
-      "mobileExtra": "Mobilapp + offline-l\u00e4ge",
-      "contact": "Kontakt",
-      "footnote": "Alla priser exkl. moms \u00b7 Avsluta n\u00e4r du vill \u00b7 30 dagars pengarna-tillbaka-garanti"
+      "f5": "Obegr\u00e4nsat antal projekt",
+      "f6": "Alla framtida funktioner",
+      "footnote": "Inget kreditkort \u00b7 Avsluta n\u00e4r du vill \u00b7 Early adopters f\u00e5r f\u00f6rm\u00e5nligt pris vid lansering"
     },
     "faq": {
       "h2": "Vanliga fr\u00e5gor",

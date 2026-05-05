@@ -266,7 +266,7 @@
       "micro": "No account required \u00b7 Import a project in 2 minutes \u00b7 Cancel anytime"
     },
     "logos": {
-      "label": "Built by a builder, for builders"
+      "label": "Built for everyone who renovates"
     },
     "stats": {
       "oneAppLabel": "One app instead of Excel, email and binders",
@@ -320,28 +320,19 @@
     },
     "pricing": {
       "pill": "Pricing",
-      "h2": "One price. Everything included.",
-      "sub": "Invite unlimited clients for free. They are your distribution.",
-      "subMobile": "Invite unlimited clients for free.",
-      "seeAll": "See all plans",
-      "perMonth": "per month",
-      "soloDesc": "For solo builders",
-      "soloLimit": "3 active projects",
-      "teamDesc": "For smaller firms (1\u20135 people)",
-      "teamLimit": "Unlimited projects",
-      "enterprise": "Larger firm",
-      "enterpriseDesc": "For 6+ people, custom onboarding",
-      "enterpriseLimit": "Tailored solution",
-      "tryFree": "Try free",
-      "bookDemo": "Book demo",
-      "popular": "Most popular",
+      "h2": "Free during beta.",
+      "sub": "We're still building. You get access to everything — no cost, no time limit, no card. When we launch paid plans, early users get a favorable price.",
+      "subMobile": "Everything included. No card, no time limit.",
+      "betaLabel": "Public beta",
+      "betaDesc": "Everything included. No limits.",
+      "betaCta": "Create account — free",
       "f1": "Unlimited clients",
       "f2": "Quote + invoice + tax deductions",
       "f3": "Timeline & purchasing",
       "f4": "Mobile app",
-      "mobileExtra": "Mobile app + offline mode",
-      "contact": "Contact",
-      "footnote": "All prices excl. VAT \u00b7 Cancel anytime \u00b7 30-day money-back guarantee"
+      "f5": "Unlimited projects",
+      "f6": "All future features",
+      "footnote": "No credit card \u00b7 Cancel anytime \u00b7 Early adopters get a favorable price at launch"
     },
     "faq": {
       "h2": "Frequently asked questions",

@@ -6,7 +6,7 @@ interface LogoProps {
 export function Logo({ inverted = false, size = 28 }: LogoProps) {
   const src = inverted
     ? "/brand/svg/lockup/horizontal-on-dark.svg"
-    : "/brand/svg/lockup/horizontal-ink.svg";
+    : "/brand/svg/lockup/horizontal-green.svg";
 
   return (
     <img
