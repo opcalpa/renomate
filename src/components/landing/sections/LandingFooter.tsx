@@ -8,37 +8,37 @@ export function LandingFooter() {
     {
       title: t("landingV2.footer.product", "Produkt"),
       links: [
-        t("landingV2.footer.features", "Funktioner"),
-        t("landingV2.footer.pricing", "Priser"),
-        t("landingV2.footer.whatsNew", "Vad \u00e4r nytt"),
-        "Demo",
+        { label: t("landingV2.footer.features", "Funktioner") },
+        { label: t("landingV2.footer.pricing", "Priser") },
+        { label: t("landingV2.footer.whatsNew", "Vad \u00e4r nytt") },
+        { label: "Demo" },
       ],
     },
     {
       title: t("landingV2.footer.company", "F\u00f6retag"),
       links: [
-        t("landingV2.footer.about", "Om oss"),
-        t("landingV2.footer.customers", "Kunder"),
-        t("landingV2.footer.careers", "Karri\u00e4r"),
-        "Press",
+        { label: t("landingV2.footer.about", "Om oss") },
+        { label: t("landingV2.footer.customers", "Kunder") },
+        { label: t("landingV2.footer.careers", "Karri\u00e4r") },
+        { label: "Press" },
       ],
     },
     {
       title: t("landingV2.footer.resources", "Resurser"),
       links: [
-        t("landingV2.footer.helpCenter", "Hj\u00e4lpcenter"),
-        t("landingV2.footer.blog", "Blogg"),
-        t("landingV2.footer.rotGuide", "ROT-guide"),
-        "API",
+        { label: t("landingV2.footer.helpCenter", "Hj\u00e4lpcenter") },
+        { label: t("landingV2.footer.blog", "Blogg") },
+        { label: t("landingV2.footer.rotGuide", "ROT-guide") },
+        { label: "API" },
       ],
     },
     {
       title: t("landingV2.footer.legal", "Juridik"),
       links: [
-        t("landingV2.footer.terms", "Villkor"),
-        t("landingV2.footer.privacy", "Integritet"),
-        "GDPR",
-        t("landingV2.footer.security", "S\u00e4kerhet"),
+        { label: t("landingV2.footer.terms", "Villkor"), href: "/terms" },
+        { label: t("landingV2.footer.privacy", "Integritet"), href: "/privacy" },
+        { label: "GDPR" },
+        { label: t("landingV2.footer.security", "S\u00e4kerhet") },
       ],
     },
   ];
@@ -77,9 +77,15 @@ export function LandingFooter() {
             </div>
             <div className="flex flex-col gap-2">
               {col.links.map((l) => (
-                <span key={l} className="cursor-pointer" style={{ fontSize: 13, color: "var(--lp-fg-muted)" }}>
-                  {l}
-                </span>
+                l.href ? (
+                  <a key={l.label} href={l.href} className="cursor-pointer hover:underline" style={{ fontSize: 13, color: "var(--lp-fg-muted)" }}>
+                    {l.label}
+                  </a>
+                ) : (
+                  <span key={l.label} className="cursor-pointer" style={{ fontSize: 13, color: "var(--lp-fg-muted)" }}>
+                    {l.label}
+                  </span>
+                )
               ))}
             </div>
           </div>
