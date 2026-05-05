@@ -731,11 +731,9 @@ const TeamManagement = ({ projectId, isOwner, canManageTeam: canManageProp }: Te
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("roles.title")}</h3>
-          <p className="text-sm text-muted-foreground">
-            {t("roles.description")}
-          </p>
+        <div className="flex items-center gap-2.5">
+          <Users className="h-5 w-5 text-primary shrink-0" />
+          <h2 className="font-display text-xl font-normal tracking-tight">{t("roles.title")}</h2>
         </div>
         {canManageTeam && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

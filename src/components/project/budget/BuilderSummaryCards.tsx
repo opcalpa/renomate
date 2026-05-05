@@ -336,17 +336,17 @@ export function BuilderSummaryCards({ projectId, currency, onCreateInvoice }: Bu
   const renderCard = (card: CardDef) => {
     const cardContent = (
       <div
-        className={`bg-muted/50 rounded-lg p-3 text-center space-y-1 ${
+        className={`rounded-lg border bg-card p-3 text-center space-y-1 shadow-sm transition-all duration-200 ${
           card.clickable
-            ? "cursor-pointer hover:bg-muted hover:ring-1 hover:ring-border transition-colors"
+            ? "cursor-pointer hover:shadow-lg hover:-translate-y-0.5"
             : ""
         }`}
       >
         <div className="flex items-center justify-center gap-1.5">
           <card.icon className={`h-3.5 w-3.5 ${card.color}`} />
-          <p className="text-xs text-muted-foreground">{card.label}</p>
+          <p className="text-xs font-medium text-muted-foreground">{card.label}</p>
         </div>
-        <p className={`text-lg font-bold ${card.value < 0 ? "text-destructive" : ""}`}>
+        <p className={`text-xl font-display font-normal tabular-nums ${card.value < 0 ? "text-destructive" : ""}`}>
           {formatCurrency(card.value, currency)}
         </p>
       </div>

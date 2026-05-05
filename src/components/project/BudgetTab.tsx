@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Layers, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Hammer, Handshake, MoreVertical, Maximize2, Minimize2 } from "lucide-react";
+import { Loader2, Search, ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, Columns3, Plus, Rows3, Layers, Paperclip, Copy, ChevronDown, ChevronRight, FileText, ShoppingCart, Trash2, Hammer, Handshake, MoreVertical, Maximize2, Minimize2, Wallet } from "lucide-react";
 import { AttachmentIndicator } from "@/components/shared/AttachmentIndicator";
 import { FilePreviewPopover } from "@/components/shared/FilePreviewPopover";
 import { getStatusBadgeColor } from "@/lib/statusColors";
@@ -2453,7 +2453,7 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       {/* Fullscreen close bar */}
       {isFullscreen && (
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('budget.title')}</h2>
+          <h2 className="font-display text-xl font-normal tracking-tight">{t('budget.title')}</h2>
           <Button variant="ghost" size="sm" onClick={() => setIsFullscreen(false)}>
             <Minimize2 className="h-4 w-4 mr-1.5" />
             {t('budget.exitFullscreen', 'Exit fullscreen')}
@@ -2463,10 +2463,10 @@ const BudgetTab = ({ projectId, currency, isReadOnly, userType, country }: Budge
       {!isFullscreen && (
         isBuilder ? (
           <>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">{t('budget.title')}</h2>
-            <p className="text-muted-foreground mb-6">
-              {t('budget.description')}
-            </p>
+            <div className="flex items-center gap-2.5 mb-6">
+              <Wallet className="h-5 w-5 text-primary shrink-0" />
+              <h2 className="font-display text-xl font-normal tracking-tight">{t('budget.title')}</h2>
+            </div>
             <div className="mb-6">
               <BuilderSummaryCards projectId={projectId} currency={currency} onCreateInvoice={() => setInvoiceMethodOpen(true)} />
             </div>

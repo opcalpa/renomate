@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Edit2 } from "lucide-react";
+import { Plus, Trash2, Edit2, DoorOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -107,20 +106,19 @@ export const RoomsManagementSection = ({ projectId, rooms, onRoomsUpdate, canEdi
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>{t("roomManagement.title", "Rooms & Spaces")}</CardTitle>
-            <CardDescription>{t("roomManagement.description", "Manage rooms for your project")}</CardDescription>
-          </div>
-          {canEdit && <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                {t("roomManagement.addRoom", "Add Room")}
-              </Button>
-            </DialogTrigger>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <DoorOpen className="h-5 w-5 text-primary shrink-0" />
+          <h2 className="font-display text-xl font-normal tracking-tight">{t("roomManagement.title", "Rooms & Spaces")}</h2>
+        </div>
+        {canEdit && <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              {t("roomManagement.addRoom", "Add Room")}
+            </Button>
+          </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{t("roomManagement.createNewRoom", "Create New Room")}</DialogTitle>
@@ -150,9 +148,9 @@ export const RoomsManagementSection = ({ projectId, rooms, onRoomsUpdate, canEdi
               </div>
             </DialogContent>
           </Dialog>}
-        </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+
+      <div>
         {rooms.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground">{t("roomManagement.noRooms", "No rooms yet. Create your first room to get started.")}</p>
@@ -228,7 +226,7 @@ export const RoomsManagementSection = ({ projectId, rooms, onRoomsUpdate, canEdi
             )}
           </DialogContent>
         </Dialog>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
