@@ -112,8 +112,13 @@
   background: var(--primary);
   color: var(--primary-fg);
 }
-.rf-dashboard .rf-btn-primary:hover {
+.rf-dashboard .rf-btn-primary:hover:not(:disabled) {
   background: var(--primary-hover);
+}
+.rf-dashboard .rf-btn-primary:focus-visible {
+  background: var(--primary-hover);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 25%, transparent);
+  outline: none;
 }
 
 .rf-dashboard .rf-btn-ghost {
@@ -121,6 +126,12 @@
   color: var(--fg);
   border-color: var(--hairline);
 }
-.rf-dashboard .rf-btn-ghost:hover {
+.rf-dashboard .rf-btn-ghost:hover:not(:disabled) {
   background: var(--surface-2);
+}
+.rf-dashboard .rf-btn-ghost:focus-visible {
+  background: var(--surface-2);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 25%, transparent);
+  outline: none;
 }

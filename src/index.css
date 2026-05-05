@@ -194,6 +194,118 @@ All colors MUST be HSL.
   }
 }
 
+/* ===== Global component primitives (rf-* classes) =====
+   These work both inside .rf-dashboard (oklch tokens) and outside (tailwind HSL).
+   Tokens use var(--token, fallback) so they resolve in both contexts. */
+
+.rf-card {
+  background: var(--surface, hsl(var(--card)));
+  border: 1px solid var(--hairline, hsl(var(--border)));
+  border-radius: var(--radius-lg, 12px);
+}
+
+.rf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  border: 1px solid var(--hairline, hsl(var(--border)));
+  background: var(--surface, hsl(var(--card)));
+  color: var(--fg-muted, hsl(var(--muted-foreground)));
+}
+.rf-chip.chip-primary {
+  background: color-mix(in oklab, var(--primary, hsl(var(--primary))) 10%, transparent);
+  color: var(--primary, hsl(var(--primary)));
+  border-color: color-mix(in oklab, var(--primary, hsl(var(--primary))) 25%, transparent);
+}
+.rf-chip.chip-warn {
+  background: color-mix(in oklab, var(--warn, hsl(var(--destructive))) 15%, transparent);
+  color: var(--warn, hsl(var(--destructive)));
+  border-color: color-mix(in oklab, var(--warn, hsl(var(--destructive))) 35%, transparent);
+}
+.rf-chip.chip-muted {
+  background: var(--surface-2, hsl(var(--muted)));
+}
+
+.rf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.002em;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 120ms ease;
+  line-height: 1;
+  white-space: nowrap;
+}
+.rf-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rf-btn-primary {
+  background: var(--primary, hsl(var(--primary)));
+  color: var(--primary-fg, hsl(var(--primary-foreground)));
+}
+.rf-btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover, oklch(47% 0.1 155));
+}
+.rf-btn-primary:focus-visible {
+  background: var(--primary-hover, oklch(47% 0.1 155));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, hsl(var(--primary))) 25%, transparent);
+  outline: none;
+}
+
+.rf-btn-ghost {
+  background: transparent;
+  color: var(--fg, hsl(var(--foreground)));
+  border-color: var(--hairline, hsl(var(--border)));
+}
+.rf-btn-ghost:hover:not(:disabled) {
+  background: var(--surface-2, hsl(var(--muted)));
+}
+.rf-btn-ghost:focus-visible {
+  background: var(--surface-2, hsl(var(--muted)));
+  border-color: var(--primary, hsl(var(--primary)));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, hsl(var(--primary))) 25%, transparent);
+  outline: none;
+}
+
+.rf-btn-ink {
+  background: var(--accent-ink, oklch(22% 0.01 260));
+  color: var(--bg, hsl(var(--background)));
+}
+.rf-btn-ink:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.rf-input {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--hairline, hsl(var(--border)));
+  background: var(--surface, hsl(var(--card)));
+  color: var(--fg, hsl(var(--foreground)));
+  font-size: 13px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.rf-input:hover {
+  border-color: var(--border-strong, hsl(var(--border)));
+}
+.rf-input:focus {
+  border-color: var(--primary, hsl(var(--primary)));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, hsl(var(--primary))) 20%, transparent);
+  outline: none;
+}
+
 /* react-day-picker dropdown selects (year/month navigation) */
 .rdp-dropdown {
   appearance: none;
