@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { LayoutDashboard, PenTool, CheckSquare, ShoppingCart, FolderOpen, PiggyBank, Users, MessageSquare } from "lucide-react";
+import { LayoutDashboard, PenTool, CheckSquare, ShoppingCart, FolderOpen, PiggyBank, Users, MessageSquare, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TabConfig {
@@ -19,6 +19,7 @@ interface MobileBottomNavProps {
 }
 
 const ALL_TABS: TabConfig[] = [
+  { tab: "planning", icon: ClipboardList, labelKey: "nav.mobileNav.planning" },
   { tab: "overview", icon: LayoutDashboard, labelKey: "nav.mobileNav.overview" },
   { tab: "chat", icon: MessageSquare, labelKey: "nav.mobileNav.chat" },
   { tab: "tasks", icon: CheckSquare, labelKey: "nav.mobileNav.tasks" },

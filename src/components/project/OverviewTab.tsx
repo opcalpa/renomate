@@ -379,39 +379,10 @@ const OverviewTab = ({
         </Card>
       )}
 
-      {/* Documents card hidden in planning phase — no value until a quote exists */}
+      {/* Planning content moved to dedicated Planering tab */}
 
-      {/* Scope / Planning section — during planning: prominent; after planning: moved to bottom */}
-      {isPlanning && (!isInvitedClient || isPlanningContributor) && planningSection}
-
-      {/* Invite customer to fill in planning — shown below the planning card as secondary option */}
-      {!isHomeowner && isPlanning && !isRfqProject && (isProjectOwner || overviewAccess === 'edit') && (
-        <div className="flex justify-center -mt-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="gap-1.5 text-muted-foreground hover:text-foreground"
-            onClick={() => setInviteCustomerOpen(true)}
-          >
-            <UserPlus className="h-3.5 w-3.5" />
-            {t("inviteCustomerPlanning.button", "Invite customer")}
-          </Button>
-        </div>
-      )}
-
-      {/* Inspiration — shown during planning for all roles */}
-      {isPlanning && (
-        <InspirationSection
-          projectId={project.id}
-          currency={project.currency || "SEK"}
-          isPlanning
-        />
-      )}
-
-      {/* Dashboard action buttons — hidden during pure planning phase */}
-      {!isPlanning && (
-        <>
-          <div className="flex items-center gap-2 flex-wrap">
+      {/* Dashboard action buttons */}
+      <div className="flex items-center gap-2 flex-wrap">
               {!isHomeowner && !projectStatus?.startsWith("active") && (isProjectOwner || overviewAccess === 'edit') && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -520,12 +491,9 @@ const OverviewTab = ({
                 <Settings2 className="h-5 w-5" />
               </Button>
               )}
-          </div>
-        </>
-      )}
+      </div>
 
-      {!isPlanning && (
-        <PulseCards
+      <PulseCards
           taskStats={taskStats}
           budgetStats={budgetStats}
           orderStats={orderStats}
@@ -533,8 +501,7 @@ const OverviewTab = ({
           navigation={navigation}
           currency={project.currency}
           isBuilder={!isHomeowner}
-        />
-      )}
+      />
 
       {isHomeowner && isProjectOwner && showTaxDeduction && (
         <HouseholdRotDialog
@@ -554,18 +521,14 @@ const OverviewTab = ({
       />
 
       {/* Inspiration — room photos, Pinterest, material images (non-planning only, planning has its own above) */}
-      {!isPlanning && (
-        <>
-          <h2 className="font-display text-xl font-normal tracking-tight mt-6 mb-3">{t("overview.imagesHeading", "Bilder")}</h2>
-          <InspirationSection
-            projectId={project.id}
-            currency={project.currency || "SEK"}
-          />
-        </>
-      )}
+      <h2 className="font-display text-xl font-normal tracking-tight mt-6 mb-3">{t("overview.imagesHeading", "Bilder")}</h2>
+      <InspirationSection
+        projectId={project.id}
+        currency={project.currency || "SEK"}
+      />
 
-      {/* Quotes & Invoices unified card - contractors, active phases */}
-      {!isHomeowner && !isPlanning && (
+      {/* Quotes & Invoices unified card */}
+      {!isHomeowner && (
         <ProjectDocumentsCard
           projectId={project.id}
           currency={project.currency}

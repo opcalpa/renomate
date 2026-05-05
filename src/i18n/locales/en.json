@@ -187,6 +187,7 @@
     "declaration": "Tax summary",
     "language": "Language",
     "mobileNav": {
+      "planning": "Planning",
       "overview": "Overview",
       "plans": "Plans",
       "tasks": "Tasks",

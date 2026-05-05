@@ -162,7 +162,7 @@ const ProjectDetail = () => {
     table: "none",
     team: "none",
     customer: "none",
-    planning: "none",
+    planning: "edit",
     chat: "none",
   } : {
     overview: permissions.overview,
@@ -177,7 +177,7 @@ const ProjectDetail = () => {
     customer: (isPublicDemoProject && demoPrefs.preferences.role === "homeowner")
       ? "view"
       : (permissions.customerView || "none"),
-    planning: "none",  // Planning is now a sub-section of Overview
+    planning: permissions.overview,
     chat: "view",
   };
 
@@ -240,10 +240,10 @@ const ProjectDetail = () => {
     }
   }, [permissions.loading, permissions.isClient, isQuotePhase, leadQuoteId]);
 
-  // Planning contributor → force overview tab only
+  // Planning contributor → force planning tab
   useEffect(() => {
-    if (!permissions.loading && permissions.isPlanningContributor && activeTab !== "overview") {
-      setActiveTab("overview");
+    if (!permissions.loading && permissions.isPlanningContributor && activeTab !== "planning") {
+      setActiveTab("planning");
     }
   }, [permissions.loading, permissions.isPlanningContributor, activeTab]);
 
@@ -924,7 +924,20 @@ const ProjectDetail = () => {
               </div>
               {/* Chat icon — mobile only (desktop users access chat via Översikt scroll) */}
               {/* Primary tabs */}
-              {/* 1. Översikt / Planering */}
+              {/* 0. Planering — always visible */}
+              {!isTabBlocked("planning") && (
+                <div
+                  className={cn(
+                    "px-2.5 py-1.5 text-[13px] tracking-[-0.002em] cursor-pointer rounded-md transition-colors",
+                    activeTab === "planning" ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal",
+                  )}
+                  onClick={() => handleMenuSelect('planning', 'planning')}
+                >
+                  {t("projectDetail.planning", "Planering")}
+                </div>
+              )}
+
+              {/* 1. Översikt — always shows active dashboard */}
               <HoverTabMenu
                 trigger={
                   <div className={cn(
@@ -932,7 +945,7 @@ const ProjectDetail = () => {
                     activeTab === "overview" ? "bg-accent/60 text-foreground font-medium" : "text-muted-foreground hover:text-foreground font-normal",
                     isTabBlocked("overview") && "opacity-40 pointer-events-none cursor-default"
                   )}>
-                    {projectStatus === "planning" ? t("projectDetail.planning", "Planering") : t("projectDetail.overview")}
+                    {t("projectDetail.overview")}
                   </div>
                 }
                 items={menuConfigs.overview}
@@ -1352,6 +1365,8 @@ const ProjectDetail = () => {
                 projectName={project.name}
                 projectAddress={project.address}
                 currency={project.currency}
+                onActivate={permissions.isPlanningContributor ? undefined : (isGuest ? loadGuestData : loadData)}
+                contributorMode={permissions.isPlanningContributor}
               />
             </div>
           )}
