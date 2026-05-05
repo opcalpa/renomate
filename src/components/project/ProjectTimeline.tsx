@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 import { Calendar, Loader2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ZoomIn, ZoomOut, RotateCcw, Layers, SlidersHorizontal, X, GripVertical } from "lucide-react";
 import { useTimelineGestures } from "@/hooks/useTimelineGestures";
 import { Slider } from "@/components/ui/slider";
@@ -830,10 +831,10 @@ const ProjectTimeline = ({
           {/* Row 1: Title + Filter button */}
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-lg truncate">{projectName || t('projectDetail.timeline')}</CardTitle>
-              <CardDescription className="text-xs">
-                {format(minDate, "d MMM")} - {format(maxDate, "d MMM")} ({daysVisible} {t('timeline.days', 'days')})
-              </CardDescription>
+              <span className="kicker">{t('overview.timeline', 'Tidslinje')}</span>
+              <CardTitle className="text-base font-display font-normal tracking-tight truncate mt-0.5">
+                {format(minDate, "d MMM")} — {format(maxDate, "d MMM")}
+              </CardTitle>
             </div>
             <div className="flex items-center gap-1">
               <Button
@@ -997,10 +998,10 @@ const ProjectTimeline = ({
         <div className="hidden md:block">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <CardTitle className="mb-1">{projectName || t('projectDetail.timeline')}</CardTitle>
-              <CardDescription>
-                {format(minDate, "MMM d, yyyy")} - {format(maxDate, "MMM d, yyyy")} ({daysVisible} {t('timeline.days', 'days')})
-              </CardDescription>
+              <span className="kicker">{t('overview.timeline', 'Tidslinje')}</span>
+              <CardTitle className="font-display font-normal tracking-tight mt-0.5">
+                {format(minDate, "MMMM", { locale: sv })} — {format(maxDate, "MMMM yyyy", { locale: sv })}
+              </CardTitle>
             </div>
             <div className="flex items-center gap-2">
               {/* Timeline info popover (desktop) */}
@@ -1170,23 +1171,45 @@ const ProjectTimeline = ({
                   </div>
                 </PopoverContent>
               </Popover>
-              {/* Zoom controls */}
+              {/* View presets: Dag | Vecka | Månad */}
+              <div className="flex rounded-md bg-muted/40 border border-border/60 p-0.5">
+                {([
+                  { key: 'week', label: t('timeline.week', 'Vecka'), days: 7 },
+                  { key: 'month', label: t('timeline.month', 'Månad'), days: 30 },
+                  { key: '3months', label: '3M', days: 90 },
+                ] as const).map(preset => {
+                  const isActive = Math.abs(daysVisible - preset.days) < 5;
+                  return (
+                    <button
+                      key={preset.key}
+                      type="button"
+                      onClick={() => setViewPreset(preset.key)}
+                      className={cn(
+                        "px-2.5 py-1 rounded text-xs transition-colors",
+                        isActive
+                          ? "bg-card shadow-sm font-medium text-foreground border border-border/60"
+                          : "text-muted-foreground hover:text-foreground border border-transparent"
+                      )}
+                    >
+                      {preset.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Zoom fine-tune */}
               <div className="flex items-center gap-1 border rounded-md p-0.5">
                 <Button variant="ghost" size="icon" onClick={zoomOut} disabled={daysVisible >= maxDays} className="h-7 w-7" title={t('timeline.showMoreDays', 'Show more days')}>
                   <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
-                <span className="text-xs text-muted-foreground min-w-[60px] text-center">
-                  {daysVisible} {t('timeline.days', 'days')}
+                <span className="font-mono text-[11px] text-muted-foreground min-w-[50px] text-center tnum">
+                  {daysVisible}d
                 </span>
                 <Button variant="ghost" size="icon" onClick={zoomIn} disabled={daysVisible <= minDays} className="h-7 w-7" title={t('timeline.showFewerDays', 'Show fewer days')}>
                   <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => setViewPreset('month')} className="h-7 w-7" title={t('timeline.resetZoom', 'Reset to 1 month')}>
-                  <RotateCcw className="h-3.5 w-3.5" />
-                </Button>
               </div>
               <Button variant="outline" onClick={handleToday}>
-                {t('timeline.today', 'Today')}
+                {t('timeline.today', 'Idag')}
               </Button>
               <Button variant="outline" size="icon" onClick={handlePrevious}>
                 <ChevronLeft className="h-4 w-4" />
@@ -1276,8 +1299,8 @@ const ProjectTimeline = ({
                             className={`absolute h-full flex items-center justify-center overflow-hidden border-r border-border/50 ${idx % 2 === 0 ? 'bg-muted/15' : ''}`}
                             style={{ left: `${left}%`, width: `${width}%` }}
                           >
-                            <span className="text-[9px] font-semibold text-muted-foreground whitespace-nowrap">
-                              {t('timeline.weekShort', 'V')}{block.weekNum}
+                            <span className="font-mono text-[10px] font-semibold text-muted-foreground whitespace-nowrap tnum">
+                              v{block.weekNum}
                             </span>
                           </div>
                         );
@@ -1422,10 +1445,10 @@ const ProjectTimeline = ({
                                 style={{ left: `${left}%`, width: `${100/totalDays}%`, top: '0', bottom: '0', height: '100%' }}
                               />
                             )}
-                            {/* Today indicator */}
+                            {/* Today indicator — warm amber line */}
                             {isToday && (
                               <div
-                                className="absolute w-0.5 bg-primary z-20 pointer-events-none"
+                                className="absolute w-0.5 bg-amber-500 z-20 pointer-events-none"
                                 style={{ left: `${left}%`, top: '0', bottom: '0', height: '100%' }}
                               />
                             )}
@@ -1681,6 +1704,11 @@ const ProjectTimeline = ({
                 </div>
               </div>
             </div></div>
+        </div>
+        {/* Footer — today indicator */}
+        <div className="flex items-center gap-2.5 px-4 py-2.5 border-t bg-muted/30 text-[11px] text-muted-foreground">
+          <div className="w-0.5 h-2.5 bg-amber-500 rounded-full shrink-0" />
+          <span>{t('timeline.today', 'Idag')} · {format(new Date(), "d MMMM yyyy", { locale: sv })} · {t('timeline.day', 'dag')} {effectiveStartDate ? differenceInDays(new Date(), parseISO(effectiveStartDate)) + 1 : '–'} {t('timeline.of', 'av')} {effectiveStartDate && effectiveFinishDate ? differenceInDays(parseISO(effectiveFinishDate), parseISO(effectiveStartDate)) + 1 : '–'}</span>
         </div>
       </CardContent>
 

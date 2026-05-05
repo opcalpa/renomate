@@ -18,8 +18,6 @@ import {
   Image,
   MessageSquare,
   Link2,
-  LayoutGrid,
-  Table as TableIcon,
   Columns3,
   Rows3,
   Layers,
@@ -48,7 +46,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+// ToggleGroup replaced with custom handoff-styled toggle buttons
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -661,11 +659,13 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
     <div className="space-y-6">
       <ProjectLockBanner lockStatus={lockStatus} />
 
-      {/* Page header — matches Overview pattern */}
+      {/* Page header — kicker + serif title */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <ShoppingCart className="h-5 w-5 text-primary shrink-0" />
-          <h2 className="font-display text-xl font-normal tracking-tight">{t('purchases.pageTitle', 'Materialinköp')}</h2>
+        <div className="min-w-0">
+          <span className="kicker">{t('purchases.kicker', 'Inköp & material')}</span>
+          <h2 className="font-display text-xl font-normal tracking-tight mt-0.5">
+            {orderMaterials.length} {t('purchases.orders', 'inköp')} · {orderMaterials.filter(m => m.status === 'paid').length} {t('materialStatuses.paid', 'betalda')}
+          </h2>
         </div>
         {(isProjectOwner || userPurchasesAccess === 'edit' || userPurchasesAccess === 'create') && (
           <>
@@ -683,68 +683,57 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
         )}
       </div>
 
-      {/* Material budget — PulseCards-style summary */}
+      {/* Material budget — unified strip with divide-x */}
       {plannedMaterials.length > 0 && (() => {
         const totalBudget = plannedMaterials.reduce((s, m) => s + (m.price_total || 0), 0);
         const totalOrdered = plannedMaterials.reduce((s, m) => s + (orderedByPlannedId.get(m.id) || 0), 0);
         const totalPaid = plannedMaterials.reduce((s, m) => s + (paidByPlannedId.get(m.id) || 0), 0);
         return (
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-0.5 -mx-1 px-1">
-            {plannedMaterials.map((m) => {
-              const budget = m.price_total || 0;
-              const ordered = orderedByPlannedId.get(m.id) || 0;
-              const paid = paidByPlannedId.get(m.id) || 0;
-              const spent = paid + ordered;
-              const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
-              const overBudget = spent > budget;
-              return (
-                <Card
-                  key={m.id}
-                  className="shrink-0 min-w-0 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
-                  onClick={() => setBudgetPurchaseDialog({ open: true, planned: m, usedAmount: paid })}
-                >
-                  <CardContent className="pt-3 pb-3 px-3 sm:pt-4 sm:pb-4 sm:px-4" style={{ minWidth: 150 }}>
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <Store className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      <span className="text-xs font-medium text-muted-foreground truncate">{m.name}</span>
-                    </div>
-                    <p className={`text-2xl font-display font-normal tabular-nums ${overBudget ? "text-destructive" : ""}`}>
+          <div className="rounded-xl border bg-card overflow-hidden">
+            <div className="grid divide-x divide-border overflow-x-auto" style={{ gridTemplateColumns: `repeat(${plannedMaterials.length + 1}, minmax(150px, 1fr))` }}>
+              {plannedMaterials.map((m) => {
+                const budget = m.price_total || 0;
+                const ordered = orderedByPlannedId.get(m.id) || 0;
+                const paid = paidByPlannedId.get(m.id) || 0;
+                const spent = paid + ordered;
+                const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+                const overBudget = spent > budget;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className="text-left p-4 hover:bg-accent/50 transition-colors cursor-pointer"
+                    onClick={() => setBudgetPurchaseDialog({ open: true, planned: m, usedAmount: paid })}
+                  >
+                    <span className="kicker truncate block">{m.name}</span>
+                    <p className={cn("text-2xl font-display font-normal tnum mt-1", overBudget && "text-destructive")}>
                       {formatCurrency(budget, currency)}
                     </p>
-                    <div className="h-1.5 mt-2 rounded-full bg-muted overflow-hidden">
+                    <div className="h-[3px] mt-2 rounded-full bg-muted overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${overBudget ? "bg-destructive" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`}
+                        className={cn("h-full rounded-full transition-all", overBudget ? "bg-destructive" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500")}
                         style={{ width: `${Math.min(pct, 100)}%` }}
                       />
                     </div>
-                    <div className="flex justify-between text-[11px] text-muted-foreground mt-1.5 tabular-nums">
-                      <span>{t("purchases.ordered", "Beställt")}: {formatCurrency(ordered, currency)}</span>
-                      <span>{t("purchases.paid", "Betalt")}: {formatCurrency(paid, currency)}</span>
-                    </div>
-                    {m.task?.title && (
-                      <p className="text-[11px] text-muted-foreground mt-1 truncate">{m.task.title}</p>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-            {/* Totals card */}
-            <Card className="shrink-0 min-w-0 shadow-sm">
-              <CardContent className="pt-3 pb-3 px-3 sm:pt-4 sm:pb-4 sm:px-4" style={{ minWidth: 150 }}>
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <ShoppingCart className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground">{t("purchases.totalBudget", "Totalbudget")}</span>
-                </div>
-                <p className="text-2xl font-display font-normal tabular-nums">
+                    <p className="text-[11px] text-muted-foreground mt-1.5 tnum">
+                      {t("purchases.ordered", "Beställt")}: {formatCurrency(ordered, currency)}
+                    </p>
+                  </button>
+                );
+              })}
+              {/* Totals cell */}
+              <div className="p-4">
+                <span className="kicker">{t("purchases.totalBudget", "Totalbudget")}</span>
+                <p className="text-2xl font-display font-normal tnum mt-1">
                   {formatCurrency(totalBudget, currency)}
                 </p>
-                <div className="flex flex-col gap-0.5 mt-2 text-[11px] tabular-nums">
+                <div className="flex flex-col gap-0.5 mt-2 text-[11px] tnum">
                   <span className="text-amber-600">{t("purchases.ordered", "Beställt")}: {formatCurrency(totalOrdered, currency)}</span>
                   <span className="text-emerald-600">{t("purchases.paid", "Betalt")}: {formatCurrency(totalPaid, currency)}</span>
                   <span className="font-medium">{t("purchases.remaining", "Kvar")}: {formatCurrency(totalBudget - totalPaid, currency)}</span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         );
       })()}
@@ -767,14 +756,23 @@ const PurchaseRequestsTab = ({ projectId, openEntityId, onEntityOpened, currency
               {/* Toolbar: View Toggle + Filter + Results count */}
               <div className="flex items-center gap-3 flex-wrap mb-4">
                 {/* View Toggle */}
-                <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && handleSetViewMode(value as 'kanban' | 'table')}>
-                  <ToggleGroupItem value="kanban" aria-label="Kanban view">
-                    <LayoutGrid className="h-4 w-4" />
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="table" aria-label="Table view">
-                    <TableIcon className="h-4 w-4" />
-                  </ToggleGroupItem>
-                </ToggleGroup>
+                <div className="flex rounded-md bg-muted/40 border border-border/60 p-0.5">
+                  {(['table', 'kanban'] as const).map(v => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => handleSetViewMode(v)}
+                      className={cn(
+                        "px-2.5 py-1 rounded text-xs transition-colors",
+                        viewMode === v
+                          ? "bg-card shadow-sm font-medium text-foreground border border-border/60"
+                          : "text-muted-foreground hover:text-foreground border border-transparent"
+                      )}
+                    >
+                      {v === 'table' ? t('tasks.tableView', 'Tabell') : t('tasks.kanbanView', 'Kanban')}
+                    </button>
+                  ))}
+                </div>
 
                 {/* Filter Popover */}
                 <Popover>

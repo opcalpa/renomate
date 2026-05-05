@@ -19,9 +19,9 @@ import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// Tabs replaced with custom handoff-styled toggle buttons
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, GripVertical, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map as MapIcon, Loader2, AlertTriangle, Link2, ImageIcon, MessageSquare, Columns3, AlignJustify, Layers, MoreVertical } from "lucide-react";
+import { Plus, CheckCircle2, Circle, Clock, XCircle, Pencil, Users, ChevronDown, ChevronUp, DollarSign, Tag, LayoutGrid, Table as TableIcon, Filter, CheckSquare, Trash2, X, ShoppingCart, Calendar, MapPin, Map as MapIcon, Loader2, AlertTriangle, Link2, ImageIcon, MessageSquare, Columns3, AlignJustify, Layers, MoreVertical } from "lucide-react";
 import { TaskListSkeleton } from "@/components/ui/skeleton-screens";
 import { DEFAULT_COST_CENTERS, getCostCenterIcon, getCostCenterLabel } from "@/lib/costCenters";
 import { formatCurrency } from "@/lib/currency";
@@ -595,16 +595,16 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
   // Group tasks by status (supporting both old and new status values)
   // Note: 'done' is a legacy status that should be merged into 'completed'
   const statusOrder = ['planned', 'to_do', 'in_progress', 'waiting', 'completed', 'cancelled'] as const;
-  const kanbanHeaderBg = (status: string): string => {
+  const kanbanStatusDotColor = (status: string): string => {
     const map: Record<string, string> = {
-      planned:     "bg-indigo-50 dark:bg-indigo-950/30",
-      to_do:       "bg-amber-50 dark:bg-amber-950/30",
-      in_progress: "bg-blue-50 dark:bg-blue-950/30",
-      waiting:     "bg-gray-100 dark:bg-gray-800/30",
-      completed:   "bg-emerald-50 dark:bg-emerald-950/30",
-      cancelled:   "bg-red-50 dark:bg-red-950/30",
+      planned:     "bg-indigo-400",
+      to_do:       "bg-muted-foreground/50",
+      in_progress: "bg-primary",
+      waiting:     "bg-amber-500",
+      completed:   "bg-emerald-500",
+      cancelled:   "bg-red-400",
     };
-    return map[status] || "bg-muted/50";
+    return map[status] || "bg-muted-foreground/30";
   };
 
   const statusLabels: Record<string, string> = {
@@ -802,116 +802,81 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
 
   const TaskCard = ({ task }: { task: Task }) => {
     const isCompact = tableViewState.compactRows;
-    // Support both single and multiple cost centers
-    const costCenters = task.cost_centers || (task.cost_center ? [task.cost_center] : []);
-
-    const getPriorityIcon = (priority: string) => {
-      switch (priority) {
-        case "high":
-          return "🔴";
-        case "medium":
-          return "🟡";
-        case "low":
-          return "🟢";
-        default:
-          return "";
-      }
-    };
-
     const statusColor = getStatusSolidColor(task.status);
+    const assigneeName = getAssignedMemberName(task);
+    const roomName = task.room_id ? rooms.find(r => r.id === task.room_id)?.name : null;
 
     if (isCompact) {
       return (
         <div
-          className={cn("flex items-center gap-2 px-2 py-1.5 rounded-md bg-background border cursor-move hover:shadow-sm transition-all group", bulk.selectedIds.has(task.id) && "ring-2 ring-primary")}
+          className={cn("flex items-center gap-2 px-2 py-1.5 rounded-md bg-card border border-border/60 cursor-grab hover:shadow-sm transition-all group", bulk.selectedIds.has(task.id) && "ring-2 ring-primary")}
           draggable
           onDragStart={() => handleDragStart(task)}
           onDragEnd={() => setDraggedTask(null)}
           onClick={(e) => handleTaskClickWithModifier(task, e)}
         >
           <div className="w-1 h-4 rounded-full shrink-0" style={{ backgroundColor: statusColor }} />
-          <span className={`text-xs font-medium truncate flex-1 ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
+          <span className={cn("text-xs font-medium truncate flex-1", task.status === "completed" && "line-through text-muted-foreground")}>
             {task.title}
           </span>
-          {getPriorityIcon(task.priority) && (
-            <span className="text-[10px] shrink-0">{getPriorityIcon(task.priority)}</span>
+          {task.priority === "high" && (
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
           )}
         </div>
       );
     }
 
     return (
-      <Card
+      <div
         key={task.id}
-        className={cn("cursor-move hover:shadow-md transition-all bg-white dark:bg-card border p-0 group overflow-hidden", bulk.selectedIds.has(task.id) && "ring-2 ring-primary")}
+        className={cn("rounded-xl border border-border/60 bg-card p-3 cursor-grab hover:shadow-md transition-all group", bulk.selectedIds.has(task.id) && "ring-2 ring-primary")}
         draggable
         onDragStart={() => handleDragStart(task)}
         onDragEnd={() => setDraggedTask(null)}
         onClick={(e) => handleTaskClickWithModifier(task, e)}
       >
-        <div className="flex">
-          <div className="w-1 shrink-0 rounded-l" style={{ backgroundColor: statusColor }} />
-          <div className="space-y-2 p-3 flex-1 min-w-0">
-          {/* Task Title */}
-          <p className={`text-sm font-medium leading-tight ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
-            {task.title}
-          </p>
-
-          {/* Room name */}
-          {task.room_id && (() => {
-            const roomName = rooms.find(r => r.id === task.room_id)?.name;
-            return roomName ? (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                {roomName}
-              </p>
-            ) : null;
-          })()}
-
-          {/* Icons Row */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Priority Icon */}
-            {getPriorityIcon(task.priority) && (
-              <span className="text-xs" title={`${task.priority} priority`}>
-                {getPriorityIcon(task.priority)}
-              </span>
-            )}
-
-            {/* Cost Center Icons - Multiple */}
-            {costCenters.map((center, index) => {
-              const CostCenterIcon = getCostCenterIcon(center);
-              return CostCenterIcon ? (
-                <div key={index} className="flex items-center gap-1 text-muted-foreground" title={center}>
-                  <CostCenterIcon className="h-3 w-3" />
-                </div>
-              ) : null;
-            })}
-
-            {/* Checklist indicator */}
-            {(() => {
-              const { total, completed } = getChecklistCounts(task);
-              return total > 0 ? (
-                <div className="flex items-center gap-0.5 text-muted-foreground" title={`${completed}/${total} checklist items`}>
-                  <CheckSquare className="h-3 w-3" />
-                  <span className="text-xs">{completed}/{total}</span>
-                </div>
-              ) : null;
-            })()}
-
-            {/* Material estimate indicator */}
-            {task.material_estimate && task.material_estimate > 0 && (
-              <div className="flex items-center gap-0.5 text-muted-foreground" title={`${t("taskCost.materialEstimate", "Material")}: ${formatCurrency(task.material_estimate, currency)}`}>
-                <ShoppingCart className="h-3 w-3" />
-                <span className="text-xs">{formatCurrency(task.material_estimate, currency)}</span>
-              </div>
-            )}
-
-            {/* Edit icon - visible on hover */}
-            <Pencil className="h-3 w-3 ml-auto text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-          </div>
-          </div>
+        {/* Header: priority dot */}
+        <div className="flex items-center gap-1.5 mb-1.5">
+          {task.priority === "high" && (
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+          )}
         </div>
-      </Card>
+
+        {/* Title */}
+        <p className={cn("text-[13px] font-medium leading-snug tracking-[-0.003em] mb-2", task.status === "completed" && "line-through text-muted-foreground")}>
+          {task.title}
+        </p>
+
+        {/* Progress bar */}
+        {task.progress > 0 && (
+          <div className="h-[3px] bg-muted rounded-full overflow-hidden mb-2">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${task.progress}%`, backgroundColor: statusColor }}
+            />
+          </div>
+        )}
+
+        {/* Footer: room, due date, assignee */}
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          {roomName && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-muted/60 text-[10px] font-medium truncate max-w-[100px]">
+              {roomName}
+            </span>
+          )}
+          {task.due_date && (
+            <span className="font-mono text-[10px] tnum">{task.due_date.slice(5)}</span>
+          )}
+          <span className="flex-1" />
+          {assigneeName ? (
+            <div className="w-5 h-5 rounded-full bg-primary/80 text-primary-foreground grid place-items-center text-[9px] font-semibold shrink-0">
+              {assigneeName.charAt(0).toUpperCase()}
+            </div>
+          ) : (
+            <div className="w-5 h-5 rounded-full border border-dashed border-border shrink-0" />
+          )}
+        </div>
+      </div>
     );
   };
 
@@ -924,12 +889,23 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
         <div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* Detail view toggle: Table | Kanban */}
-          <Tabs value={safeDetailView} onValueChange={(v) => setDetailView(v)}>
-            <TabsList className="h-9">
-              <TabsTrigger value="table" className="text-xs px-2 sm:px-3">{t('tasks.tableView', 'Tabell')}</TabsTrigger>
-              <TabsTrigger value="kanban" className="text-xs px-2 sm:px-3">{t('tasks.kanbanView', 'Kanban')}</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex rounded-md bg-muted/40 border border-border/60 p-0.5">
+            {(['table', 'kanban'] as const).map(v => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setDetailView(v)}
+                className={cn(
+                  "px-2.5 py-1 rounded text-xs transition-colors",
+                  safeDetailView === v
+                    ? "bg-card shadow-sm font-medium text-foreground border border-border/60"
+                    : "text-muted-foreground hover:text-foreground border border-transparent"
+                )}
+              >
+                {v === 'table' ? t('tasks.tableView', 'Tabell') : t('tasks.kanbanView', 'Kanban')}
+              </button>
+            ))}
+          </div>
 
           {/* Unified Filter Popover */}
           <Popover>
@@ -1189,8 +1165,16 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
             </Popover>
           )}
 
-          {/* Spacer to push Add Task to the right */}
+          {/* Stats + Spacer */}
           <div className="flex-1" />
+          {!loading && tasks.length > 0 && (
+            <span className="hidden sm:inline font-mono text-[11px] text-muted-foreground tnum">
+              {tasks.length} {t('tasks.tasks', 'arbeten')} · {tasks.filter(t => t.status === 'completed' || t.status === 'done').length} {t('statuses.completed', 'klara')}
+              {tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'completed' && t.status !== 'done').length > 0 && (
+                <> · {tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'completed' && t.status !== 'done').length} {t('tasks.overdue', 'försenade')}</>
+              )}
+            </span>
+          )}
 
           {/* Add Task button */}
           {canEditTasks && (
@@ -1559,21 +1543,22 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
             {scheduleOpen ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
           </button>
           {/* Schedule sub-toggle */}
-          <div className="flex rounded-md border bg-muted/30 p-0.5 ml-2">
-            <button
-              type="button"
-              onClick={() => { setScheduleView('timeline'); setScheduleOpen(true); }}
-              className={cn("px-2 py-0.5 rounded text-xs transition-colors", safeScheduleView === 'timeline' ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground")}
-            >
-              {t('projectDetail.timeline', 'Tidslinje')}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setScheduleView('calendar'); setScheduleOpen(true); }}
-              className={cn("px-2 py-0.5 rounded text-xs transition-colors", safeScheduleView === 'calendar' ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground")}
-            >
-              {t('timeline.calendar', 'Kalender')}
-            </button>
+          <div className="flex rounded-md bg-muted/40 border border-border/60 p-0.5 ml-2">
+            {(['timeline', 'calendar'] as const).map(v => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => { setScheduleView(v); setScheduleOpen(true); }}
+                className={cn(
+                  "px-2.5 py-1 rounded text-xs transition-colors",
+                  safeScheduleView === v
+                    ? "bg-card shadow-sm font-medium text-foreground border border-border/60"
+                    : "text-muted-foreground hover:text-foreground border border-transparent"
+                )}
+              >
+                {v === 'timeline' ? t('projectDetail.timeline', 'Tidslinje') : t('timeline.calendar', 'Kalender')}
+              </button>
+            ))}
           </div>
         </div>
         {scheduleOpen && (
@@ -1638,17 +1623,17 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
         </Card>
       ) : viewMode === 'kanban' ? (
         <div className="overflow-x-auto pb-4 snap-x snap-mandatory">
-          <div className="flex gap-4 min-w-min p-2">
+          <div className="grid gap-3.5 p-0.5" style={{ gridTemplateColumns: `repeat(${[...columnOrder, ...unknownStatuses].filter(status => kanbanVisibleStatuses.has(status) || unknownStatuses.includes(status) || (groupedTasks[status]?.length ?? 0) > 0).length}, minmax(200px, 1fr))`, minWidth: `${Math.max([...columnOrder, ...unknownStatuses].filter(status => kanbanVisibleStatuses.has(status) || unknownStatuses.includes(status) || (groupedTasks[status]?.length ?? 0) > 0).length * 260, 800)}px` }}>
             {[...columnOrder, ...unknownStatuses].filter(status =>
               kanbanVisibleStatuses.has(status) || unknownStatuses.includes(status) || (groupedTasks[status]?.length ?? 0) > 0
             ).map((status) => {
               const tasksForStatus = groupedTasks[status] || [];
               const defaultLabel = statusLabels[status as keyof typeof statusLabels] || status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
               const displayLabel = customColumnNames[status] || defaultLabel;
-              
+
               return (
-                <div 
-                  key={status} 
+                <div
+                  key={status}
                   draggable
                   onDragStart={() => handleColumnDragStart(status)}
                   onDragOver={handleColumnDragOver}
@@ -1657,51 +1642,43 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
                     handleColumnDrop(status);
                   }}
                   onDragEnd={() => setDraggedColumn(null)}
-                  className={`flex-shrink-0 rounded-xl border bg-card/50 p-3 transition-all snap-center ${
-                    tasksForStatus.length === 0 ? 'w-auto min-w-[200px]' : 'w-[85vw] md:w-80'
-                  } ${draggedColumn === status ? 'opacity-50' : ''} cursor-grab active:cursor-grabbing`}
+                  className={cn("flex flex-col snap-center transition-opacity", draggedColumn === status && "opacity-50")}
                 >
-                  <div className={cn("mb-3 flex items-center justify-between rounded-lg px-3 py-2", kanbanHeaderBg(status))}>
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <GripVertical className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
-                      {editingColumnName === status ? (
-                        <Input
-                          autoFocus
-                          value={editingColumnValue}
-                          onChange={(e) => setEditingColumnValue(e.target.value)}
-                          onBlur={() => handleSaveColumnName(status)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              handleSaveColumnName(status);
-                            } else if (e.key === 'Escape') {
-                              handleCancelEditColumnName();
-                            }
-                          }}
-                          className="h-7 text-sm font-semibold px-2"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      ) : (
-                        <h4 
-                          className="text-sm font-semibold whitespace-nowrap cursor-text hover:text-primary transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStartEditColumnName(status, displayLabel);
-                          }}
-                          title={t('tasks.clickToRename')}
-                        >
-                          {displayLabel}
-                          {!statusLabels[status as keyof typeof statusLabels] && (
-                            <span className="text-xs text-muted-foreground ml-1">({t('common.unknown')})</span>
-                          )}
-                        </h4>
-                      )}
-                    </div>
-                    <Badge variant="secondary" className="text-[10px] ml-2 flex-shrink-0 tabular-nums">
+                  {/* Column header */}
+                  <div className="flex items-center gap-2 px-1 mb-2">
+                    <div className={cn("w-[7px] h-[7px] rounded-full shrink-0", kanbanStatusDotColor(status))} />
+                    {editingColumnName === status ? (
+                      <Input
+                        autoFocus
+                        value={editingColumnValue}
+                        onChange={(e) => setEditingColumnValue(e.target.value)}
+                        onBlur={() => handleSaveColumnName(status)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveColumnName(status);
+                          else if (e.key === 'Escape') handleCancelEditColumnName();
+                        }}
+                        className="h-6 text-[13px] font-medium px-1.5"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <h4
+                        className="text-[13px] font-medium whitespace-nowrap cursor-text hover:text-primary transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartEditColumnName(status, displayLabel);
+                        }}
+                        title={t('tasks.clickToRename')}
+                      >
+                        {displayLabel}
+                      </h4>
+                    )}
+                    <span className="font-mono text-[11px] text-muted-foreground tnum">
                       {tasksForStatus.length}
-                    </Badge>
+                    </span>
                   </div>
+                  {/* Cards */}
                   <div
-                    className={`${tableViewState.compactRows ? 'space-y-1' : 'space-y-2'} min-h-[80px]`}
+                    className={cn("flex-1 min-h-[80px]", tableViewState.compactRows ? "space-y-1" : "space-y-2")}
                     onDragOver={(e) => {
                       e.stopPropagation();
                       handleDragOver(e);
@@ -1712,7 +1689,7 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
                     }}
                   >
                     {tasksForStatus.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground/60 text-xs border-2 border-dashed border-muted rounded-lg">
+                      <div className="text-center py-8 text-muted-foreground/50 text-xs border border-dashed border-border rounded-xl">
                         {t('tasks.dropTasksHere')}
                       </div>
                     ) : (
@@ -1721,6 +1698,17 @@ const TasksTab = ({ projectId, projectName, projectStatus, tasksScope = 'all', t
                       ))
                     )}
                   </div>
+                  {/* Add task button at bottom */}
+                  {canEditTasks && (
+                    <button
+                      type="button"
+                      className="mt-2 flex items-center justify-center gap-1.5 w-full py-2 px-2.5 border border-dashed border-border rounded-xl text-[12px] text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+                      onClick={() => setDialogOpen(true)}
+                    >
+                      <Plus className="h-3 w-3" />
+                      {t('tasks.addTask')}
+                    </button>
+                  )}
                 </div>
               );
             })}
