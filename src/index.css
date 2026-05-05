@@ -2,22 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Landing page v2 — "Paper" editorial theme (oklch tokens) */
+/* Landing page — shared Paper theme tokens (oklch, matches brand v2) */
 [data-page="landing"] {
   --lp-bg: oklch(97.4% 0.004 85);
   --lp-bg-sunken: oklch(95.5% 0.006 85);
   --lp-surface: oklch(99.5% 0.002 85);
   --lp-surface-2: oklch(96.8% 0.004 85);
-  --lp-fg: oklch(22% 0.01 260);
-  --lp-fg-muted: oklch(48% 0.01 260);
-  --lp-fg-subtle: oklch(62% 0.008 260);
+  --lp-fg: oklch(22% 0.008 85);
+  --lp-fg-muted: oklch(48% 0.008 85);
+  --lp-fg-subtle: oklch(62% 0.006 85);
   --lp-hairline: oklch(88% 0.005 85);
-  --lp-primary: oklch(52% 0.09 155);
-  --lp-primary-hover: oklch(47% 0.1 155);
+  --lp-primary: #2F5D4E;
+  --lp-primary-hover: #245040;
   --lp-primary-fg: oklch(99% 0.002 85);
-  --lp-accent-ink: oklch(22% 0.01 260);
-  --lp-shadow-md: 0 2px 8px -2px oklch(22% 0.01 260 / 0.08), 0 1px 2px 0 oklch(22% 0.01 260 / 0.04);
-  --lp-shadow-lg: 0 12px 32px -8px oklch(22% 0.01 260 / 0.12), 0 4px 8px -2px oklch(22% 0.01 260 / 0.06);
+  --lp-accent: #2F5D4E;
+  --lp-accent-ink: oklch(22% 0.008 85);
+  --lp-warn: oklch(72% 0.12 75);
+  --lp-danger: oklch(58% 0.14 25);
+  --lp-shadow-md: 0 2px 8px -2px oklch(22% 0.008 85 / 0.08), 0 1px 2px 0 oklch(22% 0.008 85 / 0.04);
+  --lp-shadow-lg: 0 12px 32px -8px oklch(22% 0.008 85 / 0.12), 0 4px 8px -2px oklch(22% 0.008 85 / 0.06);
 
   background: var(--lp-bg);
   color: var(--lp-fg);
